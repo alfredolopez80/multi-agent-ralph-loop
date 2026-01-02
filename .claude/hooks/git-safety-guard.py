@@ -64,11 +64,11 @@ def normalize_command(command: str) -> str:
     command = os.path.expandvars(command)
 
     # Normalize multiple spaces to single space
-    command = re.sub(r'\s+', ' ', command.strip())
+    command = re.sub(r"\s+", " ", command.strip())
 
     # Remove common quote variations around paths
     # e.g., rm -rf "/tmp/foo" -> rm -rf /tmp/foo for pattern matching
-    command = re.sub(r'["\']([^"\']+)["\']', r'\1', command)
+    command = re.sub(r'["\']([^"\']+)["\']', r"\1", command)
 
     return command
 
@@ -76,6 +76,7 @@ def normalize_command(command: str) -> str:
 def log_security_event(event_type: str, command: str, reason: str = ""):
     """Log security events to stderr for audit trail."""
     import datetime
+
     timestamp = datetime.datetime.now().isoformat()
     log_msg = f"[{timestamp}] git-safety-guard: {event_type}"
     if reason:
@@ -89,21 +90,16 @@ SAFE_PATTERNS = [
     # Git branching (safe)
     r"git\s+checkout\s+(-b|--orphan)\s+",
     r"git\s+switch\s+(-c|--create)\s+",
-
     # Git restore staged only (doesn't discard working tree)
     r"git\s+restore\s+--staged\s+",
-
     # Git clean dry-run (preview only)
     r"git\s+clean\s+.*(-n|--dry-run)",
-
     # rm in temp directories (ephemeral)
     r"rm\s+(-rf|-fr|--recursive)\s+(/tmp/|/var/tmp/|\$TMPDIR/|/private/tmp/)",
     r"rm\s+(-rf|-fr|--recursive)\s+['\"]?/tmp/",
     r"rm\s+(-rf|-fr|--recursive)\s+['\"]?/var/tmp/",
-
     # Git status/log/diff (read-only)
     r"git\s+(status|log|diff|show|branch|remote|fetch)\b",
-
     # Git add/commit (safe write operations)
     r"git\s+(add|commit|pull|stash\s+push|stash\s+save)\b",
 ]
@@ -111,64 +107,68 @@ SAFE_PATTERNS = [
 # Patterns that REQUIRE USER CONFIRMATION (risky but allowed with consent)
 CONFIRMATION_PATTERNS = [
     # Force push - risky but sometimes needed
-    (r"git\s+push\s+.*--force",
-     "Force push will overwrite remote history. This can cause issues for collaborators."),
-    (r"git\s+push\s+.*-f\b",
-     "Force push will overwrite remote history. This can cause issues for collaborators."),
-    (r"git\s+push\s+\S+\s+\+",
-     "Force push via + prefix will overwrite remote history."),
+    (
+        r"git\s+push\s+.*--force",
+        "Force push will overwrite remote history. This can cause issues for collaborators.",
+    ),
+    (
+        r"git\s+push\s+.*-f\b",
+        "Force push will overwrite remote history. This can cause issues for collaborators.",
+    ),
+    (
+        r"git\s+push\s+\S+\s+\+",
+        "Force push via + prefix will overwrite remote history.",
+    ),
 ]
 
 # Patterns that are BLOCKED (destructive - no confirmation option)
 BLOCKED_PATTERNS = [
     # Discard uncommitted changes
-    (r"git\s+checkout\s+--\s+",
-     "discards uncommitted changes permanently"),
-
+    (r"git\s+checkout\s+--\s+", "discards uncommitted changes permanently"),
     # Restore without --staged overwrites working tree
-    (r"git\s+restore\s+(?!--staged).*\S+",
-     "overwrites working tree changes without stash"),
-
+    (
+        r"git\s+restore\s+(?!--staged).*\S+",
+        "overwrites working tree changes without stash",
+    ),
     # Hard reset destroys changes
-    (r"git\s+reset\s+--hard",
-     "destroys all uncommitted changes permanently"),
-
+    (r"git\s+reset\s+--hard", "destroys all uncommitted changes permanently"),
     # Merge reset can lose changes
-    (r"git\s+reset\s+--merge",
-     "can lose uncommitted changes during merge resolution"),
-
+    (r"git\s+reset\s+--merge", "can lose uncommitted changes during merge resolution"),
     # Clean force removes untracked files
-    (r"git\s+clean\s+.*-f(?!.*(-n|--dry-run))",
-     "removes untracked files permanently (use -n first to preview)"),
-
+    (
+        r"git\s+clean\s+.*-f(?!.*(-n|--dry-run))",
+        "removes untracked files permanently (use -n first to preview)",
+    ),
     # Force delete branch without merge check
-    (r"git\s+branch\s+-D\s+",
-     "force-deletes branch without checking if merged"),
-
+    (r"git\s+branch\s+-D\s+", "force-deletes branch without checking if merged"),
     # Stash drop/clear permanently deletes
-    (r"git\s+stash\s+drop",
-     "permanently deletes stashed changes"),
-    (r"git\s+stash\s+clear",
-     "permanently deletes ALL stashed changes"),
-
+    (r"git\s+stash\s+drop", "permanently deletes stashed changes"),
+    (r"git\s+stash\s+clear", "permanently deletes ALL stashed changes"),
     # VULN-003 FIX: Improved rm -rf protection patterns
     # Block ALL recursive deletes except explicitly allowed temp dirs
-    (r"rm\s+(-rf|-fr|--recursive)\s+(?!(/tmp/|/var/tmp/|\$TMPDIR/|/private/tmp/))\S",
-     "recursive deletion not in safe temp directory"),
-
+    (
+        r"rm\s+(-rf|-fr|--recursive)\s+(?!(/tmp/|/var/tmp/|\$TMPDIR/|/private/tmp/))\S",
+        "recursive deletion not in safe temp directory",
+    ),
     # Block deletion of current directory (extremely dangerous)
-    (r"rm\s+(-rf|-fr|--recursive)\s+\.\s*$",
-     "deletion of current directory is destructive"),
-    (r"rm\s+(-rf|-fr|--recursive)\s+\.$",
-     "deletion of current directory is destructive"),
-
+    (
+        r"rm\s+(-rf|-fr|--recursive)\s+\.\s*$",
+        "deletion of current directory is destructive",
+    ),
+    (
+        r"rm\s+(-rf|-fr|--recursive)\s+\.$",
+        "deletion of current directory is destructive",
+    ),
     # Block relative path deletion with ../
-    (r"rm\s+(-rf|-fr|--recursive)\s+\.\./",
-     "relative path deletion with ../ is unsafe"),
-
+    (
+        r"rm\s+(-rf|-fr|--recursive)\s+\.\./",
+        "relative path deletion with ../ is unsafe",
+    ),
     # Rebase on shared branches (ISSUE-011: removed extra \s+ before branch name)
-    (r"git\s+rebase\s+.*(main|master|develop)\b",
-     "rebasing shared branches can cause issues for collaborators"),
+    (
+        r"git\s+rebase\s+.*(main|master|develop)\b",
+        "rebasing shared branches can cause issues for collaborators",
+    ),
 ]
 
 
@@ -228,7 +228,9 @@ def main():
         # Check if user already confirmed (via env var)
         if os.environ.get("GIT_FORCE_PUSH_CONFIRMED") == "1":
             # User confirmed, allow this time
-            log_security_event("ALLOWED_CONFIRMED", original_command, "User confirmed force push")
+            log_security_event(
+                "ALLOWED_CONFIRMED", original_command, "User confirmed force push"
+            )
             sys.exit(0)
 
         # Check confirmation patterns (require user consent)
@@ -239,9 +241,9 @@ def main():
             response = {
                 "decision": "block",
                 "reason": f"⚠️ CONFIRMATION REQUIRED: {confirm_reason}\n\n"
-                         f"Command: {original_command[:100]}{'...' if len(original_command) > 100 else ''}\n\n"
-                         f"Use AskUserQuestion to confirm. If user approves, run:\n"
-                         f"GIT_FORCE_PUSH_CONFIRMED=1 {original_command}"
+                f"Command: {original_command[:100]}{'...' if len(original_command) > 100 else ''}\n\n"
+                f"Use AskUserQuestion to confirm. If user approves, run:\n"
+                f"GIT_FORCE_PUSH_CONFIRMED=1 {original_command}",
             }
             print(json.dumps(response))
             sys.exit(1)
@@ -254,8 +256,8 @@ def main():
             response = {
                 "decision": "block",
                 "reason": f"BLOCKED by git-safety-guard: {reason}. "
-                         f"Command: {original_command[:100]}{'...' if len(original_command) > 100 else ''}. "
-                         f"If truly needed, ask the user to run it manually."
+                f"Command: {original_command[:100]}{'...' if len(original_command) > 100 else ''}. "
+                f"If truly needed, ask the user to run it manually.",
             }
             print(json.dumps(response))
             sys.exit(1)
@@ -265,19 +267,23 @@ def main():
 
     except json.JSONDecodeError as e:
         # SECURITY: Fail-closed on invalid JSON (could be injection attempt)
-        log_security_event("BLOCKED", original_command or "<unknown>", f"Invalid JSON input: {e}")
+        log_security_event(
+            "BLOCKED", original_command or "<unknown>", f"Invalid JSON input: {e}"
+        )
         response = {
             "decision": "block",
-            "reason": "git-safety-guard: Invalid input format. Command blocked for safety."
+            "reason": "git-safety-guard: Invalid input format. Command blocked for safety.",
         }
         print(json.dumps(response))
         sys.exit(1)
     except Exception as e:
         # SECURITY: Fail-closed on unexpected errors (safer default)
-        log_security_event("BLOCKED", original_command or "<unknown>", f"Unexpected error: {e}")
+        log_security_event(
+            "BLOCKED", original_command or "<unknown>", f"Unexpected error: {e}"
+        )
         response = {
             "decision": "block",
-            "reason": f"git-safety-guard: Internal error, command blocked for safety. Error: {e}"
+            "reason": f"git-safety-guard: Internal error, command blocked for safety. Error: {e}",
         }
         print(json.dumps(response))
         sys.exit(1)
