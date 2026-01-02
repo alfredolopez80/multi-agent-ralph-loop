@@ -1,4 +1,4 @@
-# Testing Guide - Multi-Agent Ralph Loop v2.18
+# Testing Guide - Multi-Agent Ralph Loop v2.19
 
 This document describes the comprehensive test suite for Multi-Agent Ralph Loop.
 
@@ -24,7 +24,7 @@ brew install bats-core
 ./tests/run_tests.sh python    # Python only
 ./tests/run_tests.sh bash      # Bash only
 ./tests/run_tests.sh security  # Security tests
-./tests/run_tests.sh v218      # v2.18 security fixes
+./tests/run_tests.sh v218      # v2.19 security fixes
 ```
 
 ## Test Files
@@ -69,7 +69,7 @@ Tests the installation script's security and correctness.
 | Error Handling | 3 | log_error, exit codes, 2>/dev/null |
 | Content Integrity | 3 | Version, git-safety-guard, quality-gates |
 | Copy Operations | 3 | Script copying, optional copies |
-| V2.18 Security | 3 | umask 077, logs directory |
+| V2.19 Security | 3 | umask 077, logs directory |
 
 **Run:**
 ```bash
@@ -109,7 +109,7 @@ Tests the main `ralph` CLI orchestrator.
 | cleanup() | 2 | Safe temp dir removal |
 | CLI Commands | 4 | help, version, unknown, gates |
 | Iteration Limits | 3 | Claude 15, MiniMax 30, Lightning 60 |
-| V2.18 Security | 7 | VULN-001, VULN-004, VULN-008 fixes |
+| V2.19 Security | 7 | VULN-001, VULN-004, VULN-008 fixes |
 
 **Run:**
 ```bash
@@ -129,7 +129,7 @@ Tests the MiniMax wrapper CLI.
 | Loop Behavior | 2 | Max iterations, VERIFIED_DONE exit |
 | Model Mapping | 2 | M2.1, M2.1-lightning |
 | Error Handling | 1 | Missing config |
-| V2.18 Security | 4 | VULN-005, VULN-008, chmod 600, jq |
+| V2.19 Security | 4 | VULN-005, VULN-008, chmod 600, jq |
 
 **Run:**
 ```bash
@@ -173,7 +173,7 @@ Tests the settings.json merge behavior during install.
 bats tests/test_settings_merge.bats
 ```
 
-## V2.18 Security Tests
+## V2.19 Security Tests
 
 The `v218` test mode runs only tests that verify security vulnerability fixes:
 

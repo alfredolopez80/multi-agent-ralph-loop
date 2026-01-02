@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# run_tests.sh - Execute all tests for Multi-Agent Ralph Loop v2.18
+# run_tests.sh - Execute all tests for Multi-Agent Ralph Loop v2.19
 #
 # Usage:
 #   ./tests/run_tests.sh           # Run all tests
 #   ./tests/run_tests.sh python    # Run only Python tests
 #   ./tests/run_tests.sh bash      # Run only Bash tests
 #   ./tests/run_tests.sh security  # Run only security tests
-#   ./tests/run_tests.sh v218      # Run only v2.18 security fix tests
+#   ./tests/run_tests.sh v218      # Run only v2.19 security fix tests
 
 set -euo pipefail
 
@@ -98,19 +98,19 @@ run_security_tests() {
     fi
 }
 
-# Run v2.18 specific security fix tests
+# Run v2.19 specific security fix tests
 run_v218_tests() {
-    log_info "Running v2.18 security fix tests..."
+    log_info "Running v2.19 security fix tests..."
 
     cd "$PROJECT_DIR"
 
     if ! command -v bats &>/dev/null; then
-        log_warn "bats not installed, cannot run v2.18 tests"
+        log_warn "bats not installed, cannot run v2.19 tests"
         echo "  Install with: brew install bats-core"
         return 1
     fi
 
-    # Run only v2.18 security fix tests using filter
+    # Run only v2.19 security fix tests using filter
     echo ""
     log_info "Testing VULN-001: escape_for_shell() fixes..."
     bats tests/test_ralph_security.bats --filter "VULN-001"
@@ -159,7 +159,7 @@ main() {
         security|sec)
             run_security_tests "$@"
             ;;
-        v218|v2.18|vuln)
+        v218|v2.19|vuln)
             run_v218_tests "$@"
             ;;
         all|"")

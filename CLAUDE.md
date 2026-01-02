@@ -1,8 +1,8 @@
-# Multi-Agent Ralph v2.18
+# Multi-Agent Ralph v2.19
 
 Orchestration with **automatic planning**, **intensive clarification**, adversarial validation, self-improvement, and 9-language quality gates.
 
-## v2.18 Key Changes
+## v2.19 Key Changes
 
 - **VULN-001 FIX**: escape_for_shell() now uses `printf %q` (prevents command injection)
 - **VULN-003 FIX**: Improved rm -rf regex patterns in git-safety-guard.py

@@ -1,6 +1,6 @@
-# 🎭 Multi-Agent Ralph Wiggum v2.18
+# 🎭 Multi-Agent Ralph Wiggum v2.19
 
-![Version](https://img.shields.io/badge/version-2.18.0-blue)
+![Version](https://img.shields.io/badge/version-2.19.0-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -9,7 +9,7 @@
 
 A sophisticated multi-agent orchestration system for Claude Code that coordinates multiple AI models (Claude, Codex CLI, Gemini CLI, MiniMax) with **automatic planning**, **intensive clarification**, adversarial validation, self-improvement capabilities, and comprehensive quality gates.
 
-## 🌟 What's New in v2.18
+## 🌟 What's New in v2.19
 
 - **VULN-001 FIX**: `escape_for_shell()` now uses `printf %q` to prevent command injection attacks
 - **VULN-003 FIX**: Improved rm -rf regex patterns in git-safety-guard.py (blocks `.`, `../`, all non-temp paths)
@@ -416,7 +416,7 @@ Comprehensive test suite with **217 tests** covering all components:
 # Run security tests only
 ./tests/run_tests.sh security
 
-# Run v2.18 security fix tests only
+# Run v2.19 security fix tests only
 ./tests/run_tests.sh v218
 ```
 
