@@ -52,7 +52,38 @@ INSTALLATION:
 import json
 import os
 import re
+import shlex
 import sys
+
+
+def normalize_command(command: str) -> str:
+    """
+    Normalize command for consistent pattern matching.
+    Prevents regex bypass via whitespace, quotes, and path variations.
+    """
+    # Expand environment variables in paths
+    command = os.path.expandvars(command)
+
+    # Normalize multiple spaces to single space
+    command = re.sub(r'\s+', ' ', command.strip())
+
+    # Remove common quote variations around paths
+    # e.g., rm -rf "/tmp/foo" -> rm -rf /tmp/foo for pattern matching
+    command = re.sub(r'["\']([^"\']+)["\']', r'\1', command)
+
+    return command
+
+
+def log_security_event(event_type: str, command: str, reason: str = ""):
+    """Log security events to stderr for audit trail."""
+    import datetime
+    timestamp = datetime.datetime.now().isoformat()
+    log_msg = f"[{timestamp}] git-safety-guard: {event_type}"
+    if reason:
+        log_msg += f" - {reason}"
+    log_msg += f" | cmd: {command[:100]}"
+    sys.stderr.write(log_msg + "\n")
+
 
 # Patterns that are ALWAYS safe (checked first)
 SAFE_PATTERNS = [
@@ -78,7 +109,18 @@ SAFE_PATTERNS = [
     r"git\s+(add|commit|pull|stash\s+push|stash\s+save)\b",
 ]
 
-# Patterns that are BLOCKED (destructive)
+# Patterns that REQUIRE USER CONFIRMATION (risky but allowed with consent)
+CONFIRMATION_PATTERNS = [
+    # Force push - risky but sometimes needed
+    (r"git\s+push\s+.*--force",
+     "Force push will overwrite remote history. This can cause issues for collaborators."),
+    (r"git\s+push\s+.*-f\b",
+     "Force push will overwrite remote history. This can cause issues for collaborators."),
+    (r"git\s+push\s+\S+\s+\+",
+     "Force push via + prefix will overwrite remote history."),
+]
+
+# Patterns that are BLOCKED (destructive - no confirmation option)
 BLOCKED_PATTERNS = [
     # Discard uncommitted changes
     (r"git\s+checkout\s+--\s+",
@@ -99,14 +141,6 @@ BLOCKED_PATTERNS = [
     # Clean force removes untracked files
     (r"git\s+clean\s+.*-f(?!.*(-n|--dry-run))",
      "removes untracked files permanently (use -n first to preview)"),
-
-    # Force push destroys remote history
-    (r"git\s+push\s+.*--force",
-     "destroys remote history - coordinate with team first"),
-    (r"git\s+push\s+.*-f\b",
-     "force push destroys remote history"),
-    (r"git\s+push\s+\S+\s+\+",
-     "force push via + prefix destroys remote history"),
 
     # Force delete branch without merge check
     (r"git\s+branch\s+-D\s+",
@@ -136,6 +170,14 @@ def is_safe_pattern(command: str) -> bool:
     return False
 
 
+def check_confirmation_pattern(command: str) -> tuple[bool, str]:
+    """Check if command requires user confirmation. Returns (needs_confirm, reason)."""
+    for pattern, reason in CONFIRMATION_PATTERNS:
+        if re.search(pattern, command, re.IGNORECASE):
+            return True, reason
+    return False, ""
+
+
 def check_blocked_pattern(command: str) -> tuple[bool, str]:
     """Check if command matches a blocked pattern. Returns (blocked, reason)."""
     for pattern, reason in BLOCKED_PATTERNS:
@@ -145,6 +187,7 @@ def check_blocked_pattern(command: str) -> tuple[bool, str]:
 
 
 def main():
+    original_command = ""
     try:
         # Read hook input from stdin
         input_data = sys.stdin.read()
@@ -160,24 +203,48 @@ def main():
 
         # Extract the command
         tool_input = hook_input.get("tool_input", {})
-        command = tool_input.get("command", "")
+        original_command = tool_input.get("command", "")
 
-        if not command:
+        if not original_command:
             sys.exit(0)  # No command, allow
+
+        # SECURITY: Normalize command to prevent regex bypass
+        command = normalize_command(original_command)
 
         # Check safe patterns first (always allow)
         if is_safe_pattern(command):
             sys.exit(0)
 
-        # Check blocked patterns
+        # Check if user already confirmed (via env var)
+        if os.environ.get("GIT_FORCE_PUSH_CONFIRMED") == "1":
+            # User confirmed, allow this time
+            log_security_event("ALLOWED_CONFIRMED", original_command, "User confirmed force push")
+            sys.exit(0)
+
+        # Check confirmation patterns (require user consent)
+        needs_confirm, confirm_reason = check_confirmation_pattern(command)
+
+        if needs_confirm:
+            log_security_event("NEEDS_CONFIRMATION", original_command, confirm_reason)
+            response = {
+                "decision": "block",
+                "reason": f"⚠️ CONFIRMATION REQUIRED: {confirm_reason}\n\n"
+                         f"Command: {original_command[:100]}{'...' if len(original_command) > 100 else ''}\n\n"
+                         f"Use AskUserQuestion to confirm. If user approves, run:\n"
+                         f"GIT_FORCE_PUSH_CONFIRMED=1 {original_command}"
+            }
+            print(json.dumps(response))
+            sys.exit(1)
+
+        # Check blocked patterns (never allow)
         blocked, reason = check_blocked_pattern(command)
 
         if blocked:
-            # Return denial response
+            log_security_event("BLOCKED", original_command, reason)
             response = {
                 "decision": "block",
                 "reason": f"BLOCKED by git-safety-guard: {reason}. "
-                         f"Command: {command[:100]}{'...' if len(command) > 100 else ''}. "
+                         f"Command: {original_command[:100]}{'...' if len(original_command) > 100 else ''}. "
                          f"If truly needed, ask the user to run it manually."
             }
             print(json.dumps(response))
@@ -186,13 +253,24 @@ def main():
         # Allow by default (silent exit)
         sys.exit(0)
 
-    except json.JSONDecodeError:
-        # Invalid JSON input, allow (fail open for usability)
-        sys.exit(0)
+    except json.JSONDecodeError as e:
+        # SECURITY: Fail-closed on invalid JSON (could be injection attempt)
+        log_security_event("BLOCKED", original_command or "<unknown>", f"Invalid JSON input: {e}")
+        response = {
+            "decision": "block",
+            "reason": "git-safety-guard: Invalid input format. Command blocked for safety."
+        }
+        print(json.dumps(response))
+        sys.exit(1)
     except Exception as e:
-        # Log error but allow (fail open)
-        sys.stderr.write(f"git-safety-guard error: {e}\n")
-        sys.exit(0)
+        # SECURITY: Fail-closed on unexpected errors (safer default)
+        log_security_event("BLOCKED", original_command or "<unknown>", f"Unexpected error: {e}")
+        response = {
+            "decision": "block",
+            "reason": f"git-safety-guard: Internal error, command blocked for safety. Error: {e}"
+        }
+        print(json.dumps(response))
+        sys.exit(1)
 
 
 if __name__ == "__main__":

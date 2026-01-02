@@ -15,8 +15,13 @@ Full orchestration with mandatory 6-step flow.
 ```
 
 ## Execution
-```
-Task("@orchestrator $ARGUMENTS")
+
+Use Task tool to invoke the orchestrator agent:
+```yaml
+Task:
+  subagent_type: "orchestrator"
+  description: "Full orchestration"
+  prompt: "$ARGUMENTS"
 ```
 
-Equivalent: `ralph orch "task"`
+Or via CLI: `ralph orch "$ARGUMENTS"`

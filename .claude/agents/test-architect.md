@@ -9,22 +9,44 @@ model: sonnet
 
 ## Test Generation
 
-### Unit Tests (Codex)
-```bash
-codex exec --yolo --enable-skills -m gpt-5.2-codex \
-  "Use test-generation skill. Generate unit tests for: $FILES
-   Target: 90% coverage. Include edge cases and error paths.
-   Output: test files ready to run." \
-  > /tmp/codex_tests.json 2>&1 &
+Use Task tool to launch parallel test generation:
+
+### Unit Tests (Codex via Task)
+```yaml
+Task:
+  subagent_type: "general-purpose"
+  description: "Codex unit tests"
+  run_in_background: true
+  prompt: |
+    Run Codex CLI for unit test generation:
+    codex exec --yolo --enable-skills -m gpt-5.2-codex \
+      "Use test-generation skill. Generate unit tests for: $FILES
+       Target: 90% coverage. Include edge cases and error paths.
+       Output: test files ready to run."
 ```
 
-### Integration Tests (Gemini)
-```bash
-gemini "Generate comprehensive integration tests for: $FILES
-        Include API tests, database tests, external service mocks.
-        Output ready-to-run test files." \
-  --yolo -o text > /tmp/gemini_integration.txt 2>&1 &
-wait
+### Integration Tests (Gemini via Task)
+```yaml
+Task:
+  subagent_type: "general-purpose"
+  description: "Gemini integration tests"
+  run_in_background: true
+  prompt: |
+    Run Gemini CLI for integration tests:
+    gemini "Generate comprehensive integration tests for: $FILES
+            Include API tests, database tests, external service mocks.
+            Output ready-to-run test files." --yolo -o text
+```
+
+### Collect Results
+```yaml
+TaskOutput:
+  task_id: "<codex_task_id>"
+  block: true
+
+TaskOutput:
+  task_id: "<gemini_task_id>"
+  block: true
 ```
 
 ## Coverage Requirements

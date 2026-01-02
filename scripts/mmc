@@ -133,7 +133,12 @@ check_dependencies() {
 }
 
 get_api_key() {
-    jq -r '.apiKey' "$CONFIG_FILE"
+    # Support environment variable override (more secure)
+    if [ -n "${MINIMAX_API_KEY:-}" ]; then
+        echo "$MINIMAX_API_KEY"
+    else
+        jq -r '.apiKey' "$CONFIG_FILE"
+    fi
 }
 
 get_base_url() {
@@ -179,6 +184,10 @@ query() {
     local API_KEY=$(get_api_key)
     local BASE_URL=$(get_base_url)
 
+    # SECURITY: Properly escape prompt to prevent JSON injection
+    local ESCAPED_PROMPT
+    ESCAPED_PROMPT=$(printf '%s' "$PROMPT" | jq -Rs '.')
+
     curl -s "${BASE_URL}/v1/messages" \
         -H "Authorization: Bearer $API_KEY" \
         -H "Content-Type: application/json" \
@@ -186,7 +195,7 @@ query() {
         -d "{
             \"model\": \"$MODEL\",
             \"max_tokens\": 4096,
-            \"messages\": [{\"role\": \"user\", \"content\": \"$PROMPT\"}]
+            \"messages\": [{\"role\": \"user\", \"content\": $ESCAPED_PROMPT}]
         }" | jq -r '.content[0].text // .error.message // "Error"'
 }
 

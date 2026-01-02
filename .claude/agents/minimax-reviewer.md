@@ -16,20 +16,37 @@ model: sonnet
 
 ## Invocation
 
-### Standard Query
-```bash
-mmc --query "Review/analyze: $TASK" > /tmp/minimax_result.json 2>&1
+Use Task tool for MiniMax queries:
+
+### Standard Query (via Task)
+```yaml
+Task:
+  subagent_type: "general-purpose"
+  description: "MiniMax review"
+  prompt: |
+    Run MiniMax CLI for review:
+    mmc --query "Review/analyze: $TASK"
 ```
 
-### Extended Loop
-```bash
-mmc --loop 30 "$TASK"  # M2.1: 30 iterations
-mmc --lightning --loop 60 "$TASK"  # Lightning: 60 iterations
+### Extended Loop (via Task)
+```yaml
+Task:
+  subagent_type: "general-purpose"
+  description: "MiniMax extended loop"
+  prompt: |
+    Run MiniMax extended loop:
+    mmc --loop 30 "$TASK"  # M2.1: 30 iterations
+    # Or for lightning: mmc --lightning --loop 60 "$TASK"
 ```
 
-### Second Opinion
-```bash
-mmc --second-opinion "$PREVIOUS_RESULT"
+### Second Opinion (via Task)
+```yaml
+Task:
+  subagent_type: "general-purpose"
+  description: "MiniMax second opinion"
+  prompt: |
+    Get second opinion via MiniMax:
+    mmc --second-opinion "$PREVIOUS_RESULT"
 ```
 
 ## Cost Comparison

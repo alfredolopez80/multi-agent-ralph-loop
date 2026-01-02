@@ -9,6 +9,13 @@ argument-hint: "<path>"
 Multi-model validation requiring 2/3 consensus.
 
 ## Execution
-```bash
-ralph adversarial "$ARGUMENTS"
+
+Use Task tool for adversarial validation:
+```yaml
+Task:
+  subagent_type: "general-purpose"
+  description: "Adversarial validation"
+  prompt: "Run 2/3 consensus validation (Claude+Codex+Gemini) on: $ARGUMENTS"
 ```
+
+Or via CLI: `ralph adversarial "$ARGUMENTS"`

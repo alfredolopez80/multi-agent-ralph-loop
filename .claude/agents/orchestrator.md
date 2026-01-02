@@ -60,19 +60,51 @@ Based on classification, delegate:
 
 ## Step 4: EXECUTE
 
-Launch subagents with separate contexts:
+Launch subagents using Task tool with separate contexts:
 
-```bash
-# Claude subagents (Task() = separate context)
-Task("@security-auditor Audit: $FILES")
-Task("@code-reviewer Review: $FILES")
-Task("@test-architect Tests for: $FILES")
+```yaml
+# Use Task tool to spawn parallel subagents
+# Each runs in background with run_in_background: true
 
-# External CLIs (parallel)
-codex exec --yolo --enable-skills -m gpt-5.2-codex "..." &
-gemini "..." --yolo -o json &
-mmc "..." &  # MiniMax wrapper
-wait
+# Security audit subagent
+Task:
+  subagent_type: "security-auditor"
+  description: "Security audit files"
+  run_in_background: true
+  prompt: "Audit these files for security vulnerabilities: $FILES"
+
+# Code review subagent
+Task:
+  subagent_type: "code-reviewer"
+  description: "Code review files"
+  run_in_background: true
+  prompt: "Review code quality in: $FILES"
+
+# Test architect subagent
+Task:
+  subagent_type: "test-architect"
+  description: "Generate tests"
+  run_in_background: true
+  prompt: "Generate tests for: $FILES"
+
+# For external CLIs, use general-purpose subagent:
+Task:
+  subagent_type: "general-purpose"
+  description: "Codex deep analysis"
+  run_in_background: true
+  prompt: |
+    Execute via Codex CLI:
+    codex exec --yolo --enable-skills -m gpt-5.2-codex "Analyze: $FILES"
+
+Task:
+  subagent_type: "general-purpose"
+  description: "Gemini review"
+  run_in_background: true
+  prompt: |
+    Execute via Gemini CLI:
+    gemini "Review: $FILES" --yolo -o json
+
+# Collect results with TaskOutput when all complete
 ```
 
 ## Step 5: VALIDATE

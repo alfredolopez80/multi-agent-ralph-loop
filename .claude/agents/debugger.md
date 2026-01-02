@@ -15,12 +15,15 @@ model: opus
 4. **Fix**: Implement minimal fix
 5. **Verify**: Confirm fix works, no regressions
 
-### Codex Bug Analysis
-```bash
-codex exec --yolo --enable-skills -m gpt-5.2-codex \
-  "Use bug-hunter skill. Debug this issue: $ERROR
-   Files: $FILES
-   
-   Trace the bug, find root cause, suggest fix." \
-  > /tmp/codex_debug.json 2>&1
+### Codex Bug Analysis (via Task)
+```yaml
+Task:
+  subagent_type: "general-purpose"
+  description: "Codex bug analysis"
+  prompt: |
+    Run Codex CLI for deep bug analysis:
+    codex exec --yolo --enable-skills -m gpt-5.2-codex \
+      "Use bug-hunter skill. Debug this issue: $ERROR
+       Files: $FILES
+       Trace the bug, find root cause, suggest fix."
 ```

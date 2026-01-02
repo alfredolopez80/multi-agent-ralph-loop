@@ -4,8 +4,38 @@
 set -euo pipefail
 
 VERSION="2.12.0"
-TMPDIR="${TMPDIR:-/tmp}/ralph-$$"
 RALPH_DIR="${HOME}/.ralph"
+
+# SECURITY: Use mktemp for unpredictable temp directory
+RALPH_TMPDIR=""
+init_tmpdir() {
+    if [ -z "$RALPH_TMPDIR" ]; then
+        local SYSTEM_TMPDIR="${TMPDIR:-/tmp}"
+        RALPH_TMPDIR=$(mktemp -d "${SYSTEM_TMPDIR}/ralph.XXXXXXXXXX")
+        chmod 700 "$RALPH_TMPDIR"
+    fi
+}
+
+# SECURITY: Validate file path input (prevent command injection)
+validate_path() {
+    local path="$1"
+    # Block obvious shell metacharacters
+    if [[ "$path" =~ [\;\|\&\$\`\(\)\{\}\<\>] ]]; then
+        log_error "Invalid characters in path: $path"
+        exit 1
+    fi
+    # Ensure path exists (if checking existing file/dir)
+    if [ "${2:-check}" = "check" ] && [ ! -e "$path" ]; then
+        log_error "Path does not exist: $path"
+        exit 1
+    fi
+    echo "$path"
+}
+
+# SECURITY: Escape string for safe shell usage
+escape_for_shell() {
+    printf '%s' "$1" | sed "s/'/'\\\\''/g; s/^/'/; s/\$/'/"
+}
 IMPROVEMENTS_DIR="${RALPH_DIR}/improvements"
 CONFIG_DIR="${RALPH_DIR}/config"
 HOOKS_DIR="${HOME}/.claude/hooks"
@@ -25,10 +55,14 @@ MINIMAX_MAX_ITER=30
 LIGHTNING_MAX_ITER=60
 
 # Cleanup
-cleanup() { rm -rf "$TMPDIR" 2>/dev/null || true; }
+cleanup() {
+    [ -n "$RALPH_TMPDIR" ] && rm -rf "$RALPH_TMPDIR" 2>/dev/null || true
+}
 trap cleanup EXIT
 
-ensure_tmp() { mkdir -p "$TMPDIR"; }
+ensure_tmp() {
+    init_tmpdir
+}
 ensure_dirs() { mkdir -p "$IMPROVEMENTS_DIR/backups" "$CONFIG_DIR"; }
 
 log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
@@ -117,8 +151,9 @@ EOF
 # CODEX SUBAGENTS
 # ═══════════════════════════════════════════════════════════════════════════════
 run_codex_security() {
-    local FILES="$1"
-    local OUTPUT="$TMPDIR/codex_security.json"
+    local FILES
+    FILES=$(validate_path "$1")
+    local OUTPUT="$RALPH_TMPDIR/codex_security.json"
 
     codex exec --yolo --enable-skills -m gpt-5.2-codex \
         "Use security-review skill. Analyze for vulnerabilities in: $FILES
@@ -129,8 +164,9 @@ run_codex_security() {
 }
 
 run_codex_bugs() {
-    local FILES="$1"
-    local OUTPUT="$TMPDIR/codex_bugs.json"
+    local FILES
+    FILES=$(validate_path "$1")
+    local OUTPUT="$RALPH_TMPDIR/codex_bugs.json"
 
     codex exec --yolo --enable-skills -m gpt-5.2-codex \
         "Use bug-hunter skill. Find bugs in: $FILES
@@ -141,8 +177,9 @@ run_codex_bugs() {
 }
 
 run_codex_unit_tests() {
-    local FILES="$1"
-    local OUTPUT="$TMPDIR/codex_tests.json"
+    local FILES
+    FILES=$(validate_path "$1")
+    local OUTPUT="$RALPH_TMPDIR/codex_tests.json"
 
     codex exec --yolo --enable-skills -m gpt-5.2-codex \
         "Use test-generation skill. Generate unit tests for: $FILES
@@ -157,8 +194,9 @@ run_codex_unit_tests() {
 # GEMINI SUBAGENTS
 # ═══════════════════════════════════════════════════════════════════════════════
 run_gemini_integration() {
-    local FILES="$1"
-    local OUTPUT="$TMPDIR/gemini_integration.txt"
+    local FILES
+    FILES=$(validate_path "$1")
+    local OUTPUT="$RALPH_TMPDIR/gemini_integration.txt"
 
     gemini "Generate comprehensive integration tests for: $FILES
             Include: API tests, database tests, external service mocks.
@@ -169,7 +207,7 @@ run_gemini_integration() {
 
 run_gemini_research() {
     local QUERY="$1"
-    local OUTPUT="$TMPDIR/gemini_research.txt"
+    local OUTPUT="$RALPH_TMPDIR/gemini_research.txt"
 
     gemini "$QUERY" --yolo -o text > "$OUTPUT" 2>&1 &
     echo $!
@@ -180,7 +218,7 @@ run_gemini_research() {
 # ═══════════════════════════════════════════════════════════════════════════════
 run_minimax() {
     local QUERY="$1"
-    local OUTPUT="${2:-$TMPDIR/minimax_result.json}"
+    local OUTPUT="${2:-$RALPH_TMPDIR/minimax_result.json}"
 
     if command -v mmc &> /dev/null && [ -f "${HOME}/.mmc.json" ]; then
         mmc --query "$QUERY" > "$OUTPUT" 2>&1 &
@@ -194,7 +232,8 @@ run_minimax() {
 # ADVERSARIAL VALIDATION
 # ═══════════════════════════════════════════════════════════════════════════════
 cmd_adversarial() {
-    local TARGET="$1"
+    local TARGET
+    TARGET=$(validate_path "$1")
     local CONSENSUS_REQUIRED=2
 
     ensure_tmp
@@ -206,7 +245,7 @@ cmd_adversarial() {
     log_info "  [1/3] Claude reviewing..."
     claude --print -p "Review this code for security and bugs: $TARGET.
                        Output JSON: {approved: true|false, issues: [], severity: 'HIGH|MEDIUM|LOW'}" \
-        > "$TMPDIR/claude.json" 2>&1 &
+        > "$RALPH_TMPDIR/claude.json" 2>&1 &
     CLAUDE_PID=$!
 
     # 2. Codex Review (parallel)
@@ -214,14 +253,14 @@ cmd_adversarial() {
     codex exec --yolo --enable-skills -m gpt-5.2-codex \
         "Use security-review skill. Review: $TARGET
          Output JSON: {approved: true|false, issues: [], severity}" \
-        > "$TMPDIR/codex.json" 2>&1 &
+        > "$RALPH_TMPDIR/codex.json" 2>&1 &
     CODEX_PID=$!
 
     # 3. Gemini Review (parallel)
     log_info "  [3/3] Gemini reviewing..."
     gemini "Security and code review for: $TARGET
             Be critical. Output JSON: {approved: true|false, issues: []}" \
-        --yolo -o json > "$TMPDIR/gemini.json" 2>&1 &
+        --yolo -o json > "$RALPH_TMPDIR/gemini.json" 2>&1 &
     GEMINI_PID=$!
 
     echo ""
@@ -229,9 +268,9 @@ cmd_adversarial() {
     wait $CLAUDE_PID $CODEX_PID $GEMINI_PID
 
     # Calculate consensus
-    CLAUDE_APPROVED=$(grep -o '"approved":\s*true' "$TMPDIR/claude.json" 2>/dev/null && echo "true" || echo "false")
-    CODEX_APPROVED=$(grep -o '"approved":\s*true' "$TMPDIR/codex.json" 2>/dev/null && echo "true" || echo "false")
-    GEMINI_APPROVED=$(grep -o '"approved":\s*true' "$TMPDIR/gemini.json" 2>/dev/null && echo "true" || echo "false")
+    CLAUDE_APPROVED=$(grep -o '"approved":\s*true' "$RALPH_TMPDIR/claude.json" 2>/dev/null && echo "true" || echo "false")
+    CODEX_APPROVED=$(grep -o '"approved":\s*true' "$RALPH_TMPDIR/codex.json" 2>/dev/null && echo "true" || echo "false")
+    GEMINI_APPROVED=$(grep -o '"approved":\s*true' "$RALPH_TMPDIR/gemini.json" 2>/dev/null && echo "true" || echo "false")
 
     APPROVALS=0
     [[ "$CLAUDE_APPROVED" == "true" ]] && ((APPROVALS++)) || true
@@ -258,7 +297,7 @@ cmd_adversarial() {
         log_error "ADVERSARIAL VALIDATION FAILED"
         echo ""
         echo "  Issues found:"
-        jq -s '.[].issues // [] | .[]' "$TMPDIR"/*.json 2>/dev/null | head -20
+        jq -s '.[].issues // [] | .[]' "$RALPH_TMPDIR"/*.json 2>/dev/null | head -20
         echo "═══════════════════════════════════════════════════════════"
         return 2
     fi
@@ -268,7 +307,8 @@ cmd_adversarial() {
 # PARALLEL REVIEW (6 SUBAGENTS)
 # ═══════════════════════════════════════════════════════════════════════════════
 cmd_parallel() {
-    local TARGET="$1"
+    local TARGET
+    TARGET=$(validate_path "$1")
     local ASYNC="${2:-false}"
 
     ensure_tmp
@@ -315,7 +355,7 @@ cmd_parallel() {
 
     if [ "$ASYNC" = "--async" ] || [ "$ASYNC" = "true" ]; then
         log_warn "Fire & forget mode. PIDs: ${PIDS[*]}"
-        log_info "   Check results in: $TMPDIR/"
+        log_info "   Check results in: $RALPH_TMPDIR/"
         return 0
     fi
 
@@ -331,7 +371,7 @@ cmd_parallel() {
     echo "═══════════════════════════════════════════════════════════"
     echo "  PARALLEL REVIEW SUMMARY"
     echo "═══════════════════════════════════════════════════════════"
-    for f in "$TMPDIR"/*; do
+    for f in "$RALPH_TMPDIR"/*; do
         if [ -f "$f" ]; then
             local name=$(basename "$f")
             local lines=$(wc -l < "$f" 2>/dev/null || echo 0)
@@ -374,7 +414,8 @@ cmd_gates() {
 # SPECIALIZED COMMANDS
 # ═══════════════════════════════════════════════════════════════════════════════
 cmd_security() {
-    local TARGET="$1"
+    local TARGET
+    TARGET=$(validate_path "$1")
     ensure_tmp
 
     log_info "Running security audit on: $TARGET"
@@ -384,7 +425,7 @@ cmd_security() {
     PID1=$(run_codex_security "$TARGET")
 
     # MiniMax (second opinion)
-    PID2=$(run_minimax "Security audit for: $TARGET. Check: injection, auth, secrets, crypto." "$TMPDIR/minimax_security.json")
+    PID2=$(run_minimax "Security audit for: $TARGET. Check: injection, auth, secrets, crypto." "$RALPH_TMPDIR/minimax_security.json")
 
     if [ "$PID2" != "0" ]; then
         wait $PID1 $PID2
@@ -392,22 +433,24 @@ cmd_security() {
         wait $PID1
     fi
 
-    log_success "Security audit complete. Results in: $TMPDIR/"
+    log_success "Security audit complete. Results in: $RALPH_TMPDIR/"
 }
 
 cmd_bugs() {
-    local TARGET="$1"
+    local TARGET
+    TARGET=$(validate_path "$1")
     ensure_tmp
 
     log_info "Running bug hunting on: $TARGET"
     PID=$(run_codex_bugs "$TARGET")
     wait $PID
     log_success "Bug hunting complete."
-    cat "$TMPDIR/codex_bugs.json" 2>/dev/null | jq '.summary' || true
+    cat "$RALPH_TMPDIR/codex_bugs.json" 2>/dev/null | jq '.summary' || true
 }
 
 cmd_unit_tests() {
-    local TARGET="$1"
+    local TARGET
+    TARGET=$(validate_path "$1")
     ensure_tmp
 
     log_info "Generating unit tests for: $TARGET"
@@ -417,7 +460,8 @@ cmd_unit_tests() {
 }
 
 cmd_integration() {
-    local TARGET="$1"
+    local TARGET
+    TARGET=$(validate_path "$1")
     ensure_tmp
 
     log_info "Generating integration tests for: $TARGET"
@@ -427,7 +471,8 @@ cmd_integration() {
 }
 
 cmd_refactor() {
-    local TARGET="$1"
+    local TARGET
+    TARGET=$(validate_path "$1")
     ensure_tmp
 
     log_info "Running refactoring analysis on: $TARGET"
@@ -435,7 +480,7 @@ cmd_refactor() {
         "Refactor: $TARGET
          Focus on: DRY, SOLID, extract methods, simplify conditionals.
          Output: refactored code + explanation" \
-        > "$TMPDIR/codex_refactor.json" 2>&1
+        > "$RALPH_TMPDIR/codex_refactor.json" 2>&1
     log_success "Refactoring analysis complete."
 }
 
@@ -445,8 +490,8 @@ cmd_research() {
 
     log_info "Researching: $QUERY"
     gemini "Research best practices and current solutions for: $QUERY" \
-        --yolo -o text > "$TMPDIR/gemini_research.txt" 2>&1
-    cat "$TMPDIR/gemini_research.txt"
+        --yolo -o text > "$RALPH_TMPDIR/gemini_research.txt" 2>&1
+    cat "$RALPH_TMPDIR/gemini_research.txt"
 }
 
 cmd_minimax() {

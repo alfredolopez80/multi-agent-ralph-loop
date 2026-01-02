@@ -14,36 +14,52 @@ Use the ask-questions-if-underspecified skill for security context.
 
 ## Audit Process
 
+Use Task tool to launch parallel security audits:
+
 ### 1. Codex Security Analysis (Primary)
-```bash
-codex exec --yolo --enable-skills -m gpt-5.2-codex \
-  "Use security-review skill. Analyze for vulnerabilities in: $FILES
-   
-   Check:
-   - Injection (SQL, NoSQL, Command, LDAP, XPath, Template)
-   - Auth bypass and session management
-   - Data exposure and secrets
-   - SSRF and path traversal
-   - Race conditions
-   - Crypto weaknesses
-   
-   Output JSON: {severity, vulnerability, file, line, fix}" \
-  > /tmp/codex_security.json 2>&1 &
-CODEX_PID=$!
+```yaml
+Task:
+  subagent_type: "general-purpose"
+  description: "Codex security audit"
+  run_in_background: true
+  prompt: |
+    Run Codex CLI for security analysis:
+    codex exec --yolo --enable-skills -m gpt-5.2-codex \
+      "Use security-review skill. Analyze for vulnerabilities in: $FILES
+       Check:
+       - Injection (SQL, NoSQL, Command, LDAP, XPath, Template)
+       - Auth bypass and session management
+       - Data exposure and secrets
+       - SSRF and path traversal
+       - Race conditions
+       - Crypto weaknesses
+       Output JSON: {severity, vulnerability, file, line, fix}"
 ```
 
 ### 2. MiniMax Second Opinion (Parallel)
-```bash
-mmc --query "Security review for: $FILES. Focus on subtle vulnerabilities." \
-  > /tmp/minimax_security.json 2>&1 &
-MINIMAX_PID=$!
-
-wait $CODEX_PID $MINIMAX_PID
+```yaml
+Task:
+  subagent_type: "minimax-reviewer"
+  description: "MiniMax security review"
+  run_in_background: true
+  prompt: "Security review for: $FILES. Focus on subtle vulnerabilities."
 ```
 
-### 3. Consensus Check
+### 3. Collect Results
+```yaml
+# Wait for both subagents to complete
+TaskOutput:
+  task_id: "<codex_task_id>"
+  block: true
+
+TaskOutput:
+  task_id: "<minimax_task_id>"
+  block: true
+```
+
+### 4. Consensus Check
 If both agree on CRITICAL/HIGH → BLOCK
-If disagreement → Escalate to Gemini
+If disagreement → Escalate to Gemini via Task tool
 
 ## Severity Levels
 

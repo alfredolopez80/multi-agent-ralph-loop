@@ -20,6 +20,13 @@ Launch 6 subagents in parallel:
 ```
 
 ## Execution
-```bash
-ralph parallel "$ARGUMENTS"
+
+Use Task tool for parallel review:
+```yaml
+Task:
+  subagent_type: "general-purpose"
+  description: "Full parallel review"
+  prompt: "Run 6 parallel subagents on: $ARGUMENTS"
 ```
+
+Or via CLI: `ralph parallel "$ARGUMENTS"`
