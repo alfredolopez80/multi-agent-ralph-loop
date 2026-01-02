@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # install.sh - Multi-Agent Ralph Wiggum v2.17 Global Installer
 # Installs ralph CLI globally and integrates with Claude Code
+# v2.17: Hybrid logging (global + per-project), Task() async pattern for MiniMax
 
 set -euo pipefail
 
@@ -440,6 +441,7 @@ verify_installation() {
     [ -x "${CLAUDE_DIR}/hooks/git-safety-guard.py" ] && log_success "Git Safety Guard installed (ACTIVE)" || log_warn "Git Safety Guard may need chmod +x"
     [ -x "${CLAUDE_DIR}/hooks/quality-gates.sh" ] && log_success "Quality Gates installed" || log_warn "Quality Gates may need chmod +x"
     [ -f "${CLAUDE_DIR}/settings.json" ] && log_success "Settings with hooks configured" || log_warn "Settings.json missing"
+    [ -d "${RALPH_DIR}/logs" ] && log_success "Hybrid logging directory ready" || log_warn "Logs directory missing"
 
     return $ERRORS
 }
@@ -461,6 +463,7 @@ main() {
     echo "    • 3 skills to ~/.claude/skills/"
     echo "    • Git Safety Guard (blocks destructive commands) - ALWAYS ACTIVE"
     echo "    • Quality Gates (9-language validation) - Manual via 'ralph gates'"
+    echo "    • Hybrid usage logging (global + per-project) - v2.17"
     echo "    • Shell aliases to ~/.zshrc or ~/.bashrc"
     echo ""
 
@@ -506,6 +509,10 @@ main() {
         echo ""
         echo "  4. Run quality gates manually when needed:"
         echo "     ${CYAN}ralph gates${NC}"
+        echo ""
+        echo "  5. View usage statistics (hybrid logging):"
+        echo "     ${CYAN}mmc --stats all${NC}      # Global + project"
+        echo "     ${CYAN}mmc --stats project${NC}  # This repo only"
         echo ""
         echo "  To uninstall:"
         echo "     ${CYAN}ralph --uninstall${NC}  or  ${CYAN}./uninstall.sh${NC}"
