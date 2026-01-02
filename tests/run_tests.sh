@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# run_tests.sh - Execute all tests for Multi-Agent Ralph Loop
+# run_tests.sh - Execute all tests for Multi-Agent Ralph Loop v2.18
 #
 # Usage:
 #   ./tests/run_tests.sh           # Run all tests
 #   ./tests/run_tests.sh python    # Run only Python tests
 #   ./tests/run_tests.sh bash      # Run only Bash tests
 #   ./tests/run_tests.sh security  # Run only security tests
+#   ./tests/run_tests.sh v218      # Run only v2.18 security fix tests
 
 set -euo pipefail
 
@@ -92,6 +93,46 @@ run_security_tests() {
     if command -v bats &>/dev/null; then
         bats tests/test_ralph_security.bats
         bats tests/test_mmc_security.bats
+        bats tests/test_install_security.bats
+        bats tests/test_uninstall_security.bats
+    fi
+}
+
+# Run v2.18 specific security fix tests
+run_v218_tests() {
+    log_info "Running v2.18 security fix tests..."
+
+    cd "$PROJECT_DIR"
+
+    if ! command -v bats &>/dev/null; then
+        log_warn "bats not installed, cannot run v2.18 tests"
+        echo "  Install with: brew install bats-core"
+        return 1
+    fi
+
+    # Run only v2.18 security fix tests using filter
+    echo ""
+    log_info "Testing VULN-001: escape_for_shell() fixes..."
+    bats tests/test_ralph_security.bats --filter "VULN-001"
+
+    echo ""
+    log_info "Testing VULN-004: validate_path() fixes..."
+    bats tests/test_ralph_security.bats --filter "VULN-004"
+
+    echo ""
+    log_info "Testing VULN-005: Log file permissions..."
+    bats tests/test_mmc_security.bats --filter "VULN-005"
+
+    echo ""
+    log_info "Testing VULN-008: umask 077 fixes..."
+    bats tests/test_ralph_security.bats --filter "VULN-008"
+    bats tests/test_mmc_security.bats --filter "VULN-008"
+    bats tests/test_install_security.bats --filter "VULN-008"
+
+    echo ""
+    log_info "Testing git-safety-guard.py (VULN-003)..."
+    if command -v pytest &>/dev/null; then
+        pytest tests/test_git_safety_guard.py -v --tb=short
     fi
 }
 
@@ -118,6 +159,9 @@ main() {
         security|sec)
             run_security_tests "$@"
             ;;
+        v218|v2.18|vuln)
+            run_v218_tests "$@"
+            ;;
         all|"")
             run_python_tests "$@" || true
             echo ""
@@ -125,7 +169,7 @@ main() {
             ;;
         *)
             log_error "Unknown mode: $MODE"
-            echo "Usage: $0 [python|bash|security|all]"
+            echo "Usage: $0 [python|bash|security|v218|all]"
             exit 1
             ;;
     esac

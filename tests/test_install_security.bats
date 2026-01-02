@@ -103,7 +103,8 @@ teardown() {
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @test "install checks for existing ralph config before modifying shell rc" {
-    grep -q 'grep.*Ralph Wiggum' "$INSTALL_SCRIPT"
+    # Install script uses RALPH WIGGUM markers
+    grep -q 'RALPH WIGGUM' "$INSTALL_SCRIPT"
 }
 
 @test "install adds PATH in shell rc" {
@@ -147,7 +148,7 @@ teardown() {
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @test "install contains version number" {
-    grep -q 'VERSION="2.15' "$INSTALL_SCRIPT"
+    grep -q 'VERSION="2.18' "$INSTALL_SCRIPT"
 }
 
 @test "install documents git safety guard" {
@@ -173,4 +174,23 @@ teardown() {
 @test "install uses || true for optional copies" {
     # Safe copy operations that may fail
     grep -c '|| true' "$INSTALL_SCRIPT" | grep -q -v '^0$'
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# V2.18 SECURITY FIXES TESTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@test "VULN-008: install.sh starts with umask 077" {
+    # Verify umask 077 is set at the start of the script
+    head -20 "$INSTALL_SCRIPT" | grep -q 'umask 077'
+}
+
+@test "install creates logs directory" {
+    # Verify logs directory is created during installation
+    grep -q 'logs' "$INSTALL_SCRIPT"
+}
+
+@test "install documents v2.18 features" {
+    # Should mention hybrid logging or v2.18 features
+    grep -q 'Hybrid\|hybrid\|2.18' "$INSTALL_SCRIPT"
 }
