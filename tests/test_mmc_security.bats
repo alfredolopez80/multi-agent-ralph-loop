@@ -44,7 +44,7 @@ teardown() {
 @test "mmc version shows version number" {
     run bash "$MMC_SCRIPT" --version
     [ "$status" -eq 0 ]
-    [[ "$output" == *"2.18"* ]]
+    [[ "$output" == *"2.19"* ]]
 }
 
 @test "mmc status shows configuration status" {
@@ -227,7 +227,7 @@ EOF
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# V2.18 SECURITY FIXES TESTS
+# V2.19 SECURITY FIXES TESTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @test "VULN-005: log_usage sets chmod 600 on log files" {

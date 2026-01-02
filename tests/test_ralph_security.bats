@@ -141,7 +141,7 @@ teardown() {
 @test "ralph version shows version number" {
     run bash "$RALPH_SCRIPT" version
     [ "$status" -eq 0 ]
-    [[ "$output" == *"2.18"* ]]
+    [[ "$output" == *"2.19"* ]]
 }
 
 @test "ralph unknown command exits with error" {
@@ -181,7 +181,7 @@ teardown() {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# V2.18 SECURITY FIXES TESTS
+# V2.19 SECURITY FIXES TESTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @test "VULN-001: escape_for_shell uses printf %q" {

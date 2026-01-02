@@ -148,7 +148,7 @@ teardown() {
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @test "install contains version number" {
-    grep -q 'VERSION="2.18' "$INSTALL_SCRIPT"
+    grep -q 'VERSION="2.19' "$INSTALL_SCRIPT"
 }
 
 @test "install documents git safety guard" {
@@ -177,7 +177,7 @@ teardown() {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# V2.18 SECURITY FIXES TESTS
+# V2.19 SECURITY FIXES TESTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @test "VULN-008: install.sh starts with umask 077" {
@@ -190,7 +190,7 @@ teardown() {
     grep -q 'logs' "$INSTALL_SCRIPT"
 }
 
-@test "install documents v2.18 features" {
-    # Should mention hybrid logging or v2.18 features
-    grep -q 'Hybrid\|hybrid\|2.18' "$INSTALL_SCRIPT"
+@test "install documents v2.19 features" {
+    # Should mention hybrid logging or v2.19 features
+    grep -q 'Hybrid\|hybrid\|2.19' "$INSTALL_SCRIPT"
 }

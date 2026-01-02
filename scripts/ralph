@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # ralph - Multi-Agent Orchestrator CLI
-# Version 2.18.0
-# v2.18: Security fixes (VULN-001, VULN-004, VULN-008), improved validation
+# Version 2.19.0
+# v2.19: Security fixes (VULN-001, VULN-004, VULN-008), improved validation
 set -euo pipefail
 
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.18.0"
+VERSION="2.19.0"
 RALPH_DIR="${HOME}/.ralph"
 
 # SECURITY: Use mktemp for unpredictable temp directory
@@ -21,7 +21,7 @@ init_tmpdir() {
 }
 
 # SECURITY: Validate file path input (prevent command injection)
-# v2.18: VULN-004 FIX - Use realpath -e to resolve symlinks, improved validation
+# v2.19: VULN-004 FIX - Use realpath -e to resolve symlinks, improved validation
 validate_path() {
     local path="$1"
     local check_exists="${2:-check}"
@@ -85,7 +85,7 @@ validate_text_input() {
 }
 
 # SECURITY: Escape string for safe shell usage (VULN-001 FIX)
-# v2.18: Use printf %q for proper escaping (prevents command substitution)
+# v2.19: Use printf %q for proper escaping (prevents command substitution)
 escape_for_shell() {
     # printf %q properly escapes all special characters including $() and ``
     printf '%q' "$1"
@@ -129,7 +129,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 # ===============================================================================
 show_help() {
     cat << 'EOF'
-ralph - Multi-Agent Orchestrator CLI v2.18.0
+ralph - Multi-Agent Orchestrator CLI v2.19.0
 
 ORCHESTRATION:
   ralph orch "task"          Full orchestration (clarify->classify->execute->validate->retrospective)
@@ -785,10 +785,10 @@ cmd_orch() {
 
     echo ""
     echo "==============================================================="
-    echo "  RALPH WIGGUM v2.18 ORCHESTRATION"
+    echo "  RALPH WIGGUM v2.19 ORCHESTRATION"
     echo "==============================================================="
     echo ""
-    echo "  NOTE: v2.18 includes security fixes and improved validation."
+    echo "  NOTE: v2.19 includes security fixes and improved validation."
     echo "        Uses AskUserQuestion and EnterPlanMode."
     echo ""
     echo "  For best experience, use the Claude Code /orchestrator command"
