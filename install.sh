@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# install.sh - Multi-Agent Ralph Wiggum v2.16 Global Installer
+# install.sh - Multi-Agent Ralph Wiggum v2.17 Global Installer
 # Installs ralph CLI globally and integrates with Claude Code
 
 set -euo pipefail
 
-VERSION="2.16.0"
+VERSION="2.17.0"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Installation directories

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # ralph - Multi-Agent Orchestrator CLI
-# Version 2.16.0
+# Version 2.17.0
 set -euo pipefail
 
-VERSION="2.16.0"
+VERSION="2.17.0"
 RALPH_DIR="${HOME}/.ralph"
 
 # SECURITY: Use mktemp for unpredictable temp directory
@@ -17,23 +17,61 @@ init_tmpdir() {
 }
 
 # SECURITY: Validate file path input (prevent command injection)
-# ISSUE-001: Expanded metacharacter blocking to include glob patterns and other dangerous chars
+# v2.17: Enhanced with control character and path traversal blocking
 validate_path() {
     local path="$1"
-    # Block obvious shell metacharacters including glob patterns (*, ?, [])
+
+    # Block control characters (newlines, carriage returns, null bytes, etc.)
+    if [[ "$path" =~ [[:cntrl:]] ]]; then
+        log_error "Control characters not allowed in path"
+        exit 1
+    fi
+
+    # Block shell metacharacters including glob patterns (*, ?, [])
     if [[ "$path" =~ [\;\|\&\$\`\(\)\{\}\<\>\*\?\[\]\!\~\#] ]]; then
         log_error "Invalid characters in path: $path"
         exit 1
     fi
+
+    # Block path traversal attempts
+    if [[ "$path" =~ \.\. ]]; then
+        log_error "Path traversal not allowed: $path"
+        exit 1
+    fi
+
     # Ensure path exists (if checking existing file/dir)
     if [ "${2:-check}" = "check" ] && [ ! -e "$path" ]; then
         log_error "Path does not exist: $path"
         exit 1
     fi
-    echo "$path"
+
+    # Return canonicalized path when possible
+    realpath -s "$path" 2>/dev/null || printf '%s' "$path"
+}
+
+# SECURITY: Validate text input (for non-path user inputs like TASK, QUERY)
+# v2.17: NEW - Validates free-form text inputs
+validate_text_input() {
+    local input="$1"
+    local max_len="${2:-10000}"
+
+    # Block control characters except space/tab/newline
+    if [[ "$input" =~ [[:cntrl:]] ]] && ! [[ "$input" =~ ^[[:print:][:space:]]*$ ]]; then
+        log_error "Invalid control characters in input"
+        exit 1
+    fi
+
+    # Check length limit
+    if [ ${#input} -gt "$max_len" ]; then
+        log_error "Input too long (max: $max_len characters)"
+        exit 1
+    fi
+
+    printf '%s' "$input"
 }
 
 # SECURITY: Escape string for safe shell usage
+# v2.17: Now actively used for all user inputs in commands
 escape_for_shell() {
     printf '%s' "$1" | sed "s/'/'\\\\''/g; s/^/'/; s/\$/'/"
 }
@@ -76,7 +114,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 # ===============================================================================
 show_help() {
     cat << 'EOF'
-ralph - Multi-Agent Orchestrator CLI v2.16.0
+ralph - Multi-Agent Orchestrator CLI v2.17.0
 
 ORCHESTRATION:
   ralph orch "task"          Full orchestration (clarify->classify->execute->validate->retrospective)
@@ -155,9 +193,11 @@ run_codex_security() {
     local FILES
     FILES=$(validate_path "$1")
     local OUTPUT="$RALPH_TMPDIR/codex_security.json"
+    local SAFE_FILES
+    SAFE_FILES=$(escape_for_shell "$FILES")
 
     codex exec --yolo --enable-skills -m gpt-5.2-codex \
-        "Use security-review skill. Analyze for vulnerabilities in: $FILES
+        "Use security-review skill. Analyze for vulnerabilities in: ${SAFE_FILES}
 
          Output JSON: {vulnerabilities: [{severity, type, file, line, description, fix}], summary: {critical, high, medium, low, approved}}" \
         > "$OUTPUT" 2>&1 &
@@ -168,9 +208,11 @@ run_codex_bugs() {
     local FILES
     FILES=$(validate_path "$1")
     local OUTPUT="$RALPH_TMPDIR/codex_bugs.json"
+    local SAFE_FILES
+    SAFE_FILES=$(escape_for_shell "$FILES")
 
     codex exec --yolo --enable-skills -m gpt-5.2-codex \
-        "Use bug-hunter skill. Find bugs in: $FILES
+        "Use bug-hunter skill. Find bugs in: ${SAFE_FILES}
 
          Output JSON: {bugs: [{severity, type, file, line, description, fix}], summary: {total, high, medium, low, approved}}" \
         > "$OUTPUT" 2>&1 &
@@ -181,9 +223,11 @@ run_codex_unit_tests() {
     local FILES
     FILES=$(validate_path "$1")
     local OUTPUT="$RALPH_TMPDIR/codex_tests.json"
+    local SAFE_FILES
+    SAFE_FILES=$(escape_for_shell "$FILES")
 
     codex exec --yolo --enable-skills -m gpt-5.2-codex \
-        "Use test-generation skill. Generate unit tests for: $FILES
+        "Use test-generation skill. Generate unit tests for: ${SAFE_FILES}
          Target: 90% coverage. Include edge cases and error paths.
 
          Output JSON: {tests: [{file, content, coverage, type}], summary: {total_tests, estimated_coverage}}" \
@@ -198,8 +242,10 @@ run_gemini_integration() {
     local FILES
     FILES=$(validate_path "$1")
     local OUTPUT="$RALPH_TMPDIR/gemini_integration.txt"
+    local SAFE_FILES
+    SAFE_FILES=$(escape_for_shell "$FILES")
 
-    gemini "Generate comprehensive integration tests for: $FILES
+    gemini "Generate comprehensive integration tests for: ${SAFE_FILES}
             Include: API tests, database tests, external service mocks.
             Output ready-to-run test files." \
         --yolo -o text > "$OUTPUT" 2>&1 &
@@ -207,10 +253,13 @@ run_gemini_integration() {
 }
 
 run_gemini_research() {
-    local QUERY="$1"
+    local QUERY
+    QUERY=$(validate_text_input "$1")
     local OUTPUT="$RALPH_TMPDIR/gemini_research.txt"
+    local SAFE_QUERY
+    SAFE_QUERY=$(escape_for_shell "$QUERY")
 
-    gemini "$QUERY" --yolo -o text > "$OUTPUT" 2>&1 &
+    gemini "${SAFE_QUERY}" --yolo -o text > "$OUTPUT" 2>&1 &
     echo $!
 }
 
@@ -218,7 +267,8 @@ run_gemini_research() {
 # MINIMAX SUBAGENTS
 # ===============================================================================
 run_minimax() {
-    local QUERY="$1"
+    local QUERY
+    QUERY=$(validate_text_input "$1")
     local OUTPUT="${2:-$RALPH_TMPDIR/minimax_result.json}"
 
     # Check for MiniMax config: primary path, then legacy fallback
@@ -232,7 +282,9 @@ run_minimax() {
     fi
 
     if command -v mmc &> /dev/null && [ -n "$MINIMAX_CONFIG" ]; then
-        mmc --query "$QUERY" > "$OUTPUT" 2>&1 &
+        local SAFE_QUERY
+        SAFE_QUERY=$(escape_for_shell "$QUERY")
+        mmc --query "${SAFE_QUERY}" > "$OUTPUT" 2>&1 &
         echo $!
     else
         echo "0"  # MiniMax not configured
@@ -246,6 +298,8 @@ cmd_adversarial() {
     local TARGET
     TARGET=$(validate_path "$1")
     local CONSENSUS_REQUIRED=2
+    local SAFE_TARGET
+    SAFE_TARGET=$(escape_for_shell "$TARGET")
 
     ensure_tmp
     log_info "Starting adversarial validation for: $TARGET"
@@ -254,7 +308,7 @@ cmd_adversarial() {
 
     # 1. Claude Review
     log_info "  [1/3] Claude reviewing..."
-    claude --print -p "Review this code for security and bugs: $TARGET.
+    claude --print -p "Review this code for security and bugs: ${SAFE_TARGET}.
                        Output JSON: {approved: true|false, issues: [], severity: 'HIGH|MEDIUM|LOW'}" \
         > "$RALPH_TMPDIR/claude.json" 2>&1 &
     CLAUDE_PID=$!
@@ -262,14 +316,14 @@ cmd_adversarial() {
     # 2. Codex Review (parallel)
     log_info "  [2/3] Codex reviewing..."
     codex exec --yolo --enable-skills -m gpt-5.2-codex \
-        "Use security-review skill. Review: $TARGET
+        "Use security-review skill. Review: ${SAFE_TARGET}
          Output JSON: {approved: true|false, issues: [], severity}" \
         > "$RALPH_TMPDIR/codex.json" 2>&1 &
     CODEX_PID=$!
 
     # 3. Gemini Review (parallel)
     log_info "  [3/3] Gemini reviewing..."
-    gemini "Security and code review for: $TARGET
+    gemini "Security and code review for: ${SAFE_TARGET}
             Be critical. Output JSON: {approved: true|false, issues: []}" \
         --yolo -o json > "$RALPH_TMPDIR/gemini.json" 2>&1 &
     GEMINI_PID=$!
@@ -484,11 +538,13 @@ cmd_integration() {
 cmd_refactor() {
     local TARGET
     TARGET=$(validate_path "$1")
+    local SAFE_TARGET
+    SAFE_TARGET=$(escape_for_shell "$TARGET")
     ensure_tmp
 
     log_info "Running refactoring analysis on: $TARGET"
     codex exec --yolo --enable-skills -m gpt-5.2-codex \
-        "Refactor: $TARGET
+        "Refactor: ${SAFE_TARGET}
          Focus on: DRY, SOLID, extract methods, simplify conditionals.
          Output: refactored code + explanation" \
         > "$RALPH_TMPDIR/codex_refactor.json" 2>&1
@@ -496,17 +552,23 @@ cmd_refactor() {
 }
 
 cmd_research() {
-    local QUERY="$1"
+    local QUERY
+    QUERY=$(validate_text_input "$1")
+    local SAFE_QUERY
+    SAFE_QUERY=$(escape_for_shell "$QUERY")
     ensure_tmp
 
     log_info "Researching: $QUERY"
-    gemini "Research best practices and current solutions for: $QUERY" \
+    gemini "Research best practices and current solutions for: ${SAFE_QUERY}" \
         --yolo -o text > "$RALPH_TMPDIR/gemini_research.txt" 2>&1
     cat "$RALPH_TMPDIR/gemini_research.txt"
 }
 
 cmd_minimax() {
-    local QUERY="$1"
+    local QUERY
+    QUERY=$(validate_text_input "$1")
+    local SAFE_QUERY
+    SAFE_QUERY=$(escape_for_shell "$QUERY")
 
     # Check for MiniMax config: primary path, then legacy fallback
     local MINIMAX_CONFIG=""
@@ -527,11 +589,14 @@ cmd_minimax() {
     fi
 
     log_info "Querying MiniMax M2.1..."
-    mmc --query "$QUERY"
+    mmc --query "${SAFE_QUERY}"
 }
 
 cmd_clarify() {
-    local TASK="$1"
+    local TASK
+    TASK=$(validate_text_input "$1")
+    local SAFE_TASK
+    SAFE_TASK=$(escape_for_shell "$TASK")
 
     log_info "Generating clarification questions for: $TASK"
     echo ""
@@ -539,7 +604,7 @@ cmd_clarify() {
     # Use Claude with the skill
     claude --print -p "Use the ask-questions-if-underspecified skill.
 
-                       Task: $TASK
+                       Task: ${SAFE_TASK}
 
                        Generate MUST_HAVE and NICE_TO_HAVE questions."
 }
@@ -548,9 +613,12 @@ cmd_clarify() {
 # LOOP COMMAND
 # ===============================================================================
 cmd_loop() {
-    local TASK="$1"
+    local TASK
+    TASK=$(validate_text_input "$1")
     local USE_MINIMAX="${2:-false}"
     local MAX_ITER=$CLAUDE_MAX_ITER
+    local SAFE_TASK
+    SAFE_TASK=$(escape_for_shell "$TASK")
 
     if [ "$USE_MINIMAX" = "--mmc" ] || [ "$USE_MINIMAX" = "--minimax" ]; then
         MAX_ITER=$MINIMAX_MAX_ITER
@@ -572,9 +640,9 @@ cmd_loop() {
 
         # Execute task
         if [ "$USE_MINIMAX" = "--mmc" ] || [ "$USE_MINIMAX" = "--minimax" ]; then
-            RESULT=$(mmc --query "$TASK. Check if complete, output VERIFIED_DONE if done." 2>&1)
+            RESULT=$(mmc --query "${SAFE_TASK}. Check if complete, output VERIFIED_DONE if done." 2>&1)
         else
-            RESULT=$(claude --print -p "$TASK. Check if complete, output VERIFIED_DONE if done." 2>&1)
+            RESULT=$(claude --print -p "${SAFE_TASK}. Check if complete, output VERIFIED_DONE if done." 2>&1)
         fi
 
         # Check for completion
@@ -695,14 +763,17 @@ cmd_improvements() {
 # ORCHESTRATION
 # ===============================================================================
 cmd_orch() {
-    local TASK="$1"
+    local TASK
+    TASK=$(validate_text_input "$1")
+    local SAFE_TASK
+    SAFE_TASK=$(escape_for_shell "$TASK")
 
     echo ""
     echo "==============================================================="
-    echo "  RALPH WIGGUM v2.16 ORCHESTRATION"
+    echo "  RALPH WIGGUM v2.17 ORCHESTRATION"
     echo "==============================================================="
     echo ""
-    echo "  NOTE: v2.16 uses AskUserQuestion for interactive clarification"
+    echo "  NOTE: v2.17 uses AskUserQuestion for interactive clarification"
     echo "        and EnterPlanMode for automatic planning."
     echo ""
     echo "  For best experience, use the Claude Code /orchestrator command"
@@ -726,7 +797,7 @@ cmd_orch() {
 
     # Step 2: Classify
     log_info "[2/7] CLASSIFY"
-    claude --print -p "Use task-classifier skill. Classify complexity (1-10) for: $TASK"
+    claude --print -p "Use task-classifier skill. Classify complexity (1-10) for: ${SAFE_TASK}"
     echo ""
 
     # Step 3: Plan

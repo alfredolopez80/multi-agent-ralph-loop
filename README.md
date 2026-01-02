@@ -1,6 +1,6 @@
-# 🎭 Multi-Agent Ralph Wiggum v2.16
+# 🎭 Multi-Agent Ralph Wiggum v2.17
 
-![Version](https://img.shields.io/badge/version-2.16.0-blue)
+![Version](https://img.shields.io/badge/version-2.17.0-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -9,13 +9,20 @@
 
 A sophisticated multi-agent orchestration system for Claude Code that coordinates multiple AI models (Claude, Codex CLI, Gemini CLI, MiniMax) with **automatic planning**, **intensive clarification**, adversarial validation, self-improvement capabilities, and comprehensive quality gates.
 
-## 🌟 What's New in v2.16
+## 🌟 What's New in v2.17
 
-- **Auto Plan Mode**: Automatically enters `EnterPlanMode` for non-trivial tasks - no more manual planning requests
+- **Security Hardening**: All user inputs validated and shell-escaped before execution
+- **Enhanced validate_path()**: Blocks control characters, path traversal attacks, and shell metacharacters
+- **New validate_text_input()**: Validates free-form text inputs (tasks, queries) with length limits
+- **Safe JSON Construction**: Uses `jq` for all JSON building to prevent injection attacks
+- **escape_for_shell()**: Now actively applied to all user inputs passed to external commands
+
+### v2.16 Features (included)
+
+- **Auto Plan Mode**: Automatically enters `EnterPlanMode` for non-trivial tasks
 - **AskUserQuestion Integration**: Uses Claude's native tool for interactive MUST_HAVE/NICE_TO_HAVE questions
 - **Deep Clarification Skill**: New skill with comprehensive questioning patterns by domain
 - **7-Step Flow**: Updated orchestration from 6 to 7 steps with dedicated planning phase
-- **Clarification Philosophy**: "MAXIMUM CLARIFICATION before implementation"
 
 ### v2.15 Features (included)
 - **Safe Settings Merge**: Installation preserves your existing settings.json

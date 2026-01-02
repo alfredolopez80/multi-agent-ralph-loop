@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-VERSION="2.16.0"
+VERSION="2.17.0"
 CONFIG_FILE="${HOME}/.ralph/config/minimax.json"
 RALPH_DIR="${HOME}/.ralph"
 
@@ -18,7 +18,7 @@ NC='\033[0m'
 
 show_help() {
     cat << 'EOF'
-mmc - MiniMax Claude Code Wrapper v2.15.0
+mmc - MiniMax Claude Code Wrapper v2.17.0
 
 Run Claude Code with MiniMax M2.1 backend (~8% of Claude's cost).
 
@@ -82,19 +82,24 @@ setup() {
         exit 1
     fi
 
-    cat > "$CONFIG_FILE" << JSONEOF
-{
-  "apiKey": "$API_KEY",
-  "baseUrl": "https://api.minimax.io/anthropic",
-  "defaultModel": "MiniMax-M2.1",
-  "lightningModel": "MiniMax-M2.1-lightning",
-  "modelMapping": {
-    "claude-3-5-haiku-latest": "MiniMax-M2.1-lightning",
-    "claude-sonnet-4-20250514": "MiniMax-M2.1",
-    "claude-opus-4-20250514": "MiniMax-M2.1"
-  }
-}
-JSONEOF
+    # SECURITY: Use jq to safely construct JSON with proper escaping
+    # This prevents JSON injection from malicious API key inputs
+    jq -n \
+        --arg apiKey "$API_KEY" \
+        --arg baseUrl "https://api.minimax.io/anthropic" \
+        --arg defaultModel "MiniMax-M2.1" \
+        --arg lightningModel "MiniMax-M2.1-lightning" \
+        '{
+            apiKey: $apiKey,
+            baseUrl: $baseUrl,
+            defaultModel: $defaultModel,
+            lightningModel: $lightningModel,
+            modelMapping: {
+                "claude-3-5-haiku-latest": "MiniMax-M2.1-lightning",
+                "claude-sonnet-4-20250514": "MiniMax-M2.1",
+                "claude-opus-4-20250514": "MiniMax-M2.1"
+            }
+        }' > "$CONFIG_FILE"
 
     chmod 600 "$CONFIG_FILE"
     echo -e "${GREEN}Configuration saved to: $CONFIG_FILE${NC}"

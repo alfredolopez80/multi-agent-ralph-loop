@@ -1,6 +1,13 @@
-# Multi-Agent Ralph v2.16
+# Multi-Agent Ralph v2.17
 
 Orchestration with **automatic planning**, **intensive clarification**, adversarial validation, self-improvement, and 9-language quality gates.
+
+## v2.17 Key Changes
+
+- **Security Hardening**: All user inputs validated and shell-escaped
+- **Enhanced validate_path()**: Blocks control chars, path traversal attacks
+- **New validate_text_input()**: Validates non-path inputs (tasks, queries)
+- **Safe JSON Construction**: Uses jq for all JSON building in mmc
 
 ## v2.16 Key Changes
 
@@ -64,7 +71,7 @@ mmc --loop 30 "task"      # Extended loop
 /adversarial /retrospective /improvements
 ```
 
-## Native Claude Tools (v2.16)
+## Native Claude Tools (v2.16+)
 
 ```yaml
 # Automatic for non-trivial tasks
@@ -100,7 +107,7 @@ ExitPlanMode: {}
 @minimax-reviewer   # Fallback
 ```
 
-## Skills (v2.16)
+## Skills (v2.16+)
 
 ```bash
 deep-clarification  # Intensive AskUserQuestion patterns
