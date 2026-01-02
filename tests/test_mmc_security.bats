@@ -14,15 +14,18 @@ setup() {
     # Create temp test directory
     TEST_TMPDIR=$(mktemp -d)
 
-    # Backup real config if exists
-    [ -f "$HOME/.ralph/config/minimax.json" ] && \
+    # Backup real config if exists (|| true to not fail in CI)
+    if [ -f "$HOME/.ralph/config/minimax.json" ]; then
         cp "$HOME/.ralph/config/minimax.json" "$TEST_TMPDIR/minimax.json.bak"
+    fi
 }
 
 teardown() {
     # Restore config if backed up
-    [ -f "$TEST_TMPDIR/minimax.json.bak" ] && \
+    if [ -f "$TEST_TMPDIR/minimax.json.bak" ]; then
+        mkdir -p "$HOME/.ralph/config"
         mv "$TEST_TMPDIR/minimax.json.bak" "$HOME/.ralph/config/minimax.json"
+    fi
 
     [ -n "$TEST_TMPDIR" ] && rm -rf "$TEST_TMPDIR" 2>/dev/null || true
 }

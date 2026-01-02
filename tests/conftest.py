@@ -22,13 +22,13 @@ def project_root():
 @pytest.fixture(scope="session")
 def hooks_dir(project_root):
     """Return the hooks directory path."""
-    return os.path.join(project_root, '.claude', 'hooks')
+    return os.path.join(project_root, ".claude", "hooks")
 
 
 @pytest.fixture(scope="session")
 def scripts_dir(project_root):
     """Return the scripts directory path."""
-    return os.path.join(project_root, 'scripts')
+    return os.path.join(project_root, "scripts")
 
 
 @pytest.fixture
@@ -63,7 +63,7 @@ def git_safety_guard_module(hooks_dir):
     """Import and return the git-safety-guard module."""
     import importlib.util
 
-    module_path = os.path.join(hooks_dir, 'git-safety-guard.py')
+    module_path = os.path.join(hooks_dir, "git-safety-guard.py")
     if not os.path.exists(module_path):
         pytest.skip(f"git-safety-guard.py not found at {module_path}")
 
@@ -76,15 +76,9 @@ def git_safety_guard_module(hooks_dir):
 # Custom markers
 def pytest_configure(config):
     """Configure custom pytest markers."""
-    config.addinivalue_line(
-        "markers", "security: mark test as a security test"
-    )
-    config.addinivalue_line(
-        "markers", "integration: mark test as an integration test"
-    )
-    config.addinivalue_line(
-        "markers", "slow: mark test as slow running"
-    )
+    config.addinivalue_line("markers", "security: mark test as a security test")
+    config.addinivalue_line("markers", "integration: mark test as an integration test")
+    config.addinivalue_line("markers", "slow: mark test as slow running")
 
 
 # Collection modifiers
