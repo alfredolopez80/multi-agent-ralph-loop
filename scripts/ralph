@@ -717,7 +717,7 @@ cmd_worktree_pr() {
     # Create PR draft
     log_info "   Creating draft PR..."
     local PR_URL
-    PR_URL=$(gh pr create --draft \
+    if PR_URL=$(gh pr create --draft \
         --title "feat: ${PR_TITLE}" \
         --body "## Summary
 
