@@ -27,7 +27,7 @@ NC='\033[0m'
 
 show_help() {
     cat << 'EOF'
-mmc - MiniMax Claude Code Wrapper v2.21.0
+mmc - MiniMax Claude Code Wrapper v2.24.0
 
 Run Claude Code with MiniMax M2.1 backend (~8% of Claude's cost).
 Docs: https://platform.minimax.io/docs/guides/text-ai-coding-tools

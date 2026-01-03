@@ -321,7 +321,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 # ===============================================================================
 show_help() {
     cat << 'EOF'
-ralph - Multi-Agent Orchestrator CLI v2.23.0
+ralph - Multi-Agent Orchestrator CLI v2.24.0
 
 ORCHESTRATION:
   ralph orch "task"          Full orchestration (clarify->classify->execute->validate->retrospective)
@@ -332,6 +332,14 @@ SEARCH (v2.23):
   ralph ast "pattern" [path] Structural code search via ast-grep (~75% less tokens)
                              Examples: ralph ast 'console.log($MSG)' src/
                                        ralph ast 'async function $NAME' .
+
+MINIMAX MCP (v2.24):
+  ralph websearch "query"    Web search via MiniMax MCP (~8% cost, 74% SWE-bench)
+                             Examples: ralph websearch "React 19 features 2025"
+                                       ralph websearch "TypeScript satisfies operator"
+  ralph image "prompt" path  Image analysis (screenshots, UI, diagrams)
+                             Examples: ralph image "Describe error" /tmp/screenshot.png
+                                       ralph image "Review UI" ./mockup.png
 
 GIT WORKTREE + PR WORKFLOW (v2.20):
   ralph worktree "task"      Create isolated worktree for feature
