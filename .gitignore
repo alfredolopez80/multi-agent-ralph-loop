@@ -1,5 +1,5 @@
 # Multi-Agent Ralph Wiggum - .gitignore
-# v2.17.0
+# v2.20.0
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # SECRETS AND CREDENTIALS (CRITICAL)
@@ -179,6 +179,9 @@ temp/
 # Project-level ralph data (per-repo usage logs)
 .ralph/
 .ralph/usage.jsonl
+
+# Git worktrees (v2.20 - isolated feature development)
+.worktrees/
 
 # Improvement proposals (generated)
 improvements/pending.md

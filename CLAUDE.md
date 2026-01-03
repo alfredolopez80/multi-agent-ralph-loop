@@ -1,6 +1,14 @@
-# Multi-Agent Ralph v2.19
+# Multi-Agent Ralph v2.20
 
-Orchestration with **automatic planning**, **intensive clarification**, adversarial validation, self-improvement, and 9-language quality gates.
+Orchestration with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement, and 9-language quality gates.
+
+## v2.20 Key Changes
+
+- **WORKTREE WORKFLOW**: Git worktree isolation for features via `ralph worktree`
+- **HUMAN-IN-THE-LOOP**: Orchestrator asks user about worktree isolation (Step 2b)
+- **MULTI-AGENT PR REVIEW**: Claude Opus + Codex GPT-5 review before merge
+- **ONE WORKTREE PER FEATURE**: Multiple subagents share same worktree
+- **WorkTrunk Integration**: Required for worktree management (`brew install max-sixty/worktrunk/wt`)
 
 ## v2.19 Key Changes
 
@@ -23,17 +31,19 @@ Orchestration with **automatic planning**, **intensive clarification**, adversar
 - **AskUserQuestion**: Uses native Claude tool for interactive MUST_HAVE/NICE_TO_HAVE questions
 - **Deep Clarification**: New skill for comprehensive task understanding
 
-## Mandatory Flow (7 Steps)
+## Mandatory Flow (8 Steps)
 
 ```
 0. AUTO-PLAN    → EnterPlanMode (automatic for non-trivial)
 1. /clarify     → AskUserQuestion (MUST_HAVE + NICE_TO_HAVE)
 2. /classify    → Complexity 1-10
+2b. WORKTREE    → Ask user: "¿Requiere worktree aislado?" (v2.20)
 3. PLAN         → Write plan, get user approval
-4. @orchestrator → Delegate to subagents
+4. @orchestrator → Delegate to subagents (in worktree if selected)
 5. ralph gates  → Quality gates (9 languages)
 6. /adversarial → 2/3 consensus (complexity >= 7)
 7. /retrospective → Propose improvements
+7b. PR REVIEW   → If worktree: ralph worktree-pr (Claude + Codex review)
 → VERIFIED_DONE
 ```
 
@@ -58,7 +68,7 @@ Orchestration with **automatic planning**, **intensive clarification**, adversar
 
 ```bash
 # CLI
-ralph orch "task"         # Full orchestration (7 steps)
+ralph orch "task"         # Full orchestration (8 steps)
 ralph adversarial src/    # 2/3 consensus
 ralph parallel src/       # 6 subagents
 ralph security src/       # Security audit
@@ -67,6 +77,15 @@ ralph gates               # Quality gates
 ralph loop "task"         # Loop (15 iter)
 ralph loop --mmc "task"   # Loop (30 iter)
 ralph retrospective       # Self-improvement
+
+# Git Worktree + PR Workflow (v2.20)
+ralph worktree "task"     # Create worktree + Claude
+ralph worktree-pr <branch> # PR + multi-agent review
+ralph worktree-merge <pr>  # Approve and merge
+ralph worktree-fix <pr>    # Apply review fixes
+ralph worktree-close <pr>  # Close and cleanup
+ralph worktree-status      # Show worktree status
+ralph worktree-cleanup     # Clean merged worktrees
 
 # MiniMax
 mmc                       # Launch with MiniMax
@@ -115,12 +134,13 @@ ExitPlanMode: {}
 @minimax-reviewer   # Fallback
 ```
 
-## Skills (v2.16+)
+## Skills (v2.20)
 
 ```bash
 deep-clarification  # Intensive AskUserQuestion patterns
 task-classifier     # Complexity 1-10 routing
 retrospective       # Self-improvement analysis
+worktree-pr         # Git worktree + PR workflow (v2.20)
 ```
 
 ## Aliases
