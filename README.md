@@ -1,6 +1,6 @@
-# 🎭 Multi-Agent Ralph Wiggum v2.20
+# 🎭 Multi-Agent Ralph Wiggum v2.21
 
-![Version](https://img.shields.io/badge/version-2.20.0-blue)
+![Version](https://img.shields.io/badge/version-2.21.0-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -9,7 +9,15 @@
 
 A sophisticated multi-agent orchestration system for Claude Code that coordinates multiple AI models (Claude, Codex CLI, Gemini CLI, MiniMax) with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement capabilities, and comprehensive quality gates.
 
-## 🌟 What's New in v2.20
+## 🌟 What's New in v2.21
+
+- **Self-Update**: `ralph self-update` syncs scripts from repo to ~/.local/bin/
+- **Pre-Merge Validation**: `ralph pre-merge` validates shellcheck + versions + tests before PR
+- **Integrations Check**: `ralph integrations` shows status of all tools (Greptile always **OPTIONAL**)
+- **Commit Prefix**: Per-agent commit prefixes for consistent messages (security:, test:, ui:, docs:)
+- **Auto Version Sync**: Prevents version mismatch issues between installed and repo scripts
+
+### v2.20 Features (included)
 
 - **Git Worktree Workflow**: Isolated feature development via `ralph worktree "task"`
 - **Human-in-the-Loop**: Orchestrator asks user about worktree isolation (Step 2b)

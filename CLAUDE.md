@@ -1,6 +1,13 @@
-# Multi-Agent Ralph v2.20
+# Multi-Agent Ralph v2.21
 
 Orchestration with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement, and 9-language quality gates.
+
+## v2.21 Key Changes
+
+- **SELF-UPDATE**: `ralph self-update` syncs scripts from repo to ~/.local/bin/
+- **PRE-MERGE VALIDATION**: `ralph pre-merge` validates shellcheck + versions + tests before PR
+- **INTEGRATIONS CHECK**: `ralph integrations` shows status of all tools (Greptile always OPTIONAL)
+- **COMMIT PREFIX**: Per-agent commit prefixes for consistent commit messages (security:, test:, ui:, etc.)
 
 ## v2.20 Key Changes
 
@@ -86,6 +93,11 @@ ralph worktree-fix <pr>    # Apply review fixes
 ralph worktree-close <pr>  # Close and cleanup
 ralph worktree-status      # Show worktree status
 ralph worktree-cleanup     # Clean merged worktrees
+
+# Maintenance (v2.21)
+ralph self-update          # Sync scripts from repo
+ralph pre-merge            # Validate before PR
+ralph integrations         # Show tool status (Greptile optional)
 
 # MiniMax
 mmc                       # Launch with MiniMax
