@@ -14,7 +14,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.24.0"
+VERSION="2.24.1"
 CONFIG_FILE="${HOME}/.ralph/config/minimax.json"
 RALPH_DIR="${HOME}/.ralph"
 
