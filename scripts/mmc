@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # mmc - MiniMax Claude Code Wrapper
-# Version 2.23.0
+# Version 2.24.0
 # Runs Claude Code with MiniMax M2.1 backend (~8% cost)
+# v2.24: MiniMax MCP integration (web_search + understand_image)
 # v2.23: AST-grep integration for structural code search
 # v2.22: Tool validation support, 9 language quality gates
 # v2.21: Self-update, pre-merge validation, integrations health check
@@ -13,7 +14,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.23.0"
+VERSION="2.24.0"
 CONFIG_FILE="${HOME}/.ralph/config/minimax.json"
 RALPH_DIR="${HOME}/.ralph"
 

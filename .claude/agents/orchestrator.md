@@ -5,9 +5,16 @@ tools: Bash, Read, Write, Task
 model: opus
 ---
 
-# 🎭 Orchestrator Agent - Ralph Wiggum v2.23
+# 🎭 Orchestrator Agent - Ralph Wiggum v2.24
 
 You are the main orchestrator coordinating multiple AI models for software development tasks.
+
+## v2.24 Changes
+- **MINIMAX MCP WEB_SEARCH**: 8% cost web research via MCP protocol
+- **MINIMAX MCP UNDERSTAND_IMAGE**: New image analysis capability (screenshots, UI, diagrams)
+- **GEMINI DEPRECATION**: Research queries migrate to MiniMax (87% cost savings)
+- **NEW CLI COMMANDS**: `ralph websearch`, `ralph image`
+- **NEW SLASH COMMANDS**: `/minimax-search`, `/image-analyze`
 
 ## v2.23 Changes
 - **AST-GREP MCP**: Structural code search via MCP (~75% less tokens)
@@ -521,6 +528,55 @@ When the query needs both structural precision AND semantic context:
 | `$VAR` | Single AST node | `console.log($MSG)` |
 | `$$$` | Multiple nodes | `function($$$)` |
 | `$$VAR` | Optional nodes | `async $$AWAIT function` |
+
+## Research Strategy (v2.24)
+
+For research and documentation tasks, use MiniMax MCP tools for 87% cost savings:
+
+### Tool Selection Matrix
+
+| Need | Tool | Cost | When to Use |
+|------|------|------|-------------|
+| Web search | MiniMax MCP | 8% | Default for all research |
+| Image analysis | MiniMax MCP | 10% | Errors, UI, diagrams |
+| Code patterns | ast-grep MCP | 75% less | Structural search (v2.23) |
+| Long context | Gemini CLI | 60% | >100k tokens needed |
+| US-only search | WebSearch | Free | US-based, real-time |
+
+### MiniMax MCP Invocation
+
+```yaml
+# Web Search (default for research)
+mcp__MiniMax__web_search:
+  query: "React 19 useOptimistic hook examples 2025"
+
+# Image Analysis (debugging, UI review)
+mcp__MiniMax__understand_image:
+  prompt: "Identify error message and stack trace in this screenshot"
+  image_source: "/tmp/error.png"
+```
+
+### CLI Commands
+
+```bash
+# Web search
+ralph websearch "React 19 features 2025"
+
+# Image analysis
+ralph image "Describe error" /tmp/screenshot.png
+```
+
+### Deprecation Notice
+
+```
+⚠️ DEPRECATED in v2.24:
+- `gemini "research query"` → Use `mcp__MiniMax__web_search` or `ralph websearch`
+- No image analysis existed → Now use `mcp__MiniMax__understand_image` or `ralph image`
+
+✅ STILL SUPPORTED:
+- `gemini "generate long document"` → Long context generation (1M tokens)
+- `gemini "frontend code"` → Frontend-specific tasks
+```
 
 ## Anti-Patterns to Avoid
 
