@@ -1,6 +1,41 @@
-# Multi-Agent Ralph v2.23
+# Multi-Agent Ralph v2.24
 
 Orchestration with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement, and 9-language quality gates.
+
+## v2.24 Key Changes
+
+- **MINIMAX MCP WEB_SEARCH**: 8% cost web research via MCP protocol
+- **MINIMAX MCP UNDERSTAND_IMAGE**: New image analysis capability (screenshots, UI, diagrams)
+- **GEMINI DEPRECATION**: Research queries migrate to MiniMax (87% cost savings)
+- **NEW CLI COMMANDS**: `ralph websearch`, `ralph image`
+- **NEW SLASH COMMANDS**: `/minimax-search`, `/image-analyze`
+
+### Research Tools (v2.24)
+
+| Tool | Use | Cost |
+|------|-----|------|
+| `mcp__MiniMax__web_search` | Web research | ~8% |
+| `mcp__MiniMax__understand_image` | Screenshot/UI analysis | ~10% |
+
+```bash
+# Web search
+ralph websearch "React 19 features 2025"
+
+# Image analysis
+ralph image "Describe error" /tmp/screenshot.png
+
+# Slash commands
+/minimax-search "query"
+/image-analyze "prompt" /path/to/image
+```
+
+### Cost Comparison
+
+| Research Method | Cost | Quality |
+|-----------------|------|---------|
+| MiniMax MCP | ~8% | 74% SWE-bench |
+| Gemini CLI | ~60% | Variable |
+| WebSearch | Free | US-only |
 
 ## v2.23 Key Changes
 

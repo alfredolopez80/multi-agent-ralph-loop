@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # uninstall.sh - Multi-Agent Ralph Wiggum Uninstaller
 # Removes ralph CLI and all associated configurations
+# v2.24: MiniMax MCP integration (web_search + understand_image), 87% cost savings
 # v2.23: AST-grep integration for structural code search (~75% token savings)
 # v2.22: Tool validation (startup + on-demand), 9 language quality gates
 # v2.21: Self-update, pre-merge validation, integrations health check
@@ -8,7 +9,7 @@
 
 set -euo pipefail
 
-VERSION="2.23.0"
+VERSION="2.24.0"
 
 # Installation directories
 INSTALL_DIR="${HOME}/.local/bin"

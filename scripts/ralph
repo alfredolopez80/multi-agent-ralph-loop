@@ -10,7 +10,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.23.0"
+VERSION="2.24.0"
 RALPH_REPO_PATH=""  # Auto-detected if in ralph repo
 RALPH_DIR="${HOME}/.ralph"
 
@@ -321,7 +321,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 # ===============================================================================
 show_help() {
     cat << 'EOF'
-ralph - Multi-Agent Orchestrator CLI v2.23.0
+ralph - Multi-Agent Orchestrator CLI v2.24.0
 
 ORCHESTRATION:
   ralph orch "task"          Full orchestration (clarify->classify->execute->validate->retrospective)
@@ -332,6 +332,14 @@ SEARCH (v2.23):
   ralph ast "pattern" [path] Structural code search via ast-grep (~75% less tokens)
                              Examples: ralph ast 'console.log($MSG)' src/
                                        ralph ast 'async function $NAME' .
+
+MINIMAX MCP (v2.24):
+  ralph websearch "query"    Web search via MiniMax MCP (~8% cost, 74% SWE-bench)
+                             Examples: ralph websearch "React 19 features 2025"
+                                       ralph websearch "TypeScript satisfies operator"
+  ralph image "prompt" path  Image analysis (screenshots, UI, diagrams)
+                             Examples: ralph image "Describe error" /tmp/screenshot.png
+                                       ralph image "Review UI" ./mockup.png
 
 GIT WORKTREE + PR WORKFLOW (v2.20):
   ralph worktree "task"      Create isolated worktree for feature
@@ -850,6 +858,123 @@ cmd_ast() {
 
     log_info "AST Search: '$SAFE_PATTERN' in $SAFE_TARGET"
     sg --pattern "$SAFE_PATTERN" "$SAFE_TARGET"
+}
+
+# ===============================================================================
+# MINIMAX MCP WEB SEARCH (v2.24)
+# ===============================================================================
+
+cmd_websearch() {
+    # v2.24: Web search via MiniMax MCP
+    local QUERY
+    QUERY=$(validate_text_input "${1:-}")
+
+    if [ -z "$QUERY" ]; then
+        echo ""
+        echo "╔═══════════════════════════════════════════════════════════════╗"
+        echo "║  MINIMAX WEB SEARCH: MCP-Powered Research (v2.24)             ║"
+        echo "╠═══════════════════════════════════════════════════════════════╣"
+        echo "║                                                               ║"
+        echo "║  Usage: ralph websearch \"<query>\"                             ║"
+        echo "║                                                               ║"
+        echo "║  Examples:                                                    ║"
+        echo "║    ralph websearch \"React 19 new features 2025\"               ║"
+        echo "║    ralph websearch \"TypeScript 5.5 satisfies operator\"        ║"
+        echo "║    ralph websearch \"OpenTelemetry traces best practices\"      ║"
+        echo "║                                                               ║"
+        echo "║  Tips:                                                        ║"
+        echo "║    - Use 3-5 keywords for best results                        ║"
+        echo "║    - Include year for recent topics (2024, 2025)              ║"
+        echo "║    - Use quotes for exact phrases                             ║"
+        echo "║                                                               ║"
+        echo "║  Cost: ~8% of Gemini CLI (74% SWE-bench quality)              ║"
+        echo "╚═══════════════════════════════════════════════════════════════╝"
+        exit 1
+    fi
+
+    log_info "MiniMax Web Search: $QUERY"
+    log_info "Using mcp__MiniMax__web_search tool..."
+
+    # Invoke Claude with MCP tool
+    claude --print "Use the mcp__MiniMax__web_search tool to search for: \"$QUERY\". Return the top results with titles, URLs, and snippets formatted as a markdown list."
+}
+
+# ===============================================================================
+# MINIMAX MCP IMAGE ANALYSIS (v2.24)
+# ===============================================================================
+
+cmd_image() {
+    # v2.24: Image analysis via MiniMax MCP
+    local PROMPT="${1:-}"
+    local IMAGE_SOURCE="${2:-}"
+
+    # Strip @ prefix (Claude Code artifacts)
+    IMAGE_SOURCE="${IMAGE_SOURCE#@}"
+
+    # Validate prompt input
+    PROMPT=$(validate_text_input "$PROMPT")
+
+    if [ -z "$PROMPT" ] || [ -z "$IMAGE_SOURCE" ]; then
+        echo ""
+        echo "╔═══════════════════════════════════════════════════════════════╗"
+        echo "║  MINIMAX IMAGE ANALYSIS: MCP-Powered Vision (v2.24)           ║"
+        echo "╠═══════════════════════════════════════════════════════════════╣"
+        echo "║                                                               ║"
+        echo "║  Usage: ralph image \"<prompt>\" \"<image_source>\"               ║"
+        echo "║                                                               ║"
+        echo "║  Examples:                                                    ║"
+        echo "║    ralph image \"Describe this error\" /tmp/screenshot.png      ║"
+        echo "║    ralph image \"What UI issues?\" ./mockup.png                  ║"
+        echo "║    ralph image \"Explain diagram\" https://example.com/d.jpg    ║"
+        echo "║                                                               ║"
+        echo "║  Supported formats: JPEG, PNG, WebP (max 20MB)                ║"
+        echo "║                                                               ║"
+        echo "║  Use cases:                                                   ║"
+        echo "║    - Error screenshot debugging                               ║"
+        echo "║    - UI/UX review from mockups                                ║"
+        echo "║    - Diagram/architecture understanding                       ║"
+        echo "║    - Visual diff comparison                                   ║"
+        echo "║                                                               ║"
+        echo "║  Note: Paths starting with @ are stripped automatically       ║"
+        echo "╚═══════════════════════════════════════════════════════════════╝"
+        exit 1
+    fi
+
+    # Validate image source
+    if [[ "$IMAGE_SOURCE" =~ ^https?:// ]]; then
+        log_info "Image source: URL"
+    else
+        # Local file - validate path and size
+        IMAGE_SOURCE=$(validate_path "$IMAGE_SOURCE")
+        if [ ! -f "$IMAGE_SOURCE" ]; then
+            log_error "File not found: $IMAGE_SOURCE"
+            exit 1
+        fi
+
+        # Check file size (max 20MB = 20971520 bytes)
+        local FILE_SIZE
+        FILE_SIZE=$(stat -f%z "$IMAGE_SOURCE" 2>/dev/null || stat -c%s "$IMAGE_SOURCE" 2>/dev/null)
+        if [ "$FILE_SIZE" -gt 20971520 ]; then
+            log_error "File too large (max 20MB): $IMAGE_SOURCE"
+            exit 1
+        fi
+
+        # Check format
+        local EXT="${IMAGE_SOURCE##*.}"
+        EXT=$(echo "$EXT" | tr '[:upper:]' '[:lower:]')
+        if [[ ! "$EXT" =~ ^(jpg|jpeg|png|webp)$ ]]; then
+            log_error "Unsupported format: $EXT (use JPEG, PNG, or WebP)"
+            exit 1
+        fi
+
+        log_info "Image source: Local file ($EXT)"
+    fi
+
+    log_info "MiniMax Image Analysis: $PROMPT"
+    log_info "Image: $IMAGE_SOURCE"
+
+    # Invoke Claude with MCP tool
+    claude --print "Use the mcp__MiniMax__understand_image tool with prompt: \"$PROMPT\" and image_source: \"$IMAGE_SOURCE\". Provide detailed analysis."
 }
 
 # ===============================================================================
@@ -1981,6 +2106,14 @@ main() {
         # Search (v2.23)
         ast|ast-grep)
             cmd_ast "$@"
+            ;;
+
+        # MiniMax MCP (v2.24)
+        websearch|web-search|search)
+            cmd_websearch "$@"
+            ;;
+        image|img|analyze-image)
+            cmd_image "$@"
             ;;
 
         # Utility
