@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ralph - Multi-Agent Orchestrator CLI
-# Version 2.20.0
+# Version 2.21.0
+# v2.21: Self-update, pre-merge validation, integrations health check
 # v2.20: Git worktree + PR workflow with multi-agent review
 # v2.19: Security fixes (VULN-001, VULN-004, VULN-008), improved validation
 set -euo pipefail
@@ -8,7 +9,8 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.20.0"
+VERSION="2.21.0"
+RALPH_REPO_PATH=""  # Auto-detected if in ralph repo
 RALPH_DIR="${HOME}/.ralph"
 
 # SECURITY: Use mktemp for unpredictable temp directory
@@ -130,7 +132,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 # ===============================================================================
 show_help() {
     cat << 'EOF'
-ralph - Multi-Agent Orchestrator CLI v2.20.0
+ralph - Multi-Agent Orchestrator CLI v2.21.0
 
 ORCHESTRATION:
   ralph orch "task"          Full orchestration (clarify->classify->execute->validate->retrospective)
@@ -178,6 +180,11 @@ UTILITY:
   ralph help                 Show this help
   ralph --uninstall          Uninstall ralph and all components
 
+MAINTENANCE (v2.21):
+  ralph self-update          Sync scripts from repo to ~/.local/bin/
+  ralph pre-merge            Validate before creating PR (shellcheck + versions + tests)
+  ralph integrations         Show status of all integrations (Greptile optional)
+
 ITERATION LIMITS:
   Claude (Sonnet/Opus): 15 iterations
   MiniMax M2.1:         30 iterations (2x)
@@ -203,6 +210,9 @@ ALIASES (add to ~/.zshrc or ~/.bashrc):
   alias rhw='ralph worktree'
   alias rhwp='ralph worktree-pr'
   alias rhws='ralph worktree-status'
+  alias rhsu='ralph self-update'
+  alias rhpm='ralph pre-merge'
+  alias rhint='ralph integrations'
 
 EXAMPLES:
   ralph orch "Implement OAuth2 with Google"
@@ -1038,6 +1048,291 @@ cmd_worktree_cleanup() {
     cmd_worktree_status
 }
 
+# ===============================================================================
+# MAINTENANCE COMMANDS (v2.21)
+# ===============================================================================
+
+# Self-update: sync scripts from repo to ~/.local/bin/
+cmd_self_update() {
+    local REPO_PATH=""
+    local INSTALL_DIR="${HOME}/.local/bin"
+
+    # Try to find ralph repo
+    if [ -f "./scripts/ralph" ] && grep -q "Multi-Agent Orchestrator" "./scripts/ralph" 2>/dev/null; then
+        REPO_PATH="$(pwd)"
+    elif [ -f "../multi-agent-ralph-loop/scripts/ralph" ]; then
+        REPO_PATH="$(cd ../multi-agent-ralph-loop && pwd)"
+    elif [ -d "${HOME}/Documents/GitHub/multi-agent-ralph-loop" ]; then
+        REPO_PATH="${HOME}/Documents/GitHub/multi-agent-ralph-loop"
+    fi
+
+    if [ -z "$REPO_PATH" ] || [ ! -f "$REPO_PATH/scripts/ralph" ]; then
+        log_error "Cannot find ralph repository."
+        log_info "Options:"
+        echo "  1. cd to the ralph repo and run: ralph self-update"
+        echo "  2. Clone repo: git clone https://github.com/yourrepo/multi-agent-ralph-loop"
+        return 1
+    fi
+
+    log_info "Syncing scripts from: $REPO_PATH"
+
+    # Get versions
+    local REPO_VERSION
+    local INSTALLED_VERSION
+    REPO_VERSION=$(grep "^VERSION=" "$REPO_PATH/scripts/ralph" | cut -d'"' -f2)
+    INSTALLED_VERSION="$VERSION"
+
+    log_info "   Installed: v$INSTALLED_VERSION"
+    log_info "   Repo:      v$REPO_VERSION"
+
+    if [ "$REPO_VERSION" = "$INSTALLED_VERSION" ]; then
+        log_success "Already up to date (v$INSTALLED_VERSION)"
+        return 0
+    fi
+
+    # Create backup
+    if [ -f "$INSTALL_DIR/ralph" ]; then
+        cp "$INSTALL_DIR/ralph" "$INSTALL_DIR/ralph.bak.$(date +%Y%m%d_%H%M%S)"
+        log_info "   Backup created"
+    fi
+
+    # Copy scripts
+    mkdir -p "$INSTALL_DIR"
+    cp "$REPO_PATH/scripts/ralph" "$INSTALL_DIR/ralph"
+    chmod +x "$INSTALL_DIR/ralph"
+    log_success "   Updated: ralph"
+
+    if [ -f "$REPO_PATH/scripts/mmc" ]; then
+        cp "$REPO_PATH/scripts/mmc" "$INSTALL_DIR/mmc"
+        chmod +x "$INSTALL_DIR/mmc"
+        log_success "   Updated: mmc"
+    fi
+
+    log_success "Updated to v$REPO_VERSION"
+    log_info "Restart your shell or run: source ~/.zshrc"
+}
+
+# Pre-merge validation: run before creating a PR
+cmd_pre_merge() {
+    local ERRORS=0
+
+    echo ""
+    echo "==============================================================="
+    echo "  PRE-MERGE VALIDATION"
+    echo "==============================================================="
+    echo ""
+
+    # 1. Shellcheck
+    log_info "[1/4] Running shellcheck on scripts..."
+    if command -v shellcheck &> /dev/null; then
+        local SCRIPTS=("scripts/ralph" "scripts/mmc" "install.sh" "uninstall.sh")
+        for script in "${SCRIPTS[@]}"; do
+            if [ -f "$script" ]; then
+                if shellcheck -S error "$script" 2>/dev/null; then
+                    log_success "   $script: OK"
+                else
+                    log_error "   $script: FAILED"
+                    ((ERRORS++)) || true
+                fi
+            fi
+        done
+    else
+        log_warn "   shellcheck not installed (brew install shellcheck)"
+    fi
+
+    # 2. Version synchronization
+    log_info "[2/4] Checking version synchronization..."
+    local VERSIONS=()
+    [ -f "scripts/ralph" ] && VERSIONS+=("ralph:$(grep "^VERSION=" scripts/ralph 2>/dev/null | cut -d'"' -f2)")
+    [ -f "scripts/mmc" ] && VERSIONS+=("mmc:$(grep "^VERSION=" scripts/mmc 2>/dev/null | cut -d'"' -f2)")
+    [ -f "install.sh" ] && VERSIONS+=("install:$(grep "^VERSION=" install.sh 2>/dev/null | cut -d'"' -f2)")
+    [ -f "uninstall.sh" ] && VERSIONS+=("uninstall:$(grep "^VERSION=" uninstall.sh 2>/dev/null | cut -d'"' -f2)")
+
+    local FIRST_VERSION=""
+    local ALL_MATCH=true
+    for v in "${VERSIONS[@]}"; do
+        local name="${v%%:*}"
+        local ver="${v##*:}"
+        echo "   $name: $ver"
+        if [ -z "$FIRST_VERSION" ]; then
+            FIRST_VERSION="$ver"
+        elif [ "$ver" != "$FIRST_VERSION" ]; then
+            ALL_MATCH=false
+        fi
+    done
+
+    if [ "$ALL_MATCH" = true ]; then
+        log_success "   All versions match: $FIRST_VERSION"
+    else
+        log_error "   Version mismatch detected!"
+        ((ERRORS++)) || true
+    fi
+
+    # 3. Run tests
+    log_info "[3/4] Running tests..."
+    if [ -d "tests" ] && command -v bats &> /dev/null; then
+        if bats tests/*.bats > /dev/null 2>&1; then
+            local TEST_COUNT
+            TEST_COUNT=$(bats tests/*.bats 2>&1 | grep -cE "^ok " || echo "0")
+            log_success "   All $TEST_COUNT tests passed"
+        else
+            log_error "   Some tests failed"
+            ((ERRORS++)) || true
+        fi
+    else
+        log_warn "   Tests skipped (bats not installed or no tests/ dir)"
+    fi
+
+    # 4. Git status
+    log_info "[4/4] Checking git status..."
+    local UNCOMMITTED
+    UNCOMMITTED=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$UNCOMMITTED" -gt 0 ]; then
+        log_warn "   $UNCOMMITTED uncommitted changes"
+        git status --short 2>/dev/null | head -10
+    else
+        log_success "   Working tree clean"
+    fi
+
+    echo ""
+    echo "==============================================================="
+    if [ $ERRORS -eq 0 ]; then
+        log_success "  PRE-MERGE VALIDATION PASSED"
+        echo ""
+        echo "  Ready to create PR:"
+        echo "    git push -u origin \$(git branch --show-current)"
+        echo "    gh pr create --title 'feat: ...' --body '...'"
+    else
+        log_error "  PRE-MERGE VALIDATION FAILED ($ERRORS errors)"
+        echo ""
+        echo "  Fix the issues above before creating a PR."
+    fi
+    echo "==============================================================="
+
+    return $ERRORS
+}
+
+# Integrations health check: show status of all tools (Greptile is OPTIONAL)
+cmd_integrations() {
+    echo ""
+    echo "==============================================================="
+    echo "  RALPH INTEGRATIONS STATUS"
+    echo "==============================================================="
+    echo ""
+
+    # Core tools (REQUIRED)
+    log_info "REQUIRED TOOLS:"
+
+    # Claude CLI
+    if command -v claude &> /dev/null; then
+        local CLAUDE_VER
+        CLAUDE_VER=$(claude --version 2>&1 | head -1 || echo "unknown")
+        log_success "  Claude CLI:     $CLAUDE_VER"
+    else
+        log_error "  Claude CLI:     NOT INSTALLED"
+    fi
+
+    # GitHub CLI
+    if command -v gh &> /dev/null; then
+        local GH_VER
+        GH_VER=$(gh --version 2>&1 | head -1 | awk '{print $3}')
+        local GH_AUTH
+        GH_AUTH=$(gh auth status 2>&1 | grep -q "Logged in" && echo "authenticated" || echo "not authenticated")
+        log_success "  GitHub CLI:     v$GH_VER ($GH_AUTH)"
+    else
+        log_error "  GitHub CLI:     NOT INSTALLED (brew install gh)"
+    fi
+
+    # WorkTrunk
+    if command -v wt &> /dev/null; then
+        log_success "  WorkTrunk:      installed"
+    else
+        log_error "  WorkTrunk:      NOT INSTALLED (brew install max-sixty/worktrunk/wt)"
+    fi
+
+    # Git
+    if command -v git &> /dev/null; then
+        local GIT_VER
+        GIT_VER=$(git --version | awk '{print $3}')
+        log_success "  Git:            v$GIT_VER"
+    else
+        log_error "  Git:            NOT INSTALLED"
+    fi
+
+    echo ""
+    log_info "OPTIONAL AI TOOLS:"
+
+    # Codex CLI
+    if command -v codex &> /dev/null; then
+        local CODEX_VER
+        CODEX_VER=$(codex --version 2>&1 | head -1 || echo "installed")
+        log_success "  Codex CLI:      $CODEX_VER"
+    else
+        log_warn "  Codex CLI:      not installed (npm i -g @openai/codex)"
+    fi
+
+    # Gemini CLI
+    if command -v gemini &> /dev/null; then
+        log_success "  Gemini CLI:     installed"
+    else
+        log_warn "  Gemini CLI:     not installed"
+    fi
+
+    # MiniMax (mmc)
+    if command -v mmc &> /dev/null; then
+        local MMC_VER
+        MMC_VER=$(mmc --version 2>&1 | head -1 || echo "installed")
+        log_success "  MiniMax (mmc):  $MMC_VER"
+    else
+        log_warn "  MiniMax (mmc):  not installed"
+    fi
+
+    echo ""
+    log_info "OPTIONAL SERVICES (no cost requirement):"
+
+    # Greptile - ALWAYS OPTIONAL
+    if command -v greptile &> /dev/null || [ -n "${GREPTILE_API_KEY:-}" ]; then
+        log_success "  Greptile:       configured (OPTIONAL)"
+    else
+        log_info "  Greptile:       not configured (OPTIONAL - greptile.com/open-source for free tier)"
+    fi
+
+    echo ""
+    log_info "DEVELOPMENT TOOLS:"
+
+    # Shellcheck
+    if command -v shellcheck &> /dev/null; then
+        local SC_VER
+        SC_VER=$(shellcheck --version 2>&1 | grep "version:" | awk '{print $2}')
+        log_success "  shellcheck:     v$SC_VER"
+    else
+        log_warn "  shellcheck:     not installed (brew install shellcheck)"
+    fi
+
+    # Bats
+    if command -v bats &> /dev/null; then
+        local BATS_VER
+        BATS_VER=$(bats --version 2>&1 | awk '{print $2}')
+        log_success "  bats:           v$BATS_VER"
+    else
+        log_warn "  bats:           not installed (brew install bats-core)"
+    fi
+
+    # jq
+    if command -v jq &> /dev/null; then
+        local JQ_VER
+        JQ_VER=$(jq --version 2>&1)
+        log_success "  jq:             $JQ_VER"
+    else
+        log_warn "  jq:             not installed (brew install jq)"
+    fi
+
+    echo ""
+    echo "==============================================================="
+    echo "  Note: Greptile is always OPTIONAL. No paid tools required."
+    echo "==============================================================="
+}
+
 cmd_minimax() {
     local QUERY
     QUERY=$(validate_text_input "$1")
@@ -1244,10 +1539,10 @@ cmd_orch() {
 
     echo ""
     echo "==============================================================="
-    echo "  RALPH WIGGUM v2.19 ORCHESTRATION"
+    echo "  RALPH WIGGUM v2.21 ORCHESTRATION"
     echo "==============================================================="
     echo ""
-    echo "  NOTE: v2.19 includes security fixes and improved validation."
+    echo "  NOTE: v2.21 adds self-update, pre-merge validation, and integrations check."
     echo "        Uses AskUserQuestion and EnterPlanMode."
     echo ""
     echo "  For best experience, use the Claude Code /orchestrator command"
@@ -1411,6 +1706,17 @@ main() {
             ;;
         worktree-cleanup|wt-cleanup)
             cmd_worktree_cleanup
+            ;;
+
+        # Maintenance (v2.21)
+        self-update|update)
+            cmd_self_update
+            ;;
+        pre-merge|premerge)
+            cmd_pre_merge
+            ;;
+        integrations|int)
+            cmd_integrations
             ;;
 
         # Utility

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# install.sh - Multi-Agent Ralph Wiggum v2.20 Global Installer
+# install.sh - Multi-Agent Ralph Wiggum v2.21 Global Installer
 # Installs ralph CLI globally and integrates with Claude Code
+# v2.21: Self-update, pre-merge validation, integrations health check
 # v2.20: Git worktree + PR workflow with multi-agent review (Claude + Codex)
 # v2.19: Security hardening (VULN-001 to VULN-008 fixes), improved file permissions
 
@@ -9,7 +10,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.20.0"
+VERSION="2.21.0"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Installation directories
