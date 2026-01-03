@@ -10,7 +10,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.24.1"
+VERSION="2.24.2"
 RALPH_REPO_PATH=""  # Auto-detected if in ralph repo
 RALPH_DIR="${HOME}/.ralph"
 
@@ -21,29 +21,52 @@ init_tmpdir() {
         local SYSTEM_TMPDIR="${TMPDIR:-/tmp}"
         RALPH_TMPDIR=$(mktemp -d "${SYSTEM_TMPDIR}/ralph.XXXXXXXXXX")
         chmod 700 "$RALPH_TMPDIR"
+
+        # v2.24.2 MEDIUM-2 FIX: Verify tmpdir permissions after creation
+        # Paranoid check to catch TOCTOU race conditions
+        local PERMS
+        PERMS=$(stat -f%Lp "$RALPH_TMPDIR" 2>/dev/null || stat -c%a "$RALPH_TMPDIR" 2>/dev/null)
+        if [ "$PERMS" != "700" ]; then
+            log_security "TMPDIR_PERMISSION_MISMATCH" "Expected 700, got $PERMS" "HIGH"
+            rm -rf "$RALPH_TMPDIR"
+            echo "ERROR: Temp directory permissions incorrect: $PERMS (expected 700)" >&2
+            exit 1
+        fi
     fi
 }
 
 # SECURITY: Validate file path input (prevent command injection)
 # v2.19: VULN-004 FIX - Use realpath -e to resolve symlinks, improved validation
+# v2.24.2: HIGH-1 FIX - Block command substitution before any expansion
 validate_path() {
     local path="$1"
     local check_exists="${2:-check}"
 
+    # HIGH-1 FIX: Block command substitution patterns BEFORE any expansion
+    # Must check raw input to prevent $(cmd) and `cmd` execution
+    if [[ "$path" == *'$('* ]] || [[ "$path" == *'`'* ]]; then
+        log_security "BLOCKED_CMD_SUBSTITUTION" "Attempted path: $path" "HIGH"
+        log_error "Command substitution not allowed in path: $path"
+        exit 1
+    fi
+
     # Block control characters (newlines, carriage returns, null bytes, etc.)
     if [[ "$path" =~ [[:cntrl:]] ]]; then
+        log_security "BLOCKED_CONTROL_CHARS" "Control chars in path input" "HIGH"
         log_error "Control characters not allowed in path"
         exit 1
     fi
 
     # Block shell metacharacters including glob patterns (*, ?, [])
     if [[ "$path" =~ [\;\|\&\$\`\(\)\{\}\<\>\*\?\[\]\!\~\#] ]]; then
+        log_security "BLOCKED_METACHARACTERS" "Invalid chars in path: $path" "HIGH"
         log_error "Invalid characters in path: $path"
         exit 1
     fi
 
     # Block path traversal attempts
     if [[ "$path" =~ \.\. ]]; then
+        log_security "BLOCKED_PATH_TRAVERSAL" "Attempted traversal: $path" "HIGH"
         log_error "Path traversal not allowed: $path"
         exit 1
     fi
@@ -94,6 +117,38 @@ escape_for_shell() {
     # printf %q properly escapes all special characters including $() and ``
     printf '%q' "$1"
 }
+
+# v2.24.2 MEDIUM-1 FIX: Structured security event logging
+# Provides audit trail for security events with JSON format
+SECURITY_LOG="${RALPH_DIR}/security-audit.log"
+
+log_security() {
+    local event_type="$1"
+    local details="$2"
+    local severity="${3:-INFO}"
+    local timestamp
+    timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+    # Ensure log directory exists
+    mkdir -p "$RALPH_DIR"
+
+    # Escape details for JSON (basic escaping)
+    local safe_details
+    safe_details=$(printf '%s' "$details" | sed 's/"/\\"/g' | tr '\n' ' ' | cut -c1-200)
+
+    # Structured JSON logging
+    echo "{\"timestamp\":\"$timestamp\",\"event\":\"$event_type\",\"severity\":\"$severity\",\"details\":\"$safe_details\",\"pid\":$$}" >> "$SECURITY_LOG"
+
+    # Rotate logs if > 10MB
+    if [ -f "$SECURITY_LOG" ]; then
+        local LOG_SIZE
+        LOG_SIZE=$(stat -f%z "$SECURITY_LOG" 2>/dev/null || stat -c%s "$SECURITY_LOG" 2>/dev/null || echo 0)
+        if [ "$LOG_SIZE" -gt 10485760 ]; then
+            mv "$SECURITY_LOG" "${SECURITY_LOG}.1"
+        fi
+    fi
+}
+
 IMPROVEMENTS_DIR="${RALPH_DIR}/improvements"
 CONFIG_DIR="${RALPH_DIR}/config"
 HOOKS_DIR="${HOME}/.claude/hooks"
@@ -975,6 +1030,16 @@ cmd_image() {
             exit 1
         fi
 
+        # v2.24.2 HIGH-3 FIX: Post-download size check (decompression bomb protection)
+        # curl --max-filesize only checks Content-Length header, not actual decompressed size
+        local FILE_SIZE
+        FILE_SIZE=$(stat -f%z "$TEMP_IMAGE" 2>/dev/null || stat -c%s "$TEMP_IMAGE" 2>/dev/null)
+        if [ "$FILE_SIZE" -gt 20971520 ]; then
+            log_error "Downloaded file exceeds 20MB after decompression: $FILE_SIZE bytes"
+            rm -f "$TEMP_IMAGE"
+            exit 1
+        fi
+
         # Validate MIME type using file command
         local MIME_TYPE
         MIME_TYPE=$(file -b --mime-type "$TEMP_IMAGE" 2>/dev/null)
@@ -984,39 +1049,57 @@ cmd_image() {
             exit 1
         fi
 
+        # v2.24.2 HIGH-3 FIX: Optional pixel dimension check (prevents pixel bombs)
+        # Only run if ImageMagick's identify is available
+        if command -v identify &>/dev/null; then
+            local DIMENSIONS
+            DIMENSIONS=$(identify -format "%w %h" "$TEMP_IMAGE" 2>/dev/null || echo "0 0")
+            local WIDTH HEIGHT
+            read -r WIDTH HEIGHT <<< "$DIMENSIONS"
+            if [ "${WIDTH:-0}" -gt 10000 ] || [ "${HEIGHT:-0}" -gt 10000 ]; then
+                log_error "Image dimensions too large: ${WIDTH}x${HEIGHT} (max 10000x10000)"
+                rm -f "$TEMP_IMAGE"
+                exit 1
+            fi
+        fi
+
         # Log validated file info
-        local FILE_SIZE
-        FILE_SIZE=$(stat -f%z "$TEMP_IMAGE" 2>/dev/null || stat -c%s "$TEMP_IMAGE" 2>/dev/null)
         local SIZE_MB=$((FILE_SIZE / 1048576))
         log_info "Image validated: ${SIZE_MB}MB, type: $MIME_TYPE"
 
         # Use temp file instead of URL
         IMAGE_SOURCE="$TEMP_IMAGE"
     else
-        # v2.24.1 Fix 2: Path allowlist with user confirmation
-        if [[ "$IMAGE_SOURCE" =~ ^/ ]]; then
-            local PROJECT_ROOT
-            PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+        # v2.24.2 HIGH-2 FIX: Validate CANONICAL path after symlink resolution
+        # First resolve the path to get canonical location
+        local RAW_PATH="$IMAGE_SOURCE"
+        IMAGE_SOURCE=$(validate_path "$IMAGE_SOURCE")
 
-            # Allow: project directory, /tmp, RALPH_TMPDIR
-            if [[ ! "$IMAGE_SOURCE" =~ ^${PROJECT_ROOT} ]] && \
-               [[ ! "$IMAGE_SOURCE" =~ ^/tmp ]] && \
-               [[ ! "$IMAGE_SOURCE" =~ ^${RALPH_TMPDIR:-/tmp/ralph} ]]; then
-                log_warn "Image is outside project directory: $IMAGE_SOURCE"
-                log_info "Project root: $PROJECT_ROOT"
-                echo ""
-                read -p "Allow access to this file? [y/N]: " -n 1 -r CONFIRM
-                echo ""
-                if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
-                    log_error "Access denied by user"
-                    exit 1
-                fi
-                log_info "External file access approved by user"
+        # v2.24.1 Fix 2 + v2.24.2 HIGH-2: Path allowlist on CANONICAL path
+        local PROJECT_ROOT
+        PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+
+        # Allow: project directory, /tmp, RALPH_TMPDIR
+        # SECURITY: Check canonical path (after symlink resolution) not raw input
+        if [[ ! "$IMAGE_SOURCE" =~ ^${PROJECT_ROOT} ]] && \
+           [[ ! "$IMAGE_SOURCE" =~ ^/tmp ]] && \
+           [[ ! "$IMAGE_SOURCE" =~ ^${RALPH_TMPDIR:-/tmp/ralph} ]]; then
+            log_warn "Resolved path outside allowed directories: $IMAGE_SOURCE"
+            if [ "$RAW_PATH" != "$IMAGE_SOURCE" ]; then
+                log_warn "Original input: $RAW_PATH (symlink resolved)"
             fi
+            log_info "Project root: $PROJECT_ROOT"
+            echo ""
+            read -p "Allow access to this file? [y/N]: " -n 1 -r CONFIRM
+            echo ""
+            if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
+                log_error "Access denied by user"
+                exit 1
+            fi
+            log_info "External file access approved by user"
         fi
 
-        # Local file - validate path and size
-        IMAGE_SOURCE=$(validate_path "$IMAGE_SOURCE")
+        # Local file - path already validated above
         if [ ! -f "$IMAGE_SOURCE" ]; then
             log_error "File not found: $IMAGE_SOURCE"
             exit 1

@@ -1,8 +1,18 @@
-# Multi-Agent Ralph v2.24.1
+# Multi-Agent Ralph v2.24.2
 
 Orchestration with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement, and 9-language quality gates.
 
-## v2.24.1 Key Changes (Security Hardening)
+## v2.24.2 Key Changes (Complete Security Hardening)
+
+| Fix | CWE | Severity | Description |
+|-----|-----|----------|-------------|
+| Command Substitution Block | CWE-78 | HIGH | Block `$()` and backticks before path expansion |
+| Canonical Path Validation | CWE-59 | HIGH | Validate resolved path after symlink resolution |
+| Decompression Bomb Protection | CWE-400 | HIGH | Post-download size check + pixel dimension validation |
+| Structured Security Logging | CWE-778 | MEDIUM | JSON audit trail in `~/.ralph/security-audit.log` |
+| Tmpdir Permission Verification | CWE-362 | MEDIUM | TOCTOU race condition mitigation |
+
+## v2.24.1 Security Hardening
 
 | Fix | CWE | Description |
 |-----|-----|-------------|

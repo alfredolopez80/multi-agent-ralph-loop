@@ -1,6 +1,6 @@
-# 🎭 Multi-Agent Ralph Wiggum v2.24.1
+# 🎭 Multi-Agent Ralph Wiggum v2.24.2
 
-![Version](https://img.shields.io/badge/version-2.24.1-blue)
+![Version](https://img.shields.io/badge/version-2.24.2-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -8,6 +8,26 @@
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
 A sophisticated multi-agent orchestration system for Claude Code that coordinates multiple AI models (Claude, Codex CLI, Gemini CLI, MiniMax) with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement capabilities, and comprehensive quality gates.
+
+## 🌟 What's New in v2.24.2
+
+**Complete Security Hardening** - All HIGH and MEDIUM findings from multi-agent security audit addressed:
+
+| Fix | CWE | Severity | Description |
+|-----|-----|----------|-------------|
+| Command Substitution Block | CWE-78 | HIGH | Block `$()` and backticks before path expansion |
+| Canonical Path Validation | CWE-59 | HIGH | Validate resolved path after symlink resolution |
+| Decompression Bomb Protection | CWE-400 | HIGH | Post-download size check + pixel dimension validation |
+| Structured Security Logging | CWE-778 | MEDIUM | JSON audit trail in `~/.ralph/security-audit.log` |
+| Tmpdir Permission Verification | CWE-362 | MEDIUM | TOCTOU race condition mitigation |
+
+### Security Features (v2.24.2)
+
+- **Command Substitution Blocking**: Pre-validation blocks `$()` and backticks before any shell expansion
+- **Symlink-Aware Path Validation**: Allowlist checks canonical path AFTER symlink resolution
+- **Decompression Bomb Protection**: Post-download size check + optional ImageMagick dimension check (max 10000x10000)
+- **Structured Security Logging**: JSON audit trail at `~/.ralph/security-audit.log` with auto-rotation
+- **Tmpdir Permission Verification**: Validates 700 permissions immediately after creation
 
 ## 🌟 What's New in v2.24.1
 
@@ -19,13 +39,6 @@ A sophisticated multi-agent orchestration system for Claude Code that coordinate
 | Path Allowlist | CWE-22 | Interactive confirmation for files outside project |
 | Prompt Injection | CWE-94 | Heredoc blocks with SECURITY INSTRUCTION markers |
 | Doc Guardrails | CWE-1325 | Prompt injection warnings in slash commands |
-
-### Security Features (v2.24.1)
-
-- **URL Image Validation**: `curl --max-filesize` + `file --mime-type` validation
-- **Path Allowlist**: Automatic allow for project root, `/tmp`, `RALPH_TMPDIR`
-- **Prompt Injection Mitigation**: Triple-quote wrapping + security instructions
-- **Documentation Guardrails**: Security sections in `/minimax-search` and `/image-analyze`
 
 ## 🌟 What's New in v2.24
 
