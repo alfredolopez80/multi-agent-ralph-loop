@@ -1,6 +1,39 @@
-# Multi-Agent Ralph v2.22
+# Multi-Agent Ralph v2.23
 
 Orchestration with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement, and 9-language quality gates.
+
+## v2.23 Key Changes
+
+- **AST-GREP MCP**: Structural code search via MCP (~75% less tokens)
+- **HYBRID SEARCH**: Combines ast-grep (patterns) + Explore agent (semantic)
+- **SEARCH STRATEGY**: Use /ast-search for intelligent tool selection
+- **TOKEN OPTIMIZATION**: AST-based search reduces token usage significantly
+
+### Search Tools (v2.23)
+
+| Query Type | Tool | Example | Token Savings |
+|------------|------|---------|---------------|
+| Exact pattern | ast-grep MCP | `console.log($MSG)` | ~75% less |
+| Code structure | ast-grep MCP | `async function $NAME` | ~75% less |
+| Semantic/context | Explore agent | "authentication functions" | Variable |
+| Hybrid | /ast-search | Combines both | Optimized |
+
+### Pattern Syntax
+
+| Pattern | Meaning | Example |
+|---------|---------|---------|
+| `$VAR` | Single AST node | `console.log($MSG)` |
+| `$$$` | Multiple nodes | `function($$$)` |
+| `$$VAR` | Optional nodes | `async $$AWAIT function` |
+
+```bash
+# CLI usage
+ralph ast 'console.log($MSG)' src/
+ralph ast 'async function $NAME' .
+
+# Slash command (hybrid)
+/ast-search "authentication functions"
+```
 
 ## v2.22 Key Changes
 
@@ -14,7 +47,7 @@ Orchestration with **automatic planning**, **intensive clarification**, **git wo
 | Category | Startup | On-Demand | Blocking |
 |----------|---------|-----------|----------|
 | Critical (claude, jq, git) | Warning | Error + Exit | Yes |
-| Feature (wt, gh, mmc, codex, gemini) | Info | Error + Exit | When needed |
+| Feature (wt, gh, mmc, codex, gemini, sg) | Info | Error + Exit | When needed |
 | Quality Gates (9 languages) | Count | Warning | No (graceful) |
 
 ### Quality Gate Tools (9 Languages)
