@@ -1,4 +1,31 @@
 {
+  "version": "2.22.0",
+  "model_by_task": {
+    "exploration": {
+      "model": "minimax",
+      "description": "Research, exploration, docs - large context, low cost",
+      "cli": "mmc --query",
+      "context_window": "1M+ tokens"
+    },
+    "implementation": {
+      "model": "sonnet",
+      "description": "Features, refactors, tests - balanced quality/speed",
+      "cli": "claude --print -m sonnet",
+      "context_window": "200K tokens"
+    },
+    "review": {
+      "model": "opus",
+      "description": "Pre-merge critical review - surgical precision",
+      "cli": "claude --print -m opus",
+      "context_window": "200K tokens"
+    },
+    "validation": {
+      "model": "minimax",
+      "description": "Second opinion, parallel review - high quality at 8% cost",
+      "cli": "mmc --query",
+      "context_window": "1M+ tokens"
+    }
+  },
   "iteration_limits": {
     "claude_sonnet": 15,
     "claude_opus": 15,
@@ -8,17 +35,35 @@
   "model_routing": {
     "complexity_1_2": "minimax_lightning",
     "complexity_3_4": "minimax_m21",
-    "complexity_5_6": "sonnet_with_codex_gemini",
-    "complexity_7_8": "opus_with_sonnet_clis",
-    "complexity_9_10": "opus_thinking"
+    "complexity_5_6": "sonnet",
+    "complexity_7_8": "opus",
+    "complexity_9_10": "opus"
+  },
+  "subagent_models": {
+    "orchestrator": "opus",
+    "security-auditor": "opus",
+    "code-reviewer": "sonnet",
+    "test-architect": "sonnet",
+    "debugger": "opus",
+    "refactorer": "sonnet",
+    "docs-writer": "minimax",
+    "frontend-reviewer": "sonnet",
+    "minimax-reviewer": "minimax"
   },
   "cost_comparison": {
-    "claude_sonnet": {"input": 3.00, "output": 15.00},
-    "minimax_m21": {"input": 0.30, "output": 1.20},
-    "minimax_lightning": {"input": 0.15, "output": 0.60}
+    "claude_opus": {"input": 5.00, "output": 25.00, "relative": "baseline"},
+    "claude_sonnet": {"input": 3.00, "output": 15.00, "relative": "60%"},
+    "minimax_m21": {"input": 0.30, "output": 1.20, "relative": "8%"},
+    "minimax_lightning": {"input": 0.15, "output": 0.60, "relative": "4%"}
   },
   "adversarial": {
     "consensus_required": 2,
     "models": ["claude", "codex", "gemini"]
+  },
+  "efficiency_notes": {
+    "haiku_not_recommended": "Rework rate >30% cancels cost savings for code tasks",
+    "minimax_surprise": "74% SWE-bench = Opus quality at 8% cost",
+    "sonnet_sweet_spot": "Best balance for 85% of implementation tasks",
+    "opus_surgical": "Use for final review - catches bugs others miss"
   }
 }
