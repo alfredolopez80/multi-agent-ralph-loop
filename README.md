@@ -1,6 +1,6 @@
-# 🎭 Multi-Agent Ralph Wiggum v2.24
+# 🎭 Multi-Agent Ralph Wiggum v2.24.1
 
-![Version](https://img.shields.io/badge/version-2.24.0-blue)
+![Version](https://img.shields.io/badge/version-2.24.1-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -8,6 +8,24 @@
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
 A sophisticated multi-agent orchestration system for Claude Code that coordinates multiple AI models (Claude, Codex CLI, Gemini CLI, MiniMax) with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement capabilities, and comprehensive quality gates.
+
+## 🌟 What's New in v2.24.1
+
+**Security Hardening Release** - All findings from v2.24 security review addressed:
+
+| Fix | CWE | Description |
+|-----|-----|-------------|
+| URL Validation | CWE-20 | 20MB size limit + MIME type check for URL images |
+| Path Allowlist | CWE-22 | Interactive confirmation for files outside project |
+| Prompt Injection | CWE-94 | Heredoc blocks with SECURITY INSTRUCTION markers |
+| Doc Guardrails | CWE-1325 | Prompt injection warnings in slash commands |
+
+### Security Features (v2.24.1)
+
+- **URL Image Validation**: `curl --max-filesize` + `file --mime-type` validation
+- **Path Allowlist**: Automatic allow for project root, `/tmp`, `RALPH_TMPDIR`
+- **Prompt Injection Mitigation**: Triple-quote wrapping + security instructions
+- **Documentation Guardrails**: Security sections in `/minimax-search` and `/image-analyze`
 
 ## 🌟 What's New in v2.24
 
@@ -637,7 +655,7 @@ If you truly need to run a blocked command:
 
 ## 🧪 Testing
 
-Comprehensive test suite with **217 tests** covering all components:
+Comprehensive test suite with **244 tests** covering all components:
 
 ```bash
 # Run all tests
@@ -667,6 +685,7 @@ Comprehensive test suite with **217 tests** covering all components:
 | `mmc` CLI | 21 | API handling, JSON escaping, log permissions |
 | `quality-gates.sh` | 23 | Language detection, JSON validation, blocking modes |
 | `settings merge` | 11 | User config preservation, schema handling |
+| `v2.24.1 security` | 27 | URL validation, path allowlist, prompt injection, doc guardrails |
 
 ### Requirements
 

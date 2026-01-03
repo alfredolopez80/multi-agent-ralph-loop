@@ -1,6 +1,15 @@
-# Multi-Agent Ralph v2.24
+# Multi-Agent Ralph v2.24.1
 
 Orchestration with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement, and 9-language quality gates.
+
+## v2.24.1 Key Changes (Security Hardening)
+
+| Fix | CWE | Description |
+|-----|-----|-------------|
+| URL Validation | CWE-20 | `curl --max-filesize 20MB` + `file --mime-type` validation |
+| Path Allowlist | CWE-22 | User confirmation for files outside project root |
+| Prompt Injection | CWE-94 | Heredoc blocks + SECURITY INSTRUCTION markers |
+| Doc Guardrails | CWE-1325 | Security sections in `/minimax-search`, `/image-analyze` |
 
 ## v2.24 Key Changes
 
