@@ -1,6 +1,6 @@
-# 🎭 Multi-Agent Ralph Wiggum v2.22
+# 🎭 Multi-Agent Ralph Wiggum v2.23
 
-![Version](https://img.shields.io/badge/version-2.22.0-blue)
+![Version](https://img.shields.io/badge/version-2.23.0-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -8,6 +8,42 @@
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
 A sophisticated multi-agent orchestration system for Claude Code that coordinates multiple AI models (Claude, Codex CLI, Gemini CLI, MiniMax) with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement capabilities, and comprehensive quality gates.
+
+## 🌟 What's New in v2.23
+
+- **AST-Grep Integration**: Structural code search via MCP (~75% less tokens)
+- **Hybrid Search**: Combines ast-grep (patterns) + Explore agent (semantic)
+- **Search Strategy**: Intelligent tool selection via `/ast-search` command
+- **Token Optimization**: AST-based search reduces token usage significantly
+
+### Search Tools (v2.23)
+
+| Query Type | Tool | Example | Token Savings |
+|------------|------|---------|---------------|
+| Exact pattern | ast-grep MCP | `console.log($MSG)` | ~75% less |
+| Code structure | ast-grep MCP | `async function $NAME` | ~75% less |
+| Semantic/context | Explore agent | "authentication functions" | Variable |
+| Hybrid | /ast-search | Combines both | Optimized |
+
+### Quick Search Commands
+
+```bash
+# CLI (structural search)
+ralph ast 'console.log($MSG)' src/
+ralph ast 'async function $NAME' .
+ralph ast 'try { $BODY } catch ($E) {}' src/
+
+# Slash command (hybrid - AST + semantic)
+/ast-search "async authentication functions"
+```
+
+### Pattern Syntax
+
+| Pattern | Meaning | Example |
+|---------|---------|---------|
+| `$VAR` | Single AST node | `console.log($MSG)` |
+| `$$$` | Multiple nodes | `function($$$)` |
+| `$$VAR` | Optional nodes | `async $$AWAIT function` |
 
 ## 🌟 What's New in v2.22
 
@@ -21,7 +57,7 @@ A sophisticated multi-agent orchestration system for Claude Code that coordinate
 | Tool Category | Startup | On-Demand | Blocking |
 |--------------|---------|-----------|----------|
 | Critical (claude, jq, git) | Warning | Error + Exit | Yes |
-| Feature (wt, gh, mmc, codex, gemini) | Info | Error + Exit | When needed |
+| Feature (wt, gh, mmc, codex, gemini, sg) | Info | Error + Exit | When needed |
 | Quality Gates (9 languages) | Count | Warning | No (graceful) |
 
 ### Quality Gate Tools (9 Languages)
