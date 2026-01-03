@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # mmc - MiniMax Claude Code Wrapper
-# Version 2.21.0
+# Version 2.22.0
 # Runs Claude Code with MiniMax M2.1 backend (~8% cost)
+# v2.22: Tool validation support, 9 language quality gates
 # v2.21: Self-update, pre-merge validation, integrations health check
 # v2.20: WorkTrunk integration, multi-agent PR review support
 # Based on: https://blog.devgenius.io/claude-code-but-cheaper-and-snappy-minimax-m2-1-with-a-tiny-wrapper-7d910db93383
@@ -11,7 +12,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.21.0"
+VERSION="2.22.0"
 CONFIG_FILE="${HOME}/.ralph/config/minimax.json"
 RALPH_DIR="${HOME}/.ralph"
 
@@ -24,9 +25,10 @@ NC='\033[0m'
 
 show_help() {
     cat << 'EOF'
-mmc - MiniMax Claude Code Wrapper v2.19.0
+mmc - MiniMax Claude Code Wrapper v2.21.0
 
 Run Claude Code with MiniMax M2.1 backend (~8% of Claude's cost).
+Docs: https://platform.minimax.io/docs/guides/text-ai-coding-tools
 
 USAGE:
   mmc                     Launch Claude Code with MiniMax backend
@@ -39,6 +41,11 @@ USAGE:
   mmc --stats             Show usage statistics from logs
   mmc --version           Show version
   mmc --help              Show this help
+
+SUPPORTED MODELS (per MiniMax docs):
+  MiniMax-M2.1           Primary model (~60 tps, 74% SWE-bench)
+  MiniMax-M2.1-lightning Faster model (~100 tps)
+  MiniMax-M2             Agentic model (advanced reasoning)
 
 MODEL MAPPING:
   Claude Slot          -> MiniMax Model
@@ -53,11 +60,17 @@ ITERATION LIMITS:
   MiniMax-lightning:    60 iterations (4x Claude)
 
 COST COMPARISON:
-  Model             Input/M    Output/M    vs Claude
-  ------------------------------------------------
-  Claude Sonnet     $3.00      $15.00      baseline
-  MiniMax M2.1      $0.30      $1.20       ~8%
-  MiniMax-lightning $0.15      $0.60       ~4%
+  Model             Input/M    Output/M    vs Claude    Speed
+  ----------------------------------------------------------------
+  Claude Sonnet     $3.00      $15.00      baseline     ~50 tps
+  MiniMax M2.1      $0.30      $1.20       ~8%          ~60 tps
+  MiniMax-lightning $0.15      $0.60       ~4%          ~100 tps
+
+API NOTES (from official docs):
+  - temperature: must be in (0.0, 1.0], default: 1
+  - stop_sequences, top_k: ignored by MiniMax
+  - Supports: text, tool_use, tool_result, thinking
+  - Not supported: image, document types
 
 EXAMPLES:
   mmc                           # Launch Claude Code with MiniMax
@@ -213,15 +226,25 @@ show_status() {
         echo -e "Model:       $(jq -r '.defaultModel' "$CONFIG_FILE")"
         echo -e "Lightning:   $(jq -r '.lightningModel' "$CONFIG_FILE")"
 
-        # Test connection
+        # Test connection with a minimal messages request
         echo ""
         echo -n "API Status:  "
         local API_KEY=$(get_api_key)
         local BASE_URL=$(get_base_url)
 
-        if curl -s --max-time 5 "${BASE_URL}/v1/models" \
-            -H "Authorization: Bearer $API_KEY" | grep -q "model"; then
+        # Use messages endpoint with minimal request (MiniMax doesn't have /v1/models)
+        local TEST_RESPONSE
+        TEST_RESPONSE=$(curl -s --max-time 10 "${BASE_URL}/v1/messages" \
+            -H "Authorization: Bearer $API_KEY" \
+            -H "Content-Type: application/json" \
+            -H "anthropic-version: 2023-06-01" \
+            -d '{"model":"MiniMax-M2.1","max_tokens":1,"messages":[{"role":"user","content":"1"}]}' 2>&1)
+
+        if echo "$TEST_RESPONSE" | grep -q '"content"'; then
             echo -e "${GREEN}Connected${NC}"
+        elif echo "$TEST_RESPONSE" | grep -q '"error"'; then
+            local ERROR_MSG=$(echo "$TEST_RESPONSE" | jq -r '.error.message // "Unknown error"' 2>/dev/null)
+            echo -e "${RED}Error: $ERROR_MSG${NC}"
         else
             echo -e "${YELLOW}Unable to verify (check API key)${NC}"
         fi
@@ -235,6 +258,7 @@ show_status() {
 query() {
     local PROMPT="$1"
     local MODEL="${2:-MiniMax-M2.1}"
+    local TEMPERATURE="${3:-1}"  # Per docs: (0.0, 1.0], recommended: 1
 
     log_usage "query" "$MODEL" "${#PROMPT}"
 
@@ -248,15 +272,35 @@ query() {
     local ESCAPED_PROMPT
     ESCAPED_PROMPT=$(printf '%s' "$PROMPT" | jq -Rs '.')
 
-    curl -s "${BASE_URL}/v1/messages" \
+    # Per MiniMax docs: https://platform.minimax.io/docs/api-reference/text-anthropic-api
+    # - temperature must be in (0.0, 1.0]
+    # - stop_sequences and top_k are ignored
+    local RESPONSE
+    RESPONSE=$(curl -s --max-time 300 "${BASE_URL}/v1/messages" \
         -H "Authorization: Bearer $API_KEY" \
         -H "Content-Type: application/json" \
         -H "anthropic-version: 2023-06-01" \
         -d "{
             \"model\": \"$MODEL\",
             \"max_tokens\": 4096,
+            \"temperature\": $TEMPERATURE,
             \"messages\": [{\"role\": \"user\", \"content\": $ESCAPED_PROMPT}]
-        }" | jq -r '.content[0].text // .error.message // "Error"'
+        }" 2>&1)
+
+    # Handle response - check for thinking content too
+    local TEXT_CONTENT
+    TEXT_CONTENT=$(echo "$RESPONSE" | jq -r '
+        .content[] |
+        select(.type == "text") |
+        .text
+    ' 2>/dev/null | head -1)
+
+    if [ -n "$TEXT_CONTENT" ] && [ "$TEXT_CONTENT" != "null" ]; then
+        echo "$TEXT_CONTENT"
+    else
+        # Fallback to error message or raw response
+        echo "$RESPONSE" | jq -r '.error.message // "Error: Unable to parse response"' 2>/dev/null || echo "$RESPONSE"
+    fi
 }
 
 launch_claude_code() {
@@ -282,10 +326,17 @@ launch_claude_code() {
     echo -e "   Small/Fast: ${GREEN}$SMALL_MODEL${NC}"
     echo ""
 
+    # Environment variables per MiniMax documentation:
+    # https://platform.minimax.io/docs/guides/text-ai-coding-tools
     ANTHROPIC_API_KEY="$API_KEY" \
     ANTHROPIC_BASE_URL="$BASE_URL" \
     ANTHROPIC_MODEL="$MODEL" \
     ANTHROPIC_SMALL_FAST_MODEL="$SMALL_MODEL" \
+    ANTHROPIC_DEFAULT_SONNET_MODEL="$MODEL" \
+    ANTHROPIC_DEFAULT_OPUS_MODEL="$MODEL" \
+    ANTHROPIC_DEFAULT_HAIKU_MODEL="$SMALL_MODEL" \
+    API_TIMEOUT_MS="3000000" \
+    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC="1" \
     claude "$@"
 }
 
