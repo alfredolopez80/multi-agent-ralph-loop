@@ -214,6 +214,15 @@ WORKTREE_CONTEXT:
   path: .worktrees/ai-ralph-YYYYMMDD-feature/
   branch: ai/ralph/YYYYMMDD-feature
   isolated: true
+  # v2.21: Per-agent commit prefix for consistent commit messages
+  COMMIT_PREFIX:
+    code-reviewer: "review:"
+    security-auditor: "security:"
+    test-architect: "test:"
+    frontend-reviewer: "ui:"
+    debugger: "fix:"
+    refactorer: "refactor:"
+    docs-writer: "docs:"
 ```
 
 3. **All subagents work in the SAME worktree**:
