@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ralph - Multi-Agent Orchestrator CLI
-# Version 2.21.0
+# Version 2.22.0
+# v2.22: Tool validation (startup + on-demand), 9 language quality gates
 # v2.21: Self-update, pre-merge validation, integrations health check
 # v2.20: Git worktree + PR workflow with multi-agent review
 # v2.19: Security fixes (VULN-001, VULN-004, VULN-008), improved validation
@@ -9,7 +10,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.21.0"
+VERSION="2.22.0"
 RALPH_REPO_PATH=""  # Auto-detected if in ralph repo
 RALPH_DIR="${HOME}/.ralph"
 
@@ -110,6 +111,193 @@ NC='\033[0m'
 CLAUDE_MAX_ITER=15
 MINIMAX_MAX_ITER=30
 LIGHTNING_MAX_ITER=60
+
+# Model Configuration by Task Type (v2.21)
+# Based on efficiency analysis: quality > speed > rework > context
+EXPLORATION_MODEL="minimax"     # Research, exploration, docs - 1M context, 8% cost
+IMPLEMENTATION_MODEL="sonnet"   # Features, refactors, tests - balanced quality/speed
+REVIEW_MODEL="opus"             # Pre-merge critical review - surgical precision
+VALIDATION_MODEL="minimax"      # Second opinion, parallel review - Opus quality at 8% cost
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TOOL VALIDATION (v2.22)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Herramientas críticas - requeridas siempre
+CRITICAL_TOOLS=(
+    "claude:Claude Code CLI:brew install anthropic/tap/claude-code"
+    "jq:JSON processor:brew install jq"
+    "git:Version control:brew install git"
+)
+
+# Herramientas de features - requeridas para features específicos
+FEATURE_TOOLS=(
+    "wt:WorkTrunk (git worktree):brew install max-sixty/worktrunk/wt"
+    "gh:GitHub CLI (PR workflow):brew install gh && gh auth login"
+    "mmc:MiniMax CLI (second opinion):ralph self-update && mmc --setup"
+    "codex:Codex CLI (adversarial):npm i -g @openai/codex"
+    "gemini:Gemini CLI (research):pip install google-gemini-cli"
+)
+
+# Herramientas para Quality Gates (9 lenguajes)
+QUALITY_GATE_TOOLS=(
+    # TypeScript/JavaScript
+    "npx:Node.js package executor (TypeScript, ESLint):brew install node"
+    "typescript-language-server:TypeScript LSP:npm i -g typescript-language-server typescript"
+    # Python
+    "pyright:Python type checker:npm i -g pyright"
+    "ruff:Python linter:pip install ruff"
+    # Go
+    "go:Go compiler:brew install go"
+    "staticcheck:Go static analyzer:go install honnef.co/go/tools/cmd/staticcheck@latest"
+    # Rust
+    "cargo:Rust package manager:brew install rust"
+    # Solidity
+    "forge:Foundry (Solidity):curl -L https://foundry.paradigm.xyz | bash && foundryup"
+    "solhint:Solidity linter:npm i -g solhint"
+    # Swift
+    "swiftlint:Swift linter:brew install swiftlint"
+    # JSON/YAML
+    "yamllint:YAML linter:pip install yamllint"
+)
+
+# v2.22: Startup validation (fast, non-blocking)
+startup_validation() {
+    local MISSING_CRITICAL=()
+    local MISSING_FEATURE=()
+    local MISSING_QUALITY=()
+
+    # Check critical tools (always warn)
+    for tool_entry in "${CRITICAL_TOOLS[@]}"; do
+        local tool_name="${tool_entry%%:*}"
+        command -v "$tool_name" &>/dev/null || MISSING_CRITICAL+=("$tool_name")
+    done
+
+    # Check feature tools (informational)
+    for tool_entry in "${FEATURE_TOOLS[@]}"; do
+        local tool_name="${tool_entry%%:*}"
+        command -v "$tool_name" &>/dev/null || MISSING_FEATURE+=("$tool_name")
+    done
+
+    # Check quality gate tools (informational - 9 languages)
+    for tool_entry in "${QUALITY_GATE_TOOLS[@]}"; do
+        local tool_name="${tool_entry%%:*}"
+        command -v "$tool_name" &>/dev/null || MISSING_QUALITY+=("$tool_name")
+    done
+
+    # Critical tools - always warn (blocking for most commands)
+    if [ ${#MISSING_CRITICAL[@]} -gt 0 ]; then
+        log_error "Missing critical tools: ${MISSING_CRITICAL[*]}"
+        log_info "Run 'ralph integrations' for installation instructions"
+        echo ""
+    fi
+
+    # Feature + Quality tools - show once per session
+    if [ -z "${RALPH_STARTUP_SHOWN:-}" ]; then
+        export RALPH_STARTUP_SHOWN=1
+
+        if [ ${#MISSING_FEATURE[@]} -gt 0 ]; then
+            log_info "Feature tools not installed: ${MISSING_FEATURE[*]}"
+        fi
+
+        if [ ${#MISSING_QUALITY[@]} -gt 0 ]; then
+            log_info "Quality gate tools missing (${#MISSING_QUALITY[@]}/11): some language checks may be skipped"
+        fi
+
+        if [ ${#MISSING_FEATURE[@]} -gt 0 ] || [ ${#MISSING_QUALITY[@]} -gt 0 ]; then
+            log_info "Run 'ralph integrations' for details"
+            echo ""
+        fi
+    fi
+}
+
+# v2.22: On-demand tool validation (blocking with install instructions)
+require_tool() {
+    local TOOL_NAME="$1"
+    local FEATURE_NAME="${2:-this feature}"
+
+    command -v "$TOOL_NAME" &>/dev/null && return 0
+
+    local INSTALL_INSTRUCTIONS="" TOOL_DESC=""
+    for tool_entry in "${CRITICAL_TOOLS[@]}" "${FEATURE_TOOLS[@]}" "${QUALITY_GATE_TOOLS[@]}"; do
+        local entry_name="${tool_entry%%:*}"
+        if [ "$entry_name" = "$TOOL_NAME" ]; then
+            local remainder="${tool_entry#*:}"
+            TOOL_DESC="${remainder%%:*}"
+            INSTALL_INSTRUCTIONS="${remainder#*:}"
+            break
+        fi
+    done
+
+    echo ""
+    echo "╔═══════════════════════════════════════════════════════════════╗"
+    echo "║  ERROR: MISSING REQUIRED TOOL                                 ║"
+    echo "╠═══════════════════════════════════════════════════════════════╣"
+    echo "║                                                               ║"
+    printf "║  Tool:        %s\n" "$TOOL_NAME"
+    [ -n "$TOOL_DESC" ] && printf "║  Description: %s\n" "$TOOL_DESC"
+    printf "║  Required for: %s\n" "$FEATURE_NAME"
+    echo "║                                                               ║"
+    echo "║  Installation:                                                ║"
+    printf "║    %s\n" "$INSTALL_INSTRUCTIONS"
+    echo "║                                                               ║"
+    echo "║  After installation, run: ralph integrations                  ║"
+    echo "╚═══════════════════════════════════════════════════════════════╝"
+
+    exit 1
+}
+
+# v2.22: Require multiple tools at once
+require_tools() {
+    local FEATURE_NAME="$1"
+    shift
+    local MISSING=()
+
+    for tool in "$@"; do
+        command -v "$tool" &>/dev/null || MISSING+=("$tool")
+    done
+
+    [ ${#MISSING[@]} -eq 0 ] && return 0
+
+    echo ""
+    echo "╔═══════════════════════════════════════════════════════════════╗"
+    printf "║  ERROR: MISSING REQUIRED TOOLS FOR: %s\n" "$FEATURE_NAME"
+    echo "╠═══════════════════════════════════════════════════════════════╣"
+
+    for tool in "${MISSING[@]}"; do
+        for tool_entry in "${CRITICAL_TOOLS[@]}" "${FEATURE_TOOLS[@]}" "${QUALITY_GATE_TOOLS[@]}"; do
+            local entry_name="${tool_entry%%:*}"
+            if [ "$entry_name" = "$tool" ]; then
+                local remainder="${tool_entry#*:}"
+                printf "║  - %s: %s\n" "$tool" "${remainder%%:*}"
+                printf "║    Install: %s\n" "${remainder#*:}"
+                break
+            fi
+        done
+    done
+
+    echo "╚═══════════════════════════════════════════════════════════════╝"
+    exit 1
+}
+
+# Model CLI commands
+get_model_cli() {
+    local MODEL_TYPE="$1"
+    case "$MODEL_TYPE" in
+        exploration|validation)
+            echo "mmc --query"
+            ;;
+        implementation)
+            echo "claude --print -m sonnet"
+            ;;
+        review)
+            echo "claude --print -m opus"
+            ;;
+        *)
+            echo "claude --print -m sonnet"
+            ;;
+    esac
+}
 
 # Cleanup
 cleanup() {
@@ -339,6 +527,9 @@ run_minimax() {
 # ADVERSARIAL VALIDATION
 # ===============================================================================
 cmd_adversarial() {
+    # v2.22: Require codex and gemini tools for adversarial validation
+    require_tools "adversarial validation" "codex" "gemini"
+
     local TARGET
     TARGET=$(validate_path "$1")
     local CONSENSUS_REQUIRED=2
@@ -626,6 +817,9 @@ check_worktruck() {
 
 # Create isolated worktree for a feature/task
 cmd_worktree() {
+    # v2.22: Require wt tool
+    require_tool "wt" "git worktree workflow"
+
     local TASK
     TASK=$(validate_text_input "${1:-}")
 
@@ -684,6 +878,9 @@ cmd_worktree() {
 
 # Create PR with multi-agent review
 cmd_worktree_pr() {
+    # v2.22: Require wt and gh tools
+    require_tools "PR workflow" "wt" "gh"
+
     local BRANCH="${1:-}"
 
     if [ -z "$BRANCH" ]; then
@@ -1334,6 +1531,9 @@ cmd_integrations() {
 }
 
 cmd_minimax() {
+    # v2.22: Require mmc tool
+    require_tool "mmc" "MiniMax second opinion"
+
     local QUERY
     QUERY=$(validate_text_input "$1")
     local SAFE_QUERY
@@ -1625,6 +1825,12 @@ cmd_uninstall() {
 main() {
     local CMD="${1:-help}"
     shift || true
+
+    # v2.22: Startup validation (skip for instant commands)
+    case "$CMD" in
+        help|-h|--help|version|-v|--version|status) ;;
+        *) startup_validation ;;
+    esac
 
     case "$CMD" in
         # Orchestration

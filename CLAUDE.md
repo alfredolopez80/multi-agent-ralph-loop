@@ -1,6 +1,34 @@
-# Multi-Agent Ralph v2.21
+# Multi-Agent Ralph v2.22
 
 Orchestration with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement, and 9-language quality gates.
+
+## v2.22 Key Changes
+
+- **STARTUP VALIDATION**: `startup_validation()` checks critical tools at every command
+- **ON-DEMAND VALIDATION**: `require_tool()` blocks with installation instructions
+- **TOOL CATEGORIES**: Critical, Feature, Quality Gates with appropriate validation levels
+- **CLEAR ERRORS**: ASCII box format with exact install commands
+
+### Tool Validation Behavior
+
+| Category | Startup | On-Demand | Blocking |
+|----------|---------|-----------|----------|
+| Critical (claude, jq, git) | Warning | Error + Exit | Yes |
+| Feature (wt, gh, mmc, codex, gemini) | Info | Error + Exit | When needed |
+| Quality Gates (9 languages) | Count | Warning | No (graceful) |
+
+### Quality Gate Tools (9 Languages)
+
+| Language | Tools | Install |
+|----------|-------|---------|
+| TypeScript/JavaScript | npx, tsc | `brew install node` |
+| Python | pyright, ruff | `npm i -g pyright && pip install ruff` |
+| Go | go, staticcheck | `brew install go` |
+| Rust | cargo | `brew install rust` |
+| Solidity | forge, solhint | `foundryup && npm i -g solhint` |
+| Swift | swiftlint | `brew install swiftlint` |
+| JSON | jq | `brew install jq` |
+| YAML | yamllint | `pip install yamllint` |
 
 ## v2.21 Key Changes
 
@@ -8,6 +36,28 @@ Orchestration with **automatic planning**, **intensive clarification**, **git wo
 - **PRE-MERGE VALIDATION**: `ralph pre-merge` validates shellcheck + versions + tests before PR
 - **INTEGRATIONS CHECK**: `ralph integrations` shows status of all tools (Greptile always OPTIONAL)
 - **COMMIT PREFIX**: Per-agent commit prefixes for consistent commit messages (security:, test:, ui:, etc.)
+- **MODEL BY TASK**: Optimized model selection based on efficiency analysis (see below)
+
+## Model Configuration by Task Type (v2.21)
+
+Based on efficiency analysis prioritizing: **quality > speed > rework > context**
+
+| Task Type | Model | Why |
+|-----------|-------|-----|
+| **Exploration** | MiniMax | 1M context, 8% cost, 74% SWE-bench |
+| **Implementation** | Sonnet | Balanced quality/speed for 85% of tasks |
+| **Review** | Opus | Surgical precision, catches bugs others miss |
+| **Validation** | MiniMax | Second opinion at Opus quality, 8% cost |
+
+```bash
+# Environment variables in ralph
+EXPLORATION_MODEL="minimax"     # Research, docs
+IMPLEMENTATION_MODEL="sonnet"   # Features, tests
+REVIEW_MODEL="opus"             # Pre-merge critical
+VALIDATION_MODEL="minimax"      # Parallel review
+```
+
+**Why NOT Haiku?** Rework rate >30% cancels cost savings for code tasks.
 
 ## v2.20 Key Changes
 
@@ -71,6 +121,66 @@ Orchestration with **automatic planning**, **intensive clarification**, **git wo
 | MiniMax M2.1 | **30** | Standard (2x) |
 | MiniMax-lightning | **60** | Extended (4x) |
 
+## CRITICAL: Ralph Loop Pattern
+
+**ALL tasks, subagents, tools, and MCPs MUST follow the Ralph Loop pattern:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    RALPH LOOP PATTERN                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   ┌──────────┐    ┌──────────────┐    ┌─────────────────┐      │
+│   │ EXECUTE  │───▶│   VALIDATE   │───▶│ Quality Passed? │      │
+│   │   Task   │    │ (hooks/gates)│    └────────┬────────┘      │
+│   └──────────┘    └──────────────┘             │               │
+│                                          NO ◀──┴──▶ YES        │
+│                                           │         │          │
+│                          ┌────────────────┘         │          │
+│                          ▼                          ▼          │
+│                   ┌─────────────┐          ┌──────────────┐    │
+│                   │  ITERATE    │          │ VERIFIED_DONE│    │
+│                   │ (max 15/30) │          │   (output)   │    │
+│                   └──────┬──────┘          └──────────────┘    │
+│                          │                                     │
+│                          └──────────▶ Back to EXECUTE          │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Iteration Limits by Model:**
+| Model | Max Iterations | Rationale |
+|-------|----------------|-----------|
+| Claude (Sonnet/Opus) | **15** | Complex reasoning, higher accuracy per iteration |
+| MiniMax M2.1 | **30** | Good quality at 8% cost, needs more iterations |
+| MiniMax-lightning | **60** | Fast model, compensate with more iterations |
+
+**Quality Hooks (automatic enforcement):**
+- `quality-gates.sh` → Post-Edit/Write: tsc, eslint, pyright, ruff, etc. (9 languages)
+- `git-safety-guard.py` → Pre-Bash: validates git commands for safety
+
+**Subagent Configuration:**
+```yaml
+# Primary: Sonnet manages all Task() subagents
+Task:
+  subagent_type: "general-purpose"
+  model: "sonnet"  # MANDATORY - Haiku causes infinite retries
+  run_in_background: true
+  prompt: "Primary task execution"
+
+# Secondary: MiniMax for second opinion / validation
+Task:
+  subagent_type: "minimax-reviewer"
+  model: "sonnet"  # Sonnet MANAGES the call to mmc
+  run_in_background: true
+  prompt: 'mmc --query "Second opinion on: $TOPIC"'
+```
+
+**Why Sonnet + MiniMax?**
+- **Sonnet** (60% cost): Manages subagents reliably, no infinite loops
+- **MiniMax** (8% cost): Second opinion with Opus-level quality (74% SWE-bench)
+- **Haiku** (NOT recommended): 30%+ rework rate cancels cost savings
+
 ## Quick Commands
 
 ```bash
@@ -132,18 +242,23 @@ AskUserQuestion:
 ExitPlanMode: {}
 ```
 
-## Agents (9)
+## Agents (9) with Model Assignment
 
 ```bash
+# Critical tasks (Opus - surgical precision)
 @orchestrator       # Opus - Coordinator (uses EnterPlanMode + AskUserQuestion)
-@security-auditor
-@code-reviewer
-@test-architect
-@debugger           # Opus
-@refactorer
-@docs-writer
-@frontend-reviewer  # Opus
-@minimax-reviewer   # Fallback
+@security-auditor   # Opus - Security requires maximum accuracy
+@debugger           # Opus - Bug detection needs deep reasoning
+
+# Implementation tasks (Sonnet - balanced)
+@code-reviewer      # Sonnet - Balanced for code reviews
+@test-architect     # Sonnet - Test generation
+@refactorer         # Sonnet - Refactoring
+@frontend-reviewer  # Sonnet - UI/UX reviews
+
+# Cost-effective tasks (MiniMax - 8% cost)
+@docs-writer        # MiniMax - Long context for documentation
+@minimax-reviewer   # MiniMax - Second opinion/validation
 ```
 
 ## Skills (v2.20)

@@ -1,6 +1,6 @@
-# 🎭 Multi-Agent Ralph Wiggum v2.21
+# 🎭 Multi-Agent Ralph Wiggum v2.22
 
-![Version](https://img.shields.io/badge/version-2.21.0-blue)
+![Version](https://img.shields.io/badge/version-2.22.0-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -8,6 +8,73 @@
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
 A sophisticated multi-agent orchestration system for Claude Code that coordinates multiple AI models (Claude, Codex CLI, Gemini CLI, MiniMax) with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement capabilities, and comprehensive quality gates.
+
+## 🌟 What's New in v2.22
+
+- **Startup Validation**: Fast check at every command warns about missing tools
+- **On-Demand Validation**: Blocking error with installation instructions when tool needed
+- **Tool Categories**: Critical (always), Feature (when needed), Quality Gates (9 languages)
+- **Clear Error Messages**: ASCII box with exact installation command
+
+### Validation Behavior
+
+| Tool Category | Startup | On-Demand | Blocking |
+|--------------|---------|-----------|----------|
+| Critical (claude, jq, git) | Warning | Error + Exit | Yes |
+| Feature (wt, gh, mmc, codex, gemini) | Info | Error + Exit | When needed |
+| Quality Gates (9 languages) | Count | Warning | No (graceful) |
+
+### Quality Gate Tools (9 Languages)
+
+| Language | Tools | Install |
+|----------|-------|---------|
+| TypeScript/JavaScript | npx, tsc, eslint | `brew install node` |
+| Python | pyright, ruff | `npm i -g pyright && pip install ruff` |
+| Go | go vet, staticcheck | `brew install go` |
+| Rust | cargo clippy | `brew install rust` |
+| Solidity | forge, solhint | `foundryup && npm i -g solhint` |
+| Swift | swiftlint | `brew install swiftlint` |
+| JSON | jq | `brew install jq` |
+| YAML | yamllint | `pip install yamllint` |
+
+### Ralph Loop Pattern
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    RALPH LOOP PATTERN                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   ┌──────────┐    ┌──────────────┐    ┌─────────────────┐      │
+│   │ EXECUTE  │───▶│   VALIDATE   │───▶│ Quality Passed? │      │
+│   │   Task   │    │ (hooks/gates)│    └────────┬────────┘      │
+│   └──────────┘    └──────────────┘             │               │
+│                                          NO ◀──┴──▶ YES        │
+│                                           │         │          │
+│                          ┌────────────────┘         │          │
+│                          ▼                          ▼          │
+│                   ┌─────────────┐          ┌──────────────┐    │
+│                   │  ITERATE    │          │ VERIFIED_DONE│    │
+│                   │ (max 15/30) │          │   (output)   │    │
+│                   └──────┬──────┘          └──────────────┘    │
+│                          └──────────▶ Back to EXECUTE          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Model Architecture
+
+```
+┌────────────────────────────────────────────────────────────┐
+│  PRIMARY (Sonnet manages)  │  SECONDARY (8% cost)         │
+├────────────────────────────┼───────────────────────────────┤
+│  Claude Opus/Sonnet        │  MiniMax M2.1                │
+│  Codex GPT-5               │  (Second opinion)            │
+│  Gemini 2.5 Pro            │  (Independent validation)    │
+├────────────────────────────┼───────────────────────────────┤
+│  Implementation            │  Validation                  │
+│  Testing                   │  Catch missed issues         │
+│  Documentation             │  Opus quality @ 8% cost      │
+└────────────────────────────┴───────────────────────────────┘
+```
 
 ## 🌟 What's New in v2.21
 
