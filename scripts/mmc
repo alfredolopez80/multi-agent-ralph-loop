@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # mmc - MiniMax Claude Code Wrapper
-# Version 2.19.0
+# Version 2.20.0
 # Runs Claude Code with MiniMax M2.1 backend (~8% cost)
-# v2.19: Security fixes (VULN-005, VULN-008), improved log file permissions
+# v2.20: WorkTrunk integration, multi-agent PR review support
 # Based on: https://blog.devgenius.io/claude-code-but-cheaper-and-snappy-minimax-m2-1-with-a-tiny-wrapper-7d910db93383
 
 set -euo pipefail
@@ -10,7 +10,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.19.0"
+VERSION="2.20.0"
 CONFIG_FILE="${HOME}/.ralph/config/minimax.json"
 RALPH_DIR="${HOME}/.ralph"
 

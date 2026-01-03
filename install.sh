@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# install.sh - Multi-Agent Ralph Wiggum v2.19 Global Installer
+# install.sh - Multi-Agent Ralph Wiggum v2.20 Global Installer
 # Installs ralph CLI globally and integrates with Claude Code
+# v2.20: Git worktree + PR workflow with multi-agent review (Claude + Codex)
 # v2.19: Security hardening (VULN-001 to VULN-008 fixes), improved file permissions
 
 set -euo pipefail
@@ -8,7 +9,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.19.0"
+VERSION="2.20.0"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Installation directories
@@ -47,6 +48,8 @@ check_dependencies() {
     command -v claude &>/dev/null || OPTIONAL_MISSING+=("claude (Claude Code CLI)")
     command -v codex &>/dev/null || OPTIONAL_MISSING+=("codex (Codex CLI)")
     command -v gemini &>/dev/null || OPTIONAL_MISSING+=("gemini (Gemini CLI)")
+    command -v wt &>/dev/null || OPTIONAL_MISSING+=("wt (WorkTrunk - for git worktree workflow)")
+    command -v gh &>/dev/null || OPTIONAL_MISSING+=("gh (GitHub CLI - for PR workflow)")
 
     # Language-specific (optional)
     command -v npx &>/dev/null || OPTIONAL_MISSING+=("npx (Node.js - for TypeScript/ESLint)")
@@ -463,9 +466,10 @@ main() {
     echo "    • mmc (MiniMax wrapper) to ~/.local/bin/"
     echo "    • 9 agents to ~/.claude/agents/"
     echo "    • 15 commands to ~/.claude/commands/"
-    echo "    • 3 skills to ~/.claude/skills/"
+    echo "    • 4 skills to ~/.claude/skills/"
     echo "    • Git Safety Guard (blocks destructive commands) - ALWAYS ACTIVE"
     echo "    • Quality Gates (9-language validation) - Manual via 'ralph gates'"
+    echo "    • Git Worktree + PR Workflow (v2.20) - 'ralph worktree'"
     echo "    • Hybrid usage logging (global + per-project)"
     echo "    • Security hardening (VULN-001 to VULN-008 fixes) - v2.19"
     echo "    • Shell aliases to ~/.zshrc or ~/.bashrc"
@@ -517,6 +521,11 @@ main() {
         echo "  5. View usage statistics (hybrid logging):"
         echo "     ${CYAN}mmc --stats all${NC}      # Global + project"
         echo "     ${CYAN}mmc --stats project${NC}  # This repo only"
+        echo ""
+        echo "  6. (v2.20) Install WorkTrunk for git worktree workflow:"
+        echo "     ${CYAN}brew install max-sixty/worktrunk/wt${NC}"
+        echo "     ${CYAN}wt config shell install${NC}"
+        echo "     ${CYAN}ralph worktree \"your feature\"${NC}"
         echo ""
         echo "  To uninstall:"
         echo "     ${CYAN}ralph --uninstall${NC}  or  ${CYAN}./uninstall.sh${NC}"

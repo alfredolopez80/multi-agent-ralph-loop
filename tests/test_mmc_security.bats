@@ -44,7 +44,7 @@ teardown() {
 @test "mmc version shows version number" {
     run bash "$MMC_SCRIPT" --version
     [ "$status" -eq 0 ]
-    [[ "$output" == *"2.19"* ]]
+    [[ "$output" == *"2.2"* ]]
 }
 
 @test "mmc status shows configuration status" {

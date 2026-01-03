@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # ralph - Multi-Agent Orchestrator CLI
-# Version 2.19.0
+# Version 2.20.0
+# v2.20: Git worktree + PR workflow with multi-agent review
 # v2.19: Security fixes (VULN-001, VULN-004, VULN-008), improved validation
 set -euo pipefail
 
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.19.0"
+VERSION="2.20.0"
 RALPH_DIR="${HOME}/.ralph"
 
 # SECURITY: Use mktemp for unpredictable temp directory
@@ -129,12 +130,21 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 # ===============================================================================
 show_help() {
     cat << 'EOF'
-ralph - Multi-Agent Orchestrator CLI v2.19.0
+ralph - Multi-Agent Orchestrator CLI v2.20.0
 
 ORCHESTRATION:
   ralph orch "task"          Full orchestration (clarify->classify->execute->validate->retrospective)
   ralph loop "task"          Loop until VERIFIED_DONE (max 15 iter Claude, 30 MiniMax)
   ralph clarify "task"       Generate clarification questions
+
+GIT WORKTREE + PR WORKFLOW (v2.20):
+  ralph worktree "task"      Create isolated worktree for feature
+  ralph worktree-pr          Create PR with Claude + Codex review
+  ralph worktree-merge <pr>  Merge approved PR and cleanup
+  ralph worktree-fix <pr>    Apply fixes from review comments
+  ralph worktree-close <pr>  Close PR and cleanup without merge
+  ralph worktree-status      Show all worktrees and PR status
+  ralph worktree-cleanup     Clean up merged worktrees
 
 REVIEW (6 SUBAGENTS):
   ralph review <path>        Multi-model review
@@ -190,6 +200,9 @@ ALIASES (add to ~/.zshrc or ~/.bashrc):
   alias rhc='ralph clarify'
   alias rhret='ralph retrospective'
   alias rhi='ralph improvements'
+  alias rhw='ralph worktree'
+  alias rhwp='ralph worktree-pr'
+  alias rhws='ralph worktree-status'
 
 EXAMPLES:
   ralph orch "Implement OAuth2 with Google"
@@ -198,6 +211,12 @@ EXAMPLES:
   ralph adversarial src/payments/
   ralph loop "Fix all TypeScript errors"
   ralph retrospective
+
+  # Worktree workflow (v2.20)
+  ralph worktree "implement user authentication"
+  cd .worktrees/ai-ralph-*/  # Work in isolated worktree
+  ralph worktree-pr          # Create PR with multi-agent review
+  ralph worktree-merge 123   # Merge approved PR
 EOF
 }
 
@@ -579,6 +598,446 @@ cmd_research() {
     cat "$RALPH_TMPDIR/gemini_research.txt"
 }
 
+# ===============================================================================
+# GIT WORKTREE + PR WORKFLOW (v2.20)
+# ===============================================================================
+WORKTREES_DIR=".worktrees"
+
+# Verify WorkTrunk is installed
+check_worktruck() {
+    if ! command -v wt &> /dev/null; then
+        log_error "WorkTrunk (wt) is required for git worktree workflow."
+        log_info "Install with: brew install max-sixty/worktrunk/wt"
+        log_info "Then run: wt config shell install && source ~/.zshrc"
+        return 1
+    fi
+    return 0
+}
+
+# Create isolated worktree for a feature/task
+cmd_worktree() {
+    local TASK
+    TASK=$(validate_text_input "${1:-}")
+
+    if [ -z "$TASK" ]; then
+        log_error "Usage: ralph worktree <task-description>"
+        log_info "Example: ralph worktree 'implement oauth authentication'"
+        return 1
+    fi
+
+    check_worktruck || return 1
+
+    # Generate branch name from task
+    local SANITIZED_TASK
+    SANITIZED_TASK=$(echo "$TASK" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | cut -c1-40)
+    local BRANCH_NAME="ai/ralph/$(date +%Y%m%d)-${SANITIZED_TASK}"
+
+    log_info "Creating worktree for: $TASK"
+    log_info "   Branch: $BRANCH_NAME"
+    log_info "   Location: $WORKTREES_DIR/"
+
+    # Ensure .worktrees directory exists
+    mkdir -p "$WORKTREES_DIR"
+
+    # Create worktree using WorkTrunk
+    if ! wt switch -c "$BRANCH_NAME"; then
+        log_error "Failed to create worktree"
+        return 1
+    fi
+
+    # Get the worktree path
+    local WT_PATH
+    WT_PATH=$(git worktree list | grep "$BRANCH_NAME" | awk '{print $1}')
+
+    if [ -z "$WT_PATH" ]; then
+        log_error "Worktree created but path not found"
+        return 1
+    fi
+
+    # Apply security hardening
+    log_info "   Applying security hardening..."
+    (
+        cd "$WT_PATH" || exit 1
+        git config --worktree core.hooksPath ".git-hooks-disabled" 2>/dev/null || true
+        git config --worktree credential.helper "" 2>/dev/null || true
+        git config --worktree push.default current 2>/dev/null || true
+    )
+
+    log_success "Worktree created: $WT_PATH"
+    echo ""
+    log_info "To launch Claude in this worktree:"
+    echo "   cd $WT_PATH && claude"
+    echo ""
+    log_info "When done, create PR with:"
+    echo "   ralph worktree-pr $BRANCH_NAME"
+}
+
+# Create PR with multi-agent review
+cmd_worktree_pr() {
+    local BRANCH="${1:-}"
+
+    if [ -z "$BRANCH" ]; then
+        # Try to get current branch
+        BRANCH=$(git branch --show-current 2>/dev/null || echo "")
+        if [ -z "$BRANCH" ] || [[ ! "$BRANCH" =~ ^ai/ralph/ ]]; then
+            log_error "Usage: ralph worktree-pr <branch>"
+            log_info "Example: ralph worktree-pr ai/ralph/20260103-oauth-feature"
+            log_info ""
+            log_info "Available worktrees:"
+            git worktree list 2>/dev/null | grep -v "bare" || echo "  None found"
+            return 1
+        fi
+    fi
+
+    check_worktruck || return 1
+
+    # Verify gh is installed
+    if ! command -v gh &> /dev/null; then
+        log_error "GitHub CLI (gh) is required for PR workflow."
+        log_info "Install with: brew install gh && gh auth login"
+        return 1
+    fi
+
+    log_info "Creating PR for branch: $BRANCH"
+
+    # Switch to branch
+    log_info "   Switching to worktree..."
+    wt switch "$BRANCH" 2>/dev/null || git checkout "$BRANCH"
+
+    # Push to remote
+    log_info "   Pushing to origin..."
+    if ! git push -u origin "$BRANCH" 2>/dev/null; then
+        log_warn "   Push failed (may already exist or no changes)"
+    fi
+
+    # Generate PR title from branch name
+    local PR_TITLE
+    PR_TITLE=$(echo "$BRANCH" | sed 's|ai/ralph/[0-9]*-||' | tr '-' ' ')
+
+    # Create PR draft
+    log_info "   Creating draft PR..."
+    local PR_URL
+    if PR_URL=$(gh pr create --draft \
+        --title "feat: ${PR_TITLE}" \
+        --body "## Summary
+
+Auto-generated PR from worktree workflow.
+
+## Branch
+\`$BRANCH\`
+
+## Review
+
+Multi-agent review will be posted as comments.
+
+---
+🤖 Generated by ralph worktree-pr" 2>&1); then
+        log_success "PR created: $PR_URL"
+    else
+        log_error "Failed to create PR: $PR_URL"
+        return 1
+    fi
+
+    # Get PR number
+    local PR_NUMBER
+    PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+
+    if [ -z "$PR_NUMBER" ]; then
+        log_warn "Could not extract PR number, skipping reviews"
+        return 0
+    fi
+
+    # Multi-agent review
+    log_info "   Starting multi-agent code review..."
+    ensure_tmp
+
+    # Get diff for review
+    local DIFF_FILE="$RALPH_TMPDIR/pr_diff.txt"
+    gh pr diff "$PR_NUMBER" > "$DIFF_FILE" 2>/dev/null || git diff main..."$BRANCH" > "$DIFF_FILE"
+
+    # Claude Opus Review
+    log_info "   [1/2] Claude Opus reviewing..."
+    local CLAUDE_REVIEW
+    CLAUDE_REVIEW=$(cat "$DIFF_FILE" | claude --print -m opus -p "Review this code diff for:
+- Logic errors and edge cases
+- Code quality and maintainability
+- Potential bugs
+- Best practices violations
+
+Output format:
+## Claude Opus Review
+
+### Summary
+[Brief summary]
+
+### Issues Found
+[List any BLOCKER, CRITICAL, HIGH, MEDIUM, LOW issues]
+
+### Recommendations
+[Suggestions for improvement]
+
+If no major issues: 'APPROVED ✅'
+If blocking issues: 'BLOCKED ❌ - [reason]'" 2>&1 || echo "Claude review failed")
+
+    # Post Claude review as comment
+    if [ -n "$CLAUDE_REVIEW" ] && [ "$CLAUDE_REVIEW" != "Claude review failed" ]; then
+        gh pr comment "$PR_NUMBER" --body "$CLAUDE_REVIEW" 2>/dev/null || log_warn "Failed to post Claude review"
+        log_success "   Claude review posted"
+    fi
+
+    # Codex GPT-5 Review
+    log_info "   [2/2] Codex GPT-5 reviewing..."
+    local CODEX_REVIEW
+    if command -v codex &> /dev/null; then
+        CODEX_REVIEW=$(codex exec -m gpt-5 --reasoning high -C "$(pwd)" \
+            "Review this code diff for security vulnerabilities, performance issues, and best practices.
+             Diff file: $DIFF_FILE
+
+             Output format:
+             ## Codex GPT-5 Security Review
+
+             ### Security Analysis
+             [Security findings]
+
+             ### Performance Analysis
+             [Performance findings]
+
+             ### Verdict
+             'APPROVED ✅' or 'BLOCKED ❌ - [reason]'" 2>&1 || echo "Codex review failed")
+
+        if [ -n "$CODEX_REVIEW" ] && [ "$CODEX_REVIEW" != "Codex review failed" ]; then
+            gh pr comment "$PR_NUMBER" --body "$CODEX_REVIEW" 2>/dev/null || log_warn "Failed to post Codex review"
+            log_success "   Codex review posted"
+        fi
+    else
+        log_warn "   Codex not available, skipping security review"
+    fi
+
+    # Analyze results
+    echo ""
+    echo "==============================================================="
+    echo "  PR REVIEW SUMMARY"
+    echo "==============================================================="
+    echo ""
+    echo "  PR: $PR_URL"
+    echo "  Branch: $BRANCH"
+    echo ""
+
+    # Check for blockers
+    local HAS_BLOCKER=false
+    if echo "$CLAUDE_REVIEW" | grep -qiE "(BLOCKED|BLOCKER|CRITICAL)"; then
+        HAS_BLOCKER=true
+        log_warn "  Claude found blocking issues"
+    else
+        log_success "  Claude: APPROVED"
+    fi
+
+    if echo "$CODEX_REVIEW" | grep -qiE "(BLOCKED|BLOCKER|CRITICAL)"; then
+        HAS_BLOCKER=true
+        log_warn "  Codex found blocking issues"
+    else
+        log_success "  Codex: APPROVED"
+    fi
+
+    echo ""
+    echo "  Next steps:"
+    if [ "$HAS_BLOCKER" = true ]; then
+        log_warn "  Reviews found issues. Options:"
+        echo "    ralph worktree-fix $PR_NUMBER    # Apply fixes from review"
+        echo "    ralph worktree-close $PR_NUMBER  # Close and abandon"
+    else
+        log_success "  All reviews passed! Options:"
+        echo "    ralph worktree-merge $PR_NUMBER  # Merge PR"
+        echo "    ralph worktree-fix $PR_NUMBER    # Make additional changes"
+    fi
+    echo "==============================================================="
+}
+
+# Merge approved PR and cleanup
+cmd_worktree_merge() {
+    local PR_NUMBER="${1:-}"
+
+    if [ -z "$PR_NUMBER" ]; then
+        log_error "Usage: ralph worktree-merge <pr-number>"
+        log_info "Example: ralph worktree-merge 123"
+        return 1
+    fi
+
+    if ! command -v gh &> /dev/null; then
+        log_error "GitHub CLI (gh) is required."
+        return 1
+    fi
+
+    log_info "Merging PR #$PR_NUMBER..."
+
+    # Mark PR ready for review
+    log_info "   Marking PR as ready..."
+    gh pr ready "$PR_NUMBER" 2>/dev/null || log_warn "PR may already be ready"
+
+    # Wait for CI checks
+    log_info "   Waiting for CI checks..."
+    if ! gh pr checks "$PR_NUMBER" --watch 2>/dev/null; then
+        log_warn "   CI checks may have issues, proceeding..."
+    fi
+
+    # Merge with squash
+    log_info "   Merging with squash..."
+    if gh pr merge "$PR_NUMBER" --squash --delete-branch; then
+        log_success "PR #$PR_NUMBER merged!"
+
+        # Cleanup worktree
+        log_info "   Cleaning up worktree..."
+        local BRANCH
+        BRANCH=$(gh pr view "$PR_NUMBER" --json headRefName -q '.headRefName' 2>/dev/null || echo "")
+        if [ -n "$BRANCH" ]; then
+            wt remove "$BRANCH" 2>/dev/null || git worktree remove "$BRANCH" 2>/dev/null || true
+            git branch -d "$BRANCH" 2>/dev/null || true
+        fi
+        git worktree prune 2>/dev/null || true
+
+        log_success "Worktree cleanup complete"
+    else
+        log_error "Failed to merge PR #$PR_NUMBER"
+        return 1
+    fi
+}
+
+# Apply fixes based on review comments
+cmd_worktree_fix() {
+    local PR_NUMBER="${1:-}"
+
+    if [ -z "$PR_NUMBER" ]; then
+        log_error "Usage: ralph worktree-fix <pr-number>"
+        return 1
+    fi
+
+    if ! command -v gh &> /dev/null; then
+        log_error "GitHub CLI (gh) is required."
+        return 1
+    fi
+
+    log_info "Fetching review comments for PR #$PR_NUMBER..."
+
+    # Get PR branch
+    local BRANCH
+    BRANCH=$(gh pr view "$PR_NUMBER" --json headRefName -q '.headRefName' 2>/dev/null)
+
+    if [ -z "$BRANCH" ]; then
+        log_error "Could not find branch for PR #$PR_NUMBER"
+        return 1
+    fi
+
+    # Switch to branch
+    log_info "   Switching to: $BRANCH"
+    wt switch "$BRANCH" 2>/dev/null || git checkout "$BRANCH"
+
+    # Get comments
+    local COMMENTS
+    COMMENTS=$(gh pr view "$PR_NUMBER" --comments 2>/dev/null || echo "No comments found")
+
+    echo ""
+    echo "==============================================================="
+    echo "  REVIEW COMMENTS FOR PR #$PR_NUMBER"
+    echo "==============================================================="
+    echo "$COMMENTS" | head -100
+    echo "==============================================================="
+    echo ""
+    log_info "To apply fixes:"
+    echo "   1. Review the comments above"
+    echo "   2. Make necessary changes"
+    echo "   3. Commit: git commit -am 'fix: address review comments'"
+    echo "   4. Push: git push"
+    echo "   5. Re-run review: ralph worktree-pr $BRANCH"
+}
+
+# Close PR and cleanup without merging
+cmd_worktree_close() {
+    local PR_NUMBER="${1:-}"
+
+    if [ -z "$PR_NUMBER" ]; then
+        log_error "Usage: ralph worktree-close <pr-number>"
+        return 1
+    fi
+
+    if ! command -v gh &> /dev/null; then
+        log_error "GitHub CLI (gh) is required."
+        return 1
+    fi
+
+    log_warn "Closing PR #$PR_NUMBER without merging..."
+
+    # Get branch before closing
+    local BRANCH
+    BRANCH=$(gh pr view "$PR_NUMBER" --json headRefName -q '.headRefName' 2>/dev/null || echo "")
+
+    # Close PR
+    gh pr close "$PR_NUMBER" --delete-branch 2>/dev/null || gh pr close "$PR_NUMBER"
+
+    # Cleanup worktree
+    if [ -n "$BRANCH" ]; then
+        log_info "   Cleaning up worktree: $BRANCH"
+        wt remove "$BRANCH" 2>/dev/null || git worktree remove "$BRANCH" 2>/dev/null || true
+        git branch -D "$BRANCH" 2>/dev/null || true
+    fi
+    git worktree prune 2>/dev/null || true
+
+    log_success "PR #$PR_NUMBER closed and cleaned up"
+}
+
+# Show status of all worktrees
+cmd_worktree_status() {
+    log_info "Git Worktree Status:"
+    echo ""
+
+    if command -v wt &> /dev/null; then
+        wt list 2>/dev/null || git worktree list
+    else
+        git worktree list
+    fi
+
+    echo ""
+    log_info "Active PRs from worktrees:"
+    if command -v gh &> /dev/null; then
+        gh pr list --author "@me" --json number,title,headRefName,state \
+            --jq '.[] | select(.headRefName | startswith("ai/ralph")) | "  #\(.number) [\(.state)] \(.title)"' 2>/dev/null || echo "  None found"
+    else
+        echo "  (install gh for PR status)"
+    fi
+}
+
+# Cleanup merged worktrees
+cmd_worktree_cleanup() {
+    log_info "Cleaning up merged worktrees..."
+
+    # Find merged ai/ralph branches
+    local MERGED_BRANCHES
+    MERGED_BRANCHES=$(git branch --merged main 2>/dev/null | grep "ai/ralph" || echo "")
+
+    if [ -z "$MERGED_BRANCHES" ]; then
+        log_info "No merged ai/ralph branches found"
+    else
+        echo "$MERGED_BRANCHES" | while read -r branch; do
+            branch=$(echo "$branch" | tr -d ' *')
+            if [ -n "$branch" ]; then
+                log_info "   Removing: $branch"
+                wt remove "$branch" 2>/dev/null || git worktree remove "$branch" 2>/dev/null || true
+                git branch -d "$branch" 2>/dev/null || true
+            fi
+        done
+    fi
+
+    # Prune worktree metadata
+    git worktree prune 2>/dev/null || true
+
+    # Clean .worktrees directory if empty
+    if [ -d "$WORKTREES_DIR" ] && [ -z "$(ls -A "$WORKTREES_DIR" 2>/dev/null)" ]; then
+        rmdir "$WORKTREES_DIR" 2>/dev/null || true
+    fi
+
+    log_success "Cleanup complete"
+    cmd_worktree_status
+}
+
 cmd_minimax() {
     local QUERY
     QUERY=$(validate_text_input "$1")
@@ -929,6 +1388,29 @@ main() {
             ;;
         improvements|improve)
             cmd_improvements "$@"
+            ;;
+
+        # Git Worktree + PR Workflow (v2.20)
+        worktree)
+            cmd_worktree "$@"
+            ;;
+        worktree-pr)
+            cmd_worktree_pr "$@"
+            ;;
+        worktree-merge)
+            cmd_worktree_merge "$@"
+            ;;
+        worktree-fix)
+            cmd_worktree_fix "$@"
+            ;;
+        worktree-close)
+            cmd_worktree_close "$@"
+            ;;
+        worktree-status|wt-status)
+            cmd_worktree_status
+            ;;
+        worktree-cleanup|wt-cleanup)
+            cmd_worktree_cleanup
             ;;
 
         # Utility

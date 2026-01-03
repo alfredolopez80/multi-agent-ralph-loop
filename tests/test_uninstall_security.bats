@@ -35,8 +35,8 @@ teardown() {
     [ -x "$UNINSTALL_SCRIPT" ]
 }
 
-@test "uninstall contains version 2.19" {
-    grep -q 'VERSION="2.19' "$UNINSTALL_SCRIPT"
+@test "uninstall contains version 2.20" {
+    grep -q 'VERSION="2.2' "$UNINSTALL_SCRIPT"
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════

@@ -69,3 +69,28 @@ If disagreement → Escalate to Gemini via Task tool
 | HIGH | BLOCK - Fix before merge |
 | MEDIUM | WARN - Recommended fix |
 | LOW | INFO - Optional |
+
+## Worktree Awareness (v2.20)
+
+### Contexto de Ejecución
+
+El orquestador puede pasarte `WORKTREE_CONTEXT` indicando que trabajas en un worktree aislado:
+- **Múltiples subagentes** comparten el mismo worktree para la feature
+- Tu trabajo está aislado del branch principal
+- Los cambios se integran vía PR al finalizar toda la feature
+
+### Reglas de Operación
+
+1. **Si recibes WORKTREE_CONTEXT:**
+   - Trabajar en el path indicado
+   - Hacer commits locales frecuentes: `security: fix vulnerability`
+   - **NO pushear** - el orquestador maneja el PR
+   - Coordinar con otros subagentes si hay dependencias
+
+2. **Si NO recibes WORKTREE_CONTEXT:**
+   - Trabajar normalmente en el branch actual
+   - El orquestador ya decidió que no requiere aislamiento
+
+3. **Señalar completación:**
+   - Al terminar tu parte: "SUBAGENT_COMPLETE: security audit finished"
+   - El orquestador espera a todos antes de crear PR
