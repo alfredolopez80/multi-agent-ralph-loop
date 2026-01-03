@@ -148,7 +148,7 @@ teardown() {
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @test "install contains version number" {
-    grep -q 'VERSION="2.19' "$INSTALL_SCRIPT"
+    grep -q 'VERSION="2.2' "$INSTALL_SCRIPT"
 }
 
 @test "install documents git safety guard" {
