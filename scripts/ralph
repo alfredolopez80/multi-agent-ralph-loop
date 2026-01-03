@@ -10,7 +10,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.22.0"
+VERSION="2.23.0"
 RALPH_REPO_PATH=""  # Auto-detected if in ralph repo
 RALPH_DIR="${HOME}/.ralph"
 
@@ -137,6 +137,7 @@ FEATURE_TOOLS=(
     "mmc:MiniMax CLI (second opinion):ralph self-update && mmc --setup"
     "codex:Codex CLI (adversarial):npm i -g @openai/codex"
     "gemini:Gemini CLI (research):pip install google-gemini-cli"
+    "sg:ast-grep (structural code search):brew install ast-grep"
 )
 
 # Herramientas para Quality Gates (9 lenguajes)
@@ -320,12 +321,17 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 # ===============================================================================
 show_help() {
     cat << 'EOF'
-ralph - Multi-Agent Orchestrator CLI v2.21.0
+ralph - Multi-Agent Orchestrator CLI v2.23.0
 
 ORCHESTRATION:
   ralph orch "task"          Full orchestration (clarify->classify->execute->validate->retrospective)
   ralph loop "task"          Loop until VERIFIED_DONE (max 15 iter Claude, 30 MiniMax)
   ralph clarify "task"       Generate clarification questions
+
+SEARCH (v2.23):
+  ralph ast "pattern" [path] Structural code search via ast-grep (~75% less tokens)
+                             Examples: ralph ast 'console.log($MSG)' src/
+                                       ralph ast 'async function $NAME' .
 
 GIT WORKTREE + PR WORKFLOW (v2.20):
   ralph worktree "task"      Create isolated worktree for feature
@@ -395,6 +401,7 @@ ALIASES (add to ~/.zshrc or ~/.bashrc):
   alias rhc='ralph clarify'
   alias rhret='ralph retrospective'
   alias rhi='ralph improvements'
+  alias rhast='ralph ast'
   alias rhw='ralph worktree'
   alias rhwp='ralph worktree-pr'
   alias rhws='ralph worktree-status'
@@ -797,6 +804,48 @@ cmd_research() {
     gemini "Research best practices and current solutions for: ${SAFE_QUERY}" \
         --yolo -o text > "$RALPH_TMPDIR/gemini_research.txt" 2>&1
     cat "$RALPH_TMPDIR/gemini_research.txt"
+}
+
+# ===============================================================================
+# AST-GREP STRUCTURAL SEARCH (v2.23)
+# ===============================================================================
+
+cmd_ast() {
+    # v2.23: Require ast-grep (sg) tool
+    require_tool "sg" "structural code search"
+
+    local PATTERN="${1:-}"
+    local TARGET="${2:-.}"
+
+    if [ -z "$PATTERN" ]; then
+        echo ""
+        echo "╔═══════════════════════════════════════════════════════════════╗"
+        echo "║  AST-GREP: Structural Code Search (v2.23)                     ║"
+        echo "╠═══════════════════════════════════════════════════════════════╣"
+        echo "║                                                               ║"
+        echo "║  Usage: ralph ast <pattern> [path]                            ║"
+        echo "║                                                               ║"
+        echo "║  Examples:                                                    ║"
+        echo "║    ralph ast 'console.log(\$MSG)' src/                         ║"
+        echo "║    ralph ast 'async function \$NAME' .                         ║"
+        echo "║    ralph ast 'try { \$BODY } catch (\$E) {}' src/               ║"
+        echo "║    ralph ast 'await \$EXPR' src/                               ║"
+        echo "║                                                               ║"
+        echo "║  Pattern Syntax:                                              ║"
+        echo "║    \$VAR   - Match single node (variable, expression)          ║"
+        echo "║    \$\$\$    - Match multiple nodes (statements, args)           ║"
+        echo "║                                                               ║"
+        echo "║  Supported Languages: TypeScript, Python, Go, Rust, Java, C++ ║"
+        echo "╚═══════════════════════════════════════════════════════════════╝"
+        exit 1
+    fi
+
+    # Validate path
+    local SAFE_TARGET
+    SAFE_TARGET=$(validate_path "$TARGET")
+
+    log_info "AST Search: '$PATTERN' in $SAFE_TARGET"
+    sg --pattern "$PATTERN" "$SAFE_TARGET"
 }
 
 # ===============================================================================
@@ -1923,6 +1972,11 @@ main() {
             ;;
         integrations|int)
             cmd_integrations
+            ;;
+
+        # Search (v2.23)
+        ast|ast-grep)
+            cmd_ast "$@"
             ;;
 
         # Utility
