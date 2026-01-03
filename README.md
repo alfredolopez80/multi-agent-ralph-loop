@@ -1,21 +1,32 @@
-# 🎭 Multi-Agent Ralph Wiggum v2.19
+# 🎭 Multi-Agent Ralph Wiggum v2.20
 
-![Version](https://img.shields.io/badge/version-2.19.0-blue)
+![Version](https://img.shields.io/badge/version-2.20.0-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-A sophisticated multi-agent orchestration system for Claude Code that coordinates multiple AI models (Claude, Codex CLI, Gemini CLI, MiniMax) with **automatic planning**, **intensive clarification**, adversarial validation, self-improvement capabilities, and comprehensive quality gates.
+A sophisticated multi-agent orchestration system for Claude Code that coordinates multiple AI models (Claude, Codex CLI, Gemini CLI, MiniMax) with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement capabilities, and comprehensive quality gates.
 
-## 🌟 What's New in v2.19
+## 🌟 What's New in v2.20
+
+- **Git Worktree Workflow**: Isolated feature development via `ralph worktree "task"`
+- **Human-in-the-Loop**: Orchestrator asks user about worktree isolation (Step 2b)
+- **Multi-Agent PR Review**: Claude Opus + Codex GPT-5 review before merge
+- **One Worktree Per Feature**: Multiple subagents share same worktree
+- **WorkTrunk Integration**: Required for worktree management (`brew install max-sixty/worktrunk/wt`)
+- **8-Step Flow**: Updated orchestration with worktree decision and PR review phases
+
+See [docs/git-worktree/](docs/git-worktree/) for comprehensive documentation.
+
+### v2.19 Features (included)
 
 - **VULN-001 FIX**: `escape_for_shell()` now uses `printf %q` to prevent command injection attacks
-- **VULN-003 FIX**: Improved rm -rf regex patterns in git-safety-guard.py (blocks `.`, `../`, all non-temp paths)
-- **VULN-004 FIX**: `validate_path()` uses `realpath -e` to resolve symlinks and prevent traversal
+- **VULN-003 FIX**: Improved rm -rf regex patterns in git-safety-guard.py
+- **VULN-004 FIX**: `validate_path()` uses `realpath -e` to resolve symlinks
 - **VULN-005 FIX**: Log files now set to `chmod 600` (user-only read/write)
-- **VULN-008 FIX**: All scripts start with `umask 077` for secure file creation defaults
+- **VULN-008 FIX**: All scripts start with `umask 077` for secure file creation
 
 ### v2.17 Features (included)
 
@@ -55,14 +66,16 @@ A sophisticated multi-agent orchestration system for Claude Code that coordinate
 ┌─────────────────────────────────────────────────────────────────┐
 │                    ORCHESTRATOR (Opus)                          │
 │                                                                 │
-│  0. AUTO-PLAN  → EnterPlanMode (automatic)                     │
-│  1. CLARIFY    → AskUserQuestion (MUST_HAVE/NICE_TO_HAVE)      │
-│  2. CLASSIFY   → task-classifier (complexity 1-10)             │
-│  3. PLAN       → Write detailed plan, get approval             │
-│  4. DELEGATE   → Route to optimal model                        │
-│  5. EXECUTE    → Parallel subagents                            │
-│  6. VALIDATE   → Quality gates + Adversarial validation        │
-│  7. RETROSPECT → Self-improvement proposals                    │
+│  0. AUTO-PLAN   → EnterPlanMode (automatic)                    │
+│  1. CLARIFY     → AskUserQuestion (MUST_HAVE/NICE_TO_HAVE)     │
+│  2. CLASSIFY    → task-classifier (complexity 1-10)            │
+│  2b. WORKTREE   → Ask user: "¿Requiere worktree aislado?"      │
+│  3. PLAN        → Write detailed plan, get approval            │
+│  4. DELEGATE    → Route to optimal model                       │
+│  5. EXECUTE     → Parallel subagents (in worktree if selected) │
+│  6. VALIDATE    → Quality gates + Adversarial validation       │
+│  7. RETROSPECT  → Self-improvement proposals                   │
+│  7b. PR REVIEW  → If worktree: Claude + Codex review → merge   │
 └─────────────────────────────────────────────────────────────────┘
         │
         ▼
@@ -141,7 +154,8 @@ multi-agent-ralph-loop/
 │   └── skills/
 │       ├── ask-questions-if-underspecified/
 │       ├── task-classifier/
-│       └── retrospective/
+│       ├── retrospective/
+│       └── worktree-pr/              # Git worktree + PR workflow (v2.20)
 ├── .codex/                         # Codex CLI configuration
 │   ├── instructions.md
 │   └── skills/
@@ -151,6 +165,13 @@ multi-agent-ralph-loop/
 │       └── ask-questions-if-underspecified.md
 ├── .gemini/                        # Gemini CLI configuration
 │   └── GEMINI.md
+├── docs/
+│   └── git-worktree/               # Git worktree workflow documentation (v2.20)
+│       ├── README.md               # Overview and quick start
+│       ├── SECURITY.md             # Security considerations
+│       ├── TOOLS-COMPARISON.md     # WorkTrunk vs alternatives
+│       ├── INTEGRATION-GUIDE.md    # Claude Code integration
+│       └── IMPLEMENTATION-PLAN.md  # Technical implementation details
 ├── scripts/
 │   ├── ralph                       # Main CLI orchestrator
 │   └── mmc                         # MiniMax wrapper with usage tracking
@@ -198,13 +219,76 @@ ralph adversarial src/auth/
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+## 🌲 Git Worktree + PR Workflow (v2.20)
+
+Isolated feature development with multi-agent code review before merge.
+
+### Why Worktrees?
+
+- **Isolation**: Each feature develops in its own directory
+- **Parallel Work**: Multiple features can progress simultaneously
+- **Safe Rollback**: Easy cleanup if something goes wrong
+- **PR-Based Merge**: All changes go through multi-agent review
+
+### Workflow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  1. ralph worktree "feature"                                    │
+│     → Creates .worktrees/ai-ralph-YYYYMMDD-feature/             │
+│     → Launches Claude in isolated worktree                      │
+├─────────────────────────────────────────────────────────────────┤
+│  2. Develop feature (all subagents work in same worktree)       │
+│     → @backend-dev, @frontend-dev, @test-architect, etc.        │
+├─────────────────────────────────────────────────────────────────┤
+│  3. ralph worktree-pr <branch>                                  │
+│     → Creates PR with multi-agent review                        │
+│     → Claude Opus: Logic, architecture, edge cases              │
+│     → Codex GPT-5: Security, performance, best practices        │
+├─────────────────────────────────────────────────────────────────┤
+│  4. Review Decision:                                            │
+│     → PASS: ralph worktree-merge <pr>                          │
+│     → FAIL: ralph worktree-fix <pr>                            │
+│     → ABORT: ralph worktree-close <pr>                         │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Requirements
+
+```bash
+# WorkTrunk (required)
+brew install max-sixty/worktrunk/wt
+
+# GitHub CLI (required for PR)
+brew install gh
+gh auth login
+```
+
+### Quick Example
+
+```bash
+# Create isolated worktree for new feature
+ralph worktree "implement OAuth2 authentication"
+
+# After development, create PR with review
+ralph worktree-pr ai/ralph/20260103-oauth
+
+# If review passes, merge
+ralph worktree-merge 42
+
+# Clean up all merged worktrees
+ralph worktree-cleanup
+```
+
+See [docs/git-worktree/](docs/git-worktree/) for comprehensive documentation.
+
 ## 📋 All Commands
 
 ### CLI Commands
 
 ```bash
 # Orchestration
-ralph orch "task"           # Full 6-step orchestration
+ralph orch "task"           # Full 8-step orchestration
 ralph loop "task"           # Loop until VERIFIED_DONE (15 iter)
 ralph loop --mmc "task"     # With MiniMax (30 iter)
 ralph loop --lightning "t"  # With Lightning (60 iter)
@@ -223,6 +307,15 @@ ralph integration <path>    # Gemini
 ralph refactor <path>       # Codex
 ralph research "query"      # Gemini
 ralph minimax "query"       # MiniMax (~8% cost)
+
+# Git Worktree + PR Workflow (v2.20)
+ralph worktree "task"       # Create worktree + launch Claude
+ralph worktree-pr <branch>  # Create PR + multi-agent review
+ralph worktree-merge <pr>   # Approve and merge PR
+ralph worktree-fix <pr>     # Apply fixes from review
+ralph worktree-close <pr>   # Close PR and cleanup
+ralph worktree-status       # Show all worktrees
+ralph worktree-cleanup      # Clean merged worktrees
 
 # Validation
 ralph gates                 # Quality gates (9 languages)
