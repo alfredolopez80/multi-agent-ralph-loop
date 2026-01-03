@@ -1,6 +1,6 @@
-# 🎭 Multi-Agent Ralph Wiggum v2.23
+# 🎭 Multi-Agent Ralph Wiggum v2.24
 
-![Version](https://img.shields.io/badge/version-2.23.0-blue)
+![Version](https://img.shields.io/badge/version-2.24.0-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -8,6 +8,38 @@
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
 A sophisticated multi-agent orchestration system for Claude Code that coordinates multiple AI models (Claude, Codex CLI, Gemini CLI, MiniMax) with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement capabilities, and comprehensive quality gates.
+
+## 🌟 What's New in v2.24
+
+- **MiniMax MCP Web Search**: 8% cost web research via MCP protocol (87% savings vs Gemini)
+- **MiniMax MCP Image Analysis**: New image analysis capability (screenshots, UI, diagrams)
+- **Gemini Deprecation**: Research queries migrate to MiniMax for cost savings
+- **New CLI Commands**: `ralph websearch`, `ralph image`
+- **New Slash Commands**: `/minimax-search`, `/image-analyze`
+
+### Research Tools (v2.24)
+
+| Tool | Type | Cost | Use Case |
+|------|------|------|----------|
+| MiniMax MCP | Web + Image | ~8% | Default research |
+| ast-grep MCP | Code | ~25% | Pattern search (v2.23) |
+| Gemini CLI | Long-form | ~60% | >100k context |
+
+### Quick Research Commands
+
+```bash
+# Web search (MiniMax MCP)
+ralph websearch "React 19 features 2025"
+ralph websearch "TypeScript satisfies operator examples"
+
+# Image analysis (MiniMax MCP)
+ralph image "Describe error" /tmp/screenshot.png
+ralph image "Review UI" ./mockup.png
+
+# Slash commands
+/minimax-search "query"
+/image-analyze "prompt" /path/to/image
+```
 
 ## 🌟 What's New in v2.23
 
