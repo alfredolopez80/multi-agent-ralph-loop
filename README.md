@@ -553,14 +553,28 @@ See [LICENSE](LICENSE) for details.
 
 ## Credits
 
-### Inspiration
-- [The Trading Floor](https://github.com/CloudAI-X/the-trading-floor) - Multi-agent architecture
-- [Luke Parker](https://lukeparker.dev/stop-chatting-with-ai-start-loops-ralph-driven-development) - Ralph-Driven Development
-- [Awesome Claude Code Setup](https://github.com/cassler/awesome-claude-code-setup) - Configurations
-- [Anthropic Claude Code Plugins](https://github.com/anthropics/claude-code-plugins) - Official plugins
+### Architecture Inspiration
+- [Gas Town](https://github.com/atx-ai/gas-town) - Multi-agent orchestrator with persistent work tracking, Mayor/Polecats architecture
+- [The Trading Floor](https://github.com/CloudAI-X/the-trading-floor) - Multi-agent architecture patterns
+- [Luke Parker](https://lukeparker.dev/stop-chatting-with-ai-start-loops-ralph-driven-development) - Ralph-Driven Development philosophy
+- [@nummanali](https://x.com/nummanali) - [CC Mirror](https://github.com/numman-ali/cc-mirror) and multi-agent orchestration insights
 
-### Tools
-- [MiniMax Wrapper](https://blog.devgenius.io/claude-code-but-cheaper-and-snappy-minimax-m2-1-with-a-tiny-wrapper-7d910db93383) - @jpcaparas
+### Claude Code Ecosystem
+- [Anthropic Claude Code Plugins](https://github.com/anthropics/claude-code-plugins) - Official plugins and MCP servers
+- [Awesome Claude Code Setup](https://github.com/cassler/awesome-claude-code-setup) - Community configurations
+- [Claude Code Hooks](https://docs.anthropic.com/en/docs/claude-code/hooks) - Quality gates implementation
+
+### Tools & MCP Integrations
+- [MiniMax MCP](https://blog.devgenius.io/claude-code-but-cheaper-and-snappy-minimax-m2-1-with-a-tiny-wrapper-7d910db93383) - @jpcaparas - 8% cost web search
+- [Context7](https://github.com/upstash/context7) - Library documentation MCP server
+- [ast-grep](https://ast-grep.github.io/) - Structural code search (~75% token savings)
+- [dev-browser](https://github.com/anthropics/claude-code-plugins) - Browser automation (17% faster, 39% cheaper)
+- [OpenAI Codex CLI](https://github.com/openai/codex) - Adversarial validation agent
+- [Gemini CLI](https://github.com/google/gemini-cli) - Long-context research agent
+
+### Community
+- [WorkTrunk](https://github.com/max-sixty/worktrunk) - Git worktree management
+- [Greptile](https://greptile.com) - Code review automation (optional)
 
 ---
 
