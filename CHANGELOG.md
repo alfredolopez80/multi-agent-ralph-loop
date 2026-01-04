@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.28.0] - 2026-01-04
+
+### Added
+- **Comprehensive Test Suite**: 476 total tests covering all components
+- **7 New Test Files**: CLI commands, slash commands, skills, security functions, cross-platform, orchestrator flow, worktree workflow
+- **Expanded Slash Commands**: All 7 sparse commands expanded to production-quality (150-543 lines each)
+
+### Testing Coverage
+
+| Test File | Tests | Coverage |
+|-----------|-------|----------|
+| `test_cli_commands.bats` | ~80 | All 33 CLI commands |
+| `test_slash_commands.py` | ~50 | All 24 slash command metadata |
+| `test_skills.py` | ~25 | All 8 skills validation |
+| `test_security_functions.bats` | ~45 | Security hardening functions |
+| `test_cross_platform.bats` | ~30 | macOS/Linux compatibility |
+| `test_orchestrator_flow.bats` | ~40 | 8-step orchestration flow |
+| `test_worktree_workflow.bats` | ~35 | 7 worktree commands |
+
+### Expanded Commands
+
+| Command | Before | After | Improvement |
+|---------|--------|-------|-------------|
+| `/loop` | 18 | 543 | +30x |
+| `/security` | 25 | 475 | +19x |
+| `/refactor` | 18 | 448 | +25x |
+| `/bugs` | 18 | 309 | +17x |
+| `/retrospective` | 17 | 194 | +11x |
+| `/gates` | 17 | 171 | +10x |
+| `/unit-tests` | 18 | 150 | +8x |
+
+### Fixed
+- **((ITER++)) Bug**: Fixed bash arithmetic bug with `set -e` when ITER=0
+- **v2.27 Security Audit Findings**: All 3 HIGH severity issues resolved
+  - HIGH-1: Command injection via TARGET path (now uses SAFE_TARGET)
+  - HIGH-2: MAX_ROUNDS parameter validation (1-100 range)
+  - HIGH-3: APPROVAL_MODE parameter validation (yolo|strict|hybrid)
+
+### Security
+- Full security audit passed with Codex + Claude
+- All user inputs validated
+- All JSON construction uses jq
+- All temp files use mktemp with permission verification
+
+---
+
 ## [2.27.0] - 2026-01-04
 
 ### Added
@@ -250,6 +296,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[2.28.0]: https://github.com/alfredolopez80/multi-agent-ralph-loop/compare/v2.27.0...v2.28.0
 [2.27.0]: https://github.com/alfredolopez80/multi-agent-ralph-loop/compare/v2.26.0...v2.27.0
 [2.26.0]: https://github.com/alfredolopez80/multi-agent-ralph-loop/compare/v2.25.0...v2.26.0
 [2.25.0]: https://github.com/alfredolopez80/multi-agent-ralph-loop/compare/v2.24.2...v2.25.0

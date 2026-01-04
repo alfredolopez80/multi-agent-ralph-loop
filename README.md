@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.27-blue)
+![Version](https://img.shields.io/badge/version-2.28-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -466,9 +466,9 @@ multi-agent-ralph-loop/
 │   ├── tasks.json                  # Persistent task tracking
 │   └── tasks-schema.json           # Task validation schema
 ├── scripts/
-│   ├── ralph                       # Main CLI (v2.27.0)
+│   ├── ralph                       # Main CLI (v2.28.0)
 │   └── mmc                         # MiniMax wrapper
-├── tests/                          # 244+ tests
+├── tests/                          # 476+ tests
 ├── docs/
 │   └── git-worktree/               # Worktree documentation
 ├── CLAUDE.md                       # Quick reference

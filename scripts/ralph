@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ralph - Multi-Agent Orchestrator CLI
-# Version 2.27.0
+# Version 2.28.0
+# v2.28: Comprehensive testing (476 tests), prompt optimization, security audit
 # v2.27: Multi-level security loop, README restructure, CHANGELOG.md
 # v2.26: Prefix-based slash commands, Anthropic directives, task persistence
 # v2.25: Search hierarchy, Context7 MCP, dev-browser integration
@@ -14,7 +15,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.27.0"
+VERSION="2.28.0"
 RALPH_REPO_PATH=""  # Auto-detected if in ralph repo
 RALPH_DIR="${HOME}/.ralph"
 
@@ -654,9 +655,9 @@ cmd_adversarial() {
     GEMINI_APPROVED=$(grep -o '"approved":\s*true' "$RALPH_TMPDIR/gemini.json" 2>/dev/null && echo "true" || echo "false")
 
     APPROVALS=0
-    [[ "$CLAUDE_APPROVED" == "true" ]] && ((APPROVALS++)) || true
-    [[ "$CODEX_APPROVED" == "true" ]] && ((APPROVALS++)) || true
-    [[ "$GEMINI_APPROVED" == "true" ]] && ((APPROVALS++)) || true
+    [[ "$CLAUDE_APPROVED" == "true" ]] && APPROVALS=$((APPROVALS + 1)) || true
+    [[ "$CODEX_APPROVED" == "true" ]] && APPROVALS=$((APPROVALS + 1)) || true
+    [[ "$GEMINI_APPROVED" == "true" ]] && APPROVALS=$((APPROVALS + 1)) || true
 
     echo ""
     echo "==============================================================="
@@ -909,6 +910,7 @@ fix_security_issues() {
         yolo)
             # Auto-fix ALL vulnerabilities
             log_info "  YOLO mode: Auto-fixing all $TOTAL vulnerabilities..."
+            SAFE_TARGET=$(escape_for_shell "$TARGET")
             codex exec --yolo --enable-skills -m gpt-5.2-codex -C "$SAFE_TARGET" \
                 "Fix all security vulnerabilities found in this codebase.
                  Apply secure coding practices: parameterized queries, input validation,
@@ -927,6 +929,7 @@ fix_security_issues() {
             # Auto-fix LOW/MEDIUM, ask for CRITICAL/HIGH
             if [ "$AUTO_FIX_COUNT" -gt 0 ]; then
                 log_info "  Auto-fixing $AUTO_FIX_COUNT MEDIUM/LOW vulnerabilities..."
+                SAFE_TARGET=$(escape_for_shell "$TARGET")
                 codex exec --yolo --enable-skills -m gpt-5.2-codex -C "$SAFE_TARGET" \
                     "Fix only MEDIUM and LOW severity security vulnerabilities.
                      Do NOT fix CRITICAL or HIGH - those require manual approval.
@@ -942,6 +945,7 @@ fix_security_issues() {
                 echo "MANUAL_APPROVAL_REQUIRED: $CRITICAL critical, $HIGH high severity issues"
 
                 # Generate fix proposals for manual review
+                SAFE_TARGET=$(escape_for_shell "$TARGET")
                 codex exec --yolo --enable-skills -m gpt-5.2-codex -C "$SAFE_TARGET" \
                     "Generate fix proposals (DO NOT APPLY) for CRITICAL and HIGH vulnerabilities.
                      For each: show current code, proposed fix, explanation.
@@ -969,14 +973,14 @@ validate_fixes() {
     # TypeScript/JavaScript check
     if ls "$TARGET"/*.ts "$TARGET"/*.tsx "$TARGET"/*.js "$TARGET"/*.jsx 2>/dev/null | head -1 >/dev/null; then
         if command -v npx &>/dev/null; then
-            npx tsc --noEmit --skipLibCheck 2>/dev/null || ((ERRORS++)) || true
+            npx tsc --noEmit --skipLibCheck 2>/dev/null || ERRORS=$((ERRORS + 1)) || true
         fi
     fi
 
     # Python check
     if ls "$TARGET"/*.py 2>/dev/null | head -1 >/dev/null; then
         if command -v pyright &>/dev/null; then
-            pyright "$TARGET" 2>/dev/null || ((ERRORS++)) || true
+            pyright "$TARGET" 2>/dev/null || ERRORS=$((ERRORS + 1)) || true
         fi
     fi
 
@@ -1051,6 +1055,7 @@ cmd_security_loop() {
 
         # Step 1: Run security audit
         log_info "[1/3] Running security audit with Codex..."
+        SAFE_TARGET=$(escape_for_shell "$TARGET")
         codex exec --yolo --enable-skills -m gpt-5.2-codex -C "$SAFE_TARGET" \
             "Perform comprehensive security audit. Check for:
              - SQL/Command injection (CWE-78, CWE-89)
@@ -2158,7 +2163,7 @@ cmd_pre_merge() {
                     log_success "   $script: OK"
                 else
                     log_error "   $script: FAILED"
-                    ((ERRORS++)) || true
+                    ERRORS=$((ERRORS + 1)) || true
                 fi
             fi
         done
@@ -2191,7 +2196,7 @@ cmd_pre_merge() {
         log_success "   All versions match: $FIRST_VERSION"
     else
         log_error "   Version mismatch detected!"
-        ((ERRORS++)) || true
+        ERRORS=$((ERRORS + 1)) || true
     fi
 
     # 3. Run tests
@@ -2203,7 +2208,7 @@ cmd_pre_merge() {
             log_success "   All $TEST_COUNT tests passed"
         else
             log_error "   Some tests failed"
-            ((ERRORS++)) || true
+            ERRORS=$((ERRORS + 1)) || true
         fi
     else
         log_warn "   Tests skipped (bats not installed or no tests/ dir)"
@@ -2433,7 +2438,7 @@ cmd_loop() {
 
     local ITER=0
     while [ $ITER -lt $MAX_ITER ]; do
-        ((ITER++))
+        ITER=$((ITER + 1))
         log_info "  Iteration $ITER/$MAX_ITER"
 
         # Execute task
@@ -2717,14 +2722,14 @@ main() {
             done
             # HIGH-2 Fix: Validate MAX_ROUNDS parameter
             if ! [[ "$SL_MAX_ROUNDS" =~ ^[0-9]+$ ]] || [ "$SL_MAX_ROUNDS" -lt 1 ] || [ "$SL_MAX_ROUNDS" -gt 100 ]; then
-                echo "ERROR: --max-rounds must be a number between 1 and 100" >&2
+                echo "ERROR: --max-rounds must be 1-100" >&2
                 exit 1
             fi
-            # HIGH-3 Fix: Validate APPROVAL_MODE parameter (already set via flags, but double-check)
+            # HIGH-3 Fix: Validate APPROVAL_MODE parameter
             case "$SL_MODE" in
                 yolo|strict|hybrid) ;;
                 *)
-                    echo "ERROR: Invalid mode '$SL_MODE'. Must be: yolo, strict, or hybrid" >&2
+                    echo "ERROR: Invalid mode" >&2
                     exit 1
                     ;;
             esac

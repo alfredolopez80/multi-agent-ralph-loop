@@ -1,6 +1,13 @@
-# Multi-Agent Ralph v2.27
+# Multi-Agent Ralph v2.28
 
-Orchestration with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement, 9-language quality gates, and **multi-level security loop**.
+Orchestration with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement, 9-language quality gates, **multi-level security loop**, and **comprehensive testing (476 tests)**.
+
+## v2.28 Key Changes (Comprehensive Testing & Audit)
+
+- **COMPREHENSIVE TEST SUITE**: 476 tests covering CLI commands, slash commands, skills, security functions
+- **7 NEW TEST FILES**: CLI, slash commands, skills, security, cross-platform, orchestrator, worktree
+- **EXPANDED COMMANDS**: All 7 sparse commands expanded to 150-543 lines with full documentation
+- **SECURITY AUDIT**: All v2.27 HIGH findings fixed (TARGET escaping, parameter validation)
 
 ## v2.27 Key Changes (Multi-Level Security Loop)
 
