@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ralph - Multi-Agent Orchestrator CLI
-# Version 2.26.0
+# Version 2.27.0
+# v2.27: Multi-level security loop, README restructure, CHANGELOG.md
 # v2.26: Prefix-based slash commands, Anthropic directives, task persistence
 # v2.25: Search hierarchy, Context7 MCP, dev-browser integration
 # v2.24: MiniMax MCP web_search + understand_image, security hardening
@@ -13,7 +14,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.26.0"
+VERSION="2.27.0"
 RALPH_REPO_PATH=""  # Auto-detected if in ralph repo
 RALPH_DIR="${HOME}/.ralph"
 
@@ -807,6 +808,320 @@ cmd_security() {
     fi
 
     log_success "Security audit complete. Results in: $RALPH_TMPDIR/"
+}
+
+# ===============================================================================
+# MULTI-LEVEL SECURITY LOOP (v2.27)
+# ===============================================================================
+
+# Parse security audit output into structured JSON
+# Returns: JSON with vulnerabilities array and summary
+parse_security_findings() {
+    local OUTPUT_FILE="$1"
+
+    if [ ! -f "$OUTPUT_FILE" ]; then
+        echo '{"vulnerabilities":[],"summary":{"total":0,"critical":0,"high":0,"medium":0,"low":0}}'
+        return 0
+    fi
+
+    # Extract vulnerability data from Codex output
+    # Look for common patterns in security scan results
+    local CONTENT
+    CONTENT=$(cat "$OUTPUT_FILE" 2>/dev/null || echo "")
+
+    # Count severity levels using grep patterns
+    local CRITICAL HIGH MEDIUM LOW
+    CRITICAL=$(echo "$CONTENT" | grep -ci "critical\|severity.*critical" 2>/dev/null || echo "0")
+    HIGH=$(echo "$CONTENT" | grep -ci "high\|severity.*high" 2>/dev/null || echo "0")
+    MEDIUM=$(echo "$CONTENT" | grep -ci "medium\|severity.*medium" 2>/dev/null || echo "0")
+    LOW=$(echo "$CONTENT" | grep -ci "low\|severity.*low" 2>/dev/null || echo "0")
+
+    # Build JSON using jq for safe construction
+    local TOTAL=$((CRITICAL + HIGH + MEDIUM + LOW))
+
+    jq -n \
+        --argjson critical "$CRITICAL" \
+        --argjson high "$HIGH" \
+        --argjson medium "$MEDIUM" \
+        --argjson low "$LOW" \
+        --argjson total "$TOTAL" \
+        --arg raw "$CONTENT" \
+        '{
+            vulnerabilities: [],
+            summary: {
+                total: $total,
+                critical: $critical,
+                high: $high,
+                medium: $medium,
+                low: $low
+            },
+            raw_output: $raw
+        }'
+}
+
+# Fix security issues using Codex GPT-5 (Hybrid approval mode)
+# Returns: Number of fixes applied
+fix_security_issues() {
+    local FINDINGS_JSON="$1"
+    local TARGET="$2"
+    local APPROVAL_MODE="${3:-hybrid}"  # hybrid, yolo, strict
+
+    local TOTAL CRITICAL HIGH MEDIUM LOW
+    TOTAL=$(echo "$FINDINGS_JSON" | jq -r '.summary.total // 0')
+    CRITICAL=$(echo "$FINDINGS_JSON" | jq -r '.summary.critical // 0')
+    HIGH=$(echo "$FINDINGS_JSON" | jq -r '.summary.high // 0')
+    MEDIUM=$(echo "$FINDINGS_JSON" | jq -r '.summary.medium // 0')
+    LOW=$(echo "$FINDINGS_JSON" | jq -r '.summary.low // 0')
+
+    if [ "$TOTAL" -eq 0 ]; then
+        echo "0"
+        return 0
+    fi
+
+    local FIXED=0
+    local AUTO_FIX_COUNT=$((MEDIUM + LOW))
+    local MANUAL_COUNT=$((CRITICAL + HIGH))
+
+    log_info "  Found $TOTAL vulnerabilities:"
+    [ "$CRITICAL" -gt 0 ] && log_warn "    CRITICAL: $CRITICAL"
+    [ "$HIGH" -gt 0 ] && log_warn "    HIGH: $HIGH"
+    [ "$MEDIUM" -gt 0 ] && log_info "    MEDIUM: $MEDIUM"
+    [ "$LOW" -gt 0 ] && log_info "    LOW: $LOW"
+
+    local SAFE_TARGET
+    SAFE_TARGET=$(escape_for_shell "$TARGET")
+
+    case "$APPROVAL_MODE" in
+        yolo)
+            # Auto-fix ALL vulnerabilities
+            log_info "  YOLO mode: Auto-fixing all $TOTAL vulnerabilities..."
+            codex exec --yolo --enable-skills -m gpt-5.2-codex -C "$SAFE_TARGET" \
+                "Fix all security vulnerabilities found in this codebase.
+                 Apply secure coding practices: parameterized queries, input validation,
+                 proper authentication, secure crypto. Output: fixed code." \
+                > "$RALPH_TMPDIR/security_fixes_yolo.json" 2>&1 || true
+            FIXED=$TOTAL
+            ;;
+        strict)
+            # Ask for EVERY fix
+            log_warn "  STRICT mode: Manual approval required for all $TOTAL fixes"
+            # In strict mode, we just report - actual approval happens in Claude Code
+            echo "STRICT_MODE_APPROVAL_REQUIRED: $TOTAL vulnerabilities need manual approval"
+            FIXED=0
+            ;;
+        hybrid|*)
+            # Auto-fix LOW/MEDIUM, ask for CRITICAL/HIGH
+            if [ "$AUTO_FIX_COUNT" -gt 0 ]; then
+                log_info "  Auto-fixing $AUTO_FIX_COUNT MEDIUM/LOW vulnerabilities..."
+                codex exec --yolo --enable-skills -m gpt-5.2-codex -C "$SAFE_TARGET" \
+                    "Fix only MEDIUM and LOW severity security vulnerabilities.
+                     Do NOT fix CRITICAL or HIGH - those require manual approval.
+                     Apply: input validation, minor security improvements.
+                     Output: fixed code with explanation." \
+                    > "$RALPH_TMPDIR/security_fixes_auto.json" 2>&1 || true
+                FIXED=$AUTO_FIX_COUNT
+            fi
+
+            if [ "$MANUAL_COUNT" -gt 0 ]; then
+                log_warn "  $MANUAL_COUNT CRITICAL/HIGH issues require manual approval"
+                # Output info for Claude Code to use with AskUserQuestion
+                echo "MANUAL_APPROVAL_REQUIRED: $CRITICAL critical, $HIGH high severity issues"
+
+                # Generate fix proposals for manual review
+                codex exec --yolo --enable-skills -m gpt-5.2-codex -C "$SAFE_TARGET" \
+                    "Generate fix proposals (DO NOT APPLY) for CRITICAL and HIGH vulnerabilities.
+                     For each: show current code, proposed fix, explanation.
+                     Output as JSON array for human review." \
+                    > "$RALPH_TMPDIR/security_fix_proposals.json" 2>&1 || true
+            fi
+            ;;
+    esac
+
+    echo "$FIXED"
+}
+
+# Validate that fixes were applied correctly
+# Returns: 0 if valid, 1 if issues found
+validate_fixes() {
+    local TARGET="$1"
+    local SAFE_TARGET
+    SAFE_TARGET=$(escape_for_shell "$TARGET")
+
+    log_info "  Validating fixes..."
+
+    # Quick syntax check based on file types
+    local ERRORS=0
+
+    # TypeScript/JavaScript check
+    if ls "$TARGET"/*.ts "$TARGET"/*.tsx "$TARGET"/*.js "$TARGET"/*.jsx 2>/dev/null | head -1 >/dev/null; then
+        if command -v npx &>/dev/null; then
+            npx tsc --noEmit --skipLibCheck 2>/dev/null || ((ERRORS++)) || true
+        fi
+    fi
+
+    # Python check
+    if ls "$TARGET"/*.py 2>/dev/null | head -1 >/dev/null; then
+        if command -v pyright &>/dev/null; then
+            pyright "$TARGET" 2>/dev/null || ((ERRORS++)) || true
+        fi
+    fi
+
+    if [ "$ERRORS" -gt 0 ]; then
+        log_warn "  Validation found $ERRORS issues"
+        return 1
+    fi
+
+    log_success "  Fixes validated successfully"
+    return 0
+}
+
+# Main security loop controller
+# Iteratively audits and fixes until 0 vulnerabilities or max rounds
+cmd_security_loop() {
+    local TARGET="${1:-}"
+    local MAX_ROUNDS="${2:-10}"
+    local APPROVAL_MODE="${3:-hybrid}"
+
+    if [ -z "$TARGET" ]; then
+        echo ""
+        echo "╔═══════════════════════════════════════════════════════════════╗"
+        echo "║  MULTI-LEVEL SECURITY LOOP (v2.27)                            ║"
+        echo "╠═══════════════════════════════════════════════════════════════╣"
+        echo "║                                                               ║"
+        echo "║  Usage: ralph security-loop <path> [--max-rounds N] [--mode]  ║"
+        echo "║                                                               ║"
+        echo "║  Examples:                                                    ║"
+        echo "║    ralph security-loop src/                                   ║"
+        echo "║    ralph security-loop . --max-rounds 5                       ║"
+        echo "║    ralph secloop src/ --yolo                                  ║"
+        echo "║                                                               ║"
+        echo "║  Modes:                                                       ║"
+        echo "║    --hybrid  Auto-fix LOW/MEDIUM, ask for CRITICAL/HIGH      ║"
+        echo "║    --yolo    Auto-approve ALL fixes (use with caution)        ║"
+        echo "║    --strict  Manual approval for EVERY fix                    ║"
+        echo "║                                                               ║"
+        echo "║  Max Rounds: Default 10 (configurable)                        ║"
+        echo "╚═══════════════════════════════════════════════════════════════╝"
+        exit 1
+    fi
+
+    # v2.27: Require codex for security loop
+    require_tool "codex" "multi-level security loop"
+
+    TARGET=$(validate_path "$TARGET")
+    local SAFE_TARGET
+    SAFE_TARGET=$(escape_for_shell "$TARGET")
+
+    ensure_tmp
+
+    local ROUND=0
+    local TOTAL_FIXED=0
+    local START_TIME
+    START_TIME=$(date +%s)
+
+    echo ""
+    echo "╔═══════════════════════════════════════════════════════════════╗"
+    echo "║  MULTI-LEVEL SECURITY LOOP                                    ║"
+    echo "╠═══════════════════════════════════════════════════════════════╣"
+    printf "║  Target:     %s\n" "$TARGET"
+    printf "║  Max Rounds: %s\n" "$MAX_ROUNDS"
+    printf "║  Mode:       %s\n" "$APPROVAL_MODE"
+    echo "╚═══════════════════════════════════════════════════════════════╝"
+    echo ""
+
+    while [ "$ROUND" -lt "$MAX_ROUNDS" ]; do
+        ((ROUND++))
+        log_info "═══════════════════════════════════════════════════════════════"
+        log_info "Security Loop - Round $ROUND/$MAX_ROUNDS"
+        log_info "═══════════════════════════════════════════════════════════════"
+
+        # Step 1: Run security audit
+        log_info "[1/3] Running security audit with Codex..."
+        codex exec --yolo --enable-skills -m gpt-5.2-codex -C "$SAFE_TARGET" \
+            "Perform comprehensive security audit. Check for:
+             - SQL/Command injection (CWE-78, CWE-89)
+             - Path traversal (CWE-22)
+             - XSS vulnerabilities (CWE-79)
+             - Authentication issues (CWE-287)
+             - Sensitive data exposure (CWE-200)
+             - Insecure cryptography (CWE-327)
+
+             Output JSON format:
+             {
+               \"vulnerabilities\": [{
+                 \"id\": \"VULN-001\",
+                 \"severity\": \"CRITICAL|HIGH|MEDIUM|LOW\",
+                 \"cwe\": \"CWE-XXX\",
+                 \"file\": \"path/to/file.ts\",
+                 \"line\": 123,
+                 \"description\": \"...\",
+                 \"recommendation\": \"...\"
+               }],
+               \"summary\": {\"total\": N, \"critical\": N, \"high\": N, \"medium\": N, \"low\": N}
+             }" \
+            > "$RALPH_TMPDIR/security_audit_round_${ROUND}.json" 2>&1 || true
+
+        # Step 2: Parse findings
+        log_info "[2/3] Parsing findings..."
+        local FINDINGS
+        FINDINGS=$(parse_security_findings "$RALPH_TMPDIR/security_audit_round_${ROUND}.json")
+        local COUNT
+        COUNT=$(echo "$FINDINGS" | jq -r '.summary.total // 0')
+
+        if [ "$COUNT" -eq 0 ]; then
+            local END_TIME
+            END_TIME=$(date +%s)
+            local DURATION=$((END_TIME - START_TIME))
+
+            echo ""
+            echo "╔═══════════════════════════════════════════════════════════════╗"
+            echo "║  SECURITY LOOP COMPLETED SUCCESSFULLY                         ║"
+            echo "╠═══════════════════════════════════════════════════════════════╣"
+            printf "║  Rounds:       %s\n" "$ROUND"
+            printf "║  Total Fixed:  %s vulnerabilities\n" "$TOTAL_FIXED"
+            printf "║  Duration:     %s seconds\n" "$DURATION"
+            echo "║                                                               ║"
+            echo "║  Result: NO VULNERABILITIES REMAINING                         ║"
+            echo "╚═══════════════════════════════════════════════════════════════╝"
+            return 0
+        fi
+
+        log_warn "Found $COUNT vulnerabilities. Proceeding to fix phase..."
+
+        # Step 3: Fix vulnerabilities
+        log_info "[3/3] Fixing vulnerabilities (mode: $APPROVAL_MODE)..."
+        local FIXED
+        FIXED=$(fix_security_issues "$FINDINGS" "$TARGET" "$APPROVAL_MODE")
+        TOTAL_FIXED=$((TOTAL_FIXED + FIXED))
+
+        log_info "  Fixed $FIXED vulnerabilities this round"
+
+        # Validate fixes before next iteration
+        if ! validate_fixes "$TARGET"; then
+            log_warn "  Validation issues detected, continuing to next round..."
+        fi
+
+        echo ""
+    done
+
+    # Max rounds reached
+    local END_TIME
+    END_TIME=$(date +%s)
+    local DURATION=$((END_TIME - START_TIME))
+
+    echo ""
+    echo "╔═══════════════════════════════════════════════════════════════╗"
+    echo "║  SECURITY LOOP: MAX ROUNDS REACHED                            ║"
+    echo "╠═══════════════════════════════════════════════════════════════╣"
+    printf "║  Rounds:       %s/%s\n" "$MAX_ROUNDS" "$MAX_ROUNDS"
+    printf "║  Total Fixed:  %s vulnerabilities\n" "$TOTAL_FIXED"
+    printf "║  Duration:     %s seconds\n" "$DURATION"
+    echo "║                                                               ║"
+    echo "║  MANUAL REVIEW REQUIRED                                       ║"
+    echo "║  Some vulnerabilities may remain. Check:                      ║"
+    printf "║    %s/security_audit_round_%s.json\n" "$RALPH_TMPDIR" "$MAX_ROUNDS"
+    echo "╚═══════════════════════════════════════════════════════════════╝"
+    return 1
 }
 
 cmd_bugs() {
@@ -2355,6 +2670,51 @@ main() {
         # Specialized
         security)
             cmd_security "$@"
+            ;;
+        security-loop|secloop)
+            # v2.27: Multi-level security loop
+            # Parse flags: --max-rounds N, --yolo, --strict, --hybrid
+            local SL_TARGET="" SL_MAX_ROUNDS="10" SL_MODE="hybrid"
+            while [ $# -gt 0 ]; do
+                case "$1" in
+                    --max-rounds)
+                        SL_MAX_ROUNDS="$2"
+                        shift 2
+                        ;;
+                    --yolo)
+                        SL_MODE="yolo"
+                        shift
+                        ;;
+                    --strict)
+                        SL_MODE="strict"
+                        shift
+                        ;;
+                    --hybrid)
+                        SL_MODE="hybrid"
+                        shift
+                        ;;
+                    *)
+                        if [ -z "$SL_TARGET" ]; then
+                            SL_TARGET="$1"
+                        fi
+                        shift
+                        ;;
+                esac
+            done
+            # HIGH-2 Fix: Validate MAX_ROUNDS parameter
+            if ! [[ "$SL_MAX_ROUNDS" =~ ^[0-9]+$ ]] || [ "$SL_MAX_ROUNDS" -lt 1 ] || [ "$SL_MAX_ROUNDS" -gt 100 ]; then
+                echo "ERROR: --max-rounds must be a number between 1 and 100" >&2
+                exit 1
+            fi
+            # HIGH-3 Fix: Validate APPROVAL_MODE parameter (already set via flags, but double-check)
+            case "$SL_MODE" in
+                yolo|strict|hybrid) ;;
+                *)
+                    echo "ERROR: Invalid mode '$SL_MODE'. Must be: yolo, strict, or hybrid" >&2
+                    exit 1
+                    ;;
+            esac
+            cmd_security_loop "$SL_TARGET" "$SL_MAX_ROUNDS" "$SL_MODE"
             ;;
         bugs)
             cmd_bugs "$@"

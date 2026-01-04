@@ -1,6 +1,67 @@
-# Multi-Agent Ralph v2.26
+# Multi-Agent Ralph v2.27
 
-Orchestration with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement, and 9-language quality gates.
+Orchestration with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement, 9-language quality gates, and **multi-level security loop**.
+
+## v2.27 Key Changes (Multi-Level Security Loop)
+
+- **MULTI-LEVEL SECURITY LOOP**: Iterative `ralph security-loop` audits and fixes until 0 vulnerabilities
+- **HYBRID APPROVAL MODE**: Auto-fix LOW/MEDIUM, manual approval for CRITICAL/HIGH
+- **README RESTRUCTURED**: Professional documentation with Overview, Features, Workflows at top
+- **CHANGELOG.md**: Version history moved to dedicated file
+- **NEW CLI COMMAND**: `ralph security-loop <path> [--max-rounds N] [--yolo|--strict|--hybrid]`
+- **NEW SLASH COMMAND**: `/security-loop` with `@secloop` prefix
+
+### Multi-Level Security Loop (v2.27)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                 MULTI-LEVEL SECURITY LOOP                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   Round 1                                                       │
+│   ┌──────────┐    ┌──────────────┐    ┌─────────────────┐      │
+│   │  AUDIT   │───▶│   FINDINGS   │───▶│ Issues Found?   │      │
+│   │  (Codex) │    │   (Parse)    │    └────────┬────────┘      │
+│   └──────────┘    └──────────────┘             │               │
+│                                          NO ◀──┴──▶ YES        │
+│                                           │         │          │
+│                                           ▼         ▼          │
+│                                   ┌───────────┐  ┌──────────┐  │
+│                                   │  DONE     │  │   FIX    │  │
+│                                   │  0 issues │  │ (Hybrid) │  │
+│                                   └───────────┘  └────┬─────┘  │
+│                                                       │        │
+│   Round 2+                                            ▼        │
+│   ┌──────────┐    ┌──────────────┐    ┌─────────────────┐      │
+│   │ RE-AUDIT │◀───│   VALIDATE   │◀───│ Fixes Applied   │      │
+│   │  (Codex) │    │   (Check)    │    └─────────────────┘      │
+│   └──────────┘    └──────────────┘                             │
+│                                                                 │
+│   Config: Max 10 rounds, Codex GPT-5, Hybrid approval          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Approval Modes (v2.27)
+
+| Mode | Flag | Behavior | Use Case |
+|------|------|----------|----------|
+| **Hybrid** | (default) | Auto-fix LOW/MEDIUM, ask for HIGH/CRITICAL | Production code |
+| YOLO | `--yolo` | Auto-approve ALL fixes | CI/CD pipelines |
+| Strict | `--strict` | Ask approval for EVERY fix | Critical systems |
+
+### Usage Examples (v2.27)
+
+```bash
+# Multi-level security loop
+ralph security-loop src/                    # Default: 10 rounds, hybrid
+ralph security-loop . --max-rounds 5        # Custom rounds
+ralph secloop src/ --yolo                   # Auto-approve all
+@secloop src/auth/ --strict                 # Manual approval for all
+
+# Slash command
+/security-loop src/
+@secloop .
+```
 
 ## Anthropic Best Practices (v2.26)
 
