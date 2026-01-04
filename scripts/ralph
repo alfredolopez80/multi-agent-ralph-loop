@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # ralph - Multi-Agent Orchestrator CLI
-# Version 2.22.0
+# Version 2.26.0
+# v2.26: Prefix-based slash commands, Anthropic directives, task persistence
+# v2.25: Search hierarchy, Context7 MCP, dev-browser integration
+# v2.24: MiniMax MCP web_search + understand_image, security hardening
 # v2.22: Tool validation (startup + on-demand), 9 language quality gates
 # v2.21: Self-update, pre-merge validation, integrations health check
 # v2.20: Git worktree + PR workflow with multi-agent review
@@ -10,7 +13,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.24.2"
+VERSION="2.26.0"
 RALPH_REPO_PATH=""  # Auto-detected if in ralph repo
 RALPH_DIR="${HOME}/.ralph"
 

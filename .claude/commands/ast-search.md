@@ -1,5 +1,8 @@
 ---
 name: ast-search
+prefix: "@ast"
+category: research
+color: blue
 description: "Hybrid search: ast-grep (structural) + Explore agent (semantic) - 75% less tokens"
 argument-hint: "<pattern-or-query>"
 ---

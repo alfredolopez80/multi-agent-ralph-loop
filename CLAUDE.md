@@ -1,6 +1,76 @@
-# Multi-Agent Ralph v2.25
+# Multi-Agent Ralph v2.26
 
 Orchestration with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement, and 9-language quality gates.
+
+## Anthropic Best Practices (v2.26)
+
+The following directives are from Anthropic's official Claude 4 best practices documentation:
+
+<investigate_before_answering>
+Never speculate about code you have not opened. If the user
+references a specific file, you MUST read the file before
+answering. Make sure to investigate and read relevant files BEFORE
+answering questions about the codebase. Never make any claims about
+code before investigating unless you are certain of the correct
+answer - give grounded and hallucination-free answers.
+</investigate_before_answering>
+
+<use_parallel_tool_calls>
+If you intend to call multiple tools and there are no dependencies between the tool calls,
+make all of the independent tool calls in parallel. Prioritize calling tools simultaneously
+whenever the actions can be done in parallel rather than sequentially.
+</use_parallel_tool_calls>
+
+<default_to_action>
+By default, implement changes rather than only suggesting them. If the user's intent is unclear,
+infer the most useful likely action and proceed, using tools to discover any missing details
+instead of guessing.
+</default_to_action>
+
+<avoid_overengineering>
+Avoid over-engineering. Only make changes that are directly requested or clearly necessary.
+Keep solutions simple and focused. Don't add features, refactor code, or make "improvements"
+beyond what was asked.
+</avoid_overengineering>
+
+<code_exploration>
+ALWAYS read and understand relevant files before proposing code edits. Do not speculate about
+code you have not inspected. Be rigorous and persistent in searching code for key facts.
+</code_exploration>
+
+## v2.26 Key Changes (Prefix-Based Slash Commands)
+
+- **`@` PREFIX SYSTEM**: All slash commands now support `@prefix` invocation (e.g., `@orch`, `@sec`)
+- **CATEGORY COLORS**: Commands grouped by category with color coding
+- **`/commands` HELP**: New command to list all available commands by category
+- **`@diagram` MERMAID**: Generate Mermaid diagrams for documentation
+- **TASK PERSISTENCE**: Tasks survive session restarts (`.ralph/tasks.json`)
+- **ANTHROPIC DIRECTIVES**: Official Claude 4 best practices integrated
+
+### Prefix System (v2.26)
+
+| Category | Color | Commands |
+|----------|-------|----------|
+| **Orchestration** | Purple | `@orch`, `@clarify`, `@loop` |
+| **Review** | Red | `@sec`, `@bugs`, `@tests`, `@ref`, `@review`, `@par`, `@adv` |
+| **Research** | Blue | `@research`, `@lib`, `@mmsearch`, `@ast`, `@browse`, `@img` |
+| **Tools** | Green | `@gates`, `@mm`, `@imp`, `@audit`, `@retro`, `@cmds`, `@diagram` |
+
+### Usage Examples (v2.26)
+
+```bash
+# Prefix invocation (NEW)
+@orch "Implement OAuth2"       # Full orchestration
+@sec src/                      # Security audit
+@lib "React 19 hooks"          # Library documentation
+@diagram "architecture"        # Generate Mermaid diagram
+@cmds                          # List all commands
+
+# Traditional invocation (still works)
+/orchestrator "Implement OAuth2"
+/security src/
+/library-docs "React 19 hooks"
+```
 
 ## v2.25 Key Changes (Search Hierarchy + Context7 + dev-browser)
 

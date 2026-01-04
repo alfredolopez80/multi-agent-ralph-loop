@@ -1,5 +1,8 @@
 ---
 name: library-docs
+prefix: "@lib"
+category: research
+color: blue
 description: "Search library/framework documentation via Context7 MCP (v2.25)"
 argument-hint: "<library> <query>"
 ---

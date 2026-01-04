@@ -1,5 +1,8 @@
 ---
 name: gates
+prefix: "@gates"
+category: tools
+color: green
 description: "Run quality gates for 9 languages"
 ---
 

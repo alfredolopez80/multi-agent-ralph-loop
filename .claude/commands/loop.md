@@ -1,5 +1,8 @@
 ---
 name: loop
+prefix: "@loop"
+category: orchestration
+color: purple
 description: "Ralph loop until VERIFIED_DONE"
 argument-hint: "<task>"
 ---

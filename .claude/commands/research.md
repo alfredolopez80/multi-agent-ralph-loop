@@ -1,5 +1,8 @@
 ---
 name: research
+prefix: "@research"
+category: research
+color: blue
 description: "Web research using WebSearch (native) with MiniMax fallback (v2.25)"
 argument-hint: "<query>"
 ---

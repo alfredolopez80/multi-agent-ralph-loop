@@ -1,5 +1,8 @@
 ---
 name: parallel
+prefix: "@par"
+category: review
+color: red
 description: "Run all 6 subagents in parallel (async)"
 argument-hint: "<path>"
 ---

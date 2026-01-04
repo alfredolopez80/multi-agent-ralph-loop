@@ -1,5 +1,8 @@
 ---
 name: full-review
+prefix: "@review"
+category: review
+color: red
 description: "Multi-model review with 6 parallel subagents"
 argument-hint: "<path>"
 ---

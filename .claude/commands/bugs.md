@@ -1,5 +1,8 @@
 ---
 name: bugs
+prefix: "@bugs"
+category: review
+color: red
 description: "Bug hunting with Codex CLI"
 argument-hint: "<path>"
 ---

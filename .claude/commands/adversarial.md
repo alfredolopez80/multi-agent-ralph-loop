@@ -1,5 +1,8 @@
 ---
 name: adversarial
+prefix: "@adv"
+category: review
+color: red
 description: "2/3 consensus validation (Claude + Codex + Gemini)"
 argument-hint: "<path>"
 ---

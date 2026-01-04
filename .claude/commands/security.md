@@ -1,5 +1,8 @@
 ---
 name: security
+prefix: "@sec"
+category: review
+color: red
 description: "Security audit with Codex + MiniMax"
 argument-hint: "<path>"
 ---

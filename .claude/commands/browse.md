@@ -1,5 +1,8 @@
 ---
 name: browse
+prefix: "@browse"
+category: research
+color: blue
 description: "Browser automation with dev-browser (17% faster, 39% cheaper than Playwright)"
 argument-hint: "<url>"
 ---

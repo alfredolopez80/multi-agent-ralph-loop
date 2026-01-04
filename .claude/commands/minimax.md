@@ -1,5 +1,8 @@
 ---
 name: minimax
+prefix: "@mm"
+category: tools
+color: green
 description: "Query MiniMax M2.1 for second opinion"
 argument-hint: "<query>"
 ---

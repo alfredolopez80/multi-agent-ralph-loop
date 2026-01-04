@@ -1,5 +1,8 @@
 ---
 name: minimax-search
+prefix: "@mmsearch"
+category: research
+color: blue
 description: "Web search via MiniMax MCP (8% cost, Opus quality)"
 argument-hint: "<query>"
 ---

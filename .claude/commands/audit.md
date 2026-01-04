@@ -1,5 +1,8 @@
 ---
 name: audit
+prefix: "@audit"
+category: tools
+color: green
 description: "Generate usage report for MiniMax and token optimization"
 ---
 

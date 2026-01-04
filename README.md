@@ -1,6 +1,6 @@
-# 🎭 Multi-Agent Ralph Wiggum v2.25
+# 🎭 Multi-Agent Ralph Wiggum v2.26
 
-![Version](https://img.shields.io/badge/version-2.25-blue)
+![Version](https://img.shields.io/badge/version-2.26-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -8,6 +8,100 @@
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
 A sophisticated multi-agent orchestration system for Claude Code that coordinates multiple AI models (Claude, Codex CLI, MiniMax MCP) with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement capabilities, and comprehensive quality gates.
+
+---
+
+## 🌟 What's New in v2.26
+
+**Prefix-Based Slash Commands + Anthropic Best Practices** - Quick command invocation with `@` prefixes and official Claude 4 directives:
+
+| Change | Before | After | Benefit |
+|--------|--------|-------|---------|
+| Command Invocation | `/orchestrator` | `@orch` | **Faster typing** |
+| Command Discovery | None | `/commands` | **Easy reference** |
+| Diagram Generation | Manual | `@diagram` | **Auto Mermaid** |
+| Task Persistence | Session-only | `.ralph/tasks.json` | **Survives restarts** |
+| Anti-Hallucination | Implicit | Explicit directive | **Anthropic official** |
+
+### Prefix System (v2.26)
+
+All 23 slash commands now support short `@prefix` invocation:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    RALPH v2.26 COMMANDS                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  🟣 ORCHESTRATION        🔴 REVIEW           🔵 RESEARCH       │
+│  ───────────────         ─────────           ──────────        │
+│  @orch  Full flow        @sec   Security     @research Web     │
+│  @clarify Questions      @bugs  Bug hunt     @lib     Docs     │
+│  @loop  Iterate          @tests Unit tests   @mmsearch MM      │
+│                          @ref   Refactor     @ast     Code     │
+│                          @review 6 agents    @browse  Browser  │
+│                          @par   Parallel     @img     Image    │
+│                          @adv   Consensus                      │
+│                                                                 │
+│  🟢 TOOLS                                                       │
+│  ─────────                                                      │
+│  @gates Quality gates    @mm   MiniMax       @imp  Improve     │
+│  @audit Usage report     @retro Retrospect   @cmds Commands    │
+│  @diagram Mermaid                                              │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Usage Examples (v2.26)
+
+```bash
+# Prefix invocation (NEW - faster)
+@orch "Implement OAuth2"       # Full orchestration
+@sec src/                      # Security audit
+@lib "React 19 hooks"          # Library documentation
+@diagram "architecture"        # Generate Mermaid diagram
+@cmds                          # List all commands
+
+# Traditional invocation (still works)
+/orchestrator "Implement OAuth2"
+/security src/
+/library-docs "React 19 hooks"
+```
+
+### Anthropic Best Practices (v2.26)
+
+Official Claude 4 directives now integrated into CLAUDE.md:
+
+| Directive | Purpose |
+|-----------|---------|
+| `<investigate_before_answering>` | Never speculate about unread code |
+| `<use_parallel_tool_calls>` | Maximize parallel tool execution |
+| `<default_to_action>` | Implement rather than just suggest |
+| `<avoid_overengineering>` | Keep solutions simple and focused |
+| `<code_exploration>` | Read files before proposing edits |
+
+### Task Persistence (v2.26)
+
+Tasks now survive session restarts via `.ralph/tasks.json`:
+
+```
+Task #1 Design    ─────────► COMPLETED
+                      │
+          ┌───────────┴───────────┐
+          ▼                       ▼
+Task #2 Structure          Task #3 Models
+   COMPLETED                   COMPLETED
+          │                       │
+          └───────────┬───────────┘
+                      ▼
+            Task #4 Endpoints
+              ⚠ blocked by #2, #3 (resolved)
+                      │
+          ┌───────────┴───────────┐
+          ▼                       ▼
+     Task #5 Tests         Task #6 Docs
+       PENDING               PENDING
+       (parallelizable)
+```
 
 ---
 

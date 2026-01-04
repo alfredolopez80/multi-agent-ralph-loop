@@ -1,5 +1,8 @@
 ---
 name: clarify
+prefix: "@clarify"
+category: orchestration
+color: purple
 description: "Deep clarification using AskUserQuestion - MUST_HAVE and NICE_TO_HAVE questions"
 argument-hint: "<task description>"
 ---

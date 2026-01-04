@@ -1,5 +1,8 @@
 ---
 name: retrospective
+prefix: "@retro"
+category: tools
+color: green
 description: "Analyze task and propose improvements"
 ---
 

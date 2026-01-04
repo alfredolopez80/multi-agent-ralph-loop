@@ -1,5 +1,8 @@
 ---
 name: image-analyze
+prefix: "@img"
+category: research
+color: blue
 description: "Analyze images via MiniMax MCP (screenshots, UI, diagrams)"
 argument-hint: "<prompt> <image_path_or_url>"
 ---

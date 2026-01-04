@@ -1,5 +1,8 @@
 ---
 name: orchestrator
+prefix: "@orch"
+category: orchestration
+color: purple
 description: "Full orchestration: clarify → classify → delegate → execute → validate → retrospective"
 argument-hint: "<task description>"
 ---
