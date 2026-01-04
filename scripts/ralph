@@ -857,16 +857,164 @@ cmd_refactor() {
 }
 
 cmd_research() {
+    # v2.25: WebSearch (native, FREE) → MiniMax MCP (8% fallback)
+    # NO usar Gemini para research (muy costoso)
     local QUERY
     QUERY=$(validate_text_input "$1")
-    local SAFE_QUERY
-    SAFE_QUERY=$(escape_for_shell "$QUERY")
-    ensure_tmp
 
-    log_info "Researching: $QUERY"
-    gemini "Research best practices and current solutions for: ${SAFE_QUERY}" \
-        --yolo -o text > "$RALPH_TMPDIR/gemini_research.txt" 2>&1
-    cat "$RALPH_TMPDIR/gemini_research.txt"
+    if [ -z "$QUERY" ]; then
+        echo ""
+        echo "╔═══════════════════════════════════════════════════════════════╗"
+        echo "║  RESEARCH: Web Search with Smart Fallback (v2.25)             ║"
+        echo "╠═══════════════════════════════════════════════════════════════╣"
+        echo "║                                                               ║"
+        echo "║  Usage: ralph research \"<query>\"                              ║"
+        echo "║                                                               ║"
+        echo "║  Examples:                                                    ║"
+        echo "║    ralph research \"React 19 new features 2025\"                ║"
+        echo "║    ralph research \"TypeScript best practices\"                 ║"
+        echo "║    ralph research \"Docker security hardening\"                 ║"
+        echo "║                                                               ║"
+        echo "║  Hierarchy: WebSearch (FREE) → MiniMax MCP (8% fallback)      ║"
+        echo "╚═══════════════════════════════════════════════════════════════╝"
+        exit 1
+    fi
+
+    log_info "Research: $QUERY (WebSearch → MiniMax fallback)"
+
+    # v2.25: Use Claude with WebSearch native tool, fallback to MiniMax MCP
+    claude --print "$(cat <<PROMPT_EOF
+Research the following query using this priority:
+
+1. FIRST: Use the WebSearch tool (native Claude tool, free)
+2. FALLBACK: If WebSearch fails or returns no results, use mcp__MiniMax__web_search (8% cost)
+
+IMPORTANT: Do NOT use Gemini CLI - it's too expensive for research tasks.
+
+Query to research:
+"""
+$QUERY
+"""
+
+Return results as markdown with:
+- Summary of findings
+- Key sources (with clickable links)
+- Relevant code examples if applicable
+PROMPT_EOF
+)"
+}
+
+# ===============================================================================
+# CONTEXT7 LIBRARY DOCUMENTATION SEARCH (v2.25)
+# ===============================================================================
+
+cmd_library() {
+    # v2.25: Context7 MCP for library/framework documentation
+    local QUERY
+    QUERY=$(validate_text_input "${1:-}")
+
+    if [ -z "$QUERY" ]; then
+        echo ""
+        echo "╔═══════════════════════════════════════════════════════════════╗"
+        echo "║  CONTEXT7: Library Documentation Search (v2.25)               ║"
+        echo "╠═══════════════════════════════════════════════════════════════╣"
+        echo "║                                                               ║"
+        echo "║  Usage: ralph library \"<library-name> <query>\"                ║"
+        echo "║                                                               ║"
+        echo "║  Examples:                                                    ║"
+        echo "║    ralph library \"React 19 useTransition\"                     ║"
+        echo "║    ralph library \"Next.js 15 app router\"                      ║"
+        echo "║    ralph library \"TypeScript generic constraints\"             ║"
+        echo "║    ralph library \"Tailwind CSS flexbox utilities\"             ║"
+        echo "║                                                               ║"
+        echo "║  Cost: Optimized (indexed docs reduce token usage)            ║"
+        echo "║  Fallback: MiniMax MCP if library not in Context7             ║"
+        echo "╚═══════════════════════════════════════════════════════════════╝"
+        exit 1
+    fi
+
+    log_info "Context7 Library Search: $QUERY"
+
+    claude --print "$(cat <<PROMPT_EOF
+Search for library/framework documentation using Context7 MCP:
+
+1. FIRST: Use mcp__plugin_context7_context7__resolve-library-id to find the library
+   - Extract the library name from the query (e.g., "React", "Next.js", "TypeScript")
+   - Pass the full query for relevance ranking
+
+2. THEN: Use mcp__plugin_context7_context7__query-docs with the resolved library ID
+   - Query the specific question from the user
+
+3. FALLBACK: If Context7 doesn't have the library, use mcp__MiniMax__web_search
+
+Query:
+"""
+$QUERY
+"""
+
+Return documentation excerpts with:
+- Code examples from official docs
+- API references if applicable
+- Best practices and recommendations
+PROMPT_EOF
+)"
+}
+
+# ===============================================================================
+# DEV-BROWSER AUTOMATION (v2.25)
+# ===============================================================================
+
+cmd_browse() {
+    # v2.25: dev-browser integration (17% faster, 39% cheaper than Playwright)
+    local URL="${1:-}"
+    local ACTION="${2:---snapshot}"
+
+    if [ -z "$URL" ]; then
+        echo ""
+        echo "╔═══════════════════════════════════════════════════════════════╗"
+        echo "║  DEV-BROWSER: Browser Automation (v2.25)                      ║"
+        echo "╠═══════════════════════════════════════════════════════════════╣"
+        echo "║                                                               ║"
+        echo "║  Usage: ralph browse <url> [action]                           ║"
+        echo "║                                                               ║"
+        echo "║  Actions:                                                     ║"
+        echo "║    --snapshot     Take accessibility snapshot (default)       ║"
+        echo "║    --screenshot   Take visual screenshot                      ║"
+        echo "║    --pdf          Export page as PDF                          ║"
+        echo "║    --interactive  Interactive browser control                 ║"
+        echo "║                                                               ║"
+        echo "║  Examples:                                                    ║"
+        echo "║    ralph browse https://example.com                           ║"
+        echo "║    ralph browse https://docs.react.dev --screenshot           ║"
+        echo "║    ralph browse localhost:3000 --interactive                  ║"
+        echo "║                                                               ║"
+        echo "║  Benchmark: 17% faster, 39% cheaper than Playwright MCP       ║"
+        echo "╚═══════════════════════════════════════════════════════════════╝"
+        exit 1
+    fi
+
+    # Validate URL format (basic check)
+    if [[ ! "$URL" =~ ^https?:// ]] && [[ ! "$URL" =~ ^localhost ]]; then
+        URL="https://$URL"
+    fi
+
+    log_info "dev-browser: Opening $URL ($ACTION)"
+
+    claude --print "$(cat <<PROMPT_EOF
+Use the dev-browser skill to automate browser interaction:
+
+URL: $URL
+Action: $ACTION
+
+Instructions based on action:
+- If --snapshot: Take an accessibility snapshot and return structured page content
+- If --screenshot: Take a visual screenshot of the page
+- If --pdf: Export the page as a PDF document
+- If --interactive: Allow step-by-step browser control
+
+Return the results in a structured format.
+PROMPT_EOF
+)"
 }
 
 # ===============================================================================
@@ -2219,6 +2367,12 @@ main() {
             ;;
         research)
             cmd_research "$@"
+            ;;
+        library|lib|docs|context7)
+            cmd_library "$@"
+            ;;
+        browse|dev-browser)
+            cmd_browse "$@"
             ;;
         minimax|mm)
             cmd_minimax "$@"

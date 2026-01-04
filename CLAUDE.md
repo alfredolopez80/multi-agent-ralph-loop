@@ -1,6 +1,69 @@
-# Multi-Agent Ralph v2.24.2
+# Multi-Agent Ralph v2.25
 
 Orchestration with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement, and 9-language quality gates.
+
+## v2.25 Key Changes (Search Hierarchy + Context7 + dev-browser)
+
+- **SEARCH HIERARCHY**: WebSearch (native, FREE) → MiniMax MCP (8% fallback)
+- **CONTEXT7 MCP**: Library/framework documentation search (indexed docs, optimized tokens)
+- **DEV-BROWSER**: Primary browser automation (17% faster, 39% cheaper than Playwright)
+- **GEMINI SCOPE CHANGE**: ONLY for short, punctual tasks (NOT for research or long-context)
+- **NEW CLI COMMANDS**: `ralph library`, `ralph browse`
+- **NEW SLASH COMMANDS**: `/library-docs`, `/browse`
+
+### Search Tool Hierarchy (v2.25)
+
+| Priority | Tool | Cost | Use When |
+|----------|------|------|----------|
+| 1 | WebSearch (native) | FREE | Default for all web research |
+| 2 | Context7 MCP | Optimized | Library/framework documentation |
+| 3 | MiniMax MCP | 8% | Fallback + specialized queries |
+| 4 | Gemini CLI | ~60% | Short punctual tasks ONLY |
+
+```
+Search Decision Tree:
+┌────────────────────────────────────────┐
+│ Is it about a library/framework?       │
+├────────────────────────────────────────┤
+│ YES → Context7 MCP → MiniMax fallback  │
+│ NO  → WebSearch → MiniMax fallback     │
+└────────────────────────────────────────┘
+Gemini: ONLY for short, punctual tasks
+```
+
+### New Commands (v2.25)
+
+```bash
+# Library documentation (Context7 MCP)
+ralph library "React 19 useTransition"
+ralph lib "Next.js 15 app router"
+ralph docs "TypeScript generics"
+
+# Browser automation (dev-browser)
+ralph browse https://example.com --snapshot
+ralph browse localhost:3000 --screenshot
+
+# Slash commands
+/library-docs React hooks best practices
+/browse https://docs.react.dev
+```
+
+### Browser Automation (v2.25)
+
+| Tool | Speed | Cost | Use When |
+|------|-------|------|----------|
+| dev-browser | **+17%** | **-39%** | Primary for all browser tasks |
+| Playwright MCP | Baseline | Baseline | Complex automation fallback |
+
+### Cost Optimization (v2.25)
+
+| Subscription | Included Tools | Priority |
+|--------------|----------------|----------|
+| Claude Max 20x | WebSearch (native), WebFetch | PRIMARY |
+| MiniMax Coding Plans | web_search, understand_image | SECONDARY |
+| Gemini | CLI only | SHORT TASKS ONLY |
+
+---
 
 ## v2.24.2 Key Changes (Complete Security Hardening)
 
