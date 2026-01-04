@@ -1,13 +1,142 @@
-# 🎭 Multi-Agent Ralph Wiggum v2.24.2
+# 🎭 Multi-Agent Ralph Wiggum v2.25
 
-![Version](https://img.shields.io/badge/version-2.24.2-blue)
+![Version](https://img.shields.io/badge/version-2.25-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-A sophisticated multi-agent orchestration system for Claude Code that coordinates multiple AI models (Claude, Codex CLI, Gemini CLI, MiniMax) with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement capabilities, and comprehensive quality gates.
+A sophisticated multi-agent orchestration system for Claude Code that coordinates multiple AI models (Claude, Codex CLI, MiniMax MCP) with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement capabilities, and comprehensive quality gates.
+
+---
+
+## 📋 Features Overview
+
+### Core Capabilities
+
+| Feature | Description | Since |
+|---------|-------------|-------|
+| **Multi-Agent Orchestration** | Coordinate Claude, Codex, MiniMax in parallel | v2.14 |
+| **Auto Planning** | Automatic `EnterPlanMode` for non-trivial tasks | v2.16 |
+| **Intensive Clarification** | AskUserQuestion with MUST_HAVE/NICE_TO_HAVE | v2.16 |
+| **Git Worktree Isolation** | Feature isolation via `ralph worktree` | v2.20 |
+| **Adversarial Validation** | 2/3 consensus (Claude + Codex + Gemini) | v2.14 |
+| **Self-Improvement** | Retrospective analysis after tasks | v2.14 |
+| **9-Language Quality Gates** | TS, JS, Python, Go, Rust, Solidity, Swift, JSON, YAML | v2.14 |
+
+### Installed Tools & MCPs
+
+| Tool | Type | Purpose | Cost |
+|------|------|---------|------|
+| **WebSearch** | Native | Web research | FREE |
+| **Context7 MCP** | Plugin | Library/framework documentation | Optimized |
+| **MiniMax MCP** | Plugin | Web search + image analysis | ~8% |
+| **ast-grep MCP** | Plugin | Structural code search | ~25% |
+| **dev-browser** | Skill | Browser automation (17% faster) | -39% |
+| **Nano Banana MCP** | Plugin | Image/asset generation | Variable |
+| **Playwright MCP** | Plugin | Complex browser automation | Baseline |
+
+### Search Hierarchy (v2.25)
+
+```
+┌────────────────────────────────────────────────────────────┐
+│              SEARCH DECISION TREE (v2.25)                  │
+├────────────────────────────────────────────────────────────┤
+│                                                            │
+│   ┌─────────────────────────────────────┐                  │
+│   │ Is it about a library/framework?    │                  │
+│   └─────────────────┬───────────────────┘                  │
+│                     │                                      │
+│           YES ◀─────┴─────▶ NO                             │
+│            │                 │                             │
+│            ▼                 ▼                             │
+│   ┌─────────────┐   ┌──────────────────┐                   │
+│   │ Context7    │   │ WebSearch        │                   │
+│   │ MCP         │   │ (native, FREE)   │                   │
+│   └──────┬──────┘   └────────┬─────────┘                   │
+│          │                   │                             │
+│          └─────────┬─────────┘                             │
+│                    │                                       │
+│                    ▼                                       │
+│           ┌────────────────┐                               │
+│           │ MiniMax MCP    │                               │
+│           │ (8% fallback)  │                               │
+│           └────────────────┘                               │
+│                                                            │
+│   Gemini CLI: ONLY for short, punctual tasks               │
+└────────────────────────────────────────────────────────────┘
+```
+
+### CLI Commands Overview
+
+```bash
+# Orchestration
+ralph orch "task"           # Full 8-step orchestration
+ralph loop "task"           # Ralph loop (15 iterations)
+ralph clarify "task"        # Generate clarification questions
+
+# Search & Research (v2.25)
+ralph research "query"      # WebSearch → MiniMax fallback
+ralph library "React 19"    # Context7 MCP documentation
+ralph browse URL            # dev-browser automation
+
+# Code Analysis
+ralph ast 'pattern' path    # Structural search (ast-grep)
+ralph security path         # Security audit
+ralph bugs path             # Bug hunting
+
+# Git Worktree
+ralph worktree "task"       # Create isolated worktree
+ralph worktree-pr branch    # Create PR with multi-agent review
+
+# Quality & Validation
+ralph gates                 # Quality gates (9 languages)
+ralph adversarial path      # 2/3 consensus validation
+ralph pre-merge             # Pre-PR validation
+```
+
+---
+
+## 🌟 What's New in v2.25
+
+**Search Hierarchy + Context7 + dev-browser Integration** - Cost-optimized search strategy with MCP integrations:
+
+| Change | Before | After | Savings |
+|--------|--------|-------|---------|
+| Web Research | Gemini CLI (60%) | WebSearch (FREE) | **60%** |
+| Library Docs | MiniMax (8%) | Context7 (optimized) | **~50% tokens** |
+| Browser Automation | Playwright (baseline) | dev-browser | **39% cost, 17% faster** |
+| Long-Context | Gemini CLI (60%) | MiniMax (8%) | **52%** |
+
+### New Commands (v2.25)
+
+```bash
+# Library documentation (Context7 MCP)
+ralph library "React 19 useTransition"
+ralph lib "Next.js 15 app router"
+ralph docs "TypeScript generics"
+
+# Browser automation (dev-browser)
+ralph browse https://example.com --snapshot
+ralph browse localhost:3000 --screenshot
+```
+
+### New Slash Commands (v2.25)
+
+```bash
+/library-docs React hooks      # Context7 MCP
+/browse https://example.com    # dev-browser skill
+```
+
+### Updated Commands
+
+| Command | Before | After |
+|---------|--------|-------|
+| `ralph research` | Gemini CLI | WebSearch → MiniMax |
+| `/research` | Gemini CLI | WebSearch → MiniMax |
+
+---
 
 ## 🌟 What's New in v2.24.2
 
