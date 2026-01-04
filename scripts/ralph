@@ -75,22 +75,29 @@ validate_path() {
         exit 1
     fi
 
-    # VULN-004 FIX: Use realpath -e to resolve symlinks and validate existence
+    # VULN-004 FIX: Resolve symlinks and validate existence (cross-platform)
+    # macOS realpath doesn't support -e/-s flags, so we do it manually
     if [ "$check_exists" = "check" ]; then
         local canonical_path
-        # -e flag: resolve all symlinks, path must exist
-        canonical_path=$(realpath -e "$path" 2>/dev/null)
+        # First check if path exists
+        if [ ! -e "$path" ]; then
+            log_error "Path does not exist: $path"
+            exit 1
+        fi
+        # Then resolve the path (works on both Linux and macOS)
+        # Note: Parentheses ensure cd && pwd only runs if realpath fails
+        canonical_path=$(realpath "$path" 2>/dev/null || (cd "$path" 2>/dev/null && pwd))
 
         if [ -z "$canonical_path" ]; then
-            log_error "Path does not exist or contains invalid symlinks: $path"
+            log_error "Path contains invalid symlinks: $path"
             exit 1
         fi
 
         # Return the fully resolved canonical path
         printf '%s' "$canonical_path"
     else
-        # For paths that don't need to exist yet, use -s (logical) but warn
-        realpath -s "$path" 2>/dev/null || printf '%s' "$path"
+        # For paths that don't need to exist yet, just clean up the path
+        realpath "$path" 2>/dev/null || printf '%s' "$path"
     fi
 }
 
@@ -830,11 +837,18 @@ parse_security_findings() {
     CONTENT=$(cat "$OUTPUT_FILE" 2>/dev/null || echo "")
 
     # Count severity levels using grep patterns
+    # Note: Sanitize to ensure clean integers (grep -c can have edge cases)
     local CRITICAL HIGH MEDIUM LOW
-    CRITICAL=$(echo "$CONTENT" | grep -ci "critical\|severity.*critical" 2>/dev/null || echo "0")
-    HIGH=$(echo "$CONTENT" | grep -ci "high\|severity.*high" 2>/dev/null || echo "0")
-    MEDIUM=$(echo "$CONTENT" | grep -ci "medium\|severity.*medium" 2>/dev/null || echo "0")
-    LOW=$(echo "$CONTENT" | grep -ci "low\|severity.*low" 2>/dev/null || echo "0")
+    CRITICAL=$(echo "$CONTENT" | grep -ci "critical\|severity.*critical" 2>/dev/null | tr -cd '0-9')
+    HIGH=$(echo "$CONTENT" | grep -ci "high\|severity.*high" 2>/dev/null | tr -cd '0-9')
+    MEDIUM=$(echo "$CONTENT" | grep -ci "medium\|severity.*medium" 2>/dev/null | tr -cd '0-9')
+    LOW=$(echo "$CONTENT" | grep -ci "low\|severity.*low" 2>/dev/null | tr -cd '0-9')
+
+    # Default to 0 if empty
+    CRITICAL=${CRITICAL:-0}
+    HIGH=${HIGH:-0}
+    MEDIUM=${MEDIUM:-0}
+    LOW=${LOW:-0}
 
     # Build JSON using jq for safe construction
     local TOTAL=$((CRITICAL + HIGH + MEDIUM + LOW))
@@ -1030,7 +1044,7 @@ cmd_security_loop() {
     echo ""
 
     while [ "$ROUND" -lt "$MAX_ROUNDS" ]; do
-        ((ROUND++))
+        ROUND=$((ROUND + 1))  # Note: ((ROUND++)) fails with set -e when ROUND=0
         log_info "═══════════════════════════════════════════════════════════════"
         log_info "Security Loop - Round $ROUND/$MAX_ROUNDS"
         log_info "═══════════════════════════════════════════════════════════════"
