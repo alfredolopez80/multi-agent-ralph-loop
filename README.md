@@ -618,7 +618,15 @@ See [LICENSE](LICENSE) for details.
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
 
-### Latest: v2.29.0 (2026-01-07)
+### Latest: v2.31.0 (2026-01-07)
+
+- **Memvid Integration**: Semantic memory with HNSW + BM25 hybrid search (sub-5ms latency)
+- **Memory Automation**: Auto-save checkpoints to semantic memory via hooks
+- **Time-travel Queries**: Query across session history with semantic search
+- **Single-file Storage**: Portable `.mv2` memory file (no database required)
+- **Apache 2.0 License**: 100% free, no cloud dependencies
+
+### v2.29.0 (2026-01-07)
 
 - **Smart Execution**: Background tasks by default, explicit quality criteria per agent
 - **Auto Discovery**: Explorer/Plan invoked automatically for complex tasks (complexity >= 7)
@@ -627,10 +635,6 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 - **New Skill**: auto-intelligence for automatic context exploration and planning
 
 ### v2.27.0 (2026-01-04)
-
-- **Multi-Level Security Loop**: `ralph security-loop` - iterative audit until 0 vulnerabilities
-- **Hybrid Approval Mode**: Auto-fix LOW/MEDIUM, manual approval for CRITICAL/HIGH
-- **README Restructured**: Professional documentation with Overview, Features, Workflows
 
 ---
 
