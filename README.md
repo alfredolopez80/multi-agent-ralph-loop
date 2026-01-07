@@ -99,6 +99,23 @@ ralph skill validate security-hardening  # Validate YAML structure
 ralph skill list                   # List all available skills
 ```
 
+### PRD Generation System (v2.32)
+
+| Feature | Description |
+|---------|-------------|
+| **Structured Requirements** | Product Requirements Document system with INVEST-compliant user stories |
+| **Template-based** | Comprehensive PRD template with all standard sections (Overview, Goals, Stories, Tech Requirements, Success Criteria) |
+| **Story Conversion** | Automated conversion from PRD markdown to executable JSON user stories |
+| **Status Tracking** | Progress monitoring across all PRDs and stories |
+| **Orchestrator Integration** | Optional PRD step (0a) before planning for complex features |
+
+```bash
+ralph prd create "OAuth2 authentication"  # Create PRD from template
+ralph prd convert tasks/prd-oauth2.md     # Convert to user stories (JSON)
+ralph prd status                          # Show PRD progress
+ralph loop --prd tasks/prd-oauth2.json    # Execute stories iteratively
+```
+
 ### Quality & Validation
 
 | Feature | Description |
