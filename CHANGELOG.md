@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.30.0] - 2026-01-07
+
+### Added (Context Engineering)
+
+- **Context Monitoring Hook**: @context-monitor alerts at 60% context threshold via `context-warning.sh` hook
+- **Auto-Checkpointing System**: Full checkpoint management with 4 new commands (`/checkpoint save/restore/list/clear`)
+- **System Reminders (Manus Pattern)**: Periodic goal reminders every N messages to prevent "lost in middle" syndrome
+- **Fresh Context Explorer**: @fresh-explorer skill for independent analysis without context contamination
+- **CC + Codex Workflow**: Documented dual-agent pattern (Claude Code implements → Codex reviews → iterate)
+- **CLAUDE.md Modularization**: 10 new skills created, global config reduced from 285→119 lines (58% reduction)
+
+### New Skills (v2.30)
+
+| Skill | Purpose | Lines |
+|-------|---------|-------|
+| `@context-monitor` | Context usage monitoring at 60% threshold | 99 |
+| `@checkpoint-manager` | Session state preservation | 119 |
+| `@system-reminders` | Periodic goal reminders | 194 |
+| `@fresh-explorer` | Fresh context exploration | 196 |
+| `@cc-codex-workflow` | CC + Codex dual-agent pattern | 210 |
+| `@ralph-loop-pattern` | Loop pattern (split from CLAUDE.md) | 50 |
+| `@model-selection` | Model configuration | 40 |
+| `@tool-selection` | Tool matrix | 60 |
+| `@workflow-patterns` | Execution patterns | 40 |
+| `@security-patterns` | Security functions | 30 |
+
+### New Hooks (v2.30)
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `context-warning.sh` | user-prompt-submit | Alert at 60% context |
+| `periodic-reminder.sh` | user-prompt-submit | Goal reminders every N messages |
+
+### New Commands (v2.30)
+
+| Command | Purpose |
+|---------|---------|
+| `/checkpoint save "desc"` | Save current session state |
+| `/checkpoint list` | List all checkpoints |
+| `/checkpoint restore N` | Restore checkpoint N |
+| `/checkpoint clear` | Clear all checkpoints |
+
+### Validation Results
+
+| Metric | Value |
+|--------|-------|
+| Overall Score | 9.5/10 |
+| Skills Created | 10 |
+| Hooks Created | 2 |
+| Commands Created | 4 |
+| Total Files | ~50 |
+| CLAUDE.md Reduction | 58% (285→119 lines) |
+
+---
+
 ## [2.28.0] - 2026-01-04
 
 ### Added

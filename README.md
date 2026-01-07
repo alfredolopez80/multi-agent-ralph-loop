@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.29-blue)
+![Version](https://img.shields.io/badge/version-2.30-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -54,6 +54,17 @@ The system addresses the fundamental challenge of AI-assisted coding: **ensuring
 | **Quality Criteria** | Explicit stop conditions defined per agent/task type |
 | **Auto Discovery** | Explorer/Plan invoked automatically for complex tasks (complexity >= 7) |
 | **Tool Selection Matrix** | Intelligent routing: ast-grep → Context7 → WebSearch → MiniMax MCP |
+
+### Context Engineering (v2.30)
+
+| Feature | Description |
+|---------|-------------|
+| **Context Monitoring** | @context-monitor alerts at 60% context threshold to prevent degradation |
+| **Auto-Checkpointing** | /checkpoint save/restore/list/clear for session state preservation |
+| **System Reminders** | Periodic goal reminders (Manus pattern) to prevent "lost in middle" |
+| **Fresh Context Explorer** | @fresh-explorer for independent analysis without context contamination |
+| **CC + Codex Workflow** | Claude Code implements → Codex reviews → iterate until VERIFIED_DONE |
+| **CLAUDE.md Modularization** | Core content split into 10 on-demand skills (58% size reduction) |
 
 ### Quality & Validation
 

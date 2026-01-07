@@ -1,6 +1,15 @@
-# Multi-Agent Ralph v2.29
+# Multi-Agent Ralph v2.30
 
-Orchestration with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement, 9-language quality gates, **multi-level security loop**, and **comprehensive testing (476 tests)**.
+Orchestration with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement, 9-language quality gates, **multi-level security loop**, **context engineering**, and **comprehensive testing (476 tests)**.
+
+## v2.30 Key Changes (Context Engineering)
+
+- **CONTEXT MONITORING**: @context-monitor alerts at 60% context threshold
+- **AUTO-CHECKPOINTING**: /checkpoint save/restore/list/clear for session preservation
+- **SYSTEM REMINDERS**: Periodic goal reminders (Manus pattern) to prevent "lost in middle"
+- **FRESH CONTEXT EXPLORER**: @fresh-explorer for independent analysis
+- **CC + CODEX WORKFLOW**: Claude Code implements → Codex reviews → iterate
+- **CLAUDE.md MODULARIZATION**: 10 new skills created, reduced 58% (285→119 lines)
 
 ## v2.29 Key Changes (Smart Execution)
 
