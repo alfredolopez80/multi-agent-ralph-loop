@@ -107,7 +107,8 @@ ralph skill list                   # List all available skills
 | **Template-based** | Comprehensive PRD template with all standard sections (Overview, Goals, Stories, Tech Requirements, Success Criteria) |
 | **Story Conversion** | Automated conversion from PRD markdown to executable JSON user stories |
 | **Status Tracking** | Progress monitoring across all PRDs and stories |
-| **Orchestrator Integration** | Optional PRD step (0a) before planning for complex features |
+| **Orchestrator Integration** | Auto-recommended for complexity >= 7 (reduces LLM error margin via small, precise subtasks) |
+| **Error Reduction** | Breaks complex features into focused user stories with clear acceptance criteria and multiple verification points |
 
 ```bash
 ralph prd create "OAuth2 authentication"  # Create PRD from template
