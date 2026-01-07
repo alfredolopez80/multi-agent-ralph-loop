@@ -205,6 +205,7 @@ FEATURE_TOOLS=(
     "codex:Codex CLI (adversarial):npm i -g @openai/codex"
     "gemini:Gemini CLI (research):pip install google-gemini-cli"
     "sg:ast-grep (structural code search):brew install ast-grep"
+    "memvid:Memvid memory (v2.31):pip install memvid && npm install @memvid/sdk"
 )
 
 # Herramientas para Quality Gates (9 lenguajes)
@@ -230,6 +231,34 @@ QUALITY_GATE_TOOLS=(
 )
 
 # v2.22: Startup validation (fast, non-blocking)
+# v2.31: Validate Memvid (Python package + NPM package)
+validate_memvid_packages() {
+    local MEMVID_STATUS="ok"
+    local MEMVID_MSG=""
+
+    # Check Python package
+    if ! pip show memvid &>/dev/null; then
+        MEMVID_STATUS="missing"
+        MEMVID_MSG="Python: pip install memvid"
+    fi
+
+    # Check NPM package
+    if ! npm list @memvid/sdk &>/dev/null; then
+        if [ "$MEMVID_STATUS" = "missing" ]; then
+            MEMVID_MSG="${MEMVID_MSG} && npm install @memvid/sdk"
+        else
+            MEMVID_STATUS="missing"
+            MEMVID_MSG="NPM: npm install @memvid/sdk"
+        fi
+    fi
+
+    if [ "$MEMVID_STATUS" = "missing" ]; then
+        echo "memvid:missing:${MEMVID_MSG}"
+    else
+        echo "memvid:ok:"
+    fi
+}
+
 startup_validation() {
     local MISSING_CRITICAL=()
     local MISSING_FEATURE=()
@@ -241,9 +270,13 @@ startup_validation() {
         command -v "$tool_name" &>/dev/null || MISSING_CRITICAL+=("$tool_name")
     done
 
-    # Check feature tools (informational)
+    # Check feature tools (informational) - Skip memvid (validated separately)
     for tool_entry in "${FEATURE_TOOLS[@]}"; do
         local tool_name="${tool_entry%%:*}"
+        # Skip memvid - validated via validate_memvid_packages()
+        if [ "$tool_name" = "memvid" ]; then
+            continue
+        fi
         command -v "$tool_name" &>/dev/null || MISSING_FEATURE+=("$tool_name")
     done
 
@@ -252,6 +285,12 @@ startup_validation() {
         local tool_name="${tool_entry%%:*}"
         command -v "$tool_name" &>/dev/null || MISSING_QUALITY+=("$tool_name")
     done
+
+    # v2.31: Validate Memvid packages
+    local MEMVID_CHECK
+    MEMVID_CHECK=$(validate_memvid_packages)
+    local MEMVID_STATUS="${MEMVID_CHECK%%:*}"
+    local MEMVID_INSTALL="${MEMVID_CHECK##*:}"
 
     # Critical tools - always warn (blocking for most commands)
     if [ ${#MISSING_CRITICAL[@]} -gt 0 ]; then
@@ -268,11 +307,16 @@ startup_validation() {
             log_info "Feature tools not installed: ${MISSING_FEATURE[*]}"
         fi
 
+        # v2.31: Show Memvid status
+        if [ "$MEMVID_STATUS" = "missing" ]; then
+            log_info "Memvid (v2.31) not installed: $MEMVID_INSTALL"
+        fi
+
         if [ ${#MISSING_QUALITY[@]} -gt 0 ]; then
             log_info "Quality gate tools missing (${#MISSING_QUALITY[@]}/11): some language checks may be skipped"
         fi
 
-        if [ ${#MISSING_FEATURE[@]} -gt 0 ] || [ ${#MISSING_QUALITY[@]} -gt 0 ]; then
+        if [ ${#MISSING_FEATURE[@]} -gt 0 ] || [ ${#MISSING_QUALITY[@]} -gt 0 ] || [ "$MEMVID_STATUS" = "missing" ]; then
             log_info "Run 'ralph integrations' for details"
             echo ""
         fi
@@ -430,6 +474,13 @@ SPECIALIZED:
   ralph refactor <path>      Refactoring (Codex)
   ralph research "query"     Web research (Gemini)
   ralph minimax "query"      Second opinion (MiniMax ~8% cost)
+
+MEMORY (v2.31):
+  ralph memvid init          Initialize Memvid memory system
+  ralph memvid save "text"   Save context to semantic memory
+  ralph memvid search "query" Search memory with HNSW+BM25 hybrid
+  ralph memvid timeline      View memory history (time-travel)
+  ralph memvid status        Show memory status and config
 
 VALIDATION:
   ralph gates                Quality gates (9 languages) - BLOCKING
@@ -1634,6 +1685,125 @@ PROMPT_EOF
 }
 
 # ===============================================================================
+# MEMVID MEMORY (v2.31)
+# ===============================================================================
+
+cmd_memvid() {
+    local MEMVID_SUBCMD="${1:-help}"
+    shift || true
+
+    local MEMVID_CORE="${HOME}/.claude/scripts/memvid-core.py"
+
+    case "$MEMVID_SUBCMD" in
+        init|initialize)
+            log_info "Initializing Memvid memory system..."
+            if [ -f "$MEMVID_CORE" ]; then
+                python3 "$MEMVID_CORE" init
+            else
+                log_error "Memvid core not found at $MEMVID_CORE"
+                log_info "Run: ralph self-update"
+            fi
+            ;;
+        save)
+            if [ -z "${1:-}" ]; then
+                echo ""
+                echo "╔═══════════════════════════════════════════════════════════════╗"
+                echo "║  MEMVID SAVE: Save context to semantic memory (v2.31)         ║"
+                echo "╠═══════════════════════════════════════════════════════════════╣"
+                echo "║                                                               ║"
+                echo "║  Usage: ralph memvid save \"<context description>\"              ║"
+                echo "║                                                               ║"
+                echo "║  Examples:                                                    ║"
+                echo "║    ralph memvid save \"Working on OAuth2 authentication\"        ║"
+                echo "║    ralph memvid save \"Completed API design, pending tests\"     ║"
+                echo "║                                                               ║"
+                echo "║  Tips:                                                        ║"
+                echo "║    - Use descriptive text for future searches                 ║"
+                echo "║    - Include decisions made and their rationale               ║"
+                echo "║    - Reference related files or components                    ║"
+                echo "╚═══════════════════════════════════════════════════════════════╝"
+                exit 1
+            fi
+            local SAVE_TEXT="$*"
+            log_info "Saving to memory: ${SAVE_TEXT:0:50}..."
+            if [ -f "$MEMVID_CORE" ]; then
+                python3 "$MEMVID_CORE" save "$SAVE_TEXT"
+            else
+                log_error "Memvid core not found"
+            fi
+            ;;
+        search)
+            if [ -z "${1:-}" ]; then
+                echo ""
+                echo "╔═══════════════════════════════════════════════════════════════╗"
+                echo "║  MEMVID SEARCH: Semantic memory search (v2.31)                ║"
+                echo "╠═══════════════════════════════════════════════════════════════╣"
+                echo "║                                                               ║"
+                echo "║  Usage: ralph memvid search \"<query>\"                          ║"
+                echo "║                                                               ║"
+                echo "║  Examples:                                                    ║"
+                echo "║    ralph memvid search \"OAuth2 authentication\"                 ║"
+                echo "║    ralph memvid search \"API design decisions\"                 ║"
+                echo "║                                                               ║"
+                echo "║  Uses HNSW + BM25 hybrid search for best results              ║"
+                echo "╚═══════════════════════════════════════════════════════════════╝"
+                exit 1
+            fi
+            local SEARCH_QUERY="$*"
+            log_info "Searching memory: $SEARCH_QUERY"
+            if [ -f "$MEMVID_CORE" ]; then
+                python3 "$MEMVID_CORE" search "$SEARCH_QUERY"
+            else
+                log_error "Memvid core not found"
+            fi
+            ;;
+        timeline)
+            log_info "Showing memory timeline..."
+            if [ -f "$MEMVID_CORE" ]; then
+                python3 "$MEMVID_CORE" timeline
+            else
+                log_error "Memvid core not found"
+            fi
+            ;;
+        status)
+            log_info "Memvid memory status:"
+            if [ -f "$MEMVID_CORE" ]; then
+                python3 "$MEMVID_CORE" status
+            else
+                log_error "Memvid core not found"
+            fi
+            ;;
+        help|--help|-h|"")
+            echo ""
+            echo "╔═══════════════════════════════════════════════════════════════╗"
+            echo "║  MEMVID: Semantic Memory for Claude Code (v2.31)              ║"
+            echo "╠═══════════════════════════════════════════════════════════════╣"
+            echo "║                                                               ║"
+            echo "║  Commands:                                                    ║"
+            echo "║    ralph memvid init          Initialize memory system        ║"
+            echo "║    ralph memvid save \"text\"   Save context to memory            ║"
+            echo "║    ralph memvid search \"q\"    Search semantic memory            ║"
+            echo "║    ralph memvid timeline      View memory history             ║"
+            echo "║    ralph memvid status        Show memory status              ║"
+            echo "║                                                               ║"
+            echo "║  Features:                                                    ║"
+            echo "║    - HNSW + BM25 hybrid search (sub-5ms)                      ║"
+            echo "║    - Time-travel queries between sessions                     ║"
+            echo "║    - Single .mv2 file (portable, offline)                     ║"
+            echo "║    - Apache 2.0 license (100% free)                           ║"
+            echo "║                                                               ║"
+            echo "║  Docs: @memvid skill or ~/.claude/skills/memvid-memory/       ║"
+            echo "╚═══════════════════════════════════════════════════════════════╝"
+            ;;
+        *)
+            log_error "Unknown memvid command: $MEMVID_SUBCMD"
+            log_info "Run 'ralph memvid help' for usage"
+            exit 1
+            ;;
+    esac
+}
+
+# ===============================================================================
 # GIT WORKTREE + PR WORKFLOW (v2.20)
 # ===============================================================================
 WORKTREES_DIR=".worktrees"
@@ -2821,6 +2991,11 @@ main() {
             ;;
         image|img|analyze-image)
             cmd_image "$@"
+            ;;
+
+        # Memory (v2.31)
+        memvid|memory)
+            cmd_memvid "$@"
             ;;
 
         # Utility

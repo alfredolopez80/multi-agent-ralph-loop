@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.31.0] - 2026-01-07
+
+### Added (Memvid Memory Integration)
+
+- **Memvid Integration**: Semantic memory system with HNSW + BM25 hybrid search (sub-5ms latency)
+- **Memory Automation**: Auto-save checkpoints to semantic memory via hooks
+- **Time-travel Queries**: Query across session history with semantic search
+- **Single-file Storage**: Portable `.mv2` memory file (no database required)
+- **Startup Validation**: Memvid installation verified at startup
+- **Apache 2.0 License**: 100% free, no cloud dependencies
+
+### New Components (v2.31)
+
+| Component | Path | Purpose |
+|-----------|------|---------|
+| `memvid-core.py` | `~/.claude/scripts/memvid-core.py` | Core memory library |
+| `memvid-memory/` | `~/.claude/skills/memvid-memory/` | @memvid skill |
+| `migrate-checkpoints.py` | `~/.claude/scripts/migrate-checkpoints.py` | JSON → .mv2 migration |
+
+### New CLI Commands (v2.31)
+
+| Command | Purpose |
+|---------|---------|
+| `ralph memvid init` | Initialize memory system |
+| `ralph memvid save "text"` | Save context to memory |
+| `ralph memvid search "query"` | Semantic memory search |
+| `ralph memvid timeline` | View session history |
+| `ralph memvid status` | Show memory status |
+
+### Validation (v2.31)
+
+- Added `memvid` to `FEATURE_TOOLS` array
+- Added `validate_memvid_packages()` function for package verification
+- Added startup validation in `startup_validation()`
+
+---
+
 ## [2.30.0] - 2026-01-07
 
 ### Added (Context Engineering)

@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.30-blue)
+![Version](https://img.shields.io/badge/version-2.31-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -65,6 +65,22 @@ The system addresses the fundamental challenge of AI-assisted coding: **ensuring
 | **Fresh Context Explorer** | @fresh-explorer for independent analysis without context contamination |
 | **CC + Codex Workflow** | Claude Code implements → Codex reviews → iterate until VERIFIED_DONE |
 | **CLAUDE.md Modularization** | Core content split into 10 on-demand skills (58% size reduction) |
+
+### Memvid Semantic Memory (v2.31)
+
+| Feature | Description |
+|---------|-------------|
+| **HNSW + BM25 Hybrid Search** | Sub-5ms semantic search with high recall |
+| **Time-travel Queries** | Query across session history with semantic matching |
+| **Single-file Storage** | Portable `.mv2` file (no database required) |
+| **100% Offline** | Apache 2.0 license, no cloud dependencies |
+| **@memvid Skill** | Quick access to memory operations |
+
+```bash
+ralph memvid init          # Initialize memory system
+ralph memvid save "context"  # Save current context
+ralph memvid search "query"  # Semantic search
+```
 
 ### Quality & Validation
 

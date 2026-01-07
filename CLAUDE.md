@@ -1,6 +1,36 @@
-# Multi-Agent Ralph v2.30
+# Multi-Agent Ralph v2.31
 
-Orchestration with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement, 9-language quality gates, **multi-level security loop**, **context engineering**, and **comprehensive testing (476 tests)**.
+Orchestration with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement, 9-language quality gates, **multi-level security loop**, **context engineering**, **Memvid semantic memory**, and **comprehensive testing (476 tests)**.
+
+## v2.31 Key Changes (Memvid Memory Integration)
+
+- **MEMVID INTEGRATION**: Semantic memory system with HNSW + BM25 hybrid search
+- **MEMORY AUTOMATION**: Auto-save checkpoints to semantic memory via hooks
+- **TIME-TRAVEL QUERIES**: Query across session history with sub-5ms latency
+- **SINGLE-FILE STORAGE**: Portable `.mv2` memory file (no database required)
+- **STARTUP VALIDATION**: Memvid installation verified at startup
+- **NEW CLI COMMANDS**: `ralph memvid init|save|search|timeline|status`
+- **NEW SKILL**: @memvid for semantic memory operations
+- **100% OFFLINE**: Apache 2.0 license, no cloud dependencies
+
+### Memvid vs claude-mem
+
+| Feature | claude-mem | Memvid (v2.31) |
+|---------|------------|----------------|
+| Vector Search | SQLite basic | HNSW + BM25 |
+| Time-travel | No | Yes |
+| Single-file | No | Yes (.mv2) |
+| Latency | Slow | Sub-5ms |
+| License | Open | Apache 2.0 |
+
+### Memvid Commands
+
+```bash
+ralph memvid init          # Initialize memory system
+ralph memvid save "context"  # Save current context
+ralph memvid search "query"  # Semantic search
+ralph memvid timeline       # View session history
+```
 
 ## v2.30 Key Changes (Context Engineering)
 
