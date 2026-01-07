@@ -460,13 +460,13 @@ VALIDATION_MODEL="minimax"      # Parallel review
 - **NICE_TO_HAVE questions** can assume defaults if skipped
 - **Enter Plan Mode** automatically for any non-trivial task
 
-## Iteration Limits
+## Iteration Limits (v2.32 Extended)
 
-| Model | Max Iter | Use Case |
-|-------|----------|----------|
-| Claude | **15** | Complex reasoning |
-| MiniMax M2.1 | **30** | Standard (2x) |
-| MiniMax-lightning | **60** | Extended (4x) |
+| Model | Max Iter | Use Case | Change from v2.31 |
+|-------|----------|----------|-------------------|
+| Claude | **25** | Complex reasoning | +10 iterations |
+| MiniMax M2.1 | **50** | Standard (2x) | +20 iterations |
+| MiniMax-lightning | **100** | Extended (4x) | +40 iterations |
 
 ## CRITICAL: Ralph Loop Pattern
 
@@ -495,12 +495,12 @@ VALIDATION_MODEL="minimax"      # Parallel review
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Iteration Limits by Model:**
-| Model | Max Iterations | Rationale |
-|-------|----------------|-----------|
-| Claude (Sonnet/Opus) | **15** | Complex reasoning, higher accuracy per iteration |
-| MiniMax M2.1 | **30** | Good quality at 8% cost, needs more iterations |
-| MiniMax-lightning | **60** | Fast model, compensate with more iterations |
+**Iteration Limits by Model (v2.32 Extended):**
+| Model | Max Iterations | Rationale | Change |
+|-------|----------------|-----------|--------|
+| Claude (Sonnet/Opus) | **25** | Complex reasoning, higher accuracy per iteration | +10 from v2.31 |
+| MiniMax M2.1 | **50** | Good quality at 8% cost, needs more iterations | +20 from v2.31 |
+| MiniMax-lightning | **100** | Fast model, compensate with more iterations | +40 from v2.31 |
 
 **Quality Hooks (automatic enforcement):**
 - `quality-gates.sh` → Post-Edit/Write: tsc, eslint, pyright, ruff, etc. (9 languages)

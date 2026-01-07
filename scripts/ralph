@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # ralph - Multi-Agent Orchestrator CLI
-# Version 2.28.0
+# Version 2.32.0
+# v2.32: YAML-based skills system, extended iterations, hook registration fix
+# v2.31: Memvid semantic memory integration
+# v2.30: Context engineering, auto-checkpointing, fresh context explorer
+# v2.29: Smart execution, background tasks, quality criteria
 # v2.28: Comprehensive testing (476 tests), prompt optimization, security audit
 # v2.27: Multi-level security loop, README restructure, CHANGELOG.md
 # v2.26: Prefix-based slash commands, Anthropic directives, task persistence
@@ -15,7 +19,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.28.0"
+VERSION="2.32.0"
 RALPH_REPO_PATH=""  # Auto-detected if in ralph repo
 RALPH_DIR="${HOME}/.ralph"
 
@@ -174,10 +178,10 @@ CYAN='\033[0;36m'
 MAGENTA='\033[0;35m'
 NC='\033[0m'
 
-# Iteration Limits
-CLAUDE_MAX_ITER=15
-MINIMAX_MAX_ITER=30
-LIGHTNING_MAX_ITER=60
+# Iteration Limits (v2.32 - Extended for real-world usage)
+CLAUDE_MAX_ITER=25        # +10 iterations from v2.31 (was 15)
+MINIMAX_MAX_ITER=50       # +20 iterations from v2.31 (was 30)
+LIGHTNING_MAX_ITER=100    # +40 iterations from v2.31 (was 60)
 
 # Model Configuration by Task Type (v2.21)
 # Based on efficiency analysis: quality > speed > rework > context
@@ -481,6 +485,12 @@ MEMORY (v2.31):
   ralph memvid search "query" Search memory with HNSW+BM25 hybrid
   ralph memvid timeline      View memory history (time-travel)
   ralph memvid status        Show memory status and config
+
+SKILLS (v2.32):
+  ralph skill create <name>  Create new YAML-based skill
+  ralph skill validate <name> Validate skill structure and patterns
+  ralph skill list           List all available skills
+  ralph skill help           Show skills system documentation
 
 VALIDATION:
   ralph gates                Quality gates (9 languages) - BLOCKING
@@ -1804,6 +1814,371 @@ cmd_memvid() {
 }
 
 # ===============================================================================
+# YAML-BASED SKILLS SYSTEM (v2.32 - H70-inspired)
+# ===============================================================================
+
+cmd_skill() {
+    local SKILL_SUBCMD="${1:-help}"
+    shift || true
+
+    local SKILLS_DIR="${HOME}/.ralph/skills"
+    local VALIDATOR="${HOME}/.claude/hooks/skill-validator.sh"
+
+    case "$SKILL_SUBCMD" in
+        create)
+            local SKILL_NAME="${1:-}"
+            if [ -z "$SKILL_NAME" ]; then
+                echo ""
+                echo "╔═══════════════════════════════════════════════════════════════╗"
+                echo "║  SKILL CREATE: Create new YAML-based skill (v2.32)            ║"
+                echo "╠═══════════════════════════════════════════════════════════════╣"
+                echo "║                                                               ║"
+                echo "║  Usage: ralph skill create <skill-name>                       ║"
+                echo "║                                                               ║"
+                echo "║  Examples:                                                    ║"
+                echo "║    ralph skill create api-security                            ║"
+                echo "║    ralph skill create performance-tuning                      ║"
+                echo "║                                                               ║"
+                echo "║  Creates directory: ~/.ralph/skills/<skill-name>/             ║"
+                echo "║    - skill.yaml         (identity, triggers, execution)       ║"
+                echo "║    - sharp-edges.yaml   (gotchas and mitigations)             ║"
+                echo "║    - validations.yaml   (regex-based quality checks)          ║"
+                echo "║    - collaboration.yaml (inter-skill delegation)              ║"
+                echo "╚═══════════════════════════════════════════════════════════════╝"
+                exit 1
+            fi
+
+            # Validate skill name (alphanumeric + hyphens only)
+            if ! [[ "$SKILL_NAME" =~ ^[a-z0-9-]+$ ]]; then
+                log_error "Skill name must be lowercase alphanumeric with hyphens: $SKILL_NAME"
+                exit 1
+            fi
+
+            local SKILL_DIR="$SKILLS_DIR/$SKILL_NAME"
+            if [ -d "$SKILL_DIR" ]; then
+                log_error "Skill already exists: $SKILL_NAME"
+                exit 1
+            fi
+
+            log_info "Creating skill: $SKILL_NAME"
+            mkdir -p "$SKILL_DIR"
+
+            # Create skill.yaml template
+            cat > "$SKILL_DIR/skill.yaml" <<'EOF'
+# skill.yaml - Skill Definition
+name: SKILL_NAME
+version: 1.0.0
+category: general
+author: Ralph v2.32
+benchmark_score: null
+benchmark_delta: null
+
+role: |
+  Expert in [domain]. Specializes in [specific capabilities].
+  Applies [best practices] and [methodologies].
+
+description: |
+  This skill performs [comprehensive description]
+
+triggers:
+  keywords:
+    - keyword1
+    - keyword2
+  file_patterns:
+    - "**/*.{ext}"
+  context_patterns:
+    - "implement.*pattern"
+
+sharp_edges_ref: sharp-edges.yaml
+validations_ref: validations.yaml
+collaboration_ref: collaboration.yaml
+
+execution:
+  max_iterations: 10
+  timeout_seconds: 300
+  require_approval: true
+  phases:
+    - name: analyze
+      description: Analyze the codebase
+      tools: [read, grep]
+    - name: implement
+      description: Apply changes
+      tools: [edit, write]
+    - name: verify
+      description: Verify changes
+      tools: [bash]
+
+output_templates:
+  finding:
+    format: |
+      🔍 Finding: {severity} - {id}
+      File: {file_path}:{line_number}
+      Issue: {description}
+      Fix: {recommendation}
+
+metrics:
+  - name: items_found
+    type: counter
+    description: Total items identified
+  - name: items_fixed
+    type: counter
+    description: Total items fixed
+
+examples:
+  - input: "Example task description"
+    expected_actions:
+      - Action 1
+      - Action 2
+EOF
+            sed -i.bak "s/SKILL_NAME/$SKILL_NAME/g" "$SKILL_DIR/skill.yaml" && rm "$SKILL_DIR/skill.yaml.bak"
+
+            # Create sharp-edges.yaml template
+            cat > "$SKILL_DIR/sharp-edges.yaml" <<'EOF'
+# sharp-edges.yaml - Gotchas and Mitigations
+sharp_edges:
+  - id: SE001
+    title: "Example Sharp Edge"
+    description: |
+      Describe what can go wrong when applying this skill.
+
+    detection_pattern:
+      regex: "(?i)example.*pattern"
+      files: ["**/*.{ext}"]
+
+    mitigation:
+      - Step 1 to avoid the issue
+      - Step 2 to handle gracefully
+      - Step 3 to verify safety
+
+    severity: high
+
+recommendations:
+  - title: "Test Changes Thoroughly"
+    description: |
+      Always test in staging environment first.
+
+  - title: "Have a Rollback Plan"
+    description: |
+      Ensure changes are reversible.
+EOF
+
+            # Create validations.yaml template
+            cat > "$SKILL_DIR/validations.yaml" <<'EOF'
+# validations.yaml - Quality Checks
+validations:
+  - id: V001
+    name: "Example Validation"
+    description: "Ensure specific quality criteria"
+    severity: high
+    pattern:
+      regex: 'pattern_to_detect'
+      negative_regex: 'acceptable_pattern'
+    file_patterns:
+      - "**/*.{ext}"
+    message: "Descriptive error message with fix suggestion."
+
+thresholds:
+  max_critical_violations: 0
+  max_high_violations: 3
+  max_medium_violations: 10
+
+reporting:
+  format: json
+  include_line_numbers: true
+  include_code_context: true
+  context_lines: 3
+EOF
+
+            # Create collaboration.yaml template
+            cat > "$SKILL_DIR/collaboration.yaml" <<'EOF'
+# collaboration.yaml - Inter-skill Coordination
+delegation:
+  - skill: test-automation
+    when:
+      - "Changes applied and need testing"
+    conditions:
+      - changes_applied == true
+    context_to_share:
+      - affected_files
+      - change_descriptions
+    expected_output:
+      - test_results
+
+accept_delegation_from:
+  - skill: "*"
+    triggers:
+      - "relevant_keyword"
+    priority: medium
+
+workflows:
+  - name: example-workflow
+    description: "Multi-skill collaboration example"
+    steps:
+      - skill: SKILL_NAME
+        phase: analyze
+        output: findings
+      - skill: SKILL_NAME
+        phase: implement
+        input: findings
+        output: changes
+
+communication:
+  input_format:
+    type: json
+    schema:
+      task_id: string
+      context: object
+
+  output_format:
+    type: json
+    schema:
+      task_id: string
+      status: enum[success, partial, failed]
+      results: object
+
+best_practices:
+  - title: "Provide Full Context"
+    description: |
+      When delegating, include complete context.
+
+  - title: "Clear Success Criteria"
+    description: |
+      Define what "done" means before starting.
+EOF
+            sed -i.bak "s/SKILL_NAME/$SKILL_NAME/g" "$SKILL_DIR/collaboration.yaml" && rm "$SKILL_DIR/collaboration.yaml.bak"
+
+            log_success "Created skill: $SKILL_NAME"
+            log_info "Edit files in: $SKILL_DIR/"
+            log_info "Validate with: ralph skill validate $SKILL_NAME"
+            ;;
+
+        validate)
+            local SKILL_NAME="${1:-}"
+            if [ -z "$SKILL_NAME" ]; then
+                log_error "Usage: ralph skill validate <skill-name>"
+                exit 1
+            fi
+
+            local SKILL_DIR="$SKILLS_DIR/$SKILL_NAME"
+            if [ ! -d "$SKILL_DIR" ]; then
+                log_error "Skill not found: $SKILL_NAME"
+                exit 1
+            fi
+
+            log_info "Validating skill: $SKILL_NAME"
+
+            # Run validator hook
+            if [ -x "$VALIDATOR" ]; then
+                echo "{\"skill\": \"$SKILL_NAME\", \"action\": \"validate\"}" | "$VALIDATOR"
+                if [ $? -eq 0 ]; then
+                    log_success "Validation passed: $SKILL_NAME"
+                else
+                    log_error "Validation failed: $SKILL_NAME"
+                    exit 1
+                fi
+            else
+                log_warning "Validator not found or not executable: $VALIDATOR"
+                log_info "Basic YAML syntax check..."
+                for yaml_file in "$SKILL_DIR"/*.yaml; do
+                    if [ -f "$yaml_file" ]; then
+                        python3 -c "import yaml; yaml.safe_load(open('$yaml_file'))" 2>&1
+                        if [ $? -ne 0 ]; then
+                            log_error "YAML syntax error in: $yaml_file"
+                            exit 1
+                        fi
+                    fi
+                done
+                log_success "Basic validation passed"
+            fi
+            ;;
+
+        list)
+            log_info "Available skills:"
+            if [ ! -d "$SKILLS_DIR" ]; then
+                log_warning "No skills directory found: $SKILLS_DIR"
+                exit 0
+            fi
+
+            echo ""
+            echo "╔═══════════════════════════════════════════════════════════════╗"
+            echo "║  SKILLS: YAML-based Skills System (v2.32)                     ║"
+            echo "╠═══════════════════════════════════════════════════════════════╣"
+
+            local COUNT=0
+            for skill_dir in "$SKILLS_DIR"/*/; do
+                if [ -d "$skill_dir" ]; then
+                    local skill_name=$(basename "$skill_dir")
+                    local skill_yaml="$skill_dir/skill.yaml"
+
+                    if [ -f "$skill_yaml" ]; then
+                        COUNT=$((COUNT + 1))
+                        local version category
+                        version=$(python3 -c "import yaml; print(yaml.safe_load(open('$skill_yaml')).get('version', 'unknown'))" 2>/dev/null || echo "unknown")
+                        category=$(python3 -c "import yaml; print(yaml.safe_load(open('$skill_yaml')).get('category', 'unknown'))" 2>/dev/null || echo "unknown")
+
+                        printf "║  %-30s v%-10s [%s]  ║\n" "$skill_name" "$version" "$category"
+                    fi
+                fi
+            done
+
+            if [ $COUNT -eq 0 ]; then
+                echo "║  No skills found. Create one with 'ralph skill create'        ║"
+            fi
+
+            echo "╠═══════════════════════════════════════════════════════════════╣"
+            echo "║  Commands:                                                    ║"
+            echo "║    ralph skill create <name>   Create new skill               ║"
+            echo "║    ralph skill validate <name> Validate skill structure       ║"
+            echo "║    ralph skill list            List all skills                ║"
+            echo "╚═══════════════════════════════════════════════════════════════╝"
+            ;;
+
+        help|--help|-h|"")
+            echo ""
+            echo "╔═══════════════════════════════════════════════════════════════╗"
+            echo "║  SKILLS: YAML-based Skills System (v2.32)                     ║"
+            echo "╠═══════════════════════════════════════════════════════════════╣"
+            echo "║                                                               ║"
+            echo "║  H70-Inspired Lightweight Skills (+36.7pts improvement)       ║"
+            echo "║                                                               ║"
+            echo "║  Commands:                                                    ║"
+            echo "║    ralph skill create <name>   Create new skill from template ║"
+            echo "║    ralph skill validate <name> Validate YAML structure        ║"
+            echo "║    ralph skill list            List all available skills      ║"
+            echo "║                                                               ║"
+            echo "║  Architecture:                                                ║"
+            echo "║    ~/.ralph/skills/<skill-name>/                              ║"
+            echo "║      ├── skill.yaml         (identity, triggers, config)      ║"
+            echo "║      ├── sharp-edges.yaml   (gotchas with patterns)           ║"
+            echo "║      ├── validations.yaml   (regex quality checks)            ║"
+            echo "║      └── collaboration.yaml (inter-skill delegation)          ║"
+            echo "║                                                               ║"
+            echo "║  Example:                                                     ║"
+            echo "║    ralph skill create api-security                            ║"
+            echo "║    # Edit ~/.ralph/skills/api-security/*.yaml                 ║"
+            echo "║    ralph skill validate api-security                          ║"
+            echo "║                                                               ║"
+            echo "║  Features:                                                    ║"
+            echo "║    - Lightweight YAML-based configuration                     ║"
+            echo "║    - Regex-based pattern detection                            ║"
+            echo "║    - Automated quality validation                             ║"
+            echo "║    - Inter-skill collaboration rules                          ║"
+            echo "║    - Sharp edge detection and mitigation                      ║"
+            echo "║                                                               ║"
+            echo "║  Based on: Meta Alchemist H70 Claude Skills                   ║"
+            echo "║  Benchmark: 94.5% avg vs 57.8% baseline (+36.7pts)            ║"
+            echo "╚═══════════════════════════════════════════════════════════════╝"
+            ;;
+
+        *)
+            log_error "Unknown skill command: $SKILL_SUBCMD"
+            log_info "Run 'ralph skill help' for usage"
+            exit 1
+            ;;
+    esac
+}
+
+# ===============================================================================
 # GIT WORKTREE + PR WORKFLOW (v2.20)
 # ===============================================================================
 WORKTREES_DIR=".worktrees"
@@ -2996,6 +3371,11 @@ main() {
         # Memory (v2.31)
         memvid|memory)
             cmd_memvid "$@"
+            ;;
+
+        # Skills System (v2.32)
+        skill|skills)
+            cmd_skill "$@"
             ;;
 
         # Utility

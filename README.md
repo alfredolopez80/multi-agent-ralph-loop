@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.31-blue)
+![Version](https://img.shields.io/badge/version-2.32-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -82,6 +82,23 @@ ralph memvid save "context"  # Save current context
 ralph memvid search "query"  # Semantic search
 ```
 
+### YAML-based Skills System (v2.32)
+
+| Feature | Description |
+|---------|-------------|
+| **H70-Inspired Architecture** | Lightweight YAML skills achieving +36.7pts improvement (94.5% vs 57.8% baseline) |
+| **4-File Structure** | skill.yaml, sharp-edges.yaml, validations.yaml, collaboration.yaml |
+| **Regex-based Validation** | Automated pattern detection and quality checks |
+| **Inter-skill Collaboration** | Delegation rules and workflow orchestration |
+| **Extended Iterations** | Claude: 25 (+10), MiniMax: 50 (+20), Lightning: 100 (+40) |
+| **Hook Registration Fix** | v2.30 hooks now properly registered (context-warning, periodic-reminder, checkpoint-auto-save) |
+
+```bash
+ralph skill create api-security    # Create new skill from template
+ralph skill validate security-hardening  # Validate YAML structure
+ralph skill list                   # List all available skills
+```
+
 ### Quality & Validation
 
 | Feature | Description |
@@ -148,15 +165,15 @@ The fundamental iteration pattern ensuring quality through validation:
 │                          ▼                          ▼          │
 │                   ┌─────────────┐          ┌──────────────┐    │
 │                   │  ITERATE    │          │ VERIFIED_DONE│    │
-│                   │ (max 15/30) │          │   (output)   │    │
+│                   │(max 25/50)  │          │   (output)   │    │
 │                   └──────┬──────┘          └──────────────┘    │
 │                          │                                     │
 │                          └──────────▶ Back to EXECUTE          │
 │                                                                 │
-│   Iteration Limits:                                             │
-│   • Claude (Sonnet/Opus): 15 iterations                        │
-│   • MiniMax M2.1: 30 iterations                                │
-│   • MiniMax-lightning: 60 iterations                           │
+│   Iteration Limits (v2.32):                                     │
+│   • Claude (Sonnet/Opus): 25 iterations (+10 from v2.31)       │
+│   • MiniMax M2.1: 50 iterations (+20 from v2.31)               │
+│   • MiniMax-lightning: 100 iterations (+40 from v2.31)         │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
