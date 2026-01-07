@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.28-blue)
+![Version](https://img.shields.io/badge/version-2.29-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -45,6 +45,15 @@ The system addresses the fundamental challenge of AI-assisted coding: **ensuring
 | **8-Step Workflow** | Auto-plan → Clarify → Classify → Worktree → Plan → Execute → Validate → Retrospect |
 | **Parallel Execution** | Multiple agents work simultaneously on independent subtasks |
 | **Model Routing** | Automatic selection: Opus (critical), Sonnet (standard), MiniMax (extended) |
+
+### Smart Execution (v2.29)
+
+| Feature | Description |
+|---------|-------------|
+| **Background Tasks** | All agents use `run_in_background: true` by default |
+| **Quality Criteria** | Explicit stop conditions defined per agent/task type |
+| **Auto Discovery** | Explorer/Plan invoked automatically for complex tasks (complexity >= 7) |
+| **Tool Selection Matrix** | Intelligent routing: ast-grep → Context7 → WebSearch → MiniMax MCP |
 
 ### Quality & Validation
 
@@ -582,7 +591,15 @@ See [LICENSE](LICENSE) for details.
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
 
-### Latest: v2.27.0 (2026-01-04)
+### Latest: v2.29.0 (2026-01-07)
+
+- **Smart Execution**: Background tasks by default, explicit quality criteria per agent
+- **Auto Discovery**: Explorer/Plan invoked automatically for complex tasks (complexity >= 7)
+- **Tool Selection Matrix**: Intelligent routing to ast-grep, Context7, WebSearch, MiniMax MCP
+- **9 Agents Updated**: orchestrator, security-auditor, debugger, code-reviewer, test-architect, refactorer, frontend-reviewer, docs-writer, minimax-reviewer
+- **New Skill**: auto-intelligence for automatic context exploration and planning
+
+### v2.27.0 (2026-01-04)
 
 - **Multi-Level Security Loop**: `ralph security-loop` - iterative audit until 0 vulnerabilities
 - **Hybrid Approval Mode**: Auto-fix LOW/MEDIUM, manual approval for CRITICAL/HIGH

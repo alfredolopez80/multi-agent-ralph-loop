@@ -88,6 +88,39 @@ ensure_dirs() {
     mkdir -p "${RALPH_DIR}/logs"
 }
 
+# SECURITY FIX (CWE-200): Secure curl helper to prevent API key exposure in argv
+# API keys passed via -H argument are visible to other users via 'ps'
+# This helper writes headers to a temp file with 600 permissions
+secure_curl() {
+    local URL="$1"
+    local API_KEY="$2"
+    local DATA="$3"
+    local MAX_TIME="${4:-300}"
+
+    # Create secure temp file for headers (VULN: API key in argv)
+    local HEADER_FILE
+    HEADER_FILE=$(mktemp "${TMPDIR:-/tmp}/mmc_headers.XXXXXX")
+    chmod 600 "$HEADER_FILE"
+
+    # Write headers to file (not visible in ps)
+    cat > "$HEADER_FILE" <<EOF
+Authorization: Bearer $API_KEY
+Content-Type: application/json
+anthropic-version: 2023-06-01
+EOF
+
+    # Use -H @file to read headers from file
+    local RESPONSE
+    RESPONSE=$(curl -s --max-time "$MAX_TIME" "$URL" \
+        -H @"$HEADER_FILE" \
+        -d "$DATA" 2>&1)
+
+    # Clean up header file immediately
+    rm -f "$HEADER_FILE"
+
+    echo "$RESPONSE"
+}
+
 setup() {
     ensure_dirs
 
@@ -235,12 +268,10 @@ show_status() {
         local BASE_URL=$(get_base_url)
 
         # Use messages endpoint with minimal request (MiniMax doesn't have /v1/models)
+        # SECURITY: Use secure_curl to prevent API key exposure in process args (CWE-200)
         local TEST_RESPONSE
-        TEST_RESPONSE=$(curl -s --max-time 10 "${BASE_URL}/v1/messages" \
-            -H "Authorization: Bearer $API_KEY" \
-            -H "Content-Type: application/json" \
-            -H "anthropic-version: 2023-06-01" \
-            -d '{"model":"MiniMax-M2.1","max_tokens":1,"messages":[{"role":"user","content":"1"}]}' 2>&1)
+        TEST_RESPONSE=$(secure_curl "${BASE_URL}/v1/messages" "$API_KEY" \
+            '{"model":"MiniMax-M2.1","max_tokens":1,"messages":[{"role":"user","content":"1"}]}' 10)
 
         if echo "$TEST_RESPONSE" | grep -q '"content"'; then
             echo -e "${GREEN}Connected${NC}"
@@ -277,17 +308,19 @@ query() {
     # Per MiniMax docs: https://platform.minimax.io/docs/api-reference/text-anthropic-api
     # - temperature must be in (0.0, 1.0]
     # - stop_sequences and top_k are ignored
+    # SECURITY: Use secure_curl to prevent API key exposure in process args (CWE-200)
+    local REQUEST_DATA
+    REQUEST_DATA=$(cat <<EOJSON
+{
+    "model": "$MODEL",
+    "max_tokens": 4096,
+    "temperature": $TEMPERATURE,
+    "messages": [{"role": "user", "content": $ESCAPED_PROMPT}]
+}
+EOJSON
+)
     local RESPONSE
-    RESPONSE=$(curl -s --max-time 300 "${BASE_URL}/v1/messages" \
-        -H "Authorization: Bearer $API_KEY" \
-        -H "Content-Type: application/json" \
-        -H "anthropic-version: 2023-06-01" \
-        -d "{
-            \"model\": \"$MODEL\",
-            \"max_tokens\": 4096,
-            \"temperature\": $TEMPERATURE,
-            \"messages\": [{\"role\": \"user\", \"content\": $ESCAPED_PROMPT}]
-        }" 2>&1)
+    RESPONSE=$(secure_curl "${BASE_URL}/v1/messages" "$API_KEY" "$REQUEST_DATA" 300)
 
     # Handle response - check for thinking content too
     local TEXT_CONTENT

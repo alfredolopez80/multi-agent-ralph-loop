@@ -1,6 +1,26 @@
-# Multi-Agent Ralph v2.28
+# Multi-Agent Ralph v2.29
 
 Orchestration with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement, 9-language quality gates, **multi-level security loop**, and **comprehensive testing (476 tests)**.
+
+## v2.29 Key Changes (Smart Execution)
+
+- **BACKGROUND TASKS DEFAULT**: All agents use `run_in_background: true` by default
+- **QUALITY CRITERIA**: Explicit stop conditions defined for each agent/task type
+- **AUTO DISCOVERY**: Explorer/Plan invoked automatically for complex tasks (complexity >= 7)
+- **SMART TOOL SELECTION**: Intelligent routing to ast-grep, Context7, WebSearch, MiniMax MCP
+- **PARALLEL EXECUTION**: Multiple subagents run concurrently when possible
+- **9 AGENTS UPDATED**: orchestrator, security-auditor, debugger, code-reviewer, test-architect, refactorer, frontend-reviewer, docs-writer, minimax-reviewer
+- **NEW SKILL**: auto-intelligence for automatic context exploration and planning
+
+### Tool Selection Matrix (v2.29)
+| Task Type | Primary Tool | Fallback |
+|-----------|--------------|----------|
+| Code patterns (AST) | ast-grep MCP | Explore agent |
+| Code search (strings) | grep/rg | ast-grep MCP |
+| Library docs | Context7 MCP | WebSearch |
+| Web research | WebSearch (native) | MiniMax MCP |
+| Code review | Codex GPT-5 | Claude Opus |
+| Second opinion | MiniMax (8% cost) | Claude Sonnet |
 
 ## v2.28 Key Changes (Comprehensive Testing & Audit)
 

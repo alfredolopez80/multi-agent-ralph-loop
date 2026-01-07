@@ -14,6 +14,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **7 New Test Files**: CLI commands, slash commands, skills, security functions, cross-platform, orchestrator flow, worktree workflow
 - **Expanded Slash Commands**: All 7 sparse commands expanded to production-quality (150-543 lines each)
 
+## [2.29.0] - 2026-01-07
+
+### Added
+- **Smart Execution**: Background tasks by default with `run_in_background: true`
+- **Quality Criteria**: Explicit stop conditions defined per agent/task type
+- **Auto Discovery**: Explorer/Plan invoked automatically for complex tasks (complexity >= 7)
+- **Tool Selection Matrix**: Intelligent routing to optimal tools (ast-grep, Context7, WebSearch, MiniMax MCP)
+- **New Skill**: `auto-intelligence` for automatic context exploration and planning
+
+### Updated Agents
+- orchestrator.md - Added quality criteria + tool selection + auto discovery
+- security-auditor.md - Added quality criteria + run_in_background
+- debugger.md - Added quality criteria + run_in_background
+- code-reviewer.md - Added quality criteria + run_in_background
+- test-architect.md - Added quality criteria + run_in_background
+- refactorer.md - Added quality criteria + run_in_background
+- frontend-reviewer.md - Added quality criteria + run_in_background
+- docs-writer.md - Added quality criteria + run_in_background
+- minimax-reviewer.md - Added quality criteria + run_in_background
+
+### Updated Skills
+- ai-code-auditor/SKILL.md - Added quality criteria
+- isms-audit-expert/SKILL.md - Added quality criteria
+- polymarket-risk-and-position-sizing/SKILL.md - Added quality criteria
+
+### Updated Configuration
+- ~/.claude/CLAUDE.md - Added v2.29 Smart Execution section
+- CLAUDE.md (project) - Updated to v2.29 with tool selection matrix
+
 ### Testing Coverage
 
 | Test File | Tests | Coverage |
