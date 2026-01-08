@@ -22,7 +22,7 @@ Task:
   description: "Codex bug analysis"
   prompt: |
     Run Codex CLI for deep bug analysis:
-    codex exec --yolo --enable-skills -m gpt-5.2-codex \
+    codex exec --profile security-audit \
       "Use bug-hunter skill. Debug this issue: $ERROR
        Files: $FILES
        Trace the bug, find root cause, suggest fix."

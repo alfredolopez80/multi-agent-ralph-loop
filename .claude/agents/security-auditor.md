@@ -24,7 +24,7 @@ Task:
   run_in_background: true
   prompt: |
     Run Codex CLI for security analysis:
-    codex exec --yolo --enable-skills -m gpt-5.2-codex \
+    codex exec --profile security-audit \
       "Use security-review skill. Analyze for vulnerabilities in: $FILES
        Check:
        - Injection (SQL, NoSQL, Command, LDAP, XPath, Template)

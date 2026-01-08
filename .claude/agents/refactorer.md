@@ -21,7 +21,7 @@ Task:
   description: "Codex refactoring"
   prompt: |
     Run Codex CLI for systematic refactoring:
-    codex exec --yolo --enable-skills -m gpt-5.2-codex \
+    codex exec --profile code-review \
       "Refactor: $FILES
        Focus on:
        - Extract methods/classes

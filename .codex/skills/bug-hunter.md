@@ -14,7 +14,7 @@ Deep bug detection using gpt-5.2-codex reasoning capabilities.
 
 ## Invocation
 ```bash
-codex exec --yolo --enable-skills -m gpt-5.2-codex \
+codex exec --profile security-audit \
   "Use bug-hunter skill. Find bugs in: $FILES"
 ```
 

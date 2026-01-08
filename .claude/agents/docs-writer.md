@@ -42,7 +42,7 @@ Task:
   description: "Codex comments"
   prompt: |
     Run Codex CLI for code comments:
-    codex exec --yolo -m gpt-5.2-codex \
+    codex exec --profile code-review \
       "Add comprehensive JSDoc/docstring comments to: $FILES"
 ```
 

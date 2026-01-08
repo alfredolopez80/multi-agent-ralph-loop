@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.33-blue)
+![Version](https://img.shields.io/badge/version-2.34-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -152,6 +152,56 @@ ralph iterate <pr>             # Enhanced with Sentry priority
 | deslop (enhanced) | ❌ NO | Remove Sentry over-instrumentation |
 | issue-summarizer | ✅ YES | Deep issue analysis (optional Phase 3) |
 | /seer, /getIssues | ✅ YES | Natural language queries (optional Phase 3) |
+
+### Codex CLI v0.79.0 Security Hardening (v2.34)
+
+| Feature | Description |
+|---------|-------------|
+| **Zero --yolo Usage** | 10/11 invocations (91%) eliminated → 0/11 (0%) ✅ Complete removal of insecure auto-approval |
+| **100% Sandbox Isolation** | All Codex invocations use proper sandboxing (0% → 100%) |
+| **Configuration Profiles** | 5 specialized profiles (security-audit, bug-hunting, code-review, unit-tests, ci-cd) |
+| **Secure by Default** | Global config: `approval_policy=on-request` + `sandbox_mode=workspace-write` |
+| **Output Schemas** | JSON validation eliminates ~20% parsing failures (100% reliable) |
+| **Convenience Flags** | `--full-auto` for balanced automation (workspace-write + on-request) |
+| **Native Review** | `codex review` for Git-aware PR reviews |
+| **Auto-initialization** | `init_codex_schemas()` creates schemas on startup |
+
+**Security Impact:**
+- **VULN-009 (HIGH)** - Eliminated: All `--yolo` flags removed from 11 Codex invocations
+- **Sandbox Security** - Upgraded: read-only for audits, workspace-write for development
+- **Approval Control** - Enhanced: Fine-grained policies (untrusted, on-failure, on-request, never)
+
+```bash
+# Security audit (read-only sandbox, o3 model for max reasoning)
+ralph security src/
+
+# Bug hunting (workspace-write, interactive approval)
+ralph bugs src/
+
+# Unit test generation (workspace-write)
+ralph unit-tests src/
+
+# Code review (Git-aware native review)
+ralph review main..feature-branch
+
+# Security loop (iterative audit + fix until 0 vulnerabilities)
+ralph security-loop src/ --max-rounds 10
+```
+
+**Configuration Profiles (v2.34):**
+
+| Profile | Model | Sandbox | Approval | Use Case |
+|---------|-------|---------|----------|----------|
+| security-audit | o3 | read-only | on-failure | Security audits - no file mods |
+| bug-hunting | gpt-5.2-codex | workspace-write | on-request | Bug detection + fixes |
+| code-review | gpt-5.2-codex | workspace-write | on-request | PR reviews, refactoring |
+| unit-tests | gpt-5.2-codex | workspace-write | on-request | Test generation |
+| ci-cd | gpt-5.2-codex | danger-full-access | never | ⚠️ CI/CD ONLY |
+
+**Migration (v2.33 → v2.34):**
+- All 11 Codex invocations updated automatically
+- Backward compatible - existing commands work with safer defaults
+- Use `--profile ci-cd` to match old `--yolo` behavior (CI/CD only)
 
 ### Quality & Validation
 

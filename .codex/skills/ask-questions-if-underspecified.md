@@ -16,7 +16,7 @@ Ensure clarity before proceeding with complex analysis or implementation.
 
 ## Invocation
 ```bash
-codex exec --yolo --enable-skills -m gpt-5.2-codex \
+codex exec --profile security-audit \
   "Use ask-questions-if-underspecified skill. 
    Task: $TASK
    If clear, proceed with analysis. If not, ask clarifying questions."

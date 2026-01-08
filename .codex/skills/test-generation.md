@@ -12,7 +12,7 @@ Generate comprehensive unit tests targeting 90%+ coverage.
 
 ## Invocation
 ```bash
-codex exec --yolo --enable-skills -m gpt-5.2-codex \
+codex exec --profile security-audit \
   "Use test-generation skill. Generate tests for: $FILES"
 ```
 

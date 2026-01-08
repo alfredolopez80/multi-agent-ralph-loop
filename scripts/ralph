@@ -263,6 +263,124 @@ validate_memvid_packages() {
     fi
 }
 
+# v2.34: Initialize Codex output schemas
+init_codex_schemas() {
+    local SCHEMA_DIR="$RALPH_HOME/schemas"
+
+    # Create schemas directory if it doesn't exist
+    if [[ ! -d "$SCHEMA_DIR" ]]; then
+        mkdir -p "$SCHEMA_DIR"
+
+        # Create security-output.json schema
+        cat > "$SCHEMA_DIR/security-output.json" <<'EOF'
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["vulnerabilities", "summary"],
+  "properties": {
+    "vulnerabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["cwe", "severity", "file", "line", "description", "fix"],
+        "properties": {
+          "cwe": {"type": "string", "pattern": "^CWE-[0-9]+$"},
+          "severity": {"type": "string", "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"]},
+          "file": {"type": "string"},
+          "line": {"type": "integer", "minimum": 1},
+          "description": {"type": "string"},
+          "fix": {"type": "string"}
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["critical", "high", "medium", "low", "approved"],
+      "properties": {
+        "critical": {"type": "integer", "minimum": 0},
+        "high": {"type": "integer", "minimum": 0},
+        "medium": {"type": "integer", "minimum": 0},
+        "low": {"type": "integer", "minimum": 0},
+        "approved": {"type": "boolean"}
+      }
+    }
+  }
+}
+EOF
+
+        # Create bugs-output.json schema
+        cat > "$SCHEMA_DIR/bugs-output.json" <<'EOF'
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["bugs", "summary"],
+  "properties": {
+    "bugs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["severity", "type", "file", "line", "description", "fix"],
+        "properties": {
+          "severity": {"type": "string", "enum": ["HIGH", "MEDIUM", "LOW"]},
+          "type": {"type": "string", "enum": ["logic", "null", "boundary", "leak", "race", "error", "async"]},
+          "file": {"type": "string"},
+          "line": {"type": "integer", "minimum": 1},
+          "description": {"type": "string"},
+          "reproduction": {"type": "string"},
+          "fix": {"type": "string"}
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total", "high", "medium", "low", "approved"],
+      "properties": {
+        "total": {"type": "integer", "minimum": 0},
+        "high": {"type": "integer", "minimum": 0},
+        "medium": {"type": "integer", "minimum": 0},
+        "low": {"type": "integer", "minimum": 0},
+        "approved": {"type": "boolean"}
+      }
+    }
+  }
+}
+EOF
+
+        # Create tests-output.json schema
+        cat > "$SCHEMA_DIR/tests-output.json" <<'EOF'
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["tests", "summary"],
+  "properties": {
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file", "content", "type"],
+        "properties": {
+          "file": {"type": "string"},
+          "content": {"type": "string"},
+          "coverage": {"type": "array", "items": {"type": "string"}},
+          "type": {"type": "string", "enum": ["unit", "integration", "e2e"]}
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total_tests", "estimated_coverage"],
+      "properties": {
+        "total_tests": {"type": "integer", "minimum": 0},
+        "estimated_coverage": {"type": "string", "pattern": "^\\d+%$"},
+        "functions_covered": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}
+EOF
+    fi
+}
+
 startup_validation() {
     local MISSING_CRITICAL=()
     local MISSING_FEATURE=()
@@ -325,6 +443,9 @@ startup_validation() {
             echo ""
         fi
     fi
+
+    # v2.34: Initialize Codex schemas on startup
+    init_codex_schemas
 }
 
 # v2.22: On-demand tool validation (blocking with install instructions)
@@ -576,14 +697,39 @@ run_codex_security() {
     local FILES
     FILES=$(validate_path "$1")
     local OUTPUT="$RALPH_TMPDIR/codex_security.json"
+    local SCHEMA="$RALPH_HOME/schemas/security-output.json"
     local SAFE_FILES
     SAFE_FILES=$(escape_for_shell "$FILES")
 
-    codex exec --yolo --enable-skills -m gpt-5.2-codex \
-        "Use security-review skill. Analyze for vulnerabilities in: ${SAFE_FILES}
+    log_info "Running Codex security audit (read-only sandbox, o3 model)"
 
-         Output JSON: {vulnerabilities: [{severity, type, file, line, description, fix}], summary: {critical, high, medium, low, approved}}" \
+    # v0.79.0: Profile + output schema + sandbox seguro
+    codex exec \
+        --profile security-audit \
+        --output-schema "$SCHEMA" \
+        -C "$(realpath "$FILES" 2>/dev/null || echo "$FILES")" \
+        "$(cat <<'EOF'
+Use security-review skill. Perform comprehensive security audit:
+- SQL/NoSQL/Command/LDAP injection
+- Authentication bypass
+- Session management flaws
+- Sensitive data exposure
+- SSRF and path traversal
+- Race conditions
+- Cryptographic weaknesses
+- CWE classification for each finding
+
+Analyze: ${SAFE_FILES}
+
+Output must conform to JSON schema with structure:
+{
+  "vulnerabilities": [{"cwe": "CWE-XXX", "severity": "CRITICAL|HIGH|MEDIUM|LOW", "file": "...", "line": N, "description": "...", "fix": "..."}],
+  "summary": {"critical": N, "high": N, "medium": N, "low": N, "approved": true|false}
+}
+EOF
+        )" \
         > "$OUTPUT" 2>&1 &
+
     echo $!
 }
 
@@ -591,14 +737,40 @@ run_codex_bugs() {
     local FILES
     FILES=$(validate_path "$1")
     local OUTPUT="$RALPH_TMPDIR/codex_bugs.json"
+    local SCHEMA="$RALPH_HOME/schemas/bugs-output.json"
     local SAFE_FILES
     SAFE_FILES=$(escape_for_shell "$FILES")
 
-    codex exec --yolo --enable-skills -m gpt-5.2-codex \
-        "Use bug-hunter skill. Find bugs in: ${SAFE_FILES}
+    log_info "Running Codex bug hunting (workspace-write sandbox, gpt-5.2-codex)"
 
-         Output JSON: {bugs: [{severity, type, file, line, description, fix}], summary: {total, high, medium, low, approved}}" \
+    # v0.79.0: --full-auto (equivalente a -a on-request --sandbox workspace-write)
+    codex exec \
+        --full-auto \
+        --output-schema "$SCHEMA" \
+        --enable bug-hunter \
+        -m gpt-5.2-codex \
+        -C "$(realpath "$FILES" 2>/dev/null || echo "$FILES")" \
+        "$(cat <<'EOF'
+Use bug-hunter skill. Find bugs:
+- Logic errors and edge cases
+- Null/undefined handling
+- Off-by-one errors
+- Resource leaks (memory, connections, files)
+- Race conditions and thread safety
+- Error handling gaps
+- Async/await issues
+
+Analyze: ${SAFE_FILES}
+
+Output JSON with structure:
+{
+  "bugs": [{"severity": "HIGH|MEDIUM|LOW", "type": "logic|null|boundary|leak|race|error|async", "file": "...", "line": N, "description": "...", "reproduction": "...", "fix": "..."}],
+  "summary": {"total": N, "high": N, "medium": N, "low": N, "approved": true|false}
+}
+EOF
+        )" \
         > "$OUTPUT" 2>&1 &
+
     echo $!
 }
 
@@ -606,15 +778,38 @@ run_codex_unit_tests() {
     local FILES
     FILES=$(validate_path "$1")
     local OUTPUT="$RALPH_TMPDIR/codex_tests.json"
+    local SCHEMA="$RALPH_HOME/schemas/tests-output.json"
     local SAFE_FILES
     SAFE_FILES=$(escape_for_shell "$FILES")
 
-    codex exec --yolo --enable-skills -m gpt-5.2-codex \
-        "Use test-generation skill. Generate unit tests for: ${SAFE_FILES}
-         Target: 90% coverage. Include edge cases and error paths.
+    log_info "Running Codex test generation (workspace-write sandbox)"
 
-         Output JSON: {tests: [{file, content, coverage, type}], summary: {total_tests, estimated_coverage}}" \
+    # v0.79.0: Profile + full-auto
+    codex exec \
+        --profile unit-tests \
+        --full-auto \
+        --output-schema "$SCHEMA" \
+        -C "$(realpath "$FILES" 2>/dev/null || echo "$FILES")" \
+        "$(cat <<'EOF'
+Use test-generation skill. Generate comprehensive unit tests:
+- Happy path tests
+- Edge case tests
+- Error path tests
+- Boundary tests
+- Null/undefined tests
+
+Analyze: ${SAFE_FILES}
+Target 90%+ coverage.
+
+Output JSON with structure:
+{
+  "tests": [{"file": "...", "content": "...", "coverage": [...], "type": "unit|integration|e2e"}],
+  "summary": {"total_tests": N, "estimated_coverage": "XX%", "functions_covered": [...]}
+}
+EOF
+        )" \
         > "$OUTPUT" 2>&1 &
+
     echo $!
 }
 
@@ -701,7 +896,8 @@ cmd_adversarial() {
 
     # 2. Codex Review (parallel)
     log_info "  [2/3] Codex reviewing..."
-    codex exec --yolo --enable-skills -m gpt-5.2-codex \
+    # v0.79.0: Use security-audit profile for review
+    codex exec --profile security-audit \
         "Use security-review skill. Review: ${SAFE_TARGET}
          Output JSON: {approved: true|false, issues: [], severity}" \
         > "$RALPH_TMPDIR/codex.json" 2>&1 &
@@ -980,7 +1176,8 @@ fix_security_issues() {
             # Auto-fix ALL vulnerabilities
             log_info "  YOLO mode: Auto-fixing all $TOTAL vulnerabilities..."
             SAFE_TARGET=$(escape_for_shell "$TARGET")
-            codex exec --yolo --enable-skills -m gpt-5.2-codex -C "$SAFE_TARGET" \
+            # v0.79.0: Use ci-cd profile (danger mode for automated fixing)
+            codex exec --profile ci-cd -C "$SAFE_TARGET" \
                 "Fix all security vulnerabilities found in this codebase.
                  Apply secure coding practices: parameterized queries, input validation,
                  proper authentication, secure crypto. Output: fixed code." \
@@ -999,7 +1196,8 @@ fix_security_issues() {
             if [ "$AUTO_FIX_COUNT" -gt 0 ]; then
                 log_info "  Auto-fixing $AUTO_FIX_COUNT MEDIUM/LOW vulnerabilities..."
                 SAFE_TARGET=$(escape_for_shell "$TARGET")
-                codex exec --yolo --enable-skills -m gpt-5.2-codex -C "$SAFE_TARGET" \
+                # v0.79.0: Use --full-auto for balanced security
+                codex exec --full-auto --enable bug-hunter -m gpt-5.2-codex -C "$SAFE_TARGET" \
                     "Fix only MEDIUM and LOW severity security vulnerabilities.
                      Do NOT fix CRITICAL or HIGH - those require manual approval.
                      Apply: input validation, minor security improvements.
@@ -1015,7 +1213,8 @@ fix_security_issues() {
 
                 # Generate fix proposals for manual review
                 SAFE_TARGET=$(escape_for_shell "$TARGET")
-                codex exec --yolo --enable-skills -m gpt-5.2-codex -C "$SAFE_TARGET" \
+                # v0.79.0: Read-only analysis for proposals
+                codex exec --profile security-audit -C "$SAFE_TARGET" \
                     "Generate fix proposals (DO NOT APPLY) for CRITICAL and HIGH vulnerabilities.
                      For each: show current code, proposed fix, explanation.
                      Output as JSON array for human review." \
@@ -1125,7 +1324,8 @@ cmd_security_loop() {
         # Step 1: Run security audit
         log_info "[1/3] Running security audit with Codex..."
         SAFE_TARGET=$(escape_for_shell "$TARGET")
-        codex exec --yolo --enable-skills -m gpt-5.2-codex -C "$SAFE_TARGET" \
+        # v0.79.0: Use security-audit profile with read-only sandbox
+        codex exec --profile security-audit --output-schema "$RALPH_HOME/schemas/security-output.json" -C "$SAFE_TARGET" \
             "Perform comprehensive security audit. Check for:
              - SQL/Command injection (CWE-78, CWE-89)
              - Path traversal (CWE-22)
@@ -1254,7 +1454,8 @@ cmd_refactor() {
     ensure_tmp
 
     log_info "Running refactoring analysis on: $TARGET"
-    codex exec --yolo --enable-skills -m gpt-5.2-codex \
+    # v0.79.0: Use code-review profile for refactoring
+    codex exec --profile code-review \
         "Refactor: ${SAFE_TARGET}
          Focus on: DRY, SOLID, extract methods, simplify conditionals.
          Output: refactored code + explanation" \

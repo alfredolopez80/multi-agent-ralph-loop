@@ -19,7 +19,7 @@ Task:
   run_in_background: true
   prompt: |
     Run Codex CLI for unit test generation:
-    codex exec --yolo --enable-skills -m gpt-5.2-codex \
+    codex exec --profile code-review \
       "Use test-generation skill. Generate unit tests for: $FILES
        Target: 90% coverage. Include edge cases and error paths.
        Output: test files ready to run."

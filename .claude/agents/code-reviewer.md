@@ -21,7 +21,7 @@ Task:
   run_in_background: true
   prompt: |
     Run Codex for deep code review:
-    codex exec --yolo --enable-skills -m gpt-5.2-codex \
+    codex exec --profile security-audit \
       "Use bug-hunter skill. Review: $FILES
        Check: logic errors, edge cases, error handling, resource leaks,
        race conditions, performance, code duplication.

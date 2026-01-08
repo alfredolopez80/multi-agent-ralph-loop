@@ -13,7 +13,7 @@ Deep security analysis using gpt-5.2-codex.
 
 ## Invocation
 ```bash
-codex exec --yolo --enable-skills -m gpt-5.2-codex \
+codex exec --profile security-audit \
   "Use security-review skill. Analyze: $FILES"
 ```
 
