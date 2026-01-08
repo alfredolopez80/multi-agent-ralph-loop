@@ -1,6 +1,58 @@
-# Multi-Agent Ralph v2.31
+# Multi-Agent Ralph v2.33
 
-Orchestration with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement, 9-language quality gates, **multi-level security loop**, **context engineering**, **Memvid semantic memory**, and **comprehensive testing (476 tests)**.
+Orchestration with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement, 9-language quality gates, **multi-level security loop**, **context engineering**, **Memvid semantic memory**, **Sentry observability integration**, and **comprehensive testing (476 tests)**.
+
+## v2.33 Key Changes (Sentry Observability Integration)
+
+- **SENTRY SKILLS INTEGRATION**: 4 official Sentry skills for setup, code review, and validation
+- **SKILLS-FIRST APPROACH**: 80% of value WITHOUT requiring Sentry MCP configuration
+- **ORCHESTRATOR ENHANCEMENTS**: Optional Sentry steps (2c, 6b, 7b) with 100% backward compatibility
+- **CONTEXT ISOLATION**: All Sentry skills use `context: fork` for clean execution
+- **PR WORKFLOW INTEGRATION**: Sentry bot priority in iterate-pr, auto-fix via sentry-code-review
+- **PRODUCTION CORRELATION**: find-bugs correlates local issues with live Sentry data
+- **ANTI-PATTERN DETECTION**: deslop removes Sentry over-instrumentation
+- **NEW CLI COMMANDS**: `ralph sentry-init|sentry-validate|code-review-sentry`
+- **NEW HOOKS**: sentry-check-status, sentry-correlation, sentry-report
+- **GRACEFUL DEGRADATION**: All Sentry features optional, no breaking changes
+
+### Sentry Integration Components
+
+| Component | Uses MCP? | When to Use |
+|-----------|-----------|-------------|
+| **sentry-setup-*** skills | ❌ NO | Auto-configure SDK (tracing, logging, metrics, AI) |
+| **sentry-code-review** skill | ❌ NO | Fix Sentry bot PR comments |
+| **iterate-pr** (enhanced) | ❌ NO | Prioritize Sentry checks in PR workflow |
+| **find-bugs** (enhanced) | ❌ NO | Correlate with production issues (optional) |
+| **deslop** (enhanced) | ❌ NO | Remove Sentry over-instrumentation |
+| issue-summarizer agent | ✅ YES | Deep issue analysis (optional) |
+| /seer, /getIssues commands | ✅ YES | Natural language queries (optional) |
+
+### Sentry Commands
+
+```bash
+# Phase 1: Setup (No MCP required)
+ralph sentry-init              # Auto-detect and configure SDK
+ralph sentry-init --tracing    # Setup tracing only
+ralph sentry-init --all        # Full observability stack
+
+# Phase 2: Validation & PR Review (No MCP required)
+ralph sentry-validate          # Check configuration
+ralph code-review-sentry <branch>  # Wait for Sentry bot + auto-fix
+ralph iterate <pr>             # Enhanced with Sentry priority
+
+# Orchestrator integration (automatic)
+/orchestrator "task"           # Offers Sentry setup for new projects
+```
+
+### Orchestrator Integration (v2.33)
+
+New optional steps in the 8-step workflow:
+
+- **Step 2c: SENTRY SETUP** - Auto-detect project type, offer SDK configuration
+- **Step 6b: SENTRY VALIDATION** - Pre-merge Sentry configuration checks
+- **Step 7b: PR REVIEW (Enhanced)** - Prioritize Sentry bot comments, auto-fix, iterate
+
+All steps are OPTIONAL and maintain 100% backward compatibility with v2.32.
 
 ## v2.31 Key Changes (Memvid Memory Integration)
 

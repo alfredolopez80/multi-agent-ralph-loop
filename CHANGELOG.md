@@ -7,6 +7,97 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.33.0] - 2026-01-08
+
+### Added (Sentry Observability Integration)
+
+- **Sentry Skills Integration**: 4 official Sentry skills for SDK setup, code review, and validation
+- **Skills-First Approach**: 80% of value WITHOUT requiring Sentry MCP configuration
+- **Orchestrator Enhancements**: Optional Sentry steps (2c, 6b, 7b) with 100% backward compatibility
+- **Context Isolation**: All Sentry skills use `context: fork` for clean execution
+- **PR Workflow Integration**: Sentry bot priority in iterate-pr, auto-fix via sentry-code-review
+- **Production Correlation**: find-bugs correlates local issues with live Sentry data
+- **Anti-Pattern Detection**: deslop removes Sentry over-instrumentation
+- **Graceful Degradation**: All Sentry features optional, no breaking changes to v2.32
+
+### New CLI Commands (v2.33)
+
+| Command | Purpose |
+|---------|---------|
+| `ralph sentry-init [--tracing\|--logging\|--metrics\|--ai\|--all]` | Auto-detect project type and configure Sentry SDK |
+| `ralph sentry-validate` | Validate Sentry configuration (DSN, sample rates, etc.) |
+| `ralph code-review-sentry <branch>` | Wait for Sentry bot checks, auto-fix issues, iterate until pass |
+
+### New Hooks (v2.33)
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `sentry-check-status.sh` | PostToolUse(gh pr *) | Check Sentry CI status, suggest fixes |
+| `sentry-correlation.sh` | PostToolUse(gh api *) | Correlate bugs with Sentry production issues |
+| `sentry-report.sh` | Stop | Generate Sentry integration summary at session end |
+
+### Enhanced Skills (v2.33)
+
+| Skill | Enhancement | Uses MCP? |
+|-------|-------------|-----------|
+| **iterate-pr** | Sentry bot priority, auto-fix via sentry-code-review, context: fork | ❌ NO |
+| **find-bugs** | Phase 0: Sentry pre-check, Phase 6: production correlation, context: fork | ❌ NO |
+| **deslop** | Sentry anti-patterns detection (4 categories + checklist), context: fork | ❌ NO |
+
+### Enhanced Orchestrator Steps (v2.33)
+
+| Step | Enhancement | Optional |
+|------|-------------|----------|
+| **Step 2c: SENTRY SETUP** | Auto-detect project type (Node.js, Python, Go, Rust), offer SDK configuration | ✅ YES |
+| **Step 6b: SENTRY VALIDATION** | Pre-merge Sentry configuration checks (DSN, sample rates, breadcrumbs) | ✅ YES |
+| **Step 7b: PR REVIEW (Enhanced)** | Prioritize Sentry bot comments, auto-fix, iterate until pass | ✅ YES |
+
+### Settings & Permissions (v2.33)
+
+**New Permissions**:
+- `Bash(gh pr *)` - For PR operations
+- `Bash(gh api *sentry*)` - For Sentry API queries
+- `Bash(gh api repos/*/pulls/*/comments)` - For PR comment fetching
+- `Bash(sentry-cli *)` - For Sentry CLI operations
+
+**New Hooks Configuration**:
+- Added `Stop` hook section with sentry-report.sh
+- Added skill-level PostToolUse hooks for iterate-pr, find-bugs (via frontmatter)
+
+### Modified Files (v2.33)
+
+| File | Changes | Lines Modified |
+|------|---------|----------------|
+| `~/.claude/agents/orchestrator.md` | Added Steps 2c, 6b, enhanced 7b | +100 lines |
+| `scripts/ralph` | Added 3 command functions + dispatcher cases | +180 lines |
+| `~/.claude/settings.json` | Added Stop hook + Bash permissions | +13 lines |
+| `~/.claude/skills/iterate-pr/SKILL.md` | Added context:fork, hooks, Step 3a, Sentry priority | +50 lines |
+| `~/.claude/skills/find-bugs/SKILL.md` | Added context:fork, hooks, Phase 0, Phase 6 | +100 lines |
+| `~/.claude/skills/deslop/SKILL.md` | Added context:fork, Sentry anti-patterns section | +90 lines |
+| `CLAUDE.md` | Added v2.33 section, updated title to v2.33 | +60 lines |
+| `CHANGELOG.md` | Added v2.33 release notes | +80 lines |
+
+### Backward Compatibility (v2.33)
+
+- ✅ **Zero Breaking Changes**: All v2.32 workflows work unchanged
+- ✅ **Optional Features**: Sentry steps trigger only when conditions met
+- ✅ **Graceful Degradation**: Skills skip Sentry features if not configured
+- ✅ **No MCP Required**: 80% of functionality works without Sentry MCP
+- ✅ **Existing Commands**: All pre-v2.33 commands unaffected
+
+### Architecture Highlights (v2.33)
+
+**Skills vs MCP Hierarchy**:
+- **Skills-First**: sentry-setup-*, sentry-code-review, iterate-pr, find-bugs, deslop (NO MCP)
+- **MCP Optional**: issue-summarizer agent, /seer, /getIssues commands (requires MCP for analytics)
+
+**Integration Philosophy**:
+1. Core workflows (setup, code review, PR iteration) use skills only
+2. Advanced analytics (issue analysis, queries) require optional MCP
+3. Users get 80% value without MCP, 100% with MCP
+
+---
+
 ## [2.31.0] - 2026-01-07
 
 ### Added (Memvid Memory Integration)

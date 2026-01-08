@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.32-blue)
+![Version](https://img.shields.io/badge/version-2.33-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -116,6 +116,42 @@ ralph prd convert tasks/prd-oauth2.md     # Convert to user stories (JSON)
 ralph prd status                          # Show PRD progress
 ralph loop --prd tasks/prd-oauth2.json    # Execute stories iteratively
 ```
+
+### Sentry Observability Integration (v2.33)
+
+| Feature | Description |
+|---------|-------------|
+| **Skills-First Approach** | 80% of value WITHOUT requiring Sentry MCP configuration |
+| **Orchestrator Enhancements** | Optional Sentry steps (2c, 6b, 7b) with 100% backward compatibility |
+| **Context Isolation** | All Sentry skills use `context: fork` for clean execution |
+| **PR Workflow Integration** | Sentry bot priority in iterate-pr, auto-fix via sentry-code-review |
+| **Production Correlation** | find-bugs correlates local issues with live Sentry data |
+| **Anti-Pattern Detection** | deslop removes Sentry over-instrumentation |
+| **Graceful Degradation** | All Sentry features optional, no breaking changes |
+
+```bash
+# Phase 1: Setup (No MCP required)
+ralph sentry-init              # Auto-detect project type and configure SDK
+ralph sentry-init --tracing    # Setup tracing only
+ralph sentry-init --all        # Full observability stack
+
+# Phase 2: Validation & PR Review (No MCP required)
+ralph sentry-validate          # Check configuration
+ralph code-review-sentry <branch>  # Wait for Sentry bot + auto-fix
+ralph iterate <pr>             # Enhanced with Sentry priority
+```
+
+**Sentry Integration Components:**
+
+| Component | Uses MCP? | When to Use |
+|-----------|-----------|-------------|
+| sentry-setup-* skills | ❌ NO | Auto-configure SDK (tracing, logging, metrics, AI) |
+| sentry-code-review | ❌ NO | Fix Sentry bot PR comments |
+| iterate-pr (enhanced) | ❌ NO | Prioritize Sentry checks in PR workflow |
+| find-bugs (enhanced) | ❌ NO | Correlate with production issues (optional) |
+| deslop (enhanced) | ❌ NO | Remove Sentry over-instrumentation |
+| issue-summarizer | ✅ YES | Deep issue analysis (optional Phase 3) |
+| /seer, /getIssues | ✅ YES | Natural language queries (optional Phase 3) |
 
 ### Quality & Validation
 

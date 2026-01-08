@@ -3453,6 +3453,182 @@ cmd_orch() {
 }
 
 # ===============================================================================
+# SENTRY COMMANDS (v2.33)
+# ===============================================================================
+
+# ralph sentry-init [--tracing|--logging|--metrics|--ai|--all]
+cmd_sentry_init() {
+    local setup_mode="${1:---all}"
+
+    log_info "Sentry Auto-Setup (v2.33)"
+    log_info "Mode: $setup_mode"
+
+    # Detect project type
+    local project_type="unknown"
+    if [[ -f "package.json" ]]; then
+        project_type="nodejs"
+    elif [[ -f "requirements.txt" || -f "pyproject.toml" ]]; then
+        project_type="python"
+    elif [[ -f "go.mod" ]]; then
+        project_type="go"
+    elif [[ -f "Cargo.toml" ]]; then
+        project_type="rust"
+    fi
+
+    if [[ "$project_type" == "unknown" ]]; then
+        log_error "Could not detect project type. Supported: Node.js, Python, Go, Rust"
+        exit 1
+    fi
+
+    log_info "Detected project type: $project_type"
+
+    # Install Sentry plugin if not present
+    if ! claude plugin list | grep -q "sentry@getsentry"; then
+        log_info "Installing Sentry plugin..."
+        claude plugin install sentry@getsentry
+    fi
+
+    # Invoke appropriate setup skills based on mode
+    case "$setup_mode" in
+        --tracing)
+            log_info "Setting up tracing only..."
+            claude --skill sentry-setup-tracing .
+            ;;
+        --logging)
+            log_info "Setting up logging only..."
+            claude --skill sentry-setup-logging .
+            ;;
+        --metrics)
+            log_info "Setting up metrics only..."
+            claude --skill sentry-setup-metrics .
+            ;;
+        --ai)
+            log_info "Setting up AI monitoring only..."
+            claude --skill sentry-setup-ai-monitoring .
+            ;;
+        --all|*)
+            log_info "Setting up full observability stack..."
+            claude --skill sentry-setup-tracing .
+            claude --skill sentry-setup-logging .
+            claude --skill sentry-setup-metrics .
+
+            # AI monitoring only for Python/Node.js
+            if [[ "$project_type" == "nodejs" || "$project_type" == "python" ]]; then
+                claude --skill sentry-setup-ai-monitoring .
+            fi
+            ;;
+    esac
+
+    log_success "Sentry setup complete!"
+    log_info "Next steps:"
+    log_info "1. Set SENTRY_DSN environment variable"
+    log_info "2. Configure sample rates for production"
+    log_info "3. Enable release tracking with 'sentry-cli releases'"
+}
+
+# ralph sentry-validate
+cmd_sentry_validate() {
+    log_info "Validating Sentry configuration..."
+
+    local errors=0
+
+    # Check for Sentry files
+    if [[ ! -f "sentry.properties" && ! -f ".sentryclirc" ]]; then
+        log_warn "No Sentry configuration files found"
+        ((errors++))
+    fi
+
+    # Check for DSN in environment
+    if [[ -z "$SENTRY_DSN" ]]; then
+        log_warn "SENTRY_DSN environment variable not set"
+        ((errors++))
+    fi
+
+    # Check for common issues in code
+    local high_sample_rates
+    high_sample_rates=$(grep -r "tracesSampleRate.*1\.0" . --include="*.ts" --include="*.js" --include="*.py" 2>/dev/null || true)
+    if [[ -n "$high_sample_rates" ]]; then
+        log_warn "Found 100% sample rates (performance issue):"
+        echo "$high_sample_rates"
+        ((errors++))
+    fi
+
+    # Check for duplicate captures
+    local duplicate_captures
+    duplicate_captures=$(grep -r "captureException.*throw" . --include="*.ts" --include="*.js" --include="*.py" -A1 2>/dev/null || true)
+    if [[ -n "$duplicate_captures" ]]; then
+        log_warn "Found duplicate error captures:"
+        echo "$duplicate_captures"
+        ((errors++))
+    fi
+
+    if [[ $errors -eq 0 ]]; then
+        log_success "✅ Sentry configuration valid"
+    else
+        log_error "❌ Found $errors validation issues"
+        log_info "Run 'ralph sentry-init --fix' to auto-fix"
+        exit 1
+    fi
+}
+
+# ralph code-review-sentry <branch>
+cmd_code_review_sentry() {
+    local branch="${1:-$(git branch --show-current)}"
+    validate_path "$branch" "nocheck"
+
+    log_info "Sentry-Enhanced Code Review for branch: $branch"
+
+    # Create PR if it doesn't exist
+    local pr_number
+    pr_number=$(gh pr view "$branch" --json number -q '.number' 2>/dev/null || echo "")
+
+    if [[ -z "$pr_number" ]]; then
+        log_info "Creating PR for branch $branch..."
+        pr_number=$(gh pr create --draft --head "$branch" --fill --json number -q '.number')
+        log_info "Created PR #$pr_number"
+    fi
+
+    # Wait for CI checks to start
+    log_info "Waiting for CI checks to start..."
+    sleep 5
+
+    # Wait for Sentry bot specifically
+    log_info "Waiting for Sentry bot analysis..."
+    local max_wait=300  # 5 minutes
+    local waited=0
+    local sentry_status="pending"
+
+    while [[ "$sentry_status" == "pending" && $waited -lt $max_wait ]]; do
+        sentry_status=$(gh pr checks "$pr_number" --json name,status \
+            --jq '.[] | select(.name | contains("Sentry")) | .status' 2>/dev/null || echo "pending")
+
+        if [[ "$sentry_status" == "pending" ]]; then
+            sleep 10
+            ((waited+=10))
+        fi
+    done
+
+    # Check for Sentry bot comments
+    local sentry_comments
+    sentry_comments=$(gh api "repos/{owner}/{repo}/pulls/$pr_number/comments" \
+        --jq '.[] | select(.user.login | startswith("sentry"))' 2>/dev/null || echo "")
+
+    if [[ -n "$sentry_comments" ]]; then
+        log_info "Sentry bot found issues - invoking auto-fix skill..."
+
+        # Invoke sentry-code-review skill
+        claude --skill sentry-code-review --args="--pr $pr_number"
+
+        log_success "Sentry issues addressed"
+    else
+        log_success "No Sentry issues found"
+    fi
+
+    # Show final status
+    gh pr checks "$pr_number"
+}
+
+# ===============================================================================
 # UNINSTALL
 # ===============================================================================
 cmd_uninstall() {
@@ -3674,6 +3850,18 @@ main() {
         --uninstall|uninstall)
             cmd_uninstall "$@"
             ;;
+
+        # === SENTRY COMMANDS (v2.33) ===
+        sentry-init|sentry_init)
+            cmd_sentry_init "$@"
+            ;;
+        sentry-validate|sentry_validate)
+            cmd_sentry_validate "$@"
+            ;;
+        code-review-sentry|code_review_sentry)
+            cmd_code_review_sentry "$@"
+            ;;
+
         *)
             log_error "Unknown command: $CMD"
             echo "Run 'ralph help' for usage."
