@@ -3693,6 +3693,181 @@ cmd_sync_global() {
     fi
 }
 
+# Sync global configurations to all projects with .claude directories
+cmd_sync_to_projects() {
+    local GLOBAL_DIR="${HOME}/.claude"
+    local SEARCH_DIR="${HOME}/Documents/GitHub"
+    local DRY_RUN=false
+    local FORCE=false
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --dry-run|-n)
+                DRY_RUN=true
+                shift
+                ;;
+            --force|-f)
+                FORCE=true
+                shift
+                ;;
+            --dir|-d)
+                SEARCH_DIR="$2"
+                shift 2
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+
+    echo ""
+    echo "==============================================================="
+    echo "  SYNC TO PROJECTS: ~/.claude/ → All Projects"
+    echo "==============================================================="
+    echo ""
+    log_info "Source: $GLOBAL_DIR/"
+    log_info "Searching in: $SEARCH_DIR"
+    [ "$DRY_RUN" = true ] && log_warn "DRY RUN MODE - No changes will be made"
+    echo ""
+
+    # Find all projects with .claude directories
+    local PROJECTS=()
+    while IFS= read -r -d '' dir; do
+        PROJECTS+=("$dir")
+    done < <(find "$SEARCH_DIR" -maxdepth 4 -type d -name ".claude" -print0 2>/dev/null)
+
+    log_info "Found ${#PROJECTS[@]} projects with .claude directories"
+    echo ""
+
+    local TOTAL_SYNCED=0
+    local TOTAL_SKIPPED=0
+
+    for project_claude_dir in "${PROJECTS[@]}"; do
+        local project_dir
+        project_dir=$(dirname "$project_claude_dir")
+        local project_name
+        project_name=$(basename "$project_dir")
+
+        log_info "Processing: $project_name"
+
+        # 1. Sync Commands
+        if [ -d "$GLOBAL_DIR/commands" ]; then
+            mkdir -p "$project_claude_dir/commands"
+            for cmd in "$GLOBAL_DIR/commands"/*.md; do
+                if [ -f "$cmd" ]; then
+                    local basename
+                    basename=$(basename "$cmd")
+                    local target="$project_claude_dir/commands/$basename"
+
+                    if [ -f "$target" ] && [ "$FORCE" != true ]; then
+                        if diff -q "$cmd" "$target" &>/dev/null; then
+                            TOTAL_SKIPPED=$((TOTAL_SKIPPED + 1))
+                            continue
+                        fi
+                    fi
+
+                    if [ "$DRY_RUN" = true ]; then
+                        echo "   Would copy: commands/$basename"
+                    else
+                        cp "$cmd" "$target"
+                    fi
+                    TOTAL_SYNCED=$((TOTAL_SYNCED + 1))
+                fi
+            done
+        fi
+
+        # 2. Sync Agents
+        if [ -d "$GLOBAL_DIR/agents" ]; then
+            mkdir -p "$project_claude_dir/agents"
+            for agent in "$GLOBAL_DIR/agents"/*.md; do
+                if [ -f "$agent" ]; then
+                    local basename
+                    basename=$(basename "$agent")
+                    local target="$project_claude_dir/agents/$basename"
+
+                    if [ -f "$target" ] && [ "$FORCE" != true ]; then
+                        if diff -q "$agent" "$target" &>/dev/null; then
+                            TOTAL_SKIPPED=$((TOTAL_SKIPPED + 1))
+                            continue
+                        fi
+                    fi
+
+                    if [ "$DRY_RUN" = true ]; then
+                        echo "   Would copy: agents/$basename"
+                    else
+                        cp "$agent" "$target"
+                    fi
+                    TOTAL_SYNCED=$((TOTAL_SYNCED + 1))
+                fi
+            done
+        fi
+
+        # 3. Sync Hooks
+        if [ -d "$GLOBAL_DIR/hooks" ]; then
+            mkdir -p "$project_claude_dir/hooks"
+            for hook in "$GLOBAL_DIR/hooks"/*; do
+                if [ -f "$hook" ]; then
+                    local basename
+                    basename=$(basename "$hook")
+                    local target="$project_claude_dir/hooks/$basename"
+
+                    if [ -f "$target" ] && [ "$FORCE" != true ]; then
+                        if diff -q "$hook" "$target" &>/dev/null; then
+                            TOTAL_SKIPPED=$((TOTAL_SKIPPED + 1))
+                            continue
+                        fi
+                    fi
+
+                    if [ "$DRY_RUN" = true ]; then
+                        echo "   Would copy: hooks/$basename"
+                    else
+                        cp "$hook" "$target"
+                        chmod +x "$target" 2>/dev/null || true
+                    fi
+                    TOTAL_SYNCED=$((TOTAL_SYNCED + 1))
+                fi
+            done
+        fi
+
+        # 4. Sync settings.json hooks
+        if [ -f "$GLOBAL_DIR/settings.json" ] && [ -f "$project_claude_dir/settings.json" ]; then
+            local source_hooks
+            source_hooks=$(jq '.hooks' "$GLOBAL_DIR/settings.json" 2>/dev/null)
+
+            if [ "$source_hooks" != "null" ] && [ -n "$source_hooks" ]; then
+                if [ "$DRY_RUN" = true ]; then
+                    echo "   Would merge: settings.json hooks"
+                else
+                    local merged
+                    merged=$(jq --argjson src_hooks "$source_hooks" '.hooks = (.hooks // {}) * $src_hooks' "$project_claude_dir/settings.json" 2>/dev/null)
+                    if [ -n "$merged" ]; then
+                        echo "$merged" | jq '.' > "$project_claude_dir/settings.json.tmp" && mv "$project_claude_dir/settings.json.tmp" "$project_claude_dir/settings.json"
+                    fi
+                fi
+                TOTAL_SYNCED=$((TOTAL_SYNCED + 1))
+            fi
+        fi
+
+        log_success "   Done: $project_name"
+    done
+
+    # Summary
+    echo ""
+    echo "==============================================================="
+    echo "  SYNC TO PROJECTS SUMMARY"
+    echo "==============================================================="
+    if [ "$DRY_RUN" = true ]; then
+        log_info "Would sync: $TOTAL_SYNCED items across ${#PROJECTS[@]} projects"
+        log_info "Would skip (unchanged): $TOTAL_SKIPPED items"
+    else
+        log_success "Synced: $TOTAL_SYNCED items across ${#PROJECTS[@]} projects"
+        log_info "Skipped (unchanged): $TOTAL_SKIPPED items"
+        echo ""
+        log_success "All projects now have global commands, agents, and hooks!"
+    fi
+}
+
 # Pre-merge validation: run before creating a PR
 cmd_pre_merge() {
     local ERRORS=0
@@ -4531,6 +4706,9 @@ main() {
             ;;
         sync-global|sync|global)
             cmd_sync_global "$@"
+            ;;
+        sync-to-projects|sync-projects|distribute)
+            cmd_sync_to_projects "$@"
             ;;
         pre-merge|premerge)
             cmd_pre_merge
