@@ -644,6 +644,7 @@ UTILITY:
 
 MAINTENANCE (v2.21):
   ralph self-update          Sync scripts from repo to ~/.local/bin/
+  ralph sync-global          Sync agents/skills/commands/hooks to ~/.claude/ (global)
   ralph pre-merge            Validate before creating PR (shellcheck + versions + tests)
   ralph integrations         Show status of all integrations (Greptile optional)
 
@@ -3430,6 +3431,219 @@ cmd_self_update() {
     log_info "Restart your shell or run: source ~/.zshrc"
 }
 
+# Sync global configurations: agents, skills, commands, hooks
+cmd_sync_global() {
+    local REPO_PATH=""
+    local GLOBAL_DIR="${HOME}/.claude"
+    local DRY_RUN=false
+    local FORCE=false
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --dry-run|-n)
+                DRY_RUN=true
+                shift
+                ;;
+            --force|-f)
+                FORCE=true
+                shift
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+
+    # Try to find ralph repo
+    if [ -f "./scripts/ralph" ] && grep -q "Multi-Agent Orchestrator" "./scripts/ralph" 2>/dev/null; then
+        REPO_PATH="$(pwd)"
+    elif [ -f "../multi-agent-ralph-loop/scripts/ralph" ]; then
+        REPO_PATH="$(cd ../multi-agent-ralph-loop && pwd)"
+    elif [ -d "${HOME}/Documents/GitHub/multi-agent-ralph-loop" ]; then
+        REPO_PATH="${HOME}/Documents/GitHub/multi-agent-ralph-loop"
+    fi
+
+    if [ -z "$REPO_PATH" ]; then
+        log_error "Cannot find ralph repository."
+        log_info "Options:"
+        echo "  1. cd to the ralph repo and run: ralph sync-global"
+        echo "  2. Specify RALPH_REPO_PATH environment variable"
+        return 1
+    fi
+
+    echo ""
+    echo "==============================================================="
+    echo "  SYNC GLOBAL: Repo → ~/.claude/"
+    echo "==============================================================="
+    echo ""
+    log_info "Source: $REPO_PATH/.claude/"
+    log_info "Target: $GLOBAL_DIR/"
+    [ "$DRY_RUN" = true ] && log_warn "DRY RUN MODE - No changes will be made"
+    echo ""
+
+    local SYNCED=0
+    local SKIPPED=0
+    local ERRORS=0
+
+    # 1. Sync Agents
+    log_info "[1/4] Syncing agents..."
+    if [ -d "$REPO_PATH/.claude/agents" ]; then
+        mkdir -p "$GLOBAL_DIR/agents"
+        for agent in "$REPO_PATH/.claude/agents"/*.md; do
+            if [ -f "$agent" ]; then
+                local basename
+                basename=$(basename "$agent")
+                local target="$GLOBAL_DIR/agents/$basename"
+
+                # Check if update needed
+                if [ -f "$target" ] && [ "$FORCE" != true ]; then
+                    if diff -q "$agent" "$target" &>/dev/null; then
+                        SKIPPED=$((SKIPPED + 1))
+                        continue
+                    fi
+                fi
+
+                if [ "$DRY_RUN" = true ]; then
+                    echo "   Would copy: $basename"
+                else
+                    cp "$agent" "$target"
+                    log_success "   Synced: $basename"
+                fi
+                SYNCED=$((SYNCED + 1))
+            fi
+        done
+    else
+        log_warn "   No agents directory found in repo"
+    fi
+
+    # 2. Sync Commands (slash commands)
+    log_info "[2/4] Syncing commands..."
+    if [ -d "$REPO_PATH/.claude/commands" ]; then
+        mkdir -p "$GLOBAL_DIR/commands"
+        for cmd in "$REPO_PATH/.claude/commands"/*.md; do
+            if [ -f "$cmd" ]; then
+                local basename
+                basename=$(basename "$cmd")
+                local target="$GLOBAL_DIR/commands/$basename"
+
+                if [ -f "$target" ] && [ "$FORCE" != true ]; then
+                    if diff -q "$cmd" "$target" &>/dev/null; then
+                        SKIPPED=$((SKIPPED + 1))
+                        continue
+                    fi
+                fi
+
+                if [ "$DRY_RUN" = true ]; then
+                    echo "   Would copy: $basename"
+                else
+                    cp "$cmd" "$target"
+                    log_success "   Synced: $basename"
+                fi
+                SYNCED=$((SYNCED + 1))
+            fi
+        done
+    else
+        log_warn "   No commands directory found in repo"
+    fi
+
+    # 3. Sync Skills (directories)
+    log_info "[3/4] Syncing skills..."
+    if [ -d "$REPO_PATH/.claude/skills" ]; then
+        mkdir -p "$GLOBAL_DIR/skills"
+        for skill_dir in "$REPO_PATH/.claude/skills"/*; do
+            if [ -d "$skill_dir" ]; then
+                local basename
+                basename=$(basename "$skill_dir")
+                local target="$GLOBAL_DIR/skills/$basename"
+
+                if [ "$DRY_RUN" = true ]; then
+                    echo "   Would sync directory: $basename/"
+                else
+                    cp -r "$skill_dir" "$GLOBAL_DIR/skills/"
+                    log_success "   Synced: $basename/"
+                fi
+                SYNCED=$((SYNCED + 1))
+            fi
+        done
+        # Also sync individual .md files in skills root
+        for skill_file in "$REPO_PATH/.claude/skills"/*.md; do
+            if [ -f "$skill_file" ]; then
+                local basename
+                basename=$(basename "$skill_file")
+                local target="$GLOBAL_DIR/skills/$basename"
+
+                if [ -f "$target" ] && [ "$FORCE" != true ]; then
+                    if diff -q "$skill_file" "$target" &>/dev/null; then
+                        SKIPPED=$((SKIPPED + 1))
+                        continue
+                    fi
+                fi
+
+                if [ "$DRY_RUN" = true ]; then
+                    echo "   Would copy: $basename"
+                else
+                    cp "$skill_file" "$target"
+                    log_success "   Synced: $basename"
+                fi
+                SYNCED=$((SYNCED + 1))
+            fi
+        done
+    else
+        log_warn "   No skills directory found in repo"
+    fi
+
+    # 4. Sync Hooks (scripts)
+    log_info "[4/4] Syncing hooks..."
+    if [ -d "$REPO_PATH/.claude/hooks" ]; then
+        mkdir -p "$GLOBAL_DIR/hooks"
+        for hook in "$REPO_PATH/.claude/hooks"/*; do
+            if [ -f "$hook" ]; then
+                local basename
+                basename=$(basename "$hook")
+                local target="$GLOBAL_DIR/hooks/$basename"
+
+                if [ -f "$target" ] && [ "$FORCE" != true ]; then
+                    if diff -q "$hook" "$target" &>/dev/null; then
+                        SKIPPED=$((SKIPPED + 1))
+                        continue
+                    fi
+                fi
+
+                if [ "$DRY_RUN" = true ]; then
+                    echo "   Would copy: $basename"
+                else
+                    cp "$hook" "$target"
+                    chmod +x "$target" 2>/dev/null || true
+                    log_success "   Synced: $basename"
+                fi
+                SYNCED=$((SYNCED + 1))
+            fi
+        done
+    else
+        log_warn "   No hooks directory found in repo"
+    fi
+
+    # Summary
+    echo ""
+    echo "==============================================================="
+    echo "  SYNC SUMMARY"
+    echo "==============================================================="
+    if [ "$DRY_RUN" = true ]; then
+        log_info "Would sync: $SYNCED items"
+        log_info "Already up to date: $SKIPPED items"
+    else
+        log_success "Synced: $SYNCED items"
+        log_info "Skipped (unchanged): $SKIPPED items"
+    fi
+
+    if [ "$SYNCED" -gt 0 ] && [ "$DRY_RUN" != true ]; then
+        echo ""
+        log_success "Global ~/.claude/ synchronized with repo"
+        log_info "Changes are now available in ALL projects"
+    fi
+}
+
 # Pre-merge validation: run before creating a PR
 cmd_pre_merge() {
     local ERRORS=0
@@ -4265,6 +4479,9 @@ main() {
         # Maintenance (v2.21)
         self-update|update)
             cmd_self_update
+            ;;
+        sync-global|sync|global)
+            cmd_sync_global "$@"
             ;;
         pre-merge|premerge)
             cmd_pre_merge
