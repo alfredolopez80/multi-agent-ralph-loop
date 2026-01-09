@@ -43,10 +43,23 @@ The system addresses the fundamental challenge of AI-assisted coding: **ensuring
 
 | Feature | Description |
 |---------|-------------|
-| **9 Specialized Agents** | orchestrator, security-auditor, code-reviewer, test-architect, debugger, refactorer, docs-writer, frontend-reviewer, minimax-reviewer |
+| **14 Specialized Agents** | 9 core + 5 auxiliary review agents |
 | **8-Step Workflow** | Auto-plan → Clarify → Classify → Worktree → Plan → Execute → Validate → Retrospect |
 | **Parallel Execution** | Multiple agents work simultaneously on independent subtasks |
 | **Model Routing** | Automatic selection: Opus (critical), Sonnet (standard), MiniMax (extended) |
+
+**Core Agents (9):**
+`orchestrator`, `security-auditor`, `code-reviewer`, `test-architect`, `debugger`, `refactorer`, `docs-writer`, `frontend-reviewer`, `minimax-reviewer`
+
+**Auxiliary Review Agents (5 - v2.35):**
+
+| Agent | Trigger | Purpose |
+|-------|---------|---------|
+| `code-simplicity-reviewer` | LOC > 100 after implementation | YAGNI enforcement, complexity reduction |
+| `architecture-strategist` | Changes span ≥3 modules OR complexity ≥7 | SOLID compliance, architectural review |
+| `kieran-python-reviewer` | Any .py file modified | Type hints, Pythonic patterns, testability |
+| `kieran-typescript-reviewer` | Any .ts/.tsx/.js/.jsx file modified | Type safety, modern patterns |
+| `pattern-recognition-specialist` | Refactoring tasks planned | Design patterns, anti-patterns, duplication |
 
 ### Smart Execution (v2.29)
 
@@ -263,6 +276,44 @@ ralph handoff search "query"    # Search handoffs (Memvid)
 - Run `ralph setup-context-engine` once to enable
 - 100% backward compatible - disable features via flags
 - All existing functionality preserved
+
+### Global Configuration Sync (v2.35)
+
+| Feature | Description |
+|---------|-------------|
+| **Global Directory** | `~/.claude/` stores agents, commands, skills, hooks available in ALL projects |
+| **sync-global Command** | Propagates configurations from ralph repo to global directory |
+| **Settings.json Merge** | Automatically merges hook configurations across projects |
+| **42 Validation Tests** | Comprehensive test suite ensures sync consistency |
+
+**Configuration Hierarchy:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              CONFIGURATION HIERARCHY                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  [GLOBAL - ~/.claude/]                                         │
+│  ├── agents/    (27 agents - always available)                 │
+│  ├── commands/  (33 slash commands - always available)         │
+│  ├── skills/    (169 skills - always available)                │
+│  ├── hooks/     (17 hook scripts)                              │
+│  └── settings.json (6 hook event types)                        │
+│                                                                 │
+│  [PROJECT-LOCAL - .claude/]                                    │
+│  └── Can extend/override global configurations                 │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+```bash
+# Sync all configurations to global (run after updating ralph repo)
+ralph sync-global           # Full sync
+ralph sync-global --dry-run # Preview changes
+ralph sync-global --force   # Overwrite all files
+
+# Syncs: agents, commands, skills, hooks, settings.json
+```
 
 ### Quality & Validation
 
