@@ -560,7 +560,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 # ===============================================================================
 show_help() {
     cat << 'EOF'
-ralph - Multi-Agent Orchestrator CLI v2.24.0
+ralph - Multi-Agent Orchestrator CLI v2.35.0
 
 ORCHESTRATION:
   ralph orch "task"          Full orchestration (clarify->classify->execute->validate->retrospective)
@@ -609,6 +609,15 @@ MEMORY (v2.31):
   ralph memvid search "query" Search memory with HNSW+BM25 hybrid
   ralph memvid timeline      View memory history (time-travel)
   ralph memvid status        Show memory status and config
+
+CONTEXT ENGINE (v2.35):
+  ralph ledger save [id]     Save current session state (auto-saved by PreCompact)
+  ralph ledger show [id]     Show ledger (latest if no id)
+  ralph ledger list [n]      List recent ledgers
+  ralph handoff create [id]  Create handoff document (auto-created by PreCompact)
+  ralph handoff show [id]    Show handoff (latest if no id)
+  ralph handoff search "q"   Search handoffs via Memvid
+  ralph setup-context-engine One-time setup for 100% automatic context preservation
 
 SKILLS (v2.32):
   ralph skill create <name>  Create new YAML-based skill
