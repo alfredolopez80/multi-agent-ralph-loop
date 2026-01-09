@@ -657,6 +657,10 @@ MAINTENANCE (v2.21):
   ralph pre-merge            Validate before creating PR (shellcheck + versions + tests)
   ralph integrations         Show status of all integrations (Greptile optional)
 
+ARCHITECTURE (v2.35):
+  ralph validate-arch        Validate global architecture (hooks, agents, CLI, context)
+  ralph sync-to-projects     Sync global config to all projects
+
 ITERATION LIMITS:
   Claude (Sonnet/Opus): 15 iterations
   MiniMax M2.1:         30 iterations (2x)
@@ -3857,6 +3861,20 @@ cmd_sync_to_projects() {
 }
 
 # Cleanup redundant settings.json from projects (v2.35)
+# Validate global architecture (v2.35)
+# Tests that all components are available globally across projects
+cmd_validate_arch() {
+    local SCRIPT_PATH="${HOME}/Documents/GitHub/multi-agent-ralph-loop/scripts/validate-global-architecture.sh"
+
+    if [ -f "$SCRIPT_PATH" ]; then
+        bash "$SCRIPT_PATH"
+    else
+        log_error "Validation script not found at: $SCRIPT_PATH"
+        log_info "Run 'ralph self-update' to install the script"
+        return 1
+    fi
+}
+
 # Projects should inherit global hooks from ~/.claude/settings.json
 # This command removes settings.json that only contain hooks (no project-specific config)
 cmd_cleanup_project_settings() {
@@ -4783,6 +4801,9 @@ main() {
             ;;
         cleanup-project-settings|cleanup-settings)
             cmd_cleanup_project_settings "$@"
+            ;;
+        validate-arch|validate-architecture|arch)
+            cmd_validate_arch "$@"
             ;;
         pre-merge|premerge)
             cmd_pre_merge

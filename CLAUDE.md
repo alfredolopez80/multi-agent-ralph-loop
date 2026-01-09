@@ -1,5 +1,47 @@
 # Multi-Agent Ralph v2.35
 
+## Multi-Agent Ralph Loop Orchestration
+
+### Primary Commands (Always Available)
+
+| Command | Description |
+|---------|-------------|
+| `/orchestrator` | **Full 8-step workflow**: clarify → classify → worktree → plan → execute → validate → retrospect |
+| `/loop` | Execute until VERIFIED_DONE with quality gates |
+| `/clarify` | Intensive AskUserQuestion (MUST_HAVE + NICE_TO_HAVE) |
+| `/gates` | Quality validation (format, lint, tests) |
+| `/adversarial` | Multi-agent validation (2/3 consensus) |
+| `/retrospective` | Post-task analysis and improvements |
+| `/parallel` | Run multiple loops concurrently |
+
+### Orchestration Flow (8 Steps)
+
+```
+0. AUTO-PLAN    → Enter Plan Mode (unless trivial)
+1. CLARIFY      → AskUserQuestion intensively
+2. CLASSIFY     → Complexity 1-10, model routing
+2b. WORKTREE    → Ask user about isolated worktree
+3. PLAN         → Write plan, get approval
+4. DELEGATE     → Route to model/agent
+5. EXECUTE      → Parallel subagents (Ralph Loop)
+6. VALIDATE     → Quality gates + Adversarial
+7. RETROSPECT   → Analyze and improve
+```
+
+### Usage Examples
+
+```bash
+# Full orchestration for features
+/orchestrator Implement user authentication with JWT
+
+# Loop for iterative fixes
+/loop "fix all type errors"
+
+# Quality validation
+/gates
+/adversarial src/critical/
+```
+
 Orchestration with automatic planning, intensive clarification, git worktree isolation, adversarial validation, 9-language quality gates, context engineering, and automatic context preservation.
 
 > **Historical versions**: See [CHANGELOG.md](./CHANGELOG.md) for v2.19-v2.34 details.
