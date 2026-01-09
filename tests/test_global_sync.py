@@ -518,6 +518,36 @@ class TestSyncConsistency:
             if repo_file.exists():
                 assert global_file.exists(), f"Hook {hook} not synced to global"
 
+    def test_settings_json_hooks_synced(self, repo_path, global_claude_dir):
+        """settings.json hooks must include all 6 hook event types."""
+        repo_settings = repo_path / ".claude" / "settings.json"
+        global_settings = global_claude_dir / "settings.json"
+
+        if not repo_settings.exists():
+            pytest.skip("Repo settings.json not found")
+
+        # Load both settings files
+        with open(repo_settings) as f:
+            repo_config = json.load(f)
+        with open(global_settings) as f:
+            global_config = json.load(f)
+
+        # Required hook event types for v2.35
+        required_hooks = [
+            "PostToolUse",
+            "PreToolUse",
+            "SessionStart",
+            "PreCompact",
+        ]
+
+        repo_hooks = repo_config.get("hooks", {})
+        global_hooks = global_config.get("hooks", {})
+
+        # Verify repo has all required hooks
+        for hook_type in required_hooks:
+            assert hook_type in repo_hooks, f"Repo missing hook type: {hook_type}"
+            assert hook_type in global_hooks, f"Global missing hook type: {hook_type}"
+
 
 # =============================================================================
 # TEST: CROSS-PROJECT ACCESSIBILITY

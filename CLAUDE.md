@@ -103,6 +103,64 @@ ralph setup-context-engine
 - Feature flags can disable any v2.35 feature
 - If disabled = exact v2.34 behavior
 
+### Global vs Project-Local Configuration (v2.35)
+
+Claude Code merges configurations from two locations:
+1. **Global**: `~/.claude/` - Available in ALL projects
+2. **Project-local**: `PROJECT/.claude/` - Project-specific overrides
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              CONFIGURATION HIERARCHY                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  [GLOBAL - ~/.claude/]                                         │
+│  ├── agents/         (27 agents - always available)            │
+│  ├── commands/       (33 commands - always available)          │
+│  ├── skills/         (169 skills - always available)           │
+│  ├── hooks/          (17 hook files)                           │
+│  └── settings.json   (6 hook event types registered)           │
+│                                                                 │
+│  [PROJECT-LOCAL - .claude/]                                    │
+│  ├── agents/         (project-specific overrides)              │
+│  ├── hooks/          (project-specific hooks)                  │
+│  └── settings.json   (can extend/override global hooks)        │
+│                                                                 │
+│  [MERGED VIEW - What Claude Code Sees]                         │
+│  └── Global + Project-local merged (project-local wins on      │
+│      conflicts)                                                 │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Global Sync Command (v2.35):**
+
+```bash
+# Sync configurations from ralph repo to global ~/.claude/
+ralph sync-global           # Full sync
+ralph sync-global --dry-run # Preview changes
+ralph sync-global --force   # Overwrite all files
+
+# This syncs:
+# 1. Agents (*.md files)
+# 2. Commands (*.md files)
+# 3. Skills (directories)
+# 4. Hooks (script files)
+# 5. settings.json (hooks configuration)
+```
+
+**Important:** Run `ralph sync-global` after updating the ralph repo to propagate changes to all projects.
+
+**Required Hook Event Types (6):**
+| Hook Type | Purpose | Auto-registered |
+|-----------|---------|-----------------|
+| PostToolUse | Quality gates after Edit/Write | ✅ |
+| PreToolUse | Safety guards before Bash/Skill | ✅ |
+| SessionStart | Context preservation at startup | ✅ |
+| PreCompact | Save state before compaction | ✅ |
+| UserPromptSubmit | Context warnings, reminders | ✅ |
+| Stop | Session reports | ✅ |
+
 ## v2.34 Key Changes (Codex CLI v0.79.0 Security Hardening)
 
 - **CODEX CLI UPGRADE**: v0.77.0 → v0.79.0 with comprehensive security improvements

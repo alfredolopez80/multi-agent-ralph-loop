@@ -3603,7 +3603,7 @@ cmd_sync_global() {
     fi
 
     # 4. Sync Hooks (scripts)
-    log_info "[4/4] Syncing hooks..."
+    log_info "[4/5] Syncing hooks..."
     if [ -d "$REPO_PATH/.claude/hooks" ]; then
         mkdir -p "$GLOBAL_DIR/hooks"
         for hook in "$REPO_PATH/.claude/hooks"/*; do
@@ -3631,6 +3631,46 @@ cmd_sync_global() {
         done
     else
         log_warn "   No hooks directory found in repo"
+    fi
+
+    # 5. Sync settings.json (hooks configuration)
+    log_info "[5/5] Syncing settings.json hooks configuration..."
+    if [ -f "$REPO_PATH/.claude/settings.json" ]; then
+        local source_settings="$REPO_PATH/.claude/settings.json"
+        local target_settings="$GLOBAL_DIR/settings.json"
+
+        # Extract hooks from source and merge with target
+        if [ -f "$target_settings" ]; then
+            # Get hooks from source settings
+            local source_hooks
+            source_hooks=$(jq '.hooks' "$source_settings" 2>/dev/null)
+
+            if [ "$source_hooks" != "null" ] && [ -n "$source_hooks" ]; then
+                if [ "$DRY_RUN" = true ]; then
+                    echo "   Would merge hooks configuration to global settings.json"
+                else
+                    # Merge hooks into global settings (source hooks override)
+                    local merged
+                    merged=$(jq --argjson src_hooks "$source_hooks" '.hooks = (.hooks // {}) * $src_hooks' "$target_settings")
+                    echo "$merged" | jq '.' > "$target_settings.tmp" && mv "$target_settings.tmp" "$target_settings"
+                    log_success "   Merged hooks configuration into global settings.json"
+                fi
+                SYNCED=$((SYNCED + 1))
+            else
+                log_info "   No hooks to merge from source settings.json"
+            fi
+        else
+            # No global settings exists, copy source
+            if [ "$DRY_RUN" = true ]; then
+                echo "   Would copy: settings.json (first time)"
+            else
+                cp "$source_settings" "$target_settings"
+                log_success "   Copied: settings.json (first time)"
+            fi
+            SYNCED=$((SYNCED + 1))
+        fi
+    else
+        log_info "   No settings.json in source repo"
     fi
 
     # Summary
