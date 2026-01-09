@@ -1,6 +1,107 @@
-# Multi-Agent Ralph v2.34
+# Multi-Agent Ralph v2.35
 
-Orchestration with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement, 9-language quality gates, **multi-level security loop**, **context engineering**, **Memvid semantic memory**, **Sentry observability integration**, **Codex CLI v0.79.0 security hardening**, and **comprehensive testing (484+ tests)**.
+Orchestration with **automatic planning**, **intensive clarification**, **git worktree isolation**, adversarial validation, self-improvement, 9-language quality gates, **multi-level security loop**, **context engineering**, **Memvid semantic memory**, **Sentry observability integration**, **Codex CLI v0.79.0 security hardening**, **automatic context preservation (ledgers + handoffs)**, and **comprehensive testing (517+ tests)**.
+
+## v2.35 Key Changes (Context Engineering Optimization)
+
+- **100% AUTOMATIC CONTEXT PRESERVATION**: No user intervention required after initial setup
+- **LEDGER SYSTEM**: CONTINUITY_RALPH-<session>.md files for persistent session state (~500 tokens)
+- **HANDOFF SYSTEM**: handoff-<timestamp>.md for context transfer documents (~300 tokens)
+- **SESSIONSTART HOOK**: Auto-loads ledger + handoff at session start
+- **PRECOMPACT HOOK**: Auto-saves state BEFORE context compaction (prevents information loss)
+- **MEMVID INTEGRATION**: Hybrid storage with HNSW + BM25 semantic search for handoffs
+- **85-90% CONTEXT REDUCTION**: Estimated token savings through optimized context injection
+- **NEW CLI COMMANDS**: `ralph ledger`, `ralph handoff`, `ralph setup-context-engine`
+- **FEATURE FLAGS**: ~/.ralph/config/features.json for enabling/disabling features
+- **33 NEW TESTS**: Comprehensive test suite for context engine components
+
+### Context Preservation Architecture (v2.35)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    RALPH v2.35 CONTEXT ENGINE                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  [SessionStart Hook] - Auto-load at session start               │
+│  ├── Auto-load CONTINUITY_RALPH.md (~500 tokens)               │
+│  ├── Auto-load last handoff.md (~300 tokens)                   │
+│  └── Inject via hookSpecificOutput.additionalContext           │
+│                                                                 │
+│  [PreCompact Hook] - Auto-save before compaction                │
+│  ├── Auto-save ledger to ~/.ralph/ledgers/                     │
+│  ├── Auto-create handoff to ~/.ralph/handoffs/                 │
+│  └── Index to Memvid for semantic search                       │
+│                                                                 │
+│  [Storage Layer]                                                │
+│  ├── ~/.ralph/ledgers/CONTINUITY_RALPH-<session>.md            │
+│  ├── ~/.ralph/handoffs/<session>/handoff-<ts>.md               │
+│  └── Memvid (.mv2) for semantic search (optional)              │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Automation Matrix (v2.35)
+
+| Event | Trigger | Automatic Action | User Action |
+|-------|---------|------------------|-------------|
+| **Session start** | SessionStart hook | Loads ledger + handoff | ❌ None |
+| **Context 70%+** | claude-hud | Yellow warning | ❌ None |
+| **Context 85%+** | claude-hud | Red warning | ❌ None |
+| **Pre-compaction** | PreCompact hook | Saves ledger + handoff + Memvid | ❌ None |
+| **Post-compaction** | SessionStart hook | Reloads fresh context | ❌ None |
+
+### Context Engine Commands (v2.35)
+
+```bash
+# One-time setup (REQUIRED ONCE)
+ralph setup-context-engine  # Creates dirs, registers hooks, validates
+
+# Ledger management (usually automatic, manual for special cases)
+ralph ledger save           # Save current session state
+ralph ledger load [session] # Load specific ledger
+ralph ledger list           # List available ledgers
+ralph ledger show           # Display current ledger
+ralph ledger delete <id>    # Delete a ledger
+
+# Handoff management (usually automatic)
+ralph handoff create        # Create manual handoff
+ralph handoff load [session] # Load latest handoff
+ralph handoff search "query" # Search handoffs (uses Memvid if available)
+ralph handoff list          # List available handoffs
+ralph handoff cleanup       # Clean old handoffs (>30 days, keep min 5)
+
+# Combined context
+ralph ledger context        # Get context for injection (ledger + handoff)
+```
+
+### Feature Flags (v2.35)
+
+```json
+// ~/.ralph/config/features.json
+{
+  "RALPH_ENABLE_LEDGER": true,     // Auto-load ledger on SessionStart
+  "RALPH_ENABLE_HANDOFF": true,    // Auto-save on PreCompact
+  "RALPH_ENABLE_STATUSLINE": true  // Show context % in status (claude-hud)
+}
+```
+
+### Migration Guide (v2.34 → v2.35)
+
+**Required Action (ONE TIME):**
+```bash
+ralph setup-context-engine
+```
+
+**After Setup - Everything is Automatic:**
+- No commands needed for context preservation
+- Ledgers auto-saved before compaction
+- Handoffs auto-created for session transfer
+- Context auto-loaded on session start
+
+**Backward Compatibility:**
+- 100% compatible with v2.34
+- Feature flags can disable any v2.35 feature
+- If disabled = exact v2.34 behavior
 
 ## v2.34 Key Changes (Codex CLI v0.79.0 Security Hardening)
 

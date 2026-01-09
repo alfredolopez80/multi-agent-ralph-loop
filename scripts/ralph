@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # ralph - Multi-Agent Orchestrator CLI
-# Version 2.32.0
+# Version 2.35.0
+# v2.35: Context Engineering Optimization - auto-ledger, auto-handoff, 100% automation
+# v2.34: Codex CLI v0.79.0 security hardening
+# v2.33: Sentry observability integration
 # v2.32: YAML-based skills system, extended iterations, hook registration fix
 # v2.31: Memvid semantic memory integration
 # v2.30: Context engineering, auto-checkpointing, fresh context explorer
@@ -19,7 +22,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.32.0"
+VERSION="2.35.0"
 RALPH_REPO_PATH=""  # Auto-detected if in ralph repo
 RALPH_DIR="${HOME}/.ralph"
 
@@ -265,7 +268,7 @@ validate_memvid_packages() {
 
 # v2.34: Initialize Codex output schemas
 init_codex_schemas() {
-    local SCHEMA_DIR="$RALPH_HOME/schemas"
+    local SCHEMA_DIR="$RALPH_DIR/schemas"
 
     # Create schemas directory if it doesn't exist
     if [[ ! -d "$SCHEMA_DIR" ]]; then
@@ -697,7 +700,7 @@ run_codex_security() {
     local FILES
     FILES=$(validate_path "$1")
     local OUTPUT="$RALPH_TMPDIR/codex_security.json"
-    local SCHEMA="$RALPH_HOME/schemas/security-output.json"
+    local SCHEMA="$RALPH_DIR/schemas/security-output.json"
     local SAFE_FILES
     SAFE_FILES=$(escape_for_shell "$FILES")
 
@@ -737,7 +740,7 @@ run_codex_bugs() {
     local FILES
     FILES=$(validate_path "$1")
     local OUTPUT="$RALPH_TMPDIR/codex_bugs.json"
-    local SCHEMA="$RALPH_HOME/schemas/bugs-output.json"
+    local SCHEMA="$RALPH_DIR/schemas/bugs-output.json"
     local SAFE_FILES
     SAFE_FILES=$(escape_for_shell "$FILES")
 
@@ -778,7 +781,7 @@ run_codex_unit_tests() {
     local FILES
     FILES=$(validate_path "$1")
     local OUTPUT="$RALPH_TMPDIR/codex_tests.json"
-    local SCHEMA="$RALPH_HOME/schemas/tests-output.json"
+    local SCHEMA="$RALPH_DIR/schemas/tests-output.json"
     local SAFE_FILES
     SAFE_FILES=$(escape_for_shell "$FILES")
 
@@ -1325,7 +1328,7 @@ cmd_security_loop() {
         log_info "[1/3] Running security audit with Codex..."
         SAFE_TARGET=$(escape_for_shell "$TARGET")
         # v0.79.0: Use security-audit profile with read-only sandbox
-        codex exec --profile security-audit --output-schema "$RALPH_HOME/schemas/security-output.json" -C "$SAFE_TARGET" \
+        codex exec --profile security-audit --output-schema "$RALPH_DIR/schemas/security-output.json" -C "$SAFE_TARGET" \
             "Perform comprehensive security audit. Check for:
              - SQL/Command injection (CWE-78, CWE-89)
              - Path traversal (CWE-22)
@@ -2020,6 +2023,267 @@ cmd_memvid() {
             exit 1
             ;;
     esac
+}
+
+# ===============================================================================
+# CONTEXT ENGINEERING (v2.35)
+# ===============================================================================
+
+cmd_ledger() {
+    local LEDGER_SUBCMD="${1:-help}"
+    shift || true
+
+    local LEDGER_MANAGER="${HOME}/.claude/scripts/ledger-manager.py"
+
+    if [ ! -f "$LEDGER_MANAGER" ]; then
+        log_error "Ledger manager not found. Run: ralph setup-context-engine"
+        exit 1
+    fi
+
+    case "$LEDGER_SUBCMD" in
+        save)
+            local SESSION_ID="${1:-$(date +%Y%m%d-%H%M%S)}"
+            local GOAL="${2:-Manual checkpoint}"
+            log_info "Saving ledger for session: $SESSION_ID"
+            python3 "$LEDGER_MANAGER" save --session "$SESSION_ID" --goal "$GOAL"
+            ;;
+        show|load)
+            local SESSION_ID="${1:-}"
+            if [ -n "$SESSION_ID" ]; then
+                python3 "$LEDGER_MANAGER" show --session "$SESSION_ID"
+            else
+                python3 "$LEDGER_MANAGER" show
+            fi
+            ;;
+        list)
+            local LIMIT="${1:-10}"
+            python3 "$LEDGER_MANAGER" list --limit "$LIMIT"
+            ;;
+        delete)
+            local SESSION_ID="${1:-}"
+            if [ -z "$SESSION_ID" ]; then
+                log_error "Session ID required"
+                exit 1
+            fi
+            python3 "$LEDGER_MANAGER" delete --session "$SESSION_ID"
+            ;;
+        context)
+            python3 "$LEDGER_MANAGER" context --max-tokens "${1:-500}"
+            ;;
+        help|--help|-h|"")
+            echo ""
+            echo "╔═══════════════════════════════════════════════════════════════╗"
+            echo "║  LEDGER: Context Preservation System (v2.35)                  ║"
+            echo "╠═══════════════════════════════════════════════════════════════╣"
+            echo "║                                                               ║"
+            echo "║  Commands:                                                    ║"
+            echo "║    ralph ledger save [id] [goal]  Save current state           ║"
+            echo "║    ralph ledger show [id]         Show ledger (latest if no id)║"
+            echo "║    ralph ledger list [n]          List recent ledgers          ║"
+            echo "║    ralph ledger delete <id>       Delete a ledger              ║"
+            echo "║    ralph ledger context [tokens]  Get context for injection    ║"
+            echo "║                                                               ║"
+            echo "║  NOTE: Ledgers are auto-saved by PreCompact hook              ║"
+            echo "║  These commands are OPTIONAL for manual control               ║"
+            echo "╚═══════════════════════════════════════════════════════════════╝"
+            ;;
+        *)
+            log_error "Unknown ledger command: $LEDGER_SUBCMD"
+            log_info "Run 'ralph ledger help' for usage"
+            exit 1
+            ;;
+    esac
+}
+
+cmd_handoff() {
+    local HANDOFF_SUBCMD="${1:-help}"
+    shift || true
+
+    local HANDOFF_GENERATOR="${HOME}/.claude/scripts/handoff-generator.py"
+
+    if [ ! -f "$HANDOFF_GENERATOR" ]; then
+        log_error "Handoff generator not found. Run: ralph setup-context-engine"
+        exit 1
+    fi
+
+    case "$HANDOFF_SUBCMD" in
+        create)
+            local SESSION_ID="${1:-$(date +%Y%m%d-%H%M%S)}"
+            log_info "Creating handoff for session: $SESSION_ID"
+            python3 "$HANDOFF_GENERATOR" create --session "$SESSION_ID" --trigger "manual"
+            ;;
+        show|load)
+            local SESSION_ID="${1:-}"
+            if [ -n "$SESSION_ID" ]; then
+                python3 "$HANDOFF_GENERATOR" load --session "$SESSION_ID"
+            else
+                python3 "$HANDOFF_GENERATOR" load
+            fi
+            ;;
+        list)
+            local LIMIT="${1:-10}"
+            python3 "$HANDOFF_GENERATOR" list --limit "$LIMIT"
+            ;;
+        search)
+            local QUERY="${1:-}"
+            if [ -z "$QUERY" ]; then
+                log_error "Search query required"
+                exit 1
+            fi
+            log_info "Searching handoffs: $QUERY"
+            python3 "$HANDOFF_GENERATOR" search "$QUERY"
+            ;;
+        cleanup)
+            local DAYS="${1:-30}"
+            log_info "Cleaning up handoffs older than $DAYS days..."
+            python3 "$HANDOFF_GENERATOR" cleanup --days "$DAYS"
+            ;;
+        help|--help|-h|"")
+            echo ""
+            echo "╔═══════════════════════════════════════════════════════════════╗"
+            echo "║  HANDOFF: Context Transfer System (v2.35)                     ║"
+            echo "╠═══════════════════════════════════════════════════════════════╣"
+            echo "║                                                               ║"
+            echo "║  Commands:                                                    ║"
+            echo "║    ralph handoff create [id]      Create new handoff           ║"
+            echo "║    ralph handoff show [id]        Show handoff (latest if no id)║"
+            echo "║    ralph handoff list [n]         List recent handoffs         ║"
+            echo "║    ralph handoff search <query>   Search handoffs (Memvid)     ║"
+            echo "║    ralph handoff cleanup [days]   Clean old handoffs           ║"
+            echo "║                                                               ║"
+            echo "║  NOTE: Handoffs are auto-created by PreCompact hook           ║"
+            echo "║  These commands are OPTIONAL for manual control               ║"
+            echo "╚═══════════════════════════════════════════════════════════════╝"
+            ;;
+        *)
+            log_error "Unknown handoff command: $HANDOFF_SUBCMD"
+            log_info "Run 'ralph handoff help' for usage"
+            exit 1
+            ;;
+    esac
+}
+
+cmd_setup_context_engine() {
+    echo ""
+    echo "╔═══════════════════════════════════════════════════════════════╗"
+    echo "║  RALPH v2.35 CONTEXT ENGINE SETUP                             ║"
+    echo "╠═══════════════════════════════════════════════════════════════╣"
+    echo "║  Setting up automatic context preservation system...          ║"
+    echo "╚═══════════════════════════════════════════════════════════════╝"
+    echo ""
+
+    local ERRORS=0
+
+    # Step 1: Create directories
+    log_info "[1/6] Creating directories..."
+    mkdir -p "${HOME}/.ralph/ledgers" "${HOME}/.ralph/handoffs" "${HOME}/.ralph/logs" "${HOME}/.ralph/config"
+    log_success "  ✓ Created ~/.ralph/ledgers/, handoffs/, logs/, config/"
+
+    # Step 2: Verify scripts exist
+    log_info "[2/6] Verifying scripts..."
+    local LEDGER_MANAGER="${HOME}/.claude/scripts/ledger-manager.py"
+    local HANDOFF_GENERATOR="${HOME}/.claude/scripts/handoff-generator.py"
+
+    if [ -f "$LEDGER_MANAGER" ] && [ -f "$HANDOFF_GENERATOR" ]; then
+        chmod +x "$LEDGER_MANAGER" "$HANDOFF_GENERATOR"
+        log_success "  ✓ ledger-manager.py and handoff-generator.py verified"
+    else
+        log_error "  ✗ Scripts not found. Please reinstall ralph."
+        ERRORS=$((ERRORS + 1))
+    fi
+
+    # Step 3: Verify hooks exist
+    log_info "[3/6] Verifying hooks..."
+    local SESSION_HOOK="${HOME}/.claude/hooks/session-start-ledger.sh"
+    local COMPACT_HOOK="${HOME}/.claude/hooks/pre-compact-handoff.sh"
+
+    if [ -f "$SESSION_HOOK" ] && [ -f "$COMPACT_HOOK" ]; then
+        chmod +x "$SESSION_HOOK" "$COMPACT_HOOK"
+        log_success "  ✓ SessionStart and PreCompact hooks verified"
+    else
+        log_error "  ✗ Hooks not found. Please reinstall ralph."
+        ERRORS=$((ERRORS + 1))
+    fi
+
+    # Step 4: Update settings.json with new hooks
+    log_info "[4/6] Registering hooks in settings.json..."
+    local SETTINGS_FILE="${HOME}/.claude/settings.json"
+
+    if [ -f "$SETTINGS_FILE" ]; then
+        # Check if hooks already registered
+        if grep -q "session-start-ledger" "$SETTINGS_FILE" 2>/dev/null; then
+            log_info "  ℹ SessionStart hook already registered"
+        else
+            # Use jq to add the hook if available
+            if command -v jq &>/dev/null; then
+                local TEMP_FILE
+                TEMP_FILE=$(mktemp)
+                jq '.hooks.SessionStart = [{"matcher": "startup|resume|clear|compact", "hooks": [{"type": "command", "command": "${HOME}/.claude/hooks/session-start-ledger.sh", "timeout": 5}]}]' "$SETTINGS_FILE" > "$TEMP_FILE" && mv "$TEMP_FILE" "$SETTINGS_FILE"
+                log_success "  ✓ SessionStart hook registered"
+            else
+                log_warn "  ⚠ Cannot auto-register hooks (jq not found). Manual setup required."
+                ERRORS=$((ERRORS + 1))
+            fi
+        fi
+
+        if grep -q "pre-compact-handoff" "$SETTINGS_FILE" 2>/dev/null; then
+            log_info "  ℹ PreCompact hook already registered"
+        else
+            if command -v jq &>/dev/null; then
+                local TEMP_FILE
+                TEMP_FILE=$(mktemp)
+                jq '.hooks.PreCompact = [{"hooks": [{"type": "command", "command": "${HOME}/.claude/hooks/pre-compact-handoff.sh", "timeout": 10}]}]' "$SETTINGS_FILE" > "$TEMP_FILE" && mv "$TEMP_FILE" "$SETTINGS_FILE"
+                log_success "  ✓ PreCompact hook registered"
+            fi
+        fi
+    else
+        log_warn "  ⚠ settings.json not found at $SETTINGS_FILE"
+        ERRORS=$((ERRORS + 1))
+    fi
+
+    # Step 5: Verify claude-hud StatusLine
+    log_info "[5/6] Verifying StatusLine (claude-hud)..."
+    if grep -q "statusLine" "$SETTINGS_FILE" 2>/dev/null; then
+        log_success "  ✓ StatusLine already configured"
+    else
+        log_warn "  ⚠ StatusLine not configured. Run: /claude-hud:setup"
+    fi
+
+    # Step 6: Create default feature flags
+    log_info "[6/6] Creating feature flags..."
+    local FEATURES_FILE="${HOME}/.ralph/config/features.json"
+    if [ ! -f "$FEATURES_FILE" ]; then
+        cat > "$FEATURES_FILE" << 'EOF'
+{
+  "RALPH_ENABLE_LEDGER": true,
+  "RALPH_ENABLE_HANDOFF": true,
+  "RALPH_ENABLE_STATUSLINE": true
+}
+EOF
+        chmod 600 "$FEATURES_FILE"
+        log_success "  ✓ Feature flags created (all enabled by default)"
+    else
+        log_info "  ℹ Feature flags already exist"
+    fi
+
+    echo ""
+    echo "════════════════════════════════════════════════════════════════"
+    if [ $ERRORS -eq 0 ]; then
+        echo -e "${GREEN}✓ CONTEXT ENGINE SETUP COMPLETE${NC}"
+        echo ""
+        echo "The system is now 100% AUTOMATIC:"
+        echo "  • SessionStart hook auto-loads ledger + handoff"
+        echo "  • PreCompact hook auto-saves before compaction"
+        echo "  • StatusLine shows context % (via claude-hud)"
+        echo ""
+        echo "Optional commands (for manual control only):"
+        echo "  ralph ledger save/show/list"
+        echo "  ralph handoff create/show/search"
+    else
+        echo -e "${RED}⚠ SETUP COMPLETED WITH $ERRORS ERROR(S)${NC}"
+        echo "Some features may not work. Check the errors above."
+    fi
+    echo "════════════════════════════════════════════════════════════════"
 }
 
 # ===============================================================================
@@ -4025,6 +4289,17 @@ main() {
         # Memory (v2.31)
         memvid|memory)
             cmd_memvid "$@"
+            ;;
+
+        # Context Engineering (v2.35)
+        ledger)
+            cmd_ledger "$@"
+            ;;
+        handoff)
+            cmd_handoff "$@"
+            ;;
+        setup-context-engine|context-engine)
+            cmd_setup_context_engine
             ;;
 
         # Skills System (v2.32)
