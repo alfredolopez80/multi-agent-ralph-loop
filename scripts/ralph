@@ -3830,19 +3830,29 @@ cmd_sync_to_projects() {
             done
         fi
 
-        # 4. Sync settings.json hooks
-        if [ -f "$GLOBAL_DIR/settings.json" ] && [ -f "$project_claude_dir/settings.json" ]; then
+        # 4. Sync settings.json hooks (create if not exists)
+        if [ -f "$GLOBAL_DIR/settings.json" ]; then
             local source_hooks
             source_hooks=$(jq '.hooks' "$GLOBAL_DIR/settings.json" 2>/dev/null)
 
             if [ "$source_hooks" != "null" ] && [ -n "$source_hooks" ]; then
-                if [ "$DRY_RUN" = true ]; then
-                    echo "   Would merge: settings.json hooks"
+                if [ -f "$project_claude_dir/settings.json" ]; then
+                    # Merge hooks into existing settings.json
+                    if [ "$DRY_RUN" = true ]; then
+                        echo "   Would merge: settings.json hooks"
+                    else
+                        local merged
+                        merged=$(jq --argjson src_hooks "$source_hooks" '.hooks = (.hooks // {}) * $src_hooks' "$project_claude_dir/settings.json" 2>/dev/null)
+                        if [ -n "$merged" ]; then
+                            echo "$merged" | jq '.' > "$project_claude_dir/settings.json.tmp" && mv "$project_claude_dir/settings.json.tmp" "$project_claude_dir/settings.json"
+                        fi
+                    fi
                 else
-                    local merged
-                    merged=$(jq --argjson src_hooks "$source_hooks" '.hooks = (.hooks // {}) * $src_hooks' "$project_claude_dir/settings.json" 2>/dev/null)
-                    if [ -n "$merged" ]; then
-                        echo "$merged" | jq '.' > "$project_claude_dir/settings.json.tmp" && mv "$project_claude_dir/settings.json.tmp" "$project_claude_dir/settings.json"
+                    # Create settings.json with hooks from global
+                    if [ "$DRY_RUN" = true ]; then
+                        echo "   Would create: settings.json (from global)"
+                    else
+                        jq -n --argjson hooks "$source_hooks" '{"$schema": "https://json.schemastore.org/claude-code-settings.json", "hooks": $hooks}' > "$project_claude_dir/settings.json"
                     fi
                 fi
                 TOTAL_SYNCED=$((TOTAL_SYNCED + 1))
