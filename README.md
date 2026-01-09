@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.34-blue)
+![Version](https://img.shields.io/badge/version-2.35-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -21,6 +21,7 @@ The system addresses the fundamental challenge of AI-assisted coding: **ensuring
 - **Iterative Refinement**: Implements the "Ralph Loop" pattern - execute, validate, iterate until quality gates pass
 - **Quality Assurance**: 9-language quality gates (TypeScript, Python, Go, Rust, Solidity, Swift, JSON, YAML, JavaScript)
 - **Adversarial Validation**: 2/3 consensus requirement for critical code (auth, payments, data)
+- **Automatic Context Preservation**: 100% automatic ledger/handoff system preserves session state across compactions (v2.35)
 - **Self-Improvement**: Retrospective analysis after every task to propose workflow improvements
 
 ### Why Use It
@@ -31,6 +32,7 @@ The system addresses the fundamental challenge of AI-assisted coding: **ensuring
 | Single-pass often insufficient | Iterative loops (15-60 iterations) until VERIFIED_DONE |
 | Manual review bottleneck | Automated quality gates + human-in-the-loop for critical decisions |
 | Context limits | MiniMax (1M tokens) + Context7 MCP for documentation |
+| Context loss on compaction | Automatic ledger/handoff preservation (85-90% token reduction) |
 | High API costs | Cost-optimized routing (WebSearch FREE, MiniMax 8%, strategic Opus usage) |
 
 ---
@@ -41,10 +43,23 @@ The system addresses the fundamental challenge of AI-assisted coding: **ensuring
 
 | Feature | Description |
 |---------|-------------|
-| **9 Specialized Agents** | orchestrator, security-auditor, code-reviewer, test-architect, debugger, refactorer, docs-writer, frontend-reviewer, minimax-reviewer |
+| **14 Specialized Agents** | 9 core + 5 auxiliary review agents |
 | **8-Step Workflow** | Auto-plan → Clarify → Classify → Worktree → Plan → Execute → Validate → Retrospect |
 | **Parallel Execution** | Multiple agents work simultaneously on independent subtasks |
 | **Model Routing** | Automatic selection: Opus (critical), Sonnet (standard), MiniMax (extended) |
+
+**Core Agents (9):**
+`orchestrator`, `security-auditor`, `code-reviewer`, `test-architect`, `debugger`, `refactorer`, `docs-writer`, `frontend-reviewer`, `minimax-reviewer`
+
+**Auxiliary Review Agents (5 - v2.35):**
+
+| Agent | Trigger | Purpose |
+|-------|---------|---------|
+| `code-simplicity-reviewer` | LOC > 100 after implementation | YAGNI enforcement, complexity reduction |
+| `architecture-strategist` | Changes span ≥3 modules OR complexity ≥7 | SOLID compliance, architectural review |
+| `kieran-python-reviewer` | Any .py file modified | Type hints, Pythonic patterns, testability |
+| `kieran-typescript-reviewer` | Any .ts/.tsx/.js/.jsx file modified | Type safety, modern patterns |
+| `pattern-recognition-specialist` | Refactoring tasks planned | Design patterns, anti-patterns, duplication |
 
 ### Smart Execution (v2.29)
 
@@ -203,6 +218,103 @@ ralph security-loop src/ --max-rounds 10
 - Backward compatible - existing commands work with safer defaults
 - Use `--profile ci-cd` to match old `--yolo` behavior (CI/CD only)
 
+### Automatic Context Preservation (v2.35)
+
+| Feature | Description |
+|---------|-------------|
+| **100% Automatic** | No user intervention required after one-time `ralph setup-context-engine` |
+| **Ledger System** | CONTINUITY_RALPH-<session>.md files preserve session state (~500 tokens) |
+| **Handoff System** | handoff-<timestamp>.md documents for context transfer (~300 tokens) |
+| **SessionStart Hook** | Auto-loads ledger + handoff at session start (startup/resume/compact) |
+| **PreCompact Hook** | Auto-saves state BEFORE context compaction (prevents information loss) |
+| **Memvid Integration** | Hybrid storage with HNSW + BM25 semantic search for handoff queries |
+| **85-90% Context Reduction** | Optimized token injection vs full context reload |
+| **Feature Flags** | Enable/disable via `~/.ralph/config/features.json` |
+
+**Context Engine Architecture:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    RALPH v2.35 CONTEXT ENGINE                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  [SessionStart Hook] - Auto-load at session start               │
+│  ├── Auto-load CONTINUITY_RALPH.md (~500 tokens)               │
+│  ├── Auto-load last handoff.md (~300 tokens)                   │
+│  └── Inject via hookSpecificOutput.additionalContext           │
+│                                                                 │
+│  [PreCompact Hook] - Auto-save before compaction                │
+│  ├── Auto-save ledger to ~/.ralph/ledgers/                     │
+│  ├── Auto-create handoff to ~/.ralph/handoffs/                 │
+│  └── Index to Memvid for semantic search                       │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Automation Matrix (Zero User Intervention):**
+
+| Event | Trigger | Automatic Action |
+|-------|---------|------------------|
+| Session start | SessionStart hook | Loads ledger + handoff |
+| Context 70%+ | claude-hud | Yellow warning displayed |
+| Context 85%+ | claude-hud | Red warning displayed |
+| Pre-compaction | PreCompact hook | Saves ledger + handoff + Memvid |
+| Post-compaction | SessionStart hook | Reloads fresh context |
+
+```bash
+# One-time setup (REQUIRED ONCE)
+ralph setup-context-engine  # Creates dirs, registers hooks, validates
+
+# Manual commands (OPTIONAL - usually automatic)
+ralph ledger save [id] [goal]   # Save session state
+ralph ledger list               # List available ledgers
+ralph handoff create [id]       # Create manual handoff
+ralph handoff search "query"    # Search handoffs (Memvid)
+```
+
+**Migration (v2.34 → v2.35):**
+- Run `ralph setup-context-engine` once to enable
+- 100% backward compatible - disable features via flags
+- All existing functionality preserved
+
+### Global Configuration Sync (v2.35)
+
+| Feature | Description |
+|---------|-------------|
+| **Global Directory** | `~/.claude/` stores agents, commands, skills, hooks available in ALL projects |
+| **sync-global Command** | Propagates configurations from ralph repo to global directory |
+| **Settings.json Merge** | Automatically merges hook configurations across projects |
+| **42 Validation Tests** | Comprehensive test suite ensures sync consistency |
+
+**Configuration Hierarchy:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              CONFIGURATION HIERARCHY                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  [GLOBAL - ~/.claude/]                                         │
+│  ├── agents/    (27 agents - always available)                 │
+│  ├── commands/  (33 slash commands - always available)         │
+│  ├── skills/    (169 skills - always available)                │
+│  ├── hooks/     (17 hook scripts)                              │
+│  └── settings.json (6 hook event types)                        │
+│                                                                 │
+│  [PROJECT-LOCAL - .claude/]                                    │
+│  └── Can extend/override global configurations                 │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+```bash
+# Sync all configurations to global (run after updating ralph repo)
+ralph sync-global           # Full sync
+ralph sync-global --dry-run # Preview changes
+ralph sync-global --force   # Overwrite all files
+
+# Syncs: agents, commands, skills, hooks, settings.json
+```
+
 ### Quality & Validation
 
 | Feature | Description |
@@ -242,7 +354,7 @@ ralph security-loop src/ --max-rounds 10
 
 | Type | Count | Example |
 |------|-------|---------|
-| **CLI Commands** | 25+ | `ralph orch`, `ralph security-loop`, `ralph worktree-pr` |
+| **CLI Commands** | 30+ | `ralph orch`, `ralph security-loop`, `ralph ledger`, `ralph handoff` |
 | **Slash Commands** | 23 | `/orchestrator`, `/security`, `/library-docs` |
 | **Prefix Shortcuts** | 23 | `@orch`, `@sec`, `@lib` (v2.26) |
 
