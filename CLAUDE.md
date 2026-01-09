@@ -111,29 +111,36 @@ Claude Code merges configurations from two locations:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│              CONFIGURATION HIERARCHY                            │
+│         GLOBAL HOOKS INHERITANCE PATTERN (v2.35)                │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  [GLOBAL - ~/.claude/]                                         │
-│  ├── agents/         (27 agents - always available)            │
-│  ├── commands/       (33 commands - always available)          │
-│  ├── skills/         (169 skills - always available)           │
-│  ├── hooks/          (17 hook files)                           │
-│  └── settings.json   (6 hook event types registered)           │
+│  ├── agents/            (27 agents - always available)         │
+│  ├── commands/          (33 commands - always available)       │
+│  ├── skills/            (169 skills - always available)        │
+│  ├── hooks/             (17 hook files)                        │
+│  └── settings.json      (6 hook event types - INHERITED)       │
 │                                                                 │
 │  [PROJECT-LOCAL - .claude/]                                    │
-│  ├── agents/         (project-specific overrides)              │
-│  ├── hooks/          (project-specific hooks)                  │
-│  └── settings.json   (can extend/override global hooks)        │
+│  ├── agents/            (synced from global)                   │
+│  ├── commands/          (synced from global)                   │
+│  ├── hooks/             (synced from global)                   │
+│  ├── settings.local.json (project-specific PERMISSIONS only)   │
+│  └── ❌ NO settings.json (inherit global hooks automatically)  │
 │                                                                 │
-│  [MERGED VIEW - What Claude Code Sees]                         │
-│  └── Global + Project-local merged (project-local wins on      │
-│      conflicts)                                                 │
+│  [WHY NO PROJECT settings.json?]                               │
+│  └── Projects inherit hooks from global ~/.claude/settings.json│
+│      Updates to global hooks apply to ALL projects immediately │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Global Sync Command (v2.35):**
+**Global Hooks Inheritance Benefits:**
+- ✅ **Zero maintenance**: Updates to global hooks apply everywhere
+- ✅ **Consistent behavior**: All projects use the same hooks
+- ✅ **Simple architecture**: Only `settings.local.json` for project-specific permissions
+
+**Global Sync Commands (v2.35):**
 
 ```bash
 # Sync configurations from ralph repo to global ~/.claude/
@@ -146,10 +153,14 @@ ralph sync-global --force   # Overwrite all files
 # 2. Commands (*.md files)
 # 3. Skills (directories)
 # 4. Hooks (script files)
-# 5. settings.json (hooks configuration)
+# NOTE: settings.json NOT synced to projects (they inherit from global)
+
+# Cleanup redundant settings.json from projects
+ralph cleanup-project-settings           # Remove redundant settings.json
+ralph cleanup-project-settings --dry-run # Preview what would be removed
 ```
 
-**Important:** Run `ralph sync-global` after updating the ralph repo to propagate changes to all projects.
+**Important:** Run `ralph sync-global` after updating the ralph repo to propagate changes.
 
 **Required Hook Event Types (6):**
 | Hook Type | Purpose | Auto-registered |
