@@ -3830,34 +3830,10 @@ cmd_sync_to_projects() {
             done
         fi
 
-        # 4. Sync settings.json hooks (create if not exists)
-        if [ -f "$GLOBAL_DIR/settings.json" ]; then
-            local source_hooks
-            source_hooks=$(jq '.hooks' "$GLOBAL_DIR/settings.json" 2>/dev/null)
-
-            if [ "$source_hooks" != "null" ] && [ -n "$source_hooks" ]; then
-                if [ -f "$project_claude_dir/settings.json" ]; then
-                    # Merge hooks into existing settings.json
-                    if [ "$DRY_RUN" = true ]; then
-                        echo "   Would merge: settings.json hooks"
-                    else
-                        local merged
-                        merged=$(jq --argjson src_hooks "$source_hooks" '.hooks = (.hooks // {}) * $src_hooks' "$project_claude_dir/settings.json" 2>/dev/null)
-                        if [ -n "$merged" ]; then
-                            echo "$merged" | jq '.' > "$project_claude_dir/settings.json.tmp" && mv "$project_claude_dir/settings.json.tmp" "$project_claude_dir/settings.json"
-                        fi
-                    fi
-                else
-                    # Create settings.json with hooks from global
-                    if [ "$DRY_RUN" = true ]; then
-                        echo "   Would create: settings.json (from global)"
-                    else
-                        jq -n --argjson hooks "$source_hooks" '{"$schema": "https://json.schemastore.org/claude-code-settings.json", "hooks": $hooks}' > "$project_claude_dir/settings.json"
-                    fi
-                fi
-                TOTAL_SYNCED=$((TOTAL_SYNCED + 1))
-            fi
-        fi
+        # 4. NOTE: settings.json is NOT synced intentionally
+        # Projects should inherit global hooks from ~/.claude/settings.json automatically
+        # Only settings.local.json (permissions) should be project-specific
+        # See: v2.35 "Global Hooks Inheritance Pattern"
 
         log_success "   Done: $project_name"
     done
@@ -3875,7 +3851,92 @@ cmd_sync_to_projects() {
         log_info "Skipped (unchanged): $TOTAL_SKIPPED items"
         echo ""
         log_success "All projects now have global commands, agents, and hooks!"
+        log_info "NOTE: settings.json NOT synced (projects inherit global hooks automatically)"
+        log_info "Run 'ralph cleanup-project-settings' to remove redundant settings.json files"
     fi
+}
+
+# Cleanup redundant settings.json from projects (v2.35)
+# Projects should inherit global hooks from ~/.claude/settings.json
+# This command removes settings.json that only contain hooks (no project-specific config)
+cmd_cleanup_project_settings() {
+    local SEARCH_DIR="${HOME}/Documents/GitHub"
+    local DRY_RUN=false
+    local FORCE=false
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --dry-run|-n) DRY_RUN=true; shift ;;
+            --force|-f) FORCE=true; shift ;;
+            --dir|-d) SEARCH_DIR="$2"; shift 2 ;;
+            *) shift ;;
+        esac
+    done
+
+    echo ""
+    echo "==============================================================="
+    echo "  CLEANUP PROJECT SETTINGS (v2.35 Global Hooks Pattern)"
+    echo "==============================================================="
+    echo ""
+    log_info "Searching in: $SEARCH_DIR"
+    [ "$DRY_RUN" = true ] && log_warn "DRY RUN MODE - No changes will be made"
+    echo ""
+    log_info "This removes settings.json files that only contain hooks,"
+    log_info "allowing projects to inherit global hooks from ~/.claude/settings.json"
+    echo ""
+
+    # Find all projects with .claude/settings.json
+    local REMOVED=0
+    local KEPT=0
+    local CHECKED=0
+
+    while IFS= read -r -d '' settings_file; do
+        CHECKED=$((CHECKED + 1))
+        local project_dir
+        project_dir=$(dirname "$(dirname "$settings_file")")
+        local project_name
+        project_name=$(basename "$project_dir")
+
+        # Check if settings.json only contains hooks (and schema)
+        local has_only_hooks=false
+        local keys
+        keys=$(jq -r 'keys | .[]' "$settings_file" 2>/dev/null | grep -v '^\$schema$' | sort | tr '\n' ' ')
+
+        if [ "$keys" = "hooks " ]; then
+            has_only_hooks=true
+        fi
+
+        if [ "$has_only_hooks" = true ]; then
+            if [ "$DRY_RUN" = true ]; then
+                log_warn "Would remove: $project_name/.claude/settings.json (only hooks)"
+            else
+                if [ "$FORCE" = true ] || [ "$has_only_hooks" = true ]; then
+                    rm -f "$settings_file"
+                    log_success "Removed: $project_name/.claude/settings.json"
+                fi
+            fi
+            REMOVED=$((REMOVED + 1))
+        else
+            log_info "Keeping: $project_name/.claude/settings.json (has project-specific config)"
+            KEPT=$((KEPT + 1))
+        fi
+    done < <(find "$SEARCH_DIR" -maxdepth 5 -path "*/.claude/settings.json" -type f -print0 2>/dev/null)
+
+    # Summary
+    echo ""
+    echo "==============================================================="
+    echo "  CLEANUP SUMMARY"
+    echo "==============================================================="
+    log_info "Checked: $CHECKED projects"
+    if [ "$DRY_RUN" = true ]; then
+        log_info "Would remove: $REMOVED settings.json files (only hooks)"
+    else
+        log_success "Removed: $REMOVED settings.json files"
+    fi
+    log_info "Kept: $KEPT settings.json files (have project-specific config)"
+    echo ""
+    log_success "Projects will now inherit hooks from ~/.claude/settings.json"
 }
 
 # Pre-merge validation: run before creating a PR
@@ -4719,6 +4780,9 @@ main() {
             ;;
         sync-to-projects|sync-projects|distribute)
             cmd_sync_to_projects "$@"
+            ;;
+        cleanup-project-settings|cleanup-settings)
+            cmd_cleanup_project_settings "$@"
             ;;
         pre-merge|premerge)
             cmd_pre_merge
