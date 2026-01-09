@@ -332,30 +332,30 @@ Iterative security auditing until zero vulnerabilities:
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │   Round 1                                                       │
-│   ┌──────────┐    ┌──────────────┐    ┌─────────────────┐      │
+│   ┌──────────┐     ┌──────────────┐    ┌─────────────────┐      │
 │   │  AUDIT   │───▶│   FINDINGS   │───▶│ Issues Found?   │      │
-│   │  (Codex) │    │   (Parse)    │    └────────┬────────┘      │
-│   └──────────┘    └──────────────┘             │               │
+│   │  (Codex) │     │   (Parse)    │    └────────┬────────┘      │
+│   └──────────┘     └──────────────┘             │               │
 │                                          NO ◀──┴──▶ YES        │
-│                                           │         │          │
-│                                           ▼         ▼          │
-│                                   ┌───────────┐  ┌──────────┐  │
-│                                   │  DONE     │  │   FIX    │  │
-│                                   │  0 issues │  │ (Hybrid) │  │
-│                                   └───────────┘  └────┬─────┘  │
-│                                                       │        │
-│   Round 2+                                            ▼        │
-│   ┌──────────┐    ┌──────────────┐    ┌─────────────────┐      │
-│   │ RE-AUDIT │◀───│   VALIDATE   │◀───│ Fixes Applied   │      │
-│   │  (Codex) │    │   (Check)    │    └─────────────────┘      │
-│   └──────────┘    └──────────────┘                             │
+│                                           │         │           │
+│                                           ▼         ▼           │
+│                                   ┌───────────┐  ┌──────────┐   │
+│                                   │  DONE     │  │   FIX    │   │
+│                                   │  0 issues │  │ (Hybrid) │   │
+│                                   └───────────┘  └────┬─────┘   │
+│                                                       │         │
+│   Round 2+                                            ▼         │
+│   ┌──────────┐      ┌──────────────┐    ┌─────────────────┐     │
+│   │ RE-AUDIT │◀─── │   VALIDATE    │◀───│ Fixes Applied  │     │
+│   │  (Codex) │      │   (Check)    │    └─────────────────┘     │
+│   └──────────┘      └──────────────┘                            │
 │        │                                                        │
-│        └─────────────────▶ Loop until 0 issues or max rounds   │
+│        └─────────────────▶Loop until 0 issues or max rounds    │
 │                                                                 │
 │   Config:                                                       │
-│   • Max Rounds: 10 (configurable)                              │
-│   • Fix Agent: Codex GPT-5                                     │
-│   • Approval: Hybrid (auto LOW/MEDIUM, ask CRITICAL/HIGH)      │
+│   • Max Rounds: 10 (configurable)                               │
+│   • Fix Agent: Codex GPT-5                                      │
+│   • Approval: Hybrid (auto LOW/MEDIUM, ask CRITICAL/HIGH)       │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -373,10 +373,10 @@ Iterative security auditing until zero vulnerabilities:
 │                  │                                              │
 │  Codex Review  ──┼──▶  CONSENSUS CHECK  ──▶  2/3 REQUIRED      │
 │                  │                                              │
-│  Gemini Review ──┘     (tie-breaker)                           │
+│  Gemini Review ──┘     (tie-breaker)                            │
 │                                                                 │
 │  PASS: 2+ models approve                                        │
-│  FAIL: exit 2 → Ralph Loop until fixed                         │
+│  FAIL: exit 2 → Ralph Loop until fixed                          │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -399,9 +399,9 @@ Isolated feature development with multi-agent review:
 │     → Codex GPT-5: Security, performance, best practices        │
 ├─────────────────────────────────────────────────────────────────┤
 │  4. Review Decision:                                            │
-│     → PASS: ralph worktree-merge <pr>                          │
-│     → FAIL: ralph worktree-fix <pr>                            │
-│     → ABORT: ralph worktree-close <pr>                         │
+│     → PASS: ralph worktree-merge <pr>                           │
+│     → FAIL: ralph worktree-fix <pr>                             │
+│     → ABORT: ralph worktree-close <pr>                          │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -485,15 +485,15 @@ ralph worktree-merge 42
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  PRIMARY (Sonnet manages)  │  SECONDARY (8% cost)         │
+│  PRIMARY (Sonnet manages)  │  SECONDARY (8% cost)          │
 ├────────────────────────────┼───────────────────────────────┤
-│  Claude Opus/Sonnet        │  MiniMax M2.1                │
-│  Codex GPT-5               │  (Second opinion)            │
-│  Gemini 2.5 Pro            │  (Independent validation)    │
+│  Claude Opus/Sonnet        │  MiniMax M2.1                 │
+│  Codex GPT-5               │  (Second opinion)             │
+│  Gemini 2.5 Pro            │  (Independent validation)     │
 ├────────────────────────────┼───────────────────────────────┤
-│  Implementation            │  Validation                  │
-│  Testing                   │  Catch missed issues         │
-│  Documentation             │  Opus quality @ 8% cost      │
+│  Implementation            │  Validation                   │
+│  Testing                   │  Catch missed issues          │
+│  Documentation             │  Opus quality @ 8% cost       │
 └────────────────────────────┴───────────────────────────────┘
 ```
 
