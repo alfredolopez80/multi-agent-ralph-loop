@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run_tests.sh - Execute all tests for Multi-Agent Ralph Loop v2.19
+# run_tests.sh - Execute all tests for Multi-Agent Ralph Loop v2.36
 #
 # Usage:
 #   ./tests/run_tests.sh           # Run all tests
@@ -7,6 +7,7 @@
 #   ./tests/run_tests.sh bash      # Run only Bash tests
 #   ./tests/run_tests.sh security  # Run only security tests
 #   ./tests/run_tests.sh v218      # Run only v2.19 security fix tests
+#   ./tests/run_tests.sh v236      # Run only v2.36 skills unification tests
 
 set -euo pipefail
 
@@ -136,6 +137,47 @@ run_v218_tests() {
     fi
 }
 
+# Run v2.36 skills unification tests
+run_v236_tests() {
+    log_info "Running v2.36 Skills Unification tests..."
+
+    cd "$PROJECT_DIR"
+
+    # Run the comprehensive v2.36 test script
+    if [[ -x "$SCRIPT_DIR/test_v2.36_skills_unification.sh" ]]; then
+        "$SCRIPT_DIR/test_v2.36_skills_unification.sh" "$@"
+    else
+        log_error "v2.36 test script not found or not executable"
+        return 1
+    fi
+}
+
+# Run context engine tests (Python)
+run_context_tests() {
+    log_info "Running context engine tests..."
+
+    cd "$PROJECT_DIR"
+
+    if command -v pytest &>/dev/null; then
+        pytest tests/test_context_engine.py -v --tb=short "$@"
+    else
+        log_warn "pytest not installed, skipping context tests"
+    fi
+}
+
+# Run global sync tests (Python)
+run_sync_tests() {
+    log_info "Running global sync tests..."
+
+    cd "$PROJECT_DIR"
+
+    if command -v pytest &>/dev/null; then
+        pytest tests/test_global_sync.py -v --tb=short "$@"
+    else
+        log_warn "pytest not installed, skipping sync tests"
+    fi
+}
+
 # Main
 main() {
     echo ""
@@ -162,14 +204,25 @@ main() {
         v218|v2.19|vuln)
             run_v218_tests "$@"
             ;;
+        v236|v2.36|skills)
+            run_v236_tests "$@"
+            ;;
+        context)
+            run_context_tests "$@"
+            ;;
+        sync|global)
+            run_sync_tests "$@"
+            ;;
         all|"")
             run_python_tests "$@" || true
             echo ""
             run_bash_tests "$@" || true
+            echo ""
+            run_v236_tests "$@" || true
             ;;
         *)
             log_error "Unknown mode: $MODE"
-            echo "Usage: $0 [python|bash|security|v218|all]"
+            echo "Usage: $0 [python|bash|security|v218|v236|context|sync|all]"
             exit 1
             ;;
     esac

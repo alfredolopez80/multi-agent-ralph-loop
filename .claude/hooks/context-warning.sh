@@ -8,8 +8,8 @@
 set -uo pipefail
 
 # Configuration
-THRESHOLD=60
-CRITICAL_THRESHOLD=75
+THRESHOLD=80
+CRITICAL_THRESHOLD=85
 LOG_FILE="${HOME}/.ralph/context-monitor.log"
 RALPH_DIR="${HOME}/.ralph"
 
