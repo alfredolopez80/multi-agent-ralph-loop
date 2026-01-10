@@ -912,6 +912,8 @@ See [LICENSE](LICENSE) for details.
 - [Claude Code Hooks](https://docs.anthropic.com/en/docs/claude-code/hooks) - Quality gates implementation
 
 ### Tools & MCP Integrations
+- [LLM-TLDR](https://github.com/syedazharmbnr1/llm-tldr) - @syedazharmbnr1 - 5-layer code analysis with 95% token savings (v2.37)
+- [Claude-Mem MCP](https://github.com/anthropics/claude-code-plugins) - Semantic memory with 3-layer workflow: search → timeline → get_observations
 - [MiniMax MCP](https://blog.devgenius.io/claude-code-but-cheaper-and-snappy-minimax-m2-1-with-a-tiny-wrapper-7d910db93383) - @jpcaparas - 8% cost web search
 - [Context7](https://github.com/upstash/context7) - Library documentation MCP server
 - [ast-grep](https://ast-grep.github.io/) - Structural code search (~75% token savings)
