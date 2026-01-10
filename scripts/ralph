@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ralph - Multi-Agent Orchestrator CLI
-# Version 2.35.0
+# Version 2.37.0
+# v2.37: LLM-TLDR integration - 95% token savings, 5-layer code analysis, semantic search
 # v2.35: Context Engineering Optimization - auto-ledger, auto-handoff, 100% automation
 # v2.34: Codex CLI v0.79.0 security hardening
 # v2.33: Sentry observability integration
@@ -22,7 +23,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.35.0"
+VERSION="2.37.0"
 RALPH_REPO_PATH=""  # Auto-detected if in ralph repo
 RALPH_DIR="${HOME}/.ralph"
 
@@ -213,6 +214,7 @@ FEATURE_TOOLS=(
     "gemini:Gemini CLI (research):pip install google-gemini-cli"
     "sg:ast-grep (structural code search):brew install ast-grep"
     "memvid:Memvid memory (v2.31):pip install memvid && npm install @memvid/sdk"
+    "tldr:LLM-TLDR (95% token savings v2.37):pip install llm-tldr"
 )
 
 # Herramientas para Quality Gates (9 lenguajes)
@@ -560,7 +562,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 # ===============================================================================
 show_help() {
     cat << 'EOF'
-ralph - Multi-Agent Orchestrator CLI v2.35.0
+ralph - Multi-Agent Orchestrator CLI v2.37.0
 
 ORCHESTRATION:
   ralph orch "task"          Full orchestration (clarify->classify->execute->validate->retrospective)
@@ -618,6 +620,16 @@ CONTEXT ENGINE (v2.35):
   ralph handoff show [id]    Show handoff (latest if no id)
   ralph handoff search "q"   Search handoffs via Memvid
   ralph setup-context-engine One-time setup for 100% automatic context preservation
+
+LLM-TLDR (v2.37) - 95% Token Savings:
+  ralph tldr warm [path]     Index project (5-layer analysis, ~30-60s)
+  ralph tldr semantic "query" Behavior-based code search (1024-dim embeddings)
+  ralph tldr context <func>  LLM-ready function summary (99% token savings)
+  ralph tldr impact <func>   Find all callers (reverse call graph)
+  ralph tldr slice <f> <fn> N What affects line N? (PDG analysis)
+  ralph tldr structure [path] Function/class overview
+  ralph tldr dead [path]     Find unreachable code
+  ralph tldr daemon status   Check/start/stop daemon (100ms queries)
 
 SKILLS (v2.32):
   ralph skill create <name>  Create new YAML-based skill
@@ -690,6 +702,9 @@ ALIASES (add to ~/.zshrc or ~/.bashrc):
   alias rhsu='ralph self-update'
   alias rhpm='ralph pre-merge'
   alias rhint='ralph integrations'
+  alias rhtldr='ralph tldr'
+  alias rhtw='ralph tldr warm'
+  alias rhts='ralph tldr semantic'
 
 EXAMPLES:
   ralph orch "Implement OAuth2 with Google"
@@ -704,6 +719,13 @@ EXAMPLES:
   cd .worktrees/ai-ralph-*/  # Work in isolated worktree
   ralph worktree-pr          # Create PR with multi-agent review
   ralph worktree-merge 123   # Merge approved PR
+
+  # LLM-TLDR workflow (v2.37) - 95% token savings
+  ralph tldr warm .                           # Index project (one-time)
+  ralph tldr semantic "validate JWT tokens"   # Find by behavior
+  ralph tldr context main                     # Get optimized context
+  ralph tldr impact login                     # Find all callers
+  ralph tldr slice src/auth.py login 42       # What affects line 42?
 EOF
 }
 
@@ -2035,6 +2057,183 @@ cmd_memvid() {
             log_error "Unknown memvid command: $MEMVID_SUBCMD"
             log_info "Run 'ralph memvid help' for usage"
             exit 1
+            ;;
+    esac
+}
+
+# ===============================================================================
+# LLM-TLDR (v2.37) - 95% Token Savings
+# ===============================================================================
+
+cmd_tldr() {
+    local TLDR_SUBCMD="${1:-help}"
+    shift || true
+
+    # Validate tldr is installed
+    if ! command -v tldr &> /dev/null || ! pip show llm-tldr &>/dev/null 2>&1; then
+        log_error "LLM-TLDR not installed"
+        log_info "Install with: pip install llm-tldr"
+        exit 1
+    fi
+
+    case "$TLDR_SUBCMD" in
+        warm|index|init)
+            local TARGET_PATH="${1:-.}"
+            TARGET_PATH=$(validate_path "$TARGET_PATH")
+            log_info "Indexing project for TLDR (5-layer analysis)..."
+            log_info "  Target: $TARGET_PATH"
+            log_info "  This may take 30-60 seconds for a typical project..."
+            tldr warm "$TARGET_PATH"
+            log_success "Index complete! Query latency now ~100ms via daemon"
+            ;;
+        semantic|search|find)
+            if [ -z "${1:-}" ]; then
+                echo ""
+                echo "╔═══════════════════════════════════════════════════════════════╗"
+                echo "║  TLDR SEMANTIC: Search code by behavior (v2.37)               ║"
+                echo "╠═══════════════════════════════════════════════════════════════╣"
+                echo "║                                                               ║"
+                echo "║  Usage: ralph tldr semantic \"<natural language query>\"        ║"
+                echo "║                                                               ║"
+                echo "║  Examples:                                                    ║"
+                echo "║    ralph tldr semantic \"validate JWT tokens\"                  ║"
+                echo "║    ralph tldr semantic \"database connection pooling\"          ║"
+                echo "║    ralph tldr semantic \"handle authentication errors\"         ║"
+                echo "║                                                               ║"
+                echo "║  Uses 1024-dim embeddings for behavior-based search           ║"
+                echo "╚═══════════════════════════════════════════════════════════════╝"
+                exit 1
+            fi
+            local QUERY="$*"
+            log_info "Semantic search: $QUERY"
+            tldr semantic "$QUERY" .
+            ;;
+        context|ctx)
+            if [ -z "${1:-}" ]; then
+                echo ""
+                echo "╔═══════════════════════════════════════════════════════════════╗"
+                echo "║  TLDR CONTEXT: LLM-ready function summary (99% savings)       ║"
+                echo "╠═══════════════════════════════════════════════════════════════╣"
+                echo "║                                                               ║"
+                echo "║  Usage: ralph tldr context <function_name>                    ║"
+                echo "║                                                               ║"
+                echo "║  Examples:                                                    ║"
+                echo "║    ralph tldr context main                                    ║"
+                echo "║    ralph tldr context process_payment                         ║"
+                echo "║    ralph tldr context authenticate_user                       ║"
+                echo "║                                                               ║"
+                echo "║  Returns optimized context: 175 tokens vs 21,000 raw          ║"
+                echo "╚═══════════════════════════════════════════════════════════════╝"
+                exit 1
+            fi
+            local FUNC_NAME="$1"
+            log_info "Getting context for: $FUNC_NAME"
+            tldr context "$FUNC_NAME" --project .
+            ;;
+        impact|callers|who-calls)
+            if [ -z "${1:-}" ]; then
+                echo ""
+                echo "╔═══════════════════════════════════════════════════════════════╗"
+                echo "║  TLDR IMPACT: Find all callers (reverse call graph)           ║"
+                echo "╠═══════════════════════════════════════════════════════════════╣"
+                echo "║                                                               ║"
+                echo "║  Usage: ralph tldr impact <function_name>                     ║"
+                echo "║                                                               ║"
+                echo "║  Examples:                                                    ║"
+                echo "║    ralph tldr impact login                                    ║"
+                echo "║    ralph tldr impact validate_token                           ║"
+                echo "║                                                               ║"
+                echo "║  Essential before refactoring to understand blast radius      ║"
+                echo "╚═══════════════════════════════════════════════════════════════╝"
+                exit 1
+            fi
+            local FUNC_NAME="$1"
+            log_info "Analyzing impact of: $FUNC_NAME"
+            tldr impact "$FUNC_NAME" .
+            ;;
+        slice|debug)
+            if [ $# -lt 3 ]; then
+                echo ""
+                echo "╔═══════════════════════════════════════════════════════════════╗"
+                echo "║  TLDR SLICE: What affects line X? (PDG analysis)              ║"
+                echo "╠═══════════════════════════════════════════════════════════════╣"
+                echo "║                                                               ║"
+                echo "║  Usage: ralph tldr slice <file> <function> <line>             ║"
+                echo "║                                                               ║"
+                echo "║  Examples:                                                    ║"
+                echo "║    ralph tldr slice src/auth.py login 42                      ║"
+                echo "║    ralph tldr slice lib/api.ts handleRequest 100              ║"
+                echo "║                                                               ║"
+                echo "║  Shows ONLY lines that affect the target line - debugging!   ║"
+                echo "╚═══════════════════════════════════════════════════════════════╝"
+                exit 1
+            fi
+            local FILE="$1" FUNC="$2" LINE="$3"
+            FILE=$(validate_path "$FILE")
+            log_info "Slicing: $FILE -> $FUNC at line $LINE"
+            tldr slice "$FILE" "$FUNC" "$LINE"
+            ;;
+        structure|tree|overview)
+            local TARGET_PATH="${1:-.}"
+            local LANG="${2:-}"
+            TARGET_PATH=$(validate_path "$TARGET_PATH")
+            log_info "Analyzing structure: $TARGET_PATH"
+            if [ -n "$LANG" ]; then
+                tldr structure "$TARGET_PATH" --lang "$LANG"
+            else
+                tldr structure "$TARGET_PATH"
+            fi
+            ;;
+        dead|unreachable)
+            local TARGET_PATH="${1:-.}"
+            TARGET_PATH=$(validate_path "$TARGET_PATH")
+            log_info "Finding dead code in: $TARGET_PATH"
+            tldr dead "$TARGET_PATH"
+            ;;
+        daemon)
+            local DAEMON_CMD="${1:-status}"
+            case "$DAEMON_CMD" in
+                start) tldr daemon start ;;
+                stop) tldr daemon stop ;;
+                status) tldr daemon status ;;
+                *)
+                    log_error "Unknown daemon command: $DAEMON_CMD"
+                    log_info "Options: start, stop, status"
+                    ;;
+            esac
+            ;;
+        help|--help|-h|"")
+            echo ""
+            echo "╔═══════════════════════════════════════════════════════════════╗"
+            echo "║  LLM-TLDR: 95% Token Savings for Code Analysis (v2.37)        ║"
+            echo "╠═══════════════════════════════════════════════════════════════╣"
+            echo "║                                                               ║"
+            echo "║  Setup:                                                       ║"
+            echo "║    ralph tldr warm [path]       Index project (~30-60s)       ║"
+            echo "║                                                               ║"
+            echo "║  Search:                                                      ║"
+            echo "║    ralph tldr semantic \"query\"  Behavior-based search         ║"
+            echo "║    ralph tldr context <func>    LLM-ready summary (99% save)  ║"
+            echo "║                                                               ║"
+            echo "║  Analysis:                                                    ║"
+            echo "║    ralph tldr impact <func>     Find all callers              ║"
+            echo "║    ralph tldr slice <f> <fn> N  What affects line N?          ║"
+            echo "║    ralph tldr structure [path]  Function/class overview       ║"
+            echo "║    ralph tldr dead [path]       Find unreachable code         ║"
+            echo "║                                                               ║"
+            echo "║  Daemon:                                                      ║"
+            echo "║    ralph tldr daemon status     Check daemon                  ║"
+            echo "║    ralph tldr daemon start      Start daemon                  ║"
+            echo "║    ralph tldr daemon stop       Stop daemon                   ║"
+            echo "║                                                               ║"
+            echo "║  5-Layer Analysis: AST → Calls → CFG → DFG → PDG              ║"
+            echo "║  Supported: 16 languages (Python, TS, Go, Rust, Java, etc.)   ║"
+            echo "╚═══════════════════════════════════════════════════════════════╝"
+            ;;
+        *)
+            # Pass through to tldr CLI
+            log_info "Passing to tldr CLI: $TLDR_SUBCMD $*"
+            tldr "$TLDR_SUBCMD" "$@"
             ;;
     esac
 }
@@ -4132,6 +4331,15 @@ cmd_integrations() {
         log_warn "  MiniMax (mmc):  not installed"
     fi
 
+    # LLM-TLDR (v2.37)
+    if command -v tldr &> /dev/null && pip show llm-tldr &>/dev/null; then
+        local TLDR_VER
+        TLDR_VER=$(pip show llm-tldr 2>&1 | grep "Version:" | awk '{print $2}')
+        log_success "  LLM-TLDR:       v$TLDR_VER (95% token savings)"
+    else
+        log_warn "  LLM-TLDR:       not installed (pip install llm-tldr)"
+    fi
+
     echo ""
     log_info "OPTIONAL SERVICES (no cost requirement):"
 
@@ -4828,6 +5036,11 @@ main() {
         # Memory (v2.31)
         memvid|memory)
             cmd_memvid "$@"
+            ;;
+
+        # LLM-TLDR (v2.37)
+        tldr|code-analysis|token-optimize)
+            cmd_tldr "$@"
             ;;
 
         # Context Engineering (v2.35)

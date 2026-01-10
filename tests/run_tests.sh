@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run_tests.sh - Execute all tests for Multi-Agent Ralph Loop v2.36
+# run_tests.sh - Execute all tests for Multi-Agent Ralph Loop v2.37
 #
 # Usage:
 #   ./tests/run_tests.sh           # Run all tests
@@ -8,6 +8,7 @@
 #   ./tests/run_tests.sh security  # Run only security tests
 #   ./tests/run_tests.sh v218      # Run only v2.19 security fix tests
 #   ./tests/run_tests.sh v236      # Run only v2.36 skills unification tests
+#   ./tests/run_tests.sh v237      # Run only v2.37 tldr integration tests
 
 set -euo pipefail
 
@@ -178,6 +179,21 @@ run_sync_tests() {
     fi
 }
 
+# Run v2.37 tldr integration tests
+run_v237_tests() {
+    log_info "Running v2.37 LLM-TLDR Integration tests..."
+
+    cd "$PROJECT_DIR"
+
+    # Run the comprehensive v2.37 test script
+    if [[ -x "$SCRIPT_DIR/test_v2.37_tldr_integration.sh" ]]; then
+        "$SCRIPT_DIR/test_v2.37_tldr_integration.sh" "$@"
+    else
+        log_error "v2.37 test script not found or not executable"
+        return 1
+    fi
+}
+
 # Main
 main() {
     echo ""
@@ -207,6 +223,9 @@ main() {
         v236|v2.36|skills)
             run_v236_tests "$@"
             ;;
+        v237|v2.37|tldr)
+            run_v237_tests "$@"
+            ;;
         context)
             run_context_tests "$@"
             ;;
@@ -219,10 +238,12 @@ main() {
             run_bash_tests "$@" || true
             echo ""
             run_v236_tests "$@" || true
+            echo ""
+            run_v237_tests "$@" || true
             ;;
         *)
             log_error "Unknown mode: $MODE"
-            echo "Usage: $0 [python|bash|security|v218|v236|context|sync|all]"
+            echo "Usage: $0 [python|bash|security|v218|v236|v237|context|sync|all]"
             exit 1
             ;;
     esac

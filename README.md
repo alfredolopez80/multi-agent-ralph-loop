@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.36-blue)
+![Version](https://img.shields.io/badge/version-2.37-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -217,6 +217,39 @@ ralph security-loop src/ --max-rounds 10
 - All 11 Codex invocations updated automatically
 - Backward compatible - existing commands work with safer defaults
 - Use `--profile ci-cd` to match old `--yolo` behavior (CI/CD only)
+
+### LLM-TLDR Token Optimization (v2.37)
+
+| Feature | Description |
+|---------|-------------|
+| **95% Token Savings** | Reduce 21,000 tokens to 175 for function context |
+| **155x Faster Queries** | Daemon mode with 100ms latency vs 30s CLI |
+| **5-Layer Analysis** | AST → Call Graph → CFG → DFG → PDG |
+| **16 Languages** | Python, TypeScript, JavaScript, Go, Rust, Java, C, C++, Ruby, PHP, C#, Kotlin, Scala, Swift, Lua, Elixir |
+| **Semantic Search** | 1024-dim embeddings via bge-large-en-v1.5 |
+| **MCP Integration** | Built-in `tldr-mcp` for Claude Code/Desktop |
+
+**Orchestrator Integration:**
+- **Step 1 (CLARIFY)**: `tldr semantic` finds existing functionality
+- **Step 3 (PLAN)**: `tldr impact` shows change blast radius
+- **Step 5 (EXECUTE)**: `tldr context` prepares minimal context for subagents
+
+```bash
+ralph tldr warm .              # Build semantic index
+ralph tldr semantic "auth" .   # Search by behavior
+ralph tldr context login .     # LLM-optimized context
+ralph tldr impact handler .    # Find all callers
+ralph tldr structure src/      # Codebase structure
+ralph tldr dead .              # Find dead code
+```
+
+**Skills (4):**
+- `/tldr` - Main command interface
+- `/tldr-semantic` - Behavior-based code search
+- `/tldr-impact` - Change impact analysis
+- `/tldr-context` - Optimized context for orchestrator
+
+**Installation**: `pip install llm-tldr`
 
 ### Commands → Skills Unification (v2.36)
 
@@ -896,7 +929,17 @@ See [LICENSE](LICENSE) for details.
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
 
-### Latest: v2.36.0 (2026-01-10)
+### Latest: v2.37.0 (2026-01-10)
+
+- **LLM-TLDR Integration**: 95% token savings for code exploration and analysis
+- **5-Layer Analysis**: AST → Call Graph → CFG → DFG → PDG for complete code understanding
+- **16 Languages**: Python, TypeScript, Go, Rust, Java, C, C++, and 9 more
+- **Semantic Search**: 1024-dim embeddings via bge-large-en-v1.5 model
+- **Orchestrator Enhanced**: tldr-context skill optimizes context for Steps 1, 3, 5
+- **4 New Skills**: /tldr, /tldr-semantic, /tldr-impact, /tldr-context
+- **155x Faster**: Daemon mode reduces query latency from 30s to 100ms
+
+### v2.36.0 (2026-01-10)
 
 - **Commands → Skills Unification**: Aligned with Claude Code v2.1.3 merged mental model
 - **185 Global Skills**: All commands migrated to `~/.claude/skills/` with Progressive Disclosure

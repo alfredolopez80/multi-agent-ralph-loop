@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.36
+# Multi-Agent Ralph v2.37
 
 ## Multi-Agent Ralph Loop Orchestration
 
@@ -44,9 +44,39 @@
 
 Orchestration with automatic planning, intensive clarification, git worktree isolation, adversarial validation, 9-language quality gates, context engineering, and automatic context preservation.
 
-> **Historical versions**: See [CHANGELOG.md](./CHANGELOG.md) for v2.19-v2.35 details.
+> **Historical versions**: See [CHANGELOG.md](./CHANGELOG.md) for v2.19-v2.36 details.
 
-## v2.36 Current Features
+## v2.37 Current Features
+
+### LLM-TLDR Integration (95% Token Savings)
+
+Token-efficient code analysis for exploring large codebases:
+
+| Feature | Description |
+|---------|-------------|
+| **95% Token Savings** | 21,000 tokens → 175 tokens for function context |
+| **155x Faster Queries** | Daemon mode with 100ms latency |
+| **5-Layer Analysis** | AST → Call Graph → CFG → DFG → PDG |
+| **16 Languages** | Python, TypeScript, Go, Rust, Java, C, C++, etc. |
+
+**Commands**:
+```bash
+ralph tldr warm .              # Build index (first time)
+ralph tldr semantic "query" .  # Semantic code search
+ralph tldr context function .  # LLM-optimized context
+ralph tldr impact function .   # Call graph analysis
+ralph tldr structure src/      # Codebase structure
+```
+
+**Orchestrator Integration** (via /tldr-context skill):
+- **Step 1 (CLARIFY)**: `tldr semantic` finds existing functionality
+- **Step 3 (PLAN)**: `tldr impact` shows change blast radius
+- **Step 5 (EXECUTE)**: `tldr context` prepares minimal context for subagents
+- **Step DEBUG**: `tldr slice` for root cause analysis
+
+**Installation**: `pip install llm-tldr`
+
+## v2.36 Features
 
 ### Commands → Skills Unification (Claude Code v2.1.3)
 
