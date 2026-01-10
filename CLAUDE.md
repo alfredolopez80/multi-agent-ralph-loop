@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.35
+# Multi-Agent Ralph v2.36
 
 ## Multi-Agent Ralph Loop Orchestration
 
@@ -44,9 +44,17 @@
 
 Orchestration with automatic planning, intensive clarification, git worktree isolation, adversarial validation, 9-language quality gates, context engineering, and automatic context preservation.
 
-> **Historical versions**: See [CHANGELOG.md](./CHANGELOG.md) for v2.19-v2.34 details.
+> **Historical versions**: See [CHANGELOG.md](./CHANGELOG.md) for v2.19-v2.35 details.
 
-## v2.35 Current Features
+## v2.36 Current Features
+
+### Commands → Skills Unification (Claude Code v2.1.3)
+
+All commands migrated to global skills (`~/.claude/skills/`):
+- **Hot-reload**: Skills auto-reload without restart
+- **Progressive Disclosure**: ~100 words in context until activated
+- **`context: fork`**: Available for isolation (gates, adversarial, parallel)
+- **185+ skills** available globally
 
 ### Context Preservation (100% Automatic)
 
@@ -54,8 +62,22 @@ Orchestration with automatic planning, intensive clarification, git worktree iso
 |-------|---------|--------|
 | Session start | SessionStart hook | Loads ledger + handoff |
 | Pre-compaction | PreCompact hook | Saves ledger + handoff |
-| Context 70%+ | claude-hud | Yellow warning |
+| Post-compaction | SessionStart:compact | Restores with claude-mem hints |
+| Context 80%+ | claude-hud | Yellow warning |
 | Context 85%+ | claude-hud | Red warning |
+
+**Threshold updated**: 60%→80% (aligned with Claude Code v2.1.0 auto-compact)
+
+### Agent Hooks (v2.36)
+
+5 agents now have frontmatter hooks for logging:
+- `@security-auditor` - Audit logging
+- `@orchestrator` - Orchestration tracking
+- `@code-reviewer` - Review metrics
+- `@test-architect` - Coverage tracking
+- `@debugger` - Debug session logging
+
+Logs: `~/.ralph/logs/`
 
 **One-time setup**: `ralph setup-context-engine`
 

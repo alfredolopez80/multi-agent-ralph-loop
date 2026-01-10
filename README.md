@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.35-blue)
+![Version](https://img.shields.io/badge/version-2.36-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -217,6 +217,51 @@ ralph security-loop src/ --max-rounds 10
 - All 11 Codex invocations updated automatically
 - Backward compatible - existing commands work with safer defaults
 - Use `--profile ci-cd` to match old `--yolo` behavior (CI/CD only)
+
+### Commands → Skills Unification (v2.36)
+
+| Feature | Description |
+|---------|-------------|
+| **Claude Code v2.1.3 Aligned** | Unified commands/skills following Anthropic's merged mental model |
+| **185 Global Skills** | All commands migrated to `~/.claude/skills/` with proper frontmatter |
+| **Progressive Disclosure** | Metadata (~100 tokens) always loaded, body (<5k tokens) on activation |
+| **`context: fork`** | Context isolation for quality gates, adversarial, parallel skills |
+| **Agent Hooks** | 5 priority agents with PreToolUse/PostToolUse/Stop hooks for logging |
+| **PostCompact Recovery** | Automatic context restoration via SessionStart:compact event |
+| **Threshold Update** | Context warning 60%→80%, critical 75%→85% (aligned with Claude Code v2.1.0) |
+
+**Skills Architecture (Anthropic skill-creator pattern):**
+
+```
+~/.claude/skills/
+├── orchestrator/SKILL.md      # 8-step workflow (most critical)
+├── clarify/SKILL.md           # AskUserQuestion workflow
+├── gates/SKILL.md             # 9-language quality gates (context: fork)
+├── adversarial/SKILL.md       # 2/3 consensus (context: fork)
+├── loop/SKILL.md              # Ralph Loop pattern
+├── parallel/SKILL.md          # Concurrent execution (context: fork)
+├── retrospective/SKILL.md     # Post-task analysis
+└── ... 178 more skills
+```
+
+**Agent Hooks (v2.36):**
+
+| Agent | Hooks | Purpose |
+|-------|-------|---------|
+| `security-auditor` | PreToolUse, PostToolUse, Stop | Security audit logging |
+| `orchestrator` | PreToolUse, PostToolUse, Stop | Orchestration tracking |
+| `code-reviewer` | PreToolUse, PostToolUse | Review metrics |
+| `test-architect` | PreToolUse, PostToolUse | Test coverage tracking |
+| `debugger` | PreToolUse, PostToolUse, Stop | Debug session logging |
+
+```bash
+# Logs stored in ~/.ralph/logs/
+# - security-audit.log
+# - orchestration.log
+# - code-review.log
+# - test-coverage.log
+# - debug.log
+```
 
 ### Automatic Context Preservation (v2.35)
 
@@ -851,15 +896,23 @@ See [LICENSE](LICENSE) for details.
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
 
-### Latest: v2.31.0 (2026-01-07)
+### Latest: v2.36.0 (2026-01-10)
 
-- **Memvid Integration**: Semantic memory with HNSW + BM25 hybrid search (sub-5ms latency)
-- **Memory Automation**: Auto-save checkpoints to semantic memory via hooks
-- **Time-travel Queries**: Query across session history with semantic search
-- **Single-file Storage**: Portable `.mv2` memory file (no database required)
-- **Apache 2.0 License**: 100% free, no cloud dependencies
+- **Commands → Skills Unification**: Aligned with Claude Code v2.1.3 merged mental model
+- **185 Global Skills**: All commands migrated to `~/.claude/skills/` with Progressive Disclosure
+- **Agent Hooks**: 5 priority agents with PreToolUse/PostToolUse/Stop logging hooks
+- **PostCompact Recovery**: Automatic context restoration via SessionStart:compact
+- **Threshold Update**: Context warning 60%→80%, critical 75%→85% (Claude Code v2.1.0)
+- **Zero Configuration**: Multi-Agent Ralph automatically available in ALL projects via global inheritance
 
-### v2.29.0 (2026-01-07)
+### v2.35.0 (2026-01-09)
+
+- **100% Automatic Context Preservation**: SessionStart + PreCompact hooks
+- **Global Hooks Inheritance**: Projects inherit from `~/.claude/settings.json`
+- **Global Architecture Validator**: `ralph validate-arch` for 48-component validation
+- **Token Optimization**: CLAUDE.md slimmed from 45KB to 5KB (89% reduction)
+
+### v2.31.0 (2026-01-07)
 
 - **Smart Execution**: Background tasks by default, explicit quality criteria per agent
 - **Auto Discovery**: Explorer/Plan invoked automatically for complex tasks (complexity >= 7)
