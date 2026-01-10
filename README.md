@@ -251,6 +251,37 @@ ralph tldr dead .              # Find dead code
 
 **Installation**: `pip install llm-tldr`
 
+### OpenAI Documentation Access (v2.37)
+
+| Feature | Description |
+|---------|-------------|
+| **Context7 MCP Integration** | Access 10,000+ OpenAI documentation snippets |
+| **Codex CLI Docs** | 614 snippets for Codex CLI configuration and usage |
+| **OpenAI API Docs** | 9,418 snippets for API integration |
+| **SDK Documentation** | Python (429), Node.js (437) SDK snippets |
+| **Claude-Codex Bridge** | Enhanced skill for seamless collaboration |
+
+**Available Documentation Libraries:**
+
+| Library ID | Content | Snippets |
+|------------|---------|----------|
+| `/websites/developers_openai_codex` | Codex CLI documentation | 614 |
+| `/websites/platform_openai` | OpenAI API documentation | 9,418 |
+| `/openai/openai-python` | Python SDK | 429 |
+| `/openai/openai-node` | Node.js SDK | 437 |
+
+**Skills (2):**
+- `/openai-docs` - Query OpenAI documentation via Context7 MCP
+- `/codex-cli` - Enhanced Codex CLI orchestration with documentation lookup
+
+```bash
+# Query Codex CLI documentation before execution
+# Use Context7 MCP with libraryId="/websites/developers_openai_codex"
+
+# Query OpenAI API documentation
+# Use Context7 MCP with libraryId="/websites/platform_openai"
+```
+
 ### Commands → Skills Unification (v2.36)
 
 | Feature | Description |
@@ -914,11 +945,11 @@ See [LICENSE](LICENSE) for details.
 ### Tools & MCP Integrations
 - [LLM-TLDR](https://github.com/syedazharmbnr1/llm-tldr) - @syedazharmbnr1 - 5-layer code analysis with 95% token savings (v2.37)
 - [Claude-Mem MCP](https://github.com/anthropics/claude-code-plugins) - Semantic memory with 3-layer workflow: search → timeline → get_observations
+- [Context7 MCP](https://github.com/upstash/context7) - Library documentation including OpenAI/Codex docs (10,000+ snippets)
 - [MiniMax MCP](https://blog.devgenius.io/claude-code-but-cheaper-and-snappy-minimax-m2-1-with-a-tiny-wrapper-7d910db93383) - @jpcaparas - 8% cost web search
-- [Context7](https://github.com/upstash/context7) - Library documentation MCP server
 - [ast-grep](https://ast-grep.github.io/) - Structural code search (~75% token savings)
 - [dev-browser](https://github.com/anthropics/claude-code-plugins) - Browser automation (17% faster, 39% cheaper)
-- [OpenAI Codex CLI](https://github.com/openai/codex) - Adversarial validation agent
+- [OpenAI Codex CLI](https://github.com/openai/codex) - Adversarial validation agent with `/codex-cli` skill integration
 - [Gemini CLI](https://github.com/google/gemini-cli) - Long-context research agent
 
 ### Community
@@ -938,8 +969,10 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 - **16 Languages**: Python, TypeScript, Go, Rust, Java, C, C++, and 9 more
 - **Semantic Search**: 1024-dim embeddings via bge-large-en-v1.5 model
 - **Orchestrator Enhanced**: tldr-context skill optimizes context for Steps 1, 3, 5
-- **4 New Skills**: /tldr, /tldr-semantic, /tldr-impact, /tldr-context
+- **6 New Skills**: /tldr, /tldr-semantic, /tldr-impact, /tldr-context, /openai-docs, /codex-cli (enhanced)
 - **155x Faster**: Daemon mode reduces query latency from 30s to 100ms
+- **OpenAI Docs Access**: Context7 MCP provides 10,000+ OpenAI/Codex documentation snippets
+- **Claude-Codex Bridge**: Enhanced codex-cli skill with documentation lookup integration
 
 ### v2.36.0 (2026-01-10)
 
