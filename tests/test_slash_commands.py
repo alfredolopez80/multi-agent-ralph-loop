@@ -15,30 +15,39 @@ import yaml
 COMMANDS_DIR = Path(".claude/commands")
 
 EXPECTED_COMMANDS = [
-    "orchestrator.md",
-    "clarify.md",
-    "loop.md",
-    "security.md",
-    "security-loop.md",
-    "bugs.md",
-    "unit-tests.md",
-    "refactor.md",
-    "full-review.md",
-    "parallel.md",
     "adversarial.md",
-    "research.md",
-    "library-docs.md",
-    "minimax-search.md",
     "ast-search.md",
-    "browse.md",
-    "image-analyze.md",
-    "gates.md",
-    "minimax.md",
-    "improvements.md",
     "audit.md",
-    "retrospective.md",
-    "diagram.md",
+    "blender-3d.md",
+    "blender-status.md",
+    "browse.md",
+    "bugs.md",
+    "checkpoint-clear.md",
+    "checkpoint-list.md",
+    "checkpoint-restore.md",
+    "checkpoint-save.md",
+    "clarify.md",
     "commands.md",
+    "diagram.md",
+    "full-review.md",
+    "gates.md",
+    "image-analyze.md",
+    "image-to-3d.md",
+    "improvements.md",
+    "library-docs.md",
+    "loop.md",
+    "minimax-search.md",
+    "minimax.md",
+    "orchestrator.md",
+    "parallel.md",
+    "prd.md",
+    "refactor.md",
+    "research.md",
+    "retrospective.md",
+    "security-loop.md",
+    "security.md",
+    "skill.md",
+    "unit-tests.md",
 ]
 
 CATEGORY_COLORS = {
@@ -97,7 +106,9 @@ def test_expected_command_files_present(command_paths):
 def test_all_command_files_are_expected(all_command_files):
     found = sorted([p.name for p in all_command_files])
     expected = sorted(EXPECTED_COMMANDS)
-    assert found == expected, "Command files in .claude/commands do not match expected list"
+    assert found == expected, (
+        "Command files in .claude/commands do not match expected list"
+    )
 
 
 def test_commands_directory_exists():
@@ -105,7 +116,7 @@ def test_commands_directory_exists():
 
 
 def test_expected_command_count():
-    assert len(EXPECTED_COMMANDS) == 24, "Expected exactly 24 command files"
+    assert len(EXPECTED_COMMANDS) == 33, "Expected exactly 33 command files"
 
 
 @pytest.mark.parametrize("command_name", EXPECTED_COMMANDS)
@@ -113,7 +124,9 @@ def test_command_has_frontmatter_and_content(command_name, command_paths):
     path = command_paths[command_name]
     frontmatter_text, frontmatter, content = load_command(path)
     assert frontmatter_text is not None, f"Missing frontmatter in {command_name}"
-    assert frontmatter is not None, f"Frontmatter YAML failed to parse in {command_name}"
+    assert frontmatter is not None, (
+        f"Frontmatter YAML failed to parse in {command_name}"
+    )
     assert content, f"No content beyond frontmatter in {command_name}"
 
 
@@ -121,7 +134,9 @@ def test_command_has_frontmatter_and_content(command_name, command_paths):
 def test_frontmatter_fields_and_values(command_name, command_paths):
     path = command_paths[command_name]
     _, frontmatter, _ = load_command(path)
-    assert isinstance(frontmatter, dict), f"Frontmatter should be a mapping in {command_name}"
+    assert isinstance(frontmatter, dict), (
+        f"Frontmatter should be a mapping in {command_name}"
+    )
 
     required = ["name", "prefix", "category", "color", "description"]
     for key in required:
@@ -132,7 +147,9 @@ def test_frontmatter_fields_and_values(command_name, command_paths):
     assert PREFIX_RE.match(prefix), f"Invalid prefix format in {command_name}: {prefix}"
 
     category = frontmatter["category"]
-    assert category in CATEGORY_COLORS, f"Invalid category in {command_name}: {category}"
+    assert category in CATEGORY_COLORS, (
+        f"Invalid category in {command_name}: {category}"
+    )
 
     color = frontmatter["color"]
     assert color == CATEGORY_COLORS[category], (

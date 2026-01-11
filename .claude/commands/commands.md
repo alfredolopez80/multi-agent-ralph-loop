@@ -42,7 +42,7 @@ When `/commands` is invoked, display the following command reference:
 | `@ref` | `/refactor` | Systematic refactoring with Codex |
 | `@review` | `/full-review` | Multi-model review with 6 parallel subagents |
 | `@par` | `/parallel` | Run all 6 subagents in parallel (async) |
-| `@adv` | `/adversarial` | 2/3 consensus validation (Claude + Codex + Gemini) |
+| `@adv` | `/adversarial` | Adversarial spec refinement (adversarial-spec) |
 
 ### Research (Blue)
 
@@ -102,7 +102,7 @@ Search across all commands by name or description:
 │                          @ref   Refactor     @ast     Code     │
 │                          @review 6 agents    @browse  Browser  │
 │                          @par   Parallel     @img     Image    │
-│                          @adv   Consensus                      │
+│                          @adv   Spec debate                    │
 │                                                                 │
 │  🟢 TOOLS                                                       │
 │  ─────────                                                      │

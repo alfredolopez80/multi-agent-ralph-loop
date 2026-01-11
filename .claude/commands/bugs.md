@@ -192,17 +192,14 @@ Task:
 
 ### With /adversarial
 
-For critical code (complexity >= 7):
+When a bug fix needs a clarified spec:
 
 ```bash
 # Step 1: Bug hunting
 ralph bugs src/payment/
 
-# Step 2: Adversarial validation
-ralph adversarial src/payment/
-
-# Step 3: Compare results
-diff bugs-report.json adversarial-report.json
+# Step 2: Draft a short spec for the fix
+ralph adversarial "Draft: Fix payment retry logic with idempotency"
 ```
 
 ### With /unit-tests
@@ -231,7 +228,7 @@ Task:
 | `/security` | Security-focused audit (CWE checks) | Before production deploy |
 | `/unit-tests` | Generate test coverage | After bug fixes |
 | `/refactor` | Improve code structure | After identifying patterns |
-| `/adversarial` | 2/3 consensus validation | Critical code paths |
+| `/adversarial` | Adversarial spec refinement | Critical code paths |
 | `/full-review` | Comprehensive analysis (6 agents) | Major features/releases |
 
 ## Ralph Loop Integration

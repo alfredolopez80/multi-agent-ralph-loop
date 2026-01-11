@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.38.0] - 2026-01-11
+
+### Added (Adversarial-Spec Integration)
+
+- **Adversarial-Spec Wrapper**: `/adversarial` now refines specs via adversarial-spec with env-aware models
+- **Runtime Detection**: Detect Claude vs OpenCode via command/skill path hints (RALPH_COMMAND_PATH/RALPH_SKILL_PATH)
+- **Model Routing**: Claude Code uses `claude-4.5-opus` + `claude-4.5-sonnet` + OpenAI + MiniMax; OpenCode uses OpenAI + MiniMax
+- **Docs & Skills Updates**: Updated commands, orchestrator flow, and global skills to reflect spec refinement
+- **CLI Help & Examples**: Updated usage to show spec prompts/files
+
+### Modified Files (v2.38)
+
+| File | Changes |
+|------|---------|
+| `scripts/ralph` | Adversarial-spec runtime selection + model routing |
+| `README.md` | Updated adversarial docs and examples |
+| `CLAUDE.md` | Updated adversarial step wording |
+| `.claude/commands/*` | Updated adversarial references |
+| `.claude/agents/orchestrator.md` | Spec refinement in Step 6 |
+| `config/models.json` | New adversarial model routing |
+| `tests/test_orchestrator_flow.bats` | Updated adversarial expectations |
+
+---
+
 ## [2.33.0] - 2026-01-08
 
 ### Added (Sentry Observability Integration)

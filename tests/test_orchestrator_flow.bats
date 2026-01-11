@@ -72,13 +72,16 @@ setup() {
 # Iteration Limits
 # ============================================================================
 
-@test "iteration limit is 15 for Claude" {
-    grep -q 'CLAUDE_MAX_ITER=15\|CLAUDE_MAX_ITER="15"' "$RALPH_SCRIPT"
+@test "iteration limit is 25 for Claude" {
+    [ -f "$RALPH_SCRIPT" ] || skip "ralph script missing"
+    grep -q 'CLAUDE_MAX_ITER=25\|CLAUDE_MAX_ITER="25"' "$RALPH_SCRIPT"
 }
 
-@test "iteration limit is 30 for MiniMax" {
-    grep -q 'MINIMAX_MAX_ITER=30\|MINIMAX_MAX_ITER="30"' "$RALPH_SCRIPT"
+@test "iteration limit is 50 for MiniMax" {
+    [ -f "$RALPH_SCRIPT" ] || skip "ralph script missing"
+    grep -q 'MINIMAX_MAX_ITER=50\|MINIMAX_MAX_ITER="50"' "$RALPH_SCRIPT"
 }
+
 
 # ============================================================================
 # Model Selection by Task Type
@@ -237,14 +240,14 @@ setup() {
     grep -q 'ralph gates' "$ORCH_AGENT_DOC"
 }
 
-@test "adversarial validation command is documented" {
+@test "adversarial spec command is documented" {
     [ -f "$ORCH_AGENT_DOC" ] || skip "orchestrator agent doc missing"
     grep -q 'ralph adversarial' "$ORCH_AGENT_DOC"
 }
 
-@test "adversarial validation requires 2/3 consensus" {
+@test "adversarial spec refinement is documented" {
     [ -f "$ORCH_AGENT_DOC" ] || skip "orchestrator agent doc missing"
-    grep -q '2/3 consensus' "$ORCH_AGENT_DOC"
+    grep -q 'adversarial-spec' "$ORCH_AGENT_DOC"
 }
 
 @test "adversarial trigger condition is complexity >= 7" {

@@ -23,7 +23,7 @@ The retrospective skill performs systematic analysis after task completion to:
 **MANDATORY after every task completion** (Step 7 in the 8-step orchestrator flow):
 
 ```
-6. /adversarial → 2/3 consensus (complexity >= 7)
+6. /adversarial → adversarial-spec refinement (complexity >= 7)
 7. /retrospective → Propose improvements ← YOU ARE HERE
 → VERIFIED_DONE
 ```
@@ -31,7 +31,7 @@ The retrospective skill performs systematic analysis after task completion to:
 Run retrospective when:
 - Task is complete and gates passed
 - Before marking task as VERIFIED_DONE
-- After adversarial validation (if applicable)
+- After adversarial spec refinement (if applicable)
 - When analyzing workflow effectiveness
 
 ## Analysis Categories
@@ -71,7 +71,7 @@ The retrospective is Step 7 in the mandatory 8-step flow:
 3. PLAN         → Write plan, get user approval
 4. @orchestrator → Delegate to subagents
 5. ralph gates  → Quality gates (9 languages)
-6. /adversarial → 2/3 consensus (complexity >= 7)
+6. /adversarial → adversarial-spec refinement (complexity >= 7)
 7. /retrospective → Propose improvements ← MANDATORY
 → VERIFIED_DONE
 ```
@@ -180,7 +180,7 @@ Retrospective findings feed back into the system:
 
 - `/orchestrator` - Full 8-step flow (includes retrospective)
 - `/improvements` - View proposed system improvements
-- `/adversarial` - Pre-retrospective validation
+- `/adversarial` - Pre-retrospective spec refinement
 - `/gates` - Quality gates that feed into retrospective
 
 ## Best Practices

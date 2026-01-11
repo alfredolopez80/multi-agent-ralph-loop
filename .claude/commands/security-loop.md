@@ -179,5 +179,5 @@ EXECUTE → VALIDATE → Quality Passed? → ITERATE (max rounds)
 ## Related Commands
 
 - `/security` - Single-pass security audit
-- `/adversarial` - 2/3 consensus validation
+- `/adversarial` - adversarial-spec refinement
 - `/gates` - Quality gates validation

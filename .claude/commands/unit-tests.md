@@ -128,7 +128,7 @@ project/
 - `/refactor` - Improve code structure before testing
 - `/gates` - Run quality gates including coverage checks
 - `/full-review` - Comprehensive review including test generation
-- `/adversarial` - Validate tests catch real bugs
+- `/adversarial` - Refine associated PRD/tech spec
 
 ## Example Workflow
 

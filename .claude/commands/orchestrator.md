@@ -9,7 +9,9 @@ argument-hint: "<task description>"
 
 # /orchestrator
 
-Full orchestration with mandatory 6-step flow.
+Full orchestration with mandatory 8-step flow and adversarial-spec refinement.
+
+Adversarial step generates a baseline spec and refines it via adversarial-spec when complexity >= 7.
 
 ## Usage
 ```

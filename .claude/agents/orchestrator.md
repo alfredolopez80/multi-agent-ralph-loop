@@ -195,7 +195,7 @@ After clarification, classify complexity:
 | 3-4 | Simple (single file, clear scope) | Optional | No |
 | 5-6 | Moderate (multi-file, some decisions) | Yes | Optional |
 | 7-8 | Complex (architectural, many files) | Yes | Yes |
-| 9-10 | Critical (security, payments, auth) | Yes | Yes (2/3 consensus) |
+| 9-10 | Critical (security, payments, auth) | Yes | Yes (adversarial-spec refinement) |
 
 ## Step 2b: WORKTREE DECISION (v2.20 - Human-in-the-Loop)
 
@@ -444,12 +444,13 @@ TaskOutput:
 ralph gates
 ```
 
-### 6b. Adversarial Validation (for complexity >= 7)
+### 6b. Adversarial Spec Refinement (for complexity >= 7)
 ```bash
-ralph adversarial src/critical/
+# Draft a baseline spec, then refine it
+ralph adversarial "Draft: Design a rate limiter service"
 ```
 
-Requires 2/3 consensus from Claude + Codex + Gemini.
+Requires adversarial-spec refinement using environment-appropriate models.
 
 ## Step 7: RETROSPECTIVE (Mandatory)
 
@@ -771,7 +772,7 @@ Orchestrator:
 8. [Classify] - Complexity 8 (auth = critical)
 9. [Delegate] - Opus → Sonnet → Codex for security
 10. [Execute] - Parallel implementation
-11. [Validate] - Gates + Adversarial (2/3 consensus)
+11. [Validate] - Gates + Adversarial (adversarial-spec refinement)
 12. [Retrospective] - Document learnings
 13. VERIFIED_DONE
 ```

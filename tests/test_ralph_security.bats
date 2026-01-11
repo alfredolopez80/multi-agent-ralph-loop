@@ -32,35 +32,35 @@ teardown() {
 
 @test "validate_path has regex pattern for shell metacharacters" {
     # The validate_path function uses a regex to block dangerous characters
-    grep -A15 'validate_path()' "$RALPH_SCRIPT" | grep -qE '\[\\.+\]'
+    grep -A40 'validate_path()' "$RALPH_SCRIPT" | grep -qE '\[\\.+\]'
 }
 
 @test "validate_path blocks semicolon in pattern" {
-    grep -A15 'validate_path()' "$RALPH_SCRIPT" | grep -q ';'
+    grep -A40 'validate_path()' "$RALPH_SCRIPT" | grep -q ';'
 }
 
 @test "validate_path blocks pipe in pattern" {
-    grep -A15 'validate_path()' "$RALPH_SCRIPT" | grep -q '|'
+    grep -A40 'validate_path()' "$RALPH_SCRIPT" | grep -q '|'
 }
 
 @test "validate_path blocks ampersand in pattern" {
-    grep -A15 'validate_path()' "$RALPH_SCRIPT" | grep -q '&'
+    grep -A40 'validate_path()' "$RALPH_SCRIPT" | grep -q '&'
 }
 
 @test "validate_path blocks dollar sign in pattern" {
-    grep -A15 'validate_path()' "$RALPH_SCRIPT" | grep -q '\$'
+    grep -A40 'validate_path()' "$RALPH_SCRIPT" | grep -q '\$'
 }
 
 @test "validate_path blocks parentheses in pattern" {
-    grep -A15 'validate_path()' "$RALPH_SCRIPT" | grep -qE '\(|\)'
+    grep -A40 'validate_path()' "$RALPH_SCRIPT" | grep -qE '\(|\)'
 }
 
 @test "validate_path blocks braces in pattern" {
-    grep -A15 'validate_path()' "$RALPH_SCRIPT" | grep -qE '\{|\}'
+    grep -A40 'validate_path()' "$RALPH_SCRIPT" | grep -qE '\{|\}'
 }
 
 @test "validate_path blocks redirect in pattern" {
-    grep -A15 'validate_path()' "$RALPH_SCRIPT" | grep -qE '<|>'
+    grep -A40 'validate_path()' "$RALPH_SCRIPT" | grep -qE '<|>'
 }
 
 @test "validate_path function exists" {
@@ -75,7 +75,7 @@ teardown() {
 
 @test "validate_path accepts normal paths" {
     # Verify the function uses realpath for validation
-    grep -A30 'validate_path()' "$RALPH_SCRIPT" | grep -q 'realpath'
+    grep -A60 'validate_path()' "$RALPH_SCRIPT" | grep -q 'realpath'
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════

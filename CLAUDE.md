@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.37
+# Multi-Agent Ralph v2.38
 
 ## Multi-Agent Ralph Loop Orchestration
 
@@ -10,7 +10,7 @@
 | `/loop` | Execute until VERIFIED_DONE with quality gates |
 | `/clarify` | Intensive AskUserQuestion (MUST_HAVE + NICE_TO_HAVE) |
 | `/gates` | Quality validation (format, lint, tests) |
-| `/adversarial` | Multi-agent validation (2/3 consensus) |
+| `/adversarial` | Adversarial spec refinement (adversarial-spec) |
 | `/retrospective` | Post-task analysis and improvements |
 | `/parallel` | Run multiple loops concurrently |
 
@@ -39,7 +39,7 @@
 
 # Quality validation
 /gates
-/adversarial src/critical/
+/adversarial "Design a rate limiter service"
 ```
 
 Orchestration with automatic planning, intensive clarification, git worktree isolation, adversarial validation, 9-language quality gates, context engineering, and automatic context preservation.
@@ -203,7 +203,7 @@ Task:
 3. PLAN         → Write plan, get approval
 4. @orchestrator → Delegate to subagents
 5. ralph gates  → Quality gates (9 languages)
-6. /adversarial → 2/3 consensus (if complexity >= 7)
+6. /adversarial → adversarial-spec refinement (if complexity >= 7)
 7. /retrospective → Propose improvements
 → VERIFIED_DONE
 ```
@@ -219,7 +219,7 @@ ralph loop "task"         # Loop (25 iter)
 # Review
 ralph security src/       # Security audit
 ralph bugs src/           # Bug hunting
-ralph adversarial src/    # 2/3 consensus
+ralph adversarial "Design a rate limiter service"
 
 # Git Worktree
 ralph worktree "task"     # Create worktree

@@ -132,7 +132,7 @@ The `quality-gates.sh` hook automatically runs after Edit/Write operations:
 ## Related Commands
 
 - `/orchestrator` - Full 8-step workflow (includes gates at step 5)
-- `/adversarial` - 2/3 consensus validation (includes gates)
+- `/adversarial` - adversarial-spec refinement (includes gates)
 - `/loop` - Iterative task execution with validation
 - `ralph pre-merge` - Pre-PR validation with blocking gates
 - `ralph integrations` - Check tool installation status
@@ -165,7 +165,7 @@ Quality gates are automatically enforced at Step 5 of the orchestration flow:
 3. PLAN         → User approval
 4. @orchestrator → Subagent delegation
 5. ralph gates  → Quality validation ← YOU ARE HERE
-6. /adversarial → 2/3 consensus (if critical)
+6. /adversarial → adversarial-spec refinement (if critical)
 7. /retrospective → Self-improvement
 → VERIFIED_DONE
 ```

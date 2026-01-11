@@ -11,6 +11,7 @@ Run with: pytest tests/test_global_sync.py -v
 
 import json
 import os
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -21,6 +22,7 @@ import pytest
 # =============================================================================
 # FIXTURES
 # =============================================================================
+
 
 @pytest.fixture
 def repo_path():
@@ -52,6 +54,7 @@ def global_ralph_dir():
 # =============================================================================
 # TEST: GLOBAL DIRECTORY STRUCTURE
 # =============================================================================
+
 
 class TestGlobalDirectoryStructure:
     """Verify that all required global directories exist."""
@@ -100,6 +103,7 @@ class TestGlobalDirectoryStructure:
 # =============================================================================
 # TEST: GLOBAL AGENTS
 # =============================================================================
+
 
 class TestGlobalAgents:
     """Verify that all required agents are available globally."""
@@ -152,9 +156,15 @@ class TestGlobalAgents:
         content = orchestrator.read_text()
 
         assert "v2.35" in content, "Orchestrator missing v2.35 version marker"
-        assert "Auxiliary Agents" in content, "Orchestrator missing Auxiliary Agents section"
-        assert "code-simplicity-reviewer" in content, "Missing code-simplicity-reviewer reference"
-        assert "architecture-strategist" in content, "Missing architecture-strategist reference"
+        assert "Auxiliary Agents" in content, (
+            "Orchestrator missing Auxiliary Agents section"
+        )
+        assert "code-simplicity-reviewer" in content, (
+            "Missing code-simplicity-reviewer reference"
+        )
+        assert "architecture-strategist" in content, (
+            "Missing architecture-strategist reference"
+        )
 
     def test_agents_have_valid_frontmatter(self, global_claude_dir):
         """All agents must have valid YAML frontmatter."""
@@ -179,6 +189,7 @@ class TestGlobalAgents:
 # =============================================================================
 # TEST: GLOBAL COMMANDS (SLASH COMMANDS)
 # =============================================================================
+
 
 class TestGlobalCommands:
     """Verify that slash commands are available globally."""
@@ -217,6 +228,7 @@ class TestGlobalCommands:
 # TEST: GLOBAL SKILLS
 # =============================================================================
 
+
 class TestGlobalSkills:
     """Verify that skills are available globally."""
 
@@ -242,6 +254,7 @@ class TestGlobalSkills:
 # =============================================================================
 # TEST: GLOBAL HOOKS
 # =============================================================================
+
 
 class TestGlobalHooks:
     """Verify that hooks are available and executable globally."""
@@ -279,6 +292,7 @@ class TestGlobalHooks:
 # =============================================================================
 # TEST: CLAUDE CODE SETTINGS
 # =============================================================================
+
 
 class TestClaudeCodeSettings:
     """Verify that settings.json has proper hook registrations."""
@@ -351,6 +365,7 @@ class TestClaudeCodeSettings:
 # TEST: GLOBAL SCRIPTS
 # =============================================================================
 
+
 class TestGlobalScripts:
     """Verify that support scripts are available globally."""
 
@@ -381,48 +396,41 @@ class TestGlobalScripts:
         # Note: Python scripts don't always need +x if called with python3
         # This is a soft warning, not a hard failure
         if non_executable:
-            pytest.skip(f"Scripts not executable (can still run with python3): {non_executable}")
+            pytest.skip(
+                f"Scripts not executable (can still run with python3): {non_executable}"
+            )
 
 
 # =============================================================================
 # TEST: CLI COMMANDS
 # =============================================================================
 
+
 class TestCLICommands:
     """Verify that ralph CLI commands work correctly."""
 
     def test_ralph_installed(self):
         """ralph CLI must be installed and accessible."""
-        result = subprocess.run(
-            ["ralph", "--version"],
-            capture_output=True,
-            text=True
-        )
+        result = subprocess.run(["ralph", "--version"], capture_output=True, text=True)
         assert result.returncode == 0, f"ralph not accessible: {result.stderr}"
         assert "v2" in result.stdout, f"Unexpected version: {result.stdout}"
 
     def test_ralph_version_is_235_or_higher(self):
         """ralph must be v2.35.0 or higher."""
-        result = subprocess.run(
-            ["ralph", "--version"],
-            capture_output=True,
-            text=True
-        )
+        result = subprocess.run(["ralph", "--version"], capture_output=True, text=True)
         # Extract version number
         version_line = result.stdout.strip()
-        # Expected format: "ralph v2.35.0"
-        if "v2.35" in version_line or "v2.36" in version_line or "v2.4" in version_line:
-            pass  # OK
-        else:
+        # Expected format: "ralph v2.38.0"
+        match = re.search(r"v(\d+)\.(\d+)\.(\d+)", version_line)
+        if not match:
+            pytest.fail(f"Unexpected version format: {version_line}")
+        major, minor, patch = map(int, match.groups())
+        if (major, minor, patch) < (2, 35, 0):
             pytest.fail(f"ralph version too old: {version_line}, need v2.35.0+")
 
     def test_sync_global_command_exists(self):
         """ralph sync-global command must exist."""
-        result = subprocess.run(
-            ["ralph", "help"],
-            capture_output=True,
-            text=True
-        )
+        result = subprocess.run(["ralph", "help"], capture_output=True, text=True)
         assert "sync-global" in result.stdout, "sync-global command not in help"
 
     def test_sync_global_dry_run(self, repo_path):
@@ -431,7 +439,7 @@ class TestCLICommands:
             ["ralph", "sync-global", "--dry-run"],
             capture_output=True,
             text=True,
-            cwd=repo_path
+            cwd=repo_path,
         )
         assert result.returncode == 0, f"sync-global failed: {result.stderr}"
         assert "SYNC GLOBAL" in result.stdout or "DRY RUN" in result.stdout
@@ -440,9 +448,7 @@ class TestCLICommands:
         """ralph ledger command must exist in repo version."""
         ralph_script = repo_path / "scripts" / "ralph"
         result = subprocess.run(
-            [str(ralph_script), "help"],
-            capture_output=True,
-            text=True
+            [str(ralph_script), "help"], capture_output=True, text=True
         )
         assert "ledger" in result.stdout, "ledger command not in repo's ralph help"
 
@@ -450,9 +456,7 @@ class TestCLICommands:
         """ralph handoff command must exist in repo version."""
         ralph_script = repo_path / "scripts" / "ralph"
         result = subprocess.run(
-            [str(ralph_script), "help"],
-            capture_output=True,
-            text=True
+            [str(ralph_script), "help"], capture_output=True, text=True
         )
         assert "handoff" in result.stdout, "handoff command not in repo's ralph help"
 
@@ -460,6 +464,7 @@ class TestCLICommands:
 # =============================================================================
 # TEST: REPO TO GLOBAL SYNC CONSISTENCY
 # =============================================================================
+
 
 class TestSyncConsistency:
     """Verify that repo and global directories are in sync."""
@@ -553,6 +558,7 @@ class TestSyncConsistency:
 # TEST: CROSS-PROJECT ACCESSIBILITY
 # =============================================================================
 
+
 class TestCrossProjectAccessibility:
     """Verify that configurations work from any directory."""
 
@@ -560,21 +566,17 @@ class TestCrossProjectAccessibility:
         """ralph commands must work from any directory."""
         with tempfile.TemporaryDirectory() as tmpdir:
             result = subprocess.run(
-                ["ralph", "--version"],
-                capture_output=True,
-                text=True,
-                cwd=tmpdir
+                ["ralph", "--version"], capture_output=True, text=True, cwd=tmpdir
             )
-            assert result.returncode == 0, f"ralph failed from temp dir: {result.stderr}"
+            assert result.returncode == 0, (
+                f"ralph failed from temp dir: {result.stderr}"
+            )
 
     def test_ralph_help_works_from_any_directory(self):
         """ralph help must work from any directory."""
         with tempfile.TemporaryDirectory() as tmpdir:
             result = subprocess.run(
-                ["ralph", "help"],
-                capture_output=True,
-                text=True,
-                cwd=tmpdir
+                ["ralph", "help"], capture_output=True, text=True, cwd=tmpdir
             )
             assert result.returncode == 0
             assert "orchestrator" in result.stdout.lower()
@@ -601,6 +603,7 @@ class TestCrossProjectAccessibility:
 # TEST: FEATURE FLAGS AND CONFIGURATION
 # =============================================================================
 
+
 class TestFeatureFlags:
     """Verify that feature flags are properly configured."""
 
@@ -626,6 +629,7 @@ class TestFeatureFlags:
 # INTEGRATION TEST: FULL SYNC CYCLE
 # =============================================================================
 
+
 class TestFullSyncCycle:
     """Integration test for complete sync cycle."""
 
@@ -639,15 +643,13 @@ class TestFullSyncCycle:
         """
         # Step 1: Run sync
         result = subprocess.run(
-            ["ralph", "sync-global"],
-            capture_output=True,
-            text=True,
-            cwd=repo_path
+            ["ralph", "sync-global"], capture_output=True, text=True, cwd=repo_path
         )
 
         # Allow for case where everything is already synced
-        assert result.returncode == 0 or "up to date" in result.stdout.lower(), \
+        assert result.returncode == 0 or "up to date" in result.stdout.lower(), (
             f"Sync failed: {result.stderr}"
+        )
 
         # Step 2: Verify orchestrator exists
         orchestrator = global_claude_dir / "agents" / "orchestrator.md"

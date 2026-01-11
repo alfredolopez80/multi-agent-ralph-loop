@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ralph - Multi-Agent Orchestrator CLI
-# Version 2.37.0
+# Version 2.38.0
+# v2.38: Adversarial-spec refinement with runtime-aware models
 # v2.37: LLM-TLDR integration - 95% token savings, 5-layer code analysis, semantic search
 # v2.35: Context Engineering Optimization - auto-ledger, auto-handoff, 100% automation
 # v2.34: Codex CLI v0.79.0 security hardening
@@ -23,7 +24,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.37.0"
+VERSION="2.38.0"
 RALPH_REPO_PATH=""  # Auto-detected if in ralph repo
 RALPH_DIR="${HOME}/.ralph"
 
@@ -107,6 +108,16 @@ validate_path() {
     else
         # For paths that don't need to exist yet, just clean up the path
         realpath "$path" 2>/dev/null || printf '%s' "$path"
+    fi
+}
+
+safe_realpath() {
+    local path="$1"
+
+    if command -v realpath &>/dev/null; then
+        realpath "$path" 2>/dev/null || printf '%s' "$path"
+    else
+        printf '%s' "$path"
     fi
 }
 
@@ -210,7 +221,7 @@ FEATURE_TOOLS=(
     "wt:WorkTrunk (git worktree):brew install max-sixty/worktrunk/wt"
     "gh:GitHub CLI (PR workflow):brew install gh && gh auth login"
     "mmc:MiniMax CLI (second opinion):ralph self-update && mmc --setup"
-    "codex:Codex CLI (adversarial):npm i -g @openai/codex"
+    "codex:Codex CLI (reviews/automation):npm i -g @openai/codex"
     "gemini:Gemini CLI (research):pip install google-gemini-cli"
     "sg:ast-grep (structural code search):brew install ast-grep"
     "memvid:Memvid memory (v2.31):pip install memvid && npm install @memvid/sdk"
@@ -562,7 +573,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 # ===============================================================================
 show_help() {
     cat << 'EOF'
-ralph - Multi-Agent Orchestrator CLI v2.37.0
+ralph - Multi-Agent Orchestrator CLI v2.38.0
 
 ORCHESTRATION:
   ralph orch "task"          Full orchestration (clarify->classify->execute->validate->retrospective)
@@ -573,6 +584,8 @@ SEARCH (v2.23):
   ralph ast "pattern" [path] Structural code search via ast-grep (~75% less tokens)
                              Examples: ralph ast 'console.log($MSG)' src/
                                        ralph ast 'async function $NAME' .
+  ralph library "query"      Library docs via Context7 MCP
+  ralph browse URL            Browser automation with dev-browser
 
 MINIMAX MCP (v2.24):
   ralph websearch "query"    Web search via MiniMax MCP (~8% cost, 74% SWE-bench)
@@ -648,7 +661,7 @@ PRD SYSTEM (v2.32):
 VALIDATION:
   ralph gates                Quality gates (9 languages) - BLOCKING
   ralph gates --check        Quality gates (non-blocking check only)
-  ralph adversarial <path>   2/3 consensus (Claude + Codex + Gemini)
+  ralph adversarial <input>  adversarial-spec debate (env-aware)
 
 SELF-IMPROVEMENT:
   ralph retrospective        Analyze last task, propose improvements
@@ -710,7 +723,7 @@ EXAMPLES:
   ralph orch "Implement OAuth2 with Google"
   ralph security src/auth/
   ralph parallel src/ --async
-  ralph adversarial src/payments/
+  ralph adversarial "Design a rate limiter service"
   ralph loop "Fix all TypeScript errors"
   ralph retrospective
 
@@ -740,13 +753,13 @@ run_codex_security() {
     local SAFE_FILES
     SAFE_FILES=$(escape_for_shell "$FILES")
 
-    log_info "Running Codex security audit (read-only sandbox, o3 model)"
+    log_info "Running Codex security audit (read-only sandbox, o3 model)" >&2
 
     # v0.79.0: Profile + output schema + sandbox seguro
     codex exec \
         --profile security-audit \
         --output-schema "$SCHEMA" \
-        -C "$(realpath "$FILES" 2>/dev/null || echo "$FILES")" \
+        -C "$(safe_realpath "$FILES")" \
         "$(cat <<'EOF'
 Use security-review skill. Perform comprehensive security audit:
 - SQL/NoSQL/Command/LDAP injection
@@ -769,7 +782,7 @@ EOF
         )" \
         > "$OUTPUT" 2>&1 &
 
-    echo $!
+    CODEX_PID=$!
 }
 
 run_codex_bugs() {
@@ -780,7 +793,7 @@ run_codex_bugs() {
     local SAFE_FILES
     SAFE_FILES=$(escape_for_shell "$FILES")
 
-    log_info "Running Codex bug hunting (workspace-write sandbox, gpt-5.2-codex)"
+    log_info "Running Codex bug hunting (workspace-write sandbox, gpt-5.2-codex)" >&2
 
     # v0.79.0: --full-auto (equivalente a -a on-request --sandbox workspace-write)
     codex exec \
@@ -788,7 +801,7 @@ run_codex_bugs() {
         --output-schema "$SCHEMA" \
         --enable bug-hunter \
         -m gpt-5.2-codex \
-        -C "$(realpath "$FILES" 2>/dev/null || echo "$FILES")" \
+        -C "$(safe_realpath "$FILES")" \
         "$(cat <<'EOF'
 Use bug-hunter skill. Find bugs:
 - Logic errors and edge cases
@@ -797,20 +810,22 @@ Use bug-hunter skill. Find bugs:
 - Resource leaks (memory, connections, files)
 - Race conditions and thread safety
 - Error handling gaps
-- Async/await issues
+- Concurrency issues
+- Data validation issues
+- Performance bottlenecks
 
 Analyze: ${SAFE_FILES}
 
-Output JSON with structure:
+Output must conform to JSON schema with structure:
 {
-  "bugs": [{"severity": "HIGH|MEDIUM|LOW", "type": "logic|null|boundary|leak|race|error|async", "file": "...", "line": N, "description": "...", "reproduction": "...", "fix": "..."}],
-  "summary": {"total": N, "high": N, "medium": N, "low": N, "approved": true|false}
+  "bugs": [{"severity": "HIGH|MEDIUM|LOW", "file": "...", "line": N, "description": "...", "fix": "..."}],
+  "summary": {"high": N, "medium": N, "low": N, "approved": true|false}
 }
 EOF
         )" \
         > "$OUTPUT" 2>&1 &
 
-    echo $!
+    CODEX_PID=$!
 }
 
 run_codex_unit_tests() {
@@ -821,14 +836,14 @@ run_codex_unit_tests() {
     local SAFE_FILES
     SAFE_FILES=$(escape_for_shell "$FILES")
 
-    log_info "Running Codex test generation (workspace-write sandbox)"
+    log_info "Running Codex test generation (workspace-write sandbox)" >&2
 
     # v0.79.0: Profile + full-auto
     codex exec \
         --profile unit-tests \
         --full-auto \
         --output-schema "$SCHEMA" \
-        -C "$(realpath "$FILES" 2>/dev/null || echo "$FILES")" \
+        -C "$(safe_realpath "$FILES")" \
         "$(cat <<'EOF'
 Use test-generation skill. Generate comprehensive unit tests:
 - Happy path tests
@@ -849,7 +864,7 @@ EOF
         )" \
         > "$OUTPUT" 2>&1 &
 
-    echo $!
+    CODEX_PID=$!
 }
 
 # ===============================================================================
@@ -902,90 +917,124 @@ run_minimax() {
         local SAFE_QUERY
         SAFE_QUERY=$(escape_for_shell "$QUERY")
         mmc --query "${SAFE_QUERY}" > "$OUTPUT" 2>&1 &
-        echo $!
+        MINIMAX_PID=$!
     else
-        echo "0"  # MiniMax not configured
+        MINIMAX_PID=0
     fi
 }
 
 # ===============================================================================
-# ADVERSARIAL VALIDATION
+# ADVERSARIAL SPEC VALIDATION
 # ===============================================================================
-cmd_adversarial() {
-    # v2.22: Require codex and gemini tools for adversarial validation
-    require_tools "adversarial validation" "codex" "gemini"
+detect_adversarial_runtime() {
+    local source_path="${RALPH_COMMAND_PATH:-${RALPH_SKILL_PATH:-}}"
+    local runtime=""
 
-    local TARGET
-    TARGET=$(validate_path "$1")
-    local CONSENSUS_REQUIRED=2
-    local SAFE_TARGET
-    SAFE_TARGET=$(escape_for_shell "$TARGET")
+    if [ -n "$source_path" ]; then
+        if [[ "$source_path" == "$HOME/.claude/"* ]]; then
+            runtime="claude"
+        elif [[ "$source_path" == "$HOME/.config/opencode/"* ]]; then
+            runtime="opencode"
+        fi
+    fi
 
-    ensure_tmp
-    log_info "Starting adversarial validation for: $TARGET"
-    log_info "   Consensus required: $CONSENSUS_REQUIRED/3"
-    echo ""
+    if [ -z "$runtime" ] && [ -n "${OPENCODE_CONFIG_DIR:-}" ]; then
+        runtime="opencode"
+    fi
 
-    # 1. Claude Review
-    log_info "  [1/3] Claude reviewing..."
-    claude --print -p "Review this code for security and bugs: ${SAFE_TARGET}.
-                       Output JSON: {approved: true|false, issues: [], severity: 'HIGH|MEDIUM|LOW'}" \
-        > "$RALPH_TMPDIR/claude.json" 2>&1 &
-    CLAUDE_PID=$!
+    if [ -z "$runtime" ] && [ -n "${CLAUDE_CONFIG_DIR:-}" ]; then
+        runtime="claude"
+    fi
 
-    # 2. Codex Review (parallel)
-    log_info "  [2/3] Codex reviewing..."
-    # v0.79.0: Use security-audit profile for review
-    codex exec --profile security-audit \
-        "Use security-review skill. Review: ${SAFE_TARGET}
-         Output JSON: {approved: true|false, issues: [], severity}" \
-        > "$RALPH_TMPDIR/codex.json" 2>&1 &
-    CODEX_PID=$!
+    if [ -z "$runtime" ] && [ -d "$HOME/.config/opencode" ] && [ ! -d "$HOME/.claude" ]; then
+        runtime="opencode"
+    fi
 
-    # 3. Gemini Review (parallel)
-    log_info "  [3/3] Gemini reviewing..."
-    gemini "Security and code review for: ${SAFE_TARGET}
-            Be critical. Output JSON: {approved: true|false, issues: []}" \
-        --yolo -o json > "$RALPH_TMPDIR/gemini.json" 2>&1 &
-    GEMINI_PID=$!
+    if [ -z "$runtime" ]; then
+        runtime="opencode"
+    fi
 
-    echo ""
-    log_info "Waiting for all 3 models..."
-    wait $CLAUDE_PID $CODEX_PID $GEMINI_PID
+    printf '%s' "$runtime"
+}
 
-    # Calculate consensus
-    CLAUDE_APPROVED=$(grep -o '"approved":\s*true' "$RALPH_TMPDIR/claude.json" 2>/dev/null && echo "true" || echo "false")
-    CODEX_APPROVED=$(grep -o '"approved":\s*true' "$RALPH_TMPDIR/codex.json" 2>/dev/null && echo "true" || echo "false")
-    GEMINI_APPROVED=$(grep -o '"approved":\s*true' "$RALPH_TMPDIR/gemini.json" 2>/dev/null && echo "true" || echo "false")
+resolve_adversarial_spec_script() {
+    local runtime="$1"
+    local script_path=""
 
-    APPROVALS=0
-    [[ "$CLAUDE_APPROVED" == "true" ]] && APPROVALS=$((APPROVALS + 1)) || true
-    [[ "$CODEX_APPROVED" == "true" ]] && APPROVALS=$((APPROVALS + 1)) || true
-    [[ "$GEMINI_APPROVED" == "true" ]] && APPROVALS=$((APPROVALS + 1)) || true
-
-    echo ""
-    echo "==============================================================="
-    echo "  ADVERSARIAL VALIDATION RESULTS"
-    echo "==============================================================="
-    echo ""
-    echo "  Claude:  $([ "$CLAUDE_APPROVED" == "true" ] && echo "Approved" || echo "Rejected")"
-    echo "  Codex:   $([ "$CODEX_APPROVED" == "true" ] && echo "Approved" || echo "Rejected")"
-    echo "  Gemini:  $([ "$GEMINI_APPROVED" == "true" ] && echo "Approved" || echo "Rejected")"
-    echo ""
-    echo "  Consensus: $APPROVALS/3 (required: $CONSENSUS_REQUIRED)"
-    echo ""
-
-    if [[ $APPROVALS -ge $CONSENSUS_REQUIRED ]]; then
-        log_success "ADVERSARIAL VALIDATION PASSED"
-        echo "==============================================================="
-        return 0
+    if [ "$runtime" = "claude" ]; then
+        script_path="$HOME/.claude/skills/adversarial-spec/scripts/debate.py"
     else
-        log_error "ADVERSARIAL VALIDATION FAILED"
-        echo ""
-        echo "  Issues found:"
-        jq -s '.[].issues // [] | .[]' "$RALPH_TMPDIR"/*.json 2>/dev/null | head -20
-        echo "==============================================================="
-        return 2
+        script_path="$HOME/.config/opencode/skill/adversarial-spec/scripts/debate.py"
+    fi
+
+    if [ -f "$script_path" ]; then
+        printf '%s' "$script_path"
+        return 0
+    fi
+
+    return 1
+}
+
+get_adversarial_spec_models() {
+    local runtime="$1"
+
+    if [ "$runtime" = "claude" ]; then
+        printf '%s' "claude-4.5-opus,claude-4.5-sonnet,openai/gpt-5.2-codex,minimax/minimax-m2.1"
+    else
+        printf '%s' "openai/gpt-5.2-codex,minimax/minimax-m2.1"
+    fi
+}
+
+cmd_adversarial() {
+    local INPUT="${1:-}"
+
+    if [ -z "$INPUT" ]; then
+        log_error "Usage: ralph adversarial <spec text or file>"
+        return 1
+    fi
+
+    local runtime
+    runtime=$(detect_adversarial_runtime)
+
+    local script_path
+    script_path=$(resolve_adversarial_spec_script "$runtime" || true)
+
+    if [ -z "$script_path" ]; then
+        log_warn "adversarial-spec not installed for runtime: $runtime"
+        if [ "$runtime" = "claude" ]; then
+            log_warn "Install: claude plugin install adversarial-spec"
+        else
+            log_warn "Install: opencode plugin install adversarial-spec"
+        fi
+        return 0
+    fi
+
+    if ! command -v python3 &> /dev/null; then
+        log_warn "python3 is required for adversarial-spec"
+        return 0
+    fi
+
+    local doc_type="${RALPH_ADVERSARIAL_DOC_TYPE:-tech}"
+    if [[ "$INPUT" == *.prd* ]]; then
+        doc_type="prd"
+    fi
+
+    local models
+    models=$(get_adversarial_spec_models "$runtime")
+
+    log_info "Starting adversarial-spec debate ($runtime)"
+    log_info "   Models: $models"
+    log_info "   Doc type: $doc_type"
+    echo ""
+
+    if [ -f "$INPUT" ]; then
+        local SPEC_PATH
+        SPEC_PATH=$(validate_path "$INPUT")
+        python3 "$script_path" critique --models "$models" --doc-type "$doc_type" < "$SPEC_PATH"
+    else
+        local SPEC_TEXT
+        SPEC_TEXT=$(validate_text_input "$INPUT" 20000)
+        printf '%s' "$SPEC_TEXT" | python3 "$script_path" critique --models "$models" --doc-type "$doc_type"
     fi
 }
 
@@ -1004,17 +1053,20 @@ cmd_parallel() {
     declare -a PIDS
 
     # 1. Codex Security
-    PID=$(run_codex_security "$TARGET")
+    run_codex_security "$TARGET"
+    PID=$CODEX_PID
     PIDS+=("$PID")
     log_info "  [1/6] Codex Security: PID $PID"
 
     # 2. Codex Bugs
-    PID=$(run_codex_bugs "$TARGET")
+    run_codex_bugs "$TARGET"
+    PID=$CODEX_PID
     PIDS+=("$PID")
     log_info "  [2/6] Codex Bugs: PID $PID"
 
     # 3. Codex Unit Tests
-    PID=$(run_codex_unit_tests "$TARGET")
+    run_codex_unit_tests "$TARGET"
+    PID=$CODEX_PID
     PIDS+=("$PID")
     log_info "  [3/6] Codex Unit Tests: PID $PID"
 
@@ -1108,7 +1160,8 @@ cmd_security() {
 
     # Codex (primary)
     log_info "  Starting Codex security audit..."
-    PID1=$(run_codex_security "$TARGET")
+    run_codex_security "$TARGET"
+    PID1=$CODEX_PID
 
     # MiniMax (second opinion)
     PID2=$(run_minimax "Security audit for: $TARGET. Check: injection, auth, secrets, crypto." "$RALPH_TMPDIR/minimax_security.json")
@@ -1457,7 +1510,8 @@ cmd_bugs() {
     ensure_tmp
 
     log_info "Running bug hunting on: $TARGET"
-    PID=$(run_codex_bugs "$TARGET")
+    run_codex_bugs "$TARGET"
+    PID=$CODEX_PID
     wait $PID
     log_success "Bug hunting complete."
     cat "$RALPH_TMPDIR/codex_bugs.json" 2>/dev/null | jq '.summary' || true
@@ -1469,7 +1523,8 @@ cmd_unit_tests() {
     ensure_tmp
 
     log_info "Generating unit tests for: $TARGET"
-    PID=$(run_codex_unit_tests "$TARGET")
+    run_codex_unit_tests "$TARGET"
+    PID=$CODEX_PID
     wait $PID
     log_success "Unit test generation complete."
 }
@@ -4332,7 +4387,7 @@ cmd_integrations() {
     fi
 
     # LLM-TLDR (v2.37)
-    if command -v tldr &> /dev/null && pip show llm-tldr &>/dev/null; then
+    if command -v tldr &> /dev/null && command -v pip &> /dev/null && pip show llm-tldr &>/dev/null; then
         local TLDR_VER
         TLDR_VER=$(pip show llm-tldr 2>&1 | grep "Version:" | awk '{print $2}')
         log_success "  LLM-TLDR:       v$TLDR_VER (95% token savings)"
@@ -4588,15 +4643,17 @@ cmd_improvements() {
 # ORCHESTRATION
 # ===============================================================================
 cmd_orch() {
+    echo ""
+    echo "==============================================================="
+    echo "  RALPH WIGGUM v2.38 ORCHESTRATION"
+    echo "==============================================================="
+    echo ""
+
     local TASK
     TASK=$(validate_text_input "$1")
     local SAFE_TASK
     SAFE_TASK=$(escape_for_shell "$TASK")
 
-    echo ""
-    echo "==============================================================="
-    echo "  RALPH WIGGUM v2.21 ORCHESTRATION"
-    echo "==============================================================="
     echo ""
     echo "  NOTE: v2.21 adds self-update, pre-merge validation, and integrations check."
     echo "        Uses AskUserQuestion and EnterPlanMode."
@@ -4852,6 +4909,22 @@ cmd_uninstall() {
 }
 
 # ===============================================================================
+# UTILITY COMMANDS
+# ===============================================================================
+cmd_status() {
+    log_info "Active ralph processes:"
+    ps aux | grep -E "(codex|gemini|mmc|ralph)" | grep -v grep || echo "  None"
+}
+
+cmd_version() {
+    echo "ralph v$VERSION"
+}
+
+cmd_help() {
+    show_help
+}
+
+# ===============================================================================
 # MAIN
 # ===============================================================================
 main() {
@@ -5066,14 +5139,13 @@ main() {
 
         # Utility
         status)
-            log_info "Active ralph processes:"
-            ps aux | grep -E "(codex|gemini|mmc|ralph)" | grep -v grep || echo "  None"
+            cmd_status
             ;;
         version|-v|--version)
-            echo "ralph v$VERSION"
+            cmd_version
             ;;
         help|-h|--help)
-            show_help
+            cmd_help
             ;;
         --uninstall|uninstall)
             cmd_uninstall "$@"

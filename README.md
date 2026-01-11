@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.37-blue)
+![Version](https://img.shields.io/badge/version-2.38-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -11,16 +11,20 @@
 
 ## Overview
 
-**Multi-Agent Ralph Wiggum** is a sophisticated orchestration system for Claude Code that coordinates multiple AI models to deliver high-quality, validated code through iterative refinement loops.
+**Multi-Agent Ralph Wiggum** is a sophisticated orchestration system for Claude Code and OpenCode that coordinates multiple AI models to deliver high-quality, validated code through iterative refinement loops.
 
-The system addresses the fundamental challenge of AI-assisted coding: **ensuring quality and consistency across complex tasks**. Rather than relying on a single AI model's output, Ralph orchestrates multiple specialized agents (Claude, Codex, Gemini, MiniMax) working in parallel, with automatic validation gates and adversarial consensus checks.
+The system addresses the fundamental challenge of AI-assisted coding: **ensuring quality and consistency across complex tasks**. Rather than relying on a single AI model's output, Ralph orchestrates multiple specialized agents working in parallel, with automatic validation gates and adversarial spec debates for rigorous requirements.
+
+## About
+
+Ralph is a dual-runtime orchestrator that adapts model routing based on whether it is invoked from Claude Code or OpenCode. It standardizes workflows (clarify → plan → execute → validate) while letting each environment use the best available models.
 
 ### What It Does
 
 - **Orchestrates Multiple AI Models**: Coordinates Claude (Opus/Sonnet), OpenAI Codex, Google Gemini, and MiniMax in parallel workflows
 - **Iterative Refinement**: Implements the "Ralph Loop" pattern - execute, validate, iterate until quality gates pass
 - **Quality Assurance**: 9-language quality gates (TypeScript, Python, Go, Rust, Solidity, Swift, JSON, YAML, JavaScript)
-- **Adversarial Validation**: 2/3 consensus requirement for critical code (auth, payments, data)
+- **Adversarial Spec Refinement**: adversarial-spec debate to harden specs before execution
 - **Automatic Context Preservation**: 100% automatic ledger/handoff system preserves session state across compactions (v2.35)
 - **Self-Improvement**: Retrospective analysis after every task to propose workflow improvements
 
@@ -28,7 +32,7 @@ The system addresses the fundamental challenge of AI-assisted coding: **ensuring
 
 | Challenge | Ralph's Solution |
 |-----------|------------------|
-| AI outputs vary in quality | Multi-model validation with 2/3 consensus |
+| AI outputs vary in quality | Multi-model spec debate via adversarial-spec |
 | Single-pass often insufficient | Iterative loops (15-60 iterations) until VERIFIED_DONE |
 | Manual review bottleneck | Automated quality gates + human-in-the-loop for critical decisions |
 | Context limits | MiniMax (1M tokens) + Context7 MCP for documentation |
@@ -301,7 +305,7 @@ ralph tldr dead .              # Find dead code
 ├── orchestrator/SKILL.md      # 8-step workflow (most critical)
 ├── clarify/SKILL.md           # AskUserQuestion workflow
 ├── gates/SKILL.md             # 9-language quality gates (context: fork)
-├── adversarial/SKILL.md       # 2/3 consensus (context: fork)
+├── adversarial/SKILL.md       # adversarial-spec debate (context: fork)
 ├── loop/SKILL.md              # Ralph Loop pattern
 ├── parallel/SKILL.md          # Concurrent execution (context: fork)
 ├── retrospective/SKILL.md     # Post-task analysis
@@ -429,7 +433,7 @@ ralph sync-global --force   # Overwrite all files
 | Feature | Description |
 |---------|-------------|
 | **9-Language Quality Gates** | TypeScript, JavaScript, Python, Go, Rust, Solidity, Swift, JSON, YAML |
-| **Adversarial Validation** | 2/3 consensus (Claude + Codex + Gemini) for critical code |
+| **Adversarial Spec Refinement** | adversarial-spec debate for requirements before build |
 | **Git Safety Guard** | Pre-execution hook blocks destructive commands (force push, reset --hard, etc.) |
 | **Multi-Level Security Loop** | Iterative audit → fix → re-audit until 0 vulnerabilities (v2.27) |
 
@@ -581,23 +585,20 @@ Iterative security auditing until zero vulnerabilities:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 4. Adversarial Validation
+### 4. Adversarial Spec Refinement
 
-2/3 consensus for critical code (auth, payments, data):
+Multi-model debate to converge on a complete spec (env-aware models):
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                 ADVERSARIAL VALIDATION                          │
+│              ADVERSARIAL-SPEC REFINEMENT                        │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  Claude Review ──┐                                              │
-│                  │                                              │
-│  Codex Review  ──┼──▶  CONSENSUS CHECK  ──▶  2/3 REQUIRED      │
-│                  │                                              │
-│  Gemini Review ──┘     (tie-breaker)                           │
+│  Draft Spec  ──▶  Model Critique  ──▶  Synthesize Updates       │
+│      │                 │                       │               │
+│      └─────────────────┴──────────▶  Repeat  ───┘               │
 │                                                                 │
-│  PASS: 2+ models approve                                        │
-│  FAIL: exit 2 → Ralph Loop until fixed                         │
+│  Output: finalized PRD/tech spec                                │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -654,6 +655,8 @@ ralph integrations
 | Tool | Required | Purpose | Install |
 |------|----------|---------|---------|
 | Claude CLI | Yes | Base orchestration | `npm i -g @anthropic-ai/claude-code` |
+| adversarial-spec (Claude) | Optional | Spec refinement (/adversarial) | `claude plugin install adversarial-spec` |
+| adversarial-spec (OpenCode) | Optional | Spec refinement (/adversarial) | `opencode plugin install adversarial-spec` |
 | jq | Yes | JSON processing | `brew install jq` |
 | git | Yes | Version control | `brew install git` |
 | WorkTrunk | For worktrees | Git worktree management | `brew install max-sixty/worktrunk/wt` |
@@ -671,8 +674,8 @@ ralph security src/
 # Multi-level security loop (v2.27)
 ralph security-loop src/ --max-rounds 10
 
-# Adversarial validation
-ralph adversarial src/auth/
+# Adversarial spec refinement
+ralph adversarial "Design a rate limiter service"
 
 # Git worktree workflow
 ralph worktree "implement feature X"
@@ -779,7 +782,7 @@ ralph worktree-cleanup         # Clean merged
 
 # Validation & Quality
 ralph gates                    # Quality gates (9 languages)
-ralph adversarial <path>       # 2/3 consensus validation
+ralph adversarial <input>      # adversarial-spec debate
 ralph pre-merge                # Pre-PR validation
 
 # Maintenance
@@ -801,7 +804,7 @@ ralph integrations             # Show tool status
 | | /refactor | @ref | Code refactoring |
 | | /full-review | @review | 6-agent review |
 | | /parallel | @par | Parallel subagents |
-| | /adversarial | @adv | 2/3 consensus |
+| | /adversarial | @adv | adversarial-spec debate |
 | **Research** | /research | @research | Web research |
 | | /library-docs | @lib | Library documentation |
 | | /minimax-search | @mmsearch | MiniMax search |

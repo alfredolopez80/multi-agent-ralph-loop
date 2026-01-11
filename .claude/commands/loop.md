@@ -51,7 +51,7 @@ Use `/loop` when:
 **DO NOT use** for:
 - Simple one-shot tasks (use direct claude call)
 - Tasks already in orchestration flow (redundant)
-- Manual review workflows (use /adversarial)
+- Spec refinement workflows (use /adversarial)
 
 ## Iteration Limits
 
@@ -352,7 +352,7 @@ ralph orch "implement feature"
 # 3. Plan approval
 # 4. /loop (automatic)
 # 5. /gates (automatic within loop)
-# 6. /adversarial (if complexity >= 7)
+# 6. /adversarial (spec refinement if complexity >= 7)
 # 7. /retrospective
 ```
 
@@ -418,7 +418,7 @@ ralph loop "implement feature"
 
 ### Orchestration Commands
 - `/orchestrator` - Full 8-step workflow (includes loop at Step 4)
-- `/adversarial` - Multi-agent validation (after loop completes)
+- `/adversarial` - Adversarial spec refinement (after loop completes)
 - `/retrospective` - Post-loop self-improvement analysis
 
 ### Quality Commands

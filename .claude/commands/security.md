@@ -332,7 +332,7 @@ ralph gates
 | Command | Purpose | Use Case |
 |---------|---------|----------|
 | `/security` | Full security audit | Pre-merge security review |
-| `/adversarial` | 2/3 consensus validation | Critical features (complexity >= 7) |
+| `/adversarial` | Adversarial spec refinement | Critical features (complexity >= 7) |
 | `/bugs` | Bug hunting | Functional issues, not security |
 | `/security-loop` | Iterative security fixes | Apply fixes until audit passes |
 | `/code-review` | General code review | Quality, not security-focused |
