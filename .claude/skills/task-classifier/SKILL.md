@@ -1,5 +1,24 @@
 # Skill: Task Classifier
 
+**ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.
+
+## The Vision
+Classification should make the path forward feel inevitable.
+
+## Your Work, Step by Step
+1. **Assess scope**: Files, modules, and integrations.
+2. **Assess risk**: Security, breakage, rollback.
+3. **Assess ambiguity**: Unknowns and trade-offs.
+4. **Assign complexity**: Recommend models and iterations.
+
+## Ultrathink Principles in Practice
+- **Think Different**: Avoid defaulting to mid complexity.
+- **Obsess Over Details**: Map true blast radius.
+- **Plan Like Da Vinci**: Evaluate before judging.
+- **Craft, Don't Code**: Keep reasoning concise.
+- **Iterate Relentlessly**: Reclassify as scope changes.
+- **Simplify Ruthlessly**: Choose the simplest valid path.
+
 ## Purpose
 Classify task complexity (1-10) to route to optimal model.
 

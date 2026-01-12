@@ -3,6 +3,26 @@ name: deep-clarification
 description: "Intensive task clarification using AskUserQuestion - use when starting any non-trivial task"
 ---
 
+**ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.
+
+## The Vision
+Clarity creates inevitability. Every question should narrow the path to truth.
+
+## Your Work, Step by Step
+1. **Task understanding**: Identify the type of work.
+2. **Scope definition**: Bound the change clearly.
+3. **Technical decisions**: Surface approach preferences.
+4. **Quality requirements**: Define tests/docs expectations.
+5. **Confirm**: Summarize and proceed only when clear.
+
+## Ultrathink Principles in Practice
+- **Think Different**: Challenge implicit assumptions.
+- **Obsess Over Details**: Capture constraints precisely.
+- **Plan Like Da Vinci**: Build the question set first.
+- **Craft, Don't Code**: Ask fewer, better questions.
+- **Iterate Relentlessly**: Refine after answers.
+- **Simplify Ruthlessly**: Remove nonessential questions.
+
 # Deep Clarification Skill
 
 This skill provides patterns for intensive task clarification using Claude's native `AskUserQuestion` tool.

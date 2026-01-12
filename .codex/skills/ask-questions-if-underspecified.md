@@ -1,5 +1,24 @@
 # Skill: Ask Questions If Underspecified
 
+**ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.
+
+## The Vision
+Clarity is the foundation of inevitable solutions. Every question should narrow the path to truth.
+
+## Your Work, Step by Step
+1. **Analyze requirements**: Identify missing inputs and ambiguities.
+2. **Separate MUST vs NICE**: Block on essentials, assume the rest.
+3. **Ask precisely**: Short, concrete questions with defaults.
+4. **Confirm understanding**: Summarize before proceeding.
+
+## Ultrathink Principles in Practice
+- **Think Different**: Question hidden assumptions.
+- **Obsess Over Details**: Align questions with real constraints.
+- **Plan Like Da Vinci**: Build the question set before asking.
+- **Craft, Don't Code**: Precision over volume.
+- **Iterate Relentlessly**: Refine questions as context evolves.
+- **Simplify Ruthlessly**: Ask only what matters.
+
 ## Purpose
 Ensure clarity before proceeding with complex analysis or implementation.
 

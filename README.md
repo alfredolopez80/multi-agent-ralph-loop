@@ -965,17 +965,11 @@ See [LICENSE](LICENSE) for details.
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
 
-### Latest: v2.37.0 (2026-01-10)
+### Latest: v2.39.0 (2026-01-12)
 
-- **LLM-TLDR Integration**: 95% token savings for code exploration and analysis
-- **5-Layer Analysis**: AST → Call Graph → CFG → DFG → PDG for complete code understanding
-- **16 Languages**: Python, TypeScript, Go, Rust, Java, C, C++, and 9 more
-- **Semantic Search**: 1024-dim embeddings via bge-large-en-v1.5 model
-- **Orchestrator Enhanced**: tldr-context skill optimizes context for Steps 1, 3, 5
-- **6 New Skills**: /tldr, /tldr-semantic, /tldr-impact, /tldr-context, /openai-docs, /codex-cli (enhanced)
-- **155x Faster**: Daemon mode reduces query latency from 30s to 100ms
-- **OpenAI Docs Access**: Context7 MCP provides 10,000+ OpenAI/Codex documentation snippets
-- **Claude-Codex Bridge**: Enhanced codex-cli skill with documentation lookup integration
+- **Ultrathink Doctrine**: Added ultrathink guidance across all agents and skills
+- **Domain-Specific Steps**: Each agent/skill now defines its workflow steps
+- **Version Alignment**: Updated orchestrator and CLAUDE.md to v2.39
 
 ### v2.36.0 (2026-01-10)
 

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.39.0] - 2026-01-12
+
+### Added (Ultrathink Doctrine)
+
+- **Ultrathink Guidance**: All agents and skills now include ultrathink vision + step-by-step workflow
+- **Domain-Specific Steps**: Each agent/skill defines how ultrathink applies to its domain
+
+### Modified Files (v2.39)
+
+| File | Changes |
+|------|---------|
+| `CLAUDE.md` | Updated title to v2.39 |
+| `README.md` | Updated latest version summary |
+| `.claude/agents/*` | Added ultrathink workflow blocks |
+| `.claude/skills/*` | Added ultrathink workflow blocks |
+| `.codex/skills/*` | Added ultrathink workflow blocks |
+
+---
+
 ## [2.38.0] - 2026-01-11
 
 ### Added (Adversarial-Spec Integration)

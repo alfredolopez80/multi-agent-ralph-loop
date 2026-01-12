@@ -3,6 +3,25 @@ name: openai-docs
 description: "Access OpenAI developer documentation via Context7 MCP. Provides up-to-date docs for Codex CLI, OpenAI API, Python/Node SDKs, Agents SDK, and MCP configuration. Use when: (1) configuring Codex CLI or MCP servers, (2) writing OpenAI API integrations, (3) building agents with OpenAI SDKs, (4) troubleshooting Codex execution. Triggers: 'openai docs', 'codex documentation', 'openai api reference', 'codex mcp', 'agents sdk'."
 ---
 
+**ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.
+
+## The Vision
+Documentation lookups should feel inevitable and authoritative.
+
+## Your Work, Step by Step
+1. **Identify target**: Pick the right library and query.
+2. **Resolve ID**: Use Context7 to get exact docs.
+3. **Query precisely**: Ask for focused, answerable snippets.
+4. **Apply results**: Convert docs into actionable guidance.
+
+## Ultrathink Principles in Practice
+- **Think Different**: Seek the most direct source of truth.
+- **Obsess Over Details**: Use exact IDs and query wording.
+- **Plan Like Da Vinci**: Decide the lookup path before querying.
+- **Craft, Don't Code**: Keep results concise and relevant.
+- **Iterate Relentlessly**: Re-query when ambiguity remains.
+- **Simplify Ruthlessly**: Avoid unnecessary sources.
+
 # OpenAI Documentation Access Skill
 
 Access OpenAI's complete developer documentation through Context7 MCP integration.

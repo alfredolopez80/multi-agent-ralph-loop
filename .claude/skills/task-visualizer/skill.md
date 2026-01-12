@@ -3,6 +3,25 @@ name: task-visualizer
 description: "Visualize task dependencies and progress (Gastown-style)"
 ---
 
+**ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.
+
+## The Vision
+Task visualization should reveal the inevitable path to completion.
+
+## Your Work, Step by Step
+1. **Read tasks**: Load current state and dependencies.
+2. **Map relationships**: Identify blockers and parallel paths.
+3. **Render view**: ASCII or Mermaid, consistent and legible.
+4. **Recommend**: Highlight next best actions.
+
+## Ultrathink Principles in Practice
+- **Think Different**: Look for hidden bottlenecks.
+- **Obsess Over Details**: Keep statuses accurate.
+- **Plan Like Da Vinci**: Choose the clearest representation.
+- **Craft, Don't Code**: Make diagrams readable first.
+- **Iterate Relentlessly**: Update as tasks change.
+- **Simplify Ruthlessly**: Remove visual noise.
+
 # Task Visualizer Skill (v2.26)
 
 Provides ASCII and Mermaid visualization of task dependencies, following Gastown patterns for multi-agent orchestration.

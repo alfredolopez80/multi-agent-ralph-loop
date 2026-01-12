@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.38
+# Multi-Agent Ralph v2.39
 
 ## Multi-Agent Ralph Loop Orchestration
 
@@ -44,7 +44,7 @@
 
 Orchestration with automatic planning, intensive clarification, git worktree isolation, adversarial validation, 9-language quality gates, context engineering, and automatic context preservation.
 
-> **Historical versions**: See [CHANGELOG.md](./CHANGELOG.md) for v2.19-v2.36 details.
+> **Historical versions**: See [CHANGELOG.md](./CHANGELOG.md) for v2.19-v2.39 details.
 
 ## v2.37 Current Features
 

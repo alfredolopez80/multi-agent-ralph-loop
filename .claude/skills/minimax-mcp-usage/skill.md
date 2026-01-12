@@ -3,6 +3,25 @@ name: minimax-mcp-usage
 description: "Optimal patterns for MiniMax MCP tools (web_search + understand_image)"
 ---
 
+**ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.
+
+## The Vision
+MiniMax queries should be lean, accurate, and decisive.
+
+## Your Work, Step by Step
+1. **Choose tool**: web_search vs understand_image.
+2. **Craft query**: Specific, time-bound, and focused.
+3. **Run analysis**: Collect results with minimal noise.
+4. **Synthesize**: Convert outputs into clear guidance.
+
+## Ultrathink Principles in Practice
+- **Think Different**: Use the lowest-cost path to truth.
+- **Obsess Over Details**: Precision in queries matters.
+- **Plan Like Da Vinci**: Decide intent before search.
+- **Craft, Don't Code**: Keep results actionable.
+- **Iterate Relentlessly**: Refine queries until clear.
+- **Simplify Ruthlessly**: Cut vague or broad requests.
+
 # MiniMax MCP Usage Patterns (v2.24)
 
 This skill documents optimal usage patterns for MiniMax MCP tools.

@@ -9,6 +9,26 @@ triggers:
   - git isolation
 ---
 
+**ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.
+
+## The Vision
+Isolation should make every change safer and more inevitable.
+
+## Your Work, Step by Step
+1. **Decide isolation**: Confirm if a worktree is needed.
+2. **Create worktree**: One feature, one isolated workspace.
+3. **Coordinate work**: Keep subagents aligned in one tree.
+4. **Review & PR**: Multi-agent review before merge.
+5. **Cleanup**: Merge or close with clean rollback.
+
+## Ultrathink Principles in Practice
+- **Think Different**: Use isolation to de-risk change.
+- **Obsess Over Details**: Keep contexts and branches consistent.
+- **Plan Like Da Vinci**: Map the PR flow before execution.
+- **Craft, Don't Code**: Prefer small, clean diffs.
+- **Iterate Relentlessly**: Fix and re-review until clean.
+- **Simplify Ruthlessly**: Remove unnecessary branches.
+
 # Git Worktree + PR Workflow (v2.20)
 
 ## Overview

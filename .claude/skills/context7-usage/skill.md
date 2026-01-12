@@ -3,6 +3,25 @@ name: context7-usage
 description: "Patterns for using Context7 MCP for library documentation (v2.25)"
 ---
 
+**ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.
+
+## The Vision
+Documentation retrieval should be precise, fast, and authoritative.
+
+## Your Work, Step by Step
+1. **Identify library**: Extract from the user’s request.
+2. **Resolve ID**: Use Context7 to find the exact source.
+3. **Query**: Ask for targeted, actionable guidance.
+4. **Fallback**: Use MiniMax when Context7 lacks coverage.
+
+## Ultrathink Principles in Practice
+- **Think Different**: Prefer indexed docs over scraping.
+- **Obsess Over Details**: Ensure the right library ID.
+- **Plan Like Da Vinci**: Define the query before running it.
+- **Craft, Don't Code**: Return only relevant excerpts.
+- **Iterate Relentlessly**: Re-query for clarity.
+- **Simplify Ruthlessly**: Avoid unnecessary searches.
+
 # Context7 MCP Usage Patterns
 
 ## Overview

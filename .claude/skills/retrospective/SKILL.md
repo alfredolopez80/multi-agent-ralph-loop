@@ -1,5 +1,24 @@
 # Skill: Retrospective & Self-Improvement
 
+**ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.
+
+## The Vision
+Every retrospective should make the system inevitable and better.
+
+## Your Work, Step by Step
+1. **Summarize outcomes**: Task, complexity, iterations, models.
+2. **Analyze effectiveness**: Routing, clarification, and agents.
+3. **Identify gaps**: Missed checks or friction.
+4. **Propose improvements**: Concrete, minimal changes.
+
+## Ultrathink Principles in Practice
+- **Think Different**: Question the status quo.
+- **Obsess Over Details**: Use evidence, not guesses.
+- **Plan Like Da Vinci**: Structure feedback before writing.
+- **Craft, Don't Code**: Keep recommendations actionable.
+- **Iterate Relentlessly**: Apply learnings immediately.
+- **Simplify Ruthlessly**: Focus on the few changes that matter.
+
 ## Purpose
 Analyze completed tasks to improve the Ralph Wiggum system.
 
