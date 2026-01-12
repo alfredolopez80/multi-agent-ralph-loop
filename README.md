@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.38-blue)
+![Version](https://img.shields.io/badge/version-2.39-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -27,6 +27,7 @@ Ralph is a dual-runtime orchestrator that adapts model routing based on whether 
 - **Adversarial Spec Refinement**: adversarial-spec debate to harden specs before execution
 - **Automatic Context Preservation**: 100% automatic ledger/handoff system preserves session state across compactions (v2.35)
 - **Self-Improvement**: Retrospective analysis after every task to propose workflow improvements
+- **Ultrathink Doctrine**: Domain-specific craftsmanship principles guide every agent's workflow (v2.39)
 
 ### Why Use It
 
