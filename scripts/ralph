@@ -682,9 +682,11 @@ MAINTENANCE (v2.21):
   ralph pre-merge            Validate before creating PR (shellcheck + versions + tests)
   ralph integrations         Show status of all integrations (Greptile optional)
 
-ARCHITECTURE (v2.35):
+ARCHITECTURE (v2.40):
   ralph validate-arch        Validate global architecture (hooks, agents, CLI, context)
   ralph sync-to-projects     Sync global config to all projects
+  ralph sync-to-opencode     Sync ~/.claude/ → ~/.config/opencode/ (singular naming)
+  ralph validate-integration Run v2.40 integration validation (23 checks)
 
 ITERATION LIMITS:
   Claude (Sonnet/Opus): 15 iterations
@@ -4114,6 +4116,162 @@ cmd_sync_to_projects() {
     fi
 }
 
+# Sync Claude Code configuration to OpenCode (v2.40)
+# OpenCode uses singular naming (skill/, agent/, command/) vs Claude's plural
+cmd_sync_to_opencode() {
+    local CLAUDE_DIR="${HOME}/.claude"
+    local OPENCODE_DIR="${HOME}/.config/opencode"
+    local DRY_RUN=false
+    local FORCE=false
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --dry-run|-n) DRY_RUN=true; shift ;;
+            --force|-f) FORCE=true; shift ;;
+            *) shift ;;
+        esac
+    done
+
+    echo ""
+    echo "==============================================================="
+    echo "  SYNC TO OPENCODE: ~/.claude/ → ~/.config/opencode/"
+    echo "==============================================================="
+    echo ""
+    log_info "Source: $CLAUDE_DIR/"
+    log_info "Target: $OPENCODE_DIR/"
+    [ "$DRY_RUN" = true ] && log_warn "DRY RUN MODE - No changes will be made"
+    echo ""
+
+    # Check if OpenCode directory exists
+    if [ ! -d "$OPENCODE_DIR" ]; then
+        log_warn "OpenCode directory not found: $OPENCODE_DIR"
+        log_info "Creating directory structure..."
+        if [ "$DRY_RUN" != true ]; then
+            mkdir -p "$OPENCODE_DIR"/{skill,agent,command}
+        fi
+    fi
+
+    local TOTAL_SYNCED=0
+    local TOTAL_SKIPPED=0
+
+    # 1. Sync Skills (Claude plural → OpenCode singular)
+    log_info "Syncing skills/ → skill/"
+    if [ -d "$CLAUDE_DIR/skills" ]; then
+        [ "$DRY_RUN" != true ] && mkdir -p "$OPENCODE_DIR/skill"
+
+        for skill_dir in "$CLAUDE_DIR/skills"/*/; do
+            if [ -d "$skill_dir" ]; then
+                local skill_name
+                skill_name=$(basename "$skill_dir")
+                local target="$OPENCODE_DIR/skill/$skill_name"
+
+                if [ -d "$target" ] && [ "$FORCE" != true ]; then
+                    # Check if SKILL.md differs
+                    if [ -f "$skill_dir/SKILL.md" ] && [ -f "$target/SKILL.md" ]; then
+                        if diff -q "$skill_dir/SKILL.md" "$target/SKILL.md" &>/dev/null; then
+                            TOTAL_SKIPPED=$((TOTAL_SKIPPED + 1))
+                            continue
+                        fi
+                    fi
+                fi
+
+                if [ "$DRY_RUN" = true ]; then
+                    echo "   Would sync: skill/$skill_name"
+                else
+                    cp -r "$skill_dir" "$target"
+                fi
+                TOTAL_SYNCED=$((TOTAL_SYNCED + 1))
+            fi
+        done
+    fi
+
+    # 2. Sync Agents (Claude plural → OpenCode singular)
+    log_info "Syncing agents/ → agent/"
+    if [ -d "$CLAUDE_DIR/agents" ]; then
+        [ "$DRY_RUN" != true ] && mkdir -p "$OPENCODE_DIR/agent"
+
+        for agent in "$CLAUDE_DIR/agents"/*.md; do
+            if [ -f "$agent" ]; then
+                local agent_name
+                agent_name=$(basename "$agent")
+                local target="$OPENCODE_DIR/agent/$agent_name"
+
+                if [ -f "$target" ] && [ "$FORCE" != true ]; then
+                    if diff -q "$agent" "$target" &>/dev/null; then
+                        TOTAL_SKIPPED=$((TOTAL_SKIPPED + 1))
+                        continue
+                    fi
+                fi
+
+                if [ "$DRY_RUN" = true ]; then
+                    echo "   Would sync: agent/$agent_name"
+                else
+                    cp "$agent" "$target"
+                fi
+                TOTAL_SYNCED=$((TOTAL_SYNCED + 1))
+            fi
+        done
+    fi
+
+    # 3. Sync Commands (Claude plural → OpenCode singular)
+    log_info "Syncing commands/ → command/"
+    if [ -d "$CLAUDE_DIR/commands" ]; then
+        [ "$DRY_RUN" != true ] && mkdir -p "$OPENCODE_DIR/command"
+
+        for cmd in "$CLAUDE_DIR/commands"/*.md; do
+            if [ -f "$cmd" ]; then
+                local cmd_name
+                cmd_name=$(basename "$cmd")
+                local target="$OPENCODE_DIR/command/$cmd_name"
+
+                if [ -f "$target" ] && [ "$FORCE" != true ]; then
+                    if diff -q "$cmd" "$target" &>/dev/null; then
+                        TOTAL_SKIPPED=$((TOTAL_SKIPPED + 1))
+                        continue
+                    fi
+                fi
+
+                if [ "$DRY_RUN" = true ]; then
+                    echo "   Would sync: command/$cmd_name"
+                else
+                    cp "$cmd" "$target"
+                fi
+                TOTAL_SYNCED=$((TOTAL_SYNCED + 1))
+            fi
+        done
+    fi
+
+    # Summary
+    echo ""
+    echo "==============================================================="
+    echo "  SYNC TO OPENCODE SUMMARY"
+    echo "==============================================================="
+    if [ "$DRY_RUN" = true ]; then
+        log_info "Would sync: $TOTAL_SYNCED items"
+        log_info "Would skip (unchanged): $TOTAL_SKIPPED items"
+    else
+        log_success "Synced: $TOTAL_SYNCED items"
+        log_info "Skipped (unchanged): $TOTAL_SKIPPED items"
+        echo ""
+        log_success "OpenCode configuration synchronized!"
+        log_info "NOTE: OpenCode uses singular naming (skill/ vs skills/)"
+    fi
+}
+
+# Validate v2.40 integration (skills, tldr, ultrathink, hooks, etc.)
+cmd_validate_integration() {
+    local SCRIPT_PATH="${HOME}/Documents/GitHub/multi-agent-ralph-loop/scripts/validate-integration.sh"
+
+    if [ -f "$SCRIPT_PATH" ]; then
+        bash "$SCRIPT_PATH"
+    else
+        log_error "Integration validation script not found at: $SCRIPT_PATH"
+        log_info "Run 'ralph self-update' to install the script"
+        return 1
+    fi
+}
+
 # Cleanup redundant settings.json from projects (v2.35)
 # Validate global architecture (v2.35)
 # Tests that all components are available globally across projects
@@ -5080,11 +5238,17 @@ main() {
         sync-to-projects|sync-projects|distribute)
             cmd_sync_to_projects "$@"
             ;;
+        sync-to-opencode|sync-opencode|opencode)
+            cmd_sync_to_opencode "$@"
+            ;;
         cleanup-project-settings|cleanup-settings)
             cmd_cleanup_project_settings "$@"
             ;;
         validate-arch|validate-architecture|arch)
             cmd_validate_arch "$@"
+            ;;
+        validate-integration|validate-int|vi)
+            cmd_validate_integration "$@"
             ;;
         pre-merge|premerge)
             cmd_pre_merge

@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.39
+# Multi-Agent Ralph v2.40
 
 ## Multi-Agent Ralph Loop Orchestration
 
@@ -46,7 +46,42 @@ Orchestration with automatic planning, intensive clarification, git worktree iso
 
 > **Historical versions**: See [CHANGELOG.md](./CHANGELOG.md) for v2.19-v2.39 details.
 
-## v2.37 Current Features
+## v2.40 Current Features
+
+### Integration Testing Suite (26 tests)
+
+Comprehensive pytest suite for validating v2.40 integration:
+
+```bash
+# Run all v2.40 tests
+pytest tests/test_v2_40_integration.py -v
+
+# Quick bash validation (23 checks)
+ralph validate-integration
+```
+
+**Tests cover**:
+- Skills discovery and frontmatter validation
+- llm-tldr SessionStart hook registration
+- ultrathink skill with model: opus
+- Hooks configuration and executability
+- Configuration hierarchy (global vs local)
+- OpenCode synchronization
+- Ralph backups and context preservation
+
+### OpenCode Synchronization (v2.40)
+
+Sync Claude Code configuration to OpenCode with naming conversion:
+
+```bash
+ralph sync-to-opencode           # Sync ~/.claude/ → ~/.config/opencode/
+ralph sync-to-opencode --dry-run # Preview changes
+```
+
+**Mapping** (Claude plural → OpenCode singular):
+- `~/.claude/skills/` → `~/.config/opencode/skill/`
+- `~/.claude/agents/` → `~/.config/opencode/agent/`
+- `~/.claude/commands/` → `~/.config/opencode/command/`
 
 ### LLM-TLDR Integration (95% Token Savings)
 

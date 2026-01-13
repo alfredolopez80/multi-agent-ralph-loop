@@ -92,3 +92,166 @@ def pytest_collection_modifyitems(config, items):
         # Add integration marker to integration tests
         if "integration" in item.nodeid.lower():
             item.add_marker(pytest.mark.integration)
+
+
+# ============================================================
+# Multi-Agent Ralph v2.40 Fixtures
+# ============================================================
+
+@pytest.fixture(scope="session")
+def home_dir():
+    """Return user's home directory."""
+    return os.path.expanduser("~")
+
+
+@pytest.fixture(scope="session")
+def claude_global_dir(home_dir):
+    """Return Claude Code global configuration directory."""
+    return os.path.join(home_dir, ".claude")
+
+
+@pytest.fixture(scope="session")
+def opencode_dir(home_dir):
+    """Return OpenCode configuration directory."""
+    return os.path.join(home_dir, ".config", "opencode")
+
+
+@pytest.fixture(scope="session")
+def ralph_data_dir(home_dir):
+    """Return Ralph data directory."""
+    return os.path.join(home_dir, ".ralph")
+
+
+@pytest.fixture(scope="session")
+def global_skills_dir(claude_global_dir):
+    """Return global skills directory."""
+    return os.path.join(claude_global_dir, "skills")
+
+
+@pytest.fixture(scope="session")
+def global_agents_dir(claude_global_dir):
+    """Return global agents directory."""
+    return os.path.join(claude_global_dir, "agents")
+
+
+@pytest.fixture(scope="session")
+def global_hooks_dir(claude_global_dir):
+    """Return global hooks directory."""
+    return os.path.join(claude_global_dir, "hooks")
+
+
+@pytest.fixture(scope="session")
+def global_commands_dir(claude_global_dir):
+    """Return global commands directory."""
+    return os.path.join(claude_global_dir, "commands")
+
+
+@pytest.fixture(scope="session")
+def settings_json_path(claude_global_dir):
+    """Return path to global settings.json."""
+    return os.path.join(claude_global_dir, "settings.json")
+
+
+@pytest.fixture(scope="session")
+def github_projects_dir(home_dir):
+    """Return GitHub projects directory."""
+    return os.path.join(home_dir, "Documents", "GitHub")
+
+
+@pytest.fixture
+def critical_skills():
+    """List of critical skills that must exist for v2.40."""
+    return [
+        "orchestrator",
+        "clarify",
+        "gates",
+        "adversarial",
+        "ultrathink",
+        "retrospective",
+        "loop",
+        "parallel",
+    ]
+
+
+@pytest.fixture
+def critical_hooks():
+    """List of critical hooks that must exist for v2.40."""
+    return [
+        "session-start-ledger.sh",
+        "session-start-tldr.sh",
+        "pre-compact-handoff.sh",
+        "quality-gates.sh",
+        "git-safety-guard.py",
+        "auto-sync-global.sh",
+    ]
+
+
+@pytest.fixture
+def tldr_available():
+    """Check if llm-tldr is installed and available."""
+    return shutil.which("tldr") is not None
+
+
+@pytest.fixture
+def load_settings_json(settings_json_path):
+    """Load and return settings.json content."""
+    import json
+
+    def _load():
+        if os.path.exists(settings_json_path):
+            with open(settings_json_path) as f:
+                return json.load(f)
+        return {}
+    return _load
+
+
+@pytest.fixture
+def validate_skill_frontmatter():
+    """Validator for skill frontmatter."""
+    import yaml
+
+    def _validate(skill_path: str) -> dict:
+        """Validate skill frontmatter and return parsed content."""
+        result = {
+            "valid": False,
+            "has_frontmatter": False,
+            "frontmatter": {},
+            "errors": []
+        }
+
+        if not os.path.exists(skill_path):
+            result["errors"].append(f"File not found: {skill_path}")
+            return result
+
+        with open(skill_path) as f:
+            content = f.read()
+
+        # Check for frontmatter
+        if not content.startswith("---"):
+            result["errors"].append("No frontmatter found (must start with ---)")
+            return result
+
+        # Extract frontmatter
+        parts = content.split("---", 2)
+        if len(parts) < 3:
+            result["errors"].append("Invalid frontmatter format")
+            return result
+
+        result["has_frontmatter"] = True
+
+        try:
+            frontmatter = yaml.safe_load(parts[1])
+            result["frontmatter"] = frontmatter or {}
+
+            # Validate required fields
+            if "description" not in result["frontmatter"]:
+                result["errors"].append("Missing 'description' in frontmatter")
+
+            result["valid"] = len(result["errors"]) == 0
+
+        except yaml.YAMLError as e:
+            result["errors"].append(f"YAML parse error: {e}")
+
+        return result
+
+    return _validate
