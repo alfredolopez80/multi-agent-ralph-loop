@@ -344,6 +344,27 @@ check_opencode() {
     else
         check_warn "OpenCode agents directory not found"
     fi
+
+    # Check for Claude model references (should be ZERO for OpenCode compatibility)
+    local claude_refs
+    claude_refs=$(grep -r "model:.*opus\|model:.*sonnet\|model:.*haiku" "$OPENCODE_DIR" --include="*.md" 2>/dev/null | wc -l | tr -d ' ')
+
+    if [ "$claude_refs" -eq 0 ]; then
+        check_pass "No Claude model references in OpenCode (compatible)"
+    else
+        check_fail "Found $claude_refs Claude model references in OpenCode"
+        check_info "Run: ./scripts/migrate-opencode-models.sh to fix"
+    fi
+
+    # Verify opencode.json uses MiniMax/OpenAI models
+    local config_file="${OPENCODE_DIR}/opencode.json"
+    if [ -f "$config_file" ]; then
+        if grep -q "minimax\|openai\|gpt-5" "$config_file"; then
+            check_pass "opencode.json uses compatible models"
+        else
+            check_warn "opencode.json may use unsupported models"
+        fi
+    fi
 }
 
 # ==============================================================================
