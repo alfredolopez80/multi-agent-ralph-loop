@@ -14,17 +14,20 @@
 | `/retrospective` | Post-task analysis and improvements |
 | `/parallel` | Run multiple loops concurrently |
 
-### Orchestration Flow (8 Steps)
+### Orchestration Flow (8 Steps) - v2.42
 
 ```
 0. AUTO-PLAN    → Enter Plan Mode (unless trivial)
 1. CLARIFY      → AskUserQuestion intensively
+1b. SOCRATIC    → Present 2-3 design alternatives (v2.42)
 2. CLASSIFY     → Complexity 1-10, model routing
 2b. WORKTREE    → Ask user about isolated worktree
 3. PLAN         → Write plan, get approval
 4. DELEGATE     → Route to model/agent
-5. EXECUTE      → Parallel subagents (Ralph Loop)
-6. VALIDATE     → Quality gates + Adversarial
+5. EXECUTE      → Parallel subagents + 3-Fix Rule (v2.42)
+6. VALIDATE     → Two-Stage Review (v2.42):
+                  Stage 1: Spec Compliance (gates)
+                  Stage 2: Code Quality (adversarial)
 7. RETROSPECT   → Analyze and improve
 ```
 
@@ -61,6 +64,7 @@ Based on analysis of [planning-with-files](https://github.com/OthmanAdi/planning
 
 | Skill | Improvement |
 |-------|-------------|
+| `/orchestrator` | **Full v2.42 Integration**: Step 1b Socratic, Step 6 Two-Stage, 3-Fix Rule in Anti-Patterns |
 | `/adversarial` | **Two-Stage Review**: Stage 1 (spec compliance) → Stage 2 (code quality) |
 | `systematic-debugging` | **3-Fix Rule Enforcement**: Mandatory escalation after 3 failed attempts |
 | `/clarify` | **Socratic Design**: Present 2-3 alternatives with trade-offs |

@@ -30,6 +30,7 @@ Based on analysis of [planning-with-files](https://github.com/OthmanAdi/planning
 
 | Skill | Changes |
 |-------|---------|
+| `orchestrator/SKILL.md` | Step 1b Socratic Design, Step 6 Two-Stage Review, 3-Fix Rule in Anti-Patterns |
 | `adversarial/SKILL.md` | Two-Stage Review (compliance → quality) |
 | `systematic-debugging/SKILL.md` | 3-Fix Rule with mandatory escalation message |
 | `deep-clarification.md` | Phase 5: Socratic Design Exploration |

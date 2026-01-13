@@ -572,22 +572,25 @@ The fundamental iteration pattern ensuring quality through validation:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Full Orchestration Flow (8 Steps)
+### 2. Full Orchestration Flow (8 Steps) - v2.42
 
 Complete workflow from task request to verified completion:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    ORCHESTRATOR (Opus)                          │
+│                    ORCHESTRATOR (Opus) v2.42                    │
 │                                                                 │
 │  0. AUTO-PLAN   → EnterPlanMode (automatic for non-trivial)    │
 │  1. CLARIFY     → AskUserQuestion (MUST_HAVE/NICE_TO_HAVE)     │
+│  1b. SOCRATIC   → Present 2-3 design alternatives (v2.42)      │
 │  2. CLASSIFY    → task-classifier (complexity 1-10)            │
 │  2b. WORKTREE   → Ask user: "Requires isolated worktree?"      │
 │  3. PLAN        → Write detailed plan, get approval            │
 │  4. DELEGATE    → Route to optimal model                       │
-│  5. EXECUTE     → Parallel subagents (in worktree if selected) │
-│  6. VALIDATE    → Quality gates + Adversarial validation       │
+│  5. EXECUTE     → Parallel subagents + 3-Fix Rule (v2.42)      │
+│  6. VALIDATE    → Two-Stage Review (v2.42):                    │
+│                   Stage 1: Spec Compliance (gates)             │
+│                   Stage 2: Code Quality (adversarial)          │
 │  7. RETROSPECT  → Self-improvement proposals                   │
 │  7b. PR REVIEW  → If worktree: Claude + Codex review → merge   │
 └─────────────────────────────────────────────────────────────────┘
@@ -650,20 +653,33 @@ Iterative security auditing until zero vulnerabilities:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 4. Adversarial Spec Refinement
+### 4. Adversarial Spec Refinement (Two-Stage Review v2.42)
 
-Multi-model debate to converge on a complete spec (env-aware models):
+Multi-model debate with two-stage validation:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│              ADVERSARIAL-SPEC REFINEMENT                        │
+│              ADVERSARIAL TWO-STAGE REVIEW (v2.42)               │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  Draft Spec  ──▶  Model Critique  ──▶  Synthesize Updates       │
-│      │                 │                       │               │
-│      └─────────────────┴──────────▶  Repeat  ───┘               │
+│  STAGE 1: SPEC COMPLIANCE (Exit before Stage 2 if fails)       │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ [ ] Meets all stated requirements                        │  │
+│  │ [ ] Covers all use cases                                 │  │
+│  │ [ ] Respects constraints                                 │  │
+│  │ [ ] Handles edge cases                                   │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                         │                                       │
+│                         ▼ PASS                                  │
+│  STAGE 2: CODE QUALITY                                          │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ [ ] Follows codebase patterns                            │  │
+│  │ [ ] Performance OK                                       │  │
+│  │ [ ] Security applied                                     │  │
+│  │ [ ] Tests adequate                                       │  │
+│  └──────────────────────────────────────────────────────────┘  │
 │                                                                 │
-│  Output: finalized PRD/tech spec                                │
+│  Output: finalized PRD/tech spec + quality validation           │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -1038,13 +1054,20 @@ See [LICENSE](LICENSE) for details.
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
 
-### Latest: v2.40.0 (2026-01-13)
+### Latest: v2.42.0 (2026-01-13)
 
-- **OpenCode Model Migration**: Automatic conversion from Claude models (opus/sonnet/haiku) to OpenCode-compatible alternatives (gpt-5.2-codex/minimax-m2.1/minimax-m2.1-lightning)
-- **Integration Test Suite**: 26 pytest tests validate skills, hooks, llm-tldr, ultrathink, configuration hierarchy
-- **Validation Script**: `validate-integration.sh` with 25 checks for v2.40 components
+- **Two-Stage Review**: `/adversarial` separates Spec Compliance (Stage 1) → Code Quality (Stage 2)
+- **Socratic Design**: `/clarify` presents 2-3 design alternatives with trade-offs for architectural decisions
+- **3-Fix Rule Enforcement**: Mandatory escalation after 3 failed fix attempts (`/systematic-debugging`)
+- **Stop Hook Verification**: Validates completion checklist before session end (TODOs, git, lint, tests)
+- **Auto-Save Context (2-Action Rule)**: Auto-saves context every 5 operations to prevent mid-task loss
+- **Orchestrator Integration**: All v2.42 features integrated into 8-step workflow
+
+### v2.40.0 (2026-01-13)
+
+- **OpenCode Model Migration**: Automatic conversion from Claude models to OpenCode-compatible alternatives
+- **Integration Test Suite**: 26 pytest tests validate skills, hooks, llm-tldr, ultrathink
 - **Dual-Sync Architecture**: `ralph sync-to-opencode` synchronizes Claude Code config to OpenCode
-- **Model Compatibility Validation**: Automatic detection of Claude model references in OpenCode
 
 ### v2.39.0 (2026-01-12)
 
