@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.39-blue)
+![Version](https://img.shields.io/badge/version-2.40-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -18,6 +18,11 @@ The system addresses the fundamental challenge of AI-assisted coding: **ensuring
 ## About
 
 Ralph is a dual-runtime orchestrator that adapts model routing based on whether it is invoked from Claude Code or OpenCode. It standardizes workflows (clarify → plan → execute → validate) while letting each environment use the best available models.
+
+**v2.40 Highlights**:
+- **Full OpenCode Compatibility**: Automatic model migration from Claude (opus/sonnet/haiku) to OpenCode-compatible models (gpt-5.2-codex/minimax-m2.1)
+- **Integration Test Suite**: 26 pytest tests validate skills, hooks, llm-tldr, and configuration hierarchy
+- **Dual-Sync Architecture**: `ralph sync-to-opencode` maintains parallel Claude Code and OpenCode configurations
 
 ### What It Does
 
@@ -255,6 +260,55 @@ ralph tldr dead .              # Find dead code
 - `/tldr-context` - Optimized context for orchestrator
 
 **Installation**: `pip install llm-tldr`
+
+### OpenCode Model Migration & Integration Testing (v2.40)
+
+| Feature | Description |
+|---------|-------------|
+| **OpenCode Model Migration** | Automatic conversion from Claude models to OpenCode-compatible alternatives |
+| **26 Integration Tests** | Comprehensive pytest suite validates all v2.40 components |
+| **Dual-Sync Architecture** | Parallel configurations for Claude Code (`~/.claude/`) and OpenCode (`~/.config/opencode/`) |
+| **Model Compatibility Validation** | Automatic check for Claude model references in OpenCode config |
+| **Backup System** | Automatic backups before model migration |
+
+**Model Mapping (OpenCode Compatibility)**:
+
+| Claude Model | OpenCode Model | Use Case |
+|--------------|----------------|----------|
+| `opus` | `gpt-5.2-codex` | Complex reasoning, architecture |
+| `sonnet` | `minimax-m2.1` | Standard tasks, subagents |
+| `haiku` | `minimax-m2.1-lightning` | Fast tasks, quick validation |
+
+**Commands**:
+```bash
+# Sync Claude Code config to OpenCode (preserves structure)
+ralph sync-to-opencode
+
+# Migrate Claude models to OpenCode-compatible alternatives
+./scripts/migrate-opencode-models.sh
+./scripts/migrate-opencode-models.sh --dry-run  # Preview changes
+
+# Validate integration (25 checks)
+./scripts/validate-integration.sh
+ralph validate-integration
+
+# Run pytest suite
+pytest tests/test_v2_40_integration.py -v
+```
+
+**Test Coverage (v2.40)**:
+
+| Test Class | Tests | Purpose |
+|------------|-------|---------|
+| `TestSkillsDiscovery` | 3 | Global skills directory and critical skills |
+| `TestSkillFrontmatter` | 2 | YAML frontmatter validation |
+| `TestTldrIntegration` | 6 | llm-tldr installation and hooks |
+| `TestUltrathinkIntegration` | 3 | ultrathink skill with model: opus |
+| `TestHooksConfiguration` | 4 | Critical hooks and settings.json |
+| `TestConfigurationHierarchy` | 3 | Global vs local configuration |
+| `TestProjectInheritance` | 2 | Multi-project inheritance |
+| `TestOpenCodeSync` | 2 | OpenCode directory sync |
+| `TestRalphBackups` | 2 | Backup functionality |
 
 ### OpenAI Documentation Access (v2.37)
 
@@ -789,6 +843,10 @@ ralph pre-merge                # Pre-PR validation
 # Maintenance
 ralph self-update              # Sync scripts from repo
 ralph integrations             # Show tool status
+
+# OpenCode Sync (v2.40)
+ralph sync-to-opencode         # Sync to ~/.config/opencode/
+ralph validate-integration     # Run 25-check validation
 ```
 
 ### Slash Commands with Prefixes (v2.26)
@@ -848,9 +906,13 @@ multi-agent-ralph-loop/
 │   ├── tasks.json                  # Persistent task tracking
 │   └── tasks-schema.json           # Task validation schema
 ├── scripts/
-│   ├── ralph                       # Main CLI (v2.28.0)
-│   └── mmc                         # MiniMax wrapper
-├── tests/                          # 476+ tests
+│   ├── ralph                       # Main CLI (v2.40)
+│   ├── mmc                         # MiniMax wrapper
+│   ├── validate-integration.sh     # v2.40 integration validator
+│   └── migrate-opencode-models.sh  # Claude→OpenCode model migration
+├── tests/
+│   ├── conftest.py                 # Pytest fixtures (v2.40)
+│   └── test_v2_40_integration.py   # 26 integration tests
 ├── docs/
 │   └── git-worktree/               # Worktree documentation
 ├── CLAUDE.md                       # Quick reference
@@ -966,7 +1028,15 @@ See [LICENSE](LICENSE) for details.
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
 
-### Latest: v2.39.0 (2026-01-12)
+### Latest: v2.40.0 (2026-01-13)
+
+- **OpenCode Model Migration**: Automatic conversion from Claude models (opus/sonnet/haiku) to OpenCode-compatible alternatives (gpt-5.2-codex/minimax-m2.1/minimax-m2.1-lightning)
+- **Integration Test Suite**: 26 pytest tests validate skills, hooks, llm-tldr, ultrathink, configuration hierarchy
+- **Validation Script**: `validate-integration.sh` with 25 checks for v2.40 components
+- **Dual-Sync Architecture**: `ralph sync-to-opencode` synchronizes Claude Code config to OpenCode
+- **Model Compatibility Validation**: Automatic detection of Claude model references in OpenCode
+
+### v2.39.0 (2026-01-12)
 
 - **Ultrathink Doctrine**: Added ultrathink guidance across all agents and skills
 - **Domain-Specific Steps**: Each agent/skill now defines its workflow steps
