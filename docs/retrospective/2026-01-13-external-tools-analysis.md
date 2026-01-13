@@ -284,6 +284,7 @@ The recommended integrations focus on development discipline from superpowers (T
 | 3 | Two-Stage Review | ✅ | `~/.claude/skills/adversarial/SKILL.md` |
 | 4 | 3-Fix Rule Enforcement | ✅ | `~/.claude/skills/systematic-debugging/SKILL.md` |
 | 5 | Socratic Design Exploration | ✅ | `~/.claude/skills/deep-clarification.md` |
+| 6 | Orchestrator Integration | ✅ | `~/.claude/skills/orchestrator/SKILL.md` |
 
 ### Hooks Registered
 
