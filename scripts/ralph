@@ -24,7 +24,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.38.0"
+VERSION="2.42.0"
 RALPH_REPO_PATH=""  # Auto-detected if in ralph repo
 RALPH_DIR="${HOME}/.ralph"
 
@@ -2293,6 +2293,238 @@ cmd_tldr() {
             tldr "$TLDR_SUBCMD" "$@"
             ;;
     esac
+}
+
+# ===============================================================================
+# CONTEXT TREE (v2.42) - Uses LLM-TLDR Backend
+# ===============================================================================
+
+cmd_tree() {
+    local TREE_SUBCMD="${1:-help}"
+    shift || true
+
+    local TREE_GENERATOR="${HOME}/.claude/scripts/context-tree-generator.py"
+    local TREE_INDEX="${HOME}/.ralph/context-tree/tree-index.json"
+
+    if [ ! -f "$TREE_GENERATOR" ]; then
+        log_error "Context tree generator not found"
+        log_info "Expected at: $TREE_GENERATOR"
+        exit 1
+    fi
+
+    case "$TREE_SUBCMD" in
+        build|init)
+            local PROJECT_PATH="${1:-.}"
+            PROJECT_PATH=$(validate_path "$PROJECT_PATH")
+            log_info "Building context tree using llm-tldr backend..."
+            log_info "  Project: $PROJECT_PATH"
+            python3 "$TREE_GENERATOR" build --project "$PROJECT_PATH"
+            ;;
+        curit|curate|add)
+            if [ -z "${1:-}" ]; then
+                echo ""
+                echo "╔═══════════════════════════════════════════════════════════════╗"
+                echo "║  CONTEXT TREE CURIT: Index file with description (v2.42)      ║"
+                echo "╠═══════════════════════════════════════════════════════════════╣"
+                echo "║                                                               ║"
+                echo "║  Usage: ralph tree curit \"<description>\" <file>               ║"
+                echo "║                                                               ║"
+                echo "║  Examples:                                                    ║"
+                echo "║    ralph tree curit \"Database schema\" prisma/schema.prisma    ║"
+                echo "║    ralph tree curit \"Auth API\" src/auth/login.py              ║"
+                echo "║    ralph tree curit \"Config\" .env.example                     ║"
+                echo "║                                                               ║"
+                echo "║  Uses llm-tldr for 95% token savings                          ║"
+                echo "║  Auto-detects domain from path and content                    ║"
+                echo "╚═══════════════════════════════════════════════════════════════╝"
+                exit 1
+            fi
+            local DESCRIPTION="$1"
+            local FILE_PATH="${2:-.}"
+            FILE_PATH=$(validate_path "$FILE_PATH")
+            log_info "Curating: $FILE_PATH"
+            log_info "  Description: $DESCRIPTION"
+            python3 "$TREE_GENERATOR" curit --file "$FILE_PATH" --description "$DESCRIPTION"
+            ;;
+        show|view)
+            local DOMAIN="${1:-}"
+            if [ -n "$DOMAIN" ]; then
+                python3 "$TREE_GENERATOR" show --domain "$DOMAIN"
+            else
+                python3 "$TREE_GENERATOR" show
+            fi
+            ;;
+        domains|list)
+            python3 "$TREE_GENERATOR" domains
+            ;;
+        update)
+            local PROJECT_PATH="${1:-.}"
+            shift || true
+            local CHANGED_FILES="$*"
+            if [ -z "$CHANGED_FILES" ]; then
+                # Get recently changed files from git
+                CHANGED_FILES=$(git diff --name-only HEAD~3 2>/dev/null || true)
+            fi
+            if [ -n "$CHANGED_FILES" ]; then
+                log_info "Updating context tree with changes..."
+                python3 "$TREE_GENERATOR" update --project "$PROJECT_PATH" --changes $CHANGED_FILES
+            else
+                log_warning "No changed files to update"
+            fi
+            ;;
+        push)
+            local TEAM_DIR=".ralph-team/context-tree"
+            if [ ! -f "$TREE_INDEX" ]; then
+                log_error "No context tree found. Run: ralph tree build"
+                exit 1
+            fi
+            mkdir -p "$TEAM_DIR"
+            cp "$TREE_INDEX" "$TEAM_DIR/"
+            cp -r "${HOME}/.ralph/context-tree/domains" "$TEAM_DIR/" 2>/dev/null || true
+            git add "$TEAM_DIR" 2>/dev/null || true
+            log_success "Context tree pushed to .ralph-team/"
+            log_info "Run 'git commit' to share with team"
+            ;;
+        pull)
+            local TEAM_DIR=".ralph-team/context-tree"
+            if [ ! -d "$TEAM_DIR" ]; then
+                log_error "No team context tree found at $TEAM_DIR"
+                exit 1
+            fi
+            mkdir -p "${HOME}/.ralph/context-tree"
+            # Merge team tree with local (team takes precedence for new domains)
+            if [ -f "$TEAM_DIR/tree-index.json" ]; then
+                python3 -c "
+import json
+from pathlib import Path
+
+team_tree = json.load(open('$TEAM_DIR/tree-index.json'))
+local_tree_path = Path('$TREE_INDEX')
+
+if local_tree_path.exists():
+    local_tree = json.load(open(local_tree_path))
+    # Merge domains (team domains added to local)
+    for domain, data in team_tree.get('domains', {}).items():
+        if domain not in local_tree.get('domains', {}):
+            local_tree.setdefault('domains', {})[domain] = data
+    json.dump(local_tree, open(local_tree_path, 'w'), indent=2)
+else:
+    json.dump(team_tree, open(local_tree_path, 'w'), indent=2)
+print('Merged team context tree')
+"
+            fi
+            log_success "Context tree pulled from team"
+            ;;
+        help|*)
+            echo ""
+            echo "╔═══════════════════════════════════════════════════════════════╗"
+            echo "║  CONTEXT TREE (v2.42): Structured context using llm-tldr      ║"
+            echo "╠═══════════════════════════════════════════════════════════════╣"
+            echo "║                                                               ║"
+            echo "║  Commands:                                                    ║"
+            echo "║    ralph tree build [path]    Build tree from project         ║"
+            echo "║    ralph tree curit \"desc\" f  Curate file to tree             ║"
+            echo "║    ralph tree show [domain]   Show tree or specific domain    ║"
+            echo "║    ralph tree domains         List all domains                ║"
+            echo "║    ralph tree update          Update with recent changes      ║"
+            echo "║                                                               ║"
+            echo "║  Team Sync:                                                   ║"
+            echo "║    ralph tree push            Push to .ralph-team/            ║"
+            echo "║    ralph tree pull            Pull from team                  ║"
+            echo "║                                                               ║"
+            echo "║  Uses llm-tldr as backend for 95% token savings               ║"
+            echo "║  Auto-detects domains from code structure                     ║"
+            echo "╚═══════════════════════════════════════════════════════════════╝"
+            ;;
+    esac
+}
+
+# ===============================================================================
+# CONTEXT QUERY (v2.42) - Uses Context Tree + TLDR
+# ===============================================================================
+
+cmd_query() {
+    local QUERY="${*:-}"
+
+    if [ -z "$QUERY" ]; then
+        echo ""
+        echo "╔═══════════════════════════════════════════════════════════════╗"
+        echo "║  CONTEXT QUERY (v2.42): Search context tree with TLDR         ║"
+        echo "╠═══════════════════════════════════════════════════════════════╣"
+        echo "║                                                               ║"
+        echo "║  Usage: ralph query \"<natural language question>\"             ║"
+        echo "║                                                               ║"
+        echo "║  Examples:                                                    ║"
+        echo "║    ralph query \"How does authentication work?\"                ║"
+        echo "║    ralph query \"database connection handling\"                 ║"
+        echo "║    ralph query \"error handling patterns\"                      ║"
+        echo "║                                                               ║"
+        echo "║  Returns:                                                     ║"
+        echo "║    - Matching domain from context tree                        ║"
+        echo "║    - Relevant files with descriptions                         ║"
+        echo "║    - TLDR-optimized context (~800 tokens vs ~20,000)          ║"
+        echo "╚═══════════════════════════════════════════════════════════════╝"
+        return 0
+    fi
+
+    local TREE_INDEX="${HOME}/.ralph/context-tree/tree-index.json"
+
+    # Check if tree exists
+    if [ ! -f "$TREE_INDEX" ]; then
+        log_warning "No context tree found."
+        log_info "Run 'ralph tree build' first, or falling back to tldr semantic only"
+        echo ""
+        tldr semantic "$QUERY" . --limit 5
+        return 0
+    fi
+
+    log_info "Querying context tree: $QUERY"
+    echo ""
+
+    # Step 1: Run TLDR semantic search
+    echo "## TLDR Semantic Results"
+    echo ""
+    SEMANTIC_OUTPUT=$(tldr semantic "$QUERY" . --limit 5 2>/dev/null || true)
+    echo "$SEMANTIC_OUTPUT"
+    echo ""
+
+    # Step 2: Match against context tree domains
+    echo "## Context Tree Matches"
+    echo ""
+    python3 -c "
+import json
+from pathlib import Path
+
+tree = json.load(open('$TREE_INDEX'))
+semantic_output = '''$SEMANTIC_OUTPUT'''
+
+# Find matching domains
+matched_domains = {}
+for domain, data in tree.get('domains', {}).items():
+    for f in data.get('files', []):
+        file_path = f.get('path', '')
+        if file_path and file_path in semantic_output:
+            if domain not in matched_domains:
+                matched_domains[domain] = {'files': [], 'tokens': data.get('total_tokens', 0)}
+            matched_domains[domain]['files'].append({
+                'path': file_path,
+                'desc': f.get('description', 'No description')
+            })
+
+if matched_domains:
+    for domain, data in sorted(matched_domains.items(), key=lambda x: -len(x[1]['files'])):
+        print(f'**Domain**: {domain}')
+        print(f'**Files**: {len(data[\"files\"])} | **Tokens**: {data[\"tokens\"]}')
+        for f in data['files'][:3]:
+            print(f'  - {f[\"path\"]}')
+            print(f'    {f[\"desc\"]}')
+        print()
+else:
+    print('No domain matches found in context tree.')
+    print('Consider running: ralph tree build')
+"
+
+    return 0
 }
 
 # ===============================================================================
@@ -5278,6 +5510,16 @@ main() {
         # LLM-TLDR (v2.37)
         tldr|code-analysis|token-optimize)
             cmd_tldr "$@"
+            ;;
+
+        # Context Tree (v2.42)
+        tree|context-tree)
+            cmd_tree "$@"
+            ;;
+
+        # Context Query (v2.42)
+        query|context-query|cq)
+            cmd_query "$@"
             ;;
 
         # Context Engineering (v2.35)

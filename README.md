@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.41-blue)
+![Version](https://img.shields.io/badge/version-2.42-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -19,11 +19,15 @@ The system addresses the fundamental challenge of AI-assisted coding: **ensuring
 
 Ralph is a dual-runtime orchestrator that adapts model routing based on whether it is invoked from Claude Code or OpenCode. It standardizes workflows (clarify → plan → execute → validate) while letting each environment use the best available models.
 
+**v2.42 Highlights**:
+- **Stop Hook Verification**: Validates completitud before session end (TODOs, git status, lint, tests)
+- **2-Action Rule (Auto-Save)**: Auto-saves context every 5 operations to prevent mid-task loss
+- **Two-Stage Review**: `/adversarial` separates Spec Compliance → Code Quality
+- **3-Fix Rule Enforcement**: Mandatory escalation after 3 failed fix attempts
+- **Socratic Design**: `/clarify` presents 2-3 alternatives with trade-offs
+
 **v2.41 Highlights**:
 - **Context Engineering Optimization**: `context: fork` for all Task()-using skills, progress.md tracking, PIN/Lookup tables
-- **Session Refresh Awareness**: PreCompact hook generates hints when context approaches compaction threshold
-- **Automatic Progress Tracking**: PostToolUse hook logs Edit/Write/Bash results to `.claude/progress.md`
-- **Improved Search Hit Rate**: PIN system (`/pin`) creates keyword lookup tables for better search tool precision
 
 **v2.40 Highlights**:
 - **Full OpenCode Compatibility**: Automatic model migration from Claude (opus/sonnet/haiku) to OpenCode-compatible models (gpt-5.2-codex/minimax-m2.1)

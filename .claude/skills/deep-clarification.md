@@ -252,11 +252,92 @@ AskUserQuestion:
 4. **Context-aware** - Skip questions you can answer from codebase
 5. **Summarize understanding** - Confirm before proceeding
 
+## Phase 5: Socratic Design Exploration (v2.42)
+
+**Origin:** superpowers pattern - explore alternatives before committing.
+
+For non-trivial architectural decisions, ALWAYS present alternatives:
+
+```yaml
+AskUserQuestion:
+  questions:
+    - question: "I've identified multiple approaches. Which direction do you prefer?"
+      header: "Design Choice"
+      multiSelect: false
+      options:
+        - label: "Option A (Recommended)"
+          description: "[Approach A] - Trade-off: [pros/cons]"
+        - label: "Option B"
+          description: "[Approach B] - Trade-off: [pros/cons]"
+        - label: "Option C"
+          description: "[Approach C] - Trade-off: [pros/cons]"
+```
+
+### When to Use Socratic Exploration
+
+**MANDATORY when:**
+- Adding new architectural patterns
+- Choosing between libraries/frameworks
+- Designing data models with multiple valid approaches
+- Cross-cutting changes affecting 3+ modules
+
+**Template for Exploration:**
+
+```markdown
+## Design Exploration: [Feature Name]
+
+### Option A: [Name]
+**Approach:** [Brief description]
+**Pros:**
+- [Pro 1]
+- [Pro 2]
+**Cons:**
+- [Con 1]
+- [Con 2]
+**Best for:** [Use case]
+
+### Option B: [Name]
+**Approach:** [Brief description]
+**Pros:**
+- [Pro 1]
+- [Pro 2]
+**Cons:**
+- [Con 1]
+- [Con 2]
+**Best for:** [Use case]
+
+### Option C: [Name]
+[Same structure]
+
+### Recommendation
+I recommend **Option [X]** because [justification based on project context].
+
+Do you agree, or would you prefer a different approach?
+```
+
+### Example: Database Pattern Choice
+
+```yaml
+AskUserQuestion:
+  questions:
+    - question: "For the user activity log, which storage pattern?"
+      header: "Storage"
+      multiSelect: false
+      options:
+        - label: "Event Sourcing (Recommended)"
+          description: "Full audit trail, replay capability. More complex queries."
+        - label: "Traditional CRUD"
+          description: "Simple queries, less storage. No history replay."
+        - label: "Hybrid"
+          description: "CRUD + event log. Balance of both. More maintenance."
+```
+
 ## Integration
 
 After clarification is complete:
 
 1. **Summarize** all answers in a structured format
-2. **Classify** the task complexity (1-10)
-3. **Enter Plan Mode** for non-trivial tasks
-4. **Proceed** only when user confirms understanding is correct
+2. **Present design alternatives** if architectural decisions exist (Phase 5)
+3. **Classify** the task complexity (1-10)
+4. **Enter Plan Mode** for non-trivial tasks
+5. **Proceed** only when user confirms understanding is correct

@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.42.0] - 2026-01-13
+
+### Added (Context Preservation & Review Improvements)
+
+Based on analysis of [planning-with-files](https://github.com/OthmanAdi/planning-with-files) and [superpowers](https://github.com/obra/superpowers):
+
+- **Stop Hook Verification**: Validates completitud before session end (TODOs, git status, lint errors, test failures)
+- **2-Action Rule (Auto-Save)**: Auto-saves context every 5 operations to prevent mid-task context loss
+- **Two-Stage Review**: `/adversarial` now separates Spec Compliance (Stage 1) from Code Quality (Stage 2)
+- **3-Fix Rule Enforcement**: `systematic-debugging` skill now has mandatory escalation after 3 failed fix attempts
+- **Socratic Design Exploration**: `/clarify` presents 2-3 alternatives with trade-offs for architectural decisions
+
+### New Hooks (v2.42)
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `stop-verification.sh` | Stop | Verify completion checklist before session end |
+| `auto-save-context.sh` | PostToolUse(Edit,Write,Bash,Read,Grep,Glob) | Auto-save context every N operations |
+
+### Modified Skills (v2.42)
+
+| Skill | Changes |
+|-------|---------|
+| `adversarial/SKILL.md` | Two-Stage Review (compliance → quality) |
+| `systematic-debugging/SKILL.md` | 3-Fix Rule with mandatory escalation message |
+| `deep-clarification.md` | Phase 5: Socratic Design Exploration |
+
+### Configuration (v2.42)
+
+- **Auto-save interval**: 5 operations (configurable via `RALPH_AUTO_SAVE_INTERVAL`)
+- **Context snapshots**: `~/.ralph/state/context-snapshot-*.md` (keeps last 10)
+
+### Origin
+
+Improvements extracted from:
+- **planning-with-files**: Stop Hook, 2-Action Rule (Manus "Context Engineering" pattern)
+- **superpowers**: Two-Stage Review, 3-Fix Rule, Socratic Design (95% first-time fix rate)
+
+### Documentation
+
+- Added retrospective analysis: `docs/retrospective/2026-01-13-external-tools-analysis.md`
+
+---
+
 ## [2.41.0] - 2026-01-13
 
 ### Added (Context Engineering Optimization)

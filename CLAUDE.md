@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.41
+# Multi-Agent Ralph v2.42
 
 ## Multi-Agent Ralph Loop Orchestration
 
@@ -44,7 +44,56 @@
 
 Orchestration with automatic planning, intensive clarification, git worktree isolation, adversarial validation, 9-language quality gates, context engineering, and automatic context preservation.
 
-> **Historical versions**: See [CHANGELOG.md](./CHANGELOG.md) for v2.19-v2.40 details.
+> **Historical versions**: See [CHANGELOG.md](./CHANGELOG.md) for v2.19-v2.41 details.
+
+## v2.42 Context Preservation & Review Improvements
+
+Based on analysis of [planning-with-files](https://github.com/OthmanAdi/planning-with-files) and [superpowers](https://github.com/obra/superpowers).
+
+### New Hooks (v2.42)
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `stop-verification.sh` | Stop | Verify completion checklist before session end |
+| `auto-save-context.sh` | PostToolUse | Auto-save context every 5 operations |
+
+### Improved Skills (v2.42)
+
+| Skill | Improvement |
+|-------|-------------|
+| `/adversarial` | **Two-Stage Review**: Stage 1 (spec compliance) → Stage 2 (code quality) |
+| `systematic-debugging` | **3-Fix Rule Enforcement**: Mandatory escalation after 3 failed attempts |
+| `/clarify` | **Socratic Design**: Present 2-3 alternatives with trade-offs |
+
+### Stop Verification Checklist
+
+Before session ends, the hook verifies:
+- [ ] All TODOs completed (from progress.md)
+- [ ] No uncommitted git changes
+- [ ] No recent lint errors
+- [ ] No recent test failures
+
+### Auto-Save Configuration
+
+```bash
+export RALPH_AUTO_SAVE_INTERVAL=5  # Save every N operations (default: 5)
+```
+
+Context snapshots stored in `~/.ralph/state/context-snapshot-*.md` (keeps last 10).
+
+### Two-Stage Review Process
+
+```
+Stage 1: Spec Compliance          Stage 2: Code Quality
+├── Meets requirements?           ├── Follows patterns?
+├── Covers use cases?             ├── Performance OK?
+├── Respects constraints?         ├── Security applied?
+└── Handles edge cases?           └── Tests adequate?
+```
+
+**Exit Stage 1 before proceeding to Stage 2.**
+
+---
 
 ## v2.41 Context Engineering
 
@@ -340,3 +389,35 @@ mm=mmc mml="mmc --loop 30"
 ## Completion
 
 `VERIFIED_DONE` = plan approved + MUST_HAVE answered + classified + implemented + gates passed + adversarial passed (if critical) + retrospective done
+
+## v2.42 Retrospective Improvements (from @claudecoders tweet)
+
+Based on Claude Code official prompt structure (2026-01-13):
+
+### Self-Identification Guidelines
+- Claude should NOT refer to itself as "Claude Code" unless directly asked
+- Claude runs on top of Claude Code and Claude Agent SDK, but IS NOT Claude Code
+- Focus on user-facing capabilities, not implementation details
+
+### Model Versions Update
+Update model references to latest versions:
+| Model | Current | Latest Available |
+|-------|---------|------------------|
+| Opus | (not specified) | `claude-opus-4-5-20251101` |
+| Sonnet | sonnet | `claude-sonnet-4-5-20250929` |
+| Haiku | haiku | `claude-haiku-4-5-20251001` |
+
+### Security Sandbox Pattern
+Claude Code runs in a lightweight Linux VM providing **secure sandbox** for code execution. Consider:
+- Adding sandbox validation for sensitive operations
+- Documenting workspace isolation behavior
+- Implementing controlled access patterns for workspace folders
+
+### Product Context (Optional)
+When users ask about Claude/Anthropic products, Claude can mention:
+- Claude Code (command line tool for agentic coding)
+- Claude for Chrome (browsing agent) - beta
+- Claude for Excel (spreadsheet agent) - beta
+- API and developer platform access
+
+**Source**: https://x.com/claudecoders/status/2010895731549487409
