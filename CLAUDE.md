@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.43
+# Multi-Agent Ralph v2.44
 
 ## Multi-Agent Ralph Loop Orchestration
 
@@ -6,30 +6,33 @@
 
 | Command | Description |
 |---------|-------------|
-| `/orchestrator` | **Full 8-step workflow**: clarify → classify → worktree → plan → execute → validate → retrospect |
+| `/orchestrator` | **Full 10-step workflow**: clarify → classify → worktree → plan → persist → plan mode → execute → validate → retrospect |
 | `/loop` | Execute until VERIFIED_DONE with quality gates |
 | `/clarify` | Intensive AskUserQuestion (MUST_HAVE + NICE_TO_HAVE) |
 | `/gates` | Quality validation (format, lint, tests) |
 | `/adversarial` | Adversarial spec refinement (adversarial-spec) |
 | `/retrospective` | Post-task analysis and improvements |
 | `/parallel` | Run multiple loops concurrently |
-| `/lsp-explore` | **NEW** Token-free code navigation via LSP |
+| `/lsp-explore` | Token-free code navigation via LSP |
+| `/compact` | **NEW** Manual context save (extension workaround) |
 
-### Orchestration Flow (8 Steps) - v2.43
+### Orchestration Flow (10 Steps) - v2.44
 
 ```
-0. AUTO-PLAN    → Enter Plan Mode (unless trivial)
+0. EVALUATE     → Quick complexity assessment (trivial vs non-trivial)
 1. CLARIFY      → AskUserQuestion intensively
 1b. SOCRATIC    → Present 2-3 design alternatives (v2.42)
 2. CLASSIFY     → Complexity 1-10, model routing
 2b. WORKTREE    → Ask user about isolated worktree
-3. PLAN         → Write plan, get approval
-4. DELEGATE     → Route to model/agent
-5. EXECUTE      → Parallel subagents + 3-Fix Rule (v2.42)
-6. VALIDATE     → Two-Stage Review (v2.42):
+3. PLAN         → Design detailed plan (orchestrator analysis)
+3b. PERSIST     → Write to .claude/orchestrator-analysis.md ← NEW v2.44
+4. PLAN MODE    → EnterPlanMode (reads analysis as foundation)
+5. DELEGATE     → Route to model/agent
+6. EXECUTE      → Parallel subagents + 3-Fix Rule (v2.42)
+7. VALIDATE     → Two-Stage Review (v2.42):
                   Stage 1: Spec Compliance (gates)
                   Stage 2: Code Quality (adversarial)
-7. RETROSPECT   → Analyze and improve
+8. RETROSPECT   → Analyze and improve
 ```
 
 ### Usage Examples
@@ -48,7 +51,101 @@
 
 Orchestration with automatic planning, intensive clarification, git worktree isolation, adversarial validation, 9-language quality gates, context engineering, and automatic context preservation.
 
-> **Historical versions**: See [CHANGELOG.md](./CHANGELOG.md) for v2.19-v2.41 details.
+> **Historical versions**: See [CHANGELOG.md](./CHANGELOG.md) for v2.19-v2.42 details.
+
+## v2.44 Plan Mode Integration + Context Management
+
+### Plan Mode Integration (NEW)
+
+**Problem Solved**: The orchestrator's exhaustive analysis was being discarded when `EnterPlanMode` was called, causing Claude Code to generate a completely new plan from scratch.
+
+**Solution**: Filesystem-based handoff pattern:
+
+```
+Steps 0-3: Orchestrator Analysis (exhaustive)
+    ↓
+Step 3b: Write analysis to .claude/orchestrator-analysis.md
+    ↓
+Step 4: EnterPlanMode → Claude Code READS file → Refines plan (not from scratch)
+    ↓
+Steps 5-8: Execute, Validate, Retrospect
+```
+
+**Key Components**:
+| Component | Purpose |
+|-----------|---------|
+| `.claude/orchestrator-analysis.md` | Analysis file written by orchestrator |
+| `~/.claude/rules/plan-mode-orchestrator.md` | Rule that instructs Plan Mode to read analysis |
+| `~/.claude/hooks/plan-analysis-cleanup.sh` | Cleans up after ExitPlanMode (backs up to `~/.ralph/analysis/`) |
+
+**Benefits**:
+- ONE unified plan instead of conflicting orchestrator + Claude Code plans
+- User clarifications preserved through Plan Mode
+- Analysis file automatically cleaned up after ExitPlanMode
+
+---
+
+### Context Management for Extensions + Worktrees
+
+**Problem Solved**: GitHub issue #15021 - Claude Code hooks don't fire reliably in VSCode/Cursor extensions, causing context loss on compaction.
+
+### New Features (v2.44)
+
+| Feature | Description |
+|---------|-------------|
+| **Environment Detection** | Detects CLI vs VSCode/Cursor and adjusts behavior |
+| **Rich Context Extraction** | `context-extractor.py` captures git, progress, transcript |
+| **Manual Compact** | `/compact` skill + `ralph compact` for extensions |
+| **Worktree Symlinks** | Auto-symlink node_modules, .venv, etc. to main project |
+| **Native Worktree Fallback** | Works without WorkTrunk (wt) installed |
+| **Operation Counter** | Estimates context usage when /context fails |
+
+### New CLI Commands (v2.44)
+
+```bash
+# Context Management (Extension Workaround)
+ralph compact              # Manual context save (triggers pre-compact hook)
+ralph env                  # Show environment detection + feature flags
+
+# Worktree Enhancements
+ralph worktree "task"      # Now with symlinks + native fallback
+ralph worktree-sync-deps   # Repair dependency symlinks
+```
+
+### Extension Mode Detection
+
+| Environment | Detection Method | Capability |
+|-------------|------------------|------------|
+| CLI | `CLAUDE_CODE_ENTRYPOINT=cli` | Full |
+| VSCode | `VSCODE_PID` or entrypoint | Limited |
+| Cursor | `CURSOR_PID` or `TERM_PROGRAM` | Limited |
+| Unknown | Fallback | Limited (conservative) |
+
+### Context Warning Improvements
+
+When context reaches 80%+, warnings now include environment-specific recommendations:
+
+```
+⚠️  Context at 82%
+
+📌 Extension mode detected (vscode):
+  • Use /compact skill to manually save context
+  • Or run: ralph compact
+```
+
+### Worktree Dependency Symlinks
+
+New worktrees automatically symlink dependency directories:
+
+| Package Manager | Symlinked Directory |
+|-----------------|---------------------|
+| npm/yarn/pnpm/bun | `node_modules` |
+| cargo | `target` |
+| poetry/pip | `.venv`, `venv` |
+
+This saves disk space and avoids re-installing dependencies.
+
+---
 
 ## v2.43 Context Engineering & LSP Integration
 
@@ -417,18 +514,20 @@ Task:
 - MiniMax (8% cost): Second opinion with Opus-level quality
 - Haiku: NOT recommended (30%+ rework rate)
 
-## Mandatory Flow (8 Steps)
+## Mandatory Flow (10 Steps) - v2.44
 
 ```
-0. AUTO-PLAN    → EnterPlanMode (automatic)
+0. EVALUATE     → Quick complexity assessment
 1. /clarify     → AskUserQuestion (MUST_HAVE + NICE_TO_HAVE)
-2. /classify    → Complexity 1-10
+2. /classify    → Complexity 1-10, model routing
 2b. WORKTREE    → Ask about worktree isolation
-3. PLAN         → Write plan, get approval
-4. @orchestrator → Delegate to subagents
-5. ralph gates  → Quality gates (9 languages)
-6. /adversarial → adversarial-spec refinement (if complexity >= 7)
-7. /retrospective → Propose improvements
+3. PLAN         → Design detailed plan (orchestrator analysis)
+3b. PERSIST     → Write to .claude/orchestrator-analysis.md ← NEW v2.44
+4. PLAN MODE    → EnterPlanMode (reads analysis as foundation)
+5. @orchestrator → Delegate to subagents
+6. ralph gates  → Quality gates (9 languages)
+7. /adversarial → adversarial-spec refinement (if complexity >= 7)
+8. /retrospective → Propose improvements
 → VERIFIED_DONE
 ```
 

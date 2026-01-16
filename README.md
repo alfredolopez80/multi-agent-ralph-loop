@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.43-blue)
+![Version](https://img.shields.io/badge/version-2.44-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -19,13 +19,21 @@ The system addresses the fundamental challenge of AI-assisted coding: **ensuring
 
 Ralph is a dual-runtime orchestrator that adapts model routing based on whether it is invoked from Claude Code or OpenCode. It standardizes workflows (clarify → plan → execute → validate) while letting each environment use the best available models.
 
+**v2.44 Highlights**:
+- **Plan Mode Integration**: Orchestrator analysis now feeds INTO Claude Code's native Plan Mode (one unified plan)
+- **Step 3b: PERSIST**: Writes `.claude/orchestrator-analysis.md` before EnterPlanMode
+- **Global Rule**: `~/.claude/rules/plan-mode-orchestrator.md` instructs Plan Mode to read analysis file
+- **Auto-Cleanup Hook**: `plan-analysis-cleanup.sh` backs up and removes analysis after ExitPlanMode
+- **10-Step Workflow**: Expanded from 8 steps to include PERSIST and PLAN MODE steps
+- **Extension Workaround**: `/compact` skill for manual context save in VSCode/Cursor
+
 **v2.43 Highlights**:
 - **Claude-Mem Integration**: Semantic memory with 3-layer workflow (search → timeline → get_observations)
 - **PreToolUse additionalContext**: Session context injection for Task subagents
 - **LSP-Explore Skill**: Token-free code navigation (go-to-definition, find-references, hover)
 - **MCP auto:10 Optimization**: Deferred tool loading until 10% context usage
 - **StatusLine Git Enhancement**: Shows current branch/worktree with change indicators (⎇ main*)
-- **VERSION Markers**: All config files now have `# VERSION: 2.43.0` for tracking
+- **VERSION Markers**: All config files now have `# VERSION: 2.44.0` for tracking
 - **Config Cleanup**: `ralph cleanup-project-configs` removes old local configs for global inheritance
 - **Auto-Sync CLI**: `ralph sync-global` now auto-updates `~/.local/bin/ralph` (7-step sync)
 - **Modernized Skills**: YAML allowed-tools, agent field, hooks in frontmatter
@@ -75,7 +83,8 @@ Ralph is a dual-runtime orchestrator that adapts model routing based on whether 
 | Feature | Description |
 |---------|-------------|
 | **14 Specialized Agents** | 9 core + 5 auxiliary review agents |
-| **8-Step Workflow** | Auto-plan → Clarify → Classify → Worktree → Plan → Execute → Validate → Retrospect |
+| **10-Step Workflow (v2.44)** | Evaluate → Clarify → Classify → Worktree → Plan → Persist → Plan Mode → Execute → Validate → Retrospect |
+| **Plan Mode Integration** | Orchestrator analysis feeds INTO Claude Code's Plan Mode (unified plan) |
 | **Parallel Execution** | Multiple agents work simultaneously on independent subtasks |
 | **Model Routing** | Automatic selection: Opus (critical), Sonnet (standard), MiniMax (extended) |
 
@@ -583,27 +592,29 @@ The fundamental iteration pattern ensuring quality through validation:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Full Orchestration Flow (8 Steps) - v2.42
+### 2. Full Orchestration Flow (10 Steps) - v2.44
 
 Complete workflow from task request to verified completion:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    ORCHESTRATOR (Opus) v2.42                    │
+│                    ORCHESTRATOR (Opus) v2.44                    │
 │                                                                 │
-│  0. AUTO-PLAN   → EnterPlanMode (automatic for non-trivial)    │
+│  0. EVALUATE    → Quick complexity assessment (trivial?)       │
 │  1. CLARIFY     → AskUserQuestion (MUST_HAVE/NICE_TO_HAVE)     │
 │  1b. SOCRATIC   → Present 2-3 design alternatives (v2.42)      │
 │  2. CLASSIFY    → task-classifier (complexity 1-10)            │
 │  2b. WORKTREE   → Ask user: "Requires isolated worktree?"      │
-│  3. PLAN        → Write detailed plan, get approval            │
-│  4. DELEGATE    → Route to optimal model                       │
-│  5. EXECUTE     → Parallel subagents + 3-Fix Rule (v2.42)      │
-│  6. VALIDATE    → Two-Stage Review (v2.42):                    │
+│  3. PLAN        → Design detailed plan (orchestrator analysis) │
+│  3b. PERSIST    → Write to .claude/orchestrator-analysis.md    │  ← NEW v2.44
+│  4. PLAN MODE   → EnterPlanMode (reads analysis as foundation) │  ← NEW v2.44
+│  5. DELEGATE    → Route to optimal model                       │
+│  6. EXECUTE     → Parallel subagents + 3-Fix Rule (v2.42)      │
+│  7. VALIDATE    → Two-Stage Review (v2.42):                    │
 │                   Stage 1: Spec Compliance (gates)             │
 │                   Stage 2: Code Quality (adversarial)          │
-│  7. RETROSPECT  → Self-improvement proposals                   │
-│  7b. PR REVIEW  → If worktree: Claude + Codex review → merge   │
+│  8. RETROSPECT  → Self-improvement proposals                   │
+│  8b. PR REVIEW  → If worktree: Claude + Codex review → merge   │
 └─────────────────────────────────────────────────────────────────┘
         │
         ▼
@@ -1065,7 +1076,17 @@ See [LICENSE](LICENSE) for details.
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
 
-### Latest: v2.43.0 (2026-01-16)
+### Latest: v2.44.0 (2026-01-16)
+
+- **Plan Mode Integration**: Orchestrator analysis now feeds INTO Claude Code's native Plan Mode
+- **Step 3b: PERSIST**: New step writes `.claude/orchestrator-analysis.md` before EnterPlanMode
+- **Global Rule**: `~/.claude/rules/plan-mode-orchestrator.md` instructs Plan Mode to read analysis
+- **Auto-Cleanup Hook**: `plan-analysis-cleanup.sh` backs up to `~/.ralph/analysis/` and removes after ExitPlanMode
+- **10-Step Workflow**: Expanded from 8 steps to include EVALUATE, PERSIST, and PLAN MODE steps
+- **Unified Plan**: ONE plan instead of conflicting orchestrator + Claude Code plans
+- **Extension Workaround**: `/compact` skill for manual context save in VSCode/Cursor
+
+### v2.43.0 (2026-01-16)
 
 - **Claude-Mem Integration**: Semantic memory with 3-layer workflow (search → timeline → get_observations)
 - **PreToolUse additionalContext**: Session context injection for Task subagents via hook output
