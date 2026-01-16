@@ -456,7 +456,7 @@ ralph ledger load         # Load ledger
 ralph handoff create      # Create handoff
 
 # Sync & Maintenance (v2.43)
-ralph sync-global                 # Sync to ~/.claude/
+ralph sync-global                 # Sync to ~/.claude/ AND ~/.local/bin/ralph
 ralph sync-to-projects            # Sync to all projects
 ralph add-version-markers         # Add VERSION markers
 ralph cleanup-project-configs     # Remove redundant configs

@@ -27,6 +27,7 @@ Ralph is a dual-runtime orchestrator that adapts model routing based on whether 
 - **StatusLine Git Enhancement**: Shows current branch/worktree with change indicators (⎇ main*)
 - **VERSION Markers**: All config files now have `# VERSION: 2.43.0` for tracking
 - **Config Cleanup**: `ralph cleanup-project-configs` removes old local configs for global inheritance
+- **Auto-Sync CLI**: `ralph sync-global` now auto-updates `~/.local/bin/ralph` (7-step sync)
 - **Modernized Skills**: YAML allowed-tools, agent field, hooks in frontmatter
 
 **v2.42 Highlights**:

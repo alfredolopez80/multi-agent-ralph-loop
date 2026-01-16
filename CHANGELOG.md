@@ -31,6 +31,12 @@ Based on Claude Code v2.0.71-v2.1.9 analysis (43+ improvements).
 - **Cleanup command**: `ralph cleanup-project-configs` removes redundant local configs
 - **Safer defaults**: `--yolo` renamed to `--auto-approve` (backward compatible)
 
+#### Sync-Global Enhancement (NEW)
+- **7-step sync**: Now syncs agents, commands, skills, hooks, settings, scripts, AND ralph CLI
+- **Auto-CLI update**: `ralph sync-global` automatically updates `~/.local/bin/ralph`
+- **Auxiliary scripts**: `.claude/scripts/` synced to `~/.claude/scripts/`
+- **Line count diff**: Shows before/after line counts when updating CLI
+
 #### Context Preservation (claude-mem Integration)
 - **SessionStart hook enhanced**: Now integrates with claude-mem MCP for semantic context retrieval
 - **PreToolUse additionalContext**: Task calls automatically receive session goal and progress context

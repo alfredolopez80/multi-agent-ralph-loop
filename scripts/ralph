@@ -4089,7 +4089,7 @@ cmd_sync_global() {
     local ERRORS=0
 
     # 1. Sync Agents
-    log_info "[1/4] Syncing agents..."
+    log_info "[1/7] Syncing agents..."
     if [ -d "$REPO_PATH/.claude/agents" ]; then
         mkdir -p "$GLOBAL_DIR/agents"
         for agent in "$REPO_PATH/.claude/agents"/*.md; do
@@ -4120,7 +4120,7 @@ cmd_sync_global() {
     fi
 
     # 2. Sync Commands (slash commands)
-    log_info "[2/4] Syncing commands..."
+    log_info "[2/7] Syncing commands..."
     if [ -d "$REPO_PATH/.claude/commands" ]; then
         mkdir -p "$GLOBAL_DIR/commands"
         for cmd in "$REPO_PATH/.claude/commands"/*.md; do
@@ -4150,7 +4150,7 @@ cmd_sync_global() {
     fi
 
     # 3. Sync Skills (directories)
-    log_info "[3/4] Syncing skills..."
+    log_info "[3/7] Syncing skills..."
     if [ -d "$REPO_PATH/.claude/skills" ]; then
         mkdir -p "$GLOBAL_DIR/skills"
         for skill_dir in "$REPO_PATH/.claude/skills"/*; do
@@ -4196,7 +4196,7 @@ cmd_sync_global() {
     fi
 
     # 4. Sync Hooks (scripts)
-    log_info "[4/5] Syncing hooks..."
+    log_info "[4/7] Syncing hooks..."
     if [ -d "$REPO_PATH/.claude/hooks" ]; then
         mkdir -p "$GLOBAL_DIR/hooks"
         for hook in "$REPO_PATH/.claude/hooks"/*; do
@@ -4227,7 +4227,7 @@ cmd_sync_global() {
     fi
 
     # 5. Sync settings.json (hooks configuration)
-    log_info "[5/5] Syncing settings.json hooks configuration..."
+    log_info "[5/7] Syncing settings.json hooks configuration..."
     if [ -f "$REPO_PATH/.claude/settings.json" ]; then
         local source_settings="$REPO_PATH/.claude/settings.json"
         local target_settings="$GLOBAL_DIR/settings.json"
@@ -4264,6 +4264,77 @@ cmd_sync_global() {
         fi
     else
         log_info "   No settings.json in source repo"
+    fi
+
+    # 6. Sync auxiliary scripts (.claude/scripts/)
+    log_info "[6/7] Syncing auxiliary scripts..."
+    if [ -d "$REPO_PATH/.claude/scripts" ]; then
+        mkdir -p "$GLOBAL_DIR/scripts"
+        for script in "$REPO_PATH/.claude/scripts"/*; do
+            if [ -f "$script" ]; then
+                local basename
+                basename=$(basename "$script")
+                local target="$GLOBAL_DIR/scripts/$basename"
+
+                if [ -f "$target" ] && [ "$FORCE" != true ]; then
+                    if diff -q "$script" "$target" &>/dev/null; then
+                        SKIPPED=$((SKIPPED + 1))
+                        continue
+                    fi
+                fi
+
+                if [ "$DRY_RUN" = true ]; then
+                    echo "   Would copy: $basename"
+                else
+                    cp "$script" "$target"
+                    chmod +x "$target" 2>/dev/null || true
+                    log_success "   Synced: $basename"
+                fi
+                SYNCED=$((SYNCED + 1))
+            fi
+        done
+    else
+        log_info "   No scripts directory in repo (optional)"
+    fi
+
+    # 7. Sync ralph CLI to ~/.local/bin/ (v2.43)
+    log_info "[7/7] Syncing ralph CLI to ~/.local/bin/..."
+    local RALPH_SCRIPT="$REPO_PATH/scripts/ralph"
+    local RALPH_TARGET="${HOME}/.local/bin/ralph"
+
+    if [ -f "$RALPH_SCRIPT" ]; then
+        mkdir -p "${HOME}/.local/bin"
+
+        if [ -f "$RALPH_TARGET" ] && [ "$FORCE" != true ]; then
+            if diff -q "$RALPH_SCRIPT" "$RALPH_TARGET" &>/dev/null; then
+                log_info "   ralph CLI already up to date"
+                SKIPPED=$((SKIPPED + 1))
+            else
+                local source_lines target_lines
+                source_lines=$(wc -l < "$RALPH_SCRIPT")
+                target_lines=$(wc -l < "$RALPH_TARGET")
+
+                if [ "$DRY_RUN" = true ]; then
+                    echo "   Would update: ralph CLI ($target_lines → $source_lines lines)"
+                else
+                    cp "$RALPH_SCRIPT" "$RALPH_TARGET"
+                    chmod +x "$RALPH_TARGET"
+                    log_success "   Updated: ralph CLI ($target_lines → $source_lines lines)"
+                fi
+                SYNCED=$((SYNCED + 1))
+            fi
+        else
+            if [ "$DRY_RUN" = true ]; then
+                echo "   Would install: ralph CLI"
+            else
+                cp "$RALPH_SCRIPT" "$RALPH_TARGET"
+                chmod +x "$RALPH_TARGET"
+                log_success "   Installed: ralph CLI to ~/.local/bin/"
+            fi
+            SYNCED=$((SYNCED + 1))
+        fi
+    else
+        log_warn "   ralph script not found in repo"
     fi
 
     # Summary
