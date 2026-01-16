@@ -1,11 +1,31 @@
 ---
+# VERSION: 2.43.0
 name: orchestrator
 description: "Full 8-step orchestration workflow for complex software tasks: clarify requirements, classify complexity, create worktree isolation, plan implementation, delegate to specialized agents, execute with quality gates, validate with adversarial review, and retrospective analysis. Use when: (1) implementing new features, (2) complex refactoring, (3) multi-file changes, (4) tasks requiring planning and coordination, (5) any task with complexity >= 5. Triggers include: /orchestrator, /orch, 'orchestrate', 'full workflow', 'implement feature', 'coordinate task'."
 context: fork
 user-invocable: true
+agent: orchestrator
+allowed-tools:
+  - Task
+  - AskUserQuestion
+  - EnterPlanMode
+  - ExitPlanMode
+  - TodoWrite
+  - Read
+  - Edit
+  - Write
+  - Bash
+  - Glob
+  - Grep
+hooks:
+  SessionStart:
+    - path: ~/.claude/hooks/orchestrator-init.sh
+      once: true
+  Stop:
+    - path: ~/.claude/hooks/orchestrator-report.sh
 ---
 
-# Orchestrator - Multi-Agent Ralph v2.42
+# Orchestrator - Multi-Agent Ralph v2.43
 
 Coordinates complex software tasks through an 8-step mandatory workflow with quality gates, **two-stage adversarial validation**, automatic context preservation, **LLM-TLDR token optimization**, and **Socratic design exploration**.
 

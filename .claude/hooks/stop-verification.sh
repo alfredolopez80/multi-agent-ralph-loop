@@ -3,6 +3,7 @@
 # Origen: planning-with-files pattern
 # v1.0.0 - 2026-01-13
 
+# VERSION: 2.43.0
 set -euo pipefail
 
 # Configuración

@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: context7-usage
 description: "Patterns for using Context7 MCP for library documentation (v2.25)"
 ---

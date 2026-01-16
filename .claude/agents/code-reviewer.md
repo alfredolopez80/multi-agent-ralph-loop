@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: code-reviewer
 description: "Code review specialist. Invokes Codex for deep analysis + MiniMax for second opinion."
 tools: Bash, Read

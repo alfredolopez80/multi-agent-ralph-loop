@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: checkpoint-restore
 prefix: "@cp-restore"
 category: tools

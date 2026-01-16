@@ -1373,11 +1373,11 @@ cmd_security_loop() {
         echo "║  Examples:                                                    ║"
         echo "║    ralph security-loop src/                                   ║"
         echo "║    ralph security-loop . --max-rounds 5                       ║"
-        echo "║    ralph secloop src/ --yolo                                  ║"
+        echo "║    ralph secloop src/ --auto-approve                          ║"
         echo "║                                                               ║"
         echo "║  Modes:                                                       ║"
-        echo "║    --hybrid  Auto-fix LOW/MEDIUM, ask for CRITICAL/HIGH      ║"
-        echo "║    --yolo    Auto-approve ALL fixes (use with caution)        ║"
+        echo "║    --hybrid       Auto-fix LOW/MEDIUM, ask for CRITICAL/HIGH ║"
+        echo "║    --auto-approve Auto-approve ALL fixes (use with caution)  ║"
         echo "║    --strict  Manual approval for EVERY fix                    ║"
         echo "║                                                               ║"
         echo "║  Max Rounds: Default 10 (configurable)                        ║"
@@ -2137,6 +2137,25 @@ cmd_tldr() {
         warm|index|init)
             local TARGET_PATH="${1:-.}"
             TARGET_PATH=$(validate_path "$TARGET_PATH")
+
+            # v2.43: Auto-add .tldr to .gitignore if not present
+            local GITIGNORE_PATH="$TARGET_PATH/.gitignore"
+            if [ -f "$GITIGNORE_PATH" ]; then
+                if ! grep -q "^\.tldr/?$" "$GITIGNORE_PATH" 2>/dev/null; then
+                    echo "" >> "$GITIGNORE_PATH"
+                    echo "# llm-tldr index (auto-added by ralph v2.43)" >> "$GITIGNORE_PATH"
+                    echo ".tldr/" >> "$GITIGNORE_PATH"
+                    log_info "Added .tldr/ to .gitignore"
+                fi
+            else
+                # Create .gitignore with .tldr entry
+                cat > "$GITIGNORE_PATH" << 'EOF'
+# llm-tldr index (auto-added by ralph v2.43)
+.tldr/
+EOF
+                log_info "Created .gitignore with .tldr/"
+            fi
+
             log_info "Indexing project for TLDR (5-layer analysis)..."
             log_info "  Target: $TARGET_PATH"
             log_info "  This may take 30-60 seconds for a typical project..."
@@ -3497,6 +3516,88 @@ cmd_worktree() {
     echo ""
     log_info "When done, create PR with:"
     echo "   ralph worktree-pr $BRANCH_NAME"
+}
+
+# v2.43: Worktree Dashboard - Show status of all worktrees
+cmd_worktree_dashboard() {
+    echo ""
+    echo "┌─────────────────────────────────────────────────────────────────┐"
+    echo "│                   RALPH WORKTREE DASHBOARD (v2.43)              │"
+    echo "├─────────────────────────────────────────────────────────────────┤"
+
+    local worktree_count=0
+    local active_count=0
+    local pr_count=0
+
+    # Get all worktrees
+    while IFS= read -r line; do
+        local wt_path=$(echo "$line" | awk '{print $1}')
+        local wt_hash=$(echo "$line" | awk '{print $2}')
+        local wt_branch=$(echo "$line" | awk '{print $3}' | tr -d '[]')
+
+        # Skip bare worktrees
+        if [[ "$wt_branch" == "(bare)" ]] || [[ -z "$wt_branch" ]]; then
+            continue
+        fi
+
+        worktree_count=$((worktree_count + 1))
+
+        local status="🔵 idle"
+        local pr_info=""
+
+        # Check for associated PR (only for ai/ralph branches)
+        if [[ "$wt_branch" == ai/ralph/* ]]; then
+            local pr_num=$(gh pr list --head "$wt_branch" --json number -q '.[0].number' 2>/dev/null || echo "")
+            if [ -n "$pr_num" ]; then
+                local pr_state=$(gh pr view "$pr_num" --json state -q '.state' 2>/dev/null || echo "")
+                case "$pr_state" in
+                    OPEN)
+                        status="🟢 PR #$pr_num"
+                        pr_count=$((pr_count + 1))
+                        ;;
+                    MERGED)
+                        status="✅ merged #$pr_num"
+                        ;;
+                    CLOSED)
+                        status="❌ closed #$pr_num"
+                        ;;
+                esac
+            else
+                status="🤖 working"
+                active_count=$((active_count + 1))
+            fi
+        else
+            # Check for uncommitted changes
+            local has_changes=$(cd "$wt_path" 2>/dev/null && git status --porcelain | head -1)
+            if [ -n "$has_changes" ]; then
+                status="📝 changes"
+                active_count=$((active_count + 1))
+            fi
+        fi
+
+        # Format branch name (truncate if too long)
+        local display_branch="$wt_branch"
+        if [ ${#display_branch} -gt 35 ]; then
+            display_branch="${display_branch:0:32}..."
+        fi
+
+        printf "│ %-37s │ %-22s │\n" "$display_branch" "$status"
+    done < <(git worktree list 2>/dev/null)
+
+    echo "├─────────────────────────────────────────────────────────────────┤"
+    printf "│ Total: %-3d │ Active: %-3d │ PRs: %-3d                         │\n" "$worktree_count" "$active_count" "$pr_count"
+    echo "└─────────────────────────────────────────────────────────────────┘"
+    echo ""
+
+    if [ $worktree_count -eq 0 ]; then
+        log_info "No worktrees found. Create one with:"
+        echo "   ralph worktree 'implement feature X'"
+    else
+        log_info "Commands:"
+        echo "   ralph worktree <task>     - Create new worktree"
+        echo "   ralph worktree-pr <branch> - Create PR with review"
+        echo "   ralph worktree-merge <pr>  - Merge and cleanup"
+    fi
 }
 
 # Create PR with multi-agent review
@@ -5353,7 +5454,7 @@ main() {
             ;;
         security-loop|secloop)
             # v2.27: Multi-level security loop
-            # Parse flags: --max-rounds N, --yolo, --strict, --hybrid
+            # Parse flags: --max-rounds N, --auto-approve, --strict, --hybrid
             local SL_TARGET="" SL_MAX_ROUNDS="10" SL_MODE="hybrid"
             while [ $# -gt 0 ]; do
                 case "$1" in
@@ -5361,8 +5462,8 @@ main() {
                         SL_MAX_ROUNDS="$2"
                         shift 2
                         ;;
-                    --yolo)
-                        SL_MODE="yolo"
+                    --auto-approve|--yolo)  # v2.43: Renamed, --yolo kept for backward compatibility
+                        SL_MODE="auto-approve"
                         shift
                         ;;
                     --strict)
@@ -5459,6 +5560,9 @@ main() {
         worktree-cleanup|wt-cleanup)
             cmd_worktree_cleanup
             ;;
+        worktree-dashboard|wt-dashboard|wt-dash)
+            cmd_worktree_dashboard
+            ;;
 
         # Maintenance (v2.21)
         self-update|update)
@@ -5475,6 +5579,26 @@ main() {
             ;;
         cleanup-project-settings|cleanup-settings)
             cmd_cleanup_project_settings "$@"
+            ;;
+        cleanup-project-configs|cleanup-configs|cpc)
+            # v2.43: Full project config cleanup for global inheritance
+            local script_path="${HOME}/Documents/GitHub/multi-agent-ralph-loop/scripts/cleanup-project-configs.sh"
+            if [[ -f "$script_path" ]]; then
+                bash "$script_path" "$@"
+            else
+                log_error "cleanup-project-configs.sh not found"
+                log_info "Run 'ralph self-update' to install"
+            fi
+            ;;
+        add-version-markers|version-markers|avm)
+            # v2.43: Add VERSION markers to all config files
+            local script_path="${HOME}/Documents/GitHub/multi-agent-ralph-loop/scripts/add-version-markers.sh"
+            if [[ -f "$script_path" ]]; then
+                bash "$script_path" "$@"
+            else
+                log_error "add-version-markers.sh not found"
+                log_info "Run 'ralph self-update' to install"
+            fi
             ;;
         validate-arch|validate-architecture|arch)
             cmd_validate_arch "$@"

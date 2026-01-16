@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: checkpoint-clear
 prefix: "@cp-clear"
 category: tools

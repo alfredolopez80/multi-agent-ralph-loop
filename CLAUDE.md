@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.42
+# Multi-Agent Ralph v2.43
 
 ## Multi-Agent Ralph Loop Orchestration
 
@@ -13,8 +13,9 @@
 | `/adversarial` | Adversarial spec refinement (adversarial-spec) |
 | `/retrospective` | Post-task analysis and improvements |
 | `/parallel` | Run multiple loops concurrently |
+| `/lsp-explore` | **NEW** Token-free code navigation via LSP |
 
-### Orchestration Flow (8 Steps) - v2.42
+### Orchestration Flow (8 Steps) - v2.43
 
 ```
 0. AUTO-PLAN    → Enter Plan Mode (unless trivial)
@@ -48,6 +49,111 @@
 Orchestration with automatic planning, intensive clarification, git worktree isolation, adversarial validation, 9-language quality gates, context engineering, and automatic context preservation.
 
 > **Historical versions**: See [CHANGELOG.md](./CHANGELOG.md) for v2.19-v2.41 details.
+
+## v2.43 Context Engineering & LSP Integration
+
+Based on Claude Code v2.0.71-v2.1.9 analysis (43+ improvements).
+
+### New Features (v2.43)
+
+| Feature | Description |
+|---------|-------------|
+| **claude-mem Integration** | SessionStart hook now integrates with claude-mem MCP for semantic context |
+| **PreToolUse additionalContext** | Task calls receive session context automatically |
+| **LSP-Explore Skill** | Token-free code navigation (90%+ savings) |
+| **mcpToolSearchMode: auto:10** | Deferred MCP tool loading until 10% context usage |
+| **Keybindings** | Custom shortcuts for orchestration commands |
+| **Worktree Dashboard** | `ralph worktree-dashboard` for parallel work visibility |
+| **tldr .gitignore** | Auto-adds `.tldr/` to .gitignore on `ralph tldr warm` |
+
+### New Hooks (v2.43)
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `inject-session-context.sh` | PreToolUse (Task) | Inject goal/progress into subagent context |
+| Enhanced `session-start-ledger.sh` | SessionStart | claude-mem hints + context engineering tips |
+
+### LSP Integration (90%+ Token Savings)
+
+Use LSP tools for efficient code navigation without reading files:
+
+```yaml
+# Token comparison
+Read entire file:     ~2000 tokens
+LSP hover:            ~50 tokens (96% savings)
+LSP go-to-definition: ~100 tokens (95% savings)
+LSP find-references:  ~150 tokens (92% savings)
+```
+
+**Hybrid Pattern: llm-tldr + LSP**
+1. `ralph tldr semantic "authentication"` → Find candidates
+2. LSP go-to-definition → Navigate to implementation
+3. LSP find-references → Understand usage
+4. Read ONLY specific functions needed
+
+### Codex CLI Security (v2.43)
+
+**IMPORTANT**: `--yolo` replaced with `--full-auto` for safer defaults.
+
+| Flag | Behavior | Use Case |
+|------|----------|----------|
+| `--full-auto` | Auto-approve workspace writes only | Default for all Codex calls |
+| `--profile <name>` | Use security profile | `security-audit`, `code-review` |
+| `CODEX_ALLOW_DANGEROUS=true` | Override safety gates | Trusted environments only |
+
+### Git Operations Policy
+
+- **MANDATORY**: Use `git` CLI or GitHub CLI (`gh`) for all git operations
+- **DO NOT USE**: GitHub MCP or similar for git operations
+- **Alternatives**: `mcp__gordon__git` for Gordon MCP users
+
+### New CLI Commands (v2.43)
+
+```bash
+# Worktree visibility
+ralph worktree-dashboard    # Show all worktrees with status
+
+# Enhanced tldr (auto-adds .gitignore)
+ralph tldr warm .           # Now auto-adds .tldr/ to .gitignore
+
+# VERSION Markers (v2.43)
+ralph add-version-markers            # Add VERSION: 2.43.0 to all config files
+ralph add-version-markers --check    # Verify current versions
+ralph add-version-markers --global   # Process global ~/.claude/ only
+
+# Config Cleanup (v2.43)
+ralph cleanup-project-configs        # Remove redundant local settings.json
+```
+
+### StatusLine Git Enhancement (v2.43)
+
+Shows current branch/worktree in StatusLine:
+- `⎇ main*` - Branch with uncommitted changes
+- `⎇ feature ↑3` - Branch with 3 unpushed commits
+- `⎇ fix-123 🌳worktree` - Worktree indicator
+
+Configured via wrapper script: `~/.claude/scripts/statusline-git.sh`
+
+### Configuration (v2.43)
+
+New settings in `~/.claude/settings.json`:
+```json
+{
+  "mcpToolSearchMode": "auto:10",
+  "plansDirectory": "~/.ralph/plans/"
+}
+```
+
+New keybindings in `~/.claude/keybindings.json`:
+```json
+{
+  "ctrl+shift+o": "/orchestrator",
+  "ctrl+shift+g": "/gates",
+  "ctrl+shift+l": "/lsp-explore"
+}
+```
+
+---
 
 ## v2.42 Context Preservation & Review Improvements
 
@@ -342,15 +448,18 @@ ralph adversarial "Design a rate limiter service"
 # Git Worktree
 ralph worktree "task"     # Create worktree
 ralph worktree-pr <branch> # PR + review
+ralph worktree-dashboard  # Show all worktrees (v2.43)
 
 # Context
 ralph ledger save         # Save session state
 ralph ledger load         # Load ledger
 ralph handoff create      # Create handoff
 
-# Sync
-ralph sync-global         # Sync to ~/.claude/
-ralph sync-to-projects    # Sync to all projects
+# Sync & Maintenance (v2.43)
+ralph sync-global                 # Sync to ~/.claude/
+ralph sync-to-projects            # Sync to all projects
+ralph add-version-markers         # Add VERSION markers
+ralph cleanup-project-configs     # Remove redundant configs
 ```
 
 ## Agents (9)

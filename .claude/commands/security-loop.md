@@ -1,10 +1,11 @@
 ---
+# VERSION: 2.43.0
 name: security-loop
 prefix: "@secloop"
 category: review
 color: red
 description: "Multi-level iterative security audit until zero vulnerabilities"
-argument-hint: "<path> [--max-rounds N] [--yolo|--strict|--hybrid]"
+argument-hint: "<path> [--max-rounds N] [--full-auto|--strict|--hybrid]"
 ---
 
 # /security-loop - Multi-Level Iterative Security Audit (v2.27)
@@ -16,7 +17,7 @@ Runs security audit → fixes issues → re-audits iteratively until zero vulner
 ```bash
 /security-loop <path>
 /security-loop src/ --max-rounds 5
-@secloop . --yolo
+@secloop . --full-auto
 @secloop src/auth/ --strict
 ```
 
@@ -48,7 +49,7 @@ config:
 │  ROUND N                                                        │
 │                                                                 │
 │  [1/3] AUDIT                                                    │
-│  codex exec --yolo --enable-skills -m gpt-5.2-codex            │
+│  codex exec --full-auto -m gpt-5.2-codex            │
 │  "Perform comprehensive security audit..."                      │
 │  Output: JSON with vulnerabilities array + summary              │
 │                                                                 │
@@ -71,7 +72,7 @@ config:
 | Mode | Flag | Behavior | Use Case |
 |------|------|----------|----------|
 | **Hybrid** | (default) | Auto-fix LOW/MEDIUM, ask for HIGH/CRITICAL | Production code |
-| YOLO | `--yolo` | Auto-approve ALL fixes | CI/CD, trusted codebase |
+| Full-Auto | `--full-auto` | Auto-approve ALL fixes | CI/CD, trusted codebase |
 | Strict | `--strict` | Ask approval for EVERY fix | Critical systems |
 
 ## Hybrid Mode User Interaction
@@ -120,7 +121,7 @@ Apply this fix? [Yes / No / Edit]
 /security-loop . --max-rounds 3
 
 # Full auto mode for CI/CD
-@secloop . --yolo --max-rounds 5
+@secloop . --full-auto --max-rounds 5
 
 # Careful mode for sensitive code
 @secloop src/auth/ --strict
@@ -131,7 +132,7 @@ Apply this fix? [Yes / No / Edit]
 ```bash
 ralph security-loop src/
 ralph security-loop . --max-rounds 5
-ralph secloop src/ --yolo
+ralph secloop src/ --full-auto
 ```
 
 ## Output Format

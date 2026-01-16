@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: ai-output-code-review-super-auditor
 description: write documents, resume, research, any technnical documents
 model: inherit

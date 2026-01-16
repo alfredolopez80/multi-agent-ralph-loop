@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: unit-tests
 prefix: "@tests"
 category: review

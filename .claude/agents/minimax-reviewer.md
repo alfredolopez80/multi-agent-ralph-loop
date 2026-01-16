@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: minimax-reviewer
 description: "Universal fallback reviewer using MiniMax M2.1 (~8% cost of Claude)."
 tools: Bash, Read

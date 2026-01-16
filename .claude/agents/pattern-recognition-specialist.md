@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: pattern-recognition-specialist
 description: "Analyzes codebases to identify design patterns, anti-patterns, naming inconsistencies, and code duplication."
 tools: Read, Grep, Glob, Bash

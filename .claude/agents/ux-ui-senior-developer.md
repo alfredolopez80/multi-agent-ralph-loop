@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: ux-ui-senior-developer
 description: when need a review complete or check any problem of ui/ux of any web page focus more un tailwind, nextjs and fullstack develop in typescript but more focus in ui/ux problem, usability or any problem visual or ui/ux indicated by the user in the prompt
 model: inherit

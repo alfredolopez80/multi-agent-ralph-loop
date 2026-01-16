@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: deep-clarification
 description: "Intensive task clarification using AskUserQuestion - use when starting any non-trivial task"
 ---

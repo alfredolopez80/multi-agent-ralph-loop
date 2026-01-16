@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: orchestrator
 description: "Main coordinator for multi-agent orchestration. Uses Opus for complex decisions. Delegates to Sonnet subagents which invoke external CLIs (Codex, Gemini, MiniMax)."
 tools: Bash, Read, Write, Task

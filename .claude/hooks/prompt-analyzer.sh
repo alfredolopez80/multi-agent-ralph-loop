@@ -3,6 +3,7 @@
 # Parte del sistema de orquestación multi-agente con Codex-First
 
 # 1. Leer prompt del usuario via stdin
+# VERSION: 2.43.0
 PROMPT=$(cat)
 
 # 2. Convertir a minúsculas para comparación case-insensitive

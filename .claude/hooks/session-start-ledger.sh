@@ -1,6 +1,6 @@
 #!/bin/bash
-# session-start-ledger.sh - SessionStart Hook for Ralph v2.35
-# Auto-loads ledger and handoff at session start for context preservation
+# session-start-ledger.sh - SessionStart Hook for Ralph v2.43
+# Auto-loads ledger, handoff, and claude-mem hints at session start
 #
 # Input (JSON via stdin):
 #   - hook_event_name: "SessionStart"
@@ -10,7 +10,9 @@
 # Output (JSON):
 #   - hookSpecificOutput.additionalContext: Content to inject into context
 #
-# Part of Ralph v2.35 Context Engineering Optimization
+# Part of Ralph v2.43 Context Engineering with Claude-Mem Integration
+#
+# VERSION: 2.43.0
 
 set -euo pipefail
 
@@ -20,9 +22,10 @@ HANDOFF_DIR="${HOME}/.ralph/handoffs"
 SCRIPTS_DIR="${HOME}/.claude/scripts"
 FEATURES_FILE="${HOME}/.ralph/config/features.json"
 LOG_FILE="${HOME}/.ralph/logs/session-start.log"
+CLAUDE_MEM_CACHE="${HOME}/.ralph/cache/claude-mem-hints.txt"
 
 # Ensure directories exist
-mkdir -p "$LEDGER_DIR" "$HANDOFF_DIR" "${HOME}/.ralph/logs"
+mkdir -p "$LEDGER_DIR" "$HANDOFF_DIR" "${HOME}/.ralph/logs" "${HOME}/.ralph/cache"
 
 # Logging function
 log() {
@@ -43,6 +46,31 @@ check_feature_enabled() {
     else
         [[ "$default" == "true" ]]
     fi
+}
+
+# v2.43: Get claude-mem integration hints (3-layer workflow)
+get_claude_mem_hints() {
+    local hints=""
+
+    # Check if claude-mem cache exists and is recent (< 1 hour)
+    if [[ -f "$CLAUDE_MEM_CACHE" ]]; then
+        local cache_age
+        cache_age=$(($(date +%s) - $(stat -f %m "$CLAUDE_MEM_CACHE" 2>/dev/null || echo 0)))
+        if [[ $cache_age -lt 3600 ]]; then
+            hints=$(cat "$CLAUDE_MEM_CACHE" 2>/dev/null || true)
+        fi
+    fi
+
+    # If no cache, provide default hints
+    if [[ -z "$hints" ]]; then
+        hints="**Claude-Mem Available**: Use MCP tools to search for relevant context:
+\`\`\`
+mcp__plugin_claude-mem_mcp-search__search({query: 'session goal progress', limit: 10})
+\`\`\`
+Then use get_observations for details on specific IDs."
+    fi
+
+    echo "$hints"
 }
 
 # Read input from stdin
@@ -99,6 +127,22 @@ if check_feature_enabled "RALPH_ENABLE_HANDOFF" "true"; then
         fi
     fi
 fi
+
+# v2.43: Add claude-mem integration hints
+if check_feature_enabled "RALPH_ENABLE_CLAUDE_MEM" "true"; then
+    CLAUDE_MEM_HINTS=$(get_claude_mem_hints)
+    if [[ -n "$CLAUDE_MEM_HINTS" ]]; then
+        CONTEXT+="\n\n## Claude-Mem Integration (v2.43)\n"
+        CONTEXT+="$CLAUDE_MEM_HINTS"
+        log "INFO" "Added claude-mem integration hints"
+    fi
+fi
+
+# v2.43: Add context engineering hints
+CONTEXT+="\n\n## Context Engineering (v2.43)\n"
+CONTEXT+="- Native context_window.used_percentage available via StatusLine\n"
+CONTEXT+="- Use LSP tools for token-free code navigation\n"
+CONTEXT+="- claude-mem MCP for persistent semantic memory\n"
 
 # If no context to inject, return empty
 if [[ -z "$CONTEXT" ]]; then

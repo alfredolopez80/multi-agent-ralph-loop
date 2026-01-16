@@ -1,3 +1,15 @@
+---
+# VERSION: 2.43.0
+name: task-classifier
+description: "Classify task complexity (1-10) to route to optimal model. Use when starting any non-trivial task to determine resources and approach. Triggers include: 'classify', 'complexity', 'what model', 'how complex'."
+context: fork
+model: opus
+agent: orchestrator
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+---
 # Skill: Task Classifier
 
 **ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.

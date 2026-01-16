@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: skill
 prefix: "@skill"
 category: tools

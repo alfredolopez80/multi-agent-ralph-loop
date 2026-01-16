@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: web-scrapper
 description: web scrapping, or getting data from web site, or analyze multiples web site and getting info
 model: inherit

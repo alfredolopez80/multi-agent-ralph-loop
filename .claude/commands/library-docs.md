@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: library-docs
 prefix: "@lib"
 category: research

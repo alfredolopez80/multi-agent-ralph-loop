@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: kieran-typescript-reviewer
 description: "Rigorous TypeScript code reviewer with high quality standards. Emphasizes type safety, modern patterns, and testability."
 tools: Read, Grep, Glob, Bash

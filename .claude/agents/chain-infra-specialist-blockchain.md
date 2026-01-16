@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: chain-infra-specialist-blockchain
 description: Evaluate chain integration (RPC/WS, precompiles/native modules), performance, failure modes, and scalability under load. for blockchain protocols
 model: inherit

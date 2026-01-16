@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: Hyperliquid-DeFi-Protocol-Specialist
 description: blockchain, hyperliquid, web3, defi, perpDEX
 model: inherit

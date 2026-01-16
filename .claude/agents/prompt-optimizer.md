@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: prompt-optimizer
 description: Agente que transforma prompts ordinarios en prompts profesionales para IA usando arquitectura en 5 capas
 model: inherit

@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: research-blockchain
 description: use when require a extense reaserch about blockchain solution and comparative between several solucion or spec of new project or actual proposal in blockchain ecosystem
 model: inherit

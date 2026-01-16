@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: image-analyze
 prefix: "@img"
 category: research

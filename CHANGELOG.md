@@ -7,6 +7,117 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.43.0] - 2026-01-16
+
+### Added (Context Engineering & LSP Integration)
+
+Based on Claude Code v2.0.71-v2.1.9 analysis (43+ improvements).
+
+#### StatusLine Git Enhancement (NEW)
+- **Wrapper script pattern**: `~/.claude/scripts/statusline-git.sh` extends claude-hud without modifying plugin
+- **Branch indicator**: Shows `⎇ main*` with change indicator (`*` for uncommitted changes)
+- **Worktree detection**: Shows `🌳worktree-name` when in a git worktree
+- **Unpushed commits**: Shows `↑N` for N unpushed commits
+- **Plugin-resilient**: Survives claude-hud plugin updates (wrapper pattern)
+
+#### VERSION Markers System (NEW)
+- **379 files processed**: 88 project + 291 global config files now have `# VERSION: 2.43.0`
+- **Tracking script**: `scripts/add-version-markers.sh` for automated versioning
+- **CLI integration**: `ralph add-version-markers` (aliases: `version-markers`, `avm`)
+- **Check mode**: `ralph add-version-markers --check` validates current versions
+
+#### Config Cleanup (NEW)
+- **Global inheritance**: Projects now inherit from `~/.claude/settings.json` automatically
+- **Cleanup command**: `ralph cleanup-project-configs` removes redundant local configs
+- **Safer defaults**: `--yolo` renamed to `--auto-approve` (backward compatible)
+
+#### Context Preservation (claude-mem Integration)
+- **SessionStart hook enhanced**: Now integrates with claude-mem MCP for semantic context retrieval
+- **PreToolUse additionalContext**: Task calls automatically receive session goal and progress context
+- **3-layer workflow**: search → timeline → get_observations for efficient memory retrieval
+
+#### LSP Integration (90%+ Token Savings)
+- **New `/lsp-explore` skill**: Token-free code navigation via Language Server Protocol
+- **Hybrid pattern**: Combine llm-tldr semantic search with LSP navigation
+- **Token comparison**: LSP hover ~50 tokens vs Read file ~2000 tokens (96% savings)
+
+#### MCP Optimization
+- **mcpToolSearchMode: auto:10**: Deferred MCP tool loading until 10% context usage
+- **plansDirectory**: Configurable plans storage at `~/.ralph/plans/`
+
+#### Keybindings System
+- **New `~/.claude/keybindings.json`**: Custom keyboard shortcuts for commands
+- **Quick access**: `ctrl+shift+o` (orchestrator), `ctrl+shift+g` (gates), `ctrl+shift+l` (lsp-explore)
+
+### New Hooks (v2.43)
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `inject-session-context.sh` | PreToolUse (Task) | Inject goal/progress into subagent context |
+
+### New Skills (v2.43)
+
+| Skill | Description |
+|-------|-------------|
+| `/lsp-explore` | Token-free code navigation via LSP (go-to-definition, find-references, hover) |
+
+### New CLI Commands (v2.43)
+
+| Command | Description |
+|---------|-------------|
+| `ralph worktree-dashboard` | Show status of all worktrees with PR integration |
+| `ralph tldr warm` | Now auto-adds `.tldr/` to .gitignore |
+| `ralph add-version-markers` | Add VERSION markers to all config files (aliases: `avm`, `version-markers`) |
+| `ralph cleanup-project-configs` | Remove redundant local settings.json for global inheritance |
+
+### Modified (v2.43)
+
+#### Codex CLI Security
+- **Replaced `--yolo` with `--full-auto`** in all command files
+- Updated `bugs.md` and `security-loop.md` for safer defaults
+- Added `CODEX_ALLOW_DANGEROUS=true` override documentation
+
+#### Skill System Modernization
+- **YAML-style allowed-tools**: Converted from comma-separated to list format
+- **Agent field**: Added to critical skills (orchestrator, task-classifier)
+- **Hooks in frontmatter**: Skills can now define hooks directly
+
+#### Git Operations Policy
+- **MANDATORY**: Use `git` CLI or `gh` for all git operations
+- **DO NOT USE**: GitHub MCP or similar for git operations
+
+### Configuration (v2.43)
+
+New settings in `~/.claude/settings.json`:
+```json
+{
+  "mcpToolSearchMode": "auto:10",
+  "plansDirectory": "~/.ralph/plans/"
+}
+```
+
+### Files Changed
+
+| File | Type | Description |
+|------|------|-------------|
+| `~/.claude/scripts/statusline-git.sh` | NEW | StatusLine wrapper with git branch/worktree info |
+| `~/.claude/settings.json` | MODIFIED | statusLine command uses wrapper script |
+| `~/.claude/hooks/session-start-ledger.sh` | MODIFIED | claude-mem integration, VERSION: 2.43.0 |
+| `~/.claude/hooks/inject-session-context.sh` | NEW | PreToolUse additionalContext |
+| `~/.claude/skills/lsp-explore/SKILL.md` | NEW | LSP navigation skill |
+| `~/.claude/keybindings.json` | NEW | Custom keyboard shortcuts |
+| `scripts/add-version-markers.sh` | NEW | VERSION marker automation |
+| `scripts/ralph` | MODIFIED | add-version-markers, cleanup-project-configs, --auto-approve |
+| `.claude/commands/bugs.md` | MODIFIED | --yolo → --full-auto |
+| `.claude/commands/security-loop.md` | MODIFIED | --yolo → --full-auto, --auto-approve |
+| `.claude/skills/orchestrator/SKILL.md` | MODIFIED | v2.43, agent field, hooks |
+| `.claude/skills/task-classifier/SKILL.md` | MODIFIED | YAML frontmatter added |
+| `CLAUDE.md` | MODIFIED | v2.43 section with new commands |
+| `README.md` | MODIFIED | v2.43 highlights, StatusLine, VERSION markers |
+| `CHANGELOG.md` | MODIFIED | Full v2.43 changelog |
+
+---
+
 ## [2.42.0] - 2026-01-13
 
 ### Added (Context Preservation & Review Improvements)

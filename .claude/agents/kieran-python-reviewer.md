@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: kieran-python-reviewer
 description: "Rigorous Python code reviewer with strict quality standards. Emphasizes type hints, Pythonic patterns, and testability."
 tools: Read, Grep, Glob, Bash

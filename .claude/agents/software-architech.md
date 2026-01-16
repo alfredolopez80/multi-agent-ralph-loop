@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: software-architech
 description: explorer or planing or analysing code in python
 model: inherit

@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: blender-3d
 prefix: "@3d"
 category: tools

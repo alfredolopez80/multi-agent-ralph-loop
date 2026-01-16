@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: blender-3d-creator
 description: "Elite 3D asset creator using Blender MCP. Analyzes reference images with MiniMax, generates 3D models via Hyper3D/Hunyuan3D, and orchestrates complete 3D workflows. Uses Opus for strategic planning."
 tools: Bash, Read, Write, Task

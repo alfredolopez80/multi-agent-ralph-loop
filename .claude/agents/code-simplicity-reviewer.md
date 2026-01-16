@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: code-simplicity-reviewer
 description: "Final review for ensuring code changes are minimal and simple. Applies YAGNI principles to identify simplification opportunities."
 tools: Read, Grep, Glob

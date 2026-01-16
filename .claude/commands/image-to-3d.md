@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: image-to-3d
 prefix: "@i3d"
 category: tools

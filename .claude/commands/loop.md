@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: loop
 prefix: "@loop"
 category: orchestration

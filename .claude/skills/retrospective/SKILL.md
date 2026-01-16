@@ -1,3 +1,5 @@
+# VERSION: 2.43.0
+
 # Skill: Retrospective & Self-Improvement
 
 **ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.

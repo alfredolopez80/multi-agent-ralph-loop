@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: defi-protocol-economist
 description: Design and validate sustainable token economics, fees, rewards, and incentive alignment across stakeholders. for blockchain web3 protocol
 model: inherit

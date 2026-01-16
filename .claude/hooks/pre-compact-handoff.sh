@@ -15,6 +15,7 @@
 #
 # Part of Ralph v2.35 Context Engineering Optimization
 
+# VERSION: 2.43.0
 set -euo pipefail
 
 # Configuration

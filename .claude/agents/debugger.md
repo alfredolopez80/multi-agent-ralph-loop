@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: debugger
 description: "Debug specialist for complex issues. Uses Opus for reasoning."
 tools: Bash, Read, Write

@@ -3,6 +3,7 @@
 # Triggered by: Stop (orchestrator completion)
 # Once: true
 
+# VERSION: 2.43.0
 set -euo pipefail
 
 # Only run if Sentry was used in this session

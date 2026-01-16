@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.42-blue)
+![Version](https://img.shields.io/badge/version-2.43-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -19,8 +19,18 @@ The system addresses the fundamental challenge of AI-assisted coding: **ensuring
 
 Ralph is a dual-runtime orchestrator that adapts model routing based on whether it is invoked from Claude Code or OpenCode. It standardizes workflows (clarify → plan → execute → validate) while letting each environment use the best available models.
 
+**v2.43 Highlights**:
+- **Claude-Mem Integration**: Semantic memory with 3-layer workflow (search → timeline → get_observations)
+- **PreToolUse additionalContext**: Session context injection for Task subagents
+- **LSP-Explore Skill**: Token-free code navigation (go-to-definition, find-references, hover)
+- **MCP auto:10 Optimization**: Deferred tool loading until 10% context usage
+- **StatusLine Git Enhancement**: Shows current branch/worktree with change indicators (⎇ main*)
+- **VERSION Markers**: All config files now have `# VERSION: 2.43.0` for tracking
+- **Config Cleanup**: `ralph cleanup-project-configs` removes old local configs for global inheritance
+- **Modernized Skills**: YAML allowed-tools, agent field, hooks in frontmatter
+
 **v2.42 Highlights**:
-- **Stop Hook Verification**: Validates completitud before session end (TODOs, git status, lint, tests)
+- **Stop Hook Verification**: Validates completion before session end (TODOs, git status, lint, tests)
 - **2-Action Rule (Auto-Save)**: Auto-saves context every 5 operations to prevent mid-task loss
 - **Two-Stage Review**: `/adversarial` separates Spec Compliance → Code Quality
 - **3-Fix Rule Enforcement**: Mandatory escalation after 3 failed fix attempts
@@ -892,6 +902,7 @@ ralph validate-integration     # Run 25-check validation
 | | /adversarial | @adv | adversarial-spec debate |
 | **Research** | /research | @research | Web research |
 | | /library-docs | @lib | Library documentation |
+| | /lsp-explore | @lsp | Token-free code navigation (v2.43) |
 | | /minimax-search | @mmsearch | MiniMax search |
 | | /ast-search | @ast | Structural code search |
 | | /browse | @browse | Browser automation |
@@ -1046,7 +1057,6 @@ See [LICENSE](LICENSE) for details.
 
 ### Community
 - [WorkTrunk](https://github.com/max-sixty/worktrunk) - Git worktree management
-- [Greptile](https://greptile.com) - Code review automation (optional)
 
 ---
 
@@ -1054,7 +1064,17 @@ See [LICENSE](LICENSE) for details.
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
 
-### Latest: v2.42.0 (2026-01-13)
+### Latest: v2.43.0 (2026-01-16)
+
+- **Claude-Mem Integration**: Semantic memory with 3-layer workflow (search → timeline → get_observations)
+- **PreToolUse additionalContext**: Session context injection for Task subagents via hook output
+- **LSP-Explore Skill**: Token-free code navigation (go-to-definition, find-references, hover)
+- **MCP auto:10 Optimization**: Deferred tool loading until 10% context usage
+- **Modernized Skills**: YAML allowed-tools, agent field, hooks in skill frontmatter
+- **Codex CLI Security**: Replaced --yolo with --full-auto across all Codex invocations
+- **Worktree Dashboard**: New `ralph worktree-dashboard` command for worktree visibility
+
+### v2.42.0 (2026-01-13)
 
 - **Two-Stage Review**: `/adversarial` separates Spec Compliance (Stage 1) → Code Quality (Stage 2)
 - **Socratic Design**: `/clarify` presents 2-3 design alternatives with trade-offs for architectural decisions

@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: docs-writer
 description: "Documentation specialist. Uses Gemini for research and long-form content."
 tools: Bash, Read, Write

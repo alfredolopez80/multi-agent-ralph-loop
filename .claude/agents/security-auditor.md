@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: security-auditor
 description: "Security audit specialist. Invokes Codex CLI for vulnerability analysis + MiniMax for second opinion."
 tools: Bash, Read

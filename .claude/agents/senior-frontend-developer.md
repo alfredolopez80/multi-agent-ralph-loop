@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: senior-frontend-developer
 description: for develop any front app, web-app or dapp with nextjs react typescript or any fullstack develop in typescript
 model: inherit

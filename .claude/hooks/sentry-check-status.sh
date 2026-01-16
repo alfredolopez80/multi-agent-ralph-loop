@@ -3,6 +3,7 @@
 # Triggered by: PostToolUse(Bash(gh pr *))
 # Once: true
 
+# VERSION: 2.43.0
 set -euo pipefail
 
 # Extract PR number from last command

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# VERSION: 2.43.0
 """
 git-safety-guard.py - Blocks destructive git and filesystem commands
 

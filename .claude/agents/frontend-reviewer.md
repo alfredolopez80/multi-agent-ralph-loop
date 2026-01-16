@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: frontend-reviewer
 description: "Frontend/UX specialist. Uses Opus for design decisions, Gemini/MiniMax for review."
 tools: Bash, Read

@@ -5,6 +5,7 @@
 
 # Note: Not using set -e because this is a non-blocking hook
 # Errors should not interrupt the main workflow
+# VERSION: 2.43.0
 set -uo pipefail
 
 # Configuration

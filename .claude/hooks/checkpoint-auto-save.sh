@@ -6,6 +6,7 @@
 # GLOBAL: Enabled by default for all projects
 # ============================================================================
 
+# VERSION: 2.43.0
 RALPH_DIR="${HOME}/.ralph"
 CHECKPOINT_DIR="${RALPH_DIR}/checkpoints"
 CONFIG_FILE="${RALPH_DIR}/checkpoint-config.json"

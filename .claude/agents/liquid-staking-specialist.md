@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: liquid-staking-specialist
 description: Assess and design liquid staking protocols across PoS ecosystems: redemption mechanics, capital efficiency, and risk controls for Blockchain web3 protocols
 model: inherit

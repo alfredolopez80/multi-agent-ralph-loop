@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.43.0
 name: minimax-mcp-usage
 description: "Optimal patterns for MiniMax MCP tools (web_search + understand_image)"
 ---
