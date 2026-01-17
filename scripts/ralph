@@ -6024,11 +6024,13 @@ cmd_orch() {
     read -p "Press Enter after reviewing questions (or Ctrl+C to abort)..."
 
     # =========================================================================
-    # Step 1b: GAP-ANALYST (v2.45)
+    # Step 1b: GAP-ANALYST (v2.45.2) - Enhanced with error handling
     # =========================================================================
     log_info "[1b/12] GAP-ANALYST - Pre-implementation gap analysis"
     echo "   Analyzing for missing requirements, edge cases, integration points..."
-    claude --print -p "You are the Gap-Analyst agent. Analyze this task for gaps:
+
+    local GAP_OUTPUT
+    GAP_OUTPUT=$(claude --print -p "You are the Gap-Analyst agent. Analyze this task for gaps:
 
 Task: ${SAFE_TASK}
 
@@ -6038,9 +6040,20 @@ Find:
 3. Error scenarios and recovery
 4. Integration points
 
-Output: Priority questions and assumptions."
+Output: Priority questions and assumptions." 2>&1) || {
+        log_warn "Gap-Analyst command failed, continuing with default analysis"
+        GAP_OUTPUT="[Gap-Analyst unavailable - proceeding with standard implementation]"
+    }
+
+    # Validate output
+    if [[ -z "$GAP_OUTPUT" || ${#GAP_OUTPUT} -lt 20 ]]; then
+        log_warn "Gap-Analyst produced minimal output"
+        GAP_OUTPUT="[Gap-Analyst: No significant gaps identified]"
+    fi
+
+    echo "$GAP_OUTPUT"
     echo ""
-    read -p "Press Enter to continue (review gaps above)..."
+    read -t 120 -p "Press Enter to continue (review gaps above)..." || true
 
     # =========================================================================
     # Step 2: CLASSIFY

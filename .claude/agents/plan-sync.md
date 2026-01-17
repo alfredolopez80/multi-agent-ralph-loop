@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.45.0
+# VERSION: 2.45.2
 name: plan-sync
 description: "Synchronizes downstream plan steps after implementation drift. Spawned by orchestrator after each step completes to patch stale references."
 tools: Read, Grep, Glob, Edit

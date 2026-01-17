@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.45.0
+# VERSION: 2.45.2
 name: adversarial-plan-validator
 description: "Cross-validation between Claude Opus and Codex GPT-5.2 to ensure implementation covers ALL plan details. Uses adversarial validation where each model challenges the other's assessment."
 tools: Read, Grep, Glob, Bash, Task

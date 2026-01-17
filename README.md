@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.45.1-blue)
+![Version](https://img.shields.io/badge/version-2.45.2-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -19,6 +19,13 @@ The system addresses the fundamental challenge of AI-assisted coding: **ensuring
 
 Ralph is a dual-runtime orchestrator that adapts model routing based on whether it is invoked from Claude Code or OpenCode. It standardizes workflows (clarify → plan → execute → validate) while letting each environment use the best available models.
 
+**v2.45.2 Highlights**:
+- **Consistent VERSION Markers**: All 6 agents + 5 hooks now at VERSION: 2.45.2
+- **GAP-ANALYST Error Handling**: Robust error recovery with timeout protection in cmd_orch
+- **Optimized Task Hook**: `inject-session-context.sh` now uses `jq` (5x faster), timeout 5s→15s
+- **12 Functional Hook Tests**: New `test_hooks_functional.py` tests actual hook behavior (not just existence)
+- **81+ Total Tests**: 69 integration + 12 functional tests
+
 **v2.45.1 Highlights**:
 - **Lead Software Architect (LSA)**: Architecture guardian verifies each step against ARCHITECTURE.md
 - **Plan-Sync Pattern**: Catches drift when implementation diverges from spec, patches downstream specs
@@ -26,7 +33,6 @@ Ralph is a dual-runtime orchestrator that adapts model routing based on whether 
 - **5 New Agents**: `@lead-software-architect`, `@plan-sync`, `@gap-analyst`, `@quality-auditor`, `@adversarial-plan-validator`
 - **plan-state.json**: Structured spec vs actual tracking (context as queryable variable)
 - **12-Step Workflow**: Nested loop with LSA-VERIFY → IMPLEMENT → PLAN-SYNC → MICRO-GATE
-- **69+ Integration Tests**: Comprehensive pytest suite validates v2.45.1 hooks, agents, and workflows
 - **Security Fixes**: Atomic temp file handling (race conditions), path traversal prevention, command injection fix
 
 **v2.44 Highlights**:

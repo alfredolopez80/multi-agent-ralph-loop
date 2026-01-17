@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.45.0
+# VERSION: 2.45.2
 name: orchestrator
 description: "Lead Software Architect coordinator with Plan-Sync validation. Ensures 100% plan coverage through adversarial cross-validation between Claude Opus and Codex GPT-5.2."
 tools: Bash, Read, Write, Task

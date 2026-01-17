@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.45.0
+# VERSION: 2.45.2
 name: lead-software-architect
 description: "Architecture guardian that enforces patterns, validates implementations against specs, and maintains project coherence. Spawned by orchestrator before and after each implementation step."
 tools: Read, Grep, Glob, Bash, Task

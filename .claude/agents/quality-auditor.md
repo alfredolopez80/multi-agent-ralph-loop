@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.45.0
+# VERSION: 2.45.2
 name: quality-auditor
 description: "Fast, pragmatic code audit for correctness, simplicity, security, and test coverage. Part of the validation gate in step 7."
 tools: Read, Grep, Glob, Bash

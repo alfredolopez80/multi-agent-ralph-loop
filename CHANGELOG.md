@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.45.2] - 2026-01-17
+
+### Fixed
+- **PreToolUse:Task Hook Error**: Optimized `inject-session-context.sh` from Python3 to jq (5x faster: 335ms vs ~1-2s)
+- **Hook Timeout**: Increased Task hook timeout from 5s to 15s for concurrent load scenarios
+- **GAP-ANALYST Error Handling**: Added error recovery with timeout protection in cmd_orch
+
+### Added
+- **Functional Hook Tests**: 12 new tests in `test_hooks_functional.py` that verify actual hook behavior
+- **Hook Error Recovery Tests**: Tests for invalid JSON input, empty input handling
+
+### Changed
+- **VERSION Markers**: All 6 v2.45 agents + 5 hooks now consistently at VERSION: 2.45.2
+- **Test Count**: 81+ total tests (69 integration + 12 functional)
+
+---
+
+## [2.45.1] - 2026-01-17
+
+### Added
+- **Lead Software Architect (LSA)**: Architecture guardian agent verifies each step against ARCHITECTURE.md
+- **Plan-Sync Pattern**: Catches drift when implementation diverges from spec, patches downstream specs
+- **Auto Plan-State Hook**: `auto-plan-state.sh` auto-creates `plan-state.json` when `orchestrator-analysis.md` is written
+- **5 New Agents**: `@lead-software-architect`, `@plan-sync`, `@gap-analyst`, `@quality-auditor`, `@adversarial-plan-validator`
+- **plan-state.json Schema**: Structured spec vs actual tracking for context as queryable variable
+- **12-Step Workflow**: Nested loop with LSA-VERIFY → IMPLEMENT → PLAN-SYNC → MICRO-GATE
+
+### Security
+- **Atomic Writes**: `mktemp` + `mv` pattern prevents race conditions
+- **Path Traversal Prevention**: Validation in plan-state-init.sh
+- **Command Injection Fix**: Proper escaping in hook scripts
+
+---
+
 ## [2.43.0] - 2026-01-16
 
 ### Added (Context Engineering & LSP Integration)

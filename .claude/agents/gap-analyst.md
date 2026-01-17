@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.45.0
+# VERSION: 2.45.2
 name: gap-analyst
 description: "Analyzes feature requests for missing requirements, edge cases, and ambiguities BEFORE implementation. Prevents rework by finding gaps early."
 tools: Read, Grep, Glob, Bash, WebSearch
