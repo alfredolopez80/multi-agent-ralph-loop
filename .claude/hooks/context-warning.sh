@@ -1,11 +1,16 @@
 #!/bin/bash
 # ~/.claude/hooks/context-warning.sh
-# Context Monitoring Hook - v2.30
+# Context Monitoring Hook - v2.44
 # Executed on every user-prompt-submit to monitor context usage
+#
+# v2.44 IMPROVEMENTS:
+#   - Environment detection for CLI vs VSCode/Cursor
+#   - Improved fallback estimation for extensions (GitHub #15021)
+#   - Operation counter for extensions where /context command fails
 
 # Note: Not using set -e because this is a non-blocking hook
 # Errors should not interrupt the main workflow
-# VERSION: 2.43.0
+# VERSION: 2.44.0
 set -uo pipefail
 
 # Configuration
@@ -13,9 +18,21 @@ THRESHOLD=80
 CRITICAL_THRESHOLD=85
 LOG_FILE="${HOME}/.ralph/context-monitor.log"
 RALPH_DIR="${HOME}/.ralph"
+HOOKS_DIR="${HOME}/.claude/hooks"
+FEATURES_FILE="${HOME}/.ralph/config/features.json"
 
-# Ensure log directory exists (ignore errors)
-mkdir -p "$(dirname "$LOG_FILE" 2>/dev/null)" || true
+# Ensure directories exist (ignore errors)
+mkdir -p "$RALPH_DIR" "$(dirname "$LOG_FILE" 2>/dev/null)" || true
+
+# Source environment detection (v2.44)
+ENV_TYPE="unknown"
+CAPABILITIES="limited"
+if [[ -f "${HOOKS_DIR}/detect-environment.sh" ]]; then
+    # shellcheck source=/dev/null
+    source "${HOOKS_DIR}/detect-environment.sh"
+    ENV_TYPE=$(get_env_type 2>/dev/null || echo "unknown")
+    CAPABILITIES=$(get_capabilities 2>/dev/null || echo "limited")
+fi
 
 # Get timestamp
 timestamp() {
@@ -37,28 +54,72 @@ is_numeric() {
 
 # Get context usage percentage
 # Returns integer percentage (0-100)
+# v2.44: Uses environment detection for better fallback in extensions
 get_context_percentage() {
-    # Try to get context from Claude Code CLI
-    local context_output
-    context_output=$(claude --print "/context" 2>/dev/null || echo "unknown")
+    local pct=""
 
-    # Parse percentage from output - support decimals: NN% or N.N%
-    if [[ "$context_output" =~ ([0-9]+\.?[0-9]*)% ]]; then
-        local pct="${BASH_REMATCH[1]}"
-        # Round to integer and clamp to 0-100
-        echo "$pct" | awk '{printf "%.0f\n", ($1 > 100 ? 100 : ($1 < 0 ? 0 : $1))}'
-    else
-        # Fallback: estimate based on message count
+    # Method 1: Try native CLI command (works in full CLI mode)
+    if [[ "$CAPABILITIES" == "full" ]]; then
+        local context_output
+        context_output=$(claude --print "/context" 2>/dev/null || echo "unknown")
+
+        # Parse percentage from output - support decimals: NN% or N.N%
+        if [[ "$context_output" =~ ([0-9]+\.?[0-9]*)% ]]; then
+            pct="${BASH_REMATCH[1]}"
+        fi
+    fi
+
+    # Method 2: Fallback for extensions (VSCode/Cursor) - operation counter
+    if [[ -z "$pct" ]]; then
+        # Use operation counter for estimation
+        local ops
+        ops=$(cat "${RALPH_DIR}/state/operation-counter" 2>/dev/null || echo "0")
+        if ! is_numeric "$ops"; then
+            ops=0
+        fi
+
+        # v2.44: Improved estimation based on tool operations
+        # Each tool call ~0.25%, each message ~2%
         local message_count
         message_count=$(cat "${RALPH_DIR}/message_count" 2>/dev/null || echo "0")
-        # Validate it's numeric, else use 0
         if ! is_numeric "$message_count"; then
             message_count=0
         fi
-        # Rough estimate: ~5% per message in long conversations
-        local estimated=$(( message_count * 5 < 100 ? message_count * 5 : 100 ))
-        echo "$estimated"
+
+        # Hybrid estimation: ops * 0.25 + messages * 2
+        # Capped at 100%
+        local estimated=$(( (ops / 4) + (message_count * 2) ))
+        [[ $estimated -gt 100 ]] && estimated=100
+        pct="$estimated"
+
+        log_context "DEBUG" "Fallback estimation: ops=$ops, msgs=$message_count, est=$pct%"
     fi
+
+    # Method 3: Final fallback - simple message count
+    if [[ -z "$pct" ]] || [[ "$pct" == "0" ]]; then
+        local message_count
+        message_count=$(cat "${RALPH_DIR}/message_count" 2>/dev/null || echo "0")
+        if ! is_numeric "$message_count"; then
+            message_count=0
+        fi
+        # Rough estimate: ~3% per message
+        pct=$(( message_count * 3 < 100 ? message_count * 3 : 100 ))
+    fi
+
+    # Round to integer and clamp to 0-100
+    echo "$pct" | awk '{printf "%.0f\n", ($1 > 100 ? 100 : ($1 < 0 ? 0 : $1))}'
+}
+
+# Increment operation counter (called by other hooks)
+increment_operation_counter() {
+    local counter_file="${RALPH_DIR}/state/operation-counter"
+    mkdir -p "${RALPH_DIR}/state" 2>/dev/null || true
+    local current
+    current=$(cat "$counter_file" 2>/dev/null || echo "0")
+    if ! is_numeric "$current"; then
+        current=0
+    fi
+    echo $((current + 1)) > "$counter_file"
 }
 
 # Get current objective (from task file if available)
@@ -89,10 +150,18 @@ show_warning() {
     echo "  • @fresh-explorer \"Analyze patterns\" for fresh context"
     echo "  • @checkpoint save \"Pre-compaction state\""
     echo "  • Use @context-compression if available"
+
+    # v2.44: Environment-specific recommendations
+    if [[ "$CAPABILITIES" == "limited" ]]; then
+        echo ""
+        echo "📌 Extension mode detected ($ENV_TYPE):"
+        echo "  • Use /compact skill to manually save context"
+        echo "  • Or run: ralph compact"
+    fi
     echo ""
 
     # Log the warning
-    log_context "WARNING" "${percentage}% | Objective: ${objective}"
+    log_context "WARNING" "${percentage}% | Objective: ${objective} | Env: ${ENV_TYPE}"
 }
 
 # Show critical warning
@@ -113,10 +182,19 @@ show_critical() {
     echo "  1. @checkpoint save \"Urgent save\""
     echo "  2. @fresh-explorer \"Fresh task analysis\""
     echo "  3. Consider starting a new session"
+
+    # v2.44: Environment-specific urgent recommendations
+    if [[ "$CAPABILITIES" == "limited" ]]; then
+        echo ""
+        echo "🚨 Extension mode ($ENV_TYPE) - URGENT:"
+        echo "  • Auto-compact may NOT trigger! Run: /compact"
+        echo "  • Or use terminal: ralph compact"
+        echo "  • Then start fresh: /clear or new conversation"
+    fi
     echo ""
 
     # Log the critical warning
-    log_context "CRITICAL" "${percentage}% | Objective: ${objective}"
+    log_context "CRITICAL" "${percentage}% | Objective: ${objective} | Env: ${ENV_TYPE}"
 }
 
 # Show info message

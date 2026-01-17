@@ -1,6 +1,11 @@
 #!/bin/bash
-# pre-compact-handoff.sh - PreCompact Hook for Ralph v2.35
+# pre-compact-handoff.sh - PreCompact Hook for Ralph v2.44
 # Auto-saves state BEFORE context compaction to prevent information loss
+#
+# v2.44 IMPROVEMENTS:
+#   - Uses context-extractor.py for rich context extraction
+#   - Includes git status, progress tracking, and transcript analysis
+#   - Environment detection for CLI vs VSCode/Cursor fallbacks
 #
 # Input (JSON via stdin):
 #   - hook_event_name: "PreCompact"
@@ -13,20 +18,29 @@
 # NOTE: PreCompact hooks CANNOT prevent compaction - they only receive
 # notification that it's about to happen. Use this to save state.
 #
-# Part of Ralph v2.35 Context Engineering Optimization
+# Part of Ralph v2.44 Context Engineering - GitHub #15021 Workaround
 
-# VERSION: 2.43.0
+# VERSION: 2.44.0
 set -euo pipefail
 
 # Configuration
 LEDGER_DIR="${HOME}/.ralph/ledgers"
 HANDOFF_DIR="${HOME}/.ralph/handoffs"
 SCRIPTS_DIR="${HOME}/.claude/scripts"
+HOOKS_DIR="${HOME}/.claude/hooks"
 FEATURES_FILE="${HOME}/.ralph/config/features.json"
 LOG_FILE="${HOME}/.ralph/logs/pre-compact.log"
+TEMP_CONTEXT_DIR="${HOME}/.ralph/temp"
 
 # Ensure directories exist
-mkdir -p "$LEDGER_DIR" "$HANDOFF_DIR" "${HOME}/.ralph/logs"
+mkdir -p "$LEDGER_DIR" "$HANDOFF_DIR" "${HOME}/.ralph/logs" "$TEMP_CONTEXT_DIR"
+
+# Source environment detection (v2.44)
+if [[ -f "${HOOKS_DIR}/detect-environment.sh" ]]; then
+    # shellcheck source=/dev/null
+    source "${HOOKS_DIR}/detect-environment.sh"
+    detect_environment > /dev/null 2>&1 || true
+fi
 
 # Logging function
 log() {
@@ -81,20 +95,60 @@ if [[ -n "$TRANSCRIPT_PATH" ]] && [[ -f "$TRANSCRIPT_PATH" ]]; then
     fi
 fi
 
-# Generate ledger using ledger-manager.py
+# Generate ledger using ledger-manager.py with rich context (v2.44)
 if check_feature_enabled "RALPH_ENABLE_LEDGER" "true"; then
     LEDGER_SCRIPT="${SCRIPTS_DIR}/ledger-manager.py"
+    CONTEXT_EXTRACTOR="${SCRIPTS_DIR}/context-extractor.py"
+    CONTEXT_JSON="${TEMP_CONTEXT_DIR}/context-${SESSION_ID}.json"
+
     if [[ -x "$LEDGER_SCRIPT" ]]; then
         log "INFO" "Generating ledger for session: $SESSION_ID"
 
-        # Create a basic ledger (the script handles content generation)
-        python3 "$LEDGER_SCRIPT" save \
-            --session "$SESSION_ID" \
-            --goal "Session state before compaction (auto-saved)" \
-            --output "${LEDGER_DIR}/CONTINUITY_RALPH-${SESSION_ID}.md" \
-            >> "$LOG_FILE" 2>&1 || {
-                log "ERROR" "Failed to generate ledger"
-            }
+        # v2.44: Use context-extractor for rich context if enabled
+        if check_feature_enabled "RALPH_ENABLE_CONTEXT_EXTRACTOR" "true" && [[ -x "$CONTEXT_EXTRACTOR" ]]; then
+            log "INFO" "Extracting rich context from project: $PROJECT_DIR"
+
+            # Extract context to JSON file
+            if python3 "$CONTEXT_EXTRACTOR" \
+                --project "$PROJECT_DIR" \
+                --transcript "$TRANSCRIPT_PATH" \
+                --goal "Session state before compaction (auto-saved)" \
+                --output "$CONTEXT_JSON" 2>> "$LOG_FILE"; then
+
+                log "INFO" "Context extracted to: $CONTEXT_JSON"
+
+                # Generate ledger with rich context
+                python3 "$LEDGER_SCRIPT" save \
+                    --session "$SESSION_ID" \
+                    --json "$CONTEXT_JSON" \
+                    --output "${LEDGER_DIR}/CONTINUITY_RALPH-${SESSION_ID}.md" \
+                    >> "$LOG_FILE" 2>&1 || {
+                        log "ERROR" "Failed to generate ledger with rich context"
+                    }
+
+                # Cleanup temp file
+                rm -f "$CONTEXT_JSON" 2>/dev/null || true
+            else
+                log "WARN" "Context extraction failed, falling back to basic ledger"
+                # Fallback to basic ledger
+                python3 "$LEDGER_SCRIPT" save \
+                    --session "$SESSION_ID" \
+                    --goal "Session state before compaction (auto-saved)" \
+                    --output "${LEDGER_DIR}/CONTINUITY_RALPH-${SESSION_ID}.md" \
+                    >> "$LOG_FILE" 2>&1 || {
+                        log "ERROR" "Failed to generate basic ledger"
+                    }
+            fi
+        else
+            # Basic ledger without context extraction
+            python3 "$LEDGER_SCRIPT" save \
+                --session "$SESSION_ID" \
+                --goal "Session state before compaction (auto-saved)" \
+                --output "${LEDGER_DIR}/CONTINUITY_RALPH-${SESSION_ID}.md" \
+                >> "$LOG_FILE" 2>&1 || {
+                    log "ERROR" "Failed to generate ledger"
+                }
+        fi
 
         log "INFO" "Ledger saved to: ${LEDGER_DIR}/CONTINUITY_RALPH-${SESSION_ID}.md"
     else

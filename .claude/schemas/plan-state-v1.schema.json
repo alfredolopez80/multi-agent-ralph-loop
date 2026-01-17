@@ -1,0 +1,406 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "plan-state-v1",
+  "title": "Plan State Schema v2.45",
+  "description": "Schema for tracking plan execution state with drift detection and reconciliation",
+  "type": "object",
+  "required": ["$schema", "plan_id", "task", "created_at", "steps"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "plan-state-v1"
+    },
+    "plan_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this plan execution"
+    },
+    "task": {
+      "type": "string",
+      "description": "The original task description"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "architecture": {
+      "type": "object",
+      "description": "Architecture context for LSA verification",
+      "properties": {
+        "document_path": {
+          "type": "string",
+          "description": "Path to ARCHITECTURE.md or equivalent"
+        },
+        "hash": {
+          "type": "string",
+          "description": "SHA256 hash of architecture document"
+        },
+        "key_patterns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Key architectural patterns to enforce"
+        },
+        "tech_stack": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Technology stack constraints"
+        },
+        "directory_structure": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Mapping of component types to directories"
+        }
+      }
+    },
+    "classification": {
+      "type": "object",
+      "description": "Task classification from orchestrator",
+      "properties": {
+        "complexity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "model_routing": {
+          "type": "string",
+          "enum": ["opus", "sonnet", "haiku", "minimax", "codex", "gemini"]
+        },
+        "adversarial_required": {
+          "type": "boolean"
+        },
+        "worktree": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "path": { "type": "string" },
+            "branch": { "type": "string" }
+          }
+        }
+      }
+    },
+    "clarification": {
+      "type": "object",
+      "description": "User answers from clarification phase",
+      "properties": {
+        "must_have": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": { "type": "string" },
+              "answer": { "type": "string" },
+              "timestamp": { "type": "string", "format": "date-time" }
+            }
+          }
+        },
+        "nice_to_have": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": { "type": "string" },
+              "answer": { "type": "string" },
+              "timestamp": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "description": "Plan steps with spec, actual, and drift tracking",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "status", "spec"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique step identifier (e.g., '1', '2a', '2b')"
+          },
+          "title": {
+            "type": "string",
+            "description": "Human-readable step title"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "in_progress", "completed", "verified", "failed", "skipped"],
+            "description": "Current step status"
+          },
+          "phase": {
+            "type": "string",
+            "description": "Implementation phase (e.g., 'setup', 'core', 'integration', 'testing')"
+          },
+          "spec": {
+            "type": "object",
+            "description": "What SHOULD be implemented",
+            "properties": {
+              "file": {
+                "type": "string",
+                "description": "Target file path"
+              },
+              "action": {
+                "type": "string",
+                "enum": ["create", "modify", "delete", "rename"]
+              },
+              "exports": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Expected exports (functions, classes, variables)"
+              },
+              "dependencies": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Required imports/dependencies"
+              },
+              "signatures": {
+                "type": "object",
+                "additionalProperties": { "type": "string" },
+                "description": "Expected function signatures"
+              },
+              "return_types": {
+                "type": "object",
+                "additionalProperties": { "type": "string" },
+                "description": "Expected return types"
+              },
+              "references": {
+                "type": "object",
+                "description": "References to other steps",
+                "additionalProperties": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                }
+              },
+              "description": {
+                "type": "string",
+                "description": "Detailed description of what this step should do"
+              }
+            }
+          },
+          "actual": {
+            "type": "object",
+            "description": "What WAS ACTUALLY implemented (filled after execution)",
+            "properties": {
+              "file": { "type": "string" },
+              "exports": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "dependencies": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "signatures": {
+                "type": "object",
+                "additionalProperties": { "type": "string" }
+              },
+              "return_types": {
+                "type": "object",
+                "additionalProperties": { "type": "string" }
+              },
+              "commit_hash": { "type": "string" },
+              "lines_changed": { "type": "integer" }
+            }
+          },
+          "drift": {
+            "type": "object",
+            "description": "Drift detection results",
+            "properties": {
+              "detected": {
+                "type": "boolean"
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": ["rename", "signature", "return_type", "location", "dependency", "missing", "extra"]
+                    },
+                    "spec": { "type": "string" },
+                    "actual": { "type": "string" },
+                    "severity": {
+                      "type": "string",
+                      "enum": ["info", "warning", "error"]
+                    }
+                  }
+                }
+              },
+              "synced_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "downstream_patched": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "IDs of downstream steps that were patched"
+              }
+            }
+          },
+          "lsa_verification": {
+            "type": "object",
+            "description": "Lead Software Architect verification",
+            "properties": {
+              "pre_check": {
+                "type": "object",
+                "properties": {
+                  "passed": { "type": "boolean" },
+                  "architecture_understood": { "type": "boolean" },
+                  "target_directory_correct": { "type": "boolean" },
+                  "dependencies_identified": { "type": "boolean" },
+                  "patterns_to_follow": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  },
+                  "timestamp": { "type": "string", "format": "date-time" }
+                }
+              },
+              "post_check": {
+                "type": "object",
+                "properties": {
+                  "passed": { "type": "boolean" },
+                  "architecture_compliant": { "type": "boolean" },
+                  "spec_match": { "type": "boolean" },
+                  "notes": { "type": "string" },
+                  "timestamp": { "type": "string", "format": "date-time" }
+                }
+              }
+            }
+          },
+          "quality_audit": {
+            "type": "object",
+            "description": "Quality auditor results",
+            "properties": {
+              "passed": { "type": "boolean" },
+              "risk_level": {
+                "type": "string",
+                "enum": ["low", "medium", "high"]
+              },
+              "ship_recommendation": {
+                "type": "string",
+                "enum": ["ship", "fix_first", "rework"]
+              },
+              "critical_issues": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "file": { "type": "string" },
+                    "line": { "type": "integer" },
+                    "issue": { "type": "string" },
+                    "risk": { "type": "string" },
+                    "fix": { "type": "string" }
+                  }
+                }
+              },
+              "timestamp": { "type": "string", "format": "date-time" }
+            }
+          },
+          "micro_gate": {
+            "type": "object",
+            "description": "Per-step micro gate results (3-Fix Rule)",
+            "properties": {
+              "attempt": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3
+              },
+              "lint_passed": { "type": "boolean" },
+              "types_passed": { "type": "boolean" },
+              "tests_passed": { "type": "boolean" },
+              "errors": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "drift_log": {
+      "type": "array",
+      "description": "History of all drift events",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "string", "format": "date-time" },
+          "step": { "type": "string" },
+          "changes": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "downstream_patched": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "loop_state": {
+      "type": "object",
+      "description": "Ralph Loop state tracking",
+      "properties": {
+        "current_iteration": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_iterations": {
+          "type": "integer",
+          "default": 25
+        },
+        "validate_attempts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "last_gate_result": {
+          "type": "string",
+          "enum": ["pass", "fail", "pending"]
+        }
+      }
+    },
+    "gap_analysis": {
+      "type": "object",
+      "description": "Pre-implementation gap analysis results",
+      "properties": {
+        "performed": { "type": "boolean" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "user_flows": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "edge_cases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "case": { "type": "string" },
+              "question": { "type": "string" },
+              "impact": { "type": "string" },
+              "resolved": { "type": "boolean" }
+            }
+          }
+        },
+        "error_scenarios": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "priority_questions": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

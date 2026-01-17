@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.44
+# Multi-Agent Ralph v2.45
 
 ## Multi-Agent Ralph Loop Orchestration
 
@@ -6,7 +6,7 @@
 
 | Command | Description |
 |---------|-------------|
-| `/orchestrator` | **Full 10-step workflow**: clarify → classify → worktree → plan → persist → plan mode → execute → validate → retrospect |
+| `/orchestrator` | **Full 12-step workflow**: clarify → gap-analyze → classify → worktree → plan → persist → plan mode → execute-with-sync → validate → retrospect |
 | `/loop` | Execute until VERIFIED_DONE with quality gates |
 | `/clarify` | Intensive AskUserQuestion (MUST_HAVE + NICE_TO_HAVE) |
 | `/gates` | Quality validation (format, lint, tests) |
@@ -14,25 +14,32 @@
 | `/retrospective` | Post-task analysis and improvements |
 | `/parallel` | Run multiple loops concurrently |
 | `/lsp-explore` | Token-free code navigation via LSP |
-| `/compact` | **NEW** Manual context save (extension workaround) |
+| `/compact` | Manual context save (extension workaround) |
 
-### Orchestration Flow (10 Steps) - v2.44
+### Orchestration Flow (12 Steps) - v2.45
 
 ```
-0. EVALUATE     → Quick complexity assessment (trivial vs non-trivial)
-1. CLARIFY      → AskUserQuestion intensively
-1b. SOCRATIC    → Present 2-3 design alternatives (v2.42)
-2. CLASSIFY     → Complexity 1-10, model routing
-2b. WORKTREE    → Ask user about isolated worktree
-3. PLAN         → Design detailed plan (orchestrator analysis)
-3b. PERSIST     → Write to .claude/orchestrator-analysis.md ← NEW v2.44
-4. PLAN MODE    → EnterPlanMode (reads analysis as foundation)
-5. DELEGATE     → Route to model/agent
-6. EXECUTE      → Parallel subagents + 3-Fix Rule (v2.42)
-7. VALIDATE     → Two-Stage Review (v2.42):
-                  Stage 1: Spec Compliance (gates)
-                  Stage 2: Code Quality (adversarial)
-8. RETROSPECT   → Analyze and improve
+0. EVALUATE        → Quick complexity assessment (trivial vs non-trivial)
+1. CLARIFY         → AskUserQuestion intensively (MUST_HAVE + NICE_TO_HAVE)
+1b. GAP-ANALYST    → Pre-implementation gap analysis ← NEW v2.45
+2. CLASSIFY        → Complexity 1-10, model routing
+2b. WORKTREE       → Ask user about isolated worktree
+3. PLAN            → Design detailed plan (orchestrator analysis)
+3b. PERSIST        → Write to .claude/orchestrator-analysis.md
+3c. PLAN-STATE     → Initialize .claude/plan-state.json ← NEW v2.45
+4. PLAN MODE       → EnterPlanMode (reads analysis as foundation)
+5. DELEGATE        → Route to model/agent
+6. EXECUTE-WITH-SYNC → Nested loop per step ← ENHANCED v2.45
+   6a. LSA-VERIFY  → Lead Software Architect pre-check
+   6b. IMPLEMENT   → Execute step implementation
+   6c. PLAN-SYNC   → Detect drift, patch downstream
+   6d. MICRO-GATE  → Per-step quality (3-Fix Rule)
+7. VALIDATE        → Multi-stage validation ← ENHANCED v2.45
+   7a. QUALITY-AUDITOR → 6-phase pragmatic audit
+   7b. GATES       → 9-language quality gates
+   7c. ADVERSARIAL-SPEC → Spec refinement (if complexity >= 7)
+   7d. ADVERSARIAL-PLAN → Claude Opus + Codex cross-validation
+8. RETROSPECT      → Analyze and improve
 ```
 
 ### Usage Examples
@@ -51,7 +58,171 @@
 
 Orchestration with automatic planning, intensive clarification, git worktree isolation, adversarial validation, 9-language quality gates, context engineering, and automatic context preservation.
 
-> **Historical versions**: See [CHANGELOG.md](./CHANGELOG.md) for v2.19-v2.42 details.
+> **Historical versions**: See [CHANGELOG.md](./CHANGELOG.md) for v2.19-v2.43 details.
+
+## v2.45 Lead Software Architect + Plan-Sync Integration
+
+### The LSA Philosophy
+
+**"Plans never survive implementation. But with Plan-Sync, we catch drift and maintain consistency."**
+
+v2.45 introduces a comprehensive plan execution tracking system inspired by:
+- **RLM Paper**: Context as queryable variable (plan-state.json)
+- **gmickel/flow-next**: Plan-Sync pattern for drift detection
+- **Spawn Architecture**: Continuous validation against plan
+
+### New Components (v2.45)
+
+| Component | Purpose |
+|-----------|---------|
+| **Lead Software Architect (LSA)** | Architecture guardian - verifies each step against ARCHITECTURE.md |
+| **Plan-Sync** | Catches drift when implementation diverges, patches downstream specs |
+| **Gap-Analyst** | Pre-implementation gap analysis for missing requirements |
+| **Quality-Auditor** | 6-phase pragmatic code audit |
+| **Adversarial-Plan-Validator** | Cross-validation between Claude Opus and Codex GPT-5.2 |
+| **plan-state.json** | Structured tracking of spec vs actual implementation |
+
+### Plan-State Schema
+
+```json
+{
+  "plan_id": "uuid",
+  "task": "description",
+  "classification": {
+    "complexity": 7,
+    "model_routing": "opus",
+    "adversarial_required": true
+  },
+  "steps": [
+    {
+      "id": "1",
+      "title": "Create auth service",
+      "status": "pending|in_progress|completed|verified",
+      "spec": {
+        "file": "src/auth.ts",
+        "exports": ["authService", "authenticate"],
+        "signatures": {"authenticate": "(creds: Credentials) => Promise<Result>"}
+      },
+      "actual": {
+        "exports": [...],
+        "updated_at": "timestamp"
+      },
+      "drift": {
+        "detected": false,
+        "items": [],
+        "needs_sync": false
+      },
+      "lsa_verification": {
+        "pre_check": {"passed": true},
+        "post_check": {"passed": true}
+      }
+    }
+  ],
+  "loop_state": {
+    "current_iteration": 0,
+    "max_iterations": 25,
+    "validate_attempts": 0
+  }
+}
+```
+
+### Nested Loop Architecture (v2.45)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    EXTERNAL RALPH LOOP (max 25 iter)                │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│    For EACH step in plan:                                           │
+│    ┌─────────────────────────────────────────────────────────┐     │
+│    │           INTERNAL PER-STEP LOOP (3-Fix Rule)          │     │
+│    │                                                         │     │
+│    │   LSA-VERIFY → IMPLEMENT → PLAN-SYNC → MICRO-GATE      │     │
+│    │       ↑                                   │             │     │
+│    │       └──── retry if MICRO-GATE fails ───┘             │     │
+│    │                  (max 3 attempts)                       │     │
+│    └─────────────────────────────────────────────────────────┘     │
+│                              ↓                                      │
+│    After ALL steps: VALIDATE (Gates + Adversarial-Plan)            │
+│                              ↓                                      │
+│    If VALIDATE fails → iterate back to step with issues            │
+│                              ↓                                      │
+│    If VALIDATE passes → RETROSPECT → VERIFIED_DONE                 │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### New CLI Commands (v2.45)
+
+```bash
+# Plan-State Management
+ralph plan init "task" [complexity] [model]  # Initialize plan state
+ralph plan status                            # Show plan status
+ralph plan add-step <id> <title> [file]      # Add step
+ralph plan start <id>                        # Mark in_progress
+ralph plan complete <id>                     # Mark completed
+ralph plan verify <id>                       # Mark verified (post-LSA)
+ralph plan sync                              # Check drift
+ralph plan clear                             # Clear (archives first)
+
+# LSA & Validation
+ralph lsa [target]                           # Architecture verification
+ralph gap "task"                             # Gap analysis
+ralph audit [target]                         # Quality audit
+ralph adversarial-plan                       # Cross-validate plan
+```
+
+### New Hooks (v2.45)
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `plan-state-init.sh` | CLI | Initialize/manage plan-state.json |
+| `lsa-pre-step.sh` | PreToolUse (Edit/Write) | LSA verification before implementation |
+| `plan-sync-post-step.sh` | PostToolUse (Edit/Write) | Drift detection after implementation |
+
+### Adversarial Plan Validation
+
+The final gate before VERIFIED_DONE uses dual-model validation:
+
+```
+┌──────────────────┐         ┌──────────────────┐
+│   CLAUDE OPUS    │ ◄─────► │   CODEX GPT-5.2  │
+│                  │ DEBATE  │                  │
+│  • Reviews impl  │         │  • Reviews impl  │
+│  • Checks specs  │         │  • Checks specs  │
+│  • Finds gaps    │         │  • Finds gaps    │
+└────────┬─────────┘         └────────┬─────────┘
+         │    ┌───────────────┐       │
+         └───►│   RECONCILE   │◄──────┘
+              │               │
+              │ • Merge findings
+              │ • Resolve conflicts
+              │ • Final verdict
+              └───────┬───────┘
+                      ↓
+            ┌─────────────────┐
+            │ COVERAGE REPORT │
+            │  100% Required  │
+            └─────────────────┘
+```
+
+**Verdicts**:
+| Verdict | Coverage | Action |
+|---------|----------|--------|
+| PASS | 100% | Proceed to RETROSPECT → VERIFIED_DONE |
+| CONDITIONAL_PASS | >90% | Fix blocking issues, re-validate |
+| FAIL | <90% | Return to EXECUTE with gap list |
+
+### New Agents (v2.45)
+
+| Agent | Model | Purpose |
+|-------|-------|---------|
+| `@lead-software-architect` | opus | Architecture verification |
+| `@plan-sync` | sonnet | Drift detection & downstream patching |
+| `@gap-analyst` | opus | Pre-implementation gap analysis |
+| `@quality-auditor` | opus | 6-phase pragmatic audit |
+| `@adversarial-plan-validator` | opus | Dual-model plan validation |
+
+---
 
 ## v2.44 Plan Mode Integration + Context Management
 

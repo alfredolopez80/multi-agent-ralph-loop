@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
 # ralph - Multi-Agent Orchestrator CLI
-# Version 2.38.0
+# Version 2.45.0
+# v2.45: Lead Software Architect + Plan-Sync Integration
+#        - Plan-State management (init, status, add-step, start, complete, verify)
+#        - LSA verification (architecture compliance)
+#        - Gap analysis (pre-implementation requirements)
+#        - Quality audit (6-phase pragmatic review)
+#        - Adversarial plan validation (Claude Opus + Codex GPT-5.2)
+#        - Drift detection and downstream patching
+# v2.44: Context Management for Extensions + Worktree Enhancements
+#        - Environment detection (CLI/VSCode/Cursor)
+#        - Rich context extraction with context-extractor.py
+#        - Manual compact command for extensions (GitHub #15021 workaround)
+#        - Worktree symlinks for dependencies
+#        - Native git worktree fallback
+# v2.43: StatusLine Git, VERSION markers, config cleanup
 # v2.38: Adversarial-spec refinement with runtime-aware models
 # v2.37: LLM-TLDR integration - 95% token savings, 5-layer code analysis, semantic search
 # v2.35: Context Engineering Optimization - auto-ledger, auto-handoff, 100% automation
@@ -24,7 +38,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.42.0"
+VERSION="2.45.0"
 RALPH_REPO_PATH=""  # Auto-detected if in ralph repo
 RALPH_DIR="${HOME}/.ralph"
 
@@ -573,7 +587,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 # ===============================================================================
 show_help() {
     cat << 'EOF'
-ralph - Multi-Agent Orchestrator CLI v2.38.0
+ralph - Multi-Agent Orchestrator CLI v2.45.0
 
 ORCHESTRATION:
   ralph orch "task"          Full orchestration (clarify->classify->execute->validate->retrospective)
@@ -688,10 +702,24 @@ ARCHITECTURE (v2.40):
   ralph sync-to-opencode     Sync ~/.claude/ → ~/.config/opencode/ (singular naming)
   ralph validate-integration Run v2.40 integration validation (23 checks)
 
-ITERATION LIMITS:
-  Claude (Sonnet/Opus): 15 iterations
-  MiniMax M2.1:         30 iterations (2x)
-  MiniMax-lightning:    60 iterations (4x)
+PLAN-STATE & LSA (v2.45):
+  ralph plan init "task" [complexity] [model]  Initialize plan state
+  ralph plan status          Show current plan status
+  ralph plan add-step <id> <title> [file]      Add step to plan
+  ralph plan start <id>      Mark step as in_progress
+  ralph plan complete <id>   Mark step as completed
+  ralph plan verify <id>     Mark step as verified (post-LSA check)
+  ralph plan sync            Check for drift, trigger Plan-Sync
+  ralph plan clear           Clear plan state (archives first)
+  ralph lsa [target]         Lead Software Architect verification
+  ralph gap "task"           Pre-implementation gap analysis
+  ralph audit [target]       Quality audit (6-phase pragmatic review)
+  ralph adversarial-plan     Cross-validate plan: Claude Opus + Codex GPT-5.2
+
+ITERATION LIMITS (v2.45):
+  Claude (Sonnet/Opus): 25 iterations
+  MiniMax M2.1:         50 iterations (2x)
+  MiniMax-lightning:    100 iterations (4x)
 
 ALIASES (add to ~/.zshrc or ~/.bashrc):
   alias rh='ralph'
@@ -720,6 +748,13 @@ ALIASES (add to ~/.zshrc or ~/.bashrc):
   alias rhtldr='ralph tldr'
   alias rhtw='ralph tldr warm'
   alias rhts='ralph tldr semantic'
+  # v2.45 Plan-State & LSA
+  alias rhpl='ralph plan'
+  alias rhpls='ralph plan status'
+  alias rhlsa='ralph lsa'
+  alias rhgap='ralph gap'
+  alias rhaud='ralph audit'
+  alias rhap='ralph adversarial-plan'
 
 EXAMPLES:
   ralph orch "Implement OAuth2 with Google"
@@ -741,6 +776,19 @@ EXAMPLES:
   ralph tldr context main                     # Get optimized context
   ralph tldr impact login                     # Find all callers
   ralph tldr slice src/auth.py login 42       # What affects line 42?
+
+  # Plan-State & LSA workflow (v2.45)
+  ralph plan init "Implement JWT authentication" 7 opus    # Initialize plan
+  ralph plan add-step 1 "Create auth service" src/auth.ts # Add step
+  ralph plan start 1                                       # Start work
+  # ... implement ...
+  ralph plan complete 1                                    # Mark done
+  ralph plan verify 1                                      # LSA verified
+  ralph plan sync                                          # Check drift
+  ralph lsa src/                                           # Architecture check
+  ralph gap "Add rate limiting"                            # Gap analysis
+  ralph audit src/                                         # Quality audit
+  ralph adversarial-plan                                   # Final validation
 EOF
 }
 
@@ -2684,6 +2732,536 @@ cmd_handoff() {
     esac
 }
 
+# ===============================================================================
+# v2.44: COMPACT - Manual Context Save (Extension Workaround)
+# ===============================================================================
+cmd_compact() {
+    echo ""
+    echo "╔═══════════════════════════════════════════════════════════════╗"
+    echo "║  RALPH COMPACT: Manual Context Save (v2.44)                   ║"
+    echo "╠═══════════════════════════════════════════════════════════════╣"
+    echo "║  Saving context before compaction...                          ║"
+    echo "╚═══════════════════════════════════════════════════════════════╝"
+    echo ""
+
+    local HOOKS_DIR="${HOME}/.claude/hooks"
+    local PRECOMPACT_HOOK="${HOOKS_DIR}/pre-compact-handoff.sh"
+
+    # Get or generate session ID
+    local SESSION_ID
+    SESSION_ID=$(cat "${RALPH_DIR}/state/current-session" 2>/dev/null || echo "manual-$(date +%Y%m%d-%H%M%S)")
+
+    log_info "Session ID: $SESSION_ID"
+
+    # Check if hook exists
+    if [[ ! -x "$PRECOMPACT_HOOK" ]]; then
+        log_error "PreCompact hook not found: $PRECOMPACT_HOOK"
+        log_info "Run 'ralph sync-global' to install hooks"
+        return 1
+    fi
+
+    # Detect environment
+    local ENV_TYPE="unknown"
+    if [[ -f "${HOOKS_DIR}/detect-environment.sh" ]]; then
+        # shellcheck source=/dev/null
+        source "${HOOKS_DIR}/detect-environment.sh"
+        ENV_TYPE=$(get_env_type 2>/dev/null || echo "unknown")
+        log_info "Environment: $ENV_TYPE"
+    fi
+
+    # Execute pre-compact hook manually
+    log_info "Executing context save..."
+    echo "{\"hook_event_name\":\"PreCompact\",\"session_id\":\"$SESSION_ID\",\"transcript_path\":\"\"}" | \
+        bash "$PRECOMPACT_HOOK"
+
+    # Verify save
+    local LEDGER_FILE="${RALPH_DIR}/ledgers/CONTINUITY_RALPH-${SESSION_ID}.md"
+    if [[ -f "$LEDGER_FILE" ]]; then
+        log_success "Context saved successfully!"
+        echo ""
+        log_info "Ledger: $LEDGER_FILE"
+        echo ""
+        echo "--- SAVED CONTEXT (first 20 lines) ---"
+        head -20 "$LEDGER_FILE"
+        echo "..."
+        echo "--------------------------------------"
+    else
+        log_warn "Ledger file not created (check logs)"
+    fi
+
+    echo ""
+    log_info "Next steps:"
+    echo "  1. Use /clear or start a new conversation"
+    echo "  2. SessionStart hook will auto-restore context"
+    echo "  3. Verify restoration with: ralph ledger show"
+}
+
+# ===============================================================================
+# v2.44: ENV - Environment Detection
+# ===============================================================================
+cmd_env() {
+    local HOOKS_DIR="${HOME}/.claude/hooks"
+    local ENV_SCRIPT="${HOOKS_DIR}/detect-environment.sh"
+
+    if [[ ! -f "$ENV_SCRIPT" ]]; then
+        log_error "Environment detection script not found: $ENV_SCRIPT"
+        log_info "Run 'ralph sync-global' to install"
+        return 1
+    fi
+
+    # Source and display
+    # shellcheck source=/dev/null
+    source "$ENV_SCRIPT"
+    print_env_info
+
+    # Also show features status
+    local FEATURES_FILE="${RALPH_DIR}/config/features.json"
+    if [[ -f "$FEATURES_FILE" ]]; then
+        echo ""
+        echo "Feature Flags:"
+        jq '.' "$FEATURES_FILE" 2>/dev/null || cat "$FEATURES_FILE"
+    fi
+}
+
+# ===============================================================================
+# v2.45: PLAN-STATE MANAGEMENT
+# ===============================================================================
+
+# ralph plan <subcommand> [args]
+# Main plan-state dispatcher
+cmd_plan() {
+    local SUBCMD="${1:-status}"
+    shift || true
+
+    case "$SUBCMD" in
+        init|initialize)
+            cmd_plan_init "$@"
+            ;;
+        status|show)
+            cmd_plan_status "$@"
+            ;;
+        add-step|add)
+            cmd_plan_add_step "$@"
+            ;;
+        start)
+            cmd_plan_start_step "$@"
+            ;;
+        complete)
+            cmd_plan_complete_step "$@"
+            ;;
+        verify)
+            cmd_plan_verify_step "$@"
+            ;;
+        sync)
+            cmd_plan_sync "$@"
+            ;;
+        clear|reset)
+            cmd_plan_clear "$@"
+            ;;
+        *)
+            log_error "Unknown plan subcommand: $SUBCMD"
+            echo ""
+            echo "Usage: ralph plan <subcommand> [args]"
+            echo ""
+            echo "Subcommands:"
+            echo "  init <task> [complexity] [model]  Initialize plan state"
+            echo "  status                            Show plan status"
+            echo "  add-step <id> <title> [file]      Add a step to the plan"
+            echo "  start <step_id>                   Mark step as in_progress"
+            echo "  complete <step_id>                Mark step as completed"
+            echo "  verify <step_id>                  Mark step as verified"
+            echo "  sync                              Trigger Plan-Sync for drift"
+            echo "  clear                             Clear plan state"
+            ;;
+    esac
+}
+
+# ralph plan init <task> [complexity] [model]
+cmd_plan_init() {
+    local TASK="${1:-}"
+    local COMPLEXITY="${2:-5}"
+    local MODEL="${3:-sonnet}"
+
+    if [ -z "$TASK" ]; then
+        log_error "Task description required"
+        echo "Usage: ralph plan init <task> [complexity] [model]"
+        return 1
+    fi
+
+    echo ""
+    echo "╔═══════════════════════════════════════════════════════════════╗"
+    echo "║  PLAN STATE INITIALIZATION (v2.45)                            ║"
+    echo "╚═══════════════════════════════════════════════════════════════╝"
+    echo ""
+
+    local INIT_SCRIPT="${HOME}/.claude/hooks/plan-state-init.sh"
+
+    if [ -f "$INIT_SCRIPT" ]; then
+        local PLAN_ID
+        PLAN_ID=$(bash "$INIT_SCRIPT" init "$TASK" "$COMPLEXITY" "$MODEL")
+        log_success "Plan initialized: $PLAN_ID"
+        echo ""
+        echo "Plan state saved to: .claude/plan-state.json"
+        echo ""
+        echo "Next steps:"
+        echo "  1. Add steps: ralph plan add-step <id> <title> [file]"
+        echo "  2. Start work: ralph plan start <step_id>"
+        echo "  3. Check status: ralph plan status"
+    else
+        log_error "Plan state init script not found: $INIT_SCRIPT"
+        log_info "Run 'ralph sync-global' to install v2.45 hooks"
+        return 1
+    fi
+}
+
+# ralph plan status
+cmd_plan_status() {
+    local INIT_SCRIPT="${HOME}/.claude/hooks/plan-state-init.sh"
+
+    if [ -f "$INIT_SCRIPT" ]; then
+        bash "$INIT_SCRIPT" status
+    else
+        log_error "Plan state script not found"
+        return 1
+    fi
+}
+
+# ralph plan add-step <id> <title> [file] [action] [desc]
+cmd_plan_add_step() {
+    local STEP_ID="${1:-}"
+    local TITLE="${2:-}"
+    local FILE="${3:-}"
+    local ACTION="${4:-create}"
+    local DESC="${5:-}"
+
+    if [ -z "$STEP_ID" ] || [ -z "$TITLE" ]; then
+        log_error "Step ID and title required"
+        echo "Usage: ralph plan add-step <id> <title> [file] [action] [desc]"
+        return 1
+    fi
+
+    local INIT_SCRIPT="${HOME}/.claude/hooks/plan-state-init.sh"
+
+    if [ -f "$INIT_SCRIPT" ]; then
+        bash "$INIT_SCRIPT" add-step "$STEP_ID" "$TITLE" "$FILE" "$ACTION" "$DESC"
+        log_success "Step added: $STEP_ID - $TITLE"
+    else
+        log_error "Plan state script not found"
+        return 1
+    fi
+}
+
+# ralph plan start <step_id>
+cmd_plan_start_step() {
+    local STEP_ID="${1:-}"
+
+    if [ -z "$STEP_ID" ]; then
+        log_error "Step ID required"
+        return 1
+    fi
+
+    local INIT_SCRIPT="${HOME}/.claude/hooks/plan-state-init.sh"
+
+    if [ -f "$INIT_SCRIPT" ]; then
+        bash "$INIT_SCRIPT" start "$STEP_ID"
+        log_success "Step started: $STEP_ID"
+    else
+        log_error "Plan state script not found"
+        return 1
+    fi
+}
+
+# ralph plan complete <step_id>
+cmd_plan_complete_step() {
+    local STEP_ID="${1:-}"
+
+    if [ -z "$STEP_ID" ]; then
+        log_error "Step ID required"
+        return 1
+    fi
+
+    local INIT_SCRIPT="${HOME}/.claude/hooks/plan-state-init.sh"
+
+    if [ -f "$INIT_SCRIPT" ]; then
+        bash "$INIT_SCRIPT" complete "$STEP_ID"
+        log_success "Step completed: $STEP_ID"
+    else
+        log_error "Plan state script not found"
+        return 1
+    fi
+}
+
+# ralph plan verify <step_id>
+cmd_plan_verify_step() {
+    local STEP_ID="${1:-}"
+
+    if [ -z "$STEP_ID" ]; then
+        log_error "Step ID required"
+        return 1
+    fi
+
+    local INIT_SCRIPT="${HOME}/.claude/hooks/plan-state-init.sh"
+
+    if [ -f "$INIT_SCRIPT" ]; then
+        bash "$INIT_SCRIPT" verify "$STEP_ID"
+        log_success "Step verified: $STEP_ID"
+    else
+        log_error "Plan state script not found"
+        return 1
+    fi
+}
+
+# ralph plan sync - Trigger Plan-Sync agent
+cmd_plan_sync() {
+    echo ""
+    echo "╔═══════════════════════════════════════════════════════════════╗"
+    echo "║  PLAN-SYNC: Drift Detection & Downstream Patching (v2.45)    ║"
+    echo "╚═══════════════════════════════════════════════════════════════╝"
+    echo ""
+
+    if [ ! -f ".claude/plan-state.json" ]; then
+        log_error "No plan state found. Run 'ralph plan init' first."
+        return 1
+    fi
+
+    log_info "Checking for drift in current plan..."
+    echo ""
+
+    # Check for drift
+    local DRIFT_COUNT
+    DRIFT_COUNT=$(jq '[.steps[] | select(.drift.detected == true)] | length' .claude/plan-state.json 2>/dev/null || echo "0")
+
+    if [ "$DRIFT_COUNT" -gt 0 ]; then
+        log_warn "Found $DRIFT_COUNT step(s) with drift"
+        echo ""
+        jq -r '.steps[] | select(.drift.detected == true) | "  • \(.id): \(.drift.items | length) drift items"' .claude/plan-state.json
+        echo ""
+        log_info "Use @plan-sync agent to patch downstream specs"
+        log_info "  claude --skill plan-sync"
+    else
+        log_success "No drift detected in current plan"
+    fi
+}
+
+# ralph plan clear - Clear plan state
+cmd_plan_clear() {
+    if [ -f ".claude/plan-state.json" ]; then
+        local PLAN_ID
+        PLAN_ID=$(jq -r '.plan_id' .claude/plan-state.json 2>/dev/null || echo "unknown")
+
+        # Backup before clearing
+        mkdir -p "${HOME}/.ralph/plans/archived"
+        cp ".claude/plan-state.json" "${HOME}/.ralph/plans/archived/${PLAN_ID}.json" 2>/dev/null || true
+
+        rm -f ".claude/plan-state.json"
+        log_success "Plan state cleared (archived to ~/.ralph/plans/archived/)"
+    else
+        log_warn "No plan state to clear"
+    fi
+}
+
+# ===============================================================================
+# v2.45: LSA VERIFICATION
+# ===============================================================================
+
+# ralph lsa [target]
+cmd_lsa() {
+    local TARGET="${1:-.}"
+
+    echo ""
+    echo "╔═══════════════════════════════════════════════════════════════╗"
+    echo "║  LSA: Lead Software Architect Verification (v2.45)           ║"
+    echo "╚═══════════════════════════════════════════════════════════════╝"
+    echo ""
+
+    # SECURITY: Validate and escape target path (v2.45.1 fix)
+    TARGET=$(validate_path "$TARGET")
+    local SAFE_TARGET
+    SAFE_TARGET=$(escape_for_shell "$TARGET")
+
+    log_info "Target: $TARGET"
+
+    # Check for ARCHITECTURE.md
+    local ARCH_FILE=""
+    if [ -f "ARCHITECTURE.md" ]; then
+        ARCH_FILE="ARCHITECTURE.md"
+    elif [ -f "docs/ARCHITECTURE.md" ]; then
+        ARCH_FILE="docs/ARCHITECTURE.md"
+    elif [ -f ".claude/ARCHITECTURE.md" ]; then
+        ARCH_FILE=".claude/ARCHITECTURE.md"
+    fi
+
+    if [ -n "$ARCH_FILE" ]; then
+        log_success "Architecture file found: $ARCH_FILE"
+    else
+        log_warn "No ARCHITECTURE.md found (LSA works best with architecture docs)"
+    fi
+
+    echo ""
+    log_info "Invoking Lead Software Architect agent..."
+    echo ""
+
+    # Use claude to invoke LSA agent (SAFE_TARGET is already escaped)
+    claude --print -p "You are the Lead Software Architect.
+
+    Target: $SAFE_TARGET
+    Architecture file: ${ARCH_FILE:-none}
+
+    Perform architecture verification:
+    1. Read ARCHITECTURE.md if it exists
+    2. Analyze the target for pattern compliance
+    3. Check naming conventions
+    4. Verify directory structure
+    5. Output an LSA VERIFICATION REPORT
+
+    Focus on:
+    - Does the code follow established patterns?
+    - Are naming conventions consistent?
+    - Is the directory structure correct?
+    - Are there any architectural violations?"
+}
+
+# ===============================================================================
+# v2.45: GAP ANALYSIS
+# ===============================================================================
+
+# ralph gap <task>
+cmd_gap() {
+    local TASK="${1:-}"
+
+    if [ -z "$TASK" ]; then
+        log_error "Task description required"
+        echo "Usage: ralph gap <task_description>"
+        return 1
+    fi
+
+    echo ""
+    echo "╔═══════════════════════════════════════════════════════════════╗"
+    echo "║  GAP ANALYSIS: Pre-Implementation Requirements (v2.45)       ║"
+    echo "╚═══════════════════════════════════════════════════════════════╝"
+    echo ""
+
+    log_info "Analyzing task for requirement gaps..."
+    echo ""
+
+    local SAFE_TASK
+    SAFE_TASK=$(escape_for_shell "$TASK")
+
+    claude --print -p "You are the Gap-Analyst agent.
+
+    Task: $SAFE_TASK
+
+    Perform comprehensive gap analysis:
+    1. Analyze all user flows
+    2. Identify state management needs
+    3. Find edge cases
+    4. Map error scenarios
+    5. Check integration points
+
+    Output:
+    - Questions that MUST be answered before coding
+    - Nice-to-have clarifications
+    - Assumptions that need validation
+
+    Use priority levels: 🔴 Critical, 🟡 Important, 🔵 Nice-to-have"
+}
+
+# ===============================================================================
+# v2.45: QUALITY AUDIT
+# ===============================================================================
+
+# ralph audit [target]
+cmd_audit() {
+    local TARGET="${1:-.}"
+
+    echo ""
+    echo "╔═══════════════════════════════════════════════════════════════╗"
+    echo "║  QUALITY AUDIT: Pragmatic Code Review (v2.45)                ║"
+    echo "╚═══════════════════════════════════════════════════════════════╝"
+    echo ""
+
+    log_info "Target: $TARGET"
+    echo ""
+
+    local SAFE_TARGET
+    SAFE_TARGET=$(escape_for_shell "$TARGET")
+
+    claude --print -p "You are the Quality-Auditor agent.
+
+    Target: $SAFE_TARGET
+
+    Perform 6-phase pragmatic audit:
+    1. Quick Scan (30s) - Surface issues
+    2. Correctness Check - Logic errors
+    3. Security Sweep - OWASP Top 10
+    4. Simplicity Pass - YAGNI/complexity
+    5. Test Review - Coverage gaps
+    6. Performance Spot-Check - Obvious bottlenecks
+
+    Output format:
+    - Risk Level: 🔴 High / 🟡 Medium / 🟢 Low
+    - Ship Recommendation: ✓ Ship | ⚠ Fix First | ✗ Rework
+    - Top 3 issues to fix
+    - Time estimate for fixes"
+}
+
+# ===============================================================================
+# v2.45: ADVERSARIAL PLAN VALIDATION
+# ===============================================================================
+
+# ralph adversarial-plan
+cmd_adversarial_plan() {
+    echo ""
+    echo "╔═══════════════════════════════════════════════════════════════╗"
+    echo "║  ADVERSARIAL PLAN VALIDATION (v2.45)                         ║"
+    echo "║  Cross-validation: Claude Opus + Codex GPT-5.2               ║"
+    echo "╚═══════════════════════════════════════════════════════════════╝"
+    echo ""
+
+    if [ ! -f ".claude/plan-state.json" ]; then
+        log_error "No plan state found. Run 'ralph plan init' first."
+        return 1
+    fi
+
+    log_info "Loading plan state..."
+    local TOTAL_STEPS
+    TOTAL_STEPS=$(jq '.steps | length' .claude/plan-state.json 2>/dev/null || echo "0")
+    log_info "Found $TOTAL_STEPS steps to validate"
+    echo ""
+
+    log_info "Phase 1: Claude Opus Review..."
+    echo ""
+
+    claude --print -m opus -p "You are performing adversarial plan validation.
+
+    Read the plan state from .claude/plan-state.json.
+
+    For EACH step:
+    1. Verify the file exists at the specified path
+    2. Verify all exports match the spec
+    3. Verify function signatures match
+    4. Check for unresolved drift
+
+    Output a coverage percentage and list of issues found.
+    Be STRICT - if spec says X, code must have X exactly."
+
+    echo ""
+    log_info "Phase 2: Codex GPT-5.2 Review..."
+    echo ""
+
+    if command -v codex &> /dev/null; then
+        codex exec --full-auto --profile code-review \
+            "Review implementation against .claude/plan-state.json. Verify ALL spec items are implemented. Output JSON with step_id, status, evidence."
+    else
+        log_warn "Codex CLI not installed, skipping Codex review"
+        log_info "Install with: npm i -g @openai/codex"
+    fi
+
+    echo ""
+    log_success "Adversarial validation complete"
+    log_info "Use @adversarial-plan-validator agent for full reconciliation"
+}
+
 cmd_setup_context_engine() {
     echo ""
     echo "╔═══════════════════════════════════════════════════════════════╗"
@@ -3457,11 +4035,175 @@ check_worktruck() {
     return 0
 }
 
-# Create isolated worktree for a feature/task
-cmd_worktree() {
-    # v2.22: Require wt tool
-    require_tool "wt" "git worktree workflow"
+# ===============================================================================
+# v2.44: WORKTREE HELPERS - Symlinks, Package Detection, Fallbacks
+# ===============================================================================
 
+# Detect package manager for current project
+detect_package_manager() {
+    local project_dir="${1:-.}"
+
+    if [[ -f "${project_dir}/bun.lockb" ]]; then
+        echo "bun"
+    elif [[ -f "${project_dir}/pnpm-lock.yaml" ]]; then
+        echo "pnpm"
+    elif [[ -f "${project_dir}/yarn.lock" ]]; then
+        echo "yarn"
+    elif [[ -f "${project_dir}/package-lock.json" ]]; then
+        echo "npm"
+    elif [[ -f "${project_dir}/Cargo.lock" ]]; then
+        echo "cargo"
+    elif [[ -f "${project_dir}/poetry.lock" ]] || [[ -f "${project_dir}/pyproject.toml" ]]; then
+        echo "poetry"
+    elif [[ -f "${project_dir}/requirements.txt" ]] || [[ -f "${project_dir}/setup.py" ]]; then
+        echo "pip"
+    elif [[ -f "${project_dir}/go.mod" ]]; then
+        echo "go"
+    else
+        echo ""
+    fi
+}
+
+# Get dependency directories to symlink based on package manager
+get_dep_dirs_for_pm() {
+    local pm="$1"
+
+    case "$pm" in
+        bun|pnpm|yarn|npm)
+            echo "node_modules"
+            ;;
+        cargo)
+            echo "target"
+            ;;
+        poetry|pip)
+            echo ".venv venv"
+            ;;
+        go)
+            echo ""  # Go uses module cache, not local deps
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
+}
+
+# Setup symlinks from worktree to main project's dependency dirs
+# This saves disk space and avoids re-installing dependencies
+setup_worktree_symlinks() {
+    local worktree_path="$1"
+    local main_project_path="$2"
+
+    if [[ -z "$worktree_path" ]] || [[ -z "$main_project_path" ]]; then
+        log_warn "Missing paths for symlink setup"
+        return 1
+    fi
+
+    local pm
+    pm=$(detect_package_manager "$main_project_path")
+
+    if [[ -z "$pm" ]]; then
+        log_info "   No package manager detected, skipping symlinks"
+        return 0
+    fi
+
+    log_info "   Package manager: $pm"
+
+    local dep_dirs
+    dep_dirs=$(get_dep_dirs_for_pm "$pm")
+
+    for dep_dir in $dep_dirs; do
+        local source_path="${main_project_path}/${dep_dir}"
+        local target_path="${worktree_path}/${dep_dir}"
+
+        if [[ -d "$source_path" ]]; then
+            # Remove existing dir/symlink in worktree
+            rm -rf "$target_path" 2>/dev/null || true
+
+            # Create symlink
+            ln -s "$source_path" "$target_path"
+
+            if [[ -L "$target_path" ]]; then
+                log_success "   Symlinked: $dep_dir → main project"
+            else
+                log_warn "   Failed to symlink: $dep_dir"
+            fi
+        else
+            log_info "   Skipping $dep_dir (not found in main project)"
+        fi
+    done
+
+    return 0
+}
+
+# Ensure .worktrees is in .gitignore
+ensure_worktrees_gitignore() {
+    local project_dir="${1:-.}"
+    local gitignore="${project_dir}/.gitignore"
+
+    if [[ ! -f "$gitignore" ]]; then
+        echo ".worktrees/" > "$gitignore"
+        log_info "   Created .gitignore with .worktrees/"
+        return 0
+    fi
+
+    if ! grep -q "^\.worktrees/?$" "$gitignore" 2>/dev/null; then
+        echo ".worktrees/" >> "$gitignore"
+        log_info "   Added .worktrees/ to .gitignore"
+    fi
+}
+
+# Native git worktree fallback (when wt is not installed)
+native_worktree_create() {
+    local branch_name="$1"
+    local worktree_path="$2"
+
+    if [[ -z "$branch_name" ]] || [[ -z "$worktree_path" ]]; then
+        log_error "Usage: native_worktree_create <branch> <path>"
+        return 1
+    fi
+
+    log_info "Using native git worktree (wt not available)..."
+
+    # Create worktree with new branch
+    if ! git worktree add -b "$branch_name" "$worktree_path" 2>/dev/null; then
+        # Branch might already exist, try without -b
+        if ! git worktree add "$worktree_path" "$branch_name" 2>/dev/null; then
+            log_error "Failed to create worktree"
+            return 1
+        fi
+    fi
+
+    return 0
+}
+
+# Sync worktree dependencies (repair symlinks)
+cmd_worktree_sync_deps() {
+    local WORKTREE_PATH="${1:-}"
+
+    if [[ -z "$WORKTREE_PATH" ]]; then
+        # Try current directory
+        WORKTREE_PATH="$(pwd)"
+    fi
+
+    # Validate it's a worktree
+    if ! git worktree list | grep -q "$WORKTREE_PATH"; then
+        log_error "Not a git worktree: $WORKTREE_PATH"
+        return 1
+    fi
+
+    # Find main project (first worktree in list)
+    local main_project
+    main_project=$(git worktree list | head -1 | awk '{print $1}')
+
+    log_info "Syncing dependencies from: $main_project"
+    setup_worktree_symlinks "$WORKTREE_PATH" "$main_project"
+
+    log_success "Dependency symlinks refreshed"
+}
+
+# Create isolated worktree for a feature/task
+# v2.44: Added symlinks, gitignore management, and native fallback
+cmd_worktree() {
     local TASK
     TASK=$(validate_text_input "${1:-}")
 
@@ -3471,7 +4213,14 @@ cmd_worktree() {
         return 1
     fi
 
-    check_worktruck || return 1
+    # v2.44: Check for wt, but don't require it (use native fallback)
+    local USE_WT=false
+    if command -v wt &>/dev/null; then
+        USE_WT=true
+    else
+        log_warn "WorkTrunk (wt) not installed, using native git worktree"
+        log_info "  Tip: Install wt for better UX: brew install max-sixty/worktrunk/wt"
+    fi
 
     # Generate branch name from task
     local SANITIZED_TASK
@@ -3485,15 +4234,30 @@ cmd_worktree() {
     # Ensure .worktrees directory exists
     mkdir -p "$WORKTREES_DIR"
 
-    # Create worktree using WorkTrunk
-    if ! wt switch -c "$BRANCH_NAME"; then
-        log_error "Failed to create worktree"
-        return 1
-    fi
+    # v2.44: Ensure .worktrees is in .gitignore
+    ensure_worktrees_gitignore "."
 
-    # Get the worktree path
+    # Get main project path (for symlinks)
+    local MAIN_PROJECT
+    MAIN_PROJECT=$(pwd)
+
+    # Create worktree
     local WT_PATH
-    WT_PATH=$(git worktree list | grep "$BRANCH_NAME" | awk '{print $1}')
+    if [[ "$USE_WT" == "true" ]]; then
+        # Use WorkTrunk
+        if ! wt switch -c "$BRANCH_NAME"; then
+            log_error "Failed to create worktree with wt"
+            return 1
+        fi
+        WT_PATH=$(git worktree list | grep "$BRANCH_NAME" | awk '{print $1}')
+    else
+        # v2.44: Native git worktree fallback
+        WT_PATH="${WORKTREES_DIR}/${BRANCH_NAME//\//-}"
+        if ! native_worktree_create "$BRANCH_NAME" "$WT_PATH"; then
+            log_error "Failed to create worktree"
+            return 1
+        fi
+    fi
 
     if [ -z "$WT_PATH" ]; then
         log_error "Worktree created but path not found"
@@ -3509,6 +4273,10 @@ cmd_worktree() {
         git config --worktree push.default current 2>/dev/null || true
     )
 
+    # v2.44: Setup dependency symlinks
+    log_info "   Setting up dependency symlinks..."
+    setup_worktree_symlinks "$WT_PATH" "$MAIN_PROJECT"
+
     log_success "Worktree created: $WT_PATH"
     echo ""
     log_info "To launch Claude in this worktree:"
@@ -3516,6 +4284,9 @@ cmd_worktree() {
     echo ""
     log_info "When done, create PR with:"
     echo "   ralph worktree-pr $BRANCH_NAME"
+    echo ""
+    log_info "To repair symlinks later:"
+    echo "   ralph worktree-sync-deps $WT_PATH"
 }
 
 # v2.43: Worktree Dashboard - Show status of all worktrees
@@ -5634,6 +6405,10 @@ main() {
         worktree-dashboard|wt-dashboard|wt-dash)
             cmd_worktree_dashboard
             ;;
+        # v2.44: Worktree dependency sync
+        worktree-sync-deps|wt-sync|sync-deps)
+            cmd_worktree_sync_deps "$@"
+            ;;
 
         # Maintenance (v2.21)
         self-update|update)
@@ -5717,7 +6492,7 @@ main() {
             cmd_query "$@"
             ;;
 
-        # Context Engineering (v2.35)
+        # Context Engineering (v2.35) + v2.44 Extensions
         ledger)
             cmd_ledger "$@"
             ;;
@@ -5726,6 +6501,31 @@ main() {
             ;;
         setup-context-engine|context-engine)
             cmd_setup_context_engine
+            ;;
+        # v2.44: Manual compact (extension workaround)
+        compact|save-context|context-save)
+            cmd_compact
+            ;;
+        # v2.44: Environment detection
+        env|environment|detect-env)
+            cmd_env
+            ;;
+
+        # === v2.45: PLAN-STATE & LSA COMMANDS ===
+        plan|plan-state)
+            cmd_plan "$@"
+            ;;
+        lsa|architect|lead-architect)
+            cmd_lsa "$@"
+            ;;
+        gap|gap-analyze|gap-analysis)
+            cmd_gap "$@"
+            ;;
+        audit|quality-audit)
+            cmd_audit "$@"
+            ;;
+        adversarial-plan|adv-plan|validate-plan)
+            cmd_adversarial_plan "$@"
             ;;
 
         # Skills System (v2.32)
