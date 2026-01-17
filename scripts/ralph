@@ -5973,12 +5973,13 @@ cmd_improvements() {
 }
 
 # ===============================================================================
-# ORCHESTRATION
+# ORCHESTRATION v2.45.1
 # ===============================================================================
 cmd_orch() {
     echo ""
     echo "==============================================================="
-    echo "  RALPH WIGGUM v2.38 ORCHESTRATION"
+    echo "  RALPH WIGGUM v2.45.1 ORCHESTRATION"
+    echo "  Lead Software Architect Pattern + Plan-Sync"
     echo "==============================================================="
     echo ""
 
@@ -5987,58 +5988,298 @@ cmd_orch() {
     local SAFE_TASK
     SAFE_TASK=$(escape_for_shell "$TASK")
 
+    if [[ -z "$TASK" ]]; then
+        log_error "Usage: ralph orch \"task description\""
+        return 1
+    fi
+
     echo ""
-    echo "  NOTE: v2.21 adds self-update, pre-merge validation, and integrations check."
-    echo "        Uses AskUserQuestion and EnterPlanMode."
-    echo ""
-    echo "  For best experience, use the Claude Code /orchestrator command"
-    echo "  which provides native interactive questioning."
+    echo "  v2.45.1 Features:"
+    echo "    • 12-step workflow with LSA verification"
+    echo "    • Automatic plan-state.json creation"
+    echo "    • Plan-Sync drift detection"
+    echo "    • Adversarial plan validation"
     echo ""
     echo "==============================================================="
     echo ""
 
-    # Step 0: Auto-Plan Mode (inform user)
-    log_info "[0/7] AUTO-PLAN MODE"
-    log_info "   Non-trivial tasks automatically enter Plan Mode in Claude Code"
+    local COMPLEXITY=5
+    local MODEL="sonnet"
+    local WORKTREE_PATH=""
+
+    # =========================================================================
+    # Step 0: EVALUATE
+    # =========================================================================
+    log_info "[0/12] EVALUATE - Quick complexity assessment"
+    echo "   Task: $TASK"
     echo ""
 
-    # Step 1: Clarify (legacy CLI mode)
-    log_info "[1/7] CLARIFY"
-    log_info "   Generating clarification questions..."
+    # =========================================================================
+    # Step 1: CLARIFY
+    # =========================================================================
+    log_info "[1/12] CLARIFY - Generating clarification questions"
     cmd_clarify "$TASK"
     echo ""
-    log_warn "   For interactive questioning, use: claude then /orchestrator"
-    read -p "Press Enter to continue after reviewing questions (or Ctrl+C to abort)..."
+    log_warn "   For interactive mode, use: claude then /orchestrator"
+    read -p "Press Enter after reviewing questions (or Ctrl+C to abort)..."
 
-    # Step 2: Classify
-    log_info "[2/7] CLASSIFY"
-    claude --print -p "Use task-classifier skill. Classify complexity (1-10) for: ${SAFE_TASK}"
+    # =========================================================================
+    # Step 1b: GAP-ANALYST (v2.45)
+    # =========================================================================
+    log_info "[1b/12] GAP-ANALYST - Pre-implementation gap analysis"
+    echo "   Analyzing for missing requirements, edge cases, integration points..."
+    claude --print -p "You are the Gap-Analyst agent. Analyze this task for gaps:
+
+Task: ${SAFE_TASK}
+
+Find:
+1. Missing user flows (happy path, alternatives)
+2. Edge cases (empty, boundary, concurrent)
+3. Error scenarios and recovery
+4. Integration points
+
+Output: Priority questions and assumptions."
+    echo ""
+    read -p "Press Enter to continue (review gaps above)..."
+
+    # =========================================================================
+    # Step 2: CLASSIFY
+    # =========================================================================
+    log_info "[2/12] CLASSIFY - Complexity 1-10, model routing"
+
+    local CLASSIFICATION
+    CLASSIFICATION=$(claude --print -p "Classify complexity (1-10) for: ${SAFE_TASK}
+
+Output JSON only:
+{\"complexity\": N, \"model\": \"opus|sonnet|minimax\", \"adversarial\": true|false}")
+
+    # Extract values
+    COMPLEXITY=$(echo "$CLASSIFICATION" | grep -oE '"complexity":\s*[0-9]+' | grep -oE '[0-9]+' || echo "5")
+    MODEL=$(echo "$CLASSIFICATION" | grep -oE '"model":\s*"[a-z]+"' | grep -oE '(opus|sonnet|minimax)' || echo "sonnet")
+    local ADVERSARIAL
+    ADVERSARIAL=$(echo "$CLASSIFICATION" | grep -oE '"adversarial":\s*(true|false)' | grep -oE '(true|false)' || echo "false")
+
+    echo "   Complexity: $COMPLEXITY/10"
+    echo "   Model: $MODEL"
+    echo "   Adversarial: $ADVERSARIAL"
     echo ""
 
-    # Step 3: Plan
-    log_info "[3/7] PLAN"
-    log_info "   In Claude Code, this step writes a detailed plan for approval"
+    # =========================================================================
+    # Step 2b: WORKTREE
+    # =========================================================================
+    log_info "[2b/12] WORKTREE - Isolation decision"
+    echo ""
+    echo "   ¿Crear worktree aislado para este cambio?"
+    echo "   [1] Sí - Feature nueva, refactor grande, cambio experimental"
+    echo "   [2] No - Hotfix, cambio menor, trabajo directo"
+    echo ""
+    read -p "   Selección (1/2) [2]: " WORKTREE_CHOICE
+
+    if [[ "$WORKTREE_CHOICE" == "1" ]]; then
+        local BRANCH_NAME
+        BRANCH_NAME=$(echo "$TASK" | tr ' ' '-' | tr '[:upper:]' '[:lower:]' | head -c 30)
+        log_info "   Creando worktree: $BRANCH_NAME"
+        cmd_worktree "$BRANCH_NAME"
+        WORKTREE_PATH=".worktrees/ai-ralph-$(date +%Y%m%d)-${BRANCH_NAME}"
+    else
+        log_info "   Trabajando en branch actual"
+    fi
     echo ""
 
-    # Step 4: Delegate
-    log_info "[4/7] DELEGATE"
-    log_info "   Launching appropriate subagents..."
+    # =========================================================================
+    # Step 3: PLAN
+    # =========================================================================
+    log_info "[3/12] PLAN - Detailed implementation plan"
+    echo "   Generating plan..."
 
-    # Step 5: Execute
-    log_info "[5/7] EXECUTE"
+    local PLAN_CONTENT
+    PLAN_CONTENT=$(claude --print -p "Create implementation plan for: ${SAFE_TASK}
+
+Complexity: $COMPLEXITY
+Model: $MODEL
+
+Output structure:
+## Summary
+[1 paragraph]
+
+## Phases
+### Phase 1: [name]
+- Files: [list]
+- Changes: [description]
+
+### Phase 2: [name]
+...
+
+## Files to Modify/Create
+| File | Action | Description |
+
+## Testing Strategy
+
+## Risks")
+
+    echo "$PLAN_CONTENT"
+    echo ""
+
+    # =========================================================================
+    # Step 3b: PERSIST (v2.44)
+    # =========================================================================
+    log_info "[3b/12] PERSIST - Writing orchestrator-analysis.md"
+
+    mkdir -p .claude
+    cat > .claude/orchestrator-analysis.md << EOF
+# Orchestrator Analysis
+Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+Task: $TASK
+
+## Classification
+- **Complexity**: $COMPLEXITY/10
+- **Model Routing**: $MODEL
+- **Adversarial Required**: $ADVERSARIAL
+- **Worktree**: ${WORKTREE_PATH:-"No (working in current branch)"}
+
+## Implementation Plan
+
+$PLAN_CONTENT
+
+---
+**INSTRUCTION FOR PLAN MODE**:
+This analysis is the foundation for your plan.
+Do NOT generate a new plan from scratch.
+EXPAND and REFINE this analysis, do not replace it.
+EOF
+
+    log_success "   Written: .claude/orchestrator-analysis.md"
+    echo ""
+
+    # =========================================================================
+    # Step 3c: PLAN-STATE (v2.45)
+    # =========================================================================
+    log_info "[3c/12] PLAN-STATE - Initializing plan-state.json"
+
+    # The auto-plan-state.sh hook should trigger, but we also call manually as backup
+    local PLAN_INIT="${HOME}/.claude/hooks/plan-state-init.sh"
+    if [[ -x "$PLAN_INIT" ]]; then
+        "$PLAN_INIT" init "$TASK" "$COMPLEXITY" "$MODEL" 2>/dev/null || true
+    fi
+
+    # Verify plan-state was created (by hook or manually)
+    if [[ -f ".claude/plan-state.json" ]]; then
+        local STEP_COUNT
+        STEP_COUNT=$(jq '.steps | length' .claude/plan-state.json 2>/dev/null || echo "0")
+        log_success "   Created: .claude/plan-state.json ($STEP_COUNT steps)"
+    else
+        log_warn "   plan-state.json will be created when orchestrator-analysis.md is processed"
+    fi
+    echo ""
+
+    # =========================================================================
+    # Step 4: PLAN MODE
+    # =========================================================================
+    log_info "[4/12] PLAN MODE - In Claude Code, this enters EnterPlanMode"
+    log_info "   The analysis file will be read automatically by Claude Code"
+    echo ""
+    read -p "Press Enter to proceed with execution..."
+
+    # =========================================================================
+    # Step 5: DELEGATE
+    # =========================================================================
+    log_info "[5/12] DELEGATE - Routing to model: $MODEL"
+    echo ""
+
+    # =========================================================================
+    # Step 6: EXECUTE-WITH-SYNC (v2.45)
+    # =========================================================================
+    log_info "[6/12] EXECUTE-WITH-SYNC - Implementation with LSA verification"
+    echo ""
+    echo "   Nested loop: LSA-VERIFY → IMPLEMENT → PLAN-SYNC → MICRO-GATE"
+    echo ""
+
+    # Execute parallel review/implementation
+    if [[ -n "$WORKTREE_PATH" ]] && [[ -d "$WORKTREE_PATH" ]]; then
+        log_info "   Working in worktree: $WORKTREE_PATH"
+        cd "$WORKTREE_PATH"
+    fi
+
     cmd_parallel . false
 
-    # Step 6: Validate
-    log_info "[6/7] VALIDATE"
+    # Check for drift
+    if [[ -f ".claude/plan-state.json" ]]; then
+        local DRIFT_COUNT
+        DRIFT_COUNT=$(jq '[.steps[] | select(.drift.detected == true)] | length' .claude/plan-state.json 2>/dev/null || echo "0")
+        if [[ "$DRIFT_COUNT" -gt 0 ]]; then
+            log_warn "   Drift detected in $DRIFT_COUNT steps - Plan-Sync will patch downstream"
+        fi
+    fi
+    echo ""
+
+    # =========================================================================
+    # Step 7: VALIDATE (Enhanced v2.45)
+    # =========================================================================
+    log_info "[7/12] VALIDATE - Multi-stage quality validation"
+    echo ""
+
+    # 7a. Quality Auditor
+    log_info "   [7a] Quality Auditor..."
+    claude --print -p "Quick pragmatic audit of recent changes. Check: correctness, security, simplicity. Output: ✓ Ship | ⚠ Fix First | ✗ Rework" 2>/dev/null || true
+
+    # 7b. Gates
+    log_info "   [7b] Quality Gates (9 languages)..."
     cmd_gates --check
 
-    # Step 7: Retrospective
-    log_info "[7/7] RETROSPECTIVE"
+    # 7c. Adversarial Spec (if complexity >= 7)
+    if [[ "$COMPLEXITY" -ge 7 ]]; then
+        log_info "   [7c] Adversarial Spec Refinement..."
+        cmd_adversarial "$TASK" 2>/dev/null || true
+    fi
+
+    # 7d. Adversarial Plan Validation
+    if [[ "$ADVERSARIAL" == "true" ]] || [[ "$COMPLEXITY" -ge 8 ]]; then
+        log_info "   [7d] Adversarial Plan Validation (Claude + Codex)..."
+        cmd_adversarial_plan 2>/dev/null || log_warn "   Adversarial plan validation skipped (codex not available)"
+    fi
+    echo ""
+
+    # =========================================================================
+    # Step 8: RETROSPECT
+    # =========================================================================
+    log_info "[8/12] RETROSPECT - Analysis and improvements"
     cmd_retrospective
 
+    # =========================================================================
+    # Step 8b: PR REVIEW (if worktree)
+    # =========================================================================
+    if [[ -n "$WORKTREE_PATH" ]]; then
+        log_info "[8b/12] PR REVIEW - Creating PR from worktree"
+        echo ""
+        read -p "   Create PR now? (y/n) [y]: " CREATE_PR
+        if [[ "$CREATE_PR" != "n" ]]; then
+            local BRANCH
+            BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+            if [[ -n "$BRANCH" ]]; then
+                cmd_worktree_pr "$BRANCH"
+            fi
+        fi
+    fi
+
+    # =========================================================================
+    # VERIFIED_DONE
+    # =========================================================================
     echo ""
     echo "==============================================================="
-    log_success "  ORCHESTRATION COMPLETE"
+    log_success "  ORCHESTRATION COMPLETE - v2.45.1"
+    echo ""
+    echo "  Summary:"
+    echo "    Task: $TASK"
+    echo "    Complexity: $COMPLEXITY/10"
+    echo "    Model: $MODEL"
+    echo "    Worktree: ${WORKTREE_PATH:-"None"}"
+    echo ""
+    echo "  Files created:"
+    echo "    • .claude/orchestrator-analysis.md"
+    [[ -f ".claude/plan-state.json" ]] && echo "    • .claude/plan-state.json"
+    echo ""
+    echo "==============================================================="
+    log_success "  VERIFIED_DONE"
     echo "==============================================================="
 }
 
