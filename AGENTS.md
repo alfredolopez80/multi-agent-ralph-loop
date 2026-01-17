@@ -74,7 +74,18 @@ The orchestrator routes tasks based on:
 3. **File Type**: `.py` → `@kieran-python-reviewer`, `.ts` → `@kieran-typescript-reviewer`
 4. **Domain**: DeFi → Blockchain agents, Frontend → `@frontend-reviewer`
 
-## Hooks Integration (v2.36)
+## Hooks Integration (v2.45.1)
+
+### Automation Hooks
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `auto-plan-state.sh` | PostToolUse (Write) | Auto-creates `plan-state.json` when `orchestrator-analysis.md` is written |
+| `lsa-pre-step.sh` | PreToolUse (Edit/Write) | LSA verification before implementation |
+| `plan-sync-post-step.sh` | PostToolUse (Edit/Write) | Drift detection after implementation |
+| `plan-state-init.sh` | CLI | Initialize/manage plan-state.json |
+
+### Logging Hooks
 
 5 priority agents have logging hooks:
 

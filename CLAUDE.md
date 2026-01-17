@@ -16,7 +16,7 @@
 | `/lsp-explore` | Token-free code navigation via LSP |
 | `/compact` | Manual context save (extension workaround) |
 
-### Orchestration Flow (12 Steps) - v2.45
+### Orchestration Flow (12 Steps) - v2.45.1
 
 ```
 0. EVALUATE        → Quick complexity assessment (trivial vs non-trivial)
@@ -171,10 +171,11 @@ ralph audit [target]                         # Quality audit
 ralph adversarial-plan                       # Cross-validate plan
 ```
 
-### New Hooks (v2.45)
+### New Hooks (v2.45.1)
 
 | Hook | Trigger | Purpose |
 |------|---------|---------|
+| `auto-plan-state.sh` | PostToolUse (Write) | Auto-creates plan-state.json when orchestrator-analysis.md is written |
 | `plan-state-init.sh` | CLI | Initialize/manage plan-state.json |
 | `lsa-pre-step.sh` | PreToolUse (Edit/Write) | LSA verification before implementation |
 | `plan-sync-post-step.sh` | PostToolUse (Edit/Write) | Drift detection after implementation |
@@ -685,19 +686,21 @@ Task:
 - MiniMax (8% cost): Second opinion with Opus-level quality
 - Haiku: NOT recommended (30%+ rework rate)
 
-## Mandatory Flow (10 Steps) - v2.44
+## Mandatory Flow (12 Steps) - v2.45.1
 
 ```
 0. EVALUATE     → Quick complexity assessment
 1. /clarify     → AskUserQuestion (MUST_HAVE + NICE_TO_HAVE)
+1b. GAP-ANALYST → Pre-implementation gap analysis
 2. /classify    → Complexity 1-10, model routing
 2b. WORKTREE    → Ask about worktree isolation
 3. PLAN         → Design detailed plan (orchestrator analysis)
-3b. PERSIST     → Write to .claude/orchestrator-analysis.md ← NEW v2.44
+3b. PERSIST     → Write to .claude/orchestrator-analysis.md
+3c. PLAN-STATE  → auto-plan-state.sh creates plan-state.json ← NEW v2.45.1
 4. PLAN MODE    → EnterPlanMode (reads analysis as foundation)
 5. @orchestrator → Delegate to subagents
-6. ralph gates  → Quality gates (9 languages)
-7. /adversarial → adversarial-spec refinement (if complexity >= 7)
+6. EXECUTE-WITH-SYNC → LSA-VERIFY → IMPLEMENT → PLAN-SYNC → MICRO-GATE
+7. VALIDATE     → quality-auditor + gates + adversarial-plan
 8. /retrospective → Propose improvements
 → VERIFIED_DONE
 ```

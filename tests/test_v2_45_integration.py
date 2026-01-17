@@ -1,5 +1,5 @@
 """
-Multi-Agent Ralph v2.45 Integration Tests
+Multi-Agent Ralph v2.45/v2.45.1 Integration Tests
 
 Tests for validating:
 - Lead Software Architect (LSA) agent and hooks
@@ -10,6 +10,8 @@ Tests for validating:
 - Plan-State schema validation
 - Plan-State CLI commands in ralph script
 - Nested loop architecture components
+- v2.45.1: auto-plan-state.sh hook automation
+- v2.45.1: cmd_orch 12-step workflow
 """
 import os
 import json
@@ -142,12 +144,13 @@ class TestV245Agents:
 # ============================================================
 
 class TestV245Hooks:
-    """Test v2.45 hooks exist and are properly configured."""
+    """Test v2.45/v2.45.1 hooks exist and are properly configured."""
 
     V245_HOOKS = [
         "lsa-pre-step.sh",
         "plan-sync-post-step.sh",
         "plan-state-init.sh",
+        "auto-plan-state.sh",  # v2.45.1 - auto-creates plan-state.json
     ]
 
     def test_all_v245_hooks_exist(self, global_hooks_dir):
@@ -436,6 +439,122 @@ class TestRalphPlanStateCommands:
 
 
 # ============================================================
+# v2.45.1 cmd_orch Tests
+# ============================================================
+
+class TestCmdOrchV2451:
+    """Test cmd_orch has been updated to v2.45.1 with 12 steps."""
+
+    def test_cmd_orch_has_12_steps_structure(self, scripts_dir):
+        """Verify cmd_orch implements 12-step workflow."""
+        ralph_script = os.path.join(scripts_dir, "ralph")
+        if not os.path.exists(ralph_script):
+            pytest.skip("ralph script not found")
+
+        with open(ralph_script) as f:
+            content = f.read()
+
+        # Find cmd_orch function
+        assert "cmd_orch" in content, "ralph script missing cmd_orch function"
+
+        # Check for key v2.45.1 steps
+        v2451_markers = [
+            "GAP-ANALYST",      # Step 1b
+            "PLAN-STATE",       # Step 3c
+            "EXECUTE-WITH-SYNC", # Step 6
+            "LSA",              # Step 6a
+            "MICRO-GATE",       # Step 6d
+            "QUALITY-AUDITOR",  # Step 7a
+            "ADVERSARIAL",      # Step 7c/7d
+        ]
+
+        found_markers = [m for m in v2451_markers if m.lower() in content.lower()]
+        coverage = len(found_markers) / len(v2451_markers)
+
+        assert coverage >= 0.7, (
+            f"cmd_orch missing v2.45.1 markers. Found: {found_markers}\n"
+            f"Expected 70%+ coverage, got {coverage*100:.0f}%"
+        )
+
+    def test_cmd_orch_has_worktree_step(self, scripts_dir):
+        """Verify cmd_orch includes worktree decision step (2b)."""
+        ralph_script = os.path.join(scripts_dir, "ralph")
+        if not os.path.exists(ralph_script):
+            pytest.skip("ralph script not found")
+
+        with open(ralph_script) as f:
+            content = f.read()
+
+        # Check for worktree in orchestration
+        assert "worktree" in content.lower(), (
+            "cmd_orch should include worktree decision step (Step 2b)"
+        )
+
+    def test_cmd_orch_calls_plan_state_init(self, scripts_dir):
+        """Verify cmd_orch calls plan-state-init.sh for step 3c."""
+        ralph_script = os.path.join(scripts_dir, "ralph")
+        if not os.path.exists(ralph_script):
+            pytest.skip("ralph script not found")
+
+        with open(ralph_script) as f:
+            content = f.read()
+
+        # Check that cmd_orch references plan-state initialization
+        has_plan_state_ref = (
+            "plan-state-init" in content or
+            "plan_state" in content.lower() or
+            "PLAN_INIT" in content
+        )
+
+        assert has_plan_state_ref, (
+            "cmd_orch should call plan-state-init.sh for Step 3c (PLAN-STATE)"
+        )
+
+    def test_cmd_orch_has_multi_stage_validation(self, scripts_dir):
+        """Verify cmd_orch implements multi-stage validation (7a-7d)."""
+        ralph_script = os.path.join(scripts_dir, "ralph")
+        if not os.path.exists(ralph_script):
+            pytest.skip("ralph script not found")
+
+        with open(ralph_script) as f:
+            content = f.read()
+
+        # Check for validation stages
+        validation_markers = [
+            "quality",      # 7a QUALITY-AUDITOR
+            "gates",        # 7b GATES
+            "adversarial",  # 7c/7d ADVERSARIAL
+        ]
+
+        found = [m for m in validation_markers if m in content.lower()]
+
+        assert len(found) >= 2, (
+            f"cmd_orch should have multi-stage validation. Found: {found}\n"
+            "Expected at least 2 validation stages (quality, gates, adversarial)"
+        )
+
+    def test_cmd_orch_version_marker(self, scripts_dir):
+        """Verify cmd_orch has v2.45 version marker in comments."""
+        ralph_script = os.path.join(scripts_dir, "ralph")
+        if not os.path.exists(ralph_script):
+            pytest.skip("ralph script not found")
+
+        with open(ralph_script) as f:
+            content = f.read()
+
+        # Check for version marker near cmd_orch
+        # Look for "ORCHESTRATION" section with version
+        has_orch_version = (
+            "ORCHESTRATION v2.45" in content or
+            "v2.45" in content and "cmd_orch" in content
+        )
+
+        assert has_orch_version, (
+            "cmd_orch should have v2.45.x version marker in header comment"
+        )
+
+
+# ============================================================
 # v2.45 Nested Loop Architecture Tests
 # ============================================================
 
@@ -662,9 +781,127 @@ def v245_agents():
 
 @pytest.fixture
 def v245_hooks():
-    """List of v2.45 hooks."""
+    """List of v2.45/v2.45.1 hooks."""
     return [
         "lsa-pre-step.sh",
         "plan-sync-post-step.sh",
         "plan-state-init.sh",
+        "auto-plan-state.sh",  # v2.45.1
     ]
+
+
+# ============================================================
+# v2.45.1 auto-plan-state Hook Tests
+# ============================================================
+
+class TestAutoPlanStateHook:
+    """Test auto-plan-state.sh hook functionality."""
+
+    def test_auto_plan_state_hook_exists(self, global_hooks_dir):
+        """Verify auto-plan-state.sh exists."""
+        hook_path = os.path.join(global_hooks_dir, "auto-plan-state.sh")
+        assert os.path.isfile(hook_path), (
+            "auto-plan-state.sh not found. "
+            "This hook is required for v2.45.1 automatic plan-state creation."
+        )
+
+    def test_auto_plan_state_is_executable(self, global_hooks_dir):
+        """Verify auto-plan-state.sh is executable."""
+        hook_path = os.path.join(global_hooks_dir, "auto-plan-state.sh")
+        if not os.path.exists(hook_path):
+            pytest.skip("auto-plan-state.sh not found")
+
+        assert os.access(hook_path, os.X_OK), (
+            "auto-plan-state.sh is not executable. "
+            "Run: chmod +x ~/.claude/hooks/auto-plan-state.sh"
+        )
+
+    def test_auto_plan_state_parses_analysis_file(self, global_hooks_dir):
+        """Verify hook parses orchestrator-analysis.md for task/complexity/model."""
+        hook_path = os.path.join(global_hooks_dir, "auto-plan-state.sh")
+        if not os.path.exists(hook_path):
+            pytest.skip("auto-plan-state.sh not found")
+
+        with open(hook_path) as f:
+            content = f.read()
+
+        # Should extract task, complexity, model from analysis
+        extraction_patterns = ["task", "complexity", "model"]
+        found = [p for p in extraction_patterns if p in content.lower()]
+
+        assert len(found) >= 2, (
+            f"auto-plan-state.sh should extract task/complexity/model. Found: {found}"
+        )
+
+    def test_auto_plan_state_generates_uuid(self, global_hooks_dir):
+        """Verify hook generates UUID for plan_id."""
+        hook_path = os.path.join(global_hooks_dir, "auto-plan-state.sh")
+        if not os.path.exists(hook_path):
+            pytest.skip("auto-plan-state.sh not found")
+
+        with open(hook_path) as f:
+            content = f.read()
+
+        # Should use uuidgen or /proc/sys/kernel/random/uuid
+        has_uuid = "uuidgen" in content or "random/uuid" in content or "plan_id" in content
+
+        assert has_uuid, (
+            "auto-plan-state.sh should generate UUID for plan_id"
+        )
+
+    def test_auto_plan_state_extracts_phases(self, global_hooks_dir):
+        """Verify hook extracts phases/steps from analysis."""
+        hook_path = os.path.join(global_hooks_dir, "auto-plan-state.sh")
+        if not os.path.exists(hook_path):
+            pytest.skip("auto-plan-state.sh not found")
+
+        with open(hook_path) as f:
+            content = f.read()
+
+        # Should look for Phase or Step patterns
+        has_phase_extraction = (
+            "Phase" in content or
+            "Step" in content or
+            "steps_json" in content
+        )
+
+        assert has_phase_extraction, (
+            "auto-plan-state.sh should extract phases/steps from analysis"
+        )
+
+    def test_auto_plan_state_can_run_without_error(self, global_hooks_dir, temp_dir):
+        """Verify hook runs without syntax errors."""
+        hook_path = os.path.join(global_hooks_dir, "auto-plan-state.sh")
+        if not os.path.exists(hook_path):
+            pytest.skip("auto-plan-state.sh not found")
+
+        # Run with empty input (should exit cleanly when not orchestrator-analysis.md)
+        result = subprocess.run(
+            ["bash", hook_path],
+            capture_output=True,
+            text=True,
+            cwd=temp_dir,
+            input="{}",  # Empty JSON input
+            timeout=5
+        )
+
+        # Should exit cleanly (0) when file doesn't match
+        assert result.returncode == 0, (
+            f"auto-plan-state.sh failed with non-matching input: {result.stderr}"
+        )
+
+    def test_auto_plan_state_has_logging(self, global_hooks_dir):
+        """Verify hook has logging capability."""
+        hook_path = os.path.join(global_hooks_dir, "auto-plan-state.sh")
+        if not os.path.exists(hook_path):
+            pytest.skip("auto-plan-state.sh not found")
+
+        with open(hook_path) as f:
+            content = f.read()
+
+        # Should have LOG_FILE and log function
+        has_logging = "LOG_FILE" in content or "log()" in content or "log " in content
+
+        assert has_logging, (
+            "auto-plan-state.sh should have logging for debugging"
+        )

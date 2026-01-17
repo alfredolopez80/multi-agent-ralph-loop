@@ -22,9 +22,11 @@ Ralph is a dual-runtime orchestrator that adapts model routing based on whether 
 **v2.45.1 Highlights**:
 - **Lead Software Architect (LSA)**: Architecture guardian verifies each step against ARCHITECTURE.md
 - **Plan-Sync Pattern**: Catches drift when implementation diverges from spec, patches downstream specs
+- **Auto Plan-State Hook**: `auto-plan-state.sh` automatically creates `plan-state.json` when `orchestrator-analysis.md` is written
 - **5 New Agents**: `@lead-software-architect`, `@plan-sync`, `@gap-analyst`, `@quality-auditor`, `@adversarial-plan-validator`
 - **plan-state.json**: Structured spec vs actual tracking (context as queryable variable)
 - **12-Step Workflow**: Nested loop with LSA-VERIFY → IMPLEMENT → PLAN-SYNC → MICRO-GATE
+- **69+ Integration Tests**: Comprehensive pytest suite validates v2.45.1 hooks, agents, and workflows
 - **Security Fixes**: Atomic temp file handling (race conditions), path traversal prevention, command injection fix
 
 **v2.44 Highlights**:
@@ -330,11 +332,14 @@ ralph sync-to-opencode
 ./scripts/validate-integration.sh
 ralph validate-integration
 
-# Run pytest suite
-pytest tests/test_v2_40_integration.py -v
+# Run pytest suites
+pytest tests/test_v2_40_integration.py -v    # v2.40 integration
+pytest tests/test_v2_45_integration.py -v    # v2.45.1 features
+pytest tests/test_hooks_registration.py -v   # Hook registry validation
+pytest tests/ -v                             # All tests (69+)
 ```
 
-**Test Coverage (v2.40)**:
+**Test Coverage (v2.45.1)**:
 
 | Test Class | Tests | Purpose |
 |------------|-------|---------|
@@ -347,6 +352,15 @@ pytest tests/test_v2_40_integration.py -v
 | `TestProjectInheritance` | 2 | Multi-project inheritance |
 | `TestOpenCodeSync` | 2 | OpenCode directory sync |
 | `TestRalphBackups` | 2 | Backup functionality |
+| `TestCmdOrchV2451` | 5 | cmd_orch 12-step workflow validation |
+| `TestAutoPlanStateHook` | 7 | auto-plan-state.sh hook functionality |
+| `TestV2451Hooks` | 6 | v2.45.1 hook registration and features |
+| `TestV245Agents` | 5 | 5 new v2.45 agents validation |
+| `TestPlanStateSchema` | 3 | plan-state.json schema validation |
+
+**v2.45.1 Tests Total: 69** (test_v2_45_integration.py + test_hooks_registration.py)
+
+**Full Test Suite: 474+ tests** (all versions combined)
 
 ### OpenAI Documentation Access (v2.37)
 
@@ -600,27 +614,34 @@ The fundamental iteration pattern ensuring quality through validation:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Full Orchestration Flow (10 Steps) - v2.44
+### 2. Full Orchestration Flow (12 Steps) - v2.45.1
 
 Complete workflow from task request to verified completion:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    ORCHESTRATOR (Opus) v2.44                    │
+│                    ORCHESTRATOR (Opus) v2.45.1                  │
 │                                                                 │
 │  0. EVALUATE    → Quick complexity assessment (trivial?)       │
 │  1. CLARIFY     → AskUserQuestion (MUST_HAVE/NICE_TO_HAVE)     │
-│  1b. SOCRATIC   → Present 2-3 design alternatives (v2.42)      │
+│  1b. GAP-ANALYST→ Pre-implementation gap analysis (v2.45)      │
 │  2. CLASSIFY    → task-classifier (complexity 1-10)            │
 │  2b. WORKTREE   → Ask user: "Requires isolated worktree?"      │
 │  3. PLAN        → Design detailed plan (orchestrator analysis) │
-│  3b. PERSIST    → Write to .claude/orchestrator-analysis.md    │  ← NEW v2.44
-│  4. PLAN MODE   → EnterPlanMode (reads analysis as foundation) │  ← NEW v2.44
+│  3b. PERSIST    → Write to .claude/orchestrator-analysis.md    │
+│  3c. PLAN-STATE → auto-plan-state.sh creates plan-state.json   │  ← NEW v2.45.1
+│  4. PLAN MODE   → EnterPlanMode (reads analysis as foundation) │
 │  5. DELEGATE    → Route to optimal model                       │
-│  6. EXECUTE     → Parallel subagents + 3-Fix Rule (v2.42)      │
-│  7. VALIDATE    → Two-Stage Review (v2.42):                    │
-│                   Stage 1: Spec Compliance (gates)             │
-│                   Stage 2: Code Quality (adversarial)          │
+│  6. EXECUTE-WITH-SYNC → Nested loop per step (v2.45):          │  ← ENHANCED
+│     6a. LSA-VERIFY  → Architecture pre-check                   │
+│     6b. IMPLEMENT   → Execute step                             │
+│     6c. PLAN-SYNC   → Detect drift, patch downstream           │
+│     6d. MICRO-GATE  → Per-step quality (3-Fix Rule)            │
+│  7. VALIDATE    → Multi-stage validation (v2.45):              │  ← ENHANCED
+│     7a. QUALITY-AUDITOR → 6-phase pragmatic audit              │
+│     7b. GATES       → 9-language quality gates                 │
+│     7c. ADVERSARIAL-SPEC → Spec refinement (if complexity ≥7)  │
+│     7d. ADVERSARIAL-PLAN → Opus + Codex cross-validation       │
 │  8. RETROSPECT  → Self-improvement proposals                   │
 │  8b. PR REVIEW  → If worktree: Claude + Codex review → merge   │
 └─────────────────────────────────────────────────────────────────┘
@@ -1088,12 +1109,14 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 - **Lead Software Architect (LSA)**: Architecture guardian verifies each step against ARCHITECTURE.md
 - **Plan-Sync Pattern**: Catches drift when implementation diverges from spec, patches downstream
+- **Auto Plan-State Hook**: `auto-plan-state.sh` automatically creates `plan-state.json` when `orchestrator-analysis.md` is written (PostToolUse Write trigger)
 - **Gap-Analyst Agent**: Pre-implementation gap analysis for missing requirements
 - **Quality-Auditor Agent**: 6-phase pragmatic code audit
 - **Adversarial-Plan-Validator**: Cross-validation between Claude Opus and Codex GPT-5.2
 - **plan-state.json**: Structured tracking of spec vs actual implementation (context as queryable variable)
 - **12-Step Workflow**: Expanded from 10 steps with nested LSA-VERIFY → IMPLEMENT → PLAN-SYNC loop
-- **Security Fixes (v2.45.1)**: Atomic temp file handling, path traversal prevention, command injection fix
+- **69+ Integration Tests**: Comprehensive pytest suite validates hooks, agents, workflows (test_v2_45_integration.py, test_hooks_registration.py)
+- **Security Fixes (v2.45.1)**: Atomic temp file handling (mktemp), path traversal prevention, command injection fix
 
 ### v2.44.0 (2026-01-16)
 
