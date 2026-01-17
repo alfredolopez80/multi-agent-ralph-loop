@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.45.2-blue)
+![Version](https://img.shields.io/badge/version-2.45.4-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -19,14 +19,14 @@ The system addresses the fundamental challenge of AI-assisted coding: **ensuring
 
 Ralph is a dual-runtime orchestrator that adapts model routing based on whether it is invoked from Claude Code or OpenCode. It standardizes workflows (clarify → plan → execute → validate) while letting each environment use the best available models.
 
-**v2.45.2 Highlights**:
-- **Consistent VERSION Markers**: All 6 agents + 5 hooks now at VERSION: 2.45.2
-- **GAP-ANALYST Error Handling**: Robust error recovery with timeout protection in cmd_orch
-- **Optimized Task Hook**: `inject-session-context.sh` now uses `jq` (5x faster), timeout 5s→15s
-- **12 Functional Hook Tests**: New `test_hooks_functional.py` tests actual hook behavior (not just existence)
-- **81+ Total Tests**: 69 integration + 12 functional tests
+**v2.45.4 Highlights**:
+- **Complete Hooks Audit**: 46 tests validating all 17 hooks for JSON protocol compliance
+- **9 Security Fixes**: Command injection, path traversal, TOCTOU race conditions patched
+- **PreToolUse Fix**: `inject-session-context.sh` now returns correct `{"continue": true}` format
+- **Input Validation**: All hooks now validate JSON input with 1MB size limit
+- **Secure Permissions**: All hooks set to 700 (owner-only)
 
-**v2.45.1 Highlights**:
+**v2.45.2 Highlights**:
 - **Lead Software Architect (LSA)**: Architecture guardian verifies each step against ARCHITECTURE.md
 - **Plan-Sync Pattern**: Catches drift when implementation diverges from spec, patches downstream specs
 - **Auto Plan-State Hook**: `auto-plan-state.sh` automatically creates `plan-state.json` when `orchestrator-analysis.md` is written
