@@ -1,0 +1,155 @@
+# Multi-Agent Ralph Wiggum - Agents Reference v2.45.1
+
+## Overview
+
+Ralph orchestrates **32 specialized agents** across different domains. Each agent has specific expertise and is routed based on task complexity and requirements.
+
+## Core Orchestration Agents (v2.45.1)
+
+| Agent | Model | Purpose |
+|-------|-------|---------|
+| `@orchestrator` | opus | Main coordinator - 12-step workflow |
+| `@lead-software-architect` | opus | Architecture guardian - LSA verification |
+| `@plan-sync` | sonnet | Drift detection & downstream patching |
+| `@gap-analyst` | opus | Pre-implementation gap analysis |
+| `@quality-auditor` | opus | 6-phase pragmatic code audit |
+| `@adversarial-plan-validator` | opus | Dual-model plan validation (Claude + Codex) |
+
+## Review & Security Agents
+
+| Agent | Model | Purpose |
+|-------|-------|---------|
+| `@security-auditor` | sonnet→codex | Security vulnerabilities & OWASP compliance |
+| `@code-reviewer` | sonnet→codex | Code quality, patterns, best practices |
+| `@blockchain-security-auditor` | opus | Smart contract & DeFi security |
+| `@ai-output-code-review-super-auditor` | opus | AI-generated code verification |
+
+## Implementation Agents
+
+| Agent | Model | Purpose |
+|-------|-------|---------|
+| `@test-architect` | sonnet | Test generation & coverage |
+| `@debugger` | opus | Bug detection & root cause analysis |
+| `@refactorer` | sonnet→codex | Code refactoring & modernization |
+| `@docs-writer` | sonnet→gemini | Documentation generation |
+
+## Language-Specific Reviewers
+
+| Agent | Model | Purpose |
+|-------|-------|---------|
+| `@kieran-python-reviewer` | sonnet | Python type hints, patterns, testability |
+| `@kieran-typescript-reviewer` | sonnet | TypeScript type safety, modern patterns |
+| `@frontend-reviewer` | opus | React/Next.js, UI/UX, accessibility |
+
+## Auxiliary Review Agents (v2.35)
+
+| Agent | Trigger | Purpose |
+|-------|---------|---------|
+| `@code-simplicity-reviewer` | LOC > 100 | YAGNI enforcement, complexity reduction |
+| `@architecture-strategist` | ≥3 modules OR complexity ≥7 | SOLID compliance, architectural review |
+| `@pattern-recognition-specialist` | Refactoring tasks | Design patterns, anti-patterns |
+
+## Cost-Effective Agents
+
+| Agent | Model | Cost | Purpose |
+|-------|-------|------|---------|
+| `@minimax-reviewer` | MiniMax M2.1 | 8% | Second opinion, extended loops |
+| `@blender-3d-creator` | opus | Variable | 3D asset creation via Blender MCP |
+
+## Blockchain & DeFi Agents
+
+| Agent | Model | Purpose |
+|-------|-------|---------|
+| `@Hyperliquid-DeFi-Protocol-Specialist` | opus | Hyperliquid protocol integration |
+| `@liquid-staking-specialist` | opus | Liquid staking protocols |
+| `@defi-protocol-economist` | opus | Token economics & DeFi modeling |
+| `@chain-infra-specialist-blockchain` | opus | Chain infrastructure & RPC |
+
+## Agent Routing
+
+The orchestrator routes tasks based on:
+
+1. **Complexity (1-10)**: Higher complexity → Opus model
+2. **Task Type**: Security → `@security-auditor`, Tests → `@test-architect`
+3. **File Type**: `.py` → `@kieran-python-reviewer`, `.ts` → `@kieran-typescript-reviewer`
+4. **Domain**: DeFi → Blockchain agents, Frontend → `@frontend-reviewer`
+
+## Hooks Integration (v2.36)
+
+5 priority agents have logging hooks:
+
+```
+@security-auditor   → ~/.ralph/logs/security-audit.log
+@orchestrator       → ~/.ralph/logs/orchestration.log
+@code-reviewer      → ~/.ralph/logs/code-review.log
+@test-architect     → ~/.ralph/logs/test-coverage.log
+@debugger           → ~/.ralph/logs/debug.log
+```
+
+## v2.45.1 Nested Loop Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    EXTERNAL RALPH LOOP (max 25 iter)                │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│    For EACH step in plan:                                           │
+│    ┌─────────────────────────────────────────────────────────┐     │
+│    │           INTERNAL PER-STEP LOOP (3-Fix Rule)          │     │
+│    │                                                         │     │
+│    │   @lead-software-architect → IMPLEMENT → @plan-sync    │     │
+│    │       ↑                                   │             │     │
+│    │       └──── retry if MICRO-GATE fails ───┘             │     │
+│    │                  (max 3 attempts)                       │     │
+│    └─────────────────────────────────────────────────────────┘     │
+│                              ↓                                      │
+│    After ALL steps: @quality-auditor + @adversarial-plan-validator │
+│                              ↓                                      │
+│    If VALIDATE passes → RETROSPECT → VERIFIED_DONE                 │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+## Usage Examples
+
+```bash
+# Invoke specific agent
+@orchestrator "Implement user authentication"
+@security-auditor src/
+@debugger "TypeError in auth module"
+
+# Agents are auto-selected by orchestrator based on task
+/orchestrator "Fix security vulnerabilities"
+# → Routes to @security-auditor
+
+/orchestrator "Add React dashboard"
+# → Routes to @frontend-reviewer + @kieran-typescript-reviewer
+```
+
+## Adding Custom Agents
+
+Create a new agent in `.claude/agents/`:
+
+```markdown
+---
+name: my-agent
+description: When to use this agent
+model: sonnet
+allowed-tools: Read,Grep,Glob,Bash,Task
+hooks:
+  preToolUse: my-hook.sh
+---
+
+# My Agent
+
+## Purpose
+[What this agent does]
+
+## Workflow
+1. Step one
+2. Step two
+...
+```
+
+---
+
+*"Me fail architecture? That's unpossible!"* - Lead Software Architect Agent

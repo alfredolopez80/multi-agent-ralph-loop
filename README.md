@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.44-blue)
+![Version](https://img.shields.io/badge/version-2.45.1-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -18,6 +18,14 @@ The system addresses the fundamental challenge of AI-assisted coding: **ensuring
 ## About
 
 Ralph is a dual-runtime orchestrator that adapts model routing based on whether it is invoked from Claude Code or OpenCode. It standardizes workflows (clarify → plan → execute → validate) while letting each environment use the best available models.
+
+**v2.45.1 Highlights**:
+- **Lead Software Architect (LSA)**: Architecture guardian verifies each step against ARCHITECTURE.md
+- **Plan-Sync Pattern**: Catches drift when implementation diverges from spec, patches downstream specs
+- **5 New Agents**: `@lead-software-architect`, `@plan-sync`, `@gap-analyst`, `@quality-auditor`, `@adversarial-plan-validator`
+- **plan-state.json**: Structured spec vs actual tracking (context as queryable variable)
+- **12-Step Workflow**: Nested loop with LSA-VERIFY → IMPLEMENT → PLAN-SYNC → MICRO-GATE
+- **Security Fixes**: Atomic temp file handling (race conditions), path traversal prevention, command injection fix
 
 **v2.44 Highlights**:
 - **Plan Mode Integration**: Orchestrator analysis now feeds INTO Claude Code's native Plan Mode (one unified plan)
@@ -83,7 +91,7 @@ Ralph is a dual-runtime orchestrator that adapts model routing based on whether 
 | Feature | Description |
 |---------|-------------|
 | **14 Specialized Agents** | 9 core + 5 auxiliary review agents |
-| **10-Step Workflow (v2.44)** | Evaluate → Clarify → Classify → Worktree → Plan → Persist → Plan Mode → Execute → Validate → Retrospect |
+| **12-Step Workflow (v2.45)** | Evaluate → Clarify → Gap-Analyze → Classify → Worktree → Plan → Persist → Plan-State → Plan Mode → Execute-with-Sync → Validate → Retrospect |
 | **Plan Mode Integration** | Orchestrator analysis feeds INTO Claude Code's Plan Mode (unified plan) |
 | **Parallel Execution** | Multiple agents work simultaneously on independent subtasks |
 | **Model Routing** | Automatic selection: Opus (critical), Sonnet (standard), MiniMax (extended) |
@@ -1076,7 +1084,18 @@ See [LICENSE](LICENSE) for details.
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
 
-### Latest: v2.44.0 (2026-01-16)
+### Latest: v2.45.1 (2026-01-17)
+
+- **Lead Software Architect (LSA)**: Architecture guardian verifies each step against ARCHITECTURE.md
+- **Plan-Sync Pattern**: Catches drift when implementation diverges from spec, patches downstream
+- **Gap-Analyst Agent**: Pre-implementation gap analysis for missing requirements
+- **Quality-Auditor Agent**: 6-phase pragmatic code audit
+- **Adversarial-Plan-Validator**: Cross-validation between Claude Opus and Codex GPT-5.2
+- **plan-state.json**: Structured tracking of spec vs actual implementation (context as queryable variable)
+- **12-Step Workflow**: Expanded from 10 steps with nested LSA-VERIFY → IMPLEMENT → PLAN-SYNC loop
+- **Security Fixes (v2.45.1)**: Atomic temp file handling, path traversal prevention, command injection fix
+
+### v2.44.0 (2026-01-16)
 
 - **Plan Mode Integration**: Orchestrator analysis now feeds INTO Claude Code's native Plan Mode
 - **Step 3b: PERSIST**: New step writes `.claude/orchestrator-analysis.md` before EnterPlanMode
