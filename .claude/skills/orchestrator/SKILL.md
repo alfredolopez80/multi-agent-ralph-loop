@@ -1,7 +1,7 @@
 ---
-# VERSION: 2.43.0
+# VERSION: 2.47.2
 name: orchestrator
-description: "Full 8-step orchestration workflow for complex software tasks: clarify requirements, classify complexity, create worktree isolation, plan implementation, delegate to specialized agents, execute with quality gates, validate with adversarial review, and retrospective analysis. Use when: (1) implementing new features, (2) complex refactoring, (3) multi-file changes, (4) tasks requiring planning and coordination, (5) any task with complexity >= 5. Triggers include: /orchestrator, /orch, 'orchestrate', 'full workflow', 'implement feature', 'coordinate task'."
+description: "Full orchestration workflow with Smart Memory-Driven context (v2.47), RLM-inspired routing (v2.46), and quality gates: clarify, smart memory search, classify 3D, plan, delegate, execute with parallel memory, validate quality-first, retrospect. Use when: (1) implementing features, (2) complex refactoring, (3) multi-file changes, (4) tasks requiring coordination. Triggers: /orchestrator, /orch, 'orchestrate', 'full workflow', 'implement feature'."
 context: fork
 user-invocable: true
 agent: orchestrator
@@ -17,17 +17,27 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
+  - mcp__plugin_claude-mem_*
 hooks:
   SessionStart:
     - path: ~/.claude/hooks/orchestrator-init.sh
       once: true
+  PreToolUse:
+    - event: "Task"
+      path: ~/.claude/hooks/smart-memory-search.sh
+  PostToolUse:
+    - event: "Task"
+      path: ~/.claude/hooks/parallel-explore.sh
   Stop:
     - path: ~/.claude/hooks/orchestrator-report.sh
 ---
 
-# Orchestrator - Multi-Agent Ralph v2.43
+# Orchestrator - Multi-Agent Ralph v2.47
 
-Coordinates complex software tasks through an 8-step mandatory workflow with quality gates, **two-stage adversarial validation**, automatic context preservation, **LLM-TLDR token optimization**, and **Socratic design exploration**.
+**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, and quality-first validation.
+
+Based on @PerceptualPeak Smart Forking concept:
+> "Why not utilize the knowledge gained from your hundreds/thousands of other Claude code sessions? Don't let that valuable context go to waste!!"
 
 ## Quick Start
 
@@ -39,36 +49,66 @@ Coordinates complex software tasks through an 8-step mandatory workflow with qua
 ralph orch "Migrate database from MySQL to PostgreSQL"
 ```
 
-## Core Workflow (8 Steps)
+## Core Workflow (v2.47.1 - 8 Major Steps, 23 Sub-steps)
 
-### Step 0: AUTO-PLAN
-**AUTOMATIC** - Enter Plan Mode unless task is trivial (single-line fix)
+### Step 0: EVALUATE (3-Dimension Classification)
 
-```yaml
-EnterPlanMode: {}  # Non-trivial tasks ALWAYS enter plan mode
+**0a. Classification (v2.46 RLM)**:
+| Dimension | Values | Purpose |
+|-----------|--------|---------|
+| Complexity | 1-10 | Scope, risk, ambiguity |
+| Information Density | CONSTANT / LINEAR / QUADRATIC | How answer scales |
+| Context Requirement | FITS / CHUNKED / RECURSIVE | Decomposition needs |
+
+**0b. SMART MEMORY SEARCH (v2.47 NEW)**:
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│              SMART MEMORY SEARCH (PARALLEL)                    │
+├────────────────────────────────────────────────────────────────┤
+│                                                                │
+│   ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐        │
+│   │claude-mem│ │ memvid   │ │ handoffs │ │ ledgers  │        │
+│   └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘        │
+│        │ PARALLEL   │ PARALLEL   │ PARALLEL   │ PARALLEL      │
+│        └────────────┴────────────┴────────────┘               │
+│                         ↓                                      │
+│              .claude/memory-context.json                       │
+│              ├── past_successes                                │
+│              ├── past_errors                                   │
+│              ├── recommended_patterns                          │
+│              └── fork_suggestions (top 5)                      │
+└────────────────────────────────────────────────────────────────┘
 ```
 
-### Step 0b: AUTO-INDEX (v2.37 - LLM-TLDR)
-**AUTOMATIC** - Before any code exploration, check/build tldr index:
+**AUTOMATIC**: Triggered by PreToolUse hook on Task invocation.
 
-```bash
-# Check if index exists, warm if needed (runs once per project)
-if command -v tldr &>/dev/null && [ ! -d ".tldr" ]; then
-    tldr warm .  # Build semantic index (~2 min)
-fi
+**Workflow Routing**:
+| Density | Context | Complexity | Route |
+|---------|---------|------------|-------|
+| CONSTANT | FITS | 1-3 | **FAST_PATH** (3 steps) |
+| CONSTANT | FITS | 4-10 | STANDARD |
+| LINEAR | CHUNKED | ANY | PARALLEL_CHUNKS |
+| QUADRATIC | ANY | ANY | RECURSIVE_DECOMPOSE |
+
+### Step 0c: FAST_PATH Decision
+
+If FAST_PATH eligible (complexity <= 3, CONSTANT, FITS):
 ```
+DIRECT_EXECUTE -> MICRO_VALIDATE -> DONE (3 steps)
+```
+Otherwise, continue to Step 1.
 
-This enables 95% token savings for all subsequent code analysis.
+### Step 1: CLARIFY (Memory-Enhanced)
 
-### Step 1: CLARIFY (Intensive + TLDR)
-**AUTOMATIC TLDR**: Before asking questions, use semantic search to understand existing code:
-
+**AUTOMATIC TLDR + MEMORY CONTEXT**:
 ```bash
-# Find existing related functionality (95% token savings)
+# 1. Check memory context for similar past implementations
+cat .claude/memory-context.json | jq '.fork_suggestions[:3]'
+
+# 2. Semantic search for existing code
 tldr semantic "$USER_TASK_KEYWORDS" .
 ```
-
-Then use AskUserQuestion for ALL necessary clarifications:
 
 **MUST_HAVE Questions** (Blocking):
 ```yaml
@@ -83,34 +123,25 @@ AskUserQuestion:
         - label: "Performance"
 ```
 
-**Categories to cover**:
-1. Functional requirements
-2. Technical constraints
-3. Integration points
-4. Testing strategy
-5. Deployment considerations
+### Step 1b: GAP-ANALYST (Memory-Enhanced)
 
-### Step 1b: SOCRATIC DESIGN (v2.42)
-**For architectural decisions**, present 2-3 alternatives with trade-offs:
+Pre-implementation gap analysis using memory context:
+- Check `past_errors` to avoid known pitfalls
+- Review `recommended_patterns` for best practices
+- Identify requirements not covered by memory
 
-```yaml
-AskUserQuestion:
-  questions:
-    - question: "Multiple approaches identified. Which direction?"
-      header: "Design"
-      options:
-        - label: "Option A (Recommended)"
-          description: "[Approach] - Trade-off: [pros/cons]"
-        - label: "Option B"
-          description: "[Approach] - Trade-off: [pros/cons]"
-        - label: "Option C"
-          description: "[Approach] - Trade-off: [pros/cons]"
-```
+### Step 1c: PARALLEL_EXPLORE (5 Concurrent + Memory)
 
-**MANDATORY when**: architectural patterns, library choices, data models, cross-cutting changes (3+ modules)
+Launch 5 parallel exploration tasks:
+1. **Semantic Search** - Code patterns
+2. **Structure Analysis** - Codebase overview
+3. **Dependency Scan** - Understanding deps
+4. **Pattern Search** - Similar implementations
+5. **Memory Correlation** - Match with past sessions
 
-### Step 2: CLASSIFY
-Determine complexity (1-10):
+Results aggregated to `.claude/exploration-context.json`
+
+### Step 2: CLASSIFY (3-Dimension)
 
 | Score | Complexity | Model | Adversarial |
 |-------|------------|-------|-------------|
@@ -118,10 +149,9 @@ Determine complexity (1-10):
 | 3-4 | Simple | MiniMax M2.1 | No |
 | 5-6 | Medium | Sonnet | Optional |
 | 7-8 | Complex | Opus | Yes |
-| 9-10 | Critical | Opus (thinking) | Yes (adversarial-spec) |
+| 9-10 | Critical | Opus (thinking) | Yes |
 
 ### Step 2b: WORKTREE DECISION
-Ask user about isolation:
 
 ```yaml
 AskUserQuestion:
@@ -130,193 +160,212 @@ AskUserQuestion:
       header: "Isolation"
       options:
         - label: "Yes, create worktree"
-          description: "New feature, easy rollback"
         - label: "No, current branch"
-          description: "Hotfix, minor change"
 ```
 
-If yes: `ralph worktree "feature-name"`
+### Step 3: PLAN (Memory-Informed)
 
-### Step 3: PLAN (TLDR-Enhanced)
-**AUTOMATIC TLDR**: Analyze impact before writing plan:
-
+**Use memory context in planning**:
 ```bash
-# Analyze files that will be affected (95% token savings)
-tldr impact "$PLANNED_FILES" .
+# Review what worked before
+cat .claude/memory-context.json | jq '.insights.past_successes'
 
-# Get dependency graph for affected modules
-tldr deps "$PRIMARY_FILE" .
+# Review what to avoid
+cat .claude/memory-context.json | jq '.insights.past_errors'
 ```
 
-Write detailed plan with:
-- Summary
-- Files to modify/create (informed by `tldr impact`)
-- Dependencies (informed by `tldr deps`)
+Write plan with:
+- Summary (informed by memory)
+- Files to modify/create
+- Dependencies
 - Testing strategy
-- Risks
+- Risks (include known issues from memory)
+
+### Step 3b: PERSIST
+
+Write to `.claude/orchestrator-analysis.md`
+
+### Step 3c: PLAN-STATE
+
+Initialize `.claude/plan-state.json` with spec vs actual tracking.
+
+### Step 3d: RECURSIVE_DECOMPOSE (if needed)
+
+For QUADRATIC or RECURSIVE tasks, spawn sub-orchestrators (max depth 3).
+
+### Step 4: PLAN MODE
+
+```yaml
+EnterPlanMode: {}  # Claude Code reads orchestrator-analysis.md
+```
 
 Exit with `ExitPlanMode` when approved.
 
-### Step 4: DELEGATE
-Route to specialized agents:
+### Step 5: DELEGATE (Parallel-First)
+
+**PRIORITY: Parallel execution when possible**
 
 ```yaml
-# Security-critical
+# PARALLEL: Independent tasks
 Task:
   subagent_type: "security-auditor"
   model: "opus"
+  run_in_background: true
   prompt: "Audit: $FILES"
-
-# Standard review
-Task:
-  subagent_type: "code-reviewer"
-  model: "sonnet"
-  run_in_background: true
-  prompt: "Review: $FILES"
-```
-
-### Step 5: EXECUTE (Parallel + TLDR Context)
-**AUTOMATIC TLDR**: Prepare focused context for subagents:
-
-```bash
-# Generate focused context for each file being modified (95% token savings)
-tldr context "$FILE_TO_MODIFY" . > /tmp/context-for-subagent.md
-
-# For code review, get structure summary instead of full file
-tldr structure . --lang "$LANGUAGE" > /tmp/structure-summary.md
-```
-
-Launch multiple agents with TLDR-optimized context:
-
-```yaml
-# CRITICAL: Always use model: "sonnet" for subagents
-# Include TLDR context in prompt for token efficiency
-Task:
-  subagent_type: "code-reviewer"
-  model: "sonnet"
-  run_in_background: true
-  prompt: "Review changes. Context: $(tldr context $FILE .)"
 
 Task:
   subagent_type: "test-architect"
   model: "sonnet"
   run_in_background: true
-  prompt: "Generate tests. Structure: $(tldr structure . --lang $LANG)"
+  prompt: "Generate tests: $FILES"
+
+# SEQUENTIAL: Dependent tasks
+# Wait for results before continuing
 ```
 
-**Ralph Loop**: Execute -> Validate -> Iterate (max 25) -> VERIFIED_DONE
+### Step 6: EXECUTE-WITH-SYNC
 
-### Step 6: VALIDATE (Two-Stage Review v2.42)
+Nested loop with parallel substeps:
 
-**Stage 1: Spec Compliance** (Run first)
+```
+EXTERNAL RALPH LOOP (max 25)
+└── For EACH step:
+    ├── LSA-VERIFY (architecture check)
+    ├── IMPLEMENT (parallel if independent)
+    ├── PLAN-SYNC (drift detection)
+    └── MICRO-GATE (max 3 retries)
+```
+
+**CRITICAL: model: "sonnet" for all subagents**
+
+### Step 7: VALIDATE (Quality-First v2.46)
+
+**Stage 1: CORRECTNESS (BLOCKING)**
+- Meets requirements?
+- Edge cases handled?
+
+**Stage 2: QUALITY (BLOCKING)**
+- Security verified?
+- Performance OK?
+- Tests adequate?
+
+**Stage 3: CONSISTENCY (ADVISORY - not blocking)**
+- Follows patterns?
+- Style matches?
+
+**Stage 4: ADVERSARIAL (if complexity >= 7)**
 ```bash
-# Quality gates (9 languages)
-ralph gates
+ralph adversarial "Design review"
 ```
 
-Verify WHAT was built:
-- [ ] Meets all stated requirements
-- [ ] Covers all use cases
-- [ ] Respects constraints
-- [ ] Handles edge cases
+### Step 8: RETROSPECTIVE (Mandatory)
 
-**Exit Stage 1 before Stage 2. If compliance fails, fix before quality review.**
-
-**Stage 2: Code Quality** (Run after Stage 1 passes)
-```bash
-# Adversarial spec refinement (complexity >= 7)
-ralph adversarial "Draft: Design a rate limiter service"
-```
-
-Verify HOW it was built:
-- [ ] Follows codebase patterns
-- [ ] Performance OK
-- [ ] Security applied
-- [ ] Tests adequate
-
-### Step 7: RETROSPECTIVE (Mandatory)
 ```bash
 ralph retrospective
 ```
 
-Analyze and propose improvements.
+**NEW v2.47**: Save learnings to memory for future sessions:
+```bash
+# Save successful patterns
+ralph memvid save "Implemented OAuth2 successfully: [pattern details]"
+
+# Record errors to avoid
+ralph memvid save "AVOID: [error pattern] caused [issue]"
+```
+
+-> **VERIFIED_DONE**
+
+## Model Routing (v2.47)
+
+| Route | Primary | Secondary | Max Iter |
+|-------|---------|-----------|----------|
+| FAST_PATH | sonnet | - | 3 |
+| STANDARD (1-4) | minimax-m2.1 | sonnet | 25 |
+| STANDARD (5-6) | sonnet | opus | 25 |
+| STANDARD (7-10) | opus | sonnet | 25 |
+| PARALLEL_CHUNKS | sonnet (chunks) | opus (aggregate) | 15/chunk |
+| RECURSIVE | opus (root) | sonnet (sub) | 15/sub |
 
 ## Integration Points
 
-| Skill/Agent | Role | Invocation |
-|-------------|------|------------|
-| **LLM-TLDR** | **Token optimization (95% savings)** | **Steps 0b, 1, 3, 5** |
-| /clarify | Intensive questioning | Step 1 |
-| /gates | Quality validation | Step 6 Stage 1 |
-| /adversarial | Two-stage review (v2.42) | Step 6 Stage 2 |
-| /systematic-debugging | 3-Fix Rule enforcement (v2.42) | Step 5 (on bugs) |
-| /retrospective | Post-analysis | Step 7 |
-| @code-reviewer | Code review | Step 5 |
-| @security-auditor | Security audit | Step 5 |
-| @test-architect | Test generation | Step 5 |
+| Component | Role | When |
+|-----------|------|------|
+| **smart-memory-search.sh** | **PARALLEL memory search** | **Step 0b (NEW)** |
+| /smart-fork | Find relevant sessions | Manual invocation |
+| /fast-path-check | Trivial task detection | Step 0c |
+| /parallel-explore | 5 concurrent exploration | Step 1c |
+| /classify | 3-dimension classification | Step 2 |
+| /gates | Quality validation | Step 7 |
+| /adversarial | Spec refinement | Step 7 |
+| /retrospective | Post-analysis | Step 8 |
 
-## TLDR Integration (v2.37)
+## Memory Sources (Searched in Parallel)
 
-| Command | Purpose | Savings |
-|---------|---------|---------|
-| `tldr warm .` | Build semantic index (once per project) | - |
-| `tldr semantic "query" .` | Find related code semantically | 95% |
-| `tldr structure .` | Get codebase structure summary | 80% |
-| `tldr context file.py .` | Get focused context for a file | 93% |
-| `tldr impact files .` | Analyze change impact | 85% |
-| `tldr deps file.py .` | Get dependency graph | 90% |
-
-## Model Routing
-
-| Task Type | Primary | Secondary |
-|-----------|---------|-----------|
-| Security | Claude Opus | Codex |
-| Frontend | Gemini | Claude |
-| Review | Codex | MiniMax (8%) |
-| Docs | MiniMax | Claude |
-
-## Examples
-
-<Good>
-User: "Add user authentication"
-1. [EnterPlanMode] ✓
-2. [AskUserQuestion] "OAuth providers?" "Token storage?"
-3. [Classify] Complexity: 8
-4. [Worktree] "Yes" -> ralph worktree "auth-feature"
-5. [Plan] Detailed implementation plan
-6. [Delegate] Opus -> security-auditor
-7. [Execute] Parallel agents in worktree
-8. [Validate] Gates + Adversarial-spec
-9. [Retrospective] Document learnings
-10. VERIFIED_DONE
-</Good>
-
-<Bad>
-User: "Add user authentication"
-1. Start coding immediately
-2. No clarification
-3. No plan
-4. Skip validation
-
-Why: Security-critical task requires full workflow.
-</Bad>
+| Source | Content | Speed |
+|--------|---------|-------|
+| **claude-mem MCP** | Semantic observations | Fast |
+| **memvid** | Vector-encoded context | Sub-5ms |
+| **handoffs** | Session snapshots | Fast |
+| **ledgers** | Continuity data | Fast |
 
 ## Anti-Patterns
 
-- Never start coding without clarification
-- Never skip Plan Mode for non-trivial tasks
-- Never use model: "haiku" for subagents (causes infinite retries)
+- Never start without smart memory search
+- Never skip clarification
+- Never use model: "haiku" for subagents
 - Never skip retrospective
-- **Never attempt more than 3 fixes for the same issue** (3-Fix Rule v2.42 - escalate to user after 3 failed attempts, see `/systematic-debugging`)
+- Never attempt more than 3 fixes (3-Fix Rule)
+- **Never block on consistency issues** (quality over consistency)
+- **Never ignore memory context** (learn from history)
 
 ## Completion Criteria
 
 `VERIFIED_DONE` requires ALL:
-1. Plan Mode entered (or confirmed trivial)
-2. MUST_HAVE questions answered
-3. Task classified
+1. Smart Memory Search complete (memory-context.json exists)
+2. Task classified (3 dimensions)
+3. MUST_HAVE questions answered
 4. Plan approved
 5. Implementation complete
-6. Quality gates passed
-7. Adversarial passed (if complexity >= 7)
-8. Retrospective done
+6. CORRECTNESS passed (blocking)
+7. QUALITY passed (blocking)
+8. Adversarial passed (if complexity >= 7)
+9. Retrospective done + learnings saved to memory
+
+## Examples
+
+### Standard Task with Memory
+
+```
+User: "Add JWT authentication"
+
+Step 0a: Classify -> Complexity: 7, LINEAR, FITS
+Step 0b: Smart Memory Search
+  -> Found: 3 past sessions with auth implementations
+  -> past_successes: "Use passport.js for OAuth"
+  -> past_errors: "Don't store tokens in localStorage"
+  -> fork_suggestion: session-abc123
+
+Step 1: Clarify (informed by memory)
+  -> Skip questions about token storage (already known)
+  -> Focus on new requirements
+
+... (continue with memory-informed implementation)
+
+Step 8: Retrospective
+  -> Save: "JWT with refresh tokens implemented successfully"
+  -> Save: "AVOID: Token expiry not handled - fix applied"
+```
+
+## CLI Commands (v2.47)
+
+```bash
+# Smart memory search
+ralph memory-search "OAuth implementation"
+ralph fork-suggest "Add authentication"
+ralph memory-stats
+
+# Standard orchestration
+ralph orch "task description"
+ralph gates
+ralph adversarial "spec"
+```
