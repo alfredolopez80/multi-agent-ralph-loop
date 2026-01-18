@@ -48,6 +48,22 @@ if [[ -z "$KEYWORDS" ]]; then
     KEYWORDS=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty' | head -c 200)
 fi
 
+# Initialize temp files for capturing results from subshells
+# (Variables assigned in background processes are not visible to parent)
+TEMP_DIR=$(mktemp -d)
+trap 'rm -rf "$TEMP_DIR"' EXIT ERR INT TERM
+
+SEMANTIC_FILE="$TEMP_DIR/semantic.json"
+STRUCTURE_FILE="$TEMP_DIR/structure.json"
+PATTERN_FILE="$TEMP_DIR/patterns.json"
+WEBHINTS_FILE="$TEMP_DIR/webhints.json"
+
+# Initialize with defaults
+echo "[]" > "$SEMANTIC_FILE"
+echo "{}" > "$STRUCTURE_FILE"
+echo "[]" > "$PATTERN_FILE"
+echo "[]" > "$WEBHINTS_FILE"
+
 {
     echo "[$(date -Iseconds)] Starting parallel exploration"
     echo "  Session: $SESSION_ID"
@@ -55,46 +71,48 @@ fi
     echo "  Keywords: ${KEYWORDS:0:100}..."
     echo ""
 
-    # Initialize results
-    SEMANTIC_RESULT="[]"
-    STRUCTURE_RESULT="{}"
-    PATTERN_RESULT="[]"
-    DEPS_RESULT="{}"
-
     # Task 1: Semantic search (if tldr available)
-    if command -v tldr &>/dev/null && [[ -d "$PROJECT_DIR/.tldr" ]]; then
-        echo "  [1/4] Running semantic search..."
-        SEMANTIC_RESULT=$(timeout 30 tldr semantic "$KEYWORDS" "$PROJECT_DIR" 2>/dev/null | head -50 || echo "[]")
-    else
-        echo "  [1/4] Skipping semantic search (tldr not available or index not built)"
-    fi &
+    (
+        if command -v tldr &>/dev/null && [[ -d "$PROJECT_DIR/.tldr" ]]; then
+            echo "  [1/4] Running semantic search..." >> "$LOG_FILE"
+            timeout 30 tldr semantic "$KEYWORDS" "$PROJECT_DIR" 2>/dev/null | head -50 > "$SEMANTIC_FILE" || echo "[]" > "$SEMANTIC_FILE"
+        else
+            echo "  [1/4] Skipping semantic search (tldr not available)" >> "$LOG_FILE"
+        fi
+    ) &
     PID1=$!
 
     # Task 2: Structure analysis
-    if command -v tldr &>/dev/null && [[ -d "$PROJECT_DIR/.tldr" ]]; then
-        echo "  [2/4] Running structure analysis..."
-        STRUCTURE_RESULT=$(timeout 20 tldr structure "$PROJECT_DIR" 2>/dev/null || echo "{}")
-    else
-        # Fallback: basic file listing
-        echo "  [2/4] Running basic structure analysis..."
-        STRUCTURE_RESULT=$(find "$PROJECT_DIR" -type f \( -name "*.ts" -o -name "*.js" -o -name "*.py" -o -name "*.go" \) 2>/dev/null | head -50 | jq -R -s 'split("\n") | map(select(length > 0))' || echo "[]")
-    fi &
+    (
+        if command -v tldr &>/dev/null && [[ -d "$PROJECT_DIR/.tldr" ]]; then
+            echo "  [2/4] Running structure analysis..." >> "$LOG_FILE"
+            timeout 20 tldr structure "$PROJECT_DIR" 2>/dev/null > "$STRUCTURE_FILE" || echo "{}" > "$STRUCTURE_FILE"
+        else
+            echo "  [2/4] Running basic structure analysis..." >> "$LOG_FILE"
+            find "$PROJECT_DIR" -type f \( -name "*.ts" -o -name "*.js" -o -name "*.py" -o -name "*.go" \) 2>/dev/null | head -50 | jq -R -s 'split("\n") | map(select(length > 0))' > "$STRUCTURE_FILE" || echo "[]" > "$STRUCTURE_FILE"
+        fi
+    ) &
     PID2=$!
 
     # Task 3: Pattern search (if ast-grep available)
-    if command -v ast-grep &>/dev/null || command -v sg &>/dev/null; then
-        echo "  [3/4] Running pattern search..."
-        # Extract potential pattern from keywords
-        PATTERN=$(echo "$KEYWORDS" | grep -oE '\b(function|class|interface|type|const|def|async)\s+\w+' | head -1 || echo "function")
-        PATTERN_RESULT=$(timeout 30 ast-grep --pattern "$PATTERN" --json "$PROJECT_DIR" 2>/dev/null | head -100 || echo "[]")
-    else
-        echo "  [3/4] Skipping pattern search (ast-grep not available)"
-    fi &
+    (
+        if command -v ast-grep &>/dev/null || command -v sg &>/dev/null; then
+            echo "  [3/4] Running pattern search..." >> "$LOG_FILE"
+            # Sanitize pattern to prevent injection (whitelist alphanumeric only)
+            PATTERN_RAW=$(echo "$KEYWORDS" | grep -oE '\b(function|class|interface|type|const|def|async)\s+[a-zA-Z0-9_]+' | head -1 || echo "function main")
+            PATTERN_SAFE=$(echo "$PATTERN_RAW" | sed 's/[^a-zA-Z0-9_ ]//g')
+            timeout 30 ast-grep --pattern "$PATTERN_SAFE" --json "$PROJECT_DIR" 2>/dev/null | head -100 > "$PATTERN_FILE" || echo "[]" > "$PATTERN_FILE"
+        else
+            echo "  [3/4] Skipping pattern search (ast-grep not available)" >> "$LOG_FILE"
+        fi
+    ) &
     PID3=$!
 
     # Task 4: Web research hint (placeholder - actual research done by agent)
-    echo "  [4/4] Preparing web research hints..."
-    WEB_HINTS=$(echo "$KEYWORDS" | tr ' ' '\n' | sort -u | head -5 | jq -R -s 'split("\n") | map(select(length > 0))') &
+    (
+        echo "  [4/4] Preparing web research hints..." >> "$LOG_FILE"
+        echo "$KEYWORDS" | tr ' ' '\n' | grep -E '^[a-zA-Z0-9_-]+$' | sort -u | head -5 | jq -R -s 'split("\n") | map(select(length > 0))' > "$WEBHINTS_FILE" || echo "[]" > "$WEBHINTS_FILE"
+    ) &
     PID4=$!
 
     # Wait for all tasks with timeout
@@ -107,24 +125,51 @@ fi
 
 } >> "$LOG_FILE" 2>&1
 
-# Aggregate results into JSON
-cat > "$EXPLORATION_OUTPUT" << EOF
-{
-    "version": "2.46.0",
-    "timestamp": "$(date -Iseconds)",
-    "session_id": "$SESSION_ID",
-    "project": "$PROJECT_DIR",
-    "exploration": {
-        "semantic_matches": [],
-        "file_structure": {},
-        "patterns_found": [],
-        "web_research_hints": [],
-        "keywords_extracted": "$(echo "$KEYWORDS" | head -c 200 | tr '"' "'")"
-    },
-    "status": "completed",
-    "note": "Parallel exploration completed. Results may be partial if tools unavailable."
+# Read results from temp files (with JSON validation)
+validate_json() {
+    local file="$1"
+    local default="$2"
+    if [[ -f "$file" ]] && jq empty "$file" 2>/dev/null; then
+        cat "$file"
+    else
+        echo "$default"
+    fi
 }
-EOF
+
+SEMANTIC_RESULT=$(validate_json "$SEMANTIC_FILE" "[]")
+STRUCTURE_RESULT=$(validate_json "$STRUCTURE_FILE" "{}")
+PATTERN_RESULT=$(validate_json "$PATTERN_FILE" "[]")
+WEBHINTS_RESULT=$(validate_json "$WEBHINTS_FILE" "[]")
+
+# Sanitize keywords for JSON (escape quotes, remove control chars)
+KEYWORDS_SAFE=$(echo "$KEYWORDS" | head -c 200 | tr -d '\n\r\t' | sed 's/"/\\"/g; s/[[:cntrl:]]//g')
+
+# Aggregate results into JSON using jq for safety
+jq -n \
+    --arg version "2.46.0" \
+    --arg timestamp "$(date -Iseconds)" \
+    --arg session_id "$SESSION_ID" \
+    --arg project "$PROJECT_DIR" \
+    --argjson semantic "$SEMANTIC_RESULT" \
+    --argjson structure "$STRUCTURE_RESULT" \
+    --argjson patterns "$PATTERN_RESULT" \
+    --argjson webhints "$WEBHINTS_RESULT" \
+    --arg keywords "$KEYWORDS_SAFE" \
+    '{
+        version: $version,
+        timestamp: $timestamp,
+        session_id: $session_id,
+        project: $project,
+        exploration: {
+            semantic_matches: $semantic,
+            file_structure: $structure,
+            patterns_found: $patterns,
+            web_research_hints: $webhints,
+            keywords_extracted: $keywords
+        },
+        status: "completed",
+        note: "Parallel exploration completed. Results may be partial if tools unavailable."
+    }' > "$EXPLORATION_OUTPUT"
 
 # Log completion
 echo "[$(date -Iseconds)] Exploration results written to: $EXPLORATION_OUTPUT" >> "$LOG_FILE"
