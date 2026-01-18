@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.46.0] - 2026-01-18
+
+### Added (RLM-Inspired Orchestration Enhancements)
+
+Based on arXiv:2512.24601v1 ("Recursive sub-calling provides strong benefits on information-dense inputs").
+
+#### 3-Dimension Classification System (NEW)
+- **Complexity (1-10)**: Scope, risk, and ambiguity assessment
+- **Information Density**: CONSTANT | LINEAR | QUADRATIC (how answers scale with input)
+- **Context Requirement**: FITS | CHUNKED | RECURSIVE (decomposition needs)
+
+#### Workflow Routing (NEW)
+| Classification | Route | Description |
+|----------------|-------|-------------|
+| Complexity 1-3, CONSTANT, FITS | **FAST_PATH** | 3 steps instead of 12 (5x speedup) |
+| Complexity 4-10, CONSTANT, FITS | STANDARD | Full 12-step workflow |
+| LINEAR or CHUNKED | PARALLEL_CHUNKS | Concurrent exploration |
+| QUADRATIC or RECURSIVE | RECURSIVE_DECOMPOSE | Sub-orchestrators (max depth 3) |
+
+#### 4 New Hooks
+- **fast-path-check.sh**: Trivial task detection (PreToolUse:Task) - keyword/file heuristics
+- **parallel-explore.sh**: Launch 5 concurrent exploration tasks (PostToolUse:Task)
+- **recursive-decompose.sh**: Spawn sub-orchestrators for complex tasks (PostToolUse:Task)
+- **quality-gates-v2.sh**: Quality-first validation (PostToolUse:Edit/Write)
+
+#### Quality-First Validation
+- **Stage 1 CORRECTNESS**: Syntax errors → BLOCKING
+- **Stage 2 QUALITY**: Type errors → BLOCKING
+- **Stage 3 CONSISTENCY**: Linting → ADVISORY (not blocking)
+- Principle: "Quality over consistency" - ship working code, style issues are warnings
+
+#### New CLI Command
+- **`ralph classify "task"`**: Shows 3-dimension classification with workflow routing
+
+### Fixed
+- **fast-path-check.sh**: Fixed pipefail issue with `grep -oE` (exit code 1 when no matches)
+- **recursive-decompose.sh**: Added missing `MAX_CHILDREN` variable definition
+- **scripts/ralph**: Improved INFO_DENSITY pattern matching for flexible phrase detection
+  - Changed from rigid `"all endpoints"` to flexible `"all\b.*\b(endpoints|modules|...)"`
+
+### Changed
+- **CLAUDE.md**: Updated to v2.46.0 with complete RLM workflow documentation
+- **Orchestrator Skill**: Updated with fast-path routing and 3-dimension classification
+
+### Tests
+- **26 new integration tests**: All v2.46 hooks tested with multiple scenarios
+- **Functional tests**: Classification system correctly routes tasks
+
+### Metrics Targets
+| Metric | v2.45 | v2.46 Target |
+|--------|-------|--------------|
+| Trivial task time | 5-10 min | 1-2 min (5x) |
+| Complex task success | 70% | 85% (+15pp) |
+| Plan survival rate | 80% | 95% (+15pp) |
+| Token usage | 100% | 70% (-30%) |
+
+---
+
 ## [2.45.2] - 2026-01-17
 
 ### Fixed
