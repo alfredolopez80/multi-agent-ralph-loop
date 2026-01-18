@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # ralph - Multi-Agent Orchestrator CLI
-# Version 2.46.0
+# Version 2.47.0
+# v2.47: Smart Memory-Driven Orchestration (based on @PerceptualPeak Smart Forking)
+#        - Parallel memory search across claude-mem, memvid, handoffs, ledgers
+#        - Smart fork suggestions (top 5 relevant sessions)
+#        - Memory-informed planning and implementation
+#        - Learning from past sessions (successes and errors)
 # v2.46: RLM-Inspired Enhancements (arXiv:2512.24601v1)
 #        - 3-Dimension Classification: Complexity + Info Density + Context Requirement
 #        - Fast-path routing for trivial tasks (3 steps instead of 12)
@@ -45,7 +50,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.46.0"
+VERSION="2.47.0"
 RALPH_REPO_PATH=""  # Auto-detected if in ralph repo
 RALPH_DIR="${HOME}/.ralph"
 
@@ -2436,6 +2441,268 @@ cmd_memvid() {
     esac
 }
 
+
+# ===============================================================================
+# SMART MEMORY SEARCH (v2.47) - Based on @PerceptualPeak Smart Forking
+# ===============================================================================
+
+cmd_memory_search() {
+    local QUERY="${1:-}"
+
+    if [ -z "$QUERY" ]; then
+        echo ""
+        echo "======================================================================="
+        echo "  SMART MEMORY SEARCH v2.47 - Find Relevant Context Across Sessions"
+        echo "======================================================================="
+        echo ""
+        echo "  Usage: ralph memory-search \"<query>\""
+        echo ""
+        echo "  Searches PARALLEL across all memory sources:"
+        echo "    - claude-mem MCP: Semantic observations"
+        echo "    - memvid: Vector-encoded context (sub-5ms)"
+        echo "    - handoffs: Recent session snapshots"
+        echo "    - ledgers: Session continuity data"
+        echo ""
+        echo "  Examples:"
+        echo "    ralph memory-search \"OAuth authentication\""
+        echo "    ralph memory-search \"database migration patterns\""
+        echo "    ralph memory-search \"error handling best practices\""
+        echo ""
+        echo "  Output: .claude/memory-context.json"
+        echo "======================================================================="
+        return 0
+    fi
+
+    log_info "Smart Memory Search v2.47"
+    log_info "Query: $QUERY"
+    echo ""
+
+    local PROJECT_DIR
+    PROJECT_DIR=$(pwd)
+    local MEMORY_CONTEXT="$PROJECT_DIR/.claude/memory-context.json"
+
+    mkdir -p "$PROJECT_DIR/.claude"
+
+    # Trigger the smart-memory-search hook directly
+    local HOOK_PATH="$HOME/.claude/hooks/smart-memory-search.sh"
+    local PROJECT_HOOK_PATH="$PROJECT_DIR/.claude/hooks/smart-memory-search.sh"
+
+    if [ -f "$PROJECT_HOOK_PATH" ]; then
+        HOOK_PATH="$PROJECT_HOOK_PATH"
+    fi
+
+    if [ ! -f "$HOOK_PATH" ]; then
+        log_error "Smart memory search hook not found"
+        log_info "Expected: $HOOK_PATH"
+        log_info "Run 'ralph sync-global' to install"
+        return 1
+    fi
+
+    # Create mock input JSON to trigger the hook
+    local INPUT_JSON
+    INPUT_JSON=$(cat <<EOF
+{
+    "tool_name": "Task",
+    "session_id": "manual-search-$(date +%s)",
+    "tool_input": {
+        "subagent_type": "Explore",
+        "prompt": "$QUERY"
+    }
+}
+EOF
+)
+
+    # Remove cache to force fresh search
+    rm -f "$MEMORY_CONTEXT" 2>/dev/null || true
+
+    log_info "Searching across memory sources..."
+    echo ""
+
+    # Run the hook
+    local RESULT
+    RESULT=$(echo "$INPUT_JSON" | bash "$HOOK_PATH" 2>&1)
+
+    if [ -f "$MEMORY_CONTEXT" ]; then
+        log_success "Memory context generated: $MEMORY_CONTEXT"
+        echo ""
+        echo "======================================================================="
+        echo "  SEARCH RESULTS"
+        echo "======================================================================="
+        jq '.' "$MEMORY_CONTEXT" 2>/dev/null || cat "$MEMORY_CONTEXT"
+        echo "======================================================================="
+    else
+        log_warn "No results found or hook failed"
+        echo "Hook output: $RESULT"
+    fi
+}
+
+cmd_fork_suggest() {
+    local TASK="${1:-}"
+
+    if [ -z "$TASK" ]; then
+        echo ""
+        echo "======================================================================="
+        echo "  SMART FORK SUGGESTIONS v2.47 - Find Sessions to Fork From"
+        echo "======================================================================="
+        echo ""
+        echo "  Usage: ralph fork-suggest \"<task description>\""
+        echo ""
+        echo "  Based on @PerceptualPeak Smart Forking concept:"
+        echo "  'Why not utilize the knowledge gained from your hundreds of"
+        echo "   other Claude code sessions? Don't let that context go to waste!'"
+        echo ""
+        echo "  Examples:"
+        echo "    ralph fork-suggest \"Implement JWT authentication\""
+        echo "    ralph fork-suggest \"Database migration from MySQL to PostgreSQL\""
+        echo ""
+        echo "  Output: Top 5 relevant sessions with fork commands"
+        echo "======================================================================="
+        return 0
+    fi
+
+    log_info "Finding relevant sessions for: $TASK"
+    echo ""
+
+    # First run memory search
+    cmd_memory_search "$TASK" > /dev/null 2>&1
+
+    local PROJECT_DIR
+    PROJECT_DIR=$(pwd)
+    local MEMORY_CONTEXT="$PROJECT_DIR/.claude/memory-context.json"
+
+    if [ ! -f "$MEMORY_CONTEXT" ]; then
+        log_error "Memory search failed"
+        return 1
+    fi
+
+    echo "======================================================================="
+    echo "  FORK SUGGESTIONS v2.47"
+    echo "======================================================================="
+    echo ""
+    echo "  Task: $TASK"
+    echo ""
+
+    # Extract fork suggestions
+    local SUGGESTIONS
+    SUGGESTIONS=$(jq -r '.fork_suggestions // []' "$MEMORY_CONTEXT" 2>/dev/null)
+
+    if [ "$SUGGESTIONS" = "[]" ] || [ -z "$SUGGESTIONS" ]; then
+        log_info "No fork suggestions found"
+        log_info "Your query may be too specific or no matching sessions exist"
+        return 0
+    fi
+
+    echo "  TOP SESSIONS TO FORK FROM:"
+    echo "  -------------------------"
+    echo ""
+
+    # Parse and display suggestions
+    echo "$SUGGESTIONS" | jq -r '.[] | "  [\(.relevance // "MATCH")] Session: \(.session)\n      Timestamp: \(.timestamp // "N/A")\n      Fork: claude --continue \(.session)\n"' 2>/dev/null || \
+        echo "  Unable to parse suggestions"
+
+    echo ""
+    echo "======================================================================="
+    echo ""
+    log_info "To fork from a session:"
+    echo "    claude --continue <session_id>"
+    echo ""
+    echo "  Or start fresh with memory context:"
+    echo "    cat .claude/memory-context.json | jq '.insights'"
+}
+
+cmd_memory_stats() {
+    echo ""
+    echo "======================================================================="
+    echo "  MEMORY STATISTICS v2.47"
+    echo "======================================================================="
+    echo ""
+
+    local HANDOFFS_DIR="$HOME/.ralph/handoffs"
+    local LEDGERS_DIR="$HOME/.ralph/ledgers"
+    local MEMVID_FILE="$HOME/.ralph/memory/ralph-memory.mv2"
+    local CLAUDE_MEM_DIR="$HOME/.claude-mem"
+
+    # Handoffs
+    echo "  HANDOFFS:"
+    if [ -d "$HANDOFFS_DIR" ]; then
+        local HANDOFF_COUNT
+        HANDOFF_COUNT=$(find "$HANDOFFS_DIR" -name "handoff-*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
+        local HANDOFF_SIZE
+        HANDOFF_SIZE=$(du -sh "$HANDOFFS_DIR" 2>/dev/null | cut -f1)
+        echo "    Count: $HANDOFF_COUNT files"
+        echo "    Size:  $HANDOFF_SIZE"
+        echo "    Path:  $HANDOFFS_DIR"
+    else
+        echo "    Not found"
+    fi
+    echo ""
+
+    # Ledgers
+    echo "  LEDGERS:"
+    if [ -d "$LEDGERS_DIR" ]; then
+        local LEDGER_COUNT
+        LEDGER_COUNT=$(find "$LEDGERS_DIR" -name "CONTINUITY_RALPH-*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
+        local LEDGER_SIZE
+        LEDGER_SIZE=$(du -sh "$LEDGERS_DIR" 2>/dev/null | cut -f1)
+        echo "    Count: $LEDGER_COUNT files"
+        echo "    Size:  $LEDGER_SIZE"
+        echo "    Path:  $LEDGERS_DIR"
+    else
+        echo "    Not found"
+    fi
+    echo ""
+
+    # Memvid
+    echo "  MEMVID:"
+    if [ -f "$MEMVID_FILE" ]; then
+        local MEMVID_SIZE
+        MEMVID_SIZE=$(du -sh "$MEMVID_FILE" 2>/dev/null | cut -f1)
+        echo "    Status: Initialized"
+        echo "    Size:   $MEMVID_SIZE"
+        echo "    Path:   $MEMVID_FILE"
+    else
+        echo "    Status: Not initialized"
+        echo "    Setup:  ralph memvid init"
+    fi
+    echo ""
+
+    # claude-mem
+    echo "  CLAUDE-MEM:"
+    if [ -d "$CLAUDE_MEM_DIR" ]; then
+        local CLAUDE_MEM_COUNT
+        CLAUDE_MEM_COUNT=$(find "$CLAUDE_MEM_DIR" -type f 2>/dev/null | wc -l | tr -d ' ')
+        local CLAUDE_MEM_SIZE
+        CLAUDE_MEM_SIZE=$(du -sh "$CLAUDE_MEM_DIR" 2>/dev/null | cut -f1)
+        echo "    Status: Available"
+        echo "    Files:  $CLAUDE_MEM_COUNT"
+        echo "    Size:   $CLAUDE_MEM_SIZE"
+        echo "    Path:   $CLAUDE_MEM_DIR"
+    else
+        echo "    Status: Not detected"
+        echo "    Note:   claude-mem MCP provides semantic search"
+    fi
+    echo ""
+
+    # Current project memory context
+    local PROJECT_MEMORY="$(pwd)/.claude/memory-context.json"
+    echo "  PROJECT MEMORY CONTEXT:"
+    if [ -f "$PROJECT_MEMORY" ]; then
+        local CONTEXT_AGE
+        CONTEXT_AGE=$(($(date +%s) - $(stat -f %m "$PROJECT_MEMORY" 2>/dev/null || stat -c %Y "$PROJECT_MEMORY" 2>/dev/null || echo 0)))
+        local CONTEXT_SIZE
+        CONTEXT_SIZE=$(du -h "$PROJECT_MEMORY" 2>/dev/null | cut -f1)
+        echo "    Status: Present"
+        echo "    Age:    ${CONTEXT_AGE}s"
+        echo "    Size:   $CONTEXT_SIZE"
+        echo "    Path:   $PROJECT_MEMORY"
+    else
+        echo "    Status: Not generated"
+        echo "    Run:    ralph memory-search \"<query>\""
+    fi
+
+    echo ""
+    echo "======================================================================="
+}
 # ===============================================================================
 # LLM-TLDR (v2.37) - 95% Token Savings
 # ===============================================================================
@@ -3064,6 +3331,65 @@ cmd_compact() {
     echo "  1. Use /clear or start a new conversation"
     echo "  2. SessionStart hook will auto-restore context"
     echo "  3. Verify restoration with: ralph ledger show"
+}
+
+# ===============================================================================
+# v2.47: ANCHOR - Anchored Summary Generator
+# ===============================================================================
+cmd_anchor() {
+    local subcommand="${1:-generate}"
+    shift 2>/dev/null || true
+
+    local ANCHOR_SCRIPT="${HOME}/.claude/scripts/anchored-summary.py"
+
+    if [[ ! -f "$ANCHOR_SCRIPT" ]]; then
+        log_error "Anchored Summary script not found: $ANCHOR_SCRIPT"
+        log_info "Run 'ralph sync-global' to install"
+        return 1
+    fi
+
+    case "$subcommand" in
+        generate)
+            local profile="${1:-development}"
+            log_info "Generating Anchored Summary with profile: $profile"
+            python3 "$ANCHOR_SCRIPT" generate "$profile"
+            ;;
+        show)
+            python3 "$ANCHOR_SCRIPT" show
+            ;;
+        list-profiles|profiles)
+            python3 "$ANCHOR_SCRIPT" list-profiles
+            ;;
+        validate)
+            local file="${1:-}"
+            if [[ -n "$file" ]]; then
+                python3 "$ANCHOR_SCRIPT" validate "$file"
+            else
+                python3 "$ANCHOR_SCRIPT" validate
+            fi
+            ;;
+        --help|-h|help)
+            echo ""
+            echo "╔═══════════════════════════════════════════════════════════════╗"
+            echo "║  RALPH ANCHOR: Anchored Summary Generator (v2.47)             ║"
+            echo "╠═══════════════════════════════════════════════════════════════╣"
+            echo "║  Commands:                                                     ║"
+            echo "║    generate [profile]  - Generate summary (default: dev)      ║"
+            echo "║    show               - Display current anchored summary      ║"
+            echo "║    profiles           - List available profiles               ║"
+            echo "║    validate [file]    - Validate summary structure            ║"
+            echo "║                                                                 ║"
+            echo "║  Profiles: development, debugging, security-audit,            ║"
+            echo "║            minimal, comprehensive                              ║"
+            echo "╚═══════════════════════════════════════════════════════════════╝"
+            echo ""
+            ;;
+        *)
+            # Assume it's a profile name
+            log_info "Generating Anchored Summary with profile: $subcommand"
+            python3 "$ANCHOR_SCRIPT" generate "$subcommand"
+            ;;
+    esac
 }
 
 # ===============================================================================
@@ -7009,6 +7335,17 @@ main() {
             cmd_memvid "$@"
             ;;
 
+        # Smart Memory Search (v2.47)
+        memory-search|mem-search|smart-search)
+            cmd_memory_search "$@"
+            ;;
+        fork-suggest|smart-fork|suggest-fork)
+            cmd_fork_suggest "$@"
+            ;;
+        memory-stats|mem-stats)
+            cmd_memory_stats
+            ;;
+
         # LLM-TLDR (v2.37)
         tldr|code-analysis|token-optimize)
             cmd_tldr "$@"
@@ -7037,6 +7374,10 @@ main() {
         # v2.44: Manual compact (extension workaround)
         compact|save-context|context-save)
             cmd_compact
+            ;;
+        # v2.47: Anchored Summary generator
+        anchor|anchored|anchored-summary)
+            cmd_anchor "$@"
             ;;
         # v2.44: Environment detection
         env|environment|detect-env)

@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.46.1-blue)
+![Version](https://img.shields.io/badge/version-2.47.3-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -18,6 +18,21 @@ The system addresses the fundamental challenge of AI-assisted coding: **ensuring
 ## About
 
 Ralph is a dual-runtime orchestrator that adapts model routing based on whether it is invoked from Claude Code or OpenCode. It standardizes workflows (clarify → plan → execute → validate) while letting each environment use the best available models.
+
+**v2.47.3 Highlights** (Comprehensive Hook Testing & Security Hardening):
+- **38 Behavioral Tests**: `test_hooks_comprehensive.py` validates hook BEHAVIOR, not just code presence
+- **Codex CLI Integration**: Independent security review via gpt-5.2-codex with 6-point audit
+- **8 Test Categories**: JSON output, command injection, path traversal, race conditions, edge cases, error handling, regressions, performance
+- **Testing Documentation**: `tests/HOOK_TESTING_PATTERNS.md` - patterns for future hooks
+- **SMMS-001 to SMMS-006**: Documented known limitations with severity ratings
+
+**v2.47.0 Highlights** (Smart Memory-Driven Orchestration - based on @PerceptualPeak Smart Forking):
+- **Smart Memory Search**: PARALLEL search across claude-mem, memvid, handoffs, ledgers before orchestration
+- **Fork Suggestions**: Top 5 relevant sessions with fork commands (`ralph fork-suggest "task"`)
+- **Memory-Informed Planning**: Learn from past successes and avoid past errors
+- **New CLI**: `ralph memory-search`, `ralph fork-suggest`, `ralph memory-stats`
+- **New Hook**: `smart-memory-search.sh` (PreToolUse:Task)
+- **Parallelization Priority**: Memory searches run concurrently
 
 **v2.46.1 Highlights** (RLM-Inspired - arXiv:2512.24601v1):
 - **3-Dimension Classification**: Complexity (1-10) + Information Density (CONSTANT/LINEAR/QUADRATIC) + Context Requirement (FITS/CHUNKED/RECURSIVE)

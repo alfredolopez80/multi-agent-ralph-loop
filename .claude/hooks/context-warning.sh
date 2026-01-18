@@ -10,11 +10,13 @@
 
 # Note: Not using set -e because this is a non-blocking hook
 # Errors should not interrupt the main workflow
-# VERSION: 2.44.0
+# VERSION: 2.47.0
+# v2.47: Adjusted thresholds for proactive compaction (75%/85%)
+#        Fixed message_count path to STATE_DIR
 set -uo pipefail
 
 # Configuration
-THRESHOLD=80
+THRESHOLD=75
 CRITICAL_THRESHOLD=85
 LOG_FILE="${HOME}/.ralph/context-monitor.log"
 RALPH_DIR="${HOME}/.ralph"
@@ -81,7 +83,7 @@ get_context_percentage() {
         # v2.44: Improved estimation based on tool operations
         # Each tool call ~0.25%, each message ~2%
         local message_count
-        message_count=$(cat "${RALPH_DIR}/message_count" 2>/dev/null || echo "0")
+        message_count=$(cat "${RALPH_DIR}/state/message_count" 2>/dev/null || echo "0")
         if ! is_numeric "$message_count"; then
             message_count=0
         fi
@@ -98,7 +100,7 @@ get_context_percentage() {
     # Method 3: Final fallback - simple message count
     if [[ -z "$pct" ]] || [[ "$pct" == "0" ]]; then
         local message_count
-        message_count=$(cat "${RALPH_DIR}/message_count" 2>/dev/null || echo "0")
+        message_count=$(cat "${RALPH_DIR}/state/message_count" 2>/dev/null || echo "0")
         if ! is_numeric "$message_count"; then
             message_count=0
         fi
@@ -215,10 +217,14 @@ main() {
     local context_pct
     context_pct=$(get_context_percentage)
 
-    # Update message count
+    # Update message count (v2.47: use STATE_DIR for consistency with reset)
     local msg_count
-    msg_count=$(cat "${RALPH_DIR}/message_count" 2>/dev/null || echo "0")
-    echo $((msg_count + 1)) > "${RALPH_DIR}/message_count"
+    mkdir -p "${RALPH_DIR}/state" 2>/dev/null || true
+    msg_count=$(cat "${RALPH_DIR}/state/message_count" 2>/dev/null || echo "0")
+    if ! is_numeric "$msg_count"; then
+        msg_count=0
+    fi
+    echo $((msg_count + 1)) > "${RALPH_DIR}/state/message_count"
 
     # Determine action based on context level
     if [[ "$context_pct" -ge "$CRITICAL_THRESHOLD" ]]; then
