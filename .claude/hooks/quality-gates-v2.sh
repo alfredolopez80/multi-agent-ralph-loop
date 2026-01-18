@@ -23,10 +23,30 @@ if [[ "$TOOL_NAME" != "Edit" ]] && [[ "$TOOL_NAME" != "Write" ]]; then
 fi
 
 # Skip if no file path
-if [[ -z "$FILE_PATH" ]] || [[ ! -f "$FILE_PATH" ]]; then
+if [[ -z "$FILE_PATH" ]]; then
     echo '{"decision": "continue"}'
     exit 0
 fi
+
+# SECURITY: Canonicalize and validate path to prevent path traversal
+# Resolve to absolute path and check it's within allowed directories
+FILE_PATH_REAL=$(realpath -e "$FILE_PATH" 2>/dev/null || echo "")
+if [[ -z "$FILE_PATH_REAL" ]] || [[ ! -f "$FILE_PATH_REAL" ]]; then
+    echo '{"decision": "continue"}'
+    exit 0
+fi
+
+# Get current working directory (project root)
+PROJECT_ROOT=$(realpath -e "$(pwd)" 2>/dev/null || pwd)
+
+# Verify file is within project or allowed paths (home dir)
+if [[ "$FILE_PATH_REAL" != "$PROJECT_ROOT"* ]] && [[ "$FILE_PATH_REAL" != "$HOME"* ]]; then
+    echo '{"decision": "block", "reason": "Path traversal blocked: file outside allowed directories"}'
+    exit 0
+fi
+
+# Use the validated path going forward
+FILE_PATH="$FILE_PATH_REAL"
 
 # Setup logging
 LOG_DIR="$HOME/.ralph/logs"

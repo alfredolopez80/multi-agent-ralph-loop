@@ -98,13 +98,15 @@ LOG_FILE="$LOG_DIR/recursive-decompose-$(date +%Y%m%d).log"
 
 # Generate response with decomposition guidance
 if [[ "$NEEDS_DECOMPOSITION" == "true" ]]; then
-    # Update plan-state with recursion info
+    # Update plan-state with recursion info (using --arg for safe escaping)
     if [[ -f "$PLAN_STATE_FILE" ]]; then
         TMP_FILE=$(mktemp)
-        jq '.recursion.needs_decomposition = true |
+        trap 'rm -f "$TMP_FILE"' ERR
+        jq --arg reason "$DECOMPOSITION_REASON" \
+            '.recursion.needs_decomposition = true |
             .recursion.decomposition_triggered = true |
             .recursion.triggered_at = now |
-            .recursion.reason = "'"$DECOMPOSITION_REASON"'"' \
+            .recursion.reason = $reason' \
             "$PLAN_STATE_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$PLAN_STATE_FILE"
     fi
 

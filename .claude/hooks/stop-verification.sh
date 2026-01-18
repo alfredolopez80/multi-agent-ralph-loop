@@ -1,9 +1,9 @@
 #!/bin/bash
 # Stop Hook Verification - Verifica completitud antes de terminar sesión
 # Origen: planning-with-files pattern
-# v1.0.0 - 2026-01-13
+# v2.45.4 - Added JSON return for Claude Code hook protocol
 
-# VERSION: 2.43.0
+# VERSION: 2.45.4
 set -euo pipefail
 
 # Configuración
@@ -12,6 +12,17 @@ LOG_FILE="${HOME}/.ralph/logs/stop-verification.log"
 
 # Asegurar directorio de logs existe
 mkdir -p "$(dirname "$LOG_FILE")"
+
+# Function to return JSON response (Claude Code hook protocol)
+return_json() {
+    local continue_flag="${1:-true}"
+    local message="${2:-}"
+    if [ -n "$message" ]; then
+        echo "{\"continue\": $continue_flag, \"message\": \"$message\"}"
+    else
+        echo "{\"continue\": $continue_flag}"
+    fi
+}
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
@@ -27,7 +38,8 @@ TOTAL_CHECKS=4
 
 # 1. Verificar TODOs pendientes en el proyecto
 if [ -f "${PROJECT_DIR}/.claude/progress.md" ]; then
-    PENDING_TODOS=$(grep -c "^\- \[ \]" "${PROJECT_DIR}/.claude/progress.md" 2>/dev/null || echo "0")
+    PENDING_TODOS=$(grep -c "^\- \[ \]" "${PROJECT_DIR}/.claude/progress.md" 2>/dev/null) || PENDING_TODOS=0
+    PENDING_TODOS=${PENDING_TODOS:-0}
     if [ "$PENDING_TODOS" -gt 0 ]; then
         WARNINGS+=("TODOs pendientes: ${PENDING_TODOS} items sin completar en progress.md")
     else
@@ -54,7 +66,8 @@ LINT_LOG="${HOME}/.ralph/logs/quality-gates.log"
 if [ -f "$LINT_LOG" ]; then
     # Revisar últimas líneas del log de hoy
     TODAY=$(date '+%Y-%m-%d')
-    LINT_ERRORS=$(grep "$TODAY" "$LINT_LOG" 2>/dev/null | grep -c "ERROR\|FAILED" || echo "0")
+    LINT_ERRORS=$(grep "$TODAY" "$LINT_LOG" 2>/dev/null | grep -c "ERROR\|FAILED") || LINT_ERRORS=0
+    LINT_ERRORS=${LINT_ERRORS:-0}
     if [ "$LINT_ERRORS" -gt 0 ]; then
         WARNINGS+=("Errores de lint: ${LINT_ERRORS} errores en la última sesión")
     else
@@ -68,7 +81,8 @@ fi
 TEST_LOG="${HOME}/.ralph/logs/test-results.log"
 if [ -f "$TEST_LOG" ]; then
     TODAY=$(date '+%Y-%m-%d')
-    TEST_FAILURES=$(grep "$TODAY" "$TEST_LOG" 2>/dev/null | grep -c "FAILED\|ERROR" || echo "0")
+    TEST_FAILURES=$(grep "$TODAY" "$TEST_LOG" 2>/dev/null | grep -c "FAILED\|ERROR") || TEST_FAILURES=0
+    TEST_FAILURES=${TEST_FAILURES:-0}
     if [ "$TEST_FAILURES" -gt 0 ]; then
         WARNINGS+=("Tests fallidos: ${TEST_FAILURES} tests fallaron")
     else
@@ -84,16 +98,17 @@ log "Stop verification: ${CHECKS_PASSED}/${TOTAL_CHECKS} checks passed"
 if [ ${#WARNINGS[@]} -gt 0 ]; then
     log "Warnings: ${WARNINGS[*]}"
 
-    # Output para Claude
-    echo "STOP_VERIFICATION_WARNINGS:"
+    # Build warning message for JSON
+    WARNING_MSG="Stop Verification: ${CHECKS_PASSED}/${TOTAL_CHECKS} passed. Issues: "
     for warning in "${WARNINGS[@]}"; do
-        echo "  - $warning"
+        WARNING_MSG+="$warning; "
     done
-    echo ""
-    echo "Considera revisar estos items antes de terminar la sesión."
+
+    # Return JSON with warnings (Stop hook - informational, doesn't block)
+    return_json true "$WARNING_MSG"
 else
     log "All checks passed"
-    echo "STOP_VERIFICATION: All ${TOTAL_CHECKS} checks passed"
+    return_json true "Stop Verification: All ${TOTAL_CHECKS} checks passed"
 fi
 
 exit 0
