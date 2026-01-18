@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.45.4
+# Multi-Agent Ralph v2.46.0
 
 ## Multi-Agent Ralph Loop Orchestration
 
@@ -6,39 +6,50 @@
 
 | Command | Description |
 |---------|-------------|
-| `/orchestrator` | **Full 12-step workflow**: clarify → gap-analyze → classify → worktree → plan → persist → plan mode → execute-with-sync → validate → retrospect |
+| `/orchestrator` | **Full workflow** with fast-path for trivial tasks |
 | `/loop` | Execute until VERIFIED_DONE with quality gates |
 | `/clarify` | Intensive AskUserQuestion (MUST_HAVE + NICE_TO_HAVE) |
-| `/gates` | Quality validation (format, lint, tests) |
+| `/gates` | Quality-first validation (quality over consistency) |
 | `/adversarial` | Adversarial spec refinement (adversarial-spec) |
 | `/retrospective` | Post-task analysis and improvements |
 | `/parallel` | Run multiple loops concurrently |
 | `/lsp-explore` | Token-free code navigation via LSP |
 | `/compact` | Manual context save (extension workaround) |
+| `/classify` | 3-dimension task classification ← NEW v2.46 |
 
-### Orchestration Flow (12 Steps) - v2.45.1
+### Orchestration Flow - v2.46 (RLM-Inspired)
+
+**Key v2.46 Changes** (based on RLM paper arXiv:2512.24601v1):
+- **Fast-path**: Trivial tasks → 3 steps instead of full workflow
+- **3-Dimension Classification**: Complexity + Information Density + Context Requirement
+- **Parallel Exploration**: 5 concurrent searches before planning
+- **Recursive Decomposition**: Sub-orchestrators for complex tasks (max depth 3)
+- **Quality over Consistency**: Style issues don't block, quality does
 
 ```
-0. EVALUATE        → Quick complexity assessment (trivial vs non-trivial)
+0. EVALUATE        → 3-dimension classification (route to FAST_PATH or STANDARD)
+                     └─ FAST_PATH: DIRECT_EXECUTE → MICRO_VALIDATE → DONE (3 steps)
 1. CLARIFY         → AskUserQuestion intensively (MUST_HAVE + NICE_TO_HAVE)
-1b. GAP-ANALYST    → Pre-implementation gap analysis ← NEW v2.45
-2. CLASSIFY        → Complexity 1-10, model routing
+1b. GAP-ANALYST    → Pre-implementation gap analysis
+1c. PARALLEL_EXPLORE → 5 concurrent searches ← NEW v2.46
+2. CLASSIFY        → Complexity 1-10 + Info Density + Context Req ← ENHANCED v2.46
 2b. WORKTREE       → Ask user about isolated worktree
 3. PLAN            → Design detailed plan (orchestrator analysis)
 3b. PERSIST        → Write to .claude/orchestrator-analysis.md
-3c. PLAN-STATE     → Initialize .claude/plan-state.json ← NEW v2.45
+3c. PLAN-STATE     → Initialize plan-state.json (v2.46 schema)
+3d. RECURSIVE_DECOMPOSE → Spawn sub-orchestrators if needed ← NEW v2.46
 4. PLAN MODE       → EnterPlanMode (reads analysis as foundation)
-5. DELEGATE        → Route to model/agent
-6. EXECUTE-WITH-SYNC → Nested loop per step ← ENHANCED v2.45
+5. DELEGATE        → Route to model/agent (based on classification)
+6. EXECUTE-WITH-SYNC → Nested loop per step (parallel substeps)
    6a. LSA-VERIFY  → Lead Software Architect pre-check
-   6b. IMPLEMENT   → Execute step implementation
+   6b. IMPLEMENT   → Execute (parallel if independent)
    6c. PLAN-SYNC   → Detect drift, patch downstream
    6d. MICRO-GATE  → Per-step quality (3-Fix Rule)
-7. VALIDATE        → Multi-stage validation ← ENHANCED v2.45
-   7a. QUALITY-AUDITOR → 6-phase pragmatic audit
-   7b. GATES       → 9-language quality gates
-   7c. ADVERSARIAL-SPEC → Spec refinement (if complexity >= 7)
-   7d. ADVERSARIAL-PLAN → Claude Opus + Codex cross-validation
+7. VALIDATE        → Quality-first validation ← ENHANCED v2.46
+   7a. CORRECTNESS → Meets requirements? (BLOCKING)
+   7b. QUALITY     → Security, performance, tests? (BLOCKING)
+   7c. CONSISTENCY → Style, patterns? (ADVISORY - not blocking)
+   7d. ADVERSARIAL → Dual model (if complexity >= 7)
 8. RETROSPECT      → Analyze and improve
 ```
 
@@ -51,14 +62,76 @@
 # Loop for iterative fixes
 /loop "fix all type errors"
 
-# Quality validation
+# Quality validation (v2.46 - quality over consistency)
 /gates
 /adversarial "Design a rate limiter service"
+
+# 3-dimension classification
+/classify "Implement OAuth for Google, GitHub, Microsoft"
 ```
 
-Orchestration with automatic planning, intensive clarification, git worktree isolation, adversarial validation, 9-language quality gates, context engineering, and automatic context preservation.
+Orchestration with fast-path detection, parallel exploration, recursive decomposition, quality-first validation, and automatic context preservation.
 
-> **Historical versions**: See [CHANGELOG.md](./CHANGELOG.md) for v2.19-v2.43 details.
+> **Historical versions**: See [CHANGELOG.md](./CHANGELOG.md) for v2.19-v2.45 details.
+
+## v2.46 RLM-Inspired Enhancements (NEW)
+
+### 3-Dimension Classification (RLM Paper)
+
+| Dimension | Values | Purpose |
+|-----------|--------|---------|
+| **Complexity** | 1-10 | Scope, risk, ambiguity |
+| **Information Density** | CONSTANT / LINEAR / QUADRATIC | How answer scales with input |
+| **Context Requirement** | FITS / CHUNKED / RECURSIVE | Whether decomposition needed |
+
+### Workflow Routing
+
+| Density | Context | Complexity | → Route |
+|---------|---------|------------|---------|
+| CONSTANT | FITS | 1-3 | **FAST_PATH** (3 steps) |
+| CONSTANT | FITS | 4-10 | STANDARD |
+| LINEAR | CHUNKED | ANY | **PARALLEL_CHUNKS** |
+| QUADRATIC | ANY | ANY | **RECURSIVE_DECOMPOSE** |
+| ANY | RECURSIVE | ANY | **RECURSIVE_DECOMPOSE** |
+
+### New Hooks (v2.46)
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `fast-path-check.sh` | PreToolUse (Task) | Detect trivial tasks → FAST_PATH |
+| `parallel-explore.sh` | PostToolUse (Task) | Launch 5 concurrent exploration tasks |
+| `recursive-decompose.sh` | PostToolUse (Task) | Trigger sub-orchestrators for complex tasks |
+| `quality-gates-v2.sh` | PostToolUse (Edit/Write) | Quality-first validation (consistency advisory) |
+
+### Quality-First Validation
+
+```
+Stage 1: CORRECTNESS → Syntax errors (BLOCKING)
+Stage 2: QUALITY     → Type errors (BLOCKING)
+Stage 3: CONSISTENCY → Linting (ADVISORY - not blocking)
+```
+
+### Model Routing by Route
+
+| Route | Primary | Secondary | Max Iter |
+|-------|---------|-----------|----------|
+| FAST_PATH | sonnet | - | 3 |
+| STANDARD (1-4) | minimax-m2.1 | sonnet | 25 |
+| STANDARD (5-6) | sonnet | opus | 25 |
+| STANDARD (7-10) | opus | sonnet | 25 |
+| PARALLEL_CHUNKS | sonnet (chunks) | opus (aggregate) | 15/chunk |
+| RECURSIVE | opus (root) | sonnet (sub) | 15/sub |
+
+### v2.46 Metrics Targets
+
+| Metric | v2.45 | v2.46 Target |
+|--------|-------|--------------|
+| Trivial task time | 5-10 min | **1-2 min** |
+| Complex task success | 70% | **85%** |
+| Plan survival rate | 80% | **95%** |
+| Token usage | 100% | **70%** |
+
+---
 
 ## v2.45 Lead Software Architect + Plan-Sync Integration
 
@@ -668,8 +741,9 @@ EXECUTE → VALIDATE → Quality Passed? → YES → VERIFIED_DONE
 | MiniMax M2.1 | 50 |
 | MiniMax-lightning | 100 |
 
-**Quality Hooks**:
-- `quality-gates.sh` → Post-Edit/Write (9 languages)
+**Quality Hooks (v2.46)**:
+- `quality-gates-v2.sh` → Post-Edit/Write (quality-first, consistency advisory)
+- `fast-path-check.sh` → Pre-Task (trivial task detection)
 - `git-safety-guard.py` → Pre-Bash (validates git commands)
 
 ## Subagent Configuration
@@ -686,21 +760,24 @@ Task:
 - MiniMax (8% cost): Second opinion with Opus-level quality
 - Haiku: NOT recommended (30%+ rework rate)
 
-## Mandatory Flow (12 Steps) - v2.45.1
+## Mandatory Flow - v2.46 (RLM-Inspired)
 
 ```
-0. EVALUATE     → Quick complexity assessment
+0. EVALUATE     → 3-dimension classification (FAST_PATH vs STANDARD) ← v2.46
+   └─ FAST_PATH → DIRECT_EXECUTE → MICRO_VALIDATE → DONE (3 steps)
 1. /clarify     → AskUserQuestion (MUST_HAVE + NICE_TO_HAVE)
 1b. GAP-ANALYST → Pre-implementation gap analysis
-2. /classify    → Complexity 1-10, model routing
+1c. PARALLEL_EXPLORE → 5 concurrent searches ← NEW v2.46
+2. /classify    → Complexity + Info Density + Context Req ← v2.46
 2b. WORKTREE    → Ask about worktree isolation
 3. PLAN         → Design detailed plan (orchestrator analysis)
 3b. PERSIST     → Write to .claude/orchestrator-analysis.md
-3c. PLAN-STATE  → auto-plan-state.sh creates plan-state.json ← NEW v2.45.1
+3c. PLAN-STATE  → Initialize plan-state.json (v2.46 schema)
+3d. RECURSIVE_DECOMPOSE → Spawn sub-orchestrators if needed ← v2.46
 4. PLAN MODE    → EnterPlanMode (reads analysis as foundation)
 5. @orchestrator → Delegate to subagents
 6. EXECUTE-WITH-SYNC → LSA-VERIFY → IMPLEMENT → PLAN-SYNC → MICRO-GATE
-7. VALIDATE     → quality-auditor + gates + adversarial-plan
+7. VALIDATE     → CORRECTNESS (block) + QUALITY (block) + CONSISTENCY (advisory)
 8. /retrospective → Propose improvements
 → VERIFIED_DONE
 ```
