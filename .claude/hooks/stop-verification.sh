@@ -38,8 +38,12 @@ TOTAL_CHECKS=4
 
 # 1. Verificar TODOs pendientes en el proyecto
 if [ -f "${PROJECT_DIR}/.claude/progress.md" ]; then
-    PENDING_TODOS=$(grep -c "^\- \[ \]" "${PROJECT_DIR}/.claude/progress.md" 2>/dev/null) || PENDING_TODOS=0
+    PENDING_TODOS=$(grep -c "^\- \[ \]" "${PROJECT_DIR}/.claude/progress.md" 2>/dev/null | tr -d ' \n') || PENDING_TODOS=0
     PENDING_TODOS=${PENDING_TODOS:-0}
+    # Ensure it's a valid integer
+    if ! [[ "$PENDING_TODOS" =~ ^[0-9]+$ ]]; then
+        PENDING_TODOS=0
+    fi
     if [ "$PENDING_TODOS" -gt 0 ]; then
         WARNINGS+=("TODOs pendientes: ${PENDING_TODOS} items sin completar en progress.md")
     else
@@ -66,8 +70,12 @@ LINT_LOG="${HOME}/.ralph/logs/quality-gates.log"
 if [ -f "$LINT_LOG" ]; then
     # Revisar últimas líneas del log de hoy
     TODAY=$(date '+%Y-%m-%d')
-    LINT_ERRORS=$(grep "$TODAY" "$LINT_LOG" 2>/dev/null | grep -c "ERROR\|FAILED") || LINT_ERRORS=0
+    LINT_ERRORS=$(grep "$TODAY" "$LINT_LOG" 2>/dev/null | grep -c "ERROR\|FAILED" | tr -d ' \n') || LINT_ERRORS=0
     LINT_ERRORS=${LINT_ERRORS:-0}
+    # Ensure it's a valid integer
+    if ! [[ "$LINT_ERRORS" =~ ^[0-9]+$ ]]; then
+        LINT_ERRORS=0
+    fi
     if [ "$LINT_ERRORS" -gt 0 ]; then
         WARNINGS+=("Errores de lint: ${LINT_ERRORS} errores en la última sesión")
     else
@@ -81,8 +89,12 @@ fi
 TEST_LOG="${HOME}/.ralph/logs/test-results.log"
 if [ -f "$TEST_LOG" ]; then
     TODAY=$(date '+%Y-%m-%d')
-    TEST_FAILURES=$(grep "$TODAY" "$TEST_LOG" 2>/dev/null | grep -c "FAILED\|ERROR") || TEST_FAILURES=0
+    TEST_FAILURES=$(grep "$TODAY" "$TEST_LOG" 2>/dev/null | grep -c "FAILED\|ERROR" | tr -d ' \n') || TEST_FAILURES=0
     TEST_FAILURES=${TEST_FAILURES:-0}
+    # Ensure it's a valid integer
+    if ! [[ "$TEST_FAILURES" =~ ^[0-9]+$ ]]; then
+        TEST_FAILURES=0
+    fi
     if [ "$TEST_FAILURES" -gt 0 ]; then
         WARNINGS+=("Tests fallidos: ${TEST_FAILURES} tests fallaron")
     else
