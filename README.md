@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.45.4-blue)
+![Version](https://img.shields.io/badge/version-2.46.1-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -19,11 +19,18 @@ The system addresses the fundamental challenge of AI-assisted coding: **ensuring
 
 Ralph is a dual-runtime orchestrator that adapts model routing based on whether it is invoked from Claude Code or OpenCode. It standardizes workflows (clarify → plan → execute → validate) while letting each environment use the best available models.
 
+**v2.46.1 Highlights** (RLM-Inspired - arXiv:2512.24601v1):
+- **3-Dimension Classification**: Complexity (1-10) + Information Density (CONSTANT/LINEAR/QUADRATIC) + Context Requirement (FITS/CHUNKED/RECURSIVE)
+- **Fast-Path Routing**: Trivial tasks use 3-step flow (DIRECT_EXECUTE → MICRO_VALIDATE → DONE) - 5x faster
+- **Quality-First Validation**: CORRECTNESS (blocking) → QUALITY (blocking) → CONSISTENCY (advisory only)
+- **4 New Hooks**: `fast-path-check.sh`, `parallel-explore.sh`, `recursive-decompose.sh`, `quality-gates-v2.sh`
+- **Parallel Exploration**: 5 concurrent background tasks for context gathering
+- **Recursive Decomposition**: Sub-orchestrators for QUADRATIC density tasks (max depth 3)
+- **Security Fixes**: Path traversal prevention, command injection via jq --arg, temp file handling
+
 **v2.45.4 Highlights**:
 - **Complete Hooks Audit**: 46 tests validating all 17 hooks for JSON protocol compliance
 - **9 Security Fixes**: Command injection, path traversal, TOCTOU race conditions patched
-- **PreToolUse Fix**: `inject-session-context.sh` now returns correct `{"continue": true}` format
-- **Input Validation**: All hooks now validate JSON input with 1MB size limit
 - **Secure Permissions**: All hooks set to 700 (owner-only)
 
 **v2.45.2 Highlights**:
@@ -1111,18 +1118,24 @@ See [LICENSE](LICENSE) for details.
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
 
-### Latest: v2.45.1 (2026-01-17)
+### Latest: v2.46.1 (2026-01-18)
 
-- **Lead Software Architect (LSA)**: Architecture guardian verifies each step against ARCHITECTURE.md
-- **Plan-Sync Pattern**: Catches drift when implementation diverges from spec, patches downstream
-- **Auto Plan-State Hook**: `auto-plan-state.sh` automatically creates `plan-state.json` when `orchestrator-analysis.md` is written (PostToolUse Write trigger)
-- **Gap-Analyst Agent**: Pre-implementation gap analysis for missing requirements
-- **Quality-Auditor Agent**: 6-phase pragmatic code audit
-- **Adversarial-Plan-Validator**: Cross-validation between Claude Opus and Codex GPT-5.2
-- **plan-state.json**: Structured tracking of spec vs actual implementation (context as queryable variable)
-- **12-Step Workflow**: Expanded from 10 steps with nested LSA-VERIFY → IMPLEMENT → PLAN-SYNC loop
-- **69+ Integration Tests**: Comprehensive pytest suite validates hooks, agents, workflows (test_v2_45_integration.py, test_hooks_registration.py)
-- **Security Fixes (v2.45.1)**: Atomic temp file handling (mktemp), path traversal prevention, command injection fix
+- **RLM-Inspired Orchestration**: Based on arXiv:2512.24601v1 recursive sub-calling patterns
+- **3-Dimension Classification**: Complexity (1-10) + Information Density + Context Requirement
+- **Fast-Path Routing**: Trivial tasks skip full workflow - 5x speedup (5-10 min → 1-2 min)
+- **Workflow Routes**: FAST_PATH, STANDARD, PARALLEL_CHUNKS, RECURSIVE_DECOMPOSE
+- **Quality-First Validation**: CORRECTNESS/QUALITY blocking, CONSISTENCY advisory only
+- **4 New Hooks**: fast-path-check.sh, parallel-explore.sh, recursive-decompose.sh, quality-gates-v2.sh
+- **Parallel Exploration (Step 1c)**: 5 concurrent background tasks for context gathering
+- **Recursive Decomposition (Step 3d)**: Sub-orchestrators for complex tasks (max depth 3)
+- **Security Fixes (v2.46.1)**: Path traversal via realpath, jq --arg escaping, temp file handling
+
+### v2.45.4 (2026-01-17)
+
+- **Complete Hooks Audit**: 46 tests validating all 17 hooks for JSON protocol compliance
+- **9 Security Fixes**: Command injection, path traversal, TOCTOU race conditions patched
+- **Lead Software Architect (LSA)**: Architecture guardian verifies each step
+- **Plan-Sync Pattern**: Catches drift when implementation diverges from spec
 
 ### v2.44.0 (2026-01-16)
 

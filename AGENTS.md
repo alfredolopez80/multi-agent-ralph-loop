@@ -1,4 +1,4 @@
-# Multi-Agent Ralph Wiggum - Agents Reference v2.45.4
+# Multi-Agent Ralph Wiggum - Agents Reference v2.46.1
 
 ## Overview
 
@@ -65,18 +65,43 @@ Ralph orchestrates **32 specialized agents** across different domains. Each agen
 | `@defi-protocol-economist` | opus | Token economics & DeFi modeling |
 | `@chain-infra-specialist-blockchain` | opus | Chain infrastructure & RPC |
 
-## Agent Routing
+## Agent Routing (v2.46 - 3-Dimension Classification)
 
-The orchestrator routes tasks based on:
+The orchestrator routes tasks based on **3 dimensions** (RLM-inspired):
 
-1. **Complexity (1-10)**: Higher complexity → Opus model
-2. **Task Type**: Security → `@security-auditor`, Tests → `@test-architect`
-3. **File Type**: `.py` → `@kieran-python-reviewer`, `.ts` → `@kieran-typescript-reviewer`
-4. **Domain**: DeFi → Blockchain agents, Frontend → `@frontend-reviewer`
+| Dimension | Values | Description |
+|-----------|--------|-------------|
+| **Complexity** | 1-10 | Scope, risk, ambiguity |
+| **Information Density** | CONSTANT / LINEAR / QUADRATIC | How answers scale with input |
+| **Context Requirement** | FITS / CHUNKED / RECURSIVE | Decomposition needs |
 
-## Hooks Integration (v2.45.1)
+### Workflow Routing Matrix
 
-### Automation Hooks
+| Density | Context | Complexity | Route |
+|---------|---------|------------|-------|
+| CONSTANT | FITS | 1-3 | **FAST_PATH** (3 steps) |
+| CONSTANT | FITS | 4-10 | STANDARD |
+| LINEAR | CHUNKED | Any | PARALLEL_CHUNKS |
+| QUADRATIC | RECURSIVE | Any | RECURSIVE_DECOMPOSE |
+
+### Additional Routing Criteria
+
+1. **Task Type**: Security → `@security-auditor`, Tests → `@test-architect`
+2. **File Type**: `.py` → `@kieran-python-reviewer`, `.ts` → `@kieran-typescript-reviewer`
+3. **Domain**: DeFi → Blockchain agents, Frontend → `@frontend-reviewer`
+
+## Hooks Integration (v2.46.1)
+
+### v2.46 RLM-Inspired Hooks (NEW)
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `fast-path-check.sh` | PreToolUse (Task) | Detect trivial tasks → FAST_PATH routing |
+| `parallel-explore.sh` | PostToolUse (Task) | Launch 5 concurrent exploration tasks |
+| `recursive-decompose.sh` | PostToolUse (Task) | Trigger sub-orchestrators for complex tasks |
+| `quality-gates-v2.sh` | PostToolUse (Edit/Write) | Quality-first validation (consistency advisory) |
+
+### v2.45 Automation Hooks
 
 | Hook | Trigger | Purpose |
 |------|---------|---------|
@@ -97,26 +122,51 @@ The orchestrator routes tasks based on:
 @debugger           → ~/.ralph/logs/debug.log
 ```
 
-## v2.45.1 Nested Loop Architecture
+## v2.46 Workflow Routes
 
+### FAST_PATH (Trivial Tasks - 3 Steps)
+```
+DIRECT_EXECUTE → MICRO_VALIDATE → DONE
+```
+*5x faster: 5-10 min → 1-2 min*
+
+### STANDARD (Regular Tasks - 12 Steps)
+```
+EVALUATE → CLARIFY → GAP-ANALYST → CLASSIFY → PLAN → PERSIST →
+PLAN-STATE → PLAN MODE → DELEGATE → EXECUTE-WITH-SYNC → VALIDATE → RETROSPECT
+```
+
+### RECURSIVE_DECOMPOSE (Complex Tasks)
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│              ROOT ORCHESTRATOR (QUADRATIC density)                  │
+├─────────────────────────────────────────────────────────────────────┤
+│  1. IDENTIFY CHUNKS (by module/feature/file group)                  │
+│  2. CREATE SUB-PLANS (each chunk gets verifiable spec)              │
+│  3. SPAWN SUB-ORCHESTRATORS:                                        │
+│     ┌─────────────┐ ┌─────────────┐ ┌─────────────┐                │
+│     │ SUB-ORCH 1  │ │ SUB-ORCH 2  │ │ SUB-ORCH 3  │                │
+│     │ (STANDARD)  │ │ (STANDARD)  │ │ (STANDARD)  │                │
+│     └─────────────┘ └─────────────┘ └─────────────┘                │
+│  4. AGGREGATE RESULTS (reconcile, merge, verify)                    │
+│                                                                     │
+│  Max depth: 3 | Max children per level: 5                           │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Nested Loop (Per-Step)
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                    EXTERNAL RALPH LOOP (max 25 iter)                │
 ├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
 │    For EACH step in plan:                                           │
 │    ┌─────────────────────────────────────────────────────────┐     │
 │    │           INTERNAL PER-STEP LOOP (3-Fix Rule)          │     │
-│    │                                                         │     │
 │    │   @lead-software-architect → IMPLEMENT → @plan-sync    │     │
 │    │       ↑                                   │             │     │
 │    │       └──── retry if MICRO-GATE fails ───┘             │     │
-│    │                  (max 3 attempts)                       │     │
 │    └─────────────────────────────────────────────────────────┘     │
-│                              ↓                                      │
 │    After ALL steps: @quality-auditor + @adversarial-plan-validator │
-│                              ↓                                      │
-│    If VALIDATE passes → RETROSPECT → VERIFIED_DONE                 │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
