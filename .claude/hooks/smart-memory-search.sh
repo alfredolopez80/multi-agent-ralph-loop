@@ -19,8 +19,9 @@
 #   - recommended_patterns: Best practices from history
 #   - fork_suggestions: Top 5 sessions to fork from
 #
-# VERSION: 2.47.2 (Security Hardened + Schema Validation)
-# Fixes: SECURITY-001, 002, 003, ADV-001, ADV-002, ADV-003
+# VERSION: 2.47.3 (Security Hardened + Portability)
+# Fixes: SECURITY-001, 002, 003, ADV-001, ADV-002, ADV-003, ADV-004, ADV-005, ADV-006
+# v2.47.3: Removed unused variable, fixed $KEYWORDS_SAFE usage, date portability, noclobber
 
 set -euo pipefail
 umask 077
@@ -45,10 +46,7 @@ validate_input_schema() {
         exit 0
     fi
 
-    # Check tool_name is a string
-    local tool_type
-    tool_type=$(echo "$input" | jq -r 'type_of(.tool_name) // "unknown"' 2>/dev/null || echo "unknown")
-    # jq type check - if tool_name is null or not string, handle gracefully
+    # Check tool_name is a string (jq type check)
     if [[ $(echo "$input" | jq -r '.tool_name | type' 2>/dev/null) != "string" ]]; then
         echo '{"decision": "continue", "error": "tool_name must be a string"}'
         exit 0
@@ -149,6 +147,7 @@ validate_file_path() {
 }
 
 # Atomic file creation to prevent TOCTOU race conditions (SECURITY-003 fix)
+# Uses set -C (noclobber) for atomic write protection
 create_initial_file() {
     local file="$1"
     local content="$2"
@@ -159,15 +158,19 @@ create_initial_file() {
         exit 1
     fi
 
-    # Create with restrictive permissions atomically
+    # Create with restrictive permissions atomically using noclobber
     (
+        set -C  # noclobber - prevents overwriting existing files
         umask 077
         echo "$content" > "$file"
-    )
+    ) 2>/dev/null || {
+        echo "ERROR: Atomic file creation failed: $file" >&2
+        exit 1
+    }
 }
 
 {
-    echo "[$(date -Iseconds)] Starting SMART MEMORY SEARCH v2.47"
+    echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] Starting SMART MEMORY SEARCH v2.47"
     echo "  Session: $SESSION_ID"
     echo "  Task Type: $TASK_TYPE"
     echo "  Keywords: $KEYWORDS_SAFE"
@@ -235,7 +238,7 @@ PID1=$!
         # Use memvid-core.py for search
         MEMVID_CORE="$HOME/.claude/scripts/memvid-core.py"
         if [[ -f "$MEMVID_CORE" ]]; then
-            timeout 10 python3 "$MEMVID_CORE" search "$KEYWORDS" 2>/dev/null | \
+            timeout 10 python3 "$MEMVID_CORE" search "$KEYWORDS_SAFE" 2>/dev/null | \
                 jq -s '{results: ., source: "memvid"}' > "$MEMVID_FILE" 2>/dev/null || \
                 echo '{"results": [], "source": "memvid"}' > "$MEMVID_FILE"
         fi
@@ -372,10 +375,77 @@ if [[ $HANDOFFS_COUNT -gt 0 ]]; then
     FORK_SUGGESTIONS=$(echo "$HANDOFFS_RESULT" | jq '[.results[:5] | .[] | {session: .session, timestamp: .timestamp, relevance: "high"}]')
 fi
 
-# Build aggregated memory context
+# ═══════════════════════════════════════════════════════════════════════════════
+# INSIGHT EXTRACTION (v2.47.3 - Architecture Enhancement)
+# Extract patterns from memory results to populate insights object
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Initialize insights with empty arrays as jq-safe JSON
+PAST_SUCCESSES="[]"
+PAST_ERRORS="[]"
+RECOMMENDED_PATTERNS="[]"
+
+# Extract success patterns from ledgers (look for COMPLETED, SUCCESS keywords)
+if [[ $LEDGERS_COUNT -gt 0 ]]; then
+    PAST_SUCCESSES=$(echo "$LEDGERS_RESULT" | jq -c '
+        [.results[]? |
+         select(.content != null) |
+         select(.content | test("COMPLETED|SUCCESS|VERIFIED_DONE|implemented successfully"; "i")) |
+         {session: .session, pattern: (.content | split(" ") | .[0:15] | join(" "))}
+        ] | .[0:5]
+    ' 2>/dev/null || echo "[]")
+    [[ -z "$PAST_SUCCESSES" || "$PAST_SUCCESSES" == "null" ]] && PAST_SUCCESSES="[]"
+fi
+
+# Extract error patterns from handoffs and ledgers (look for ERROR, FAIL, BUG keywords)
+if [[ $HANDOFFS_COUNT -gt 0 ]] || [[ $LEDGERS_COUNT -gt 0 ]]; then
+    ERRORS_FROM_HANDOFFS="[]"
+    ERRORS_FROM_LEDGERS="[]"
+
+    if [[ $HANDOFFS_COUNT -gt 0 ]]; then
+        ERRORS_FROM_HANDOFFS=$(echo "$HANDOFFS_RESULT" | jq -c '
+            [.results[]? |
+             select(.content != null) |
+             select(.content | test("ERROR|FAIL|BUG|FIX|ISSUE"; "i")) |
+             {session: .session, error: (.content | split(" ") | .[0:10] | join(" "))}
+            ] | .[0:3]
+        ' 2>/dev/null || echo "[]")
+    fi
+
+    if [[ $LEDGERS_COUNT -gt 0 ]]; then
+        ERRORS_FROM_LEDGERS=$(echo "$LEDGERS_RESULT" | jq -c '
+            [.results[]? |
+             select(.content != null) |
+             select(.content | test("ERROR|FAIL|BUG|FIX|ISSUE"; "i")) |
+             {session: .session, error: (.content | split(" ") | .[0:10] | join(" "))}
+            ] | .[0:3]
+        ' 2>/dev/null || echo "[]")
+    fi
+
+    # Merge error patterns (max 5 total)
+    PAST_ERRORS=$(jq -n --argjson a "$ERRORS_FROM_HANDOFFS" --argjson b "$ERRORS_FROM_LEDGERS" \
+        '($a + $b) | .[0:5]' 2>/dev/null || echo "[]")
+    [[ -z "$PAST_ERRORS" || "$PAST_ERRORS" == "null" ]] && PAST_ERRORS="[]"
+fi
+
+# Extract recommended patterns from successful sessions
+if [[ $TOTAL_COUNT -gt 0 ]]; then
+    RECOMMENDED_PATTERNS=$(echo "$LEDGERS_RESULT" | jq -c '
+        [.results[]? |
+         select(.content != null) |
+         select(.content | test("pattern|best practice|recommended|should use"; "i")) |
+         {pattern: (.content | split(" ") | .[0:12] | join(" ")), source: "ledger"}
+        ] | .[0:3]
+    ' 2>/dev/null || echo "[]")
+    [[ -z "$RECOMMENDED_PATTERNS" || "$RECOMMENDED_PATTERNS" == "null" ]] && RECOMMENDED_PATTERNS="[]"
+fi
+
+echo "  Insights extracted: successes=$(echo "$PAST_SUCCESSES" | jq 'length'), errors=$(echo "$PAST_ERRORS" | jq 'length'), patterns=$(echo "$RECOMMENDED_PATTERNS" | jq 'length')" >> "$LOG_FILE"
+
+# Build aggregated memory context (v2.47.3 - Now with populated insights)
 jq -n \
-    --arg version "2.47.2" \
-    --arg timestamp "$(date -Iseconds)" \
+    --arg version "2.47.3" \
+    --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
     --arg session_id "$SESSION_ID" \
     --arg keywords "$KEYWORDS_SAFE" \
     --argjson total_results "$TOTAL_COUNT" \
@@ -384,6 +454,9 @@ jq -n \
     --argjson handoffs "$HANDOFFS_RESULT" \
     --argjson ledgers "$LEDGERS_RESULT" \
     --argjson fork_suggestions "$FORK_SUGGESTIONS" \
+    --argjson past_successes "$PAST_SUCCESSES" \
+    --argjson past_errors "$PAST_ERRORS" \
+    --argjson recommended_patterns "$RECOMMENDED_PATTERNS" \
     '{
         version: $version,
         timestamp: $timestamp,
@@ -397,16 +470,16 @@ jq -n \
             ledgers: $ledgers
         },
         insights: {
-            past_successes: [],
-            past_errors: [],
-            recommended_patterns: []
+            past_successes: $past_successes,
+            past_errors: $past_errors,
+            recommended_patterns: $recommended_patterns
         },
         fork_suggestions: $fork_suggestions,
         note: "Smart Memory Search v2.47 - Use fork_suggestions to continue from relevant sessions"
     }' > "$MEMORY_CONTEXT"
 
-echo "[$(date -Iseconds)] Memory context written to: $MEMORY_CONTEXT" >> "$LOG_FILE"
-echo "[$(date -Iseconds)] Total results found: $TOTAL_COUNT" >> "$LOG_FILE"
+echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] Memory context written to: $MEMORY_CONTEXT" >> "$LOG_FILE"
+echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] Total results found: $TOTAL_COUNT" >> "$LOG_FILE"
 
 # Build context message for injection
 CONTEXT_MSG="SMART_MEMORY_SEARCH v2.47 complete:

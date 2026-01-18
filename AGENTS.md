@@ -1,4 +1,4 @@
-# Multi-Agent Ralph Wiggum - Agents Reference v2.46.1
+# Multi-Agent Ralph Wiggum - Agents Reference v2.47.3
 
 ## Overview
 
@@ -210,6 +210,40 @@ hooks:
 2. Step two
 ...
 ```
+
+## Hook Testing (v2.47.3)
+
+All hooks are validated by a **behavioral test suite** that executes hooks with real inputs.
+
+### Test Categories
+
+| Category | Tests | Purpose |
+|----------|-------|---------|
+| JSON Output | 7 | Hook ALWAYS returns valid `{"decision": "continue"}` |
+| Command Injection | 4 | Shell metacharacters blocked |
+| Path Traversal | 2 | Symlinks resolved, paths validated |
+| Race Conditions | 4 | umask 077, noclobber, chmod 700 |
+| Edge Cases | 6 | Unicode, long inputs, null bytes |
+| Error Handling | 3 | Exit 0 always, stderr clean |
+| Regressions | 5 | Past bugs don't return |
+| Performance | 3 | Hooks complete in <5s |
+
+### Running Hook Tests
+
+```bash
+# All 38 hook tests
+python -m pytest tests/test_hooks_comprehensive.py -v
+
+# Security tests only
+python -m pytest tests/test_hooks_comprehensive.py::TestSecurityCommandInjection -v
+
+# Independent review via Codex CLI
+codex exec -m gpt-5.2-codex --sandbox read-only \
+  --config model_reasoning_effort=high \
+  "review ~/.claude/hooks/<hook>.sh --focus security" 2>/dev/null
+```
+
+See `tests/HOOK_TESTING_PATTERNS.md` for patterns when adding new hooks.
 
 ---
 

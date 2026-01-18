@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.46.1
+# Multi-Agent Ralph v2.47.3
 
 ## Multi-Agent Ralph Loop Orchestration
 
@@ -15,7 +15,9 @@
 | `/parallel` | Run multiple loops concurrently |
 | `/lsp-explore` | Token-free code navigation via LSP |
 | `/compact` | Manual context save (extension workaround) |
-| `/classify` | 3-dimension task classification ← NEW v2.46 |
+| `/classify` | 3-dimension task classification |
+| `/smart-fork` | Smart memory-driven fork suggestions |
+| `/hook-test` | Run behavioral hook tests (38 tests) ← NEW v2.47.3 |
 
 ### Orchestration Flow - v2.46 (RLM-Inspired)
 
@@ -73,6 +75,120 @@
 Orchestration with fast-path detection, parallel exploration, recursive decomposition, quality-first validation, and automatic context preservation.
 
 > **Historical versions**: See [CHANGELOG.md](./CHANGELOG.md) for v2.19-v2.45 details.
+
+## v2.47.3 Comprehensive Hook Testing (NEW)
+
+**38 behavioral tests** validate that hooks work correctly - not just code presence.
+
+### Test Categories
+
+| Category | Tests | Purpose |
+|----------|-------|---------|
+| JSON Output | 7 | Hook ALWAYS returns valid `{"decision": "continue"}` |
+| Command Injection | 4 | Shell metacharacters blocked |
+| Path Traversal | 2 | Symlinks resolved, paths validated |
+| Race Conditions | 4 | umask 077, noclobber, chmod 700 |
+| Edge Cases | 6 | Unicode, long inputs, null bytes |
+| Error Handling | 3 | Exit 0 always, stderr clean |
+| Regressions | 5 | Past bugs don't return |
+| Performance | 3 | Hooks complete in <5s |
+
+### Running Tests
+
+```bash
+# All hook tests
+python -m pytest tests/test_hooks_comprehensive.py -v
+
+# Codex CLI independent review
+codex exec -m gpt-5.2-codex --sandbox read-only \
+  --config model_reasoning_effort=high \
+  "review ~/.claude/hooks/<hook>.sh --focus security" 2>/dev/null
+```
+
+### Known Limitations (Documented)
+
+| ID | Severity | Issue |
+|----|----------|-------|
+| SMMS-001 | HIGH | ERR trap needed for guaranteed JSON output |
+| SMMS-002 | MEDIUM | Full JSON escaping needed in additionalContext |
+| SMMS-003 | MEDIUM | Atomic file write (temp+mv) needed |
+| SMMS-005 | LOW | Input size limit needed (currently unbounded) |
+
+---
+
+## v2.47 Smart Memory-Driven Orchestration
+
+Based on @PerceptualPeak Smart Forking concept:
+> "Why not utilize the knowledge gained from your hundreds/thousands of other Claude code sessions? Don't let that valuable context go to waste!!"
+
+### Smart Memory Search (Step 0b)
+
+**NEW**: Before every orchestration, search ALL memory sources in **PARALLEL**:
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│              SMART MEMORY SEARCH (PARALLEL)                    │
+├────────────────────────────────────────────────────────────────┤
+│   ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐        │
+│   │claude-mem│ │ memvid   │ │ handoffs │ │ ledgers  │        │
+│   └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘        │
+│        │ PARALLEL   │ PARALLEL   │ PARALLEL   │ PARALLEL      │
+│        └────────────┴────────────┴────────────┘               │
+│                         ↓                                      │
+│              .claude/memory-context.json                       │
+│              ├── past_successes                                │
+│              ├── past_errors                                   │
+│              ├── recommended_patterns                          │
+│              └── fork_suggestions (top 5)                      │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### New CLI Commands (v2.47)
+
+| Command | Description |
+|---------|-------------|
+| `ralph memory-search "query"` | Search all memory sources in parallel |
+| `ralph fork-suggest "task"` | Find relevant sessions to fork from |
+| `ralph memory-stats` | Show memory statistics across all sources |
+
+### New Hook (v2.47)
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `smart-memory-search.sh` | PreToolUse (Task) | Parallel memory search before orchestration |
+
+### Memory Sources
+
+| Source | Content | Speed |
+|--------|---------|-------|
+| **claude-mem MCP** | Semantic observations | Fast |
+| **memvid** | Vector-encoded context | Sub-5ms |
+| **handoffs** | Session snapshots (30 days) | Fast |
+| **ledgers** | Session continuity data | Fast |
+
+### Key Principles
+
+1. **PARALLEL EXECUTION**: Memory searches run concurrently, not sequentially
+2. **LEARN FROM HISTORY**: Past successes inform current implementation
+3. **AVOID PAST ERRORS**: Historical failures prevent repeat mistakes
+4. **SMART FORKING**: Suggest best session to fork from
+
+### Updated Orchestration Flow (v2.47)
+
+```
+0. EVALUATE
+   0a. 3-Dimension Classification (v2.46)
+   0b. SMART MEMORY SEARCH (v2.47 NEW) ← Parallel memory search
+       └─ Results in .claude/memory-context.json
+1. CLARIFY (Memory-Enhanced)
+   └─ Check memory context for similar implementations
+...
+8. RETROSPECT
+   └─ Save learnings to memory for future sessions
+```
+
+---
+
 
 ## v2.46 RLM-Inspired Enhancements (NEW)
 
