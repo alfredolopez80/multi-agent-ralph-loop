@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # ralph - Multi-Agent Orchestrator CLI
-# Version 2.45.0
+# Version 2.46.0
+# v2.46: RLM-Inspired Enhancements (arXiv:2512.24601v1)
+#        - 3-Dimension Classification: Complexity + Info Density + Context Requirement
+#        - Fast-path routing for trivial tasks (3 steps instead of 12)
+#        - Parallel exploration (5 concurrent searches)
+#        - Recursive decomposition for complex tasks (max depth 3)
+#        - Quality-first validation (quality over consistency - advisory)
+#        - New cmd_classify command for task classification
 # v2.45: Lead Software Architect + Plan-Sync Integration
 #        - Plan-State management (init, status, add-step, start, complete, verify)
 #        - LSA verification (architecture compliance)
@@ -38,7 +45,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.45.0"
+VERSION="2.46.0"
 RALPH_REPO_PATH=""  # Auto-detected if in ralph repo
 RALPH_DIR="${HOME}/.ralph"
 
@@ -587,12 +594,14 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 # ===============================================================================
 show_help() {
     cat << 'EOF'
-ralph - Multi-Agent Orchestrator CLI v2.45.0
+ralph - Multi-Agent Orchestrator CLI v2.46.0
 
-ORCHESTRATION:
-  ralph orch "task"          Full orchestration (clarify->classify->execute->validate->retrospective)
-  ralph loop "task"          Loop until VERIFIED_DONE (max 15 iter Claude, 30 MiniMax)
+ORCHESTRATION (v2.46 RLM-Enhanced):
+  ralph orch "task"          Full orchestration with fast-path routing
+  ralph loop "task"          Loop until VERIFIED_DONE (max 25 iter Claude)
   ralph clarify "task"       Generate clarification questions
+  ralph classify "task"      3-dimension task classification (NEW v2.46)
+                             Returns: complexity, info_density, context_req, workflow_route
 
 SEARCH (v2.23):
   ralph ast "pattern" [path] Structural code search via ast-grep (~75% less tokens)
@@ -672,10 +681,23 @@ PRD SYSTEM (v2.32):
   ralph prd template         Display PRD template location
   ralph prd help             Show PRD system documentation
 
-VALIDATION:
-  ralph gates                Quality gates (9 languages) - BLOCKING
+VALIDATION (v2.46 Quality-First):
+  ralph gates                Quality gates v2.46 (quality over consistency)
+                             Stage 1: CORRECTNESS (blocking)
+                             Stage 2: QUALITY (blocking)
+                             Stage 3: CONSISTENCY (advisory - not blocking)
   ralph gates --check        Quality gates (non-blocking check only)
   ralph adversarial <input>  adversarial-spec debate (env-aware)
+
+CLASSIFICATION (v2.46 - RLM Paper):
+  ralph classify "task"      3-dimension classification
+                             Dimensions:
+                               - Complexity: 1-10 (scope, risk, ambiguity)
+                               - Info Density: CONSTANT | LINEAR | QUADRATIC
+                               - Context Req: FITS | CHUNKED | RECURSIVE
+                             Routes: FAST_PATH | STANDARD | PARALLEL_CHUNKS | RECURSIVE_DECOMPOSE
+  ralph classify --json      Output as JSON
+  ralph fast-path "task"     Check if task qualifies for fast-path (3 steps)
 
 SELF-IMPROVEMENT:
   ralph retrospective        Analyze last task, propose improvements
@@ -1174,7 +1196,13 @@ cmd_parallel() {
 # ===============================================================================
 cmd_gates() {
     local CHECK_ONLY="${1:-}"
-    local HOOK_SCRIPT="${HOOKS_DIR}/quality-gates.sh"
+    # v2.46: Use quality-gates-v2.sh (quality over consistency - advisory consistency)
+    local HOOK_SCRIPT="${HOOKS_DIR}/quality-gates-v2.sh"
+
+    # Fallback to legacy for backwards compatibility
+    if [ ! -f "$HOOK_SCRIPT" ]; then
+        HOOK_SCRIPT="${HOOKS_DIR}/quality-gates.sh"
+    fi
 
     # Check if hook exists
     if [ ! -f "$HOOK_SCRIPT" ]; then
@@ -1195,6 +1223,248 @@ cmd_gates() {
     else
         log_info "Running quality gates (blocking mode)..."
         RALPH_GATES_BLOCKING=1 "$HOOK_SCRIPT"
+    fi
+}
+
+# ===============================================================================
+# TASK CLASSIFICATION (v2.46 - RLM Paper Inspired)
+# ===============================================================================
+
+# cmd_classify - 3-dimension task classification
+# Based on RLM paper (arXiv:2512.24601v1) insights
+cmd_classify() {
+    local TASK="${1:-}"
+    local OUTPUT_FORMAT="${2:-text}"
+
+    if [ -z "$TASK" ]; then
+        log_error "Usage: ralph classify \"task description\" [--json]"
+        return 1
+    fi
+
+    # Check for --json flag
+    if [ "$TASK" = "--json" ]; then
+        log_error "Usage: ralph classify \"task description\" [--json]"
+        return 1
+    fi
+    if [ "$OUTPUT_FORMAT" = "--json" ]; then
+        OUTPUT_FORMAT="json"
+    fi
+
+    log_info "Classifying task: $TASK"
+    log_info ""
+
+    # === Dimension 1: Complexity (1-10) ===
+    local COMPLEXITY=5
+    local COMPLEXITY_REASON="Default medium complexity"
+
+    # Simple heuristics for classification
+    local TASK_LOWER
+    TASK_LOWER=$(echo "$TASK" | tr '[:upper:]' '[:lower:]')
+
+    # Trivial indicators (1-3)
+    if echo "$TASK_LOWER" | grep -qE "(fix typo|simple fix|comment|readme|update version|rename)"; then
+        COMPLEXITY=2
+        COMPLEXITY_REASON="Trivial task (typo/comment/rename)"
+    # Simple indicators (3-4)
+    elif echo "$TASK_LOWER" | grep -qE "(add field|simple function|config|env|constant)"; then
+        COMPLEXITY=4
+        COMPLEXITY_REASON="Simple task (single file, clear scope)"
+    # Medium indicators (5-6)
+    elif echo "$TASK_LOWER" | grep -qE "(api endpoint|refactor|component|module|service)"; then
+        COMPLEXITY=6
+        COMPLEXITY_REASON="Medium task (multi-file, some decisions)"
+    # High indicators (7-8)
+    elif echo "$TASK_LOWER" | grep -qE "(feature|migration|auth|payment|integration|system)"; then
+        COMPLEXITY=7
+        COMPLEXITY_REASON="High complexity (architectural, many files)"
+    # Exceptional indicators (9-10)
+    elif echo "$TASK_LOWER" | grep -qE "(architecture|redesign|security audit|compliance|cross-system)"; then
+        COMPLEXITY=9
+        COMPLEXITY_REASON="Exceptional complexity (cross-system, critical)"
+    fi
+
+    # === Dimension 2: Information Density ===
+    local INFO_DENSITY="CONSTANT"
+    local DENSITY_REASON="Single-item operation"
+
+    # LINEAR detection: Look for patterns indicating iteration over collections
+    # Using \b for word boundaries and .* for flexibility
+    if echo "$TASK_LOWER" | grep -qE "(all\b.*\b(files|endpoints|modules|components|services|tests|apis)|each\b|every\b|migrate all|entire\b|for all\b|across all\b)"; then
+        INFO_DENSITY="LINEAR"
+        DENSITY_REASON="Scales with input count (item-by-item)"
+    fi
+    # QUADRATIC detection: Look for patterns indicating pair-wise operations
+    if echo "$TASK_LOWER" | grep -qE "(all\b.*\bdependencies|cross-reference|all combinations|dependency graph|all pairs|between all|all.*relationships)"; then
+        INFO_DENSITY="QUADRATIC"
+        DENSITY_REASON="Scales with input squared (pair-wise)"
+    fi
+
+    # === Dimension 3: Context Requirement ===
+    local CONTEXT_REQ="FITS"
+    local CONTEXT_REASON="Fits in single context (<100k tokens)"
+
+    # Count files mentioned or estimate scope
+    local FILE_COUNT=0
+    FILE_COUNT=$(echo "$TASK_LOWER" | grep -oE "(file|module|component|service)" 2>/dev/null | wc -l | tr -d '[:space:]') || FILE_COUNT=0
+    # Ensure numeric
+    FILE_COUNT=$((FILE_COUNT + 0)) 2>/dev/null || FILE_COUNT=0
+
+    if [ "$FILE_COUNT" -gt 20 ] || echo "$TASK_LOWER" | grep -qE "(entire codebase|all modules|full system)"; then
+        CONTEXT_REQ="RECURSIVE"
+        CONTEXT_REASON="Large scope requiring recursive decomposition"
+    elif [ "$FILE_COUNT" -gt 5 ] || echo "$TASK_LOWER" | grep -qE "(multiple modules|several files|multi-file)"; then
+        CONTEXT_REQ="CHUNKED"
+        CONTEXT_REASON="Medium scope (100k-500k tokens)"
+    fi
+
+    # === Determine Workflow Route ===
+    local WORKFLOW_ROUTE="STANDARD"
+    local ROUTE_REASON="Default standard workflow"
+
+    # Fast-path check
+    if [ "$COMPLEXITY" -le 3 ] && [ "$INFO_DENSITY" = "CONSTANT" ] && [ "$CONTEXT_REQ" = "FITS" ]; then
+        WORKFLOW_ROUTE="FAST_PATH"
+        ROUTE_REASON="Trivial task: DIRECT_EXECUTE → MICRO_VALIDATE → DONE (3 steps)"
+    # Recursive decompose
+    elif [ "$INFO_DENSITY" = "QUADRATIC" ] || [ "$CONTEXT_REQ" = "RECURSIVE" ]; then
+        WORKFLOW_ROUTE="RECURSIVE_DECOMPOSE"
+        ROUTE_REASON="Complex task requiring sub-orchestrators"
+    # Parallel chunks
+    elif [ "$INFO_DENSITY" = "LINEAR" ] && [ "$CONTEXT_REQ" = "CHUNKED" ]; then
+        WORKFLOW_ROUTE="PARALLEL_CHUNKS"
+        ROUTE_REASON="Linear scaling with chunked processing"
+    fi
+
+    # === Model Routing ===
+    local PRIMARY_MODEL="sonnet"
+    local SECONDARY_MODEL=""
+    local MAX_ITERATIONS=25
+
+    case "$WORKFLOW_ROUTE" in
+        FAST_PATH)
+            PRIMARY_MODEL="sonnet"
+            MAX_ITERATIONS=3
+            ;;
+        STANDARD)
+            if [ "$COMPLEXITY" -le 4 ]; then
+                PRIMARY_MODEL="minimax-m2.1"
+                SECONDARY_MODEL="sonnet"
+            elif [ "$COMPLEXITY" -le 6 ]; then
+                PRIMARY_MODEL="sonnet"
+                SECONDARY_MODEL="opus"
+            else
+                PRIMARY_MODEL="opus"
+                SECONDARY_MODEL="sonnet"
+            fi
+            ;;
+        PARALLEL_CHUNKS)
+            PRIMARY_MODEL="sonnet"
+            SECONDARY_MODEL="opus (aggregator)"
+            MAX_ITERATIONS=15
+            ;;
+        RECURSIVE_DECOMPOSE)
+            PRIMARY_MODEL="opus (root)"
+            SECONDARY_MODEL="sonnet (sub)"
+            MAX_ITERATIONS=15
+            ;;
+    esac
+
+    # === Output ===
+    if [ "$OUTPUT_FORMAT" = "json" ]; then
+        jq -n \
+            --arg version "2.46.0" \
+            --argjson complexity "$COMPLEXITY" \
+            --arg complexity_reason "$COMPLEXITY_REASON" \
+            --arg info_density "$INFO_DENSITY" \
+            --arg density_reason "$DENSITY_REASON" \
+            --arg context_req "$CONTEXT_REQ" \
+            --arg context_reason "$CONTEXT_REASON" \
+            --arg workflow_route "$WORKFLOW_ROUTE" \
+            --arg route_reason "$ROUTE_REASON" \
+            --arg primary_model "$PRIMARY_MODEL" \
+            --arg secondary_model "$SECONDARY_MODEL" \
+            --argjson max_iterations "$MAX_ITERATIONS" \
+            --argjson adversarial_required "$([ "$COMPLEXITY" -ge 7 ] && echo true || echo false)" \
+            '{
+                version: $version,
+                classification: {
+                    complexity: $complexity,
+                    complexity_reasoning: $complexity_reason,
+                    information_density: $info_density,
+                    density_reasoning: $density_reason,
+                    context_requirement: $context_req,
+                    context_reasoning: $context_reason
+                },
+                workflow_route: $workflow_route,
+                route_reasoning: $route_reason,
+                model_routing: {
+                    primary: $primary_model,
+                    secondary: $secondary_model,
+                    adversarial_required: $adversarial_required
+                },
+                estimates: {
+                    max_iterations: $max_iterations
+                }
+            }'
+    else
+        echo "╔═══════════════════════════════════════════════════════════════════╗"
+        echo "║              TASK CLASSIFICATION (v2.46 RLM-Inspired)             ║"
+        echo "╠═══════════════════════════════════════════════════════════════════╣"
+        echo "║ Task: $(printf '%-57s' "$TASK" | cut -c1-57) ║"
+        echo "╠═══════════════════════════════════════════════════════════════════╣"
+        echo "║ DIMENSION 1: Complexity                                           ║"
+        printf "║   Score: %-8s Reason: %-39s ║\n" "$COMPLEXITY/10" "$COMPLEXITY_REASON"
+        echo "╠═══════════════════════════════════════════════════════════════════╣"
+        echo "║ DIMENSION 2: Information Density                                  ║"
+        printf "║   Type: %-9s Reason: %-39s ║\n" "$INFO_DENSITY" "$DENSITY_REASON"
+        echo "╠═══════════════════════════════════════════════════════════════════╣"
+        echo "║ DIMENSION 3: Context Requirement                                  ║"
+        printf "║   Type: %-9s Reason: %-39s ║\n" "$CONTEXT_REQ" "$CONTEXT_REASON"
+        echo "╠═══════════════════════════════════════════════════════════════════╣"
+        echo "║ WORKFLOW ROUTE                                                    ║"
+        printf "║   Route: %-60s ║\n" "$WORKFLOW_ROUTE"
+        printf "║   Reason: %-59s ║\n" "$ROUTE_REASON"
+        echo "╠═══════════════════════════════════════════════════════════════════╣"
+        echo "║ MODEL ROUTING                                                     ║"
+        printf "║   Primary: %-20s Secondary: %-24s ║\n" "$PRIMARY_MODEL" "${SECONDARY_MODEL:-N/A}"
+        printf "║   Max Iterations: %-14s Adversarial: %-21s ║\n" "$MAX_ITERATIONS" "$([ "$COMPLEXITY" -ge 7 ] && echo 'Required' || echo 'Not required')"
+        echo "╚═══════════════════════════════════════════════════════════════════╝"
+    fi
+}
+
+# cmd_fast_path - Check if task qualifies for fast-path
+cmd_fast_path() {
+    local TASK="${1:-}"
+
+    if [ -z "$TASK" ]; then
+        log_error "Usage: ralph fast-path \"task description\""
+        return 1
+    fi
+
+    # Run classification silently and extract workflow route
+    # Filter to only get the JSON output (skip INFO lines)
+    local RESULT
+    RESULT=$(cmd_classify "$TASK" --json 2>/dev/null | grep -E '^\{|^  |^\}' | tr -d '\n' | sed 's/}{/}\n{/g')
+
+    local ROUTE
+    ROUTE=$(echo "$RESULT" | jq -r '.workflow_route // "STANDARD"' 2>/dev/null)
+
+    if [ "$ROUTE" = "FAST_PATH" ]; then
+        log_success "✓ Task qualifies for FAST_PATH (3 steps instead of 12)"
+        echo ""
+        echo "FAST_PATH Flow:"
+        echo "  1. DIRECT_EXECUTE  → Execute immediately"
+        echo "  2. MICRO_VALIDATE  → Quick quality check"
+        echo "  3. DONE            → Complete"
+        echo ""
+        echo "Estimated time: 1-2 minutes"
+        return 0
+    else
+        log_warn "✗ Task does NOT qualify for FAST_PATH"
+        echo ""
+        echo "Assigned route: $ROUTE"
+        echo "Use 'ralph classify \"$TASK\"' for full details"
+        return 1
     fi
 }
 
@@ -6624,6 +6894,14 @@ main() {
             ;;
         adversarial|adv)
             cmd_adversarial "$@"
+            ;;
+
+        # Classification (v2.46)
+        classify)
+            cmd_classify "$@"
+            ;;
+        fast-path|fastpath)
+            cmd_fast_path "$@"
             ;;
 
         # Self-improvement
