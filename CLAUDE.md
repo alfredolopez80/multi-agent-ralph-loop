@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.47.3
+# Multi-Agent Ralph v2.48.0
 
 ## Multi-Agent Ralph Loop Orchestration
 
@@ -76,7 +76,59 @@ Orchestration with fast-path detection, parallel exploration, recursive decompos
 
 > **Historical versions**: See [CHANGELOG.md](./CHANGELOG.md) for v2.19-v2.45 details.
 
-## v2.47.3 Comprehensive Hook Testing (NEW)
+## v2.48.0 Security Scanning (NEW)
+
+**Stage 2.5 SECURITY** added to quality gates - automatic security scanning on every code change.
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| **semgrep SAST** | Static Application Security Testing for 30+ languages |
+| **gitleaks** | Secret detection (API keys, passwords, tokens) |
+| **Graceful Degradation** | Works without tools, shows SKIP + one-time install hint |
+| **Timeout Protection** | 5s max for semgrep to prevent blocking |
+| **20 Unit Tests** | Comprehensive test coverage in `tests/test_security_scan.py` |
+
+### Quality Gates Flow (v2.48)
+
+```
+Stage 1: CORRECTNESS → Syntax errors (BLOCKING)
+Stage 2: QUALITY     → Type errors (BLOCKING)
+Stage 2.5: SECURITY  → semgrep + gitleaks (BLOCKING) ← NEW
+Stage 3: CONSISTENCY → Linting (ADVISORY - not blocking)
+```
+
+### Installation
+
+```bash
+# Install security tools (one-time)
+./scripts/install-security-tools.sh
+
+# Check status
+./scripts/install-security-tools.sh --check
+
+# Verify tests
+python -m pytest tests/test_security_scan.py -v
+```
+
+### Security Rules
+
+| Tool | Config | Detects |
+|------|--------|---------|
+| semgrep | `p/python`, `p/javascript`, etc. | Command injection, SQL injection, XSS, insecure crypto |
+| gitleaks | default rules | API keys, passwords, tokens, credentials |
+
+### Graceful Degradation
+
+If tools not installed:
+1. First run: Shows one-time advisory tip to install
+2. Subsequent runs: Silently skips (logs SKIP)
+3. Never blocks workflow due to missing tools
+
+---
+
+## v2.47.3 Comprehensive Hook Testing
 
 **38 behavioral tests** validate that hooks work correctly - not just code presence.
 
