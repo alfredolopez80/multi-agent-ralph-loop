@@ -56,6 +56,26 @@
 8. RETROSPECT      → Analyze and improve
 ```
 
+### Final Validation Rule (v2.49.1)
+
+**MANDATORY**: All final validations MUST use the Playwright MCP for browser-based verification:
+
+```bash
+# Before marking VERIFIED_DONE, always run:
+mcp__plugin_playwright__browser_navigate({"url": "http://localhost:PORT"})
+mcp__plugin_playwright__browser_snapshot({})
+# OR for simple page loads:
+mcp__plugin_playwright__browser_take_screenshot({"filename": "validation.png"})
+```
+
+**Why Playwright?**:
+- Verifies actual browser rendering (not just server responses)
+- Catches client-side JavaScript errors
+- Validates responsive design and UI interactions
+- Confirms assets load correctly (CSS, images, fonts)
+
+**Rule**: No task is VERIFIED_DONE until Playwright validation confirms the UI works in a real browser.
+
 ### Usage Examples
 
 ```bash
