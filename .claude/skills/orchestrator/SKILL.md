@@ -32,7 +32,7 @@ hooks:
     - path: ~/.claude/hooks/orchestrator-report.sh
 ---
 
-# Orchestrator - Multi-Agent Ralph v2.47
+# Orchestrator - Multi-Agent Ralph v2.52
 
 **Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, and quality-first validation.
 
@@ -49,7 +49,7 @@ Based on @PerceptualPeak Smart Forking concept:
 ralph orch "Migrate database from MySQL to PostgreSQL"
 ```
 
-## Core Workflow (v2.47.1 - 8 Major Steps, 23 Sub-steps)
+## Core Workflow (v2.52.0 - 8 Major Steps, 23 Sub-steps)
 
 ### Step 0: EVALUATE (3-Dimension Classification)
 

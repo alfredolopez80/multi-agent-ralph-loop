@@ -179,7 +179,7 @@ The orchestrator routes tasks based on **3 dimensions** (RLM-inspired):
 2. **File Type**: `.py` → `@kieran-python-reviewer`, `.ts` → `@kieran-typescript-reviewer`
 3. **Domain**: DeFi → Blockchain agents, Frontend → `@frontend-reviewer`
 
-## Hooks Integration (v2.46.1)
+## Hooks Integration (v2.52.0)
 
 ### v2.46 RLM-Inspired Hooks (NEW)
 
@@ -300,7 +300,7 @@ hooks:
 ...
 ```
 
-## Hook Testing (v2.47.3)
+## Hook Testing (v2.52.0)
 
 All hooks are validated by a **behavioral test suite** that executes hooks with real inputs.
 

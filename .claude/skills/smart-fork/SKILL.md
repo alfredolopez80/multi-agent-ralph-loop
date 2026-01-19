@@ -216,7 +216,7 @@ ralph memory-stats
 | `~/.ralph/config/smart-fork.json` | Configuration |
 | `~/.ralph/logs/smart-memory-search-*.log` | Search logs |
 
-## Troubleshooting (v2.47.1)
+## Troubleshooting (v2.52.0)
 
 ### "No memory sources available"
 
@@ -277,7 +277,7 @@ claude --server-list | grep claude-mem
 rm .claude/memory-context.json
 ```
 
-## Performance Tuning (v2.47.1)
+## Performance Tuning (v2.52.0)
 
 ### Configuration Options
 
@@ -344,7 +344,7 @@ ralph memory-stats
 time claude-mem search "test query" --limit 5
 ```
 
-## Security Notes (v2.47.1)
+## Security Notes (v2.52.0)
 
 The smart-memory-search hook includes these security hardening measures:
 

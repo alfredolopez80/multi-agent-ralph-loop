@@ -598,8 +598,8 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 # HELP
 # ===============================================================================
 show_help() {
-    cat << 'EOF'
-ralph - Multi-Agent Orchestrator CLI v2.46.0
+    cat << EOF
+ralph - Multi-Agent Orchestrator CLI v${VERSION}
 
 ORCHESTRATION (v2.46 RLM-Enhanced):
   ralph orch "task"          Full orchestration with fast-path routing
@@ -610,8 +610,8 @@ ORCHESTRATION (v2.46 RLM-Enhanced):
 
 SEARCH (v2.23):
   ralph ast "pattern" [path] Structural code search via ast-grep (~75% less tokens)
-                             Examples: ralph ast 'console.log($MSG)' src/
-                                       ralph ast 'async function $NAME' .
+                             Examples: ralph ast 'console.log(\$MSG)' src/
+                                       ralph ast 'async function \$NAME' .
   ralph library "query"      Library docs via Context7 MCP
   ralph browse URL            Browser automation with dev-browser
 
@@ -7436,7 +7436,7 @@ cmd_curator() {
     case "$SUBCMD" in
         help|--help|-h)
             echo ""
-            echo "Repo Curator v2.50.0"
+            echo "Repo Curator v2.52.0"
             echo ""
             echo "Usage: ralph curator <subcommand> [options]"
             echo ""
