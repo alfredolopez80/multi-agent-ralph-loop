@@ -218,3 +218,4 @@ tests/*.result
 *.tgz
 *.rar
 *.7z
+tmp-review/
