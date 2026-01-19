@@ -122,6 +122,65 @@ SMART MEMORY SEARCH (PARALLEL)
 
 **Result**: Claude learns best practices from quality repositories and applies them in future implementations.
 
+### Repo Curator (v2.50) - NEW
+
+```
+/curator "best backend TypeScript repos with clean architecture"
+```
+
+**What it does**:
+1. **DISCOVERY** → GitHub API search for candidate repositories
+2. **SCORING** → Quality metrics (stars, issues ratio, tests, CI/CD, docs)
+3. **RANKING** → Top 10 repos (max 2 per org) sorted by QualityScore
+4. **USER REVIEW** → Interactive queue for approve/reject
+5. **LEARN** → Extract patterns from approved repos via repository-learner
+
+**Pricing Tiers**:
+| Tier | Cost | Features |
+|------|------|----------|
+| `--tier free` | $0.00 | GitHub API + local scoring |
+| `--tier economic` | ~$0.30 | + OpenSSF + MiniMax (DEFAULT) |
+| `--tier full` | ~$0.95 | + Claude + Codex adversarial (with fallback) |
+
+**Usage**:
+```bash
+# Full pipeline (economic tier, default)
+/curator full --type backend --lang typescript
+
+# Show ranking
+/curator show --type backend --lang typescript
+
+# Approve repos for learning
+/curator approve nestjs/nest
+/curator approve prisma/prisma
+
+# Execute learning on approved repos
+/curator learn --type backend --lang typescript
+```
+
+### Codex Planner (v2.50) - NEW
+
+```
+/codex-plan "Design a distributed caching system"
+/orchestrator "Implement microservices" --use-codex
+```
+
+**What it does**:
+1. **CLARIFY** → AskUser questions (MUST_HAVE + NICE_TO_HAVE)
+2. **EXECUTE** → Codex 5.2 with `xhigh` reasoning
+3. **SAVE** → Plan saved to `http://codex-plan.md`
+
+**Integration with Orchestrator**:
+Use `--use-codex` or `--codex` flag to invoke Codex planning:
+```bash
+/orchestrator "Implement distributed system" --use-codex
+/orchestrator "Design microservices architecture" --codex
+```
+
+**Requirements**:
+- Codex CLI: `npm install -g @openai/codex`
+- Access to `gpt-5.2-codex` model
+
 ---
 
 ## Quality-First Validation (v2.46)
@@ -163,6 +222,16 @@ ralph fork-suggest "task"    # Find sessions to fork
 repo-learn https://github.com/python/cpython          # Learn from repo
 repo-learn https://github.com/fastapi/fastapi --category error_handling  # Focused
 
+# Repo Curator (v2.50)
+ralph curator full --type backend --lang typescript   # Full pipeline
+ralph curator show --type backend --lang typescript   # View ranking
+ralph curator approve nestjs/nest                      # Approve repo
+ralph curator learn --type backend --lang typescript  # Learn from approved
+
+# Codex Planning (v2.50)
+codex-plan "Design distributed system"                # Codex planning
+/orchestrator "task" --use-codex                      # Orchestrator with Codex
+
 # Security
 ralph security src/       # Security audit
 ralph security-loop src/  # Iterative audit
@@ -178,7 +247,7 @@ ralph handoff create      # Create handoff
 
 ---
 
-## Agents (10)
+## Agents (11+)
 
 | Agent | Model | Purpose |
 |-------|-------|---------|
@@ -192,6 +261,7 @@ ralph handoff create      # Create handoff
 | `@docs-writer` | minimax | Docs |
 | `@minimax-reviewer` | minimax | Second opinion |
 | `@repository-learner` | sonnet | Learn best practices from repos |
+| `@repo-curator` | sonnet | Curate quality repos for learning |
 
 ---
 
