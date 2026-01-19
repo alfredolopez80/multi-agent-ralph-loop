@@ -1,8 +1,11 @@
 #!/bin/bash
-# Quality Gates v2.46 - Quality Over Consistency
+# Quality Gates v2.48 - Quality Over Consistency + Security Scanning
 # Hook: PostToolUse (Edit, Write)
 # Purpose: Validate code changes with quality-first approach
-# VERSION: 2.46.0
+# VERSION: 2.48.0
+#
+# Stage 2.5 SECURITY: semgrep (SAST) + gitleaks (secrets)
+# Install tools: ~/.claude/scripts/install-security-tools.sh
 #
 # Key Change: Consistency issues are ADVISORY (warnings only)
 # Quality issues (correctness, security, types) are BLOCKING
@@ -203,6 +206,79 @@ log_check() {
             fi
             ;;
     esac
+
+    echo ""
+    echo "  === STAGE 2.5: SECURITY (blocking) ==="
+
+    # Stage 2.5: SECURITY - semgrep + gitleaks (BLOCKING)
+    # Only runs if tools are installed (graceful degradation)
+
+    # 2.5a: semgrep - Static Application Security Testing (SAST)
+    if command -v semgrep &>/dev/null; then
+        CHECKS_RUN=$((CHECKS_RUN + 1))
+
+        # Determine config based on file type
+        SEMGREP_CONFIG="auto"
+        case "$EXT" in
+            py) SEMGREP_CONFIG="p/python" ;;
+            ts|tsx|js|jsx) SEMGREP_CONFIG="p/javascript" ;;
+            go) SEMGREP_CONFIG="p/golang" ;;
+            rb) SEMGREP_CONFIG="p/ruby" ;;
+            java) SEMGREP_CONFIG="p/java" ;;
+            rs) SEMGREP_CONFIG="p/rust" ;;
+        esac
+
+        # Run semgrep with timeout (5s max) and severity filter
+        SEMGREP_OUTPUT=$(timeout 5 semgrep --config="$SEMGREP_CONFIG" \
+            --severity=ERROR --severity=WARNING \
+            --json --quiet "$FILE_PATH" 2>/dev/null || echo '{"results":[]}')
+
+        SEMGREP_ERRORS=$(echo "$SEMGREP_OUTPUT" | jq '.results | length' 2>/dev/null || echo "0")
+
+        if [[ "$SEMGREP_ERRORS" -gt 0 ]]; then
+            # Extract first 3 findings for context
+            FINDINGS=$(echo "$SEMGREP_OUTPUT" | jq -r '.results[:3][] | "    - \(.check_id): \(.extra.message // "security issue")"' 2>/dev/null || echo "    - security issues found")
+            log_check "semgrep SAST" "FAIL" "$SEMGREP_ERRORS security issues"
+            BLOCKING_ERRORS+="Security issues in $FILE_PATH ($SEMGREP_ERRORS findings):\n$FINDINGS\n"
+        else
+            log_check "semgrep SAST" "PASS" "No security issues"
+            CHECKS_PASSED=$((CHECKS_PASSED + 1))
+        fi
+    else
+        log_check "semgrep SAST" "SKIP" "Not installed"
+        # First-run suggestion: inform user about missing tools
+        if [[ ! -f "$HOME/.ralph/state/.security-tools-suggested" ]]; then
+            mkdir -p "$HOME/.ralph/state"
+            echo "[$(date -Iseconds)] Security tools suggestion shown" > "$HOME/.ralph/state/.security-tools-suggested"
+            ADVISORY_WARNINGS+="💡 TIP: Install security scanning tools for enhanced protection:\n    ~/.claude/scripts/install-security-tools.sh\n    This enables semgrep (SAST) + gitleaks (secret detection)\n"
+        fi
+    fi
+
+    # 2.5b: gitleaks - Secret Detection (only for staged files)
+    if command -v gitleaks &>/dev/null; then
+        # Only check if file is in a git repo
+        if git -C "$(dirname "$FILE_PATH")" rev-parse --git-dir &>/dev/null; then
+            CHECKS_RUN=$((CHECKS_RUN + 1))
+
+            # Check specific file for secrets
+            GITLEAKS_OUTPUT=$(gitleaks detect --source="$FILE_PATH" \
+                --no-git --report-format=json 2>/dev/null || echo '[]')
+
+            SECRETS_FOUND=$(echo "$GITLEAKS_OUTPUT" | jq 'length' 2>/dev/null || echo "0")
+
+            if [[ "$SECRETS_FOUND" -gt 0 ]]; then
+                # Extract secret types found
+                SECRET_TYPES=$(echo "$GITLEAKS_OUTPUT" | jq -r '.[].RuleID' 2>/dev/null | sort -u | head -3 | tr '\n' ', ' || echo "secrets")
+                log_check "gitleaks secrets" "FAIL" "$SECRETS_FOUND secret(s) detected: ${SECRET_TYPES%, }"
+                BLOCKING_ERRORS+="⚠️  SECRETS DETECTED in $FILE_PATH ($SECRETS_FOUND found)\n    Types: ${SECRET_TYPES%, }\n    ACTION: Remove secrets immediately!\n"
+            else
+                log_check "gitleaks secrets" "PASS" "No secrets detected"
+                CHECKS_PASSED=$((CHECKS_PASSED + 1))
+            fi
+        fi
+    else
+        log_check "gitleaks secrets" "SKIP" "Not installed (run install-security-tools.sh)"
+    fi
 
     echo ""
     echo "  === STAGE 3: CONSISTENCY (advisory - NOT blocking) ==="
