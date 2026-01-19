@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.48.0
+# Multi-Agent Ralph v2.49.0
 
 ## Multi-Agent Ralph Loop Orchestration
 
@@ -17,7 +17,8 @@
 | `/compact` | Manual context save (extension workaround) |
 | `/classify` | 3-dimension task classification |
 | `/smart-fork` | Smart memory-driven fork suggestions |
-| `/hook-test` | Run behavioral hook tests (38 tests) ← NEW v2.47.3 |
+| `/memory` | Real-time memory operations (Hot Path) ← **NEW v2.49** |
+| `/hook-test` | Run behavioral hook tests (38 tests) |
 
 ### Orchestration Flow - v2.46 (RLM-Inspired)
 
@@ -76,7 +77,77 @@ Orchestration with fast-path detection, parallel exploration, recursive decompos
 
 > **Historical versions**: See [CHANGELOG.md](./CHANGELOG.md) for v2.19-v2.45 details.
 
-## v2.48.0 Security Scanning (NEW)
+## v2.49.0 Memory Architecture (NEW)
+
+**Human-like memory system** based on @rohit4verse "Stop building Goldfish AI" and LangMem framework.
+
+### Three Memory Types
+
+| Type | Purpose | Storage | TTL |
+|------|---------|---------|-----|
+| **Semantic** | Stable facts (user prefs, project facts) | `~/.ralph/memory/semantic.json` | None |
+| **Episodic** | Complete experiences with context | `~/.ralph/episodes/YYYY-MM/*.json` | 30 days |
+| **Procedural** | Learned behaviors & patterns | `~/.ralph/procedural/rules.json` | None |
+
+### Hot Path (Real-time)
+
+The `/memory` skill and `memory-write-trigger.sh` hook enable real-time memory operations:
+
+```bash
+# Automatic trigger detection (UserPromptSubmit hook)
+# Triggers: "remember", "note", "don't forget", "keep in mind", "for future reference"
+
+# Manual usage
+/memory write semantic "User prefers TypeScript over JavaScript" --category user_pref
+/memory search "typescript preferences"
+/memory context  # Show active memory for current session
+/memory stats    # Memory system statistics
+```
+
+### Cold Path (Background)
+
+The `reflection-engine.sh` hook triggers **asynchronous reflection** after session ends:
+
+```
+Session Ends → reflection-engine.sh → reflection-executor.py
+                                         ├── Extract episodes from transcript
+                                         ├── Detect patterns across sessions
+                                         └── Generate procedural rules (confidence ≥ 0.8)
+```
+
+### Procedural Injection
+
+Learned behaviors are automatically injected into Task context via `procedural-inject.sh`:
+
+```
+PreToolUse (Task) → Match rule.trigger to task description
+                  → Inject matching behaviors as additionalContext
+                  → Claude receives "Based on past experience: [behavior]"
+```
+
+### New Files (v2.49)
+
+| File | Purpose |
+|------|---------|
+| `~/.ralph/config/memory-config.json` | Memory system configuration |
+| `~/.claude/scripts/memory-manager.py` | Core memory operations |
+| `~/.claude/scripts/reflection-executor.py` | Background episode extraction & pattern detection |
+| `~/.claude/skills/memory/skill.md` | `/memory` skill definition |
+| `~/.claude/hooks/memory-write-trigger.sh` | Auto-detect memory intent in prompts |
+| `~/.claude/hooks/reflection-engine.sh` | Trigger reflection on session stop |
+| `~/.claude/hooks/procedural-inject.sh` | Inject learned behaviors into Task context |
+
+### Key Principles
+
+1. **No Goldfish AI**: Claude remembers across sessions
+2. **Learn from Experience**: Past successes inform future implementations
+3. **Avoid Past Errors**: Historical failures prevent repeat mistakes
+4. **Automatic Extraction**: Episodes extracted from session transcripts
+5. **Confidence-Based Injection**: Only high-confidence rules (≥0.8) are injected
+
+---
+
+## v2.48.0 Security Scanning
 
 **Stage 2.5 SECURITY** added to quality gates - automatic security scanning on every code change.
 
