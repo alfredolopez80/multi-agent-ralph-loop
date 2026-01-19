@@ -1,6 +1,6 @@
 # Multi-Agent-Ralph
 
-![Version](https://img.shields.io/badge/version-2.50.0-blue)
+![Version](https://img.shields.io/badge/version-2.52.0-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 
@@ -42,7 +42,7 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         RALPH v2.50.0 COMPLETE ARCHITECTURE                  │
+│                         RALPH v2.52.0 COMPLETE ARCHITECTURE                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │
@@ -104,7 +104,7 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 │  └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-> **Complete Diagram**: See `ARCHITECTURE_DIAGRAM_v2.49.1.md` for detailed diagrams (Memory Architecture, Hooks Registry, Tools Matrix, Security Pattern)
+> **Complete Diagram**: See `ARCHITECTURE_DIAGRAM_v2.52.0.md` for detailed diagrams (Memory Architecture, Hooks Registry, Tools Matrix, Security Pattern)
 
 ### Automatic Feedback Loop (Background Processing)
 
@@ -430,6 +430,46 @@ python -m pytest tests/test_command_sync.py -v
 # ✓ Auto-sync integration
 ```
 
+### Local Observability (v2.52) - NEW
+
+Zero-dependency observability using local files:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      LOCAL OBSERVABILITY (v2.52)                            │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   LAYER 1: StatusLine (Passive)                                            │
+│   ──────────────────────────────                                           │
+│   ⎇ main* │ 📊 3/7 42% │ [claude-hud metrics]                              │
+│                                                                              │
+│   LAYER 2: ralph status (On-Demand)                                        │
+│   ─────────────────────────────────                                        │
+│   $ ralph status --compact                                                 │
+│   📊 STANDARD Step 3/7 (42%) - Implementing OAuth2                         │
+│                                                                              │
+│   $ ralph status --steps                                                   │
+│   ┌────────────────────────────────────────┐                               │
+│   │ ✅ CLARIFY    ✅ CLASSIFY  ✅ PLAN     │                               │
+│   │ 🔄 EXECUTE    ⏳ VALIDATE  ⏳ RETROSPECT│                               │
+│   └────────────────────────────────────────┘                               │
+│                                                                              │
+│   LAYER 3: ralph trace (Historical)                                        │
+│   ──────────────────────────────────                                       │
+│   $ ralph trace show                  # Recent events                      │
+│   $ ralph trace search "checkpoint"   # Search events                      │
+│   $ ralph trace timeline              # Visual timeline                    │
+│   $ ralph trace export json           # Export for analysis                │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Data Sources** (all local, no external dependencies):
+- `.claude/plan-state.json` - Current orchestration state
+- `~/.ralph/events/event-log.jsonl` - Event bus history
+- `~/.ralph/checkpoints/` - Checkpoint snapshots
+- `~/.ralph/agent-memory/` - Agent-scoped memory buffers
+
 ### Quality-First Validation (v2.46)
 
 ```
@@ -519,6 +559,18 @@ ralph worktree-pr <branch>     # PR with review
 ralph ledger save              # Save session state
 ralph handoff create           # Create handoff
 ralph compact                  # Manual save (extensions)
+
+# Local Observability (v2.52)
+ralph status                   # Full orchestration status
+ralph status --compact         # One-line: 📊 STANDARD Step 3/7 (42%)
+ralph status --steps           # Step-by-step breakdown
+ralph status --json            # JSON output for scripts
+
+ralph trace show               # Recent events (last 50)
+ralph trace search "error"     # Search events
+ralph trace timeline           # Visual timeline
+ralph trace export json        # Export to JSON/CSV
+ralph trace summary            # Event statistics
 ```
 
 ---
@@ -550,7 +602,7 @@ ralph compact                  # Manual save (extensions)
 
 ---
 
-## Hooks (29 Registered)
+## Hooks (38 Registered)
 
 | Event Type | Purpose |
 |-------------|-----------|
@@ -568,7 +620,7 @@ ralph compact                  # Manual save (extensions)
 | Document | Purpose |
 |-----------|-----------|
 | [`CHANGELOG.md`](./CHANGELOG.md) | **Complete version history** (best practices) |
-| [`ARCHITECTURE_DIAGRAM_v2.49.1.md`](./ARCHITECTURE_DIAGRAM_v2.49.1.md) | Complete architecture diagrams |
+| [`ARCHITECTURE_DIAGRAM_v2.52.0.md`](./ARCHITECTURE_DIAGRAM_v2.52.0.md) | Complete architecture diagrams |
 | [`CLAUDE.md`](./CLAUDE.md) | Quick reference (compact) |
 | `tests/HOOK_TESTING_PATTERNS.md` | Hook testing patterns |
 

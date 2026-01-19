@@ -1,0 +1,266 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "plan-state-v2",
+  "title": "Plan State Schema v2.51.0",
+  "description": "Schema for plan execution with phases, barriers, and strict WAIT-ALL consistency",
+  "type": "object",
+  "required": ["version", "plan_id", "phases", "steps", "barriers"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^2\\.5[1-9]\\.[0-9]+$",
+      "description": "Schema version (2.51.x)"
+    },
+    "plan_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this plan execution"
+    },
+    "task": {
+      "type": "string",
+      "description": "The original task description"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "phases": {
+      "type": "array",
+      "description": "Ordered phases with dependencies and execution modes",
+      "items": {
+        "type": "object",
+        "required": ["phase_id", "phase_name", "step_ids", "execution_mode", "status"],
+        "properties": {
+          "phase_id": {
+            "type": "string",
+            "description": "Unique identifier for this phase"
+          },
+          "phase_name": {
+            "type": "string",
+            "description": "Human-readable phase name"
+          },
+          "step_ids": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Step IDs that belong to this phase"
+          },
+          "depends_on": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Phase IDs that must complete before this phase starts"
+          },
+          "execution_mode": {
+            "type": "string",
+            "enum": ["sequential", "parallel"],
+            "description": "How steps within this phase execute"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "in_progress", "completed", "failed", "skipped"],
+            "description": "Current phase status"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "steps": {
+      "type": "object",
+      "description": "Steps keyed by ID with execution details",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["name", "status"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Human-readable step name"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "in_progress", "completed", "verified", "failed", "skipped"]
+          },
+          "result": {
+            "type": ["string", "null"],
+            "enum": ["success", "failure", "timeout", "skipped", null]
+          },
+          "error": {
+            "type": ["string", "null"],
+            "description": "Error message if failed"
+          },
+          "agent": {
+            "type": ["string", "null"],
+            "description": "Agent that executed this step"
+          },
+          "handoff_id": {
+            "type": ["string", "null"],
+            "description": "Handoff ID if this step was delegated"
+          },
+          "checkpoint_id": {
+            "type": ["string", "null"],
+            "description": "Checkpoint ID before this step"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "_v1_data": {
+            "type": ["object", "null"],
+            "description": "Preserved data from v1 schema (spec, actual, drift, etc.)"
+          }
+        }
+      }
+    },
+    "current_phase": {
+      "type": ["string", "null"],
+      "description": "Currently executing phase ID"
+    },
+    "barriers": {
+      "type": "object",
+      "description": "Barrier status for each phase (WAIT-ALL pattern)",
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    },
+    "classification": {
+      "type": "object",
+      "description": "Task classification from orchestrator (v2.46+ 3-dimension)",
+      "properties": {
+        "complexity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "information_density": {
+          "type": "string",
+          "enum": ["CONSTANT", "LINEAR", "QUADRATIC"],
+          "description": "How answer scales with input (RLM)"
+        },
+        "context_requirement": {
+          "type": "string",
+          "enum": ["FITS", "CHUNKED", "RECURSIVE"],
+          "description": "Whether decomposition is needed"
+        },
+        "model_routing": {
+          "type": "string",
+          "enum": ["opus", "sonnet", "haiku", "minimax", "codex", "gemini"]
+        },
+        "route": {
+          "type": "string",
+          "enum": ["FAST_PATH", "STANDARD", "PARALLEL_CHUNKS", "RECURSIVE_DECOMPOSE"]
+        },
+        "adversarial_required": {
+          "type": "boolean"
+        },
+        "worktree": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "path": { "type": ["string", "null"] },
+            "branch": { "type": ["string", "null"] }
+          }
+        }
+      }
+    },
+    "clarification": {
+      "type": "object",
+      "description": "User answers from clarification phase",
+      "properties": {
+        "must_have": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": { "type": "string" },
+              "answer": { "type": "string" },
+              "timestamp": { "type": "string", "format": "date-time" }
+            }
+          }
+        },
+        "nice_to_have": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": { "type": "string" },
+              "answer": { "type": "string" },
+              "timestamp": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      }
+    },
+    "loop_state": {
+      "type": "object",
+      "description": "Ralph Loop state tracking",
+      "properties": {
+        "current_iteration": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_iterations": {
+          "type": "integer",
+          "default": 25
+        },
+        "validate_attempts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "last_gate_result": {
+          "type": "string",
+          "enum": ["pass", "fail", "pending"]
+        }
+      }
+    },
+    "handoffs": {
+      "type": "array",
+      "description": "Agent-to-agent handoffs in this plan (v2.51)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "handoff_id": { "type": "string" },
+          "from_agent": { "type": "string" },
+          "to_agent": { "type": "string" },
+          "step_id": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "checkpoints": {
+      "type": "array",
+      "description": "Checkpoints created during this plan (v2.51)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "checkpoint_name": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "before_step": { "type": ["string", "null"] },
+          "before_phase": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "created_at": { "type": "string", "format": "date-time" },
+        "created_by": { "type": "string" },
+        "version": { "type": "string" },
+        "migrated_at": { "type": "string", "format": "date-time" },
+        "migrated_from": { "type": "string" }
+      }
+    }
+  }
+}

@@ -1,6 +1,6 @@
 # Multi-Agent-Ralph
 
-![Versión](https://img.shields.io/badge/version-2.49.1-blue)
+![Versión](https://img.shields.io/badge/version-2.52.0-blue)
 ![Licencia](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 
@@ -42,7 +42,7 @@ El sistema aborda el desafío fundamental de la programación asistida por IA: *
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                    ARQUITECTURA COMPLETA RALPH v2.49.1                      │
+│                    ARQUITECTURA COMPLETA RALPH v2.52.0                      │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │
@@ -106,7 +106,7 @@ El sistema aborda el desafío fundamental de la programación asistida por IA: *
 │  └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-> **Diagrama Completo**: Ver `ARCHITECTURE_DIAGRAM_v2.49.1.md` para diagramas detallados (Arquitectura de Memoria, Registro de Hooks, Matriz de Herramientas, Patrón de Seguridad)
+> **Diagrama Completo**: Ver `ARCHITECTURE_DIAGRAM_v2.52.0.md` para diagramas detallados (Arquitectura de Memoria, Registro de Hooks, Matriz de Herramientas, Patrón de Seguridad)
 
 ### Ciclo de Retroalimentación Automática (Proceso en Background)
 
@@ -263,6 +263,33 @@ BÚSQUEDA DE MEMORIA INTELIGENTE (PARALELO)
 | **Episódica** | Experiencias (TTL 30 días) | `~/.ralph/episodes/` |
 | **Procedimental** | Comportamientos aprendidos | `~/.ralph/procedural/rules.json` |
 
+### Observabilidad Local (v2.52) - NUEVO
+
+Observabilidad sin dependencias externas usando archivos locales:
+
+```
+CAPA 1: StatusLine (Pasiva)
+⎇ main* │ 📊 3/7 42% │ [métricas claude-hud]
+
+CAPA 2: ralph status (Bajo Demanda)
+$ ralph status --compact
+📊 STANDARD Paso 3/7 (42%) - Implementando OAuth2
+
+CAPA 3: ralph trace (Histórico)
+$ ralph trace show       # Eventos recientes
+$ ralph trace search     # Buscar eventos
+$ ralph trace timeline   # Línea de tiempo visual
+$ ralph trace export     # Exportar JSON/CSV
+```
+
+**Fuentes de Datos**:
+| Fuente | Propósito |
+|--------|-----------|
+| `.claude/plan-state.json` | Estado de orquestación actual |
+| `~/.ralph/events/event-log.jsonl` | Historial del bus de eventos |
+| `~/.ralph/checkpoints/` | Snapshots de checkpoints |
+| `~/.ralph/agent-memory/` | Buffers de memoria por agente |
+
 ### Validación Calidad-Primero (v2.46)
 
 ```
@@ -369,7 +396,7 @@ ralph compact                   # Guardado manual (extensiones)
 
 ---
 
-## Hooks (29 Registrados)
+## Hooks (38 Registrados)
 
 | Tipo de Evento | Propósito |
 |----------------|-----------|
@@ -387,7 +414,7 @@ ralph compact                   # Guardado manual (extensiones)
 | Documento | Propósito |
 |-----------|-----------|
 | [`CHANGELOG.md`](./CHANGELOG.md) | **Historia completa de versiones** (mejores prácticas) |
-| [`ARCHITECTURE_DIAGRAM_v2.49.1.md`](./ARCHITECTURE_DIAGRAM_v2.49.1.md) | Diagramas completos de arquitectura |
+| [`ARCHITECTURE_DIAGRAM_v2.52.0.md`](./ARCHITECTURE_DIAGRAM_v2.52.0.md) | Diagramas completos de arquitectura |
 | [`CLAUDE.md`](./CLAUDE.md) | Referencia rápida (compacta) |
 | `tests/HOOK_TESTING_PATTERNS.md` | Patrones de testing de hooks |
 

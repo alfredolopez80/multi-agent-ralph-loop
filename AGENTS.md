@@ -1,4 +1,4 @@
-# Multi-Agent Ralph Wiggum - Agents Reference v2.50.0
+# Multi-Agent Ralph Wiggum - Agents Reference v2.52.0
 
 ## Overview
 
