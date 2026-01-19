@@ -7,6 +7,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.54.0] - 2026-01-19
+
+### Fixed (Unified State Machine Architecture)
+
+**Severity**: CRITICAL (P0)
+**Impact**: Orchestration progress tracking, agent handoffs, and statusline now work correctly
+
+This release fixes fundamental architectural disconnection between plan-state, handoffs, events, and agent-memory subsystems. The previous system had 4 parallel state universes that never communicated.
+
+#### Root Cause Analysis
+
+| Problem | Impact |
+|---------|--------|
+| Plan-state never updated during execution | Progress always showed 0% |
+| Handoff didn't update plan-state or transfer memory | Context lost between agents |
+| Event-bus isolated from plan-state | Barriers never synchronized |
+| statusline-ralph.sh used `.current_step` (always null) | StatusLine never updated |
+
+#### Key Fixes
+
+**state-coordinator.sh (NEW)**
+- Central orchestrator for all state operations
+- Atomic JSON updates with file locking
+- Functions: `update-step`, `complete-barrier`, `handoff`, `increment-iteration`
+
+**statusline-ralph.sh (FIXED)**
+- Now counts steps with status `completed`/`verified`
+- Properly determines `in_progress` state from step counts
+- Progress now shows real values: `📊 2/17 11%`
+
+**ralph-status.sh (FIXED)**
+- `cmd_compact()` now counts completed steps correctly
+- `ralph status --compact` shows accurate progress
+
+**scripts/ralph (FIXED)**
+- Fixed duplicate `cmd_status()` function
+- Added missing `cmd_repo_learn()` for `/repo-learn` command
+
+#### New Test Suites
+
+| Test File | Tests | Purpose |
+|-----------|-------|---------|
+| `test_plan_state_lifecycle.bats` | 49 | Plan-state schema and status loop verification |
+| `test_state_coordinator.bats` | 30+ | State coordinator unit tests |
+| `test_documentation_sync.bats` | 40 | Prevents "ghost documentation" |
+| `test_handoff_integration.bats` | 25+ | Handoff pipeline integration |
+| `test_orchestration_workflow_v254.bats` | 20+ | End-to-end workflow tests |
+
+#### Schema Updates
+
+**plan-state-v2.schema.json v2.54**
+- Added `active_agent` field
+- Added `current_handoff_id` field
+- Added `state_coordinator` section for sync tracking
+- Added `handoffs` array for tracking transfers
+
+#### Verification
+
+```bash
+# Status now shows real progress
+ralph status --compact
+# Output: 🔄 STANDARD Step 2/17 (11%) - in_progress
+
+# StatusLine updates automatically
+⎇ main* │ 📊 2/17 11% │ [claude-hud output]
+```
+
+---
+
 ## [2.53.0] - 2026-01-19
 
 ### Fixed (Critical Hook JSON Format Correction)

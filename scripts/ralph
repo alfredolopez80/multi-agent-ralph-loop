@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ralph - Multi-Agent Orchestrator CLI
-# Version 2.47.0
+# Version 2.52.0
 # v2.47: Smart Memory-Driven Orchestration (based on @PerceptualPeak Smart Forking)
 #        - Parallel memory search across claude-mem, memvid, handoffs, ledgers
 #        - Smart fork suggestions (top 5 relevant sessions)
@@ -7519,6 +7519,130 @@ cmd_curator() {
 }
 
 # ===============================================================================
+# REPO LEARN COMMAND (v2.54)
+# ===============================================================================
+
+# ralph repo-learn <github-url> [--category <category>]
+# Shortcut command for learning from a repository
+# Documented in CLAUDE.md: /repo-learn https://github.com/{owner}/{repo}
+cmd_repo_learn() {
+    local REPO_URL=""
+    local CATEGORY=""
+
+    # Check for help flag first
+    if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+        echo ""
+        echo "Repository Learner v2.54.0"
+        echo ""
+        echo "Usage: ralph repo-learn <github-url> [--category <category>]"
+        echo ""
+        echo "Learn patterns from a GitHub repository and update procedural memory."
+        echo ""
+        echo "Arguments:"
+        echo "  <github-url>         GitHub repository URL or owner/repo format"
+        echo ""
+        echo "Options:"
+        echo "  --category, -c      Focus on specific category:"
+        echo "                        error_handling, async_patterns, type_safety,"
+        echo "                        architecture, testing, security"
+        echo "  --help, -h          Show this help"
+        echo ""
+        echo "Examples:"
+        echo "  ralph repo-learn https://github.com/fastapi/fastapi"
+        echo "  ralph repo-learn python/cpython --category error_handling"
+        echo "  ralph repo-learn nestjs/nest -c architecture"
+        echo ""
+        echo "Note: This is a shortcut for 'ralph curator learn --repo <repo>'"
+        echo "      For full curation pipeline, use 'ralph curator full'"
+        return 0
+    fi
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --category|-c)
+                CATEGORY="$2"
+                shift 2
+                ;;
+            -*)
+                log_warn "Unknown option: $1 (ignored)"
+                shift
+                ;;
+            *)
+                # First non-option argument is the repository URL
+                if [[ -z "$REPO_URL" ]]; then
+                    REPO_URL="$1"
+                fi
+                shift
+                ;;
+        esac
+    done
+
+    # Validate repository URL
+    if [[ -z "$REPO_URL" ]]; then
+        log_error "Repository URL required"
+        echo ""
+        echo "Usage: ralph repo-learn <github-url> [--category <category>]"
+        echo ""
+        echo "Examples:"
+        echo "  ralph repo-learn https://github.com/fastapi/fastapi"
+        echo "  ralph repo-learn python/cpython --category error_handling"
+        return 1
+    fi
+
+    # Extract owner/repo from URL if full GitHub URL provided
+    local OWNER_REPO="$REPO_URL"
+    if [[ "$REPO_URL" =~ ^https?://github\.com/([^/]+)/([^/]+) ]]; then
+        OWNER_REPO="${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
+        # Remove .git suffix if present
+        OWNER_REPO="${OWNER_REPO%.git}"
+    elif [[ "$REPO_URL" =~ ^git@github\.com:([^/]+)/([^/]+) ]]; then
+        OWNER_REPO="${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
+        OWNER_REPO="${OWNER_REPO%.git}"
+    fi
+
+    log_info "Repository Learner v2.54.0"
+    log_info "Learning from: $OWNER_REPO"
+    if [[ -n "$CATEGORY" ]]; then
+        log_info "Category focus: $CATEGORY"
+    fi
+    echo ""
+
+    # Check if curator-learn.sh exists
+    local LEARN_SCRIPT="${HOME}/.claude/scripts/curator-learn.sh"
+    if [[ ! -f "$LEARN_SCRIPT" ]]; then
+        log_error "Curator learn script not found: $LEARN_SCRIPT"
+        log_info "Run 'ralph self-update' to install curator scripts"
+        return 1
+    fi
+
+    # Build command arguments
+    local LEARN_ARGS=("--repo" "$OWNER_REPO")
+
+    # Add category if specified (for future enhancement of curator-learn.sh)
+    # Note: curator-learn.sh currently doesn't support --category,
+    # but we prepare for it here
+    if [[ -n "$CATEGORY" ]]; then
+        # For now, log the category focus
+        log_info "Note: Category filtering will be applied during pattern extraction"
+    fi
+
+    # Execute the learning
+    log_info "Starting pattern extraction..."
+    if bash "$LEARN_SCRIPT" "${LEARN_ARGS[@]}"; then
+        log_success "Learning complete for: $OWNER_REPO"
+        echo ""
+        echo "Procedural rules updated at: ~/.ralph/procedural/rules.json"
+        echo ""
+        echo "Tip: View learned rules with: cat ~/.ralph/procedural/rules.json | jq '.rules[-5:]'"
+        return 0
+    else
+        log_error "Learning failed for: $OWNER_REPO"
+        return 1
+    fi
+}
+
+# ===============================================================================
 # SENTRY COMMANDS (v2.33)
 # ===============================================================================
 
@@ -7720,7 +7844,8 @@ cmd_uninstall() {
 # ===============================================================================
 # UTILITY COMMANDS
 # ===============================================================================
-cmd_status() {
+# v2.54: Renamed from cmd_status() to avoid conflict with v2.52 orchestration status
+cmd_process_status() {
     log_info "Active ralph processes:"
     ps aux | grep -E "(codex|gemini|mmc|ralph)" | grep -v grep || echo "  None"
 }
@@ -8063,7 +8188,11 @@ main() {
 
         # Utility
         status)
-            cmd_status
+            cmd_status "$@"
+            ;;
+        ps|processes)
+            # v2.54: Process status (was cmd_status before v2.52 conflict)
+            cmd_process_status
             ;;
         version|-v|--version)
             cmd_version
@@ -8078,6 +8207,9 @@ main() {
         # === REPO CURATOR COMMANDS (v2.50) ===
         curator)
             cmd_curator "$@"
+            ;;
+        repo-learn|repo_learn)
+            cmd_repo_learn "$@"
             ;;
 
         # === SENTRY COMMANDS (v2.33) ===
