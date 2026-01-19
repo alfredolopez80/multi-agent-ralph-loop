@@ -686,6 +686,16 @@ PRD SYSTEM (v2.32):
   ralph prd template         Display PRD template location
   ralph prd help             Show PRD system documentation
 
+REPO CURATOR (v2.50):
+  ralph curator full        Discovery → Scoring → Ranking → Ingest pipeline
+  ralph curator show        Show ranked repositories
+  ralph curator pending     Show pending repositories
+  ralph curator approve <r> Approve repository for learning
+  ralph curator reject <r>  Reject repository
+  ralph curator learn       Execute learning on approved repos
+  ralph curator status      Show curator system status
+  ralph curator estimate    Estimate pipeline costs
+
 VALIDATION (v2.46 Quality-First):
   ralph gates                Quality gates v2.46 (quality over consistency)
                              Stage 1: CORRECTNESS (blocking)
@@ -6893,6 +6903,112 @@ EOF
 }
 
 # ===============================================================================
+# REPO CURATOR COMMANDS (v2.50)
+# ===============================================================================
+
+# ralph curator [subcommand] [options]
+cmd_curator() {
+    local SUBCMD="${1:-help}"
+    shift || true
+
+    local CURATOR_SCRIPT="${HOME}/.claude/scripts/curator.sh"
+    local APPROVE_SCRIPT="${HOME}/.claude/scripts/curator-approve.sh"
+    local REJECT_SCRIPT="${HOME}/.claude/scripts/curator-reject.sh"
+    local QUEUE_SCRIPT="${HOME}/.claude/scripts/curator-queue.sh"
+    local LEARN_SCRIPT="${HOME}/.claude/scripts/curator-learn.sh"
+
+    # Check if scripts exist
+    if [[ ! -f "$CURATOR_SCRIPT" ]]; then
+        log_error "Repo Curator not installed. Run 'ralph self-update' to install."
+        return 1
+    fi
+
+    case "$SUBCMD" in
+        help|--help|-h)
+            echo ""
+            echo "Repo Curator v2.50.0"
+            echo ""
+            echo "Usage: ralph curator <subcommand> [options]"
+            echo ""
+            echo "Subcommands:"
+            echo "  full              Run complete pipeline (discover → score → rank)"
+            echo "  show              Display current rankings"
+            echo "  pending           Show repositories awaiting review"
+            echo "  approve <repo>    Approve repository for learning"
+            echo "  reject <repo>     Reject repository"
+            echo "  learn             Execute learning on approved repos"
+            echo "  status            Show curator system status"
+            echo "  estimate          Estimate costs for a query"
+            echo ""
+            echo "Options:"
+            echo "  --type <type>     Repository type (backend, frontend, cli, library)"
+            echo "  --lang <lang>     Programming language"
+            echo "  --tier <tier>     Pricing tier (free, economic, full)"
+            echo "  --top-n <n>       Number of repos to include"
+            echo ""
+            echo "Examples:"
+            echo "  ralph curator full --type backend --lang typescript"
+            echo "  ralph curator show --type backend --lang typescript"
+            echo "  ralph curator approve nestjs/nest"
+            echo "  ralph curator learn --all"
+            ;;
+        full)
+            bash "$CURATOR_SCRIPT" full "$@"
+            ;;
+        show)
+            bash "$QUEUE_SCRIPT" --type "${1:-}" --lang "${2:-}"
+            ;;
+        pending)
+            bash "$QUEUE_SCRIPT" --type "${1:-}" --lang "${2:-}"
+            ;;
+        approve)
+            if [[ -z "$1" ]]; then
+                log_error "Repository required: ralph curator approve <owner/repo>"
+                return 1
+            fi
+            bash "$APPROVE_SCRIPT" --repo "$1"
+            ;;
+        reject)
+            if [[ -z "$1" ]]; then
+                log_error "Repository required: ralph curator reject <owner/repo>"
+                return 1
+            fi
+            local REASON="${2:-}"
+            bash "$REJECT_SCRIPT" --repo "$1" --reason "$REASON"
+            ;;
+        learn)
+            if [[ "$1" == "--all" ]]; then
+                bash "$LEARN_SCRIPT" --all
+            elif [[ -n "$1" ]]; then
+                bash "$LEARN_SCRIPT" --repo "$1"
+            else
+                log_error "Specify --all or --repo <owner/repo>"
+                return 1
+            fi
+            ;;
+        status)
+            bash "$QUEUE_SCRIPT"
+            ;;
+        estimate)
+            local TYPE="${1:-backend}"
+            local LANG="${2:-typescript}"
+            echo ""
+            echo "Cost Estimate for: $TYPE / $LANG"
+            echo "----------------------------------------"
+            echo '  free:     $0.00 (APIs only)'
+            echo "  economic: ~\$0.30 (MiniMax validation)"
+            echo "  full:     ~\$0.95 (Claude+Codex)"
+            echo ""
+            ;;
+        *)
+            log_error "Unknown subcommand: $SUBCMD"
+            echo "Run 'ralph curator help' for usage."
+            return 1
+            ;;
+    esac
+}
+
+# ===============================================================================
 # SENTRY COMMANDS (v2.33)
 # ===============================================================================
 
@@ -7423,6 +7539,11 @@ main() {
             ;;
         --uninstall|uninstall)
             cmd_uninstall "$@"
+            ;;
+
+        # === REPO CURATOR COMMANDS (v2.50) ===
+        curator)
+            cmd_curator "$@"
             ;;
 
         # === SENTRY COMMANDS (v2.33) ===

@@ -15,6 +15,7 @@ Ralph orchestrates **33 specialized agents** across different domains. Each agen
 | `@quality-auditor` | opus | 6-phase pragmatic code audit |
 | `@adversarial-plan-validator` | opus | Dual-model plan validation (Claude + Codex) |
 | `@repository-learner` | sonnet | Learn best practices from GitHub repositories |
+| `@repo-curator` | sonnet | Curate quality repositories for learning |
 
 ## Review & Security Agents
 
@@ -106,6 +107,52 @@ Ralph orchestrates **33 specialized agents** across different domains. Each agen
 - Symlink traversal protection
 - Atomic writes with backup
 - Schema validation before insertion
+
+### @repo-curator (v2.50) - NEW
+
+**Purpose**: Discover, score, and curate high-quality repositories for Ralph's learning system.
+
+**Workflow**:
+1. **DISCOVERY** → GitHub API search for candidate repositories (100-500 results)
+2. **SCORING** → QualityScore calculation:
+   - Stars (normalized)
+   - Issues ratio (maintenance activity)
+   - Tests presence (test directory, coverage)
+   - CI/CD pipelines (GitHub Actions, CircleCI)
+   - Documentation (README, docs/)
+3. **RANKING** → Sort by QualityScore, max 2 repos per organization
+4. **USER REVIEW** → Interactive queue for approve/reject decisions
+5. **LEARN** → Trigger `@repository-learner` on approved repos
+
+**Pricing Tiers**:
+| Tier | Cost | Features |
+|------|------|----------|
+| `--tier free` | $0.00 | GitHub API + local scoring heuristics |
+| `--tier economic` | ~$0.30 | + OpenSSF Scorecard + MiniMax validation |
+| `--tier full` | ~$0.95 | + Claude + Codex adversarial (with fallback) |
+
+**Usage**:
+```bash
+# Invoke via command
+/curator full --type backend --lang typescript
+
+# Via agent
+@repo-curator "best backend TypeScript repos with clean architecture"
+```
+
+**Output**:
+```
+=== Ranking Summary ===
+Top 10 repositories:
+  1. nestjs/nest (score: 9.2, stars: 75000)
+  2. prisma/prisma (score: 8.9, stars: 32000)
+  ...
+
+Queue Status:
+  Pending: 3
+  Approved: 5
+  Rejected: 2
+```
 
 ## Agent Routing (v2.46 - 3-Dimension Classification)
 

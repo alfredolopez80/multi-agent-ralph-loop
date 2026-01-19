@@ -315,6 +315,121 @@ Claude will now consider learned patterns when:
 
 **Security**: Read-only analysis, atomic writes with backup, validated rules.
 
+### Repo Curator (v2.50) - NEW
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       REPO CURATOR (v2.50)                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   /curator "best backend TypeScript repos with clean architecture"         │
+│                                                                              │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                     5-PHASE WORKFLOW                                 │   │
+│   │                                                                     │   │
+│   │   1. DISCOVERY → GitHub API search (100-500 candidates)             │   │
+│   │   2. SCORING   → QualityScore (stars, tests, CI/CD, docs)           │   │
+│   │   3. RANKING   → Top 10 (max 2 per org)                             │   │
+│   │   4. REVIEW    → User approves/rejects repos                        │   │
+│   │   5. LEARN     → repository-learner extracts patterns               │   │
+│   │                                                                     │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│   Pricing Tiers:                                                            │
+│   ┌──────────┬─────────┬────────────────────────────────────┐              │
+│   │ TIER     │ COST    │ FEATURES                           │              │
+│   ├──────────┼─────────┼────────────────────────────────────┤              │
+│   │ free     │ $0.00   │ GitHub API + local scoring         │              │
+│   │ economic │ ~$0.30  │ + OpenSSF + MiniMax (DEFAULT)      │              │
+│   │ full     │ ~$0.95  │ + Claude + Codex (with fallback)   │              │
+│   └──────────┴─────────┴────────────────────────────────────┘              │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Usage**:
+```bash
+# Full pipeline (economic tier - default)
+/curator full --type backend --lang typescript
+
+# Show ranking
+/curator show --type backend --lang typescript
+
+# Review and approve repos
+/curator pending --type backend --lang typescript
+/curator approve nestjs/nest
+/curator approve prisma/prisma
+
+# Execute learning on approved repos
+/curator learn --type backend --lang typescript
+```
+
+### Codex Planner (v2.50) - NEW
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       CODEX PLANNER (v2.50)                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   /codex-plan "Design a distributed caching system"                        │
+│   /orchestrator "Implement microservices" --use-codex                      │
+│                                                                              │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                     3-PHASE WORKFLOW                                 │   │
+│   │                                                                     │   │
+│   │   1. CLARIFY → AskUser questions (MUST_HAVE + NICE_TO_HAVE)         │   │
+│   │   2. EXECUTE → Codex 5.2 with `xhigh` reasoning depth               │   │
+│   │   3. SAVE → Plan saved to `http://codex-plan.md`                    │   │
+│   │                                                                     │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│   Requirements:                                                             │
+│   • Codex CLI: npm install -g @openai/codex                                │
+│   • Access to gpt-5.2-codex model                                          │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Usage**:
+```bash
+# Direct Codex planning
+/codex-plan "Design a distributed caching system"
+
+# Orchestrator with Codex for complex planning
+/orchestrator "Implement microservices architecture" --use-codex
+/orchestrator "Design event-driven system" --codex
+```
+
+### Command Synchronization (v2.50) - NEW
+
+Ralph maintains **bidirectional synchronization** between Claude Code and OpenCode:
+
+```
+~/.claude/commands/  ←→  ~/.config/opencode/command/
+```
+
+**Features**:
+- **Automatic Sync**: New commands are automatically synced to both platforms
+- **Format Validation**: YAML frontmatter with VERSION headers required
+- **20 Unit Tests**: Verify sync integrity, format compliance, and integration
+
+**Scripts**:
+- `~/.claude/scripts/sync-commands.sh` - Verification and sync utility
+- `~/.claude/scripts/fix-command-format.sh` - Auto-fix format issues
+
+**Test Suite** (`tests/test_command_sync.py`):
+```bash
+# Run all sync tests
+python -m pytest tests/test_command_sync.py -v
+
+# All 20 tests passing
+# ✓ Sync verification
+# ✓ Version headers
+# ✓ Frontmatter format
+# ✓ Curator integration
+# ✓ Auto-sync integration
+```
+
 ### Quality-First Validation (v2.46)
 
 ```
@@ -377,6 +492,20 @@ ralph loop "fix errors"        # Loop until VERIFIED_DONE
 # Memory (v2.49)
 ralph memory-search "query"    # Parallel search
 ralph fork-suggest "task"      # Suggest sessions
+
+# Repository Learning (v2.50)
+/repo-learn https://github.com/python/cpython          # Learn from repo
+/repo-learn https://github.com/fastapi/fastapi --category error_handling
+
+# Repo Curator (v2.50)
+ralph curator full --type backend --lang typescript   # Full pipeline
+ralph curator show --type backend --lang typescript   # View ranking
+ralph curator approve nestjs/nest                      # Approve repo
+ralph curator learn --type backend --lang typescript  # Learn from approved
+
+# Codex Planning (v2.50)
+/codex-plan "Design distributed system"               # Codex planning
+/orchestrator "task" --use-codex                      # Orchestrator with Codex
 
 # Security
 ralph security src/            # Security audit
