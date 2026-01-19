@@ -1,6 +1,6 @@
 # Multi-Agent-Ralph
 
-![Version](https://img.shields.io/badge/version-2.49.1-blue)
+![Version](https://img.shields.io/badge/version-2.50.0-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 
@@ -42,7 +42,7 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         RALPH v2.49.1 COMPLETE ARCHITECTURE                  │
+│                         RALPH v2.50.0 COMPLETE ARCHITECTURE                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │
@@ -258,6 +258,62 @@ SMART MEMORY SEARCH (PARALLEL)
 | **Semantic** | Facts, preferences | `~/.ralph/memory/semantic.json` |
 | **Episodic** | Experiences (30-day TTL) | `~/.ralph/episodes/` |
 | **Procedural** | Learned behaviors | `~/.ralph/procedural/rules.json` |
+
+### Repository Learner (v2.50) - NEW
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    REPOSITORY LEARNER (v2.50)                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   /repo-learn https://github.com/{owner}/{repo}                            │
+│                                                                              │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                     5-PHASE WORKFLOW                                 │   │
+│   │                                                                     │   │
+│   │   1. ACQUIRE → Clone repo or fetch via GitHub API                   │   │
+│   │   2. ANALYZE → AST-based pattern extraction (Python, TS, Rust, Go)  │   │
+│   │   3. CLASSIFY → Categorize patterns:                                 │   │
+│   │      • error_handling     • type_safety      • async_patterns        │   │
+│   │      • architecture        • testing          • security             │   │
+│   │   4. GENERATE → Procedural rules with confidence scores             │   │
+│   │   5. ENRICH → Atomic write to ~/.ralph/procedural/rules.json        │   │
+│   │                                                                     │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│   Result: Claude learns best practices from quality repositories            │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Usage**:
+```bash
+# Learn from a repository
+/repo-learn https://github.com/python/cpython
+
+# Focus on specific pattern categories
+/repo-learn https://github.com/tiangolo/fastapi --category error_handling
+
+# Set minimum confidence threshold
+/repo-learn https://github.com/facebook/react --category security --min-confidence 0.9
+```
+
+**Output**:
+```
+Repository: https://github.com/org/repo
+Files Analyzed: 150
+Patterns Extracted: 45
+Rules Generated: 32
+Added to Procedural Memory: 28 rules
+
+Claude will now consider learned patterns when:
+- Implementing error handling
+- Writing async code
+- Designing architecture
+- Writing tests
+```
+
+**Security**: Read-only analysis, atomic writes with backup, validated rules.
 
 ### Quality-First Validation (v2.46)
 
