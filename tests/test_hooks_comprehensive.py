@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comprehensive Hook Testing Suite - v2.47.3
+Comprehensive Hook Testing Suite - v2.52.0
 
 This test suite validates BEHAVIOR, not just code presence.
 Each test executes the hook with realistic inputs and validates outputs.
@@ -13,7 +13,7 @@ Test Categories:
 5. REGRESSION - Specific bugs that have occurred before
 6. PERFORMANCE - Execution within timeout limits
 
-VERSION: 2.47.3
+VERSION: 2.52.0
 """
 import os
 import json
@@ -724,7 +724,7 @@ def test_comprehensive_hook_summary():
 
     all_passed = True
     report = ["\n" + "=" * 70]
-    report.append("COMPREHENSIVE HOOK TEST SUMMARY - v2.47.3")
+    report.append("COMPREHENSIVE HOOK TEST SUMMARY - v2.52.0")
     report.append("=" * 70)
 
     for category, items in checks.items():
