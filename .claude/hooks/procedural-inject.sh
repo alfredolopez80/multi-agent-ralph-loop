@@ -53,13 +53,14 @@ if [[ ! -f "$PROCEDURAL_FILE" ]]; then
 fi
 
 # Get task description from tool input
-TASK_PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // ""' 2>/dev/null || echo "")
-TASK_DESCRIPTION=$(echo "$INPUT" | jq -r '.tool_input.description // ""' 2>/dev/null || echo "")
-SUBAGENT_TYPE=$(echo "$INPUT" | jq -r '.tool_input.subagent_type // ""' 2>/dev/null || echo "")
+# SEC-007: Sanitize extracted JSON fields to prevent prompt injection
+TASK_PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // ""' 2>/dev/null | tr -d '\000-\037' | cut -c1-500 || echo "")
+TASK_DESCRIPTION=$(echo "$INPUT" | jq -r '.tool_input.description // ""' 2>/dev/null | tr -d '\000-\037' | cut -c1-200 || echo "")
+SUBAGENT_TYPE=$(echo "$INPUT" | jq -r '.tool_input.subagent_type // ""' 2>/dev/null | tr -d '\000-\037' | cut -c1-50 || echo "")
 
-# Combine for matching
+# Combine for matching (sanitized inputs only)
 TASK_TEXT="$TASK_PROMPT $TASK_DESCRIPTION $SUBAGENT_TYPE"
-TASK_LOWER=$(echo "$TASK_TEXT" | tr '[:upper:]' '[:lower:]')
+TASK_LOWER=$(printf '%s' "$TASK_TEXT" | tr '[:upper:]' '[:lower:]')
 
 # Skip if no task text
 if [[ -z "${TASK_LOWER// }" ]]; then
