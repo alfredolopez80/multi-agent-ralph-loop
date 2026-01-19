@@ -1,8 +1,8 @@
-# Multi-Agent Ralph v2.50.0
+# Multi-Agent Ralph v2.52.0
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, and quality-first validation.
+**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, checkpoints, agent handoffs, and **local observability**.
 
 ---
 
@@ -46,6 +46,14 @@ ralph orch "Migrate database from MySQL to PostgreSQL"
 
 # Loop until VERIFIED_DONE
 /loop "fix all type errors"
+
+# v2.51: Checkpoints (Time Travel)
+ralph checkpoint save "before-refactor" "Pre-auth module refactoring"
+ralph checkpoint restore "before-refactor"
+
+# v2.51: Handoffs (Agent-to-Agent)
+ralph handoff transfer --from orchestrator --to security-auditor --task "Audit auth module"
+ralph handoff agents   # List available agents
 ```
 
 ---
@@ -181,6 +189,231 @@ Use `--use-codex` or `--codex` flag to invoke Codex planning:
 - Codex CLI: `npm install -g @openai/codex`
 - Access to `gpt-5.2-codex` model
 
+### Checkpoint System (v2.51) - NEW
+
+LangGraph-style "time travel" for orchestration state.
+
+```bash
+# Save state before risky operation
+ralph checkpoint save "before-auth-refactor" "Pre-authentication module changes"
+
+# List all checkpoints
+ralph checkpoint list
+
+# Restore if something goes wrong
+ralph checkpoint restore "before-auth-refactor"
+
+# Compare checkpoint vs current state
+ralph checkpoint diff "before-auth-refactor"
+```
+
+**What it saves**:
+| File | Purpose |
+|------|---------|
+| `plan-state.json` | Current orchestration state |
+| `orchestrator-analysis.md` | Planning analysis |
+| `git-status.txt` | Uncommitted changes |
+| `git-diff.patch` | Unstaged changes as patch |
+| `metadata.json` | Checkpoint metadata |
+
+**Storage**: `~/.ralph/checkpoints/<name>/`
+
+### Handoff API (v2.51) - NEW
+
+OpenAI Agents SDK-style explicit agent-to-agent transfers.
+
+```bash
+# Transfer task from orchestrator to security-auditor
+ralph handoff transfer --from orchestrator --to security-auditor \
+    --task "Audit authentication module" \
+    --context '{"files": ["src/auth/"]}'
+
+# List available agents
+ralph handoff agents
+
+# Validate agent exists
+ralph handoff validate debugger
+
+# View handoff history
+ralph handoff history
+```
+
+**Default Agents (11)**:
+| Agent | Model | Capabilities |
+|-------|-------|--------------|
+| `orchestrator` | opus | planning, classification, delegation, validation |
+| `security-auditor` | opus | security, vulnerability-scan, code-review |
+| `debugger` | opus | debugging, error-analysis, fix-generation |
+| `code-reviewer` | sonnet | code-review, pattern-analysis, quality-check |
+| `test-architect` | sonnet | testing, test-generation, coverage-analysis |
+| `refactorer` | sonnet | refactoring, pattern-application, code-improvement |
+| `frontend-reviewer` | sonnet | frontend, ui-review, accessibility |
+| `docs-writer` | minimax | documentation, readme, api-docs |
+| `minimax-reviewer` | minimax | validation, quick-review, second-opinion |
+| `repository-learner` | sonnet | learning, pattern-extraction, rule-generation |
+| `repo-curator` | sonnet | curation, scoring, discovery |
+
+**Agent Registry**: `~/.ralph/config/agents.json` (optional override)
+
+### Plan State v2 Schema (v2.51) - NEW
+
+Phases + barriers for strict WAIT-ALL consistency.
+
+```json
+{
+  "version": "2.51.0",
+  "phases": [
+    {"phase_id": "clarify", "step_ids": ["1"], "execution_mode": "sequential"},
+    {"phase_id": "implement", "step_ids": ["6a", "6b"], "execution_mode": "parallel"}
+  ],
+  "barriers": {
+    "clarify_complete": false,
+    "implement_complete": false
+  }
+}
+```
+
+**Automatic Migration**: Run `ralph migrate check` or it auto-migrates at session start.
+
+### Agent-Scoped Memory (v2.51) - NEW
+
+LlamaIndex AgentWorkflow-style isolated memory buffers per agent.
+
+```bash
+# Initialize memory for an agent
+ralph agent-memory init security-auditor
+
+# Write to agent's memory
+ralph agent-memory write security-auditor semantic "Found SQL injection in auth.py:42"
+ralph agent-memory write security-auditor working "Currently analyzing user input validation"
+
+# Read agent's memory
+ralph agent-memory read security-auditor          # All types
+ralph agent-memory read security-auditor semantic # Only semantic
+
+# Transfer memory during handoff (default: relevant)
+ralph agent-memory transfer security-auditor code-reviewer relevant
+
+# List all agents with memory buffers
+ralph agent-memory list
+
+# Garbage collect expired episodic entries
+ralph agent-memory gc
+```
+
+**Memory Types**:
+| Type | Purpose | TTL |
+|------|---------|-----|
+| `semantic` | Persistent facts and knowledge | Never expires |
+| `episodic` | Experiences and observations | 24 hours |
+| `working` | Current task context | Session-based |
+
+**Transfer Filters**:
+- `all`: Transfer all memory
+- `relevant`: Semantic + recent working (default for handoffs)
+- `working`: Only working memory
+
+**Storage**: `~/.ralph/agent-memory/<agent_id>/`
+
+### Event-Driven Engine (v2.51) - NEW
+
+LangGraph-style event bus with WAIT-ALL phase barriers.
+
+```bash
+# Emit an event
+ralph events emit step.complete '{"step_id": "step1"}' orchestrator
+
+# Subscribe to events
+ralph events subscribe phase.complete /path/to/handler.sh
+
+# Check barrier status (WAIT-ALL)
+ralph events barrier check phase-1
+
+# Wait for barrier (blocks until all steps complete)
+ralph events barrier wait phase-1 300  # 300s timeout
+
+# List all barriers and status
+ralph events barrier list
+
+# Determine next phase based on state
+ralph events route
+
+# Advance to next phase
+ralph events advance phase-2
+
+# Show event bus status
+ralph events status
+
+# View event history
+ralph events history 20
+```
+
+**Event Types**:
+| Event | Trigger |
+|-------|---------|
+| `barrier.complete` | Phase barrier satisfied (all steps done) |
+| `phase.start` | Phase started |
+| `phase.complete` | Phase completed |
+| `step.complete` | Individual step completed |
+| `handoff.transfer` | Agent-to-agent transfer |
+
+**WAIT-ALL Pattern**:
+Phase N+1 **never** starts until ALL sub-steps of Phase N complete. This ensures strict consistency in multi-agent orchestration.
+
+**Storage**: `~/.ralph/events/event-log.jsonl`
+
+### Local Observability (v2.52) - NEW
+
+Query-based status and traceability without external services.
+
+```bash
+# Full orchestration status
+ralph status
+
+# Compact one-liner
+ralph status --compact
+# Output: 🔄 STANDARD Step 3/7 (42%) - in_progress
+
+# Detailed step breakdown
+ralph status --steps
+
+# JSON for scripts
+ralph status --json | jq '.plan.status'
+```
+
+**StatusLine Integration**:
+Progress is shown in the statusline automatically:
+```
+⎇ main* │ 📊 3/7 42% │ [claude-hud metrics]
+```
+
+| Icon | Meaning |
+|------|---------|
+| `📊` | Active plan |
+| `🔄` | Executing |
+| `⚡` | Fast-path |
+| `✅` | Completed |
+
+**Traceability**:
+```bash
+# Show recent events
+ralph trace show 30
+
+# Search for specific events
+ralph trace search "handoff"
+
+# Visual timeline
+ralph trace timeline
+
+# Export for analysis
+ralph trace export csv ./trace-report.csv
+
+# Session summary
+ralph trace summary
+```
+
+**Event Log**: `~/.ralph/events/event-log.jsonl` (shared with event-bus)
+
 ---
 
 ## Quality-First Validation (v2.46)
@@ -232,6 +465,54 @@ ralph curator learn --type backend --lang typescript  # Learn from approved
 codex-plan "Design distributed system"                # Codex planning
 /orchestrator "task" --use-codex                      # Orchestrator with Codex
 
+# Checkpoint System (v2.51)
+ralph checkpoint save "name" "description"            # Save state
+ralph checkpoint restore "name"                       # Restore from checkpoint
+ralph checkpoint list                                 # List all checkpoints
+ralph checkpoint show "name"                          # Show checkpoint details
+ralph checkpoint diff "n1" "n2"                       # Compare checkpoints
+
+# Handoff API (v2.51)
+ralph handoff transfer --from X --to Y --task "desc"  # Agent handoff
+ralph handoff agents                                  # List available agents
+ralph handoff validate <agent>                        # Validate agent exists
+ralph handoff history                                 # View handoff history
+
+# Schema Migration (v2.51)
+ralph migrate check                                   # Check if migration needed
+ralph migrate run                                     # Execute migration
+ralph migrate dry-run                                 # Preview migration
+
+# Agent-Scoped Memory (v2.51)
+ralph agent-memory init <agent>                       # Initialize memory buffer
+ralph agent-memory write <agent> <type> <content>     # Write to memory
+ralph agent-memory read <agent> [type]                # Read from memory
+ralph agent-memory transfer <from> <to> [filter]      # Transfer during handoff
+ralph agent-memory list                               # List all agents
+ralph agent-memory gc                                 # Garbage collect expired
+
+# Event-Driven Engine (v2.51)
+ralph events emit <type> [payload]                    # Emit event
+ralph events subscribe <type> <handler>               # Subscribe to events
+ralph events barrier check <phase>                    # Check WAIT-ALL barrier
+ralph events barrier wait <phase> [timeout]           # Wait for barrier
+ralph events barrier list                             # List all barriers
+ralph events route                                    # Determine next phase
+ralph events advance [phase]                          # Advance to next phase
+ralph events status                                   # Event bus status
+ralph events history [count]                          # Event history
+
+# Observability (v2.52)
+ralph status                                          # Full orchestration status
+ralph status --compact                                # One-line summary
+ralph status --steps                                  # Detailed step breakdown
+ralph status --json                                   # JSON output
+ralph trace show [count]                              # Recent events
+ralph trace search <query>                            # Search events
+ralph trace timeline                                  # Visual timeline
+ralph trace export [format]                           # Export to JSON/CSV
+ralph trace summary                                   # Session summary
+
 # Security
 ralph security src/       # Security audit
 ralph security-loop src/  # Iterative audit
@@ -265,11 +546,11 @@ ralph handoff create      # Create handoff
 
 ---
 
-## Hooks (29 registered)
+## Hooks (30 registered)
 
 | Event Type | Purpose |
 |------------|---------|
-| SessionStart | Context preservation at startup |
+| SessionStart | Context preservation at startup, **auto-migrate plan-state** (v2.51) |
 | PreCompact | Save state before compaction |
 | PostToolUse | Quality gates after Edit/Write |
 | PreToolUse | Safety guards before Bash/Skill |
@@ -310,11 +591,13 @@ EXECUTE → VALIDATE → Quality Passed?
 
 | Topic | Documentation |
 |-------|---------------|
-| Complete Architecture | `ARCHITECTURE_DIAGRAM_v2.49.1.md` |
+| Complete Architecture | `ARCHITECTURE_DIAGRAM_v2.52.0.md` |
 | Version History | `CHANGELOG.md` |
 | Hook Testing | `tests/HOOK_TESTING_PATTERNS.md` |
 | Full README | `README.md` |
 | Installation | `install.sh` |
+| Plan State v2 Schema | `.claude/schemas/plan-state-v2.schema.json` |
+| v2.51 Improvements | `.claude/v2.51-improvements-analysis.md` |
 
 ---
 
@@ -327,4 +610,4 @@ mm=mmc mml="mmc --loop 30"
 
 ---
 
-*Full documentation: See README.md and ARCHITECTURE_DIAGRAM_v2.49.1.md*
+*Full documentation: See README.md and ARCHITECTURE_DIAGRAM_v2.52.0.md*

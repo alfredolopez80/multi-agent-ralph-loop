@@ -50,7 +50,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.47.0"
+VERSION="2.52.0"
 RALPH_REPO_PATH=""  # Auto-detected if in ralph repo
 RALPH_DIR="${HOME}/.ralph"
 
@@ -3216,19 +3216,59 @@ cmd_handoff() {
     shift || true
 
     local HANDOFF_GENERATOR="${HOME}/.claude/scripts/handoff-generator.py"
-
-    if [ ! -f "$HANDOFF_GENERATOR" ]; then
-        log_error "Handoff generator not found. Run: ralph setup-context-engine"
-        exit 1
-    fi
+    local HANDOFF_API="${HOME}/.claude/scripts/handoff.sh"
 
     case "$HANDOFF_SUBCMD" in
+        # === v2.51: Agent-to-Agent Transfer API ===
+        transfer|api)
+            # OpenAI Agents SDK-style explicit handoff
+            if [ ! -x "$HANDOFF_API" ]; then
+                log_error "Handoff API not found: $HANDOFF_API"
+                log_info "Run 'ralph self-update' to install"
+                exit 1
+            fi
+            "$HANDOFF_API" handoff "$@"
+            ;;
+        agents|list-agents)
+            # List available agents for handoff
+            if [ ! -x "$HANDOFF_API" ]; then
+                log_error "Handoff API not found"
+                exit 1
+            fi
+            "$HANDOFF_API" list-agents "$@"
+            ;;
+        validate)
+            # Validate agent exists
+            if [ ! -x "$HANDOFF_API" ]; then
+                log_error "Handoff API not found"
+                exit 1
+            fi
+            "$HANDOFF_API" validate "$@"
+            ;;
+        history)
+            # Show handoff transfer history
+            if [ ! -x "$HANDOFF_API" ]; then
+                log_error "Handoff API not found"
+                exit 1
+            fi
+            "$HANDOFF_API" history "$@"
+            ;;
+
+        # === v2.35: Document-based Handoffs (session persistence) ===
         create)
+            if [ ! -f "$HANDOFF_GENERATOR" ]; then
+                log_error "Handoff generator not found. Run: ralph setup-context-engine"
+                exit 1
+            fi
             local SESSION_ID="${1:-$(date +%Y%m%d-%H%M%S)}"
             log_info "Creating handoff for session: $SESSION_ID"
             python3 "$HANDOFF_GENERATOR" create --session "$SESSION_ID" --trigger "manual"
             ;;
         show|load)
+            if [ ! -f "$HANDOFF_GENERATOR" ]; then
+                log_error "Handoff generator not found"
+                exit 1
+            fi
             local SESSION_ID="${1:-}"
             if [ -n "$SESSION_ID" ]; then
                 python3 "$HANDOFF_GENERATOR" load --session "$SESSION_ID"
@@ -3237,10 +3277,18 @@ cmd_handoff() {
             fi
             ;;
         list)
+            if [ ! -f "$HANDOFF_GENERATOR" ]; then
+                log_error "Handoff generator not found"
+                exit 1
+            fi
             local LIMIT="${1:-10}"
             python3 "$HANDOFF_GENERATOR" list --limit "$LIMIT"
             ;;
         search)
+            if [ ! -f "$HANDOFF_GENERATOR" ]; then
+                log_error "Handoff generator not found"
+                exit 1
+            fi
             local QUERY="${1:-}"
             if [ -z "$QUERY" ]; then
                 log_error "Search query required"
@@ -3250,6 +3298,10 @@ cmd_handoff() {
             python3 "$HANDOFF_GENERATOR" search "$QUERY"
             ;;
         cleanup)
+            if [ ! -f "$HANDOFF_GENERATOR" ]; then
+                log_error "Handoff generator not found"
+                exit 1
+            fi
             local DAYS="${1:-30}"
             log_info "Cleaning up handoffs older than $DAYS days..."
             python3 "$HANDOFF_GENERATOR" cleanup --days "$DAYS"
@@ -3257,24 +3309,482 @@ cmd_handoff() {
         help|--help|-h|"")
             echo ""
             echo "╔═══════════════════════════════════════════════════════════════╗"
-            echo "║  HANDOFF: Context Transfer System (v2.35)                     ║"
+            echo "║  HANDOFF: Context Transfer System (v2.51)                     ║"
             echo "╠═══════════════════════════════════════════════════════════════╣"
             echo "║                                                               ║"
-            echo "║  Commands:                                                    ║"
-            echo "║    ralph handoff create [id]      Create new handoff           ║"
-            echo "║    ralph handoff show [id]        Show handoff (latest if no id)║"
-            echo "║    ralph handoff list [n]         List recent handoffs         ║"
-            echo "║    ralph handoff search <query>   Search handoffs (Memvid)     ║"
-            echo "║    ralph handoff cleanup [days]   Clean old handoffs           ║"
+            echo "║  Agent-to-Agent Transfer (v2.51 NEW):                         ║"
+            echo "║    ralph handoff transfer --from X --to Y [--task T]          ║"
+            echo "║    ralph handoff agents          List available agents        ║"
+            echo "║    ralph handoff validate <name> Validate agent exists        ║"
+            echo "║    ralph handoff history [n]     Show transfer history        ║"
             echo "║                                                               ║"
-            echo "║  NOTE: Handoffs are auto-created by PreCompact hook           ║"
-            echo "║  These commands are OPTIONAL for manual control               ║"
+            echo "║  Document Handoffs (session persistence):                     ║"
+            echo "║    ralph handoff create [id]     Create new handoff document  ║"
+            echo "║    ralph handoff show [id]       Show handoff (latest if none)║"
+            echo "║    ralph handoff list [n]        List recent handoffs         ║"
+            echo "║    ralph handoff search <query>  Search handoffs              ║"
+            echo "║    ralph handoff cleanup [days]  Clean old handoffs           ║"
+            echo "║                                                               ║"
+            echo "║  Example:                                                     ║"
+            echo "║    ralph handoff transfer --from orchestrator --to debugger \\ ║"
+            echo "║                          --task 'Fix auth bug'               ║"
             echo "╚═══════════════════════════════════════════════════════════════╝"
             ;;
         *)
             log_error "Unknown handoff command: $HANDOFF_SUBCMD"
             log_info "Run 'ralph handoff help' for usage"
             exit 1
+            ;;
+    esac
+}
+
+# ===============================================================================
+# v2.51: CHECKPOINT - LangGraph-style Time Travel
+# ===============================================================================
+cmd_checkpoint() {
+    local CHECKPOINT_SUBCMD="${1:-help}"
+    shift || true
+
+    local CHECKPOINT_MANAGER="${HOME}/.claude/scripts/checkpoint-manager.sh"
+
+    if [ ! -x "$CHECKPOINT_MANAGER" ]; then
+        log_error "Checkpoint manager not found: $CHECKPOINT_MANAGER"
+        log_info "Install with: ralph self-update"
+        exit 1
+    fi
+
+    case "$CHECKPOINT_SUBCMD" in
+        save)
+            local NAME="${1:-}"
+            local DESC="${2:-Manual checkpoint}"
+            if [ -z "$NAME" ]; then
+                log_error "Checkpoint name required"
+                echo "Usage: ralph checkpoint save <name> [description]"
+                exit 1
+            fi
+            "$CHECKPOINT_MANAGER" save "$NAME" "$DESC"
+            ;;
+        restore)
+            local NAME="${1:-}"
+            if [ -z "$NAME" ]; then
+                log_error "Checkpoint name required"
+                echo "Usage: ralph checkpoint restore <name>"
+                exit 1
+            fi
+            "$CHECKPOINT_MANAGER" restore "$NAME"
+            ;;
+        list|ls)
+            local FORMAT="${1:-}"
+            "$CHECKPOINT_MANAGER" list "$FORMAT"
+            ;;
+        show)
+            local NAME="${1:-}"
+            if [ -z "$NAME" ]; then
+                log_error "Checkpoint name required"
+                exit 1
+            fi
+            "$CHECKPOINT_MANAGER" show "$NAME"
+            ;;
+        delete|rm)
+            local NAME="${1:-}"
+            if [ -z "$NAME" ]; then
+                log_error "Checkpoint name required"
+                exit 1
+            fi
+            "$CHECKPOINT_MANAGER" delete "$NAME"
+            ;;
+        diff)
+            local NAME1="${1:-}"
+            local NAME2="${2:-}"
+            "$CHECKPOINT_MANAGER" diff "$NAME1" "$NAME2"
+            ;;
+        help|--help|-h|"")
+            echo ""
+            echo "╔═══════════════════════════════════════════════════════════════╗"
+            echo "║  CHECKPOINT: Time Travel System (v2.51)                       ║"
+            echo "╠═══════════════════════════════════════════════════════════════╣"
+            echo "║                                                               ║"
+            echo "║  Commands:                                                    ║"
+            echo "║    ralph checkpoint save <name> [desc]  Save current state    ║"
+            echo "║    ralph checkpoint restore <name>      Restore from checkpoint║"
+            echo "║    ralph checkpoint list [--json]       List all checkpoints  ║"
+            echo "║    ralph checkpoint show <name>         Show checkpoint details║"
+            echo "║    ralph checkpoint delete <name>       Delete a checkpoint   ║"
+            echo "║    ralph checkpoint diff <n1> [n2]      Compare checkpoints   ║"
+            echo "║                                                               ║"
+            echo "║  LangGraph-style state persistence for orchestration recovery ║"
+            echo "╚═══════════════════════════════════════════════════════════════╝"
+            ;;
+        *)
+            log_error "Unknown checkpoint command: $CHECKPOINT_SUBCMD"
+            log_info "Run 'ralph checkpoint help' for usage"
+            exit 1
+            ;;
+    esac
+}
+
+# ===============================================================================
+# v2.51: MIGRATE - Automatic Plan State Migration
+# ===============================================================================
+cmd_migrate() {
+    local MIGRATE_SUBCMD="${1:-check}"
+    shift || true
+
+    local MIGRATE_SCRIPT="${HOME}/.claude/scripts/migrate-plan-state.sh"
+
+    if [ ! -x "$MIGRATE_SCRIPT" ]; then
+        log_error "Migration script not found: $MIGRATE_SCRIPT"
+        log_info "Install with: ralph self-update"
+        exit 1
+    fi
+
+    case "$MIGRATE_SUBCMD" in
+        check)
+            "$MIGRATE_SCRIPT" --check "$@"
+            ;;
+        run|execute)
+            "$MIGRATE_SCRIPT" "$@"
+            ;;
+        dry-run|preview)
+            "$MIGRATE_SCRIPT" --dry-run "$@"
+            ;;
+        force)
+            "$MIGRATE_SCRIPT" --force "$@"
+            ;;
+        help|--help|-h)
+            echo ""
+            echo "╔═══════════════════════════════════════════════════════════════╗"
+            echo "║  MIGRATE: Plan State Schema Migration (v2.51)                 ║"
+            echo "╠═══════════════════════════════════════════════════════════════╣"
+            echo "║                                                               ║"
+            echo "║  Commands:                                                    ║"
+            echo "║    ralph migrate check        Check if migration needed       ║"
+            echo "║    ralph migrate run          Execute migration               ║"
+            echo "║    ralph migrate dry-run      Preview without changes         ║"
+            echo "║    ralph migrate force        Force re-migration              ║"
+            echo "║                                                               ║"
+            echo "║  Migrates plan-state.json from v1 (array) to v2 (phases)     ║"
+            echo "║  Backup created automatically in ~/.ralph/backups/            ║"
+            echo "╚═══════════════════════════════════════════════════════════════╝"
+            ;;
+        *)
+            log_error "Unknown migrate command: $MIGRATE_SUBCMD"
+            log_info "Run 'ralph migrate help' for usage"
+            exit 1
+            ;;
+    esac
+}
+
+# ===============================================================================
+# v2.51: AGENT-MEMORY - Agent-Scoped Memory Buffers
+# ===============================================================================
+cmd_agent_memory() {
+    local MEMORY_SUBCMD="${1:-help}"
+    shift || true
+
+    local AGENT_MEMORY_SCRIPT="${HOME}/.claude/scripts/agent-memory-buffer.sh"
+
+    if [ ! -x "$AGENT_MEMORY_SCRIPT" ]; then
+        log_error "Agent memory script not found: $AGENT_MEMORY_SCRIPT"
+        log_info "Install with: ralph self-update"
+        exit 1
+    fi
+
+    case "$MEMORY_SUBCMD" in
+        init)
+            local AGENT_ID="${1:-}"
+            if [ -z "$AGENT_ID" ]; then
+                log_error "Agent ID required"
+                echo "Usage: ralph agent-memory init <agent_id>"
+                exit 1
+            fi
+            "$AGENT_MEMORY_SCRIPT" init "$AGENT_ID"
+            ;;
+        write)
+            local AGENT_ID="${1:-}"
+            local MEM_TYPE="${2:-}"
+            local CONTENT="${3:-}"
+            if [ -z "$AGENT_ID" ] || [ -z "$MEM_TYPE" ]; then
+                log_error "Agent ID and memory type required"
+                echo "Usage: ralph agent-memory write <agent_id> <type> <content>"
+                exit 1
+            fi
+            "$AGENT_MEMORY_SCRIPT" write "$AGENT_ID" "$MEM_TYPE" "$CONTENT"
+            ;;
+        read)
+            local AGENT_ID="${1:-}"
+            local MEM_TYPE="${2:-all}"
+            if [ -z "$AGENT_ID" ]; then
+                log_error "Agent ID required"
+                echo "Usage: ralph agent-memory read <agent_id> [type]"
+                exit 1
+            fi
+            "$AGENT_MEMORY_SCRIPT" read "$AGENT_ID" "$MEM_TYPE"
+            ;;
+        transfer)
+            local FROM_AGENT="${1:-}"
+            local TO_AGENT="${2:-}"
+            local FILTER="${3:-relevant}"
+            if [ -z "$FROM_AGENT" ] || [ -z "$TO_AGENT" ]; then
+                log_error "Source and target agent IDs required"
+                echo "Usage: ralph agent-memory transfer <from> <to> [filter]"
+                exit 1
+            fi
+            "$AGENT_MEMORY_SCRIPT" transfer "$FROM_AGENT" "$TO_AGENT" "$FILTER"
+            ;;
+        clear)
+            local AGENT_ID="${1:-}"
+            local MEM_TYPE="${2:-all}"
+            if [ -z "$AGENT_ID" ]; then
+                log_error "Agent ID required"
+                exit 1
+            fi
+            "$AGENT_MEMORY_SCRIPT" clear "$AGENT_ID" "$MEM_TYPE"
+            ;;
+        list|ls)
+            "$AGENT_MEMORY_SCRIPT" list
+            ;;
+        gc)
+            "$AGENT_MEMORY_SCRIPT" gc
+            ;;
+        stats)
+            "$AGENT_MEMORY_SCRIPT" stats
+            ;;
+        help|--help|-h|"")
+            echo ""
+            echo "╔═══════════════════════════════════════════════════════════════╗"
+            echo "║  AGENT-MEMORY: Agent-Scoped Memory Buffers (v2.51)            ║"
+            echo "╠═══════════════════════════════════════════════════════════════╣"
+            echo "║                                                               ║"
+            echo "║  Commands:                                                    ║"
+            echo "║    ralph agent-memory init <agent_id>     Initialize buffer   ║"
+            echo "║    ralph agent-memory write <a> <t> <c>   Write to memory     ║"
+            echo "║    ralph agent-memory read <agent> [type] Read from memory    ║"
+            echo "║    ralph agent-memory transfer <f> <t>    Transfer memory     ║"
+            echo "║    ralph agent-memory clear <agent>       Clear agent memory  ║"
+            echo "║    ralph agent-memory list                List all agents     ║"
+            echo "║    ralph agent-memory gc                  Garbage collect     ║"
+            echo "║    ralph agent-memory stats               Show statistics     ║"
+            echo "║                                                               ║"
+            echo "║  Memory Types: semantic, episodic, working                    ║"
+            echo "║  Transfer Filters: all, relevant (default), working           ║"
+            echo "╚═══════════════════════════════════════════════════════════════╝"
+            ;;
+        *)
+            log_error "Unknown agent-memory command: $MEMORY_SUBCMD"
+            log_info "Run 'ralph agent-memory help' for usage"
+            exit 1
+            ;;
+    esac
+}
+
+# ===============================================================================
+# v2.51: EVENTS - Event-Driven Workflow Engine
+# ===============================================================================
+cmd_events() {
+    local EVENTS_SUBCMD="${1:-help}"
+    shift || true
+
+    local EVENT_BUS_SCRIPT="${HOME}/.claude/scripts/event-bus.sh"
+
+    if [ ! -x "$EVENT_BUS_SCRIPT" ]; then
+        log_error "Event bus script not found: $EVENT_BUS_SCRIPT"
+        log_info "Install with: ralph self-update"
+        exit 1
+    fi
+
+    case "$EVENTS_SUBCMD" in
+        emit)
+            local EVENT_TYPE="${1:-}"
+            local PAYLOAD="${2:-{}}"
+            local SOURCE="${3:-cli}"
+            if [ -z "$EVENT_TYPE" ]; then
+                log_error "Event type required"
+                echo "Usage: ralph events emit <type> [payload] [source]"
+                exit 1
+            fi
+            "$EVENT_BUS_SCRIPT" emit "$EVENT_TYPE" "$PAYLOAD" "$SOURCE"
+            ;;
+        subscribe)
+            local EVENT_TYPE="${1:-}"
+            local HANDLER="${2:-}"
+            if [ -z "$EVENT_TYPE" ] || [ -z "$HANDLER" ]; then
+                log_error "Event type and handler required"
+                echo "Usage: ralph events subscribe <type> <handler_script>"
+                exit 1
+            fi
+            "$EVENT_BUS_SCRIPT" subscribe "$EVENT_TYPE" "$HANDLER"
+            ;;
+        unsubscribe)
+            local EVENT_TYPE="${1:-}"
+            local HANDLER="${2:-}"
+            "$EVENT_BUS_SCRIPT" unsubscribe "$EVENT_TYPE" "$HANDLER"
+            ;;
+        barrier)
+            local BARRIER_SUBCMD="${1:-list}"
+            shift || true
+            case "$BARRIER_SUBCMD" in
+                check)
+                    local PHASE_ID="${1:-}"
+                    if [ -z "$PHASE_ID" ]; then
+                        log_error "Phase ID required"
+                        exit 1
+                    fi
+                    "$EVENT_BUS_SCRIPT" barrier check "$PHASE_ID"
+                    ;;
+                wait)
+                    local PHASE_ID="${1:-}"
+                    local TIMEOUT="${2:-300}"
+                    if [ -z "$PHASE_ID" ]; then
+                        log_error "Phase ID required"
+                        exit 1
+                    fi
+                    "$EVENT_BUS_SCRIPT" barrier wait "$PHASE_ID" "$TIMEOUT"
+                    ;;
+                list)
+                    "$EVENT_BUS_SCRIPT" barrier list
+                    ;;
+                *)
+                    echo "Usage: ralph events barrier <check|wait|list>"
+                    exit 1
+                    ;;
+            esac
+            ;;
+        route)
+            "$EVENT_BUS_SCRIPT" route "$@"
+            ;;
+        advance)
+            local PHASE_ID="${1:-}"
+            "$EVENT_BUS_SCRIPT" advance "$PHASE_ID"
+            ;;
+        status)
+            "$EVENT_BUS_SCRIPT" status
+            ;;
+        history)
+            local COUNT="${1:-20}"
+            local TYPE="${2:-}"
+            "$EVENT_BUS_SCRIPT" history "$COUNT" "$TYPE"
+            ;;
+        help|--help|-h|"")
+            echo ""
+            echo "╔═══════════════════════════════════════════════════════════════╗"
+            echo "║  EVENTS: Event-Driven Workflow Engine (v2.51)                 ║"
+            echo "╠═══════════════════════════════════════════════════════════════╣"
+            echo "║                                                               ║"
+            echo "║  Event Commands:                                              ║"
+            echo "║    ralph events emit <type> [payload]   Emit an event         ║"
+            echo "║    ralph events subscribe <t> <handler> Subscribe to events   ║"
+            echo "║    ralph events unsubscribe <t> <h>     Unsubscribe            ║"
+            echo "║                                                               ║"
+            echo "║  Barrier Commands:                                            ║"
+            echo "║    ralph events barrier check <phase>   Check WAIT-ALL barrier║"
+            echo "║    ralph events barrier wait <phase>    Wait for barrier      ║"
+            echo "║    ralph events barrier list            List all barriers     ║"
+            echo "║                                                               ║"
+            echo "║  Routing Commands:                                            ║"
+            echo "║    ralph events route                   Determine next phase  ║"
+            echo "║    ralph events advance [phase]         Advance to next phase ║"
+            echo "║                                                               ║"
+            echo "║  Status Commands:                                             ║"
+            echo "║    ralph events status                  Show event bus status ║"
+            echo "║    ralph events history [count]         Show event history    ║"
+            echo "╚═══════════════════════════════════════════════════════════════╝"
+            ;;
+        *)
+            log_error "Unknown events command: $EVENTS_SUBCMD"
+            log_info "Run 'ralph events help' for usage"
+            exit 1
+            ;;
+    esac
+}
+
+# ===============================================================================
+# v2.52: STATUS - Orchestration Status Query
+# ===============================================================================
+cmd_status() {
+    local STATUS_SCRIPT="${HOME}/.claude/scripts/ralph-status.sh"
+
+    if [ ! -x "$STATUS_SCRIPT" ]; then
+        log_error "Status script not found: $STATUS_SCRIPT"
+        log_info "Install with: ralph self-update"
+        exit 1
+    fi
+
+    "$STATUS_SCRIPT" "$@"
+}
+
+# ===============================================================================
+# v2.52: TRACE - Local Traceability System
+# ===============================================================================
+cmd_trace() {
+    local TRACE_SUBCMD="${1:-show}"
+    shift || true
+
+    local TRACE_SCRIPT="${HOME}/.claude/scripts/trace-system.sh"
+
+    if [ ! -x "$TRACE_SCRIPT" ]; then
+        log_error "Trace system script not found: $TRACE_SCRIPT"
+        log_info "Install with: ralph self-update"
+        exit 1
+    fi
+
+    case "$TRACE_SUBCMD" in
+        show|list)
+            local COUNT="${1:-20}"
+            local TYPE="${2:-}"
+            "$TRACE_SCRIPT" show "$COUNT" "$TYPE"
+            ;;
+        search|find|grep)
+            local QUERY="${1:-}"
+            if [ -z "$QUERY" ]; then
+                log_error "Search query required"
+                echo "Usage: ralph trace search <query>"
+                exit 1
+            fi
+            "$TRACE_SCRIPT" search "$QUERY"
+            ;;
+        export)
+            local FORMAT="${1:-json}"
+            local OUTPUT="${2:-}"
+            "$TRACE_SCRIPT" export "$FORMAT" "$OUTPUT"
+            ;;
+        summary|stats)
+            "$TRACE_SCRIPT" summary
+            ;;
+        timeline|tl)
+            local COUNT="${1:-15}"
+            "$TRACE_SCRIPT" timeline "$COUNT"
+            ;;
+        clear)
+            local CONFIRM="${1:-}"
+            "$TRACE_SCRIPT" clear "$CONFIRM"
+            ;;
+        help|--help|-h|"")
+            echo ""
+            echo "╔═══════════════════════════════════════════════════════════════╗"
+            echo "║  TRACE: Local Traceability System (v2.52)                     ║"
+            echo "╠═══════════════════════════════════════════════════════════════╣"
+            echo "║                                                               ║"
+            echo "║  Commands:                                                    ║"
+            echo "║    ralph trace show [count] [type]   Show recent events       ║"
+            echo "║    ralph trace search <query>        Search events            ║"
+            echo "║    ralph trace export [format]       Export to JSON/CSV       ║"
+            echo "║    ralph trace summary               Session summary          ║"
+            echo "║    ralph trace timeline              Visual timeline          ║"
+            echo "║    ralph trace clear --confirm       Clear event history      ║"
+            echo "║                                                               ║"
+            echo "║  Event Types: phase.*, step.*, barrier.*, handoff.*           ║"
+            echo "╚═══════════════════════════════════════════════════════════════╝"
+            ;;
+        *)
+            # Assume it's a count for show
+            if [[ "$TRACE_SUBCMD" =~ ^[0-9]+$ ]]; then
+                "$TRACE_SCRIPT" show "$TRACE_SUBCMD"
+            else
+                log_error "Unknown trace command: $TRACE_SUBCMD"
+                log_info "Run 'ralph trace help' for usage"
+                exit 1
+            fi
             ;;
     esac
 }
@@ -7483,6 +7993,30 @@ main() {
             ;;
         handoff)
             cmd_handoff "$@"
+            ;;
+        # v2.51: Checkpoint system (time travel)
+        checkpoint|cp)
+            cmd_checkpoint "$@"
+            ;;
+        # v2.51: Plan state migration
+        migrate|migration)
+            cmd_migrate "$@"
+            ;;
+        # v2.51: Agent-scoped memory buffers
+        agent-memory|am|amem)
+            cmd_agent_memory "$@"
+            ;;
+        # v2.51: Event-driven workflow engine
+        events|event|ev)
+            cmd_events "$@"
+            ;;
+        # v2.52: Orchestration status query
+        status|st)
+            cmd_status "$@"
+            ;;
+        # v2.52: Local traceability system
+        trace|tr)
+            cmd_trace "$@"
             ;;
         setup-context-engine|context-engine)
             cmd_setup_context_engine

@@ -7,6 +7,201 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.52.0] - 2026-01-19
+
+### Added (Local Observability Without External Dependencies)
+
+Implements lightweight observability for orchestration: status queries, traceability, and statusline progress.
+
+#### Orchestration Status Query - NEW
+- **ralph-status.sh**: On-demand status display
+  - `ralph status`: Full orchestration status with progress bar
+  - `ralph status --compact`: One-line summary (e.g., `🔄 STANDARD Step 3/7 (42%)`)
+  - `ralph status --steps`: Detailed step-by-step breakdown
+  - `ralph status --agents`: Active agents and their memory stats
+  - `ralph status --json`: JSON output for scripting/automation
+- **Data Sources**: Integrates plan-state.json, checkpoints, agent-memory, event-log
+
+#### Local Traceability System - NEW
+- **trace-system.sh**: Event tracing without external services
+  - `ralph trace show [count] [type]`: Show recent events
+  - `ralph trace search <query>`: Search events by keyword
+  - `ralph trace export [format] [file]`: Export to JSON or CSV
+  - `ralph trace summary`: Session statistics and metrics
+  - `ralph trace timeline`: Visual chronological view
+  - `ralph trace clear --confirm`: Clear event history (with backup)
+- **Integration**: Uses event-bus.sh event log (`~/.ralph/events/event-log.jsonl`)
+
+#### StatusLine Progress Integration - NEW
+- **statusline-ralph.sh**: Extended statusline with orchestration progress
+  - Shows current step and percentage: `📊 3/7 42%`
+  - Status icons: 📊 (active), 🔄 (executing), ⚡ (fast-path), ✅ (complete)
+  - Integrates with existing git info from statusline-git.sh
+  - Reads `.claude/plan-state.json` for progress data
+- **Format**: `⎇ branch* │ 📊 3/7 42% │ [claude-hud metrics]`
+
+### CLI Updates
+- Added `ralph status` command with subcommand routing
+- Added `ralph trace` command with comprehensive subcommands
+- Updated `scripts/ralph` with v2.52 command wrappers
+
+### Documentation
+- Updated CLAUDE.md to v2.52.0
+- Added Local Observability section with usage examples
+- Updated Commands Reference with new commands
+
+---
+
+## [2.51.0] - 2026-01-19
+
+### Added (OpenAI Agents SDK-Inspired Architecture)
+
+Implements P1 + P2 of v2.51 roadmap: Checkpoint System, Handoff API, Agent-Scoped Memory, and Event-Driven Engine.
+
+#### Checkpoint System (LangGraph-style Time Travel) - NEW
+- **checkpoint-manager.sh**: Global script for orchestration state persistence
+  - `save`: Save current plan-state, orchestrator-analysis, git status
+  - `restore`: Restore from checkpoint with git patch recommendations
+  - `list`: View all saved checkpoints
+  - `show`: Detailed checkpoint inspection
+  - `delete`: Remove checkpoint
+  - `diff`: Compare checkpoints or checkpoint vs current state
+- **Storage**: `~/.ralph/checkpoints/<name>/`
+- **Preserved Data**: plan-state.json, orchestrator-analysis.md, git-status.txt, git-diff.patch, metadata.json
+
+#### Handoff API (OpenAI Agents SDK-style) - NEW
+- **handoff.sh**: Explicit agent-to-agent delegation
+  - `--from <agent>`: Source agent
+  - `--to <agent>`: Target agent
+  - `--context <json>`: Additional context
+  - `--task <description>`: Task description
+  - `validate <agent>`: Check agent exists
+  - `list-agents`: Show available agents (11 default)
+  - `history`: View handoff history
+- **Agent Registry**: 11 default agents (orchestrator, security-auditor, debugger, code-reviewer, test-architect, refactorer, frontend-reviewer, docs-writer, minimax-reviewer, repository-learner, repo-curator)
+- **Handoff Validation**: Checks `accepts_from` field for allowed transfers
+- **Task() Integration**: Outputs ready-to-use Task() snippet
+
+#### Plan State v2 Schema - NEW
+- **Phases**: Steps grouped into phases with dependencies
+- **Barriers**: WAIT-ALL pattern ensures phase N+1 waits for ALL phase N steps
+- **execution_mode**: `parallel` or `sequential` within phases
+- **current_phase**: Tracks active phase
+- **handoffs/checkpoints**: Tracking arrays for v2.51 features
+
+#### Automatic Schema Migration - NEW
+- **migrate-plan-state.sh**: Automatic v1 → v2 migration
+  - Detects old schema (`$schema: "plan-state-v1"`)
+  - Converts steps array to keyed object
+  - Infers phases from step `phase` field or creates default
+  - Generates barriers object
+  - Creates automatic backup before migration
+- **auto-migrate-plan-state.sh**: SessionStart hook for automatic migration
+- **plan-state-v2.schema.json**: JSON Schema for validation
+
+#### Agent-Scoped Memory (LlamaIndex AgentWorkflow-style) - NEW [P2]
+- **agent-memory-buffer.sh**: Isolated memory buffers per agent
+  - `init <agent>`: Initialize memory buffer for agent
+  - `write <agent> <type> <content>`: Write to semantic/episodic/working memory
+  - `read <agent> [type]`: Read from agent's memory buffer
+  - `transfer <from> <to> [filter]`: Transfer memory during handoffs
+  - `clear <agent> [type]`: Clear agent's memory
+  - `list`: List all agents with buffers
+  - `gc`: Garbage collect expired episodic entries
+  - `stats`: Show memory statistics
+- **Memory Types**:
+  - `semantic`: Persistent facts (never expires)
+  - `episodic`: Experiences (24h TTL default)
+  - `working`: Current task context
+- **Transfer Filters**: `all`, `relevant` (default), `working`
+- **Storage**: `~/.ralph/agent-memory/<agent_id>/`
+
+#### Event-Driven Engine (LangGraph-style) - NEW [P2]
+- **event-bus.sh**: Event-driven workflow with phase barriers
+  - `emit <type> [payload] [source]`: Emit event to bus
+  - `subscribe <type> <handler>`: Subscribe handler to event type
+  - `unsubscribe <type> <handler>`: Unsubscribe from events
+  - `barrier check <phase>`: Check if WAIT-ALL barrier satisfied
+  - `barrier wait <phase> [timeout]`: Wait for barrier completion
+  - `barrier list`: List all barriers and status
+  - `route`: Determine next phase based on state
+  - `advance [phase]`: Advance to next/specified phase
+  - `status`: Show event bus status
+  - `history [count] [type]`: View event history
+- **Event Types**: `barrier.complete`, `phase.start`, `phase.complete`, `step.complete`, `handoff.transfer`
+- **WAIT-ALL Pattern**: Phase N+1 never starts until ALL sub-steps of Phase N complete
+- **Storage**: `~/.ralph/events/event-log.jsonl`
+
+#### New CLI Commands
+| Command | Description |
+|---------|-------------|
+| `ralph checkpoint save <name>` | Save orchestration state |
+| `ralph checkpoint restore <name>` | Restore from checkpoint |
+| `ralph checkpoint list` | List all checkpoints |
+| `ralph checkpoint show <name>` | Show checkpoint details |
+| `ralph checkpoint diff <n1> [n2]` | Compare checkpoints |
+| `ralph handoff transfer --from X --to Y` | Execute agent handoff |
+| `ralph handoff agents` | List available agents |
+| `ralph handoff validate <agent>` | Validate agent exists |
+| `ralph handoff history` | View handoff history |
+| `ralph migrate check` | Check if migration needed |
+| `ralph migrate run` | Execute schema migration |
+| `ralph migrate dry-run` | Preview migration |
+| `ralph agent-memory init <agent>` | Initialize agent memory buffer |
+| `ralph agent-memory write <a> <t> <c>` | Write to agent memory |
+| `ralph agent-memory read <agent>` | Read from agent memory |
+| `ralph agent-memory transfer <f> <t>` | Transfer memory during handoff |
+| `ralph agent-memory list` | List agents with buffers |
+| `ralph agent-memory gc` | Garbage collect expired entries |
+| `ralph events emit <type> [payload]` | Emit event to bus |
+| `ralph events subscribe <t> <handler>` | Subscribe to events |
+| `ralph events barrier check <phase>` | Check WAIT-ALL barrier |
+| `ralph events barrier wait <phase>` | Wait for barrier |
+| `ralph events barrier list` | List all barriers |
+| `ralph events route` | Determine next phase |
+| `ralph events advance [phase]` | Advance to next phase |
+| `ralph events status` | Event bus status |
+| `ralph events history` | View event history |
+
+### Changed
+- **scripts/ralph**: Added `cmd_checkpoint()`, `cmd_migrate()`, `cmd_agent_memory()`, `cmd_events()`, updated `cmd_handoff()` with v2.51 subcommands
+- **~/.claude/scripts/**: Added `agent-memory-buffer.sh`, `event-bus.sh`
+- **plan-state.json**: Schema upgraded from v1 (array) to v2 (phases/barriers)
+- **VERSION**: 2.50.0 → 2.51.0
+- **v2.51-improvements-analysis.md**: P1 and P2 marked COMPLETE, Visual Dashboard deferred to v2.55+
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      v2.51 Complete Architecture                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  P1: ORCHESTRATION                    P2: MEMORY & EVENTS               │
+│  ┌──────────────┐  ┌──────────────┐   ┌──────────────┐  ┌────────────┐ │
+│  │  CHECKPOINT  │  │   HANDOFF    │   │ AGENT-SCOPED │  │   EVENT    │ │
+│  │   MANAGER    │  │     API      │   │    MEMORY    │  │    BUS     │ │
+│  └──────┬───────┘  └──────┬───────┘   └──────┬───────┘  └──────┬─────┘ │
+│         │                  │                  │                  │       │
+│         │  ┌───────────────┴───────────┐    │    ┌─────────────┘       │
+│         │  │        MIGRATE            │    │    │                     │
+│         │  │         ENGINE            │    │    │   WAIT-ALL          │
+│         │  └───────────┬───────────────┘    │    │   BARRIERS          │
+│         │              │                     │    │                     │
+│         └──────────────┼─────────────────────┼────┘                     │
+│                        │                     │                          │
+│                        ▼                     ▼                          │
+│              ┌──────────────────┐   ┌────────────────────┐             │
+│              │  plan-state.json │   │ agent-memory/      │             │
+│              │       v2.51      │   │ event-log.jsonl    │             │
+│              │  (phases/barriers)│   │                    │             │
+│              └──────────────────┘   └────────────────────┘             │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## [2.47.2] - 2026-01-18
 
 ### Security Hardening
