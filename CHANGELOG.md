@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.53.0] - 2026-01-19
+
+### Fixed (Critical Hook JSON Format Correction)
+
+**Severity**: CRITICAL (P0)
+**Impact**: All Claude Code sessions affected by persistent hook errors
+
+This release corrects a critical error in hook JSON output formats that caused "hook error" messages across all hook types.
+
+#### Root Cause
+Previous documentation (v2.52) had **INCORRECT** JSON schemas. The value `"continue"` was being used as a decision value, which is INVALID for ALL Claude Code hook types.
+
+#### Correct Schemas (Official)
+
+| Hook Type | Correct Format | Invalid Format |
+|-----------|----------------|----------------|
+| **Stop** | `{"decision": "approve\|block"}` | `{"decision": "continue"}` ❌ |
+| **PostToolUse** | `{"continue": true}` | `{"decision": "continue"}` ❌ |
+| **UserPromptSubmit** | `{"continue": true}` | `{"decision": "continue"}` ❌ |
+| **PreToolUse** | `{"hookSpecificOutput": {...}}` or silent exit | `{"decision": "continue"}` ❌ |
+
+#### Files Fixed (23 total)
+
+**Stop Hooks (3)**:
+- `stop-verification.sh`, `sentry-report.sh`, `reflection-engine.sh`
+
+**PostToolUse Hooks (13)**:
+- `quality-gates-v2.sh`, `checkpoint-auto-save.sh`, `plan-sync-post-step.sh`
+- `progress-tracker.sh`, `auto-plan-state.sh`, `auto-save-context.sh`
+- `fast-path-check.sh`, `parallel-explore.sh`, `plan-analysis-cleanup.sh`
+- `procedural-inject.sh`, `recursive-decompose.sh`, `lsa-pre-step.sh`, `curator-trigger.sh`
+
+**UserPromptSubmit Hooks (4)**:
+- `context-warning.sh`, `periodic-reminder.sh`, `prompt-analyzer.sh`, `memory-write-trigger.sh`
+
+**PreToolUse Hooks (3)**:
+- `inject-session-context.sh`, `skill-validator.sh`, `smart-memory-search.sh`
+
+#### Prevention Measures
+- Created procedural rule: `~/.ralph/procedural/rules-hook-json-format.json`
+- Updated documentation: `~/.claude/docs/HOOK_JSON_FORMAT_v2.53.md`
+- Updated validation script: `~/.claude/scripts/validate-hooks.sh` v2.53.0
+- Created retrospective: `.claude/retrospectives/2026-01-19-hook-json-format-critical-fix.md`
+
+#### Key Insight
+> **The string `"continue"` is NEVER a valid value for the `decision` field in ANY Claude Code hook type!**
+
+---
+
 ## [2.52.0] - 2026-01-19
 
 ### Added (Local Observability Without External Dependencies)
