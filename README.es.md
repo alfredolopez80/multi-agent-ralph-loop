@@ -108,6 +108,74 @@ El sistema aborda el desafío fundamental de la programación asistida por IA: *
 
 > **Diagrama Completo**: Ver `ARCHITECTURE_DIAGRAM_v2.49.1.md` para diagramas detallados (Arquitectura de Memoria, Registro de Hooks, Matriz de Herramientas, Patrón de Seguridad)
 
+### Ciclo de Retroalimentación Automática (Proceso en Background)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│              CICLO DE RETROALIMENTACIÓN AUTOMÁTICA (v2.49) - Proceso Background │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                      SESIÓN ACTIVA                                   │   │
+│   │   Usuario ──▶ Tarea ──▶ Ejecutar ──▶ Validar ──▶ VERIFIED_DONE     │   │
+│   │                         │                                            │   │
+│   │                         ▼                                            │   │
+│   │              ┌─────────────────────────┐                            │   │
+│   │              │   Transcripción de      │                            │   │
+│   │              │   Sesión (Auto-guardada)│                            │   │
+│   │              └───────────┬─────────────┘                            │   │
+│   └──────────────────────────┼──────────────────────────────────────────┘   │
+│                              │                                               │
+│                              ▼ (Evento Stop)                                 │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                    PROCESO EN BACKGROUND (Asíncrono)                │   │
+│   │                                                                     │   │
+│   │   ┌─────────────────────────────────────────────────────────────┐   │   │
+│   │   │              reflection-engine.sh (Disparado)               │   │   │
+│   │   │                        │                                     │   │   │
+│   │   │                        ▼                                     │   │   │
+│   │   │              ┌─────────────────────────┐                    │   │   │
+│   │   │              │   reflection-executor.py │                    │   │   │
+│   │   │              └───────────┬─────────────┘                    │   │   │
+│   │   │                          │                                   │   │   │
+│   │   │         ┌────────────────┼────────────────┐                  │   │   │
+│   │   │         ▼                ▼                ▼                  │   │   │
+│   │   │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐         │   │   │
+│   │   │  │ Extraer      │ │ Detectar     │ │ Generar      │         │   │   │
+│   │   │  │ Episodios    │ │ Patrones     │ │ Reglas       │         │   │   │
+│   │   │  │ de Transcrip-│ │ Entre Sesio- │ │ (confianza ≥0.8) │    │   │   │
+│   │   │  │ ción         │ │ nes          │ │               │         │   │   │
+│   │   │  └──────┬───────┘ └──────┬───────┘ └──────┬───────┘         │   │   │
+│   │   │         │                │                │                  │   │   │
+│   │   │         └────────────────┼────────────────┘                  │   │   │
+│   │   │                          │                                   │   │   │
+│   │   │                          ▼                                   │   │   │
+│   │   │              ┌─────────────────────────────────┐             │   │   │
+│   │   │              │    ACTUALIZACIÓN DE MEMORIA     │             │   │   │
+│   │   │              │  PROCEDIMENTAL                  │             │   │   │
+│   │   │              │  ~/.ralph/procedural/rules.json │             │   │   │
+│   │   │              └─────────────────────────────────┘             │   │   │
+│   │   └─────────────────────────────────────────────────────────────┘   │   │
+│   │                              │                                       │
+│   │                              ▼ (Próxima Sesión)                     │
+│   │   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │   │              INYECCIÓN PROCEDIMENTAL (PreToolUse Task)             │   │
+│   │   │                                                                     │   │
+│   │   │   Hook de Tarea ──▶ Coincidir trigger ──▶ Inyectar como additionalContext │   │
+│   │   │                                                                     │   │
+│   │   │   Claude Recibe: "Basado en experiencia pasada: [comportamiento aprendido]" │   │
+│   │   └─────────────────────────────────────────────────────────────────────┘   │
+│   │                                                                              │
+│   └─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Componentes Clave**:
+| Componente | Disparador | Propósito |
+|------------|------------|-----------|
+| `reflection-engine.sh` | Evento Stop | Disparar reflexión asíncrona |
+| `reflection-executor.py` | Después de sesión | Extraer episodios, detectar patrones, generar reglas |
+| `procedural-inject.sh` | PreToolUse (Task) | Inyectar comportamientos aprendidos en contexto de tarea |
+
 ---
 
 ## Flujo de Trabajo Principal

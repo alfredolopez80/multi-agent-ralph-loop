@@ -106,6 +106,72 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 
 > **Complete Diagram**: See `ARCHITECTURE_DIAGRAM_v2.49.1.md` for detailed diagrams (Memory Architecture, Hooks Registry, Tools Matrix, Security Pattern)
 
+### Automatic Feedback Loop (Background Processing)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│              AUTOMATIC FEEDBACK LOOP (v2.49) - Background Process          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                         ACTIVE SESSION                               │   │
+│   │   User ──▶ Task ──▶ Execute ──▶ Validate ──▶ VERIFIED_DONE         │   │
+│   │                         │                                            │   │
+│   │                         ▼                                            │   │
+│   │              ┌─────────────────────────┐                            │   │
+│   │              │   Session Transcript    │                            │   │
+│   │              │   (Auto-saved)          │                            │   │
+│   │              └───────────┬─────────────┘                            │   │
+│   └──────────────────────────┼──────────────────────────────────────────┘   │
+│                              │                                               │
+│                              ▼ (Stop Event)                                  │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                    BACKGROUND PROCESS (Async)                       │   │
+│   │                                                                     │   │
+│   │   ┌─────────────────────────────────────────────────────────────┐   │   │
+│   │   │              reflection-engine.sh (Triggered)               │   │   │
+│   │   │                        │                                     │   │   │
+│   │   │                        ▼                                     │   │   │
+│   │   │              ┌─────────────────────────┐                    │   │   │
+│   │   │              │   reflection-executor.py │                    │   │   │
+│   │   │              └───────────┬─────────────┘                    │   │   │
+│   │   │                          │                                   │   │   │
+│   │   │         ┌────────────────┼────────────────┐                  │   │   │
+│   │   │         ▼                ▼                ▼                  │   │   │
+│   │   │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐         │   │   │
+│   │   │  │ Extract      │ │ Detect       │ │ Generate     │         │   │   │
+│   │   │  │ Episodes     │ │ Patterns     │ │ Rules        │         │   │   │
+│   │   │  │ from Transcript│ │ Across Sessions │ │ (confidence ≥0.8) │    │   │   │
+│   │   │  └──────┬───────┘ └──────┬───────┘ └──────┬───────┘         │   │   │
+│   │   │         │                │                │                  │   │   │
+│   │   │         └────────────────┼────────────────┘                  │   │   │
+│   │   │                          │                                   │   │   │
+│   │   │                          ▼                                   │   │   │
+│   │   │              ┌─────────────────────────────────┐             │   │   │
+│   │   │              │    PROCEDURAL MEMORY UPDATE     │             │   │   │
+│   │   │              │  ~/.ralph/procedural/rules.json │             │   │   │
+│   │   │              └─────────────────────────────────┘             │   │   │
+│   │   └─────────────────────────────────────────────────────────────┘   │   │
+│   │                              │                                       │
+│   │                              ▼ (Next Session)                       │
+│   │   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │   │              PROCEDURAL INJECTION (PreToolUse Task)               │   │
+│   │   │                                                                     │   │
+│   │   │   Task Hook ──▶ Match rule.trigger ──▶ Inject as additionalContext │   │
+│   │   │                                                                     │   │
+│   │   │   Claude Receives: "Based on past experience: [learned behavior]"  │   │
+│   │   └─────────────────────────────────────────────────────────────────────┘   │
+│   │                                                                              │
+│   └─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Components**:
+| Component | Trigger | Purpose |
+|-----------|---------|---------|
+| `reflection-engine.sh` | Stop event | Trigger async reflection |
+| `reflection-executor.py` | After session | Extract episodes, detect patterns, generate rules |
+| `procedural-inject.sh` | PreToolUse (Task) | Inject learned behaviors into task context |
+
 ---
 
 ## Main Workflow
