@@ -10,35 +10,35 @@
 
 ## Overview
 
-**Multi-Agent-Ralph** es un sistema de orquestacion sofisticado para Claude Code y OpenCode que coordina multiples modelos de IA para entregar codigo validado de alta calidad mediante ciclos de refinacion iterativa.
+**Multi-Agent-Ralph** is a sophisticated orchestration system for Claude Code and OpenCode that coordinates multiple AI models to deliver high-quality validated code through iterative refinement cycles.
 
-El sistema aborda el desafio fundamental de la programacion asistida por IA: **asegurar calidad y consistencia en tareas complejas**. En lugar de confiar en la salida de un solo modelo de IA, Ralph orquesta multiples agentes especializados trabajando en paralelo, con puertas de validacion automaticas y debates adversarials para requisitos rigurosos.
+The system addresses the fundamental challenge of AI-assisted programming: **ensuring quality and consistency in complex tasks**. Instead of relying on a single AI model's output, Ralph orchestrates multiple specialized agents working in parallel, with automatic validation gates and adversarial debates for rigorous requirements.
 
-### Lo Que Hace
+### What It Does
 
-- **Orquesta Multiples Modelos de IA**: Coordina Claude (Opus/Sonnet), OpenAI Codex, Google Gemini, y MiniMax en flujos de trabajo paralelos
-- **Refinacion Iterativa**: Implementa el patron "Ralph Loop" - ejecutar, validar, iterar hasta que las puertas de calidad pasen
-- **Assurance de Calidad**: Puertas de calidad en 9 lenguajes (TypeScript, Python, Go, Rust, Solidity, Swift, JSON, YAML, JavaScript)
-- **Refinamiento Especificacion Adversarial**: Debate adversarial para endurecer especificaciones antes de la ejecucion
-- **Preservacion Contexto Automatica**: Sistema 100% automatico ledger/handoff preserva estado de sesion (v2.35)
-- **Auto-Mejoramiento**: Analisis retrospectivo despues de cada tarea para proponer mejoras de flujo de trabajo
+- **Orchestrates Multiple AI Models**: Coordinates Claude (Opus/Sonnet), OpenAI Codex, Google Gemini, and MiniMax in parallel workflows
+- **Iterative Refinement**: Implements the "Ralph Loop" pattern - execute, validate, iterate until quality gates pass
+- **Quality Assurance**: Quality gates in 9 languages (TypeScript, Python, Go, Rust, Solidity, Swift, JSON, YAML, JavaScript)
+- **Adversarial Specification Refinement**: Adversarial debate to harden specifications before execution
+- **Automatic Context Preservation**: 100% automatic ledger/handoff system preserves session state (v2.35)
+- **Self-Improvement**: Retrospective analysis after each task to propose workflow improvements
 
-### Por Que Usarlo
+### Why Use It
 
-| Desafio | Solucion Ralph |
-|---------|---------------|
-| Salida de IA varia en calidad | Debate multi-modelo via adversarial-spec |
-| Un solo paso frecuentemente insuficiente | Ciclos iterativos (15-60 iteraciones) hasta VERIFIED_DONE |
-| Revision manual cuello de botella | Puertas de calidad automaticas + humano en decisiones criticas |
-| Limites de contexto | MiniMax (1M tokens) + Context7 MCP para documentacion |
-| Perdida de contexto en compactacion | Preservacion automatica ledger/handoff (85-90% reduccion tokens) |
-| Costos API altos | Enrutamiento optimizado (WebSearch FREE, MiniMax 8%, Opus estrategico) |
+| Challenge | Ralph Solution |
+|-----------|----------------|
+| AI output varies in quality | Multi-model debate via adversarial-spec |
+| Single step often insufficient | Iterative cycles (15-60 iterations) until VERIFIED_DONE |
+| Manual review is bottleneck | Automatic quality gates + human on critical decisions |
+| Context limits | MiniMax (1M tokens) + Context7 MCP for documentation |
+| Context loss on compaction | Automatic ledger/handoff preservation (85-90% token reduction) |
+| High API costs | Optimized routing (WebSearch FREE, MiniMax 8%, strategic Opus) |
 
 ---
 
-## Arquitectura
+## Architecture
 
-### Diagrama General del Sistema
+### General System Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -104,13 +104,13 @@ El sistema aborda el desafio fundamental de la programacion asistida por IA: **a
 │  └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-> **Diagrama Completo**: Ver `ARCHITECTURE_DIAGRAM_v2.49.1.md` para todos los diagramas detallados (Memory Architecture, Hooks Registry, Tools Matrix, Security Pattern)
+> **Complete Diagram**: See `ARCHITECTURE_DIAGRAM_v2.49.1.md` for detailed diagrams (Memory Architecture, Hooks Registry, Tools Matrix, Security Pattern)
 
 ---
 
-## Flujo de Trabajo Principal
+## Main Workflow
 
-### 1. El Patron Ralph Loop
+### 1. The Ralph Loop Pattern
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -135,45 +135,45 @@ El sistema aborda el desafio fundamental de la programacion asistida por IA: **a
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Flujo de Orquestacion Completo (12 Pasos)
+### 2. Complete Orchestration Flow (12 Steps)
 
 ```
-0. EVALUATE    → Clasificacion rapida (trivial?)
+0. EVALUATE    → Quick classification (trivial?)
 1. CLARIFY     → AskUserQuestion (MUST_HAVE/NICE_TO_HAVE)
-2. CLASSIFY    → task-classifier (complejidad 1-10)
-3. PLAN        → Diseño detallado
-4. PLAN MODE   → EnterPlanMode (lee analisis)
-5. DELEGATE    → Enrutar al modelo optimo
-6. EXECUTE-WITH-SYNC → Ciclo anidado por paso:
-   6a. LSA-VERIFY  → Pre-check arquitectura
-   6b. IMPLEMENT   → Ejecutar paso
-   6c. PLAN-SYNC   → Detectar drift
-   6d. MICRO-GATE  → Calidad por paso (regla 3-fix)
-7. VALIDATE    → Validacion multi-etapa:
-   7a. QUALITY-AUDITOR → Auditoria pragmatica
-   7b. GATES → Puertas de calidad (9 lenguajes)
-   7c. ADVERSARIAL-SPEC → Refinamiento especificacion
-   7d. ADVERSARIAL-PLAN → Validacion cruzada Opus+Codex
-8. RETROSPECT  → Auto-mejoramiento
+2. CLASSIFY    → task-classifier (complexity 1-10)
+3. PLAN        → Detailed design
+4. PLAN MODE   → EnterPlanMode (reads analysis)
+5. DELEGATE    → Route to optimal model
+6. EXECUTE-WITH-SYNC → Nested loop per step:
+   6a. LSA-VERIFY  → Architecture pre-check
+   6b. IMPLEMENT   → Execute step
+   6c. PLAN-SYNC   → Detect drift
+   6d. MICRO-GATE  → Per-step quality (3-fix rule)
+7. VALIDATE    → Multi-stage validation:
+   7a. QUALITY-AUDITOR → Pragmatic audit
+   7b. GATES → Quality gates (9 languages)
+   7c. ADVERSARIAL-SPEC → Specification refinement
+   7d. ADVERSARIAL-PLAN → Opus+Codex cross-validation
+8. RETROSPECT  → Self-improvement
 ```
 
 ---
 
-## Caracteristicas Clave
+## Key Features
 
-### Orquestacion Multi-Agente
+### Multi-Agent Orchestration
 
-| Caracteristica | Descripcion |
+| Feature | Description |
 |----------------|-------------|
-| **14 Agentes Especializados** | 9 nucleo + 5 revision auxiliary |
-| **12-Paso Workflow** | Evaluar → Clarificar → Planificar → Ejecutar → Validar |
-| **Ejecucion Paralela** | Multiples agentes trabajan simultaneamente |
-| **Enrutamiento Modelos** | Seleccion automatica: Opus (critico), Sonnet (estandar), MiniMax (extendido) |
+| **14 Specialized Agents** | 9 core + 5 auxiliary review |
+| **12-Step Workflow** | Evaluate → Clarify → Plan → Execute → Validate |
+| **Parallel Execution** | Multiple agents work simultaneously |
+| **Model Routing** | Automatic selection: Opus (critical), Sonnet (standard), MiniMax (extended) |
 
-**Agentes Nucleo (9)**:
+**Core Agents (9)**:
 `orchestrator`, `security-auditor`, `code-reviewer`, `test-architect`, `debugger`, `refactorer`, `docs-writer`, `frontend-reviewer`, `minimax-reviewer`
 
-### Memoria Inteligente (v2.49)
+### Smart Memory (v2.49)
 
 ```
 SMART MEMORY SEARCH (PARALLEL)
@@ -186,140 +186,140 @@ SMART MEMORY SEARCH (PARALLEL)
          .claude/memory-context.json
 ```
 
-**Tres Tipos de Memoria**:
-| Tipo | Proposito | Almacenamiento |
-|------|-----------|----------------|
-| **Semantica** | Hechos, preferencias | `~/.ralph/memory/semantic.json` |
-| **Episodica** | Experiencias (TTL 30 dias) | `~/.ralph/episodes/` |
-| **Procedural** | Comportamientos aprendidos | `~/.ralph/procedural/rules.json` |
+**Three Memory Types**:
+| Type | Purpose | Storage |
+|------|---------|----------------|
+| **Semantic** | Facts, preferences | `~/.ralph/memory/semantic.json` |
+| **Episodic** | Experiences (30-day TTL) | `~/.ralph/episodes/` |
+| **Procedural** | Learned behaviors | `~/.ralph/procedural/rules.json` |
 
-### Validacion Calidad-Primero (v2.46)
+### Quality-First Validation (v2.46)
 
 ```
-Stage 1: CORRECTNESS  → Errores sintaxis (BLOQUEANTE)
-Stage 2: QUALITY      → Errores tipos (BLOQUEANTE)
-Stage 2.5: SECURITY   → semgrep + gitleaks (BLOQUEANTE)
-Stage 3: CONSISTENCY  → Linting (CONSULTIVO - no bloqueante)
+Stage 1: CORRECTNESS  → Syntax errors (BLOCKING)
+Stage 2: QUALITY      → Type errors (BLOCKING)
+Stage 2.5: SECURITY   → semgrep + gitleaks (BLOCKING)
+Stage 3: CONSISTENCY  → Linting (ADVISORY - not blocking)
 ```
 
-### Clasificacion 3-Dimension (RLM)
+### 3-Dimension Classification (RLM)
 
-| Dimension | Valores |
+| Dimension | Values |
 |-----------|---------|
-| **Complejidad** | 1-10 |
-| **Densidad Informacion** | CONSTANT / LINEAR / QUADRATIC |
-| **Requisito Contexto** | FITS / CHUNKED / RECURSIVE |
+| **Complexity** | 1-10 |
+| **Information Density** | CONSTANT / LINEAR / QUADRATIC |
+| **Context Requirement** | FITS / CHUNKED / RECURSIVE |
 
 ---
 
-## Instalacion Rapida
+## Quick Installation
 
 ```bash
-# Clonar repositorio
+# Clone repository
 git clone https://github.com/alfredolopez80/multi-agent-ralph-loop.git
 cd multi-agent-ralph-loop
 
-# Instalar
+# Install
 chmod +x install.sh
 ./install.sh
 source ~/.zshrc
 
-# Verificar
+# Verify
 ralph integrations
 ```
 
-### Requisitos
+### Requirements
 
-| Herramienta | Requerida | Proposito |
+| Tool | Required | Purpose |
 |-------------|-----------|-----------|
-| Claude CLI | Si | Orquestacion base |
-| jq | Si | Procesamiento JSON |
-| git | Si | Control de versiones |
-| GitHub CLI | Para PRs | Creacion/revision PR |
+| Claude CLI | Yes | Base orchestration |
+| jq | Yes | JSON processing |
+| git | Yes | Version control |
+| GitHub CLI | For PRs | PR creation/review |
 
 ---
 
-## Comandos Esenciales
+## Essential Commands
 
 ```bash
-# Orquestacion
-/orchestrator "Implementar OAuth2 con Google"
-ralph orch "task"              # Orquestacion completa
-ralph loop "fix errors"        # Loop hasta VERIFIED_DONE
-/clarify                       # Clarificacion intensiva
+# Orchestration
+/orchestrator "Implement OAuth2 with Google"
+ralph orch "task"              # Full orchestration
+ralph loop "fix errors"        # Loop until VERIFIED_DONE
+/clarify                       # Intensive clarification
 
-# Calidad
-/gates                         # Puertas de calidad
-/adversarial                   # Refinamiento especificacion
+# Quality
+/gates                         # Quality gates
+/adversarial                   # Specification refinement
 
-# Memoria (v2.49)
-ralph memory-search "query"    # Busqueda paralela
-ralph fork-suggest "task"      # Sugerir sesiones
+# Memory (v2.49)
+ralph memory-search "query"    # Parallel search
+ralph fork-suggest "task"      # Suggest sessions
 
-# Seguridad
-ralph security src/            # Auditoria seguridad
-ralph security-loop src/       # Auditoria iterativa
+# Security
+ralph security src/            # Security audit
+ralph security-loop src/       # Iterative audit
 
-# Worktree Git
-ralph worktree "feature"       # Crear worktree aislado
-ralph worktree-pr <branch>     # PR con revision
+# Git Worktree
+ralph worktree "feature"       # Create isolated worktree
+ralph worktree-pr <branch>     # PR with review
 
-# Contexto
-ralph ledger save              # Guardar estado sesion
-ralph handoff create           # Crear handoff
-ralph compact                  # Guardado manual (extensiones)
+# Context
+ralph ledger save              # Save session state
+ralph handoff create           # Create handoff
+ralph compact                  # Manual save (extensions)
 ```
 
 ---
 
-## Arquitectura de Modelos
+## Model Architecture
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  PRIMARY (Sonnet gestiona)  │  SECONDARY (8% costo)       │
+│  PRIMARY (Sonnet manages)  │  SECONDARY (8% cost)         │
 ├────────────────────────────┼───────────────────────────────┤
 │  Claude Opus/Sonnet        │  MiniMax M2.1                │
-│  Codex GPT-5               │  (Segunda opinion)           │
-│  Gemini 2.5 Pro            │  (Validacion independiente)  │
+│  Codex GPT-5               │  (Second opinion)            │
+│  Gemini 2.5 Pro            │  (Independent validation)    │
 ├────────────────────────────┼───────────────────────────────┤
-│  Implementacion            │  Validacion                  │
-│  Testing                   │  Captar problemas perdidos   │
-│  Documentacion             │  Calidad Opus al 8% costo    │
+│  Implementation            │  Validation                  │
+│  Testing                   │  Catch missed issues         │
+│  Documentation             │  Opus quality at 8% cost     │
 └────────────────────────────┴───────────────────────────────┘
 ```
 
-### Optimizacion Costos
+### Cost Optimization
 
-| Modelo | Max Iteraciones | Costo vs Claude | Caso Uso |
+| Model | Max Iterations | Cost vs Claude | Use Case |
 |--------|-----------------|-----------------|----------|
-| Claude Opus | 25 | 100% | Revision critica, arquitectura |
-| Claude Sonnet | 25 | 60% | Implementacion estandar |
-| MiniMax M2.1 | 50 | 8% | Loops extendidos, segunda opinion |
-| MiniMax-lightning | 100 | 4% | Tareas muy largas |
+| Claude Opus | 25 | 100% | Critical review, architecture |
+| Claude Sonnet | 25 | 60% | Standard implementation |
+| MiniMax M2.1 | 50 | 8% | Extended loops, second opinion |
+| MiniMax-lightning | 100 | 4% | Very long tasks |
 
 ---
 
-##Hooks (29 Registrados)
+## Hooks (29 Registered)
 
-| Tipo Evento | Proposito |
+| Event Type | Purpose |
 |-------------|-----------|
-| SessionStart | Preservacion contexto al inicio |
-| PreCompact | Guardar estado antes de compactacion |
-| PostToolUse | Puertas de calidad despues Edit/Write |
-| PreToolUse | Guardias de seguridad antes Bash/Skill |
-| UserPromptSubmit | Advertencias contexto, recordatorios |
-| Stop | Reportes sesion |
+| SessionStart | Context preservation at startup |
+| PreCompact | Save state before compaction |
+| PostToolUse | Quality gates after Edit/Write |
+| PreToolUse | Security guards before Bash/Skill |
+| UserPromptSubmit | Context warnings, reminders |
+| Stop | Session reports |
 
 ---
 
-## Documentacion Adicional
+## Additional Documentation
 
-| Documento | Proposito |
+| Document | Purpose |
 |-----------|-----------|
-| [`CHANGELOG.md`](./CHANGELOG.md) | **Historia completa de versiones** (mejores practicas) |
-| [`ARCHITECTURE_DIAGRAM_v2.49.1.md`](./ARCHITECTURE_DIAGRAM_v2.49.1.md) | Diagramas completos arquitectura |
-| [`CLAUDE.md`](./CLAUDE.md) | Referencia rapida (compacta) |
-| `tests/HOOK_TESTING_PATTERNS.md` | Patrones testing hooks |
+| [`CHANGELOG.md`](./CHANGELOG.md) | **Complete version history** (best practices) |
+| [`ARCHITECTURE_DIAGRAM_v2.49.1.md`](./ARCHITECTURE_DIAGRAM_v2.49.1.md) | Complete architecture diagrams |
+| [`CLAUDE.md`](./CLAUDE.md) | Quick reference (compact) |
+| `tests/HOOK_TESTING_PATTERNS.md` | Hook testing patterns |
 
 ---
 
