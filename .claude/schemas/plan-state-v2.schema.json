@@ -1,15 +1,15 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "plan-state-v2",
-  "title": "Plan State Schema v2.51.0",
-  "description": "Schema for plan execution with phases, barriers, and strict WAIT-ALL consistency",
+  "title": "Plan State Schema v2.54.0",
+  "description": "Schema for plan execution with phases, barriers, strict WAIT-ALL consistency, and unified state management",
   "type": "object",
   "required": ["version", "plan_id", "phases", "steps", "barriers"],
   "properties": {
     "version": {
       "type": "string",
       "pattern": "^2\\.5[1-9]\\.[0-9]+$",
-      "description": "Schema version (2.51.x)"
+      "description": "Schema version (2.51.x - 2.59.x)"
     },
     "plan_id": {
       "type": "string",
@@ -128,6 +128,15 @@
       "type": ["string", "null"],
       "description": "Currently executing phase ID"
     },
+    "active_agent": {
+      "type": ["string", "null"],
+      "description": "Currently active agent (v2.54 - unified state management)",
+      "default": "orchestrator"
+    },
+    "current_handoff_id": {
+      "type": ["string", "null"],
+      "description": "Current handoff ID if a transfer is in progress (v2.54)"
+    },
     "barriers": {
       "type": "object",
       "description": "Barrier status for each phase (WAIT-ALL pattern)",
@@ -227,15 +236,26 @@
     },
     "handoffs": {
       "type": "array",
-      "description": "Agent-to-agent handoffs in this plan (v2.51)",
+      "description": "Agent-to-agent handoffs in this plan (v2.54 enhanced)",
       "items": {
         "type": "object",
+        "required": ["handoff_id", "from_agent", "to_agent", "timestamp"],
         "properties": {
-          "handoff_id": { "type": "string" },
-          "from_agent": { "type": "string" },
-          "to_agent": { "type": "string" },
-          "step_id": { "type": "string" },
-          "timestamp": { "type": "string", "format": "date-time" }
+          "handoff_id": { "type": "string", "description": "Unique handoff identifier" },
+          "from_agent": { "type": "string", "description": "Source agent ID" },
+          "to_agent": { "type": "string", "description": "Target agent ID" },
+          "step_id": { "type": ["string", "null"], "description": "Associated step ID" },
+          "phase_id": { "type": ["string", "null"], "description": "Associated phase ID (v2.54)" },
+          "task": { "type": ["string", "null"], "description": "Task description for handoff" },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "in_progress", "completed", "failed"],
+            "default": "pending"
+          },
+          "memory_transferred": { "type": "boolean", "default": false, "description": "Whether agent memory was transferred (v2.54)" },
+          "event_emitted": { "type": "boolean", "default": false, "description": "Whether handoff event was emitted (v2.54)" },
+          "timestamp": { "type": "string", "format": "date-time" },
+          "completed_at": { "type": ["string", "null"], "format": "date-time" }
         }
       }
     },
@@ -260,6 +280,37 @@
         "version": { "type": "string" },
         "migrated_at": { "type": "string", "format": "date-time" },
         "migrated_from": { "type": "string" }
+      }
+    },
+    "state_coordinator": {
+      "type": "object",
+      "description": "State Coordinator tracking (v2.54 unified state management)",
+      "properties": {
+        "last_sync": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last successful state synchronization"
+        },
+        "sync_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of state synchronizations"
+        },
+        "last_barrier_check": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last barrier synchronization check"
+        },
+        "consistency_repairs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of consistency repairs performed"
+        },
+        "active": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether State Coordinator is active"
+        }
       }
     }
   }
