@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.49.1
+# Multi-Agent Ralph v2.50.0
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
@@ -107,6 +107,21 @@ SMART MEMORY SEARCH (PARALLEL)
 | **Episodic** | Experiences (30-day TTL) | `~/.ralph/episodes/` |
 | **Procedural** | Learned behaviors | `~/.ralph/procedural/rules.json` |
 
+### Repository Learner (v2.50) - NEW
+
+```
+/repo-learn https://github.com/{owner}/{repo}
+```
+
+**What it does**:
+1. Acquire repository via git clone or GitHub API
+2. Analyze code using AST-based pattern extraction
+3. Classify patterns into categories (error_handling, async_patterns, type_safety, architecture, testing, security)
+4. Generate procedural rules with confidence scores
+5. Enrich `~/.ralph/procedural/rules.json` with deduplication
+
+**Result**: Claude learns best practices from quality repositories and applies them in future implementations.
+
 ---
 
 ## Quality-First Validation (v2.46)
@@ -144,6 +159,10 @@ ralph compact             # Manual context save
 ralph memory-search "query"  # Parallel search
 ralph fork-suggest "task"    # Find sessions to fork
 
+# Repository Learning (v2.50)
+repo-learn https://github.com/python/cpython          # Learn from repo
+repo-learn https://github.com/fastapi/fastapi --category error_handling  # Focused
+
 # Security
 ralph security src/       # Security audit
 ralph security-loop src/  # Iterative audit
@@ -159,7 +178,7 @@ ralph handoff create      # Create handoff
 
 ---
 
-## Agents (9)
+## Agents (10)
 
 | Agent | Model | Purpose |
 |-------|-------|---------|
@@ -172,6 +191,7 @@ ralph handoff create      # Create handoff
 | `@frontend-reviewer` | sonnet | UI/UX |
 | `@docs-writer` | minimax | Docs |
 | `@minimax-reviewer` | minimax | Second opinion |
+| `@repository-learner` | sonnet | Learn best practices from repos |
 
 ---
 

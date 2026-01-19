@@ -1,10 +1,10 @@
-# Multi-Agent Ralph Wiggum - Agents Reference v2.49.1
+# Multi-Agent Ralph Wiggum - Agents Reference v2.50.0
 
 ## Overview
 
-Ralph orchestrates **32 specialized agents** across different domains. Each agent has specific expertise and is routed based on task complexity and requirements.
+Ralph orchestrates **33 specialized agents** across different domains. Each agent has specific expertise and is routed based on task complexity and requirements.
 
-## Core Orchestration Agents (v2.45.1)
+## Core Orchestration Agents (v2.50)
 
 | Agent | Model | Purpose |
 |-------|-------|---------|
@@ -14,6 +14,7 @@ Ralph orchestrates **32 specialized agents** across different domains. Each agen
 | `@gap-analyst` | opus | Pre-implementation gap analysis |
 | `@quality-auditor` | opus | 6-phase pragmatic code audit |
 | `@adversarial-plan-validator` | opus | Dual-model plan validation (Claude + Codex) |
+| `@repository-learner` | sonnet | Learn best practices from GitHub repositories |
 
 ## Review & Security Agents
 
@@ -64,6 +65,47 @@ Ralph orchestrates **32 specialized agents** across different domains. Each agen
 | `@liquid-staking-specialist` | opus | Liquid staking protocols |
 | `@defi-protocol-economist` | opus | Token economics & DeFi modeling |
 | `@chain-infra-specialist-blockchain` | opus | Chain infrastructure & RPC |
+
+## Memory & Learning Agents (v2.50) - NEW
+
+| Agent | Model | Purpose |
+|-------|-------|---------|
+| `@repository-learner` | sonnet | Learn best practices from GitHub repositories |
+
+### @repository-learner (v2.50)
+
+**Purpose**: Extract design patterns and best practices from GitHub repositories to enrich procedural memory.
+
+**Workflow**:
+1. **ACQUIRE** → Clone repository or fetch via GitHub API
+2. **ANALYZE** → AST-based pattern extraction (Python, TypeScript, Rust, Go)
+3. **CLASSIFY** → Categorize patterns by type:
+   - `error_handling` - Exception patterns, Result types
+   - `async_patterns` - Async/await, Promise patterns
+   - `type_safety` - Type guards, generics
+   - `architecture` - Design patterns, DI
+   - `testing` - Test patterns, fixtures
+   - `security` - Auth, validation patterns
+4. **GENERATE** → Procedural rules with confidence scores (0.8 threshold)
+5. **ENRICH** → Atomic write to `~/.ralph/procedural/rules.json`
+
+**Usage**:
+```bash
+/repo-learn https://github.com/python/cpython
+/repo-learn https://github.com/tiangolo/fastapi --category error_handling
+/repo-learn https://github.com/facebook/react --category security --min-confidence 0.9
+```
+
+**Output**:
+- Procedural rules added to `~/.ralph/procedural/rules.json`
+- Rules injected into future Task calls via `procedural-inject.sh`
+- Claude considers learned patterns when implementing similar code
+
+**Security**:
+- Read-only repository analysis
+- Symlink traversal protection
+- Atomic writes with backup
+- Schema validation before insertion
 
 ## Agent Routing (v2.46 - 3-Dimension Classification)
 
