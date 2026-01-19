@@ -6,6 +6,33 @@
 
 ---
 
+## Language Policy (Política de Idioma)
+
+> **IMPORTANT**: This repository follows English-only documentation standards.
+
+| Content Type | Language | Notes |
+|--------------|----------|-------|
+| **Code** | English | Variables, functions, classes, comments |
+| **Documentation** | English | README.md, CLAUDE.md, AGENTS.md, CHANGELOG.md |
+| **Commit Messages** | English | Conventional commits format |
+| **Code Comments** | English | Inline documentation |
+| **Pull Requests** | English | Titles, descriptions, reviews |
+
+### Exception for Spanish-Speaking Users
+
+- **Prompt/Chat Responses**: Claude may respond in Spanish when the user writes in Spanish
+- **README.es.md**: Spanish translation available for initial understanding
+- **Technical discussions**: Should remain in English for consistency
+
+### Why English-Only?
+
+1. **Global Collaboration**: English is the universal language for software development
+2. **Searchability**: English documentation is easier to find and index
+3. **Tooling Compatibility**: Linters, formatters, and AI tools work best with English
+4. **Onboarding**: New contributors can understand the codebase immediately
+
+---
+
 ## Quick Start
 
 ```bash
