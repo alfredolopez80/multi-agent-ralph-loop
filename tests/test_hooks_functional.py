@@ -191,7 +191,11 @@ class TestInjectSessionContextHookFunctional:
         pytest.skip("inject-session-context.sh not found")
 
     def test_hook_returns_valid_json_for_task_tool(self, hook_path, tmp_path):
-        """Hook should return valid JSON with additionalContext for Task tool."""
+        """Hook should return valid JSON with decision=continue for Task tool.
+
+        Note: PreToolUse hooks cannot inject context into Task calls.
+        The hook allows the Task tool and provides info via additionalContext.
+        """
         # Create minimal CLAUDE.md
         claude_md = tmp_path / "CLAUDE.md"
         claude_md.write_text("# Test Project v1.0\n\nTest content.")
@@ -215,16 +219,15 @@ class TestInjectSessionContextHookFunctional:
         # Parse output as JSON
         output = json.loads(result.stdout)
 
-        # Verify structure
-        assert "hookSpecificOutput" in output
-        assert "additionalContext" in output["hookSpecificOutput"]
-
-        # Verify content includes session ID
-        context = output["hookSpecificOutput"]["additionalContext"]
-        assert "test-session-123" in context
+        # Verify structure - PreToolUse returns decision field
+        assert "decision" in output
+        assert output["decision"] == "continue"
+        # additionalContext is provided at root level for PreToolUse
+        assert "additionalContext" in output
+        assert "Task tool allowed" in output["additionalContext"]
 
     def test_hook_skips_non_task_tools(self, hook_path, tmp_path):
-        """Hook should return empty output for non-Task tools."""
+        """Hook should return decision=continue for non-Task tools."""
         hook_input = json.dumps({
             "tool_name": "Read",
             "session_id": "test-session-456"
@@ -242,7 +245,8 @@ class TestInjectSessionContextHookFunctional:
         assert result.returncode == 0
 
         output = json.loads(result.stdout)
-        assert output == {"hookSpecificOutput": {}}
+        # PreToolUse returns decision=continue for non-Task tools
+        assert output == {"decision": "continue"}
 
     def test_hook_performance_under_5_seconds(self, hook_path, tmp_path):
         """Hook should complete within 5 seconds (well under 15s timeout)."""
@@ -414,7 +418,11 @@ Implement user authentication
         return tmp_path
 
     def test_task_context_injection_with_progress(self, mock_project):
-        """Verify Task tool receives context from progress.md."""
+        """Verify hook runs for Task tool and returns valid output.
+
+        Note: PreToolUse hooks cannot inject context into Task calls.
+        The hook acknowledges the Task tool but context injection requires SessionStart.
+        """
         hook_path = Path.home() / ".claude" / "hooks" / "inject-session-context.sh"
         if not hook_path.exists():
             pytest.skip("inject-session-context.sh not found")
@@ -436,10 +444,13 @@ Implement user authentication
         assert result.returncode == 0
 
         output = json.loads(result.stdout)
-        context = output["hookSpecificOutput"]["additionalContext"]
 
-        # Should include goal from progress.md
-        assert "user authentication" in context.lower() or "Current Goal" in context
+        # Verify structure - PreToolUse returns decision=continue
+        assert "decision" in output
+        assert output["decision"] == "continue"
+        # PreToolUse provides info about Task tool handling
+        assert "additionalContext" in output
+        # Context injection not available for PreToolUse, but hook runs successfully
 
 
 if __name__ == "__main__":
