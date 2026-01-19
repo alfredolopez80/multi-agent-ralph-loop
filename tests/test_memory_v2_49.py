@@ -211,15 +211,26 @@ class TestReflectionExecutor:
         assert result.returncode == 0, f"Cleanup failed: {result.stderr}"
 
     def test_extract_with_temp_transcript(self):
-        """Extract should work with temporary transcript."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as f:
-            f.write('{"type": "message", "content": "implemented feature X successfully"}\n')
-            f.write('{"type": "message", "content": "decided to use TypeScript"}\n')
-            temp_path = f.name
+        """Extract should work with transcript in allowed directory.
 
+        SEC-003: Transcripts must be in allowed directories:
+        - ~/.claude/projects
+        - ~/.claude/transcripts
+        - ~/.ralph/transcripts
+        """
+        # Use allowed directory per SEC-003 path validation
+        allowed_dir = Path.home() / ".ralph" / "transcripts"
+        allowed_dir.mkdir(parents=True, exist_ok=True)
+
+        temp_path = allowed_dir / f"test-transcript-{os.getpid()}.jsonl"
         try:
+            temp_path.write_text(
+                '{"type": "message", "content": "implemented feature X successfully"}\n'
+                '{"type": "message", "content": "decided to use TypeScript"}\n'
+            )
+
             result = subprocess.run(
-                ["python3", str(REFLECTION_EXECUTOR), "extract", temp_path],
+                ["python3", str(REFLECTION_EXECUTOR), "extract", str(temp_path)],
                 capture_output=True,
                 text=True,
                 timeout=30,
@@ -228,7 +239,8 @@ class TestReflectionExecutor:
             assert result.returncode == 0, f"Extract failed: {result.stderr}"
             assert "Episode saved" in result.stdout or "saved" in result.stdout.lower()
         finally:
-            os.unlink(temp_path)
+            if temp_path.exists():
+                temp_path.unlink()
 
 
 class TestHotPathHooks:

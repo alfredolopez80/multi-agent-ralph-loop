@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.47.3-blue)
+![Version](https://img.shields.io/badge/version-2.49.1-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 [![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)](CONTRIBUTING.md)
@@ -18,6 +18,42 @@ The system addresses the fundamental challenge of AI-assisted coding: **ensuring
 ## About
 
 Ralph is a dual-runtime orchestrator that adapts model routing based on whether it is invoked from Claude Code or OpenCode. It standardizes workflows (clarify → plan → execute → validate) while letting each environment use the best available models.
+
+**v2.49.1 Highlights** (Security Hardening Complete - Zero Findings):
+- **9/9 Security Fixes**: All findings from comprehensive audit fixed (SEC-001 to SEC-006, RE-001, RE-002, MM-001)
+- **29/29 Hooks Registered & Validated**: Complete hook registry with behavioral testing
+- **ERR Trap Pattern Corrected**: Accurate documentation of ERR trap limitations (triggers on exit != 0, not "any error")
+- **Defense in Depth**: ERR trap + escape_json() + path validation + specific exception handlers
+- **83/83 Memory Tests Passing**: Complete v2.49 memory architecture validated
+- **Architecture Diagram**: See `ARCHITECTURE_DIAGRAM_v2.49.1.md` for complete ASCII diagrams
+
+**Security Fixes Applied (v2.49.1)**:
+
+| Finding | Severity | Fix | Files Modified |
+|---------|----------|-----|----------------|
+| SEC-001 | HIGH | ERR trap + escape_json() for SESSION_ID | reflection-engine.sh |
+| SEC-002 | HIGH | escape_json() for MATCHED string | memory-write-trigger.sh |
+| SEC-003 | HIGH | Path validation (allowlist dirs) | reflection-executor.py |
+| SEC-004 | MEDIUM | Specific exception handlers | reflection-executor.py |
+| SEC-005 | MEDIUM | Config error handling | memory-manager.py |
+| SEC-006 | HIGH | ERR trap for guaranteed JSON | procedural-inject.sh |
+| RE-001 | LOW | Consistent escape_json usage | reflection-engine.sh |
+| RE-002 | LOW | Remove validate bypass | reflection-executor.py |
+| MM-001 | LOW | JSON parse error handling | memory-manager.py |
+
+**v2.49.0 Highlights** (Complete Memory Architecture):
+- **Human-like Memory System**: Semantic (facts) + Episodic (experiences) + Procedural (learned rules)
+- **Hot Path (Real-time)**: claude-mem MCP integration for memory intent detection
+- **Cold Path (Background)**: reflection-executor.py extracts patterns after session ends
+- **Procedural Injection**: Learned behaviors re-injected into future Task contexts
+- **30-Day TTL**: Episodes automatically expire to prevent stale data
+- **Confidence Scoring**: Only high-confidence rules (≥0.8) are auto-injected
+
+**v2.48.0 Highlights** (Security Scanning Stage 2.5):
+- **semgrep SAST**: Static Application Security Testing for 30+ languages
+- **gitleaks Integration**: Secret detection (API keys, passwords, tokens)
+- **Graceful Degradation**: Works without tools, shows install hint
+- **20 Unit Tests**: Comprehensive security test coverage
 
 **v2.47.3 Highlights** (Comprehensive Hook Testing & Security Hardening):
 - **38 Behavioral Tests**: `test_hooks_comprehensive.py` validates hook BEHAVIOR, not just code presence
@@ -1133,7 +1169,36 @@ See [LICENSE](LICENSE) for details.
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.
 
-### Latest: v2.46.1 (2026-01-18)
+### Latest: v2.49.1 (2026-01-19)
+
+**v2.49.1 (2026-01-19) - Security Hardening Complete:**
+- **9/9 Security Fixes Applied**: All findings from comprehensive audit fixed
+- **SEC-001 to SEC-006**: ERR trap, escape_json(), path validation, error handling
+- **RE-001, RE-002, MM-001**: Defense-in-depth improvements
+- **29/29 Hooks Registered & Validated**: Complete hook registry with behavioral testing
+- **ERR Trap Pattern Corrected**: Accurate documentation (triggers on exit != 0)
+- **83/83 Memory Tests Passing**: Complete v2.49 memory architecture validated
+- **Architecture Diagram**: See `ARCHITECTURE_DIAGRAM_v2.49.1.md` for complete ASCII diagrams
+
+**v2.49.0 (2026-01-18) - Complete Memory Architecture:**
+- **Human-like Memory System**: Semantic (facts) + Episodic (experiences) + Procedural (learned rules)
+- **Hot Path (Real-time)**: claude-mem MCP for memory intent detection
+- **Cold Path (Background)**: reflection-executor.py extracts patterns after session ends
+- **Procedural Injection**: Learned behaviors re-injected into future Task contexts
+- **30-Day TTL**: Episodes automatically expire to prevent stale data
+- **Confidence Scoring**: Only high-confidence rules (≥0.8) auto-injected
+
+**v2.48.0 (2026-01-17) - Security Scanning Stage 2.5:**
+- **semgrep SAST**: Static Application Security Testing for 30+ languages
+- **gitleaks Integration**: Secret detection (API keys, passwords, tokens)
+- **Graceful Degradation**: Works without tools, shows install hint
+- **20 Unit Tests**: Comprehensive security test coverage
+
+**v2.47.3 (2026-01-17) - Comprehensive Hook Testing:**
+- **38 Behavioral Tests**: Validates hook BEHAVIOR, not just code presence
+- **8 Test Categories**: JSON output, command injection, path traversal, race conditions, edge cases, error handling, regressions, performance
+
+**v2.46.1 (2026-01-18)**
 
 - **RLM-Inspired Orchestration**: Based on arXiv:2512.24601v1 recursive sub-calling patterns
 - **3-Dimension Classification**: Complexity (1-10) + Information Density + Context Requirement
