@@ -130,7 +130,7 @@ SMART MEMORY SEARCH (PARALLEL)
 
 **Result**: Claude learns best practices from quality repositories and applies them in future implementations.
 
-### Repo Curator (v2.50) - NEW
+### Repo Curator (v2.55)
 
 ```
 /curator "best backend TypeScript repos with clean architecture"
@@ -138,8 +138,8 @@ SMART MEMORY SEARCH (PARALLEL)
 
 **What it does**:
 1. **DISCOVERY** → GitHub API search for candidate repositories
-2. **SCORING** → Quality metrics (stars, issues ratio, tests, CI/CD, docs)
-3. **RANKING** → Top 10 repos (max 2 per org) sorted by QualityScore
+2. **SCORING** → Quality metrics + Context Relevance (v2.55)
+3. **RANKING** → Top N repos (configurable, max per org)
 4. **USER REVIEW** → Interactive queue for approve/reject
 5. **LEARN** → Extract patterns from approved repos via repository-learner
 
@@ -150,20 +150,45 @@ SMART MEMORY SEARCH (PARALLEL)
 | `--tier economic` | ~$0.30 | + OpenSSF + MiniMax (DEFAULT) |
 | `--tier full` | ~$0.95 | + Claude + Codex adversarial (with fallback) |
 
+**All Scripts (v2.55)**:
+| Script | Key Options |
+|--------|-------------|
+| `curator-discovery.sh` | `--type`, `--lang`, `--query`, `--tier`, `--max-results`, `--output` |
+| `curator-scoring.sh` | `--input`, `--output`, `--tier`, `--context` (NEW), `--verbose` |
+| `curator-rank.sh` | `--input`, `--output`, `--top-n`, `--max-per-org` |
+| `curator-ingest.sh` | `--repo`, `--output-dir`, `--approve`, `--source`, `--depth` |
+| `curator-approve.sh` | `--repo`, `--all` |
+| `curator-reject.sh` | `--repo`, `--reason` |
+| `curator-learn.sh` | `--type`, `--lang`, `--repo`, `--all` |
+| `curator-queue.sh` | `--type`, `--lang` |
+
 **Usage**:
 ```bash
 # Full pipeline (economic tier, default)
 /curator full --type backend --lang typescript
 
-# Show ranking
+# Discovery with options
+/curator discovery --query "microservice" --max-results 200 --tier free
+
+# Scoring with context relevance (v2.55 NEW)
+/curator scoring --context "error handling,retry,resilience"
+
+# Custom ranking
+/curator rank --top-n 15 --max-per-org 3
+
+# Show ranking / queue
 /curator show --type backend --lang typescript
+/curator pending --type backend
 
-# Approve repos for learning
+# Approve/reject repos
 /curator approve nestjs/nest
-/curator approve prisma/prisma
+/curator approve --all
+/curator reject some/repo --reason "Low test coverage"
 
-# Execute learning on approved repos
+# Execute learning
 /curator learn --type backend --lang typescript
+/curator learn --repo nestjs/nest
+/curator learn --all
 ```
 
 ### Codex Planner (v2.50) - NEW
@@ -492,11 +517,19 @@ ralph fork-suggest "task"    # Find sessions to fork
 repo-learn https://github.com/python/cpython          # Learn from repo
 repo-learn https://github.com/fastapi/fastapi --category error_handling  # Focused
 
-# Repo Curator (v2.50)
+# Repo Curator (v2.55)
 ralph curator full --type backend --lang typescript   # Full pipeline
+ralph curator discovery --query "microservice" --max-results 200  # Custom search
+ralph curator scoring --context "error handling,retry"  # Context relevance (v2.55)
+ralph curator rank --top-n 15 --max-per-org 3         # Custom ranking
 ralph curator show --type backend --lang typescript   # View ranking
-ralph curator approve nestjs/nest                      # Approve repo
-ralph curator learn --type backend --lang typescript  # Learn from approved
+ralph curator pending --type backend                  # View queue
+ralph curator approve nestjs/nest                     # Approve single
+ralph curator approve --all                           # Approve all staged
+ralph curator reject some/repo --reason "Low quality" # Reject with reason
+ralph curator ingest --repo x/y --approve --source "patterns"  # Direct ingest
+ralph curator learn --repo nestjs/nest                # Learn specific
+ralph curator learn --all                             # Learn all approved
 
 # Codex Planning (v2.50)
 codex-plan "Design distributed system"                # Codex planning
