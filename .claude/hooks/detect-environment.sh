@@ -12,7 +12,7 @@
 #
 # Part of Ralph v2.44 Context Engineering - GitHub #15021 Workaround
 
-# VERSION: 2.57.4
+# VERSION: 2.57.5
 set -uo pipefail
 
 # Configuration

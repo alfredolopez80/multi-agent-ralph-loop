@@ -6,7 +6,7 @@
 # ============================================================================
 
 # Configuration
-# VERSION: 2.57.4
+# VERSION: 2.57.5
 # v2.57.1: Added JSON output (SEC-030) to prevent "empty output" error
 RALPH_DIR="${HOME}/.ralph"
 GOAL_FILE="${RALPH_DIR}/current_goal"

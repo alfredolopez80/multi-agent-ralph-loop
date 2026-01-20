@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VERSION: 2.57.4
+# VERSION: 2.57.5
 # Hook: state-sync.sh
 # Trigger: PostToolUse (Task completion, Bash with handoff commands)
 # Purpose: Ensure state consistency across all subsystems after operations

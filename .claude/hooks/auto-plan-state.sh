@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VERSION: 2.57.4
+# VERSION: 2.57.5
 # Hook: auto-plan-state.sh
 # Trigger: PostToolUse (Write) matcher: orchestrator-analysis
 # Purpose: Automatically create plan-state.json when orchestrator-analysis.md is written

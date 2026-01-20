@@ -1,6 +1,6 @@
 #!/bin/bash
 # todo-plan-sync.sh - Sync TodoWrite with plan-state.json
-# VERSION: 2.57.4
+# VERSION: 2.57.5
 #
 # Purpose: Synchronize TodoWrite tool usage with plan-state.json
 # This enables real-time progress tracking in the statusline.
@@ -17,7 +17,7 @@
 #   - {"continue": true}: Allow execution to continue
 #   - {"continue": true, "systemMessage": "..."}: Continue with feedback
 #
-# VERSION: 2.57.4
+# VERSION: 2.57.5
 # v2.57.2: Fixed JSON format (SEC-033) - use "decision" not "continue"
 
 set -euo pipefail

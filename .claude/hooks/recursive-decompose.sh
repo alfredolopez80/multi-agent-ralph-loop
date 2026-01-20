@@ -2,7 +2,7 @@
 # Recursive Decomposition Hook v2.46
 # Hook: PostToolUse (Task - orchestrator classification)
 # Purpose: Trigger recursive decomposition for complex tasks
-# VERSION: 2.57.4
+# VERSION: 2.57.5
 #
 # Based on RLM Paper: "Recursive sub-calling provides strong benefits
 # on information-dense inputs"

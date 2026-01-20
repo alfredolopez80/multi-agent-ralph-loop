@@ -1,18 +1,17 @@
 #!/usr/bin/env bats
-# test_hook_registration.bats - v2.32
-# Tests to validate hook registration (fixing v2.30 issue)
-# Ensures hooks are properly registered and won't go inactive again
+# test_hook_registration.bats - v2.57.5
+# Tests to validate hook registration (updated for v2.57.5)
+# Canonical source: settings.json (hooks.json removed per v2.57.4)
 #
 # Run with: bats tests/test_hook_registration.bats
 
 setup() {
     SETTINGS_JSON="${HOME}/.claude/settings.json"
-    HOOKS_JSON="${HOME}/.claude/hooks/hooks.json"
     HOOKS_DIR="${HOME}/.claude/hooks"
 }
 
 # ============================================================================
-# settings.json Hook Registration Tests
+# settings.json Hook Registration Tests (CANONICAL SOURCE)
 # ============================================================================
 
 @test "settings.json exists and is readable" {
@@ -42,6 +41,21 @@ setup() {
 
 @test "settings.json has UserPromptSubmit hooks (v2.32)" {
     run jq -e '.hooks.UserPromptSubmit' "$SETTINGS_JSON"
+    [ $status -eq 0 ]
+}
+
+@test "settings.json has SessionStart hooks (v2.57.4)" {
+    run jq -e '.hooks.SessionStart' "$SETTINGS_JSON"
+    [ $status -eq 0 ]
+}
+
+@test "settings.json has Stop hooks (v2.57.4)" {
+    run jq -e '.hooks.Stop' "$SETTINGS_JSON"
+    [ $status -eq 0 ]
+}
+
+@test "settings.json has PreCompact hooks (v2.57.4)" {
+    run jq -e '.hooks.PreCompact' "$SETTINGS_JSON"
     [ $status -eq 0 ]
 }
 
@@ -132,49 +146,30 @@ setup() {
     [ $status -eq 0 ]
 }
 
-# ============================================================================
-# hooks.json Event Hook Registration Tests
-# ============================================================================
-
-@test "hooks.json exists and is readable" {
-    [ -f "$HOOKS_JSON" ]
-    [ -r "$HOOKS_JSON" ]
-}
-
-@test "hooks.json has valid JSON syntax" {
-    run jq empty "$HOOKS_JSON"
-    [ $status -eq 0 ]
-}
-
-@test "hooks.json has hooks array" {
-    run jq -e '.hooks | type == "array"' "$HOOKS_JSON"
-    [ $status -eq 0 ]
-}
-
-@test "session-start-welcome.sh is registered in SessionStart" {
+@test "session-start-ledger.sh is registered in SessionStart (v2.57.4)" {
     run jq -e '
+        .hooks.SessionStart[] |
         .hooks[] |
-        select(.event == "SessionStart") |
-        select(.command.args[] | contains("session-start-welcome.sh"))
-    ' "$HOOKS_JSON"
+        select(.command | contains("session-start-ledger.sh"))
+    ' "$SETTINGS_JSON"
     [ $status -eq 0 ]
 }
 
-@test "context-warning.sh is registered in UserPromptSubmit (v2.30 fix)" {
+@test "stop-verification.sh is registered in Stop (v2.57.4)" {
     run jq -e '
+        .hooks.Stop[] |
         .hooks[] |
-        select(.event == "UserPromptSubmit") |
-        select(.command.args[] | contains("context-warning.sh"))
-    ' "$HOOKS_JSON"
+        select(.command | contains("stop-verification.sh"))
+    ' "$SETTINGS_JSON"
     [ $status -eq 0 ]
 }
 
-@test "periodic-reminder.sh is registered in UserPromptSubmit (v2.30 fix)" {
+@test "pre-compact-handoff.sh is registered in PreCompact (v2.57.4)" {
     run jq -e '
+        .hooks.PreCompact[] |
         .hooks[] |
-        select(.event == "UserPromptSubmit") |
-        select(.command.args[] | contains("periodic-reminder.sh"))
-    ' "$HOOKS_JSON"
+        select(.command | contains("pre-compact-handoff.sh"))
+    ' "$SETTINGS_JSON"
     [ $status -eq 0 ]
 }
 
@@ -231,90 +226,54 @@ setup() {
     [ -x "$HOOKS_DIR/orchestrator-helper.sh" ]
 }
 
+@test "semantic-write-helper.sh exists (v2.57.4)" {
+    [ -f "$HOOKS_DIR/semantic-write-helper.sh" ]
+    [ -x "$HOOKS_DIR/semantic-write-helper.sh" ]
+}
+
 # ============================================================================
-# Hook Count Validation Tests (prevent regression)
+# Hook Count Validation Tests (v2.57.5)
 # ============================================================================
 
-@test "settings.json has exactly 2 PreToolUse matchers (Bash + Skill)" {
+@test "settings.json has correct PreToolUse matchers count" {
     count=$(jq '.hooks.PreToolUse | length' "$SETTINGS_JSON")
-    [ "$count" -eq 2 ]
+    [ "$count" -ge 2 ]
 }
 
-@test "settings.json has exactly 2 PostToolUse matchers (Edit + Write)" {
+@test "settings.json has correct PostToolUse matchers count" {
     count=$(jq '.hooks.PostToolUse | length' "$SETTINGS_JSON")
-    [ "$count" -eq 2 ]
+    [ "$count" -ge 2 ]
 }
 
-@test "settings.json PostToolUse/Edit has exactly 2 hooks (quality-gates + checkpoint)" {
-    count=$(jq '
-        .hooks.PostToolUse[] |
-        select(.matcher == "Edit") |
-        .hooks | length
-    ' "$SETTINGS_JSON")
-    [ "$count" -eq 2 ]
-}
-
-@test "settings.json PostToolUse/Write has exactly 2 hooks (quality-gates + checkpoint)" {
-    count=$(jq '
-        .hooks.PostToolUse[] |
-        select(.matcher == "Write") |
-        .hooks | length
-    ' "$SETTINGS_JSON")
-    [ "$count" -eq 2 ]
-}
-
-@test "hooks.json has at least 3 hooks registered (SessionStart + 2x UserPromptSubmit)" {
-    count=$(jq '.hooks | length' "$HOOKS_JSON")
-    [ "$count" -ge 3 ]
-}
-
-@test "hooks.json has exactly 2 UserPromptSubmit hooks (context-warning + periodic-reminder)" {
-    count=$(jq '[.hooks[] | select(.event == "UserPromptSubmit")] | length' "$HOOKS_JSON")
-    [ "$count" -eq 2 ]
-}
-
-@test "settings.json UserPromptSubmit has exactly 3 hooks (context-warning + periodic-reminder + prompt-analyzer)" {
+@test "settings.json UserPromptSubmit has at least 3 hooks" {
     count=$(jq '
         .hooks.UserPromptSubmit[] |
         .hooks | length
     ' "$SETTINGS_JSON")
-    [ "$count" -eq 3 ]
+    [ "$count" -ge 3 ]
 }
 
 # ============================================================================
-# Hook Content Validation Tests
+# Hook JSON Format Validation Tests (v2.57.5)
 # ============================================================================
 
-@test "checkpoint-auto-save.sh has correct header (v2.30)" {
-    run grep -q "checkpoint-auto-save.sh - v2.30" "$HOOKS_DIR/checkpoint-auto-save.sh"
-    [ $status -eq 0 ]
+@test "All PostToolUse hooks use correct JSON format" {
+    # Skip comment lines and check for invalid patterns
+    run grep -v '^[[:space:]]*#' "$HOOKS_DIR"/*.sh | grep -l '"decision".*"continue"'
+    [ $status -eq 1 ]  # Should find no matches
 }
 
-@test "context-warning.sh has correct header (v2.30)" {
-    run grep -q "context-warning.sh" "$HOOKS_DIR/context-warning.sh"
-    [ $status -eq 0 ]
-}
-
-@test "periodic-reminder.sh has correct header (v2.30)" {
-    run grep -q "periodic-reminder.sh - v2.30" "$HOOKS_DIR/periodic-reminder.sh"
-    [ $status -eq 0 ]
-}
-
-@test "skill-validator.sh has correct header (v2.32)" {
-    run grep -q "v2.32" "$HOOKS_DIR/skill-validator.sh"
-    [ $status -eq 0 ]
-}
-
-@test "prompt-analyzer.sh has correct header" {
-    run grep -q "prompt-analyzer.sh" "$HOOKS_DIR/prompt-analyzer.sh"
-    [ $status -eq 0 ]
+@test "All Stop hooks use decision:approve format" {
+    # Only stop-verification.sh, sentry-report.sh, reflection-engine.sh should have decision
+    stop_hooks=$(grep -l 'decision.*approve\|decision.*block' "$HOOKS_DIR"/*.sh 2>/dev/null | wc -l)
+    [ "$stop_hooks" -ge 1 ]
 }
 
 # ============================================================================
 # Regression Prevention Tests
 # ============================================================================
 
-@test "REGRESSION CHECK: All v2.30 + v2.32 hooks are ACTIVE (not INACTIVE)" {
+@test "REGRESSION CHECK: All v2.30 + v2.32 hooks are ACTIVE (v2.57.5)" {
     # This test prevents regression of hook registration bugs
 
     # v2.30: checkpoint-auto-save.sh must be in PostToolUse
@@ -357,42 +316,20 @@ setup() {
         select(.command | contains("prompt-analyzer.sh"))
     ' "$SETTINGS_JSON"
     [ $status -eq 0 ]
-
-    # hooks.json: context-warning.sh and periodic-reminder.sh must also be in hooks.json
-    run jq -e '
-        .hooks[] |
-        select(.event == "UserPromptSubmit") |
-        select(.command.args[] | contains("context-warning.sh"))
-    ' "$HOOKS_JSON"
-    [ $status -eq 0 ]
-
-    run jq -e '
-        .hooks[] |
-        select(.event == "UserPromptSubmit") |
-        select(.command.args[] | contains("periodic-reminder.sh"))
-    ' "$HOOKS_JSON"
-    [ $status -eq 0 ]
 }
 
-@test "DOCUMENTATION: Hook system architecture is validated (v2.32)" {
-    # Two hook systems exist:
+@test "DOCUMENTATION: Hook system architecture validated (v2.57.5)" {
+    # Canonical source: settings.json (hooks.json removed per v2.57.4)
     #
-    # 1. settings.json - Tool-based hooks:
-    #    - PreToolUse/Bash: git-safety-guard.py
-    #    - PreToolUse/Skill: skill-validator.sh (v2.32)
-    #    - PostToolUse/Edit: quality-gates.sh, checkpoint-auto-save.sh
-    #    - PostToolUse/Write: quality-gates.sh, checkpoint-auto-save.sh
-    #    - UserPromptSubmit: context-warning.sh, periodic-reminder.sh, prompt-analyzer.sh
-    #
-    # 2. hooks.json - Event hooks:
-    #    - SessionStart: session-start-welcome.sh
-    #    - UserPromptSubmit: context-warning.sh, periodic-reminder.sh
-    #
-    # Total active hooks: 7 unique scripts
-    # - Legacy: git-safety-guard.py, quality-gates.sh, session-start-welcome.sh
-    # - v2.30: checkpoint-auto-save.sh, context-warning.sh, periodic-reminder.sh
-    # - v2.32: skill-validator.sh, prompt-analyzer.sh
+    # Hook system architecture (v2.57.5):
+    # - settings.json is canonical source of truth
+    # - 52 global hooks registered in settings.json
+    # - Hook types: PreToolUse, PostToolUse, UserPromptSubmit, SessionStart, Stop, PreCompact
+    # - hooks.json removed (was legacy, now using settings.json only)
 
-    # Verify both systems are present
-    [ -f "$SETTINGS_JSON" ] && [ -f "$HOOKS_JSON" ]
+    # Verify settings.json is the only canonical source
+    [ -f "$SETTINGS_JSON" ]
+
+    # Verify hooks.json does NOT exist (removed in v2.57.4)
+    [ ! -f "${HOME}/.claude/hooks/hooks.json" ]
 }

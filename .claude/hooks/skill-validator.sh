@@ -9,7 +9,7 @@
 # - File references (validations_ref, sharp_edges_ref, collaboration_ref)
 # - Collaboration rules integrity
 
-# VERSION: 2.57.4
+# VERSION: 2.57.5
 set -euo pipefail
 
 # Configuration

@@ -10,7 +10,7 @@
 
 # Note: Not using set -e because this is a non-blocking hook
 # Errors should not interrupt the main workflow
-# VERSION: 2.57.4
+# VERSION: 2.57.5
 # v2.57.2: Restructured to output all content as JSON (SEC-029)
 # v2.57.1: Added 3s timeout to claude command to prevent hook timeout
 # v2.47: Adjusted thresholds for proactive compaction (75%/85%)

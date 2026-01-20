@@ -12,7 +12,7 @@
 # v2.57.0: Also writes to SEMANTIC memory (not just episodic)
 # Fixes Issue #7 - ensures patterns are persisted for future reference
 #
-# VERSION: 2.57.4
+# VERSION: 2.57.5
 # SECURITY: SEC-006 compliant
 
 set -euo pipefail

@@ -3,7 +3,7 @@
 # Triggered by: PostToolUse(Bash(gh api *)) in find-bugs skill
 # Once: true
 
-# VERSION: 2.57.4
+# VERSION: 2.57.5
 set -euo pipefail
 
 # Only run if Sentry is configured

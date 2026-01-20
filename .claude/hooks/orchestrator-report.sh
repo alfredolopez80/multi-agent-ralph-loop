@@ -12,7 +12,7 @@
 # - Reports learning outcomes
 # - Provides recommendations for next steps
 #
-# VERSION: 2.57.4
+# VERSION: 2.57.5
 # SECURITY: SEC-006 compliant
 # OUTPUT: JSON report to stdout
 
@@ -177,5 +177,6 @@ fi
 log "=== Report Generation Complete ==="
 
 # Stop hook output format (per CLAUDE.md conventions)
+# Stop hooks MUST use {"decision": "approve"} or {"decision": "block"}
 # Only output the decision JSON - report is saved to file
-echo "{\"decision\": \"continue\"}"
+echo '{"decision": "approve"}'

@@ -14,7 +14,7 @@
 #
 # The goal is autonomous self-improvement through proactive learning.
 #
-# VERSION: 2.57.4
+# VERSION: 2.57.5
 # v2.57.2: Fixed JSON output (SEC-034) - must output JSON, not silent exit
 # SECURITY: SEC-006 compliant
 
