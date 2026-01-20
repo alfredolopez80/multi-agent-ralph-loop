@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.57.3
+# Multi-Agent Ralph v2.57.5
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
@@ -641,7 +641,7 @@ ralph handoff create      # Create handoff
 
 ---
 
-## Hooks (49 registered) - v2.57.0
+## Hooks (52 registered) - v2.57.4
 
 | Event Type | Purpose |
 |------------|---------|

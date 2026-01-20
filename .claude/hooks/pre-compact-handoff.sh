@@ -20,7 +20,7 @@
 #
 # Part of Ralph v2.44 Context Engineering - GitHub #15021 Workaround
 
-# VERSION: 2.57.0
+# VERSION: 2.57.5
 set -euo pipefail
 
 # Configuration
@@ -76,7 +76,7 @@ log "INFO" "PreCompact hook triggered - session: $SESSION_ID, transcript: $TRANS
 # Check if handoff feature is enabled (default: true)
 if ! check_feature_enabled "RALPH_ENABLE_HANDOFF" "true"; then
     log "INFO" "Handoff feature disabled via features.json"
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -194,4 +194,4 @@ python3 "$HANDOFF_SCRIPT" cleanup --days 7 --keep-min 20 >> "$LOG_FILE" 2>&1 || 
 log "INFO" "PreCompact hook completed successfully"
 
 # Return success (PreCompact cannot block)
-echo '{"decision": "continue"}'
+echo '{"continue": true}'

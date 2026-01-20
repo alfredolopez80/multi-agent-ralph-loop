@@ -3,7 +3,7 @@
 # Triggered by: Stop (orchestrator completion)
 # Once: true
 
-# VERSION: 2.57.3
+# VERSION: 2.57.4
 # v2.57.3: Added proper Stop hook JSON output (SEC-039)
 set -euo pipefail
 

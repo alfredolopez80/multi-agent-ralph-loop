@@ -7,7 +7,7 @@
 # $2 = path absoluto del proyecto
 # $3 = instrucción del usuario
 
-# VERSION: 2.57.0
+# VERSION: 2.57.4
 TASK_TYPE="${1:-technical_complex}"
 PROJECT_PATH="${2:-$(pwd)}"
 USER_INSTRUCTION="$3"

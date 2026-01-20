@@ -8,7 +8,7 @@
 #
 # Fixes Issue #7: semantic memory populated in real-time, not just at session end
 #
-# VERSION: 2.57.0
+# VERSION: 2.57.4
 # SECURITY: SEC-006 compliant
 
 set -euo pipefail
