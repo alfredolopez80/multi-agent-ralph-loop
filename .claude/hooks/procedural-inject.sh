@@ -137,22 +137,25 @@ mkdir -p "$LOG_DIR"
 } >> "$LOG_DIR/procedural-inject-$(date +%Y%m%d).log" 2>/dev/null || true
 
 # Prepare context injection
+# SEC-027: Use printf instead of echo -e to avoid escape interpretation
+RULES_TEXT=$(printf '%b' "$MATCHING_RULES")
 CONTEXT="[Procedural Memory - Learned Behaviors]
 
 Based on patterns from past sessions, apply these behaviors:
 
-$(echo -e "$MATCHING_RULES")
+${RULES_TEXT}
 
 These rules have been learned from successful (and failed) past work."
 
-# Escape for JSON
-CONTEXT_ESCAPED=$(echo "$CONTEXT" | jq -R -s '.')
-
-echo "{
-    \"decision\": \"continue\",
-    \"additionalContext\": $CONTEXT_ESCAPED,
-    \"procedural_injection\": {
-        \"rules_matched\": $MATCH_COUNT,
-        \"timestamp\": \"$(date -Iseconds)\"
-    }
-}"
+# Use jq for safe JSON construction
+jq -n --arg ctx "$CONTEXT" \
+    --argjson rules_matched "$MATCH_COUNT" \
+    --arg ts "$(date -Iseconds)" \
+    '{
+        decision: "continue",
+        additionalContext: $ctx,
+        procedural_injection: {
+            rules_matched: $rules_matched,
+            timestamp: $ts
+        }
+    }'

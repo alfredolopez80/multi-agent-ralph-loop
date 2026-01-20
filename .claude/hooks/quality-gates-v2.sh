@@ -154,7 +154,8 @@ log_check() {
 
         json)
             CHECKS_RUN=$((CHECKS_RUN + 1))
-            if python3 -c "import json; json.load(open('$FILE_PATH'))" 2>&1; then
+            # SEC-025: Pass file path as argument, not interpolated in code
+            if python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$FILE_PATH" 2>&1; then
                 log_check "JSON syntax" "PASS" "Valid JSON"
                 CHECKS_PASSED=$((CHECKS_PASSED + 1))
             else
@@ -165,7 +166,8 @@ log_check() {
 
         yaml|yml)
             CHECKS_RUN=$((CHECKS_RUN + 1))
-            if python3 -c "import yaml; yaml.safe_load(open('$FILE_PATH'))" 2>&1; then
+            # SEC-025: Pass file path as argument, not interpolated in code
+            if python3 -c "import yaml,sys; yaml.safe_load(open(sys.argv[1]))" "$FILE_PATH" 2>&1; then
                 log_check "YAML syntax" "PASS" "Valid YAML"
                 CHECKS_PASSED=$((CHECKS_PASSED + 1))
             else
@@ -334,42 +336,44 @@ log_check() {
     echo "  Summary: $CHECKS_PASSED/$CHECKS_RUN checks passed"
     if [[ -n "$BLOCKING_ERRORS" ]]; then
         echo "  BLOCKING ERRORS:"
-        echo -e "    $BLOCKING_ERRORS"
+        # SEC-028: Use printf instead of echo -e in logs too
+        printf '    %b\n' "$BLOCKING_ERRORS"
     fi
     if [[ -n "$ADVISORY_WARNINGS" ]]; then
         echo "  ADVISORY WARNINGS (not blocking):"
-        echo -e "    $ADVISORY_WARNINGS"
+        printf '    %b\n' "$ADVISORY_WARNINGS"
     fi
     echo ""
 
 } >> "$LOG_FILE" 2>&1
 
 # Prepare response (PostToolUse schema: "continue" boolean, not "decision" string)
+# SEC-026: Use printf instead of echo -e to avoid escape sequence interpretation
 if [[ -n "$BLOCKING_ERRORS" ]]; then
     # Quality issues - BLOCK
-    ERRORS_JSON=$(echo -e "$BLOCKING_ERRORS" | jq -R -s '.')
-    WARNINGS_JSON=$(echo -e "$ADVISORY_WARNINGS" | jq -R -s '.')
-    echo "{
-        \"continue\": false,
-        \"reason\": \"Quality gate failed: blocking errors found\",
-        \"blocking_errors\": $ERRORS_JSON,
-        \"advisory_warnings\": $WARNINGS_JSON,
-        \"checks\": {\"passed\": $CHECKS_PASSED, \"total\": $CHECKS_RUN}
-    }"
+    ERRORS_JSON=$(printf '%b' "$BLOCKING_ERRORS" | jq -R -s '.')
+    WARNINGS_JSON=$(printf '%b' "$ADVISORY_WARNINGS" | jq -R -s '.')
+    jq -n --argjson cont false \
+        --arg reason "Quality gate failed: blocking errors found" \
+        --argjson errors "$ERRORS_JSON" \
+        --argjson warnings "$WARNINGS_JSON" \
+        --argjson passed "$CHECKS_PASSED" \
+        --argjson total "$CHECKS_RUN" \
+        '{continue: $cont, reason: $reason, blocking_errors: $errors, advisory_warnings: $warnings, checks: {passed: $passed, total: $total}}'
 else
     # No blocking errors - CONTINUE (with warnings if any)
     if [[ -n "$ADVISORY_WARNINGS" ]]; then
-        WARNINGS_JSON=$(echo -e "$ADVISORY_WARNINGS" | jq -R -s '.')
-        echo "{
-            \"continue\": true,
-            \"advisory_warnings\": $WARNINGS_JSON,
-            \"note\": \"Quality over consistency: style issues noted but not blocking\",
-            \"checks\": {\"passed\": $CHECKS_PASSED, \"total\": $CHECKS_RUN}
-        }"
+        WARNINGS_JSON=$(printf '%b' "$ADVISORY_WARNINGS" | jq -R -s '.')
+        jq -n --argjson cont true \
+            --argjson warnings "$WARNINGS_JSON" \
+            --arg note "Quality over consistency: style issues noted but not blocking" \
+            --argjson passed "$CHECKS_PASSED" \
+            --argjson total "$CHECKS_RUN" \
+            '{continue: $cont, advisory_warnings: $warnings, note: $note, checks: {passed: $passed, total: $total}}'
     else
-        echo "{
-            \"continue\": true,
-            \"checks\": {\"passed\": $CHECKS_PASSED, \"total\": $CHECKS_RUN}
-        }"
+        jq -n --argjson cont true \
+            --argjson passed "$CHECKS_PASSED" \
+            --argjson total "$CHECKS_RUN" \
+            '{continue: $cont, checks: {passed: $passed, total: $total}}'
     fi
 fi
