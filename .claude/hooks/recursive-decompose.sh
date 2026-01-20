@@ -52,7 +52,8 @@ LOG_FILE="$LOG_DIR/recursive-decompose-$(date +%Y%m%d).log"
         CONTEXT_REQ=$(jq -r '.classification.context_requirement // "FITS"' "$PLAN_STATE_FILE")
         CURRENT_DEPTH=$(jq -r '.recursion.depth // 0' "$PLAN_STATE_FILE")
         MAX_DEPTH=$(jq -r '.recursion.max_depth // 3' "$PLAN_STATE_FILE")
-        MAX_CHILDREN=${MAX_CHILDREN:-5}  # Default: max 5 sub-orchestrators per level
+        # SEC-024: Use fixed value for max_children (not from environment)
+        MAX_CHILDREN=$(jq -r '.recursion.max_children // 5' "$PLAN_STATE_FILE")
 
         echo "  Classification:"
         echo "    Workflow: $WORKFLOW_ROUTE"

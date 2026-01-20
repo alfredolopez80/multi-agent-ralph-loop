@@ -49,12 +49,14 @@ main() {
     # Only proceed if this is a Write to orchestrator-analysis.md
     if [[ "$file_path" != *"orchestrator-analysis.md" ]]; then
         log "Skipping: not orchestrator-analysis.md"
+        echo '{"continue": true}'
         exit 0
     fi
 
     # Verify analysis file exists
     if [[ ! -f "$ANALYSIS_FILE" ]]; then
         log "Analysis file not found: $ANALYSIS_FILE"
+        echo '{"continue": true}'
         exit 0
     fi
 
@@ -180,12 +182,18 @@ main() {
         chmod 600 "$PLAN_STATE_FILE"
         log "SUCCESS: Created $PLAN_STATE_FILE with ${step_id} steps"
 
-        # Output for Claude to see
-        echo "plan-state-created: $PLAN_STATE_FILE"
-        echo "steps: $(echo "$steps_json" | jq 'length')"
+        # Output for Claude to see (in additionalContext)
+        local step_count
+        step_count=$(echo "$steps_json" | jq 'length')
+        log "Created plan-state with $step_count steps"
+
+        # PostToolUse JSON response with context
+        jq -n --arg msg "plan-state-created: $PLAN_STATE_FILE with $step_count steps" \
+            '{continue: true, additionalContext: $msg}'
     else
         rm -f "$temp_file"
         log "ERROR: Failed to create plan-state.json"
+        echo '{"continue": true}'
         exit 1
     fi
 }

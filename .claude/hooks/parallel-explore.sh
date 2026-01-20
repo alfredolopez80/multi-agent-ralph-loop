@@ -75,7 +75,10 @@ echo "[]" > "$WEBHINTS_FILE"
     (
         if command -v tldr &>/dev/null && [[ -d "$PROJECT_DIR/.tldr" ]]; then
             echo "  [1/4] Running semantic search..." >> "$LOG_FILE"
-            timeout 30 tldr semantic "$KEYWORDS" "$PROJECT_DIR" 2>/dev/null | head -50 > "$SEMANTIC_FILE" || echo "[]" > "$SEMANTIC_FILE"
+            # SEC-022: Sanitize keywords before passing to external command
+            local keywords_sanitized
+            keywords_sanitized=$(echo "$KEYWORDS" | tr -cd 'a-zA-Z0-9 _.,:-' | head -c 200)
+            timeout 30 tldr semantic -- "$keywords_sanitized" "$PROJECT_DIR" 2>/dev/null | head -50 > "$SEMANTIC_FILE" || echo "[]" > "$SEMANTIC_FILE"
         else
             echo "  [1/4] Skipping semantic search (tldr not available)" >> "$LOG_FILE"
         fi
@@ -98,10 +101,11 @@ echo "[]" > "$WEBHINTS_FILE"
     (
         if command -v ast-grep &>/dev/null || command -v sg &>/dev/null; then
             echo "  [3/4] Running pattern search..." >> "$LOG_FILE"
-            # Sanitize pattern to prevent injection (whitelist alphanumeric only)
+            # SEC-023: Sanitize pattern to prevent injection (whitelist alphanumeric only)
             PATTERN_RAW=$(echo "$KEYWORDS" | grep -oE '\b(function|class|interface|type|const|def|async)\s+[a-zA-Z0-9_]+' | head -1 || echo "function main")
             PATTERN_SAFE=$(echo "$PATTERN_RAW" | sed 's/[^a-zA-Z0-9_ ]//g')
-            timeout 30 ast-grep --pattern "$PATTERN_SAFE" --json "$PROJECT_DIR" 2>/dev/null | head -100 > "$PATTERN_FILE" || echo "[]" > "$PATTERN_FILE"
+            # Use -- to prevent flag injection even with sanitized input
+            timeout 30 ast-grep --pattern "$PATTERN_SAFE" --json -- "$PROJECT_DIR" 2>/dev/null | head -100 > "$PATTERN_FILE" || echo "[]" > "$PATTERN_FILE"
         else
             echo "  [3/4] Skipping pattern search (ast-grep not available)" >> "$LOG_FILE"
         fi
