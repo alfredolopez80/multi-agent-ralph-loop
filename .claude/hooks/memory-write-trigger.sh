@@ -123,8 +123,9 @@ CONTEXT_ESCAPED=$(echo "$CONTEXT" | jq -R -s '.')
 # Escape MATCHED for safe JSON inclusion (SEC-002)
 MATCHED_ESCAPED=$(escape_json "$MATCHED")
 
+# v2.57.5: Fixed JSON format - UserPromptSubmit hooks use {"continue": true} NOT {"decision": "continue"}
 echo "{
-    \"decision\": \"continue\",
+    \"continue\": true,
     \"additionalContext\": $CONTEXT_ESCAPED,
     \"memory_trigger\": {
         \"detected\": true,
