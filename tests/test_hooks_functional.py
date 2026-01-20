@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """
-Functional tests for v2.45.2 hooks.
+Functional tests for v2.57.3 hooks.
 
 These tests verify actual BEHAVIOR, not just existence.
 They run the hooks with realistic inputs and validate outputs.
 
-VERSION: 2.45.2
+VERSION: 2.57.3
+CHANGES from 2.45.2:
+- Updated JSON format validation (SEC-039): use "continue" not "decision"
+- Added tests for new v2.55+ hooks
+- Fixed functional tests for plan-state hooks
 """
 
 import json
@@ -219,15 +223,15 @@ class TestInjectSessionContextHookFunctional:
         # Parse output as JSON
         output = json.loads(result.stdout)
 
-        # Verify structure - PreToolUse returns decision field
-        assert "decision" in output
-        assert output["decision"] == "continue"
+        # Verify structure - PreToolUse returns continue field (per SEC-039)
+        assert "continue" in output, f"Expected 'continue' field, got: {output}"
+        assert output["continue"] is True, f"Expected continue=True, got: {output}"
         # additionalContext is provided at root level for PreToolUse
         assert "additionalContext" in output
         assert "Task tool allowed" in output["additionalContext"]
 
     def test_hook_skips_non_task_tools(self, hook_path, tmp_path):
-        """Hook should return decision=continue for non-Task tools."""
+        """Hook should return continue=true for non-Task tools."""
         hook_input = json.dumps({
             "tool_name": "Read",
             "session_id": "test-session-456"
@@ -245,8 +249,8 @@ class TestInjectSessionContextHookFunctional:
         assert result.returncode == 0
 
         output = json.loads(result.stdout)
-        # PreToolUse returns decision=continue for non-Task tools
-        assert output == {"decision": "continue"}
+        # PreToolUse returns continue=true for non-Task tools (per SEC-039)
+        assert output == {"continue": True}
 
     def test_hook_performance_under_5_seconds(self, hook_path, tmp_path):
         """Hook should complete within 5 seconds (well under 15s timeout)."""
@@ -445,9 +449,9 @@ Implement user authentication
 
         output = json.loads(result.stdout)
 
-        # Verify structure - PreToolUse returns decision=continue
-        assert "decision" in output
-        assert output["decision"] == "continue"
+        # Verify structure - PreToolUse returns continue=true (per SEC-039)
+        assert "continue" in output, f"Expected 'continue' field, got: {output}"
+        assert output["continue"] is True, f"Expected continue=True, got: {output}"
         # PreToolUse provides info about Task tool handling
         assert "additionalContext" in output
         # Context injection not available for PreToolUse, but hook runs successfully
