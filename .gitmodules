@@ -1,0 +1,3 @@
+[submodule "apps/open-agent-ui"]
+	path = apps/open-agent-ui
+	url = https://github.com/alfredolopez80/open-agent-ui.git
