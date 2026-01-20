@@ -1,0 +1,310 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "plan-state-v2.54",
+  "title": "Plan State v2.54",
+  "description": "Structured plan tracking with RLM-inspired classification, phases, barriers, and learning state",
+  "type": "object",
+  "required": ["plan_id", "task", "classification", "steps", "loop_state", "learning_state"],
+  "properties": {
+    "plan_id": {
+      "type": "string",
+      "description": "Unique identifier for this plan"
+    },
+    "task": {
+      "type": "string",
+      "description": "Original task description"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "version": {
+      "type": "string",
+      "default": "2.54.0"
+    },
+    "classification": {
+      "type": "object",
+      "required": ["complexity", "information_density", "context_requirement", "workflow_route"],
+      "properties": {
+        "complexity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Task complexity score (1-10)"
+        },
+        "information_density": {
+          "type": "string",
+          "enum": ["CONSTANT", "LINEAR", "QUADRATIC"],
+          "description": "How answer complexity scales with input (RLM paper insight)"
+        },
+        "context_requirement": {
+          "type": "string",
+          "enum": ["FITS", "CHUNKED", "RECURSIVE"],
+          "description": "Whether task fits in context window"
+        },
+        "workflow_route": {
+          "type": "string",
+          "enum": ["FAST_PATH", "STANDARD", "PARALLEL_CHUNKS", "RECURSIVE_DECOMPOSE"],
+          "description": "Determined workflow based on classification"
+        },
+        "model_routing": {
+          "type": "string",
+          "description": "Recommended primary model"
+        },
+        "adversarial_required": {
+          "type": "boolean",
+          "description": "Whether adversarial validation is required"
+        }
+      }
+    },
+    "recursion": {
+      "type": "object",
+      "description": "Recursive decomposition state (RLM-inspired)",
+      "properties": {
+        "depth": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Current recursion depth"
+        },
+        "max_depth": {
+          "type": "integer",
+          "default": 3,
+          "description": "Maximum allowed recursion depth"
+        },
+        "parent_id": {
+          "type": ["string", "null"],
+          "description": "Parent plan ID if this is a sub-orchestration"
+        },
+        "needs_decomposition": {
+          "type": "boolean",
+          "default": false
+        },
+        "decomposition_triggered": {
+          "type": "boolean",
+          "default": false
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "chunk_id": { "type": "string" },
+              "sub_plan_id": { "type": "string" },
+              "chunk_description": { "type": "string" },
+              "status": {
+                "type": "string",
+                "enum": ["pending", "in_progress", "completed", "failed"]
+              },
+              "depth": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "in_progress", "completed", "verified", "blocked"]
+          },
+          "spec": {
+            "type": "object",
+            "description": "Expected specification for this step",
+            "properties": {
+              "file": { "type": "string" },
+              "exports": { "type": "array", "items": { "type": "string" } },
+              "signatures": { "type": "object" },
+              "tests": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "actual": {
+            "type": "object",
+            "description": "Actual implementation results",
+            "properties": {
+              "exports": { "type": "array", "items": { "type": "string" } },
+              "files_modified": { "type": "array", "items": { "type": "string" } },
+              "updated_at": { "type": "string", "format": "date-time" }
+            }
+          },
+          "drift": {
+            "type": "object",
+            "description": "Plan-Sync drift detection",
+            "properties": {
+              "detected": { "type": "boolean", "default": false },
+              "items": { "type": "array", "items": { "type": "string" } },
+              "needs_sync": { "type": "boolean", "default": false },
+              "synced_at": { "type": "string", "format": "date-time" }
+            }
+          },
+          "lsa_verification": {
+            "type": "object",
+            "description": "Lead Software Architect verification",
+            "properties": {
+              "pre_check": {
+                "type": "object",
+                "properties": {
+                  "passed": { "type": "boolean" },
+                  "notes": { "type": "string" },
+                  "timestamp": { "type": "string", "format": "date-time" }
+                }
+              },
+              "post_check": {
+                "type": "object",
+                "properties": {
+                  "passed": { "type": "boolean" },
+                  "notes": { "type": "string" },
+                  "timestamp": { "type": "string", "format": "date-time" }
+                }
+              }
+            }
+          },
+          "micro_gate": {
+            "type": "object",
+            "description": "Per-step quality gate (3-Fix Rule)",
+            "properties": {
+              "attempts": { "type": "integer", "default": 0 },
+              "max_attempts": { "type": "integer", "default": 3 },
+              "passed": { "type": "boolean" },
+              "errors": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "loop_state": {
+      "type": "object",
+      "properties": {
+        "current_iteration": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "max_iterations": {
+          "type": "integer",
+          "default": 25
+        },
+        "validate_attempts": {
+          "type": "integer",
+          "default": 0
+        },
+        "status": {
+          "type": "string",
+          "enum": ["not_started", "executing", "validating", "verified_done", "failed"]
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "description": "Quality-first validation results",
+      "properties": {
+        "correctness": {
+          "type": "object",
+          "properties": {
+            "passed": { "type": "boolean" },
+            "blocking": { "type": "boolean", "default": true },
+            "issues": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "quality": {
+          "type": "object",
+          "properties": {
+            "passed": { "type": "boolean" },
+            "blocking": { "type": "boolean", "default": true },
+            "issues": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "consistency": {
+          "type": "object",
+          "properties": {
+            "passed": { "type": "boolean" },
+            "blocking": { "type": "boolean", "default": false },
+            "issues": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "adversarial": {
+          "type": "object",
+          "properties": {
+            "passed": { "type": "boolean" },
+            "blocking": { "type": "boolean" },
+            "dual_model_agreement": { "type": "boolean" },
+            "coverage_percent": { "type": "number" },
+            "findings": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "exploration": {
+      "type": "object",
+      "description": "Parallel exploration results",
+      "properties": {
+        "completed": { "type": "boolean", "default": false },
+        "semantic_matches": { "type": "array" },
+        "file_structure": { "type": "object" },
+        "patterns_found": { "type": "array" },
+        "dependencies": { "type": "object" }
+      }
+    },
+    "learning_state": {
+      "type": "object",
+      "description": "Learning system state for repository patterns and rules (v2.54)",
+      "properties": {
+        "recommended": {
+          "type": "boolean",
+          "description": "Whether learning was recommended for this task"
+        },
+        "reason": {
+          "type": ["string", "null"],
+          "description": "Reason for learning recommendation (e.g., 'ZERO relevant rules')"
+        },
+        "curator_invoked": {
+          "type": "boolean",
+          "description": "Whether curator was invoked"
+        },
+        "rules_learned": {
+          "type": "integer",
+          "description": "Number of rules learned from curator"
+        },
+        "last_recommendation_timestamp": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "When the learning recommendation was made"
+        },
+        "ruleset_version": {
+          "type": ["string", "null"],
+          "description": "Version of the ruleset used"
+        },
+        "last_learned_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "When rules were last learned"
+        },
+        "sources": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Source repositories for learned rules"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "session_id": { "type": "string" },
+        "worktree": { "type": "string" },
+        "started_at": { "type": "string", "format": "date-time" },
+        "completed_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}
