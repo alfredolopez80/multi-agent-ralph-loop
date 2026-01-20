@@ -3,7 +3,7 @@
 # Hook: UserPromptSubmit
 # Purpose: Detect /curator commands and trigger appropriate actions
 #
-# VERSION: 2.57.4
+# VERSION: 2.57.5
 # v2.52: Fixed JSON output and bash syntax error (local outside function)
 # Schema: {"continue": true} or {"continue": true, "systemMessage": "..."}
 

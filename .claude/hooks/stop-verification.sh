@@ -3,7 +3,7 @@
 # Origen: planning-with-files pattern
 # v2.45.4 - Added JSON return for Claude Code hook protocol
 
-# VERSION: 2.57.4
+# VERSION: 2.57.5
 # v2.57.3: Fixed JSON format - Stop hooks use {"decision": "approve|block"} (SEC-038)
 set -euo pipefail
 

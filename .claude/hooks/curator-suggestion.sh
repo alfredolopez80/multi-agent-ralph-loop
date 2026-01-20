@@ -6,7 +6,7 @@
 # Checks if user mentions learning patterns, best practices, or similar
 # and if the curator corpus is empty, suggests running /curator.
 #
-# VERSION: 2.57.4
+# VERSION: 2.57.5
 # SECURITY: SEC-006 compliant with ERR trap for guaranteed JSON output
 
 set -euo pipefail

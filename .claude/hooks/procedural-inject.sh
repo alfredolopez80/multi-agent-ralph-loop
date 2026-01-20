@@ -6,7 +6,7 @@
 # Reads ~/.ralph/procedural/rules.json and injects matching rules
 # based on task description and tags.
 #
-# VERSION: 2.57.4
+# VERSION: 2.57.5
 # v2.57.2: Fixed JSON newline escaping (SEC-032)
 # SECURITY: Added ERR trap for guaranteed JSON output
 

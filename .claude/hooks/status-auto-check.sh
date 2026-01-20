@@ -1,6 +1,6 @@
 #!/bin/bash
 # status-auto-check.sh - Auto-show status periodically
-# VERSION: 2.57.4
+# VERSION: 2.57.5
 # v2.57.3: Fixed LAST remaining wrong format on line 119 (SEC-036)
 # v2.57.2: Fixed JSON output format (SEC-035) - use {"continue": true}
 #

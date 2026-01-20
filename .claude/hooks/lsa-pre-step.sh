@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VERSION: 2.57.4
+# VERSION: 2.57.5
 # Hook: LSA Pre-Step Verification
 # Trigger: PreToolUse (when tool is Edit or Write in orchestrated context)
 # Purpose: Verify architecture compliance BEFORE implementation

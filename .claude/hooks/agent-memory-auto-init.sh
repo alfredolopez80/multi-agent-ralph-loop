@@ -6,7 +6,7 @@
 # When a Task tool spawns an agent, this hook checks if the agent
 # has a memory buffer. If not, it initializes one automatically.
 #
-# VERSION: 2.57.4
+# VERSION: 2.57.5
 # v2.57.2: Fixed JSON output (SEC-034) - must output JSON, not silent exit
 # SECURITY: SEC-006 compliant with ERR trap for guaranteed clean exit
 

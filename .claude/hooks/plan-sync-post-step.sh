@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VERSION: 2.57.4
+# VERSION: 2.57.5
 # Hook: Plan-Sync Post-Step
 # Trigger: PostToolUse (after Edit or Write completes in orchestrated context)
 # Purpose: Detect drift and trigger Plan-Sync agent for downstream patching
