@@ -7,6 +7,91 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.55.0] - 2026-01-20
+
+### Added (Autonomous Self-Improvement System)
+
+**Severity**: ENHANCEMENT (P1)
+**Impact**: System now proactively learns and improves code quality autonomously
+
+This release introduces automated memory population and proactive self-improvement capabilities.
+
+#### New Hooks (6)
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `agent-memory-auto-init.sh` | PreToolUse (Task) | Auto-initializes agent memory buffers when agents spawn |
+| `semantic-auto-extractor.sh` | Stop | Extracts semantic facts from git diff (functions, classes, deps) |
+| `decision-extractor.sh` | PostToolUse (Edit/Write) | Detects architectural patterns and decisions |
+| `curator-suggestion.sh` | UserPromptSubmit | Suggests `/curator` when procedural memory is empty |
+| `orchestrator-auto-learn.sh` | PreToolUse (Task) | Triggers learning for complexity ≥7 tasks with insufficient memory |
+
+#### New Command
+
+```bash
+ralph health                    # Full memory system health report
+ralph health --compact          # One-line summary
+ralph health --json             # JSON output for scripts
+ralph health --fix              # Auto-fix critical issues
+```
+
+**Health Checks**: Semantic, Procedural, Episodic, Agent-Memory, Curator, Events, Ledgers, Handoffs, Checkpoints
+
+#### Key Features
+
+**Proactive Auto-Learning**
+- Two trigger conditions:
+  1. **ZERO relevant rules** (any complexity) → CRITICAL knowledge gap, REQUIRED learning
+  2. **Less than 3 rules AND complexity ≥7** → Insufficient for complex task
+- Detects domain: backend, frontend, security, database, devops
+- Recommends `/curator full --type <domain> --lang <lang>`
+- Severity levels: CRITICAL (zero rules) vs HIGH (insufficient for complexity)
+
+**Semantic Auto-Extraction**
+- Extracts from git diff: new functions, classes, dependencies
+- Supports: Python, TypeScript/JavaScript, Bash
+- Source tracking: `"source": "auto-extract"`
+- Deduplication to avoid repeated facts
+
+**Decision Detection**
+- Design patterns: Singleton, Factory, Observer, Repository, Decorator
+- Architectural: async/await, error handling, caching, logging, validation
+- Stored as episodes with 30-day TTL
+
+#### Bug Fixes
+
+**procedural-inject.sh**
+- Fixed invalid JSON format (`{"decision": "continue"}` → `exit 0` / `{"decision": "approve"}`)
+- PreToolUse hooks cannot inject context; now writes to file for SessionStart
+
+**reflection-engine.sh**
+- Added multi-source transcript fallback:
+  1. `~/.claude/projects/` (Claude Code transcripts)
+  2. `~/.ralph/ledgers/` (Ralph ledgers)
+  3. `~/.ralph/handoffs/` (Ralph handoffs)
+- Added `-s` flag check to skip empty files
+
+**ralph-health.sh**
+- Fixed `((var++))` arithmetic causing exit 1 with `set -e`
+- Changed to `var=$((var + 1))` pattern
+
+#### Configuration
+
+New options in `~/.ralph/config/memory-config.json`:
+
+```json
+{
+  "semantic": {
+    "auto_extract": true
+  },
+  "episodic": {
+    "extract_decisions": true
+  }
+}
+```
+
+---
+
 ## [2.54.0] - 2026-01-19
 
 ### Fixed (Unified State Machine Architecture)

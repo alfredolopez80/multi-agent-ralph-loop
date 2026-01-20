@@ -3714,6 +3714,21 @@ cmd_status() {
 }
 
 # ===============================================================================
+# v2.55: HEALTH - Memory System Health Check
+# ===============================================================================
+cmd_health() {
+    local HEALTH_SCRIPT="${HOME}/.claude/scripts/ralph-health.sh"
+
+    if [ ! -x "$HEALTH_SCRIPT" ]; then
+        log_error "Health script not found: $HEALTH_SCRIPT"
+        log_info "Install with: ralph self-update"
+        exit 1
+    fi
+
+    "$HEALTH_SCRIPT" "$@"
+}
+
+# ===============================================================================
 # v2.52: TRACE - Local Traceability System
 # ===============================================================================
 cmd_trace() {
@@ -7463,7 +7478,8 @@ cmd_curator() {
             echo "  ralph curator learn --all"
             ;;
         full)
-            bash "$CURATOR_SCRIPT" full "$@"
+            # curator.sh doesn't need "full" subcommand, just the options
+            bash "$CURATOR_SCRIPT" "$@"
             ;;
         show)
             bash "$QUEUE_SCRIPT" --type "${1:-}" --lang "${2:-}"
@@ -7867,7 +7883,7 @@ main() {
 
     # v2.22: Startup validation (skip for instant commands)
     case "$CMD" in
-        help|-h|--help|version|-v|--version|status) ;;
+        help|-h|--help|version|-v|--version|status|health) ;;
         *) startup_validation ;;
     esac
 
@@ -8189,6 +8205,10 @@ main() {
         # Utility
         status)
             cmd_status "$@"
+            ;;
+        health)
+            # v2.55: Memory system health check
+            cmd_health "$@"
             ;;
         ps|processes)
             # v2.54: Process status (was cmd_status before v2.52 conflict)
