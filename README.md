@@ -336,11 +336,11 @@ Claude will now consider learned patterns when:
 
 **Security**: Read-only analysis, atomic writes with backup, validated rules.
 
-### Repo Curator (v2.50) - NEW
+### Repo Curator (v2.55)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                       REPO CURATOR (v2.50)                                 │
+│                       REPO CURATOR (v2.55)                                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │   /curator "best backend TypeScript repos with clean architecture"         │
@@ -349,8 +349,8 @@ Claude will now consider learned patterns when:
 │   │                     5-PHASE WORKFLOW                                 │   │
 │   │                                                                     │   │
 │   │   1. DISCOVERY → GitHub API search (100-500 candidates)             │   │
-│   │   2. SCORING   → QualityScore (stars, tests, CI/CD, docs)           │   │
-│   │   3. RANKING   → Top 10 (max 2 per org)                             │   │
+│   │   2. SCORING   → QualityScore + Context Relevance (v2.55)           │   │
+│   │   3. RANKING   → Top N (configurable, max per org)                  │   │
 │   │   4. REVIEW    → User approves/rejects repos                        │   │
 │   │   5. LEARN     → repository-learner extracts patterns               │   │
 │   │                                                                     │   │
@@ -368,21 +368,61 @@ Claude will now consider learned patterns when:
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+**Scripts & Options (v2.55)**:
+
+| Script | Purpose | Key Options |
+|--------|---------|-------------|
+| `curator-discovery.sh` | GitHub API search | `--type`, `--lang`, `--query`, `--tier`, `--max-results`, `--output` |
+| `curator-scoring.sh` | Quality metrics | `--input`, `--output`, `--tier`, `--context` (v2.55), `--verbose` |
+| `curator-rank.sh` | Generate rankings | `--input`, `--output`, `--top-n`, `--max-per-org` |
+| `curator-ingest.sh` | Clone to corpus | `--repo`, `--output-dir`, `--approve`, `--source`, `--depth` |
+| `curator-approve.sh` | Approve repos | `--repo`, `--all` |
+| `curator-reject.sh` | Reject repos | `--repo`, `--reason` |
+| `curator-learn.sh` | Extract patterns | `--type`, `--lang`, `--repo`, `--all` |
+| `curator-queue.sh` | View queue status | `--type`, `--lang` |
+
 **Usage**:
 ```bash
 # Full pipeline (economic tier - default)
 /curator full --type backend --lang typescript
 
+# Discovery with custom query and max results
+/curator discovery --query "enterprise microservice" --max-results 200 --tier free
+
+# Scoring with context relevance (v2.55 NEW)
+/curator scoring --input candidates.json --output scored.json --context "error handling,retry,resilience"
+
+# Ranking with custom limits
+/curator rank --input scored.json --output ranking.json --top-n 15 --max-per-org 3
+
 # Show ranking
 /curator show --type backend --lang typescript
 
-# Review and approve repos
+# Review queue
 /curator pending --type backend --lang typescript
-/curator approve nestjs/nest
-/curator approve prisma/prisma
 
-# Execute learning on approved repos
+# Approve/reject repos
+/curator approve nestjs/nest
+/curator approve --all
+/curator reject some/repo --reason "Low test coverage"
+
+# Ingest with source attribution
+/curator ingest --repo prisma/prisma --approve --source "enterprise-db-patterns"
+
+# Execute learning
 /curator learn --type backend --lang typescript
+/curator learn --repo nestjs/nest
+/curator learn --all
+```
+
+**Context Relevance Scoring (v2.55 NEW)**:
+```bash
+# Repos are scored on relevance to your context keywords:
+# +3 points if description contains context keywords
+# +2 points if repo name contains context keywords
+# -1 point if no description or irrelevant description
+
+/curator scoring --context "error handling,retry,circuit breaker"
 ```
 
 ### Codex Planner (v2.50) - NEW
@@ -558,11 +598,19 @@ ralph fork-suggest "task"      # Suggest sessions
 /repo-learn https://github.com/python/cpython          # Learn from repo
 /repo-learn https://github.com/fastapi/fastapi --category error_handling
 
-# Repo Curator (v2.50)
+# Repo Curator (v2.55)
 ralph curator full --type backend --lang typescript   # Full pipeline
+ralph curator discovery --query "microservice" --max-results 200  # Custom search
+ralph curator scoring --context "error handling,retry"  # Context relevance (v2.55)
+ralph curator rank --top-n 15 --max-per-org 3         # Custom ranking
 ralph curator show --type backend --lang typescript   # View ranking
-ralph curator approve nestjs/nest                      # Approve repo
-ralph curator learn --type backend --lang typescript  # Learn from approved
+ralph curator pending --type backend                  # View queue
+ralph curator approve nestjs/nest                     # Approve single
+ralph curator approve --all                           # Approve all staged
+ralph curator reject some/repo --reason "Low quality" # Reject with reason
+ralph curator ingest --repo x/y --approve --source "patterns"  # Direct ingest
+ralph curator learn --repo nestjs/nest                # Learn specific
+ralph curator learn --all                             # Learn all approved
 
 # Codex Planning (v2.50)
 /codex-plan "Design distributed system"               # Codex planning
