@@ -2,7 +2,7 @@
 # Parallel Exploration Hook v2.46
 # Hook: PostToolUse (Task - after gap-analyst)
 # Purpose: Launch parallel exploration tasks
-# VERSION: 2.46.0
+# VERSION: 2.57.0
 
 set -euo pipefail
 umask 077

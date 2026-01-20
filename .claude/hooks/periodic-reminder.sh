@@ -6,7 +6,7 @@
 # ============================================================================
 
 # Configuration
-# VERSION: 2.43.0
+# VERSION: 2.57.0
 RALPH_DIR="${HOME}/.ralph"
 GOAL_FILE="${RALPH_DIR}/current_goal"
 STATUS_FILE="${RALPH_DIR}/reminder_status"

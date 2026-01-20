@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VERSION: 2.45.2
+# VERSION: 2.57.0
 # Hook: Plan State Initialization
 # Purpose: Initialize plan-state.json from orchestrator analysis
 # Security: v2.45.1 - Fixed race condition with atomic updates

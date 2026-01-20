@@ -10,7 +10,7 @@
 
 # Note: Not using set -e because this is a non-blocking hook
 # Errors should not interrupt the main workflow
-# VERSION: 2.47.0
+# VERSION: 2.57.0
 # v2.47: Adjusted thresholds for proactive compaction (75%/85%)
 #        Fixed message_count path to STATE_DIR
 set -uo pipefail

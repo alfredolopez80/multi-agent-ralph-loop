@@ -6,7 +6,7 @@
 # Reads ~/.ralph/procedural/rules.json and injects matching rules
 # based on task description and tags.
 #
-# VERSION: 2.49.1
+# VERSION: 2.57.0
 # SECURITY: Added ERR trap for guaranteed JSON output
 
 set -euo pipefail

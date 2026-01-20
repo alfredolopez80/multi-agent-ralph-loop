@@ -10,7 +10,7 @@
 # - "keep in mind"
 # - "for future reference"
 #
-# VERSION: 2.49.1
+# VERSION: 2.57.0
 # SECURITY: Added ERR trap for guaranteed JSON output, MATCHED escaping
 
 set -euo pipefail

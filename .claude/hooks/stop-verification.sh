@@ -3,7 +3,7 @@
 # Origen: planning-with-files pattern
 # v2.45.4 - Added JSON return for Claude Code hook protocol
 
-# VERSION: 2.45.4
+# VERSION: 2.57.0
 set -euo pipefail
 
 # Configuración

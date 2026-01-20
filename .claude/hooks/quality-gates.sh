@@ -8,7 +8,7 @@
 # IMPORTANT: This hook should only block when explicitly requested
 # via /gates, /review, /adversarial, or ralph gates commands.
 
-# VERSION: 2.43.0
+# VERSION: 2.57.0
 set -e
 
 # ═══════════════════════════════════════════════════════════════════════════════

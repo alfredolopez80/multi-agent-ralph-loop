@@ -9,13 +9,21 @@
 # - File references (validations_ref, sharp_edges_ref, collaboration_ref)
 # - Collaboration rules integrity
 
-# VERSION: 2.43.0
+# VERSION: 2.57.0
 set -euo pipefail
 
 # Configuration
 SKILLS_DIR="${HOME}/.ralph/skills"
 LOG_FILE="${HOME}/.ralph/skill-validation.log"
 VALIDATION_TIMEOUT=10
+
+# Security: Sanitize skill name to prevent command injection
+# Only allow alphanumeric, hyphens, underscores, and dots
+sanitize_skill_name() {
+    local name="$1"
+    # Remove any character that's not alphanumeric, hyphen, underscore, or dot
+    echo "$name" | tr -cd 'a-zA-Z0-9_.-'
+}
 
 # Logging
 log() {
@@ -291,6 +299,14 @@ except:
         log_error "No skill name provided in hook input"
         echo "⚠️  Skill validator: No skill name provided" >&2
         exit 0  # Don't block if no skill specified
+    fi
+
+    # SECURITY FIX v2.57.0: Sanitize skill_name to prevent command injection
+    skill_name=$(sanitize_skill_name "$skill_name")
+
+    if [[ -z "$skill_name" ]]; then
+        log_error "Skill name became empty after sanitization (contained only invalid characters)"
+        exit 0
     fi
 
     # Run validation with timeout

@@ -2,7 +2,7 @@
 # Fast-Path Check Hook v2.46
 # Hook: PreToolUse (Task)
 # Purpose: Detect trivial tasks and route to fast-path
-# VERSION: 2.46.0
+# VERSION: 2.57.0
 
 set -euo pipefail
 umask 077
