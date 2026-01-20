@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.57.0] - 2026-01-20
+
+### Fixed (Memory System Reconstruction - 8 Critical Issues)
+
+**Severity**: CRITICAL (P1)
+**Impact**: Memory search, plan-state sync, context injection, and semantic extraction now work correctly
+
+This release addresses 8 critical issues discovered in a dual-model adversarial audit:
+
+#### Issues Fixed
+
+| # | Issue | Fix |
+|---|-------|-----|
+| 1 | `todo-plan-sync.sh` used `sort_by(tonumber)` failing on step-X-Y keys | Changed to `keys \| sort` |
+| 2 | `smart-memory-search.sh` searched JSON files but claude-mem uses SQLite | Implemented SQLite FTS query |
+| 3 | `inject-session-context.sh` output JSON but PreToolUse can't modify tool_input | Removed JSON output, uses cache file |
+| 4 | Reflection-executor extracted JSON metadata instead of real decisions | Filters JSON content from extraction |
+| 5 | Pattern detection threshold never met despite 162 episodes | Lowered threshold, improved matching |
+| 6 | auto-learn-context.md written but never read | Integrated with SessionStart hook |
+| 7 | Procedural rules only had 1 test rule | Bootstrapped with quality patterns |
+| 8 | Semantic memory contained only test data | Cleaned test data, added real extraction |
+
+#### Implementation Phases
+
+| Phase | Description | Files Modified |
+|-------|-------------|----------------|
+| 1 | Plan-State Adaptive | `auto-plan-state.sh` (creates for all sessions) |
+| 2 | Reflection-Executor | `reflection-executor.py` (filters JSON from decisions) |
+| 3 | Context Injection | `inject-session-context.sh` (PreToolUse fix) |
+| 4 | Semantic Auto-Extractor | `semantic-realtime-extractor.sh`, `decision-extractor.sh` |
+| 5 | Memory Search | `todo-plan-sync.sh`, `smart-memory-search.sh` |
+| 6 | Integration Testing | 48 new tests (all passing) |
+
+#### New/Modified Hooks (v2.57.0)
+
+| Hook | Change |
+|------|--------|
+| `todo-plan-sync.sh` | Fixed `sort_by(tonumber)` → `sort` for step-X-Y keys |
+| `smart-memory-search.sh` | SQLite FTS instead of JSON file search |
+| `inject-session-context.sh` | Removed JSON output, uses exit 0 only |
+| `semantic-realtime-extractor.sh` | NEW: Real-time extraction from Edit/Write |
+| `decision-extractor.sh` | Writes patterns to semantic memory |
+
+#### Test Coverage
+
+- `test_memory_search_v257.py` (19 tests)
+- `test_reflection_executor_v257.py` (10 tests)
+- `test_semantic_extractor_v257.py` (13 tests)
+- `test_context_injection_v257.py` (6 tests)
+
+**Total: 48/48 tests passing**
+
+#### Key Learnings
+
+1. **PreToolUse hooks**: Can ONLY block (exit 2) or allow (exit 0) - CANNOT modify tool_input
+2. **claude-mem storage**: Uses SQLite (`claude-mem.db`) with FTS, NOT JSON files
+3. **jq sort_by(tonumber)**: Fails silently on non-numeric strings like "step-1-1"
+4. **Hook JSON output**: PostToolUse uses `{"continue": true}`, Stop uses `{"decision": "approve"}`
+
+---
+
 ## [2.56.2] - 2026-01-20
 
 ### Fixed (StatusLine Health Monitor mkdir Bug)
