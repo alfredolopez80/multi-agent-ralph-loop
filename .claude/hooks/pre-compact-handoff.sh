@@ -76,7 +76,7 @@ log "INFO" "PreCompact hook triggered - session: $SESSION_ID, transcript: $TRANS
 # Check if handoff feature is enabled (default: true)
 if ! check_feature_enabled "RALPH_ENABLE_HANDOFF" "true"; then
     log "INFO" "Handoff feature disabled via features.json"
-    echo '{"continue": true}'
+    echo '{"decision": "continue"}'
     exit 0
 fi
 
@@ -194,4 +194,4 @@ python3 "$HANDOFF_SCRIPT" cleanup --days 7 --keep-min 20 >> "$LOG_FILE" 2>&1 || 
 log "INFO" "PreCompact hook completed successfully"
 
 # Return success (PreCompact cannot block)
-echo '{"continue": true}'
+echo '{"decision": "continue"}'

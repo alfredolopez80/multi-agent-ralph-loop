@@ -10,10 +10,18 @@
 
 # Note: Not using set -e because this is a non-blocking hook
 # Errors should not interrupt the main workflow
-# VERSION: 2.57.0
+# VERSION: 2.57.2
+# v2.57.2: Restructured to output all content as JSON (SEC-029)
+# v2.57.1: Added 3s timeout to claude command to prevent hook timeout
 # v2.47: Adjusted thresholds for proactive compaction (75%/85%)
 #        Fixed message_count path to STATE_DIR
 set -uo pipefail
+
+# SEC-029: Guaranteed JSON output on exit (even on errors)
+output_json() {
+    jq -n '{}'
+}
+trap 'output_json' EXIT
 
 # Configuration
 THRESHOLD=75
@@ -61,9 +69,10 @@ get_context_percentage() {
     local pct=""
 
     # Method 1: Try native CLI command (works in full CLI mode)
+    # SEC-029: Added 3s timeout to prevent hook timeout (exit code 124)
     if [[ "$CAPABILITIES" == "full" ]]; then
         local context_output
-        context_output=$(claude --print "/context" 2>/dev/null || echo "unknown")
+        context_output=$(timeout 3 claude --print "/context" 2>/dev/null || echo "unknown")
 
         # Parse percentage from output - support decimals: NN% or N.N%
         if [[ "$context_output" =~ ([0-9]+\.?[0-9]*)% ]]; then
@@ -134,82 +143,74 @@ get_current_objective() {
     fi
 }
 
-# Show warning to user
-show_warning() {
+# Build warning message (returns message string)
+build_warning_message() {
     local percentage="$1"
     local objective
     objective=$(get_current_objective)
 
-    echo ""
-    echo "⚠️  Context at ${percentage}%"
-    echo ""
-    echo "Your context is approaching the ${THRESHOLD}% effective threshold."
-    echo "This may lead to context degradation and reduced AI performance."
-    echo ""
-    echo "🎯 Current objective: ${objective}"
-    echo ""
-    echo "Consider:"
-    echo "  • @fresh-explorer \"Analyze patterns\" for fresh context"
-    echo "  • @checkpoint save \"Pre-compaction state\""
-    echo "  • Use @context-compression if available"
+    local msg="⚠️ Context at ${percentage}%\n\n"
+    msg+="Your context is approaching the ${THRESHOLD}% effective threshold.\n"
+    msg+="This may lead to context degradation and reduced AI performance.\n\n"
+    msg+="🎯 Current objective: ${objective}\n\n"
+    msg+="Consider:\n"
+    msg+="  • @fresh-explorer \"Analyze patterns\" for fresh context\n"
+    msg+="  • @checkpoint save \"Pre-compaction state\"\n"
+    msg+="  • Use @context-compression if available"
 
     # v2.44: Environment-specific recommendations
     if [[ "$CAPABILITIES" == "limited" ]]; then
-        echo ""
-        echo "📌 Extension mode detected ($ENV_TYPE):"
-        echo "  • Use /compact skill to manually save context"
-        echo "  • Or run: ralph compact"
+        msg+="\n\n📌 Extension mode detected ($ENV_TYPE):\n"
+        msg+="  • Use /compact skill to manually save context\n"
+        msg+="  • Or run: ralph compact"
     fi
-    echo ""
 
     # Log the warning
     log_context "WARNING" "${percentage}% | Objective: ${objective} | Env: ${ENV_TYPE}"
+
+    echo "$msg"
 }
 
-# Show critical warning
-show_critical() {
+# Build critical warning message (returns message string)
+build_critical_message() {
     local percentage="$1"
     local objective
     objective=$(get_current_objective)
 
-    echo ""
-    echo "🔴 Context CRITICAL: ${percentage}%"
-    echo ""
-    echo "Your context has exceeded the ${THRESHOLD}% effective threshold."
-    echo "Performance degradation is likely."
-    echo ""
-    echo "🎯 Current objective: ${objective}"
-    echo ""
-    echo "IMMEDIATE ACTIONS:"
-    echo "  1. @checkpoint save \"Urgent save\""
-    echo "  2. @fresh-explorer \"Fresh task analysis\""
-    echo "  3. Consider starting a new session"
+    local msg="🔴 Context CRITICAL: ${percentage}%\n\n"
+    msg+="Your context has exceeded the ${THRESHOLD}% effective threshold.\n"
+    msg+="Performance degradation is likely.\n\n"
+    msg+="🎯 Current objective: ${objective}\n\n"
+    msg+="IMMEDIATE ACTIONS:\n"
+    msg+="  1. @checkpoint save \"Urgent save\"\n"
+    msg+="  2. @fresh-explorer \"Fresh task analysis\"\n"
+    msg+="  3. Consider starting a new session"
 
     # v2.44: Environment-specific urgent recommendations
     if [[ "$CAPABILITIES" == "limited" ]]; then
-        echo ""
-        echo "🚨 Extension mode ($ENV_TYPE) - URGENT:"
-        echo "  • Auto-compact may NOT trigger! Run: /compact"
-        echo "  • Or use terminal: ralph compact"
-        echo "  • Then start fresh: /clear or new conversation"
+        msg+="\n\n🚨 Extension mode ($ENV_TYPE) - URGENT:\n"
+        msg+="  • Auto-compact may NOT trigger! Run: /compact\n"
+        msg+="  • Or use terminal: ralph compact\n"
+        msg+="  • Then start fresh: /clear or new conversation"
     fi
-    echo ""
 
     # Log the critical warning
     log_context "CRITICAL" "${percentage}% | Objective: ${objective} | Env: ${ENV_TYPE}"
+
+    echo "$msg"
 }
 
-# Show info message
-show_info() {
+# Build info message (returns message string)
+build_info_message() {
     local percentage="$1"
 
-    echo ""
-    echo "ℹ️  Context at ${percentage}%"
-    echo "Consider compaction if you plan to continue this session."
-    echo ""
+    local msg="ℹ️ Context at ${percentage}%\n"
+    msg+="Consider compaction if you plan to continue this session."
 
     # Log the info
     log_context "INFO" "${percentage}%"
+
+    echo "$msg"
 }
 
 # Main execution
@@ -226,16 +227,32 @@ main() {
     fi
     echo $((msg_count + 1)) > "${RALPH_DIR}/state/message_count"
 
-    # Determine action based on context level
+    # Determine action based on context level and build message
+    local warning_msg=""
+    local level="ok"
+
     if [[ "$context_pct" -ge "$CRITICAL_THRESHOLD" ]]; then
-        show_critical "$context_pct"
+        warning_msg=$(build_critical_message "$context_pct")
+        level="critical"
     elif [[ "$context_pct" -ge "$THRESHOLD" ]]; then
-        show_warning "$context_pct"
+        warning_msg=$(build_warning_message "$context_pct")
+        level="warning"
     elif [[ "$context_pct" -ge 50 ]]; then
-        show_info "$context_pct"
+        warning_msg=$(build_info_message "$context_pct")
+        level="info"
     fi
 
-    # Exit successfully (hook should not block execution)
+    # SEC-029: Disable trap and output JSON
+    trap - EXIT
+
+    # Output JSON with message if there's a warning
+    if [[ -n "$warning_msg" ]]; then
+        jq -n --arg msg "$warning_msg" --arg lvl "$level" --argjson pct "$context_pct" \
+            '{message: $msg, context_level: $lvl, context_percentage: $pct}'
+    else
+        jq -n '{}'
+    fi
+
     exit 0
 }
 
