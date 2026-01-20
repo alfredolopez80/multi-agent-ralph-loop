@@ -14,14 +14,14 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 
 # Only trigger after Task completion
 if [[ "$TOOL_NAME" != "Task" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
 # Check if this was a gap-analyst task
 TASK_TYPE=$(echo "$INPUT" | jq -r '.tool_input.subagent_type // empty')
 if [[ "$TASK_TYPE" != "gap-analyst" ]] && [[ "$TASK_TYPE" != "Explore" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -174,8 +174,8 @@ jq -n \
 # Log completion
 echo "[$(date -Iseconds)] Exploration results written to: $EXPLORATION_OUTPUT" >> "$LOG_FILE"
 
-# Return with context
+# Return with context (PostToolUse schema: "continue" not "decision")
 echo "{
-    \"decision\": \"continue\",
+    \"continue\": true,
     \"additionalContext\": \"PARALLEL_EXPLORE_COMPLETE: Exploration results available at .claude/exploration-context.json. Use these results to inform planning and classification.\"
 }"

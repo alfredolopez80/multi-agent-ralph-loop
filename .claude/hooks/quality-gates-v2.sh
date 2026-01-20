@@ -19,15 +19,15 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 
-# Only process Edit/Write operations
+# Only process Edit/Write operations (PostToolUse schema: "continue" not "decision")
 if [[ "$TOOL_NAME" != "Edit" ]] && [[ "$TOOL_NAME" != "Write" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
 # Skip if no file path
 if [[ -z "$FILE_PATH" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -35,7 +35,7 @@ fi
 # Resolve to absolute path and check it's within allowed directories
 FILE_PATH_REAL=$(realpath -e "$FILE_PATH" 2>/dev/null || echo "")
 if [[ -z "$FILE_PATH_REAL" ]] || [[ ! -f "$FILE_PATH_REAL" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -44,7 +44,7 @@ PROJECT_ROOT=$(realpath -e "$(pwd)" 2>/dev/null || pwd)
 
 # Verify file is within project or allowed paths (home dir)
 if [[ "$FILE_PATH_REAL" != "$PROJECT_ROOT"* ]] && [[ "$FILE_PATH_REAL" != "$HOME"* ]]; then
-    echo '{"decision": "block", "reason": "Path traversal blocked: file outside allowed directories"}'
+    echo '{"continue": false, "reason": "Path traversal blocked: file outside allowed directories"}'
     exit 0
 fi
 
@@ -344,13 +344,13 @@ log_check() {
 
 } >> "$LOG_FILE" 2>&1
 
-# Prepare response
+# Prepare response (PostToolUse schema: "continue" boolean, not "decision" string)
 if [[ -n "$BLOCKING_ERRORS" ]]; then
     # Quality issues - BLOCK
     ERRORS_JSON=$(echo -e "$BLOCKING_ERRORS" | jq -R -s '.')
     WARNINGS_JSON=$(echo -e "$ADVISORY_WARNINGS" | jq -R -s '.')
     echo "{
-        \"decision\": \"block\",
+        \"continue\": false,
         \"reason\": \"Quality gate failed: blocking errors found\",
         \"blocking_errors\": $ERRORS_JSON,
         \"advisory_warnings\": $WARNINGS_JSON,
@@ -361,14 +361,14 @@ else
     if [[ -n "$ADVISORY_WARNINGS" ]]; then
         WARNINGS_JSON=$(echo -e "$ADVISORY_WARNINGS" | jq -R -s '.')
         echo "{
-            \"decision\": \"continue\",
+            \"continue\": true,
             \"advisory_warnings\": $WARNINGS_JSON,
             \"note\": \"Quality over consistency: style issues noted but not blocking\",
             \"checks\": {\"passed\": $CHECKS_PASSED, \"total\": $CHECKS_RUN}
         }"
     else
         echo "{
-            \"decision\": \"continue\",
+            \"continue\": true,
             \"checks\": {\"passed\": $CHECKS_PASSED, \"total\": $CHECKS_RUN}
         }"
     fi

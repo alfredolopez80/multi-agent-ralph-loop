@@ -17,7 +17,7 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 
 # Only process Task completions
 if [[ "$TOOL_NAME" != "Task" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -27,7 +27,7 @@ TASK_PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty')
 
 # Only trigger for orchestrator classification results
 if [[ "$TASK_TYPE" != "orchestrator" ]] && ! echo "$TASK_PROMPT" | grep -qi "classify\|classification\|complexity"; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -97,6 +97,8 @@ LOG_FILE="$LOG_DIR/recursive-decompose-$(date +%Y%m%d).log"
 } >> "$LOG_FILE" 2>&1
 
 # Generate response with decomposition guidance
+# Generate response with decomposition guidance (PostToolUse schema: "continue" not "decision")
+# v2.57.0 FIX: Use jq for proper JSON encoding to avoid invalid newlines
 if [[ "$NEEDS_DECOMPOSITION" == "true" ]]; then
     # Update plan-state with recursion info (using --arg for safe escaping)
     if [[ -f "$PLAN_STATE_FILE" ]]; then
@@ -110,27 +112,10 @@ if [[ "$NEEDS_DECOMPOSITION" == "true" ]]; then
             "$PLAN_STATE_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$PLAN_STATE_FILE"
     fi
 
-    echo "{
-        \"decision\": \"continue\",
-        \"additionalContext\": \"RECURSIVE_DECOMPOSITION_REQUIRED: Task requires recursive decomposition (reason: $DECOMPOSITION_REASON).
+    # Build additionalContext with proper newline escaping
+    CONTEXT_MSG="RECURSIVE_DECOMPOSITION_REQUIRED: Task requires recursive decomposition (reason: ${DECOMPOSITION_REASON}). DECOMPOSITION PROTOCOL (RLM-inspired): 1. IDENTIFY CHUNKS: Break task into logical units (by module, feature, or file group). 2. CREATE SUB-PLANS: Each chunk gets its own verifiable spec. 3. SPAWN SUB-ORCHESTRATORS: Use Task tool with subagent_type=orchestrator for each chunk (depth=$((CURRENT_DEPTH + 1)), max_depth=$MAX_DEPTH). 4. AGGREGATE RESULTS: Collect sub-results, reconcile conflicts, merge outputs. IMPORTANT: Sub-orchestrators run STANDARD flow (not recursive). Each sub has isolated context. Max $MAX_CHILDREN children per level."
 
-DECOMPOSITION PROTOCOL (RLM-inspired):
-1. IDENTIFY CHUNKS: Break task into logical units (by module, feature, or file group)
-2. CREATE SUB-PLANS: Each chunk gets its own verifiable spec
-3. SPAWN SUB-ORCHESTRATORS: Use Task tool with subagent_type='orchestrator' for each chunk
-   - Pass: chunk_scope, inherited_constraints, depth=$((CURRENT_DEPTH + 1))
-   - Max depth: $MAX_DEPTH
-4. AGGREGATE RESULTS: Collect sub-results, reconcile conflicts, merge outputs
-
-IMPORTANT:
-- Sub-orchestrators run STANDARD flow (not recursive)
-- Each sub has isolated context (fresh start)
-- Max $MAX_CHILDREN children per level
-- Update plan-state.json with children status\"
-    }"
+    jq -n --argjson cont true --arg ctx "$CONTEXT_MSG" '{continue: $cont, additionalContext: $ctx}'
 else
-    echo "{
-        \"decision\": \"continue\",
-        \"additionalContext\": \"STANDARD_PATH: No recursive decomposition needed. Proceeding with standard orchestration flow.\"
-    }"
+    jq -n --argjson cont true --arg ctx "STANDARD_PATH: No recursive decomposition needed. Proceeding with standard orchestration flow." '{continue: $cont, additionalContext: $ctx}'
 fi
