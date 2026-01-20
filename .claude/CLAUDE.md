@@ -50,6 +50,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #12333 | 2:59 PM | ⚖️ | v2.57.0 Memory System Reconstruction Plan - Comprehensive Architecture Redesign | ~1704 |
 | #12201 | 12:48 PM | 🔵 | Plan-State System Analysis Reveals Multiple Integration Issues | ~593 |
 | #12193 | 12:47 PM | 🔵 | Local Settings File Contains No StatusLine Override | ~329 |
 </claude-mem-context>

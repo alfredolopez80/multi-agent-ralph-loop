@@ -1,6 +1,6 @@
 # Multi-Agent-Ralph
 
-![Versión](https://img.shields.io/badge/version-2.56.2-blue)
+![Versión](https://img.shields.io/badge/version-2.57.0-blue)
 ![Licencia](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 
@@ -42,7 +42,7 @@ El sistema aborda el desafío fundamental de la programación asistida por IA: *
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                    ARQUITECTURA COMPLETA RALPH v2.56.2                      │
+│                    ARQUITECTURA COMPLETA RALPH v2.57.0                      │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │

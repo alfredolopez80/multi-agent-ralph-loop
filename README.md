@@ -1,6 +1,6 @@
 # Multi-Agent-Ralph
 
-![Version](https://img.shields.io/badge/version-2.56.2-blue)
+![Version](https://img.shields.io/badge/version-2.57.0-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 
@@ -24,6 +24,27 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 - **Self-Improvement**: Retrospective analysis after each task to propose workflow improvements
 - **Autonomous Learning (v2.55)**: Proactively learns from quality repositories when knowledge gaps detected
 - **Automated Monitoring (v2.56)**: Smart checkpoints, status monitoring, and health checks via hooks
+- **Memory System Reconstruction (v2.57)**: Fixed 8 critical bugs in memory search, plan-state sync, and context injection
+
+### v2.57: Memory System Reconstruction
+
+```bash
+# 8 critical issues fixed from dual-model adversarial audit
+# Key fixes:
+# - todo-plan-sync.sh: sort_by(tonumber) → sort (step-X-Y keys)
+# - smart-memory-search.sh: JSON files → SQLite FTS
+# - inject-session-context.sh: JSON output → exit 0 (PreToolUse can't modify tool_input)
+```
+
+**Fixed Issues**:
+| Issue | Bug | Fix |
+|-------|-----|-----|
+| Plan-state sync stuck at 0% | `sort_by(tonumber)` fails on "step-1-1" keys | Use `keys \| sort` |
+| Memory search returns empty | Searched JSON files but claude-mem uses SQLite | SQLite FTS query |
+| Context injection broken | PreToolUse tried to modify tool_input via JSON | Exit 0, use cache file |
+| Semantic memory test data | Only test data, no real facts | Real-time extraction hooks |
+
+**New Test Coverage**: 48 tests for memory system (all passing)
 
 ### v2.56: Automated Monitoring
 
@@ -87,7 +108,7 @@ ralph health --compact    # One-line: 🏥 HEALTH: 7/9 OK, 1 WARN, 1 CRIT
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         RALPH v2.56.2 COMPLETE ARCHITECTURE                  │
+│                         RALPH v2.57.0 COMPLETE ARCHITECTURE                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │
