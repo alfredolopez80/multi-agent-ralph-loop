@@ -45,4 +45,11 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #12177 | 9:48 PM | ✅ | Updated Project Documentation and Changelog | ~125 |
+
+### Jan 20, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #12201 | 12:48 PM | 🔵 | Plan-State System Analysis Reveals Multiple Integration Issues | ~593 |
+| #12193 | 12:47 PM | 🔵 | Local Settings File Contains No StatusLine Override | ~329 |
 </claude-mem-context>

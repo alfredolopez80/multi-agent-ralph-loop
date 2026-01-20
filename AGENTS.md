@@ -1,4 +1,4 @@
-# Multi-Agent Ralph Wiggum - Agents Reference v2.55.0
+# Multi-Agent Ralph Wiggum - Agents Reference v2.56.2
 
 ## Overview
 
@@ -179,7 +179,7 @@ The orchestrator routes tasks based on **3 dimensions** (RLM-inspired):
 2. **File Type**: `.py` → `@kieran-python-reviewer`, `.ts` → `@kieran-typescript-reviewer`
 3. **Domain**: DeFi → Blockchain agents, Frontend → `@frontend-reviewer`
 
-## Hooks Integration (v2.52.0)
+## Hooks Integration (v2.56.2)
 
 ### v2.46 RLM-Inspired Hooks (NEW)
 
@@ -198,6 +198,20 @@ The orchestrator routes tasks based on **3 dimensions** (RLM-inspired):
 | `lsa-pre-step.sh` | PreToolUse (Edit/Write) | LSA verification before implementation |
 | `plan-sync-post-step.sh` | PostToolUse (Edit/Write) | Drift detection after implementation |
 | `plan-state-init.sh` | CLI | Initialize/manage plan-state.json |
+
+### v2.56 Automated Monitoring Hooks (NEW)
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `status-auto-check.sh` | PostToolUse (Edit/Write/Bash) | Auto-shows orchestration status every 5 operations |
+| `checkpoint-smart-save.sh` | PreToolUse (Edit/Write) | Smart checkpoints on risky edits |
+| `statusline-health-monitor.sh` | UserPromptSubmit | Health checks every 5 minutes |
+
+**Smart Checkpoint Triggers**:
+- `high_complexity`: Plan complexity ≥ 7
+- `high_risk_step`: Step involves auth/security/payment
+- `critical_file`: Config, settings, .env, database files
+- `security_file`: Files with auth/secret/credential in name
 
 ### Logging Hooks
 
