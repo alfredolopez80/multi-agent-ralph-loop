@@ -1,6 +1,6 @@
 # Multi-Agent-Ralph
 
-![Version](https://img.shields.io/badge/version-2.54.0-blue)
+![Version](https://img.shields.io/badge/version-2.55.0-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 
@@ -22,6 +22,27 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 - **Adversarial Specification Refinement**: Adversarial debate to harden specifications before execution
 - **Automatic Context Preservation**: 100% automatic ledger/handoff system preserves session state (v2.35)
 - **Self-Improvement**: Retrospective analysis after each task to propose workflow improvements
+- **Autonomous Learning (v2.55)**: Proactively learns from quality repositories when knowledge gaps detected
+
+### v2.55: Autonomous Self-Improvement
+
+```bash
+# Memory system health check
+ralph health              # Full report
+ralph health --compact    # One-line: 🏥 HEALTH: 7/9 OK, 1 WARN, 1 CRIT
+
+# Auto-triggers when:
+# - ZERO relevant rules for a task domain → CRITICAL, learning REQUIRED
+# - <3 rules AND complexity ≥7 → HIGH, learning RECOMMENDED
+```
+
+**Auto-Learning Hooks**:
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `orchestrator-auto-learn.sh` | PreToolUse (Task) | Detects knowledge gaps, recommends `/curator` |
+| `agent-memory-auto-init.sh` | PreToolUse (Task) | Auto-initializes agent memory buffers |
+| `semantic-auto-extractor.sh` | Stop | Extracts facts from git diff |
+| `decision-extractor.sh` | PostToolUse | Detects architectural patterns |
 
 ### Why Use It
 
@@ -42,7 +63,7 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         RALPH v2.54.0 COMPLETE ARCHITECTURE                  │
+│                         RALPH v2.55.0 COMPLETE ARCHITECTURE                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │

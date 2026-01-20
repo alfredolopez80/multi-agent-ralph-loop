@@ -1,8 +1,8 @@
-# Multi-Agent Ralph v2.54.0
+# Multi-Agent Ralph v2.55.0
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, checkpoints, agent handoffs, and **local observability**.
+**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, checkpoints, agent handoffs, local observability, and **autonomous self-improvement**.
 
 ---
 
@@ -414,6 +414,40 @@ ralph trace summary
 
 **Event Log**: `~/.ralph/events/event-log.jsonl` (shared with event-bus)
 
+### Autonomous Self-Improvement (v2.55) - NEW
+
+Proactive learning and memory population for higher code quality.
+
+```bash
+# Memory system health check
+ralph health                    # Full health report
+ralph health --compact          # One-line summary
+ralph health --json             # JSON output for scripts
+ralph health --fix              # Auto-fix critical issues
+```
+
+**Health Checks**: Semantic, Procedural, Episodic, Agent-Memory, Curator, Events, Ledgers, Handoffs, Checkpoints
+
+**Auto-Learning Triggers**:
+| Condition | Severity | Action |
+|-----------|----------|--------|
+| ZERO relevant rules (any complexity) | CRITICAL | Learning REQUIRED before implementation |
+| <3 rules AND complexity ≥7 | HIGH | Learning RECOMMENDED for better quality |
+
+**New Hooks (v2.55)**:
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `orchestrator-auto-learn.sh` | PreToolUse (Task) | Detects knowledge gaps, recommends `/curator` |
+| `agent-memory-auto-init.sh` | PreToolUse (Task) | Auto-initializes agent memory buffers |
+| `semantic-auto-extractor.sh` | Stop | Extracts facts from git diff (functions, classes) |
+| `decision-extractor.sh` | PostToolUse | Detects architectural patterns and decisions |
+| `curator-suggestion.sh` | UserPromptSubmit | Suggests `/curator` when memory is empty |
+
+**Automatic Extraction**:
+- **Semantic**: New functions, classes, dependencies from git diff
+- **Decisions**: Design patterns (Singleton, Repository, Factory...), architectural choices (async/await, caching, logging)
+- **Source tracking**: `"source": "auto-extract"` with deduplication
+
 ---
 
 ## Quality-First Validation (v2.46)
@@ -446,6 +480,9 @@ ralph orch "task"         # Full orchestration
 ralph gates               # Quality gates
 ralph loop "task"         # Loop (25 iter)
 ralph compact             # Manual context save
+ralph health              # Memory system health check (v2.55)
+ralph health --compact    # One-line health summary
+ralph health --fix        # Auto-fix critical issues
 
 # Memory (v2.49)
 ralph memory-search "query"  # Parallel search
@@ -598,6 +635,7 @@ EXECUTE → VALIDATE → Quality Passed?
 | Installation | `install.sh` |
 | Plan State v2 Schema | `.claude/schemas/plan-state-v2.schema.json` |
 | v2.51 Improvements | `.claude/v2.51-improvements-analysis.md` |
+| v2.55 Auto-Learning | `~/.claude/hooks/orchestrator-auto-learn.sh` |
 
 ---
 
