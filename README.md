@@ -425,6 +425,176 @@ Claude will now consider learned patterns when:
 /curator scoring --context "error handling,retry,circuit breaker"
 ```
 
+**Full Pipeline Example (Step-by-Step)**:
+
+```bash
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║                    CURATOR FULL PIPELINE EXAMPLE                              ║
+# ║                                                                               ║
+# ║  Goal: Find best TypeScript backend repos for learning error handling        ║
+# ║  patterns in microservices architecture                                       ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ STEP 1: DISCOVERY - Search GitHub for candidate repositories                │
+# │                                                                             │
+# │ Parameters:                                                                 │
+# │   --type backend      → Filter: backend applications (not frontend/CLI)    │
+# │   --lang typescript   → Filter: TypeScript language only                   │
+# │   --query "..."       → Custom search: microservices with error handling   │
+# │   --tier economic     → Pricing: ~$0.30 (uses MiniMax for validation)      │
+# │   --max-results 150   → Limit: fetch up to 150 candidates                  │
+# │   --output file.json  → Output: save results to specific file              │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+ralph curator discovery \
+  --type backend \
+  --lang typescript \
+  --query "microservice error handling resilience" \
+  --tier economic \
+  --max-results 150 \
+  --output ~/.ralph/curator/candidates/backend_ts_errors.json
+
+# Output: ~/.ralph/curator/candidates/backend_ts_errors.json (150 repos)
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ STEP 2: SCORING - Calculate quality score for each repository              │
+# │                                                                             │
+# │ Parameters:                                                                 │
+# │   --input file.json   → Input: candidates from discovery step              │
+# │   --output file.json  → Output: scored repositories                        │
+# │   --tier economic     → Pricing tier for external validations              │
+# │   --context "..."     → NEW v2.55: Keywords for relevance scoring          │
+# │   --verbose           → Show detailed scoring breakdown                    │
+# │                                                                             │
+# │ Scoring Formula:                                                            │
+# │   QualityScore = stars(30%) + tests(25%) + CI/CD(20%) + docs(15%) + activity(10%)  │
+# │   + ContextRelevance: +3 (description match) +2 (name match) -1 (irrelevant)       │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+ralph curator scoring \
+  --input ~/.ralph/curator/candidates/backend_ts_errors.json \
+  --output ~/.ralph/curator/scored/backend_ts_errors_scored.json \
+  --tier economic \
+  --context "error handling,retry,circuit breaker,resilience,fault tolerance" \
+  --verbose
+
+# Output: Each repo now has QualityScore (0-100) + ContextRelevance bonus
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ STEP 3: RANKING - Select top repositories with diversity constraints       │
+# │                                                                             │
+# │ Parameters:                                                                 │
+# │   --input file.json   → Input: scored repositories                         │
+# │   --output file.json  → Output: final ranking                              │
+# │   --top-n 10          → Limit: select top 10 repositories                  │
+# │   --max-per-org 2     → Diversity: max 2 repos per organization            │
+# │                        (prevents nestjs/nest, nestjs/config, nestjs/cli    │
+# │                         from dominating the list)                          │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+ralph curator rank \
+  --input ~/.ralph/curator/scored/backend_ts_errors_scored.json \
+  --output ~/.ralph/curator/rankings/backend_ts_errors_ranking.json \
+  --top-n 10 \
+  --max-per-org 2
+
+# Output: Top 10 repos, max 2 per organization, sorted by QualityScore
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ STEP 4: REVIEW - Show ranking and manage approval queue                    │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# View the ranking
+ralph curator show --type backend --lang typescript
+
+# View pending repos in queue
+ralph curator pending --type backend --lang typescript
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ STEP 5: APPROVE/REJECT - User decides which repos to learn from            │
+# │                                                                             │
+# │ Approve options:                                                            │
+# │   --repo owner/name   → Approve specific repository                        │
+# │   --all               → Approve all staged repositories                    │
+# │                                                                             │
+# │ Reject options:                                                             │
+# │   --repo owner/name   → Reject specific repository                         │
+# │   --reason "..."      → Document why (for future reference)                │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# Approve high-quality repos
+ralph curator approve --repo nestjs/nest
+ralph curator approve --repo prisma/prisma
+ralph curator approve --repo trpc/trpc
+
+# Reject with reason (documented for future reference)
+ralph curator reject --repo some/low-quality --reason "No tests, outdated dependencies"
+
+# Or approve all at once
+ralph curator approve --all
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ STEP 6: INGEST - Clone approved repos to local corpus                      │
+# │                                                                             │
+# │ Parameters:                                                                 │
+# │   --repo owner/name   → Repository to clone                                │
+# │   --output-dir path   → Custom output directory                            │
+# │   --approve           → Skip staging, go directly to approved              │
+# │   --source "label"    → Attribution label for generated rules              │
+# │   --depth 1           → Shallow clone (faster, less disk space)            │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+ralph curator ingest \
+  --repo nestjs/nest \
+  --approve \
+  --source "enterprise-typescript-patterns" \
+  --depth 1
+
+# Output: Repo cloned to ~/.ralph/curator/corpus/approved/nestjs_nest/
+
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ STEP 7: LEARN - Extract patterns and update procedural memory              │
+# │                                                                             │
+# │ Parameters:                                                                 │
+# │   --type backend      → Filter by type                                     │
+# │   --lang typescript   → Filter by language                                 │
+# │   --repo owner/name   → Learn from specific repository                     │
+# │   --all               → Learn from ALL approved repositories               │
+# │                                                                             │
+# │ Output: Rules added to ~/.ralph/procedural/rules.json                      │
+# │         Each rule has source_repo attribution for traceability             │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+# Learn from specific repo
+ralph curator learn --repo nestjs/nest
+
+# Or learn from all approved repos
+ralph curator learn --all
+
+# Or filter by type/language
+ralph curator learn --type backend --lang typescript
+
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║                           RESULT                                             ║
+# ║                                                                               ║
+# ║  Procedural Memory Updated:                                                   ║
+# ║  ~/.ralph/procedural/rules.json                                               ║
+# ║                                                                               ║
+# ║  Example rule generated:                                                      ║
+# ║  {                                                                            ║
+# ║    "rule_id": "repo-nestjs-1705789234",                                       ║
+# ║    "source_repo": "nestjs/nest",                                              ║
+# ║    "trigger": "dependency-injection",                                         ║
+# ║    "behavior": "Use constructor injection with @Injectable() decorator",      ║
+# ║    "confidence": 0.92,                                                        ║
+# ║    "category": "architecture"                                                 ║
+# ║  }                                                                            ║
+# ║                                                                               ║
+# ║  Now Ralph will apply these patterns in future implementations!               ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+```
+
 ### Codex Planner (v2.50) - NEW
 
 ```
