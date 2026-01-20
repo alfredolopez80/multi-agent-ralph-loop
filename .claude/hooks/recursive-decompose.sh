@@ -17,7 +17,7 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 
 # Only process Task completions
 if [[ "$TOOL_NAME" != "Task" ]]; then
-    echo '{"continue": true}'
+    echo '{"decision": "continue"}'
     exit 0
 fi
 
@@ -27,7 +27,7 @@ TASK_PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty')
 
 # Only trigger for orchestrator classification results
 if [[ "$TASK_TYPE" != "orchestrator" ]] && ! echo "$TASK_PROMPT" | grep -qi "classify\|classification\|complexity"; then
-    echo '{"continue": true}'
+    echo '{"decision": "continue"}'
     exit 0
 fi
 
@@ -52,8 +52,7 @@ LOG_FILE="$LOG_DIR/recursive-decompose-$(date +%Y%m%d).log"
         CONTEXT_REQ=$(jq -r '.classification.context_requirement // "FITS"' "$PLAN_STATE_FILE")
         CURRENT_DEPTH=$(jq -r '.recursion.depth // 0' "$PLAN_STATE_FILE")
         MAX_DEPTH=$(jq -r '.recursion.max_depth // 3' "$PLAN_STATE_FILE")
-        # SEC-024: Use fixed value for max_children (not from environment)
-        MAX_CHILDREN=$(jq -r '.recursion.max_children // 5' "$PLAN_STATE_FILE")
+        MAX_CHILDREN=${MAX_CHILDREN:-5}  # Default: max 5 sub-orchestrators per level
 
         echo "  Classification:"
         echo "    Workflow: $WORKFLOW_ROUTE"

@@ -6,7 +6,8 @@
 # ============================================================================
 
 # Configuration
-# VERSION: 2.57.0
+# VERSION: 2.57.1
+# v2.57.1: Added JSON output (SEC-030) to prevent "empty output" error
 RALPH_DIR="${HOME}/.ralph"
 GOAL_FILE="${RALPH_DIR}/current_goal"
 STATUS_FILE="${RALPH_DIR}/reminder_status"
@@ -16,6 +17,12 @@ LOG_FILE="${RALPH_DIR}/reminder.log"
 REMINDER_INTERVAL="${REMINDER_INTERVAL:-5}"      # Messages between reminders
 CONTEXT_THRESHOLD="${CONTEXT_THRESHOLD:-40}"      # Context % to trigger reminder
 ENABLE_LOGGING="${ENABLE_LOGGING:-true}"
+
+# SEC-030: Guaranteed JSON output on any exit
+output_json() {
+    echo '{}'
+}
+trap 'output_json' EXIT
 
 # ============================================================================
 # Logging function (only if enabled)
@@ -199,6 +206,9 @@ main() {
 
     if [[ "$current_goal" == "No goal set"* ]]; then
         log_reminder "DEBUG" "No goal set, skipping reminder"
+        # SEC-030: Disable trap and output explicit JSON
+        trap - EXIT
+        echo '{}'
         exit 0
     fi
 
@@ -242,6 +252,9 @@ main() {
         log_reminder "INFO" "Reminder injected and counter reset"
     fi
 
+    # SEC-030: Disable trap and output explicit JSON
+    trap - EXIT
+    echo '{}'
     exit 0
 }
 

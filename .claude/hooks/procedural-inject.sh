@@ -6,7 +6,8 @@
 # Reads ~/.ralph/procedural/rules.json and injects matching rules
 # based on task description and tags.
 #
-# VERSION: 2.57.0
+# VERSION: 2.57.2
+# v2.57.2: Fixed JSON newline escaping (SEC-032)
 # SECURITY: Added ERR trap for guaranteed JSON output
 
 set -euo pipefail
@@ -136,24 +137,22 @@ mkdir -p "$LOG_DIR"
     echo "  Matched $MATCH_COUNT rules"
 } >> "$LOG_DIR/procedural-inject-$(date +%Y%m%d).log" 2>/dev/null || true
 
-# Prepare context injection
-# SEC-027: Use printf instead of echo -e to avoid escape interpretation
-RULES_TEXT=$(printf '%b' "$MATCHING_RULES")
-CONTEXT="[Procedural Memory - Learned Behaviors]
+# SEC-032: Build context string with explicit \n for JSON compatibility
+# The MATCHING_RULES already contains \n sequences from the loop
+CONTEXT_HEADER="[Procedural Memory - Learned Behaviors]\n\nBased on patterns from past sessions, apply these behaviors:\n\n"
+CONTEXT_FOOTER="\n\nThese rules have been learned from successful (and failed) past work."
 
-Based on patterns from past sessions, apply these behaviors:
+# Combine all parts (keeping \n as literal backslash-n, not newlines)
+FULL_CONTEXT="${CONTEXT_HEADER}${MATCHING_RULES}${CONTEXT_FOOTER}"
 
-${RULES_TEXT}
-
-These rules have been learned from successful (and failed) past work."
-
-# Use jq for safe JSON construction
-jq -n --arg ctx "$CONTEXT" \
+# Use jq for safe JSON construction - jq will properly escape the \n sequences
+# Note: Using --rawfile or direct string keeps \n as literal characters
+jq -n --arg rules "$FULL_CONTEXT" \
     --argjson rules_matched "$MATCH_COUNT" \
     --arg ts "$(date -Iseconds)" \
     '{
         decision: "continue",
-        additionalContext: $ctx,
+        additionalContext: $rules,
         procedural_injection: {
             rules_matched: $rules_matched,
             timestamp: $ts
