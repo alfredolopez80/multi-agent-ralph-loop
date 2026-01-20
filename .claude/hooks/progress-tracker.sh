@@ -49,7 +49,7 @@ case "$TOOL_NAME" in
         ;;
     *)
         # Skip non-relevant tools silently
-        echo '{"decision": "continue"}'
+        echo '{"continue": true}'
         exit 0
         ;;
 esac
@@ -195,4 +195,4 @@ main() {
 main
 
 # Return success (hook should not block execution)
-echo '{"decision": "continue"}'
+echo '{"continue": true}'

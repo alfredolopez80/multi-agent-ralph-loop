@@ -13,9 +13,9 @@ set -euo pipefail
 umask 077
 
 # Guaranteed JSON output on any error (SEC-006)
-# UserPromptSubmit hooks use {"decision": "continue", "systemMessage": "..."}
+# UserPromptSubmit hooks use {"continue": true, "systemMessage": "..."}
 output_json() {
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
 }
 trap 'output_json' ERR
 
@@ -29,7 +29,7 @@ KEYWORDS="best practice|pattern|learn from|reference|example repo|quality code|c
 
 # Check if prompt contains relevant keywords
 if ! echo "$USER_PROMPT_LOWER" | grep -qE "$KEYWORDS"; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -78,4 +78,4 @@ to extract patterns from your approved repositories."
 fi
 
 # All good, continue without suggestion
-echo '{"decision": "continue"}'
+echo '{"continue": true}'

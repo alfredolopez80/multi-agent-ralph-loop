@@ -3,7 +3,8 @@
 # Origen: planning-with-files pattern
 # v2.45.4 - Added JSON return for Claude Code hook protocol
 
-# VERSION: 2.57.0
+# VERSION: 2.57.3
+# v2.57.3: Fixed JSON format - Stop hooks use {"decision": "approve|block"} (SEC-038)
 set -euo pipefail
 
 # Configuración
@@ -13,14 +14,15 @@ LOG_FILE="${HOME}/.ralph/logs/stop-verification.log"
 # Asegurar directorio de logs existe
 mkdir -p "$(dirname "$LOG_FILE")"
 
-# Function to return JSON response (Claude Code hook protocol)
+# Function to return JSON response (Stop hook protocol - uses "decision" not "continue")
+# Stop hooks: {"decision": "approve"} to allow stop, {"decision": "block"} to prevent
 return_json() {
-    local continue_flag="${1:-true}"
-    local message="${2:-}"
-    if [ -n "$message" ]; then
-        echo "{\"continue\": $continue_flag, \"message\": \"$message\"}"
+    local decision="${1:-approve}"
+    local reason="${2:-}"
+    if [ -n "$reason" ]; then
+        echo "{\"decision\": \"$decision\", \"reason\": \"$reason\"}"
     else
-        echo "{\"continue\": $continue_flag}"
+        echo "{\"decision\": \"$decision\"}"
     fi
 }
 
@@ -116,11 +118,11 @@ if [ ${#WARNINGS[@]} -gt 0 ]; then
         WARNING_MSG+="$warning; "
     done
 
-    # Return JSON with warnings (Stop hook - informational, doesn't block)
-    return_json true "$WARNING_MSG"
+    # Return JSON with warnings (Stop hook - approve with reason)
+    return_json "approve" "$WARNING_MSG"
 else
     log "All checks passed"
-    return_json true "Stop Verification: All ${TOTAL_CHECKS} checks passed"
+    return_json "approve" "Stop Verification: All ${TOTAL_CHECKS} checks passed"
 fi
 
 exit 0

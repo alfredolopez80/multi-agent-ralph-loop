@@ -18,7 +18,7 @@ umask 077
 
 # Guaranteed JSON output on any error (SEC-006)
 output_json() {
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
 }
 trap 'output_json' ERR
 
@@ -35,7 +35,7 @@ USER_PROMPT=$(echo "$INPUT" | jq -r '.user_prompt // empty' 2>/dev/null || echo 
 
 # Exit if no prompt
 if [[ -z "$USER_PROMPT" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -45,14 +45,14 @@ PROMPT_LOWER=$(echo "$USER_PROMPT" | tr '[:upper:]' '[:lower:]')
 # Memory config
 CONFIG_FILE="$HOME/.ralph/config/memory-config.json"
 if [[ ! -f "$CONFIG_FILE" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
 # Check if hot path is enabled
 HOT_PATH_ENABLED=$(jq -r '.hot_path.enabled // true' "$CONFIG_FILE" 2>/dev/null || echo "true")
 if [[ "$HOT_PATH_ENABLED" != "true" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -80,7 +80,7 @@ done <<< "$TRIGGERS"
 
 # If no match, continue normally
 if [[ -z "$MATCHED" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 

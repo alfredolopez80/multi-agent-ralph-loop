@@ -1,6 +1,6 @@
 #!/bin/bash
 # todo-plan-sync.sh - Sync TodoWrite with plan-state.json
-# VERSION: 2.57.0
+# VERSION: 2.57.3
 #
 # Purpose: Synchronize TodoWrite tool usage with plan-state.json
 # This enables real-time progress tracking in the statusline.
@@ -14,17 +14,17 @@
 # 4. Update timestamps and recalculate completion percentage
 #
 # Output (JSON via stdout for PostToolUse):
-#   - {"decision": "continue"}: Allow execution to continue
-#   - {"decision": "continue", "systemMessage": "..."}: Continue with feedback
+#   - {"continue": true}: Allow execution to continue
+#   - {"continue": true, "systemMessage": "..."}: Continue with feedback
 #
-# VERSION: 2.57.2
+# VERSION: 2.57.3
 # v2.57.2: Fixed JSON format (SEC-033) - use "decision" not "continue"
 
 set -euo pipefail
 
 # SEC-033: Guaranteed JSON output on any error
 output_json() {
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
 }
 trap 'output_json' ERR
 
@@ -45,7 +45,7 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null || echo "")
 
 # Only process TodoWrite
 if [[ "$TOOL_NAME" != "TodoWrite" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -57,7 +57,7 @@ TODOS=$(echo "$INPUT" | jq -r '.tool_input.todos // []' 2>/dev/null || echo "[]"
 # Validate todos
 if [[ "$TODOS" == "[]" ]] || [[ -z "$TODOS" ]]; then
     log "No todos found in input"
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -174,7 +174,8 @@ if [[ ! -f "$PLAN_STATE" ]]; then
     chmod 600 "$PLAN_STATE"
 
     log "Created dynamic plan-state.json with $TOTAL_TODOS steps"
-    echo "{\"decision\": \"continue\", \"systemMessage\": \"📊 Plan created from todos: $COMPLETED_TODOS/$TOTAL_TODOS complete\"}"
+    # SEC-039: PostToolUse hooks MUST use {"continue": true}, NOT {"decision": "continue"}
+    echo "{\"continue\": true, \"systemMessage\": \"📊 Plan created from todos: $COMPLETED_TODOS/$TOTAL_TODOS complete\"}"
     exit 0
 fi
 
@@ -272,4 +273,5 @@ PERCENTAGE=$((NEW_COMPLETED * 100 / NEW_TOTAL))
 
 log "Updated plan-state: $NEW_COMPLETED/$NEW_TOTAL ($PERCENTAGE%)"
 
-echo "{\"decision\": \"continue\", \"systemMessage\": \"📊 Progress: $NEW_COMPLETED/$NEW_TOTAL ($PERCENTAGE%)\"}"
+# SEC-039: PostToolUse hooks MUST use {"continue": true}, NOT {"decision": "continue"}
+echo "{\"continue\": true, \"systemMessage\": \"📊 Progress: $NEW_COMPLETED/$NEW_TOTAL ($PERCENTAGE%)\"}"

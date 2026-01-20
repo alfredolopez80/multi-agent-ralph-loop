@@ -2,9 +2,16 @@
 # Fast-Path Check Hook v2.46
 # Hook: PreToolUse (Task)
 # Purpose: Detect trivial tasks and route to fast-path
-# VERSION: 2.57.0
+# VERSION: 2.57.3
+# v2.57.3: Fixed JSON output to single line format
 
 set -euo pipefail
+
+# Guaranteed valid JSON on error
+output_json() {
+    echo '{"continue": true}'
+}
+trap 'output_json' ERR
 umask 077
 
 # Parse JSON input from stdin
@@ -14,7 +21,7 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 
 # Only process Task tool calls
 if [[ "$TOOL_NAME" != "Task" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -24,7 +31,7 @@ TASK_PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty')
 
 # Skip if already in orchestrator context
 if [[ "$TASK_TYPE" == "orchestrator" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -70,15 +77,9 @@ LOG_FILE="$LOG_DIR/fast-path-$(date +%Y%m%d).log"
     echo "  Prompt preview: ${TASK_PROMPT:0:100}..."
 } >> "$LOG_FILE"
 
-# Return decision with classification hint
+# Return decision with classification hint (single-line JSON)
 if [[ "$IS_TRIVIAL" == "true" ]]; then
-    echo '{
-        "decision": "continue",
-        "additionalContext": "FAST_PATH_ELIGIBLE: This task appears trivial (complexity <= 3, CONSTANT density, FITS context). Consider using fast-path: DIRECT_EXECUTE -> MICRO_VALIDATE -> DONE (3 steps instead of 12)."
-    }'
+    echo '{"continue": true, "additionalContext": "FAST_PATH_ELIGIBLE: This task appears trivial (complexity <= 3). Consider fast-path: DIRECT_EXECUTE -> MICRO_VALIDATE -> DONE."}'
 else
-    echo '{
-        "decision": "continue",
-        "additionalContext": "STANDARD_PATH: This task requires full orchestration workflow."
-    }'
+    echo '{"continue": true, "additionalContext": "STANDARD_PATH: This task requires full orchestration workflow."}'
 fi

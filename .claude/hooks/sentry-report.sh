@@ -3,11 +3,16 @@
 # Triggered by: Stop (orchestrator completion)
 # Once: true
 
-# VERSION: 2.57.0
+# VERSION: 2.57.3
+# v2.57.3: Added proper Stop hook JSON output (SEC-039)
 set -euo pipefail
+
+# SEC-039: Guaranteed valid JSON output on any error (Stop hook format)
+trap 'echo '"'"'{"decision": "approve"}'"'"'' ERR EXIT
 
 # Only run if Sentry was used in this session
 if [[ ! -f ".sentry-used" ]]; then
+    echo '{"decision": "approve"}'
     exit 0
 fi
 
@@ -28,4 +33,6 @@ fi
 # Cleanup
 rm -f ".sentry-used"
 
+# Stop hook must output JSON
+echo '{"decision": "approve"}'
 exit 0

@@ -5,7 +5,7 @@
 #
 # VERSION: 2.57.0
 # v2.52: Fixed JSON output and bash syntax error (local outside function)
-# Schema: {"decision": "continue"} or {"decision": "continue", "systemMessage": "..."}
+# Schema: {"continue": true} or {"continue": true, "systemMessage": "..."}
 
 set -euo pipefail
 umask 077
@@ -26,22 +26,22 @@ if [[ "$PROMPT" =~ ^/curator[[:space:]] ]]; then
     case "$subcommand" in
         full|discover|score|rank|ingest|approve|reject|pending|show|learn|status)
             # Valid curator command, allow execution
-            echo '{"decision": "continue"}'
+            echo '{"continue": true}'
             exit 0
             ;;
         help|--help|-h)
             # Show help, allow execution
-            echo '{"decision": "continue"}'
+            echo '{"continue": true}'
             exit 0
             ;;
         *)
             # Unknown command, might be a mistake
             # Allow it but log warning
-            echo '{"decision": "continue", "systemMessage": "Unknown curator subcommand"}'
+            echo '{"continue": true, "systemMessage": "Unknown curator subcommand"}'
             exit 0
             ;;
     esac
 fi
 
 # Not a curator command, continue normally
-echo '{"decision": "continue"}'
+echo '{"continue": true}'
