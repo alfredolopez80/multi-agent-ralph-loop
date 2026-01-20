@@ -1,6 +1,6 @@
 # Multi-Agent-Ralph
 
-![Version](https://img.shields.io/badge/version-2.55.0-blue)
+![Version](https://img.shields.io/badge/version-2.56.2-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 
@@ -23,6 +23,30 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 - **Automatic Context Preservation**: 100% automatic ledger/handoff system preserves session state (v2.35)
 - **Self-Improvement**: Retrospective analysis after each task to propose workflow improvements
 - **Autonomous Learning (v2.55)**: Proactively learns from quality repositories when knowledge gaps detected
+- **Automated Monitoring (v2.56)**: Smart checkpoints, status monitoring, and health checks via hooks
+
+### v2.56: Automated Monitoring
+
+```bash
+# Monitoring is 100% automatic via hooks - no manual commands needed
+# Hooks automatically:
+# - Show orchestration status every 5 operations
+# - Create checkpoints before risky edits (auth, security, config files)
+# - Run health checks every 5 minutes for stuck detection
+```
+
+**Automation Hooks (v2.56)**:
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `status-auto-check.sh` | PostToolUse (Edit/Write/Bash) | Auto-shows status every 5 operations |
+| `checkpoint-smart-save.sh` | PreToolUse (Edit/Write) | Smart checkpoints on risky edits |
+| `statusline-health-monitor.sh` | UserPromptSubmit | Health checks every 5 minutes |
+
+**Smart Checkpoint Triggers**:
+- `high_complexity`: Plan complexity ≥ 7
+- `high_risk_step`: Step involves auth/security/payment
+- `critical_file`: Config, settings, .env, database files
+- `security_file`: Files with auth/secret/credential in name
 
 ### v2.55: Autonomous Self-Improvement
 
@@ -63,7 +87,7 @@ ralph health --compact    # One-line: 🏥 HEALTH: 7/9 OK, 1 WARN, 1 CRIT
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         RALPH v2.55.0 COMPLETE ARCHITECTURE                  │
+│                         RALPH v2.56.2 COMPLETE ARCHITECTURE                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │

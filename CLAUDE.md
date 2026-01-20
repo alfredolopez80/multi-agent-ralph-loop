@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.55.0
+# Multi-Agent Ralph v2.56.2
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
@@ -472,6 +472,31 @@ ralph health --fix              # Auto-fix critical issues
 - **Semantic**: New functions, classes, dependencies from git diff
 - **Decisions**: Design patterns (Singleton, Repository, Factory...), architectural choices (async/await, caching, logging)
 - **Source tracking**: `"source": "auto-extract"` with deduplication
+
+### Automated Monitoring (v2.56) - NEW
+
+100% automatic monitoring via hooks - no manual commands needed.
+
+**Automation Hooks (v2.56)**:
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `status-auto-check.sh` | PostToolUse (Edit/Write/Bash) | Auto-shows status every 5 operations |
+| `checkpoint-smart-save.sh` | PreToolUse (Edit/Write) | Smart checkpoints on risky edits |
+| `statusline-health-monitor.sh` | UserPromptSubmit | Health checks every 5 minutes |
+
+**Smart Checkpoint Triggers**:
+| Trigger | Condition |
+|---------|-----------|
+| `high_complexity` | Plan complexity ≥ 7 |
+| `high_risk_step` | Step involves auth/security/payment |
+| `critical_file` | Config, settings, .env, database files |
+| `security_file` | Files with auth/secret/credential in name |
+
+**Health Checks**:
+- Script existence and permissions
+- Plan-state JSON validity
+- Stuck detection (in_progress > 30 min)
+- StatusLine sync verification
 
 ---
 

@@ -46,10 +46,22 @@
 | #11510 | 10:03 PM | 🔴 | Message Count Path Corrected to STATE_DIR in Context Warning Hook | ~540 |
 | #11509 | " | ✅ | Context Warning Hook Threshold Adjustment for Proactive Compaction | ~476 |
 | #11507 | " | 🔵 | Project-Specific Context Warning Hook Configuration | ~959 |
+| #11445 | 9:18 PM | ✅ | Committed stop-verification.sh integer validation fix to git | ~269 |
+| #11444 | 9:17 PM | 🔴 | Applied integer validation to TEST_FAILURES variable | ~312 |
+| #11443 | " | 🔴 | Applied integer validation to LINT_ERRORS variable | ~284 |
+| #11442 | " | 🔴 | Fixed integer expression error in stop-verification.sh hook | ~341 |
 
 ### Jan 19, 2026
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #11882 | 4:06 PM | 🔵 | **Repo Curator Agent v2.50.0 - Planning and Exploration Phase** | ~477 |
+| #11707 | 1:37 AM | ✅ | Updated quality gates hook with first-run suggestion synchronized to project | ~178 |
+| #11701 | 1:31 AM | ✅ | Updated quality gates hook synchronized to project directory | ~186 |
+
+### Jan 20, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #12201 | 12:48 PM | 🔵 | Plan-State System Analysis Reveals Multiple Integration Issues | ~593 |
 </claude-mem-context>
