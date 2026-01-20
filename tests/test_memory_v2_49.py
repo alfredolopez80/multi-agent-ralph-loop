@@ -10,6 +10,8 @@ Tests cover:
 - Configuration management
 - Memory lifecycle (TTL, cleanup, deduplication)
 
+VERSION: 2.57.3 (updated from 2.49 to reflect current version)
+
 Run with: pytest tests/test_memory_v2_49.py -v
 """
 
@@ -38,6 +40,20 @@ REFLECTION_EXECUTOR = CLAUDE_DIR / "scripts" / "reflection-executor.py"
 REFLECTION_HOOK = CLAUDE_DIR / "hooks" / "reflection-engine.sh"
 MEMORY_TRIGGER_HOOK = CLAUDE_DIR / "hooks" / "memory-write-trigger.sh"
 PROCEDURAL_HOOK = CLAUDE_DIR / "hooks" / "procedural-inject.sh"
+
+
+@pytest.fixture
+def hook_exists():
+    """Verifica si el hook existe antes de ejecutar el test.
+
+    Returns a function that skips the test if the hook doesn't exist.
+    Useful for optional hooks that may not be installed.
+    """
+    def _check(hook_name: str, hook_path: Path) -> None:
+        """Skip test if hook doesn't exist."""
+        if not hook_path.exists():
+            pytest.skip(f"Hook {hook_name} not found at {hook_path}")
+    return _check
 
 
 class TestMemoryConfiguration:
@@ -297,7 +313,8 @@ class TestHotPathHooks:
         )
         assert result.returncode == 0
         output = json.loads(result.stdout)
-        assert output.get("decision") == "continue"
+        # PostToolUse hooks use "continue" field, not "decision"
+        assert output.get("continue") is True
         # Should NOT have memory_trigger with detected=true
         if "memory_trigger" in output:
             assert output["memory_trigger"].get("detected") is not True
@@ -314,7 +331,8 @@ class TestHotPathHooks:
         )
         assert result.returncode == 0
         output = json.loads(result.stdout)
-        assert output.get("decision") == "continue"
+        # PostToolUse hooks use "continue" field, not "decision"
+        assert output.get("continue") is True
 
 
 class TestColdPathHooks:
@@ -329,7 +347,11 @@ class TestColdPathHooks:
         assert os.access(REFLECTION_HOOK, os.X_OK), "Hook not executable"
 
     def test_reflection_hook_returns_continue(self):
-        """Hook should return continue decision."""
+        """Hook should return valid response for Stop event.
+
+        Stop hooks use 'decision' field with values 'approve' or 'block'.
+        PostToolUse/PreToolUse hooks use 'continue' field.
+        """
         input_json = json.dumps({"session_id": "test-session-123"})
         result = subprocess.run(
             ["bash", str(REFLECTION_HOOK)],
@@ -340,7 +362,9 @@ class TestColdPathHooks:
         )
         assert result.returncode == 0
         output = json.loads(result.stdout)
-        assert output.get("decision") == "continue"
+        # Stop hooks use 'decision' field with 'approve' or 'block'
+        assert output.get("decision") in ("approve", "block"), \
+            f"Expected decision='approve' or 'block', got: {output}"
 
 
 class TestProceduralInjection:
@@ -366,7 +390,8 @@ class TestProceduralInjection:
         )
         assert result.returncode == 0
         output = json.loads(result.stdout)
-        assert output.get("decision") == "continue"
+        # PreToolUse hooks use "continue" field, not "decision"
+        assert output.get("continue") is True
 
     def test_task_tool_handling(self):
         """Should handle Task tool calls."""
@@ -387,7 +412,8 @@ class TestProceduralInjection:
         )
         assert result.returncode == 0
         output = json.loads(result.stdout)
-        assert output.get("decision") == "continue"
+        # PreToolUse hooks use "continue" field, not "decision"
+        assert output.get("continue") is True
 
 
 class TestEpisodicMemoryStorage:
@@ -578,7 +604,8 @@ class TestEdgeCases:
             )
             assert result.returncode == 0
             output = json.loads(result.stdout)
-            assert output.get("decision") == "continue"
+            # PostToolUse hooks use "continue" field, not "decision"
+            assert output.get("continue") is True
         finally:
             if backup and backup.exists():
                 backup.rename(CONFIG_FILE)

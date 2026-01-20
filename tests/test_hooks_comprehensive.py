@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comprehensive Hook Testing Suite - v2.52.0
+Comprehensive Hook Testing Suite - v2.57.3
 
 This test suite validates BEHAVIOR, not just code presence.
 Each test executes the hook with realistic inputs and validates outputs.
@@ -13,7 +13,12 @@ Test Categories:
 5. REGRESSION - Specific bugs that have occurred before
 6. PERFORMANCE - Execution within timeout limits
 
-VERSION: 2.52.0
+VERSION: 2.57.3
+CHANGES from 2.52.0:
+- Updated JSON format validation (SEC-039): use "continue" not "decision"
+- Added security tests for new hooks
+- Fixed edge case handling for UserPromptSubmit hooks
+- Added regression tests for JSON format compliance
 """
 import os
 import json
