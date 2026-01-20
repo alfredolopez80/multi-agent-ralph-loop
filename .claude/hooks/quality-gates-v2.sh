@@ -2,7 +2,7 @@
 # Quality Gates v2.48 - Quality Over Consistency + Security Scanning
 # Hook: PostToolUse (Edit, Write)
 # Purpose: Validate code changes with quality-first approach
-# VERSION: 2.48.0
+# VERSION: 2.57.0
 #
 # Stage 2.5 SECURITY: semgrep (SAST) + gitleaks (secrets)
 # Install tools: ~/.claude/scripts/install-security-tools.sh

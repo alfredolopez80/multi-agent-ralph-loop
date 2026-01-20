@@ -2,7 +2,7 @@
 
 # SessionStart Hook: Personalized welcome message
 
-# VERSION: 2.43.0
+# VERSION: 2.57.0
 set -euo pipefail
 
 # Read hook input from stdin

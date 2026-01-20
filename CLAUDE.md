@@ -641,16 +641,80 @@ ralph handoff create      # Create handoff
 
 ---
 
-## Hooks (30 registered)
+## Hooks (49 registered) - v2.57.0
 
 | Event Type | Purpose |
 |------------|---------|
 | SessionStart | Context preservation at startup, **auto-migrate plan-state** (v2.51) |
 | PreCompact | Save state before compaction |
-| PostToolUse | Quality gates after Edit/Write |
-| PreToolUse | Safety guards before Bash/Skill |
+| PostToolUse | Quality gates after Edit/Write/Bash |
+| PreToolUse | Safety guards before Bash/Skill/Task |
 | UserPromptSubmit | Context warnings, reminders |
 | Stop | Session reports |
+
+### Hook Review Policy (v2.57.0)
+
+> **IMPORTANT**: When updating hook versions, ALL hooks must be validated.
+
+**Review Checklist**:
+1. ✅ Verify JSON output format matches event type (see Known Limitations)
+2. ✅ Test hook execution with manual invocation
+3. ✅ Check hook logs for errors: `~/.ralph/logs/`
+4. ✅ Validate version numbers are consistent across all hooks
+5. ✅ Run `/gates` to ensure no regressions
+
+**Version Bump Command**:
+```bash
+cd ~/.claude/hooks && for f in *.sh; do
+  sed -i '' "s/VERSION: [0-9]*\.[0-9]*\.[0-9]*/VERSION: X.Y.Z/g" "$f"
+done
+```
+
+### Known Limitations (v2.57.0)
+
+#### 1. TodoWrite Does NOT Trigger Hooks (By Design)
+
+**This is intentional, not a bug.** Claude Code categorizes tools into two types:
+
+| Type | Tools | Hooks |
+|------|-------|-------|
+| **Executive** (modify system) | `Edit`, `Write`, `Bash` | ✅ PreToolUse + PostToolUse |
+| **Declarative** (organize/plan) | `TodoWrite` | ❌ No hooks |
+
+**Rationale** (from Claude.ai):
+- **Executive tools** need PostToolUse hooks to validate effects (file created? command succeeded?)
+- **TodoWrite** is purely declarative - it just updates an internal task list with no filesystem effects
+- PostToolUse hooks are for validating side effects; TodoWrite has none
+
+| Tool | Type | PreToolUse | PostToolUse |
+|------|------|------------|-------------|
+| `Bash` | Executive | ✅ | ✅ |
+| `Edit` | Executive | ✅ | ✅ |
+| `Write` | Executive | ✅ | ✅ |
+| `Read` | Read-only | ✅ | ✅ |
+| `Glob` | Read-only | ✅ | ✅ |
+| `Grep` | Read-only | ✅ | ✅ |
+| `Task` | Orchestration | ✅ | ✅ |
+| `mcp__*` | Varies | ✅ | ✅ |
+| **`TodoWrite`** | Declarative | ❌ | ❌ |
+
+**Impact**: Hooks cannot react to todo list changes directly.
+
+**Workaround**: Use `status-auto-check.sh` which triggers on Edit/Write/Bash (every 5 ops) for periodic plan-state updates.
+
+#### 2. Relative Paths in Hooks
+
+Hooks execute from unpredictable directories. Always use **absolute paths**:
+
+```bash
+# ❌ BAD - May fail depending on CWD
+PLAN_STATE=".claude/plan-state.json"
+
+# ✅ GOOD - Always works
+PLAN_STATE="${PROJECT_ROOT}/.claude/plan-state.json"
+# or
+PLAN_STATE="$(git rev-parse --show-toplevel 2>/dev/null)/.claude/plan-state.json"
+```
 
 ---
 
