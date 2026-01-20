@@ -12,7 +12,7 @@
 #
 # Part of Ralph v2.43 Context Engineering with Claude-Mem Integration
 #
-# VERSION: 2.57.0
+# VERSION: 2.57.4
 
 set -euo pipefail
 

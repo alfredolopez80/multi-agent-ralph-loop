@@ -14,7 +14,7 @@
 #
 # Part of Ralph v2.43 Context Engineering
 
-# VERSION: 2.57.3
+# VERSION: 2.57.4
 # Note: Not using set -e because we need graceful fallback on errors
 set -uo pipefail
 

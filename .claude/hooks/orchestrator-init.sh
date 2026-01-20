@@ -11,7 +11,7 @@
 # - Sets up plan-state if not exists
 # - Validates procedural memory accessibility
 #
-# VERSION: 2.57.1
+# VERSION: 2.57.4
 # SECURITY: SEC-006 compliant
 
 set -euo pipefail

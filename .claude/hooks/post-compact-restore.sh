@@ -3,7 +3,7 @@
 # Restores context after compaction using ledger + claude-mem MCP
 # Triggered by PostCompact hook event
 
-# VERSION: 2.57.0
+# VERSION: 2.57.4
 set -euo pipefail
 
 LOG_FILE="${HOME}/.ralph/logs/post-compact.log"

@@ -1,10 +1,10 @@
 # Multi-Agent-Ralph
 
-![Version](https://img.shields.io/badge/version-2.57.3-blue)
+![Version](https://img.shields.io/badge/version-2.57.5-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 ![Tests](https://img.shields.io/badge/tests-103%20passed-green)
-![Hooks](https://img.shields.io/badge/hooks-49%20registered-orange)
+![Hooks](https://img.shields.io/badge/hooks-52%20registered-orange)
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 

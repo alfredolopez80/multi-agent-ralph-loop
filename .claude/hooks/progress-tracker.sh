@@ -15,7 +15,7 @@
 # Part of Ralph v2.41 Context Engineering - progress.md system
 # Based on: docs/yt/stop-using-ralph-plugin-summary.md
 
-# VERSION: 2.57.0
+# VERSION: 2.57.4
 set -euo pipefail
 
 # Configuration

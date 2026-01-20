@@ -4,7 +4,7 @@
 # Origen: planning-with-files "Context Engineering" pattern
 # v1.0.0 - 2026-01-13
 
-# VERSION: 2.57.3
+# VERSION: 2.57.4
 # v2.57.3: Fixed LAST remaining {"decision": "continue"} on line 89 (SEC-037)
 # v2.57.2: Fixed JSON output format (SEC-036) - PostToolUse hooks MUST output JSON
 set -euo pipefail

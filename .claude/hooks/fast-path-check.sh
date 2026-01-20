@@ -2,7 +2,7 @@
 # Fast-Path Check Hook v2.46
 # Hook: PreToolUse (Task)
 # Purpose: Detect trivial tasks and route to fast-path
-# VERSION: 2.57.3
+# VERSION: 2.57.4
 # v2.57.3: Fixed JSON output to single line format
 
 set -euo pipefail

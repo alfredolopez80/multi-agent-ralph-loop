@@ -19,7 +19,7 @@
 #   - recommended_patterns: Best practices from history
 #   - fork_suggestions: Top 5 sessions to fork from
 #
-# VERSION: 2.57.0 (Security Hardened + Portability)
+# VERSION: 2.57.4 (Security Hardened + Portability)
 # Fixes: SECURITY-001, 002, 003, ADV-001, ADV-002, ADV-003, ADV-004, ADV-005, ADV-006
 # v2.47.3: Removed unused variable, fixed $KEYWORDS_SAFE usage, date portability, noclobber
 

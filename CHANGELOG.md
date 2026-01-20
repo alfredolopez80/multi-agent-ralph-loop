@@ -7,6 +7,95 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.57.5] - 2026-01-20
+
+### Fixed (Stop Hook JSON Format Error)
+
+**Severity**: HIGH (P1)
+**Impact**: Fixed Stop hook validation errors during session end
+
+#### Root Cause
+
+The error occurred because `orchestrator-report.sh` was outputting:
+```json
+{"decision": "continue"}  // INVALID
+```
+
+But Claude Code's Stop hook schema requires:
+```json
+{"decision": "approve"}   // VALID
+{"decision": "block"}     // VALID (to block session end)
+```
+
+#### Fix Applied
+
+| File | Line | Change |
+|------|------|--------|
+| `orchestrator-report.sh` | 181 | Changed `{"decision": "continue"}` → `{"decision": "approve"}` |
+
+#### Hook Output Protocol Summary
+
+| Hook Type | Required Format |
+|-----------|-----------------|
+| **PreToolUse** | `{"continue": true}` |
+| **PostToolUse** | `{"continue": true, "systemMessage": "..."}` |
+| **Stop** | `{"decision": "approve"}` or `{"decision": "block"}` |
+| **UserPromptSubmit** | `{"additionalContext": "..."}` |
+
+---
+
+## [2.57.4] - 2026-01-20
+
+### Fixed (Architecture Consistency Gaps)
+
+**Severity**: HIGH (P1)
+**Impact**: Resolved critical gaps in hooks system, memory writing, and documentation
+
+This release addresses 5 critical gaps identified in a Codex CLI adversarial audit:
+
+#### Gaps Fixed
+
+| Gap ID | Issue | Severity | Fix |
+|--------|-------|----------|-----|
+| GAP-003 | Race condition in semantic.json writes | HIGH | Created `semantic-write-helper.sh` with flock locking |
+| GAP-004 | `checkpoint-smart-save.sh` used wrong JSON format | HIGH | Changed `{"decision": "approve"}` to `{"continue": true}` |
+| GAP-001 | `hooks.json` had only 3 hooks vs 56 in settings.json | HIGH | Removed obsolete `hooks.json`, created validation script |
+| GAP-005 | Version mismatch (CLAUDE.md v2.57.3 vs hooks v2.57.0) | MEDIUM | Unified all hooks to v2.57.4 |
+| GAP-002 | CLAUDE.md said 49 hooks but 52 exist | MEDIUM | Updated CLAUDE.md to reflect 52 hooks at v2.57.4 |
+
+#### New Files
+
+| File | Purpose |
+|------|---------|
+| `semantic-write-helper.sh` | Atomic writer for semantic.json with flock |
+| `validate-hooks-consistency.sh` | Validates hooks in settings.json exist on disk |
+| `bump-hooks-version.sh` | Bulk version bump for all hooks |
+
+#### Modified Files
+
+| File | Change |
+|------|--------|
+| `semantic-realtime-extractor.sh` | Uses atomic write helper (v2.57.4) |
+| `decision-extractor.sh` | Uses atomic write helper (v2.57.4) |
+| `checkpoint-smart-save.sh` | Fixed JSON output format (v2.57.4) |
+| `CLAUDE.md` | Updated to v2.57.4, 52 hooks |
+
+#### Validation
+
+```bash
+# Run hooks consistency validation
+~/.claude/scripts/validate-hooks-consistency.sh
+# Output: STATUS: PASSED (56 hooks verified, 0 errors)
+```
+
+#### Key Fixes
+
+1. **Atomic Writes**: `semantic-write-helper.sh` uses `flock` for cross-platform locking
+2. **JSON Protocol**: PreToolUse hooks use `{"continue": true}`, Stop hooks use `{"decision": "approve"}`
+3. **Single Source of Truth**: `settings.json` is canonical, `hooks.json` removed
+
+---
+
 ## [2.57.0] - 2026-01-20
 
 ### Fixed (Memory System Reconstruction - 8 Critical Issues)

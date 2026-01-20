@@ -1,7 +1,7 @@
 #!/bin/bash
 # prompt-analyzer.sh - Analiza y clasifica prompts del usuario
 # Parte del sistema de orquestación multi-agente con Codex-First
-# VERSION: 2.57.3
+# VERSION: 2.57.4
 # v2.57.3: Fixed newline escaping in JSON messages (SEC-031 continued)
 
 set -uo pipefail

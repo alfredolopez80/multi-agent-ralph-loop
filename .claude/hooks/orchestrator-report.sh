@@ -12,7 +12,7 @@
 # - Reports learning outcomes
 # - Provides recommendations for next steps
 #
-# VERSION: 2.57.1
+# VERSION: 2.57.4
 # SECURITY: SEC-006 compliant
 # OUTPUT: JSON report to stdout
 
