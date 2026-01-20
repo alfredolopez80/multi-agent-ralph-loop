@@ -73,6 +73,68 @@ Ralph orchestrates **33 specialized agents** across different domains. Each agen
 |-------|-------|---------|
 | `@repository-learner` | sonnet | Learn best practices from GitHub repositories |
 
+## Memory System Architecture (v2.57.5) - NEW
+
+### Overview
+
+Ralph uses a **3-tier memory architecture** for intelligent context management:
+
+| Tier | Type | Storage | TTL | Purpose |
+|------|------|---------|-----|---------|
+| **Semantic** | Persistent | `~/.ralph/memory/semantic.json` | Never | Facts, preferences, learned rules |
+| **Episodic** | Session | `~/.ralph/episodes/` | 30 days | Experiences, decisions, patterns |
+| **Procedural** | Learned | `~/.ralph/procedural/rules.json` | Never | Behaviors, patterns, best practices |
+
+### Memory Components
+
+| Component | Path | Purpose |
+|-----------|------|---------|
+| **claude-mem MCP** | External | Semantic search & observation storage |
+| **Memvid** | `~/.ralph/memory.mv2` | Vector-based semantic search (optional) |
+| **Ledgers** | `~/.ralph/ledgers/` | Session continuity & progress tracking |
+| **Handoffs** | `~/.ralph/handoffs/` | Agent-to-agent context transfer |
+| **Agent Memory** | `~/.ralph/agent-memory/<agent>/` | Per-agent isolated memory buffers |
+
+### Memory Hooks (v2.57)
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `smart-memory-search.sh` | PreToolUse (Task) | Parallel memory search before orchestration |
+| `memory-write-trigger.sh` | UserPromptSubmit | Detect "remember" phrases, inject context |
+| `decision-extractor.sh` | PostToolUse (Edit/Write) | Extract architectural decisions |
+| `semantic-realtime-extractor.sh` | PostToolUse (Edit/Write) | Extract semantic facts from changes |
+| `procedural-inject.sh` | PreToolUse (Task) | Inject learned procedural rules |
+| `agent-memory-auto-init.sh` | PreToolUse (Task) | Auto-initialize agent memory buffers |
+
+### Usage Commands
+
+```bash
+# Memory search (parallel - v2.49)
+mcp__plugin_claude-mem_mcp-search__search({query: "session goal", limit: 10})
+
+# Agent-scoped memory (v2.51)
+ralph agent-memory init security-auditor
+ralph agent-memory write security-auditor semantic "Found SQL injection"
+ralph agent-memory read security-auditor
+
+# Ledger/Handoff (v2.43)
+ralph ledger save    # Save session state
+ralph handoff create # Create context transfer
+
+# Memory health (v2.55)
+ralph health         # Full memory system check
+```
+
+### Memory Integration Points
+
+- **SessionStart**: Auto-loads ledger + handoff context
+- **PreCompact**: Auto-saves ledger before context compaction
+- **Orchestration**: `smart-memory-search.sh` runs in parallel with task analysis
+- **Learning**: `repository-learner` extracts patterns → procedural memory
+- **Validation**: Learned rules inform quality gates
+
+---
+
 ### @repository-learner (v2.50)
 
 **Purpose**: Extract design patterns and best practices from GitHub repositories to enrich procedural memory.
