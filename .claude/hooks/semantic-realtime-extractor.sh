@@ -16,7 +16,7 @@ umask 077
 
 # Guaranteed JSON output on any error (SEC-006)
 output_json() {
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
 }
 trap 'output_json' ERR
 
@@ -26,7 +26,7 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
 
 # Only process Edit and Write tools
 if [[ "$TOOL_NAME" != "Edit" ]] && [[ "$TOOL_NAME" != "Write" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -35,7 +35,7 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null |
 
 # Skip if no file path
 if [[ -z "$FILE_PATH" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -48,7 +48,7 @@ case "$FILE_EXT" in
     py|js|ts|tsx|jsx|go|rs|java|kt|rb|sh|bash)
         ;;
     *)
-        echo '{"decision": "continue"}'
+        echo '{"continue": true}'
         exit 0
         ;;
 esac
@@ -58,7 +58,7 @@ CONFIG_FILE="${HOME}/.ralph/config/memory-config.json"
 if [[ -f "$CONFIG_FILE" ]]; then
     REALTIME_EXTRACT=$(jq -r '.semantic.realtime_extract // true' "$CONFIG_FILE" 2>/dev/null || echo "true")
     if [[ "$REALTIME_EXTRACT" != "true" ]]; then
-        echo '{"decision": "continue"}'
+        echo '{"continue": true}'
         exit 0
     fi
 fi
@@ -84,7 +84,7 @@ fi
 
 # Skip if no meaningful content
 if [[ -z "$CONTENT" ]] || [[ ${#CONTENT} -lt 30 ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -269,4 +269,4 @@ fi
 } >> "${LOG_DIR}/semantic-realtime-$(date +%Y%m%d).log" 2>&1 &
 
 # Continue tool execution
-echo '{"decision": "continue"}'
+echo '{"continue": true}'

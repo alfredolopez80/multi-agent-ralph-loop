@@ -4,8 +4,16 @@
 # Origen: planning-with-files "Context Engineering" pattern
 # v1.0.0 - 2026-01-13
 
-# VERSION: 2.57.0
+# VERSION: 2.57.3
+# v2.57.3: Fixed LAST remaining {"decision": "continue"} on line 89 (SEC-037)
+# v2.57.2: Fixed JSON output format (SEC-036) - PostToolUse hooks MUST output JSON
 set -euo pipefail
+
+# SEC-036: Guaranteed valid JSON output on any error or exit
+output_json() {
+    echo '{"continue": true}'
+}
+trap 'output_json' ERR
 
 # Configuración
 SAVE_INTERVAL=${RALPH_AUTO_SAVE_INTERVAL:-5}  # Cada 5 operaciones por defecto
@@ -78,12 +86,9 @@ if [ $((CURRENT_COUNT % SAVE_INTERVAL)) -eq 0 ]; then
 
     log "Context saved to ${STATE_FILE}"
 
-    # Output para Claude (informativo, no blocking)
-    echo "AUTO_SAVE: Context snapshot #${CURRENT_COUNT} saved"
-    echo "  Next auto-save: Operation #$((CURRENT_COUNT + SAVE_INTERVAL))"
+    # Output JSON válido con mensaje informativo (PostToolUse: {"continue": true})
+    echo "{\"continue\": true, \"systemMessage\": \"📸 Context snapshot #${CURRENT_COUNT} saved. Next: #$((CURRENT_COUNT + SAVE_INTERVAL))\"}"
 else
-    # No output si no es momento de guardar (reducir ruido)
-    :
+    # Always output valid JSON
+    echo '{"continue": true}'
 fi
-
-exit 0

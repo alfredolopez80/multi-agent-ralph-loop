@@ -6,7 +6,7 @@
 # Reads ~/.ralph/procedural/rules.json and injects matching rules
 # based on task description and tags.
 #
-# VERSION: 2.57.2
+# VERSION: 2.57.3
 # v2.57.2: Fixed JSON newline escaping (SEC-032)
 # SECURITY: Added ERR trap for guaranteed JSON output
 
@@ -15,7 +15,7 @@ umask 077
 
 # Guaranteed JSON output on any error (SEC-006)
 output_json() {
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
 }
 trap 'output_json' ERR
 
@@ -25,7 +25,7 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
 
 # Only process Task tool
 if [[ "$TOOL_NAME" != "Task" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -34,7 +34,7 @@ CONFIG_FILE="$HOME/.ralph/config/memory-config.json"
 PROCEDURAL_FILE="$HOME/.ralph/procedural/rules.json"
 
 if [[ ! -f "$CONFIG_FILE" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -43,13 +43,13 @@ INJECT_ENABLED=$(jq -r '.procedural.inject_to_prompts // true' "$CONFIG_FILE" 2>
 MIN_CONFIDENCE=$(jq -r '.procedural.min_confidence // 0.7' "$CONFIG_FILE" 2>/dev/null || echo "0.7")
 
 if [[ "$INJECT_ENABLED" != "true" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
 # Check if rules file exists
 if [[ ! -f "$PROCEDURAL_FILE" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -65,7 +65,7 @@ TASK_LOWER=$(printf '%s' "$TASK_TEXT" | tr '[:upper:]' '[:lower:]')
 
 # Skip if no task text
 if [[ -z "${TASK_LOWER// }" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -74,7 +74,7 @@ RULES=$(jq -r '.rules // []' "$PROCEDURAL_FILE" 2>/dev/null || echo "[]")
 RULE_COUNT=$(echo "$RULES" | jq 'length' 2>/dev/null || echo "0")
 
 if [[ "$RULE_COUNT" -eq 0 ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -125,7 +125,7 @@ done < <(echo "$RULES" | jq -c '.[]' 2>/dev/null)
 
 # If no matches, continue without injection
 if [[ -z "$MATCHING_RULES" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -147,11 +147,12 @@ FULL_CONTEXT="${CONTEXT_HEADER}${MATCHING_RULES}${CONTEXT_FOOTER}"
 
 # Use jq for safe JSON construction - jq will properly escape the \n sequences
 # Note: Using --rawfile or direct string keeps \n as literal characters
+# SEC-039: PreToolUse hooks MUST use {"continue": true}, NOT {"decision": "continue"}
 jq -n --arg rules "$FULL_CONTEXT" \
     --argjson rules_matched "$MATCH_COUNT" \
     --arg ts "$(date -Iseconds)" \
     '{
-        decision: "continue",
+        continue: true,
         additionalContext: $rules,
         procedural_injection: {
             rules_matched: $rules_matched,

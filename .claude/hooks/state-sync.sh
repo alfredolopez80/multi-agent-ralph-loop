@@ -193,7 +193,7 @@ main() {
     rm -f /tmp/state-sync-input-$$.json
 
     # Return success (PostToolUse format)
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
 }
 
 main "$@"

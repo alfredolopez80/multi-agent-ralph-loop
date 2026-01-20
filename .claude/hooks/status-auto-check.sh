@@ -1,6 +1,8 @@
 #!/bin/bash
 # status-auto-check.sh - Auto-show status periodically
-# VERSION: 2.57.0
+# VERSION: 2.57.3
+# v2.57.3: Fixed LAST remaining wrong format on line 119 (SEC-036)
+# v2.57.2: Fixed JSON output format (SEC-035) - use {"continue": true}
 #
 # Purpose: Automatically show orchestration status every N operations
 # and when plan steps complete.
@@ -15,6 +17,12 @@
 
 set -euo pipefail
 
+# SEC-035: Guaranteed valid JSON output on any error
+output_json() {
+    echo '{"continue": true}'
+}
+trap 'output_json' ERR
+
 PLAN_STATE=".claude/plan-state.json"
 COUNTER_FILE="${HOME}/.ralph/cache/status-check-counter"
 LOG_FILE="${HOME}/.ralph/logs/status-auto-check.log"
@@ -22,7 +30,7 @@ OPERATIONS_THRESHOLD=5
 
 # Check if disabled
 if [[ "${RALPH_STATUS_AUTO_CHECK:-true}" == "false" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -39,7 +47,7 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null || echo "")
 case "$TOOL_NAME" in
     Edit|Write|Bash) ;;
     *)
-        echo '{"decision": "continue"}'
+        echo '{"continue": true}'
         exit 0
         ;;
 esac
@@ -55,7 +63,7 @@ echo "$CURRENT_COUNT" > "$COUNTER_FILE"
 log "Operation $CURRENT_COUNT ($TOOL_NAME)"
 
 if [[ ! -f "$PLAN_STATE" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -111,5 +119,5 @@ if [[ "$SHOW_STATUS" == "true" ]]; then
     STATUS_MSG_ESCAPED=$(echo "$STATUS_MSG" | jq -Rs '.')
     echo "{\"continue\": true, \"systemMessage\": $STATUS_MSG_ESCAPED}"
 else
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
 fi

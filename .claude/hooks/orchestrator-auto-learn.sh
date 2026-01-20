@@ -23,7 +23,7 @@ umask 077
 
 # SEC-034: Guaranteed JSON output on any error
 output_json() {
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
 }
 trap 'output_json' ERR EXIT
 
@@ -33,7 +33,7 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
 
 # Only process Task tool
 if [[ "$TOOL_NAME" != "Task" ]]; then
-    trap - EXIT; echo '{"decision": "continue"}'; exit 0
+    trap - EXIT; echo '{"continue": true}'; exit 0
 fi
 
 # Check if this is an orchestrator-related task
@@ -45,7 +45,7 @@ PROMPT_LOWER=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]')
 if [[ "$SUBAGENT_TYPE" != "orchestrator" ]] && [[ "$SUBAGENT_TYPE" != "Plan" ]]; then
     # Also check if it's a complex implementation task
     if ! echo "$PROMPT_LOWER" | grep -qE 'implement|build|create|develop|design'; then
-        trap - EXIT; echo '{"decision": "continue"}'; exit 0
+        trap - EXIT; echo '{"continue": true}'; exit 0
     fi
 fi
 
@@ -242,7 +242,7 @@ Reason: $LEARN_REASON
         if [[ -n "$NEW_TOOL_INPUT" ]] && [[ "$NEW_TOOL_INPUT" != "null" ]]; then
             echo "[$(date -Iseconds)] Injecting learning recommendation into Task prompt" >> "${LOG_DIR}/auto-learn-$(date +%Y%m%d).log" 2>&1
             echo "{\"tool_input\": $NEW_TOOL_INPUT}"
-            trap - EXIT; echo '{"decision": "continue"}'; exit 0
+            trap - EXIT; echo '{"continue": true}'; exit 0
         fi
     fi
 

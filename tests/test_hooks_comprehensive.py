@@ -139,7 +139,7 @@ class TestJsonOutputValidation:
             pytest.skip(f"Hook not found: {HOOK_PATH}")
 
     def test_valid_input_returns_valid_json(self):
-        """Valid Task input should return valid JSON with 'decision' field."""
+        """Valid Task input should return valid JSON with 'continue' field (PostToolUse format)."""
         input_json = create_valid_task_input("implement authentication")
         result = run_hook(HOOK_PATH, input_json)
 
@@ -148,8 +148,8 @@ class TestJsonOutputValidation:
             f"stdout: {result['stdout']}\n"
             f"stderr: {result['stderr']}"
         )
-        assert result["output"].get("decision") == "continue", (
-            f"Output should have 'decision': 'continue', got: {result['output']}"
+        assert result["output"].get("continue") is True, (
+            f"Output should have 'continue': true (PostToolUse format), got: {result['output']}"
         )
 
     def test_empty_input_returns_valid_json(self):
@@ -198,7 +198,7 @@ class TestJsonOutputValidation:
         result = run_hook(HOOK_PATH, input_json)
 
         assert result["is_valid_json"], "Should return valid JSON for missing tool_name"
-        assert result["output"].get("decision") == "continue"
+        assert result["output"].get("continue") is True
 
     def test_wrong_type_tool_name_returns_valid_json(self):
         """Non-string tool_name should return valid JSON with error."""
@@ -206,7 +206,7 @@ class TestJsonOutputValidation:
         result = run_hook(HOOK_PATH, input_json)
 
         assert result["is_valid_json"], "Should return valid JSON for wrong type tool_name"
-        assert result["output"].get("decision") == "continue"
+        assert result["output"].get("continue") is True
 
     def test_non_task_tool_returns_valid_json(self):
         """Non-Task tool names should return valid JSON quickly."""
@@ -217,7 +217,7 @@ class TestJsonOutputValidation:
             result = run_hook(HOOK_PATH, input_json)
 
             assert result["is_valid_json"], f"Should return valid JSON for {tool} tool"
-            assert result["output"].get("decision") == "continue"
+            assert result["output"].get("continue") is True
             assert result["execution_time"] < 1.0, f"{tool} should complete quickly"
 
 
@@ -525,19 +525,22 @@ class TestRegressions:
         if not HOOK_PATH.exists():
             pytest.skip(f"Hook not found: {HOOK_PATH}")
 
-    def test_regression_json_format_decision_field(self):
-        """REGRESSION: Output must use 'decision' field, not 'continue'."""
+    def test_regression_json_format_continue_field(self):
+        """SEC-038: PreToolUse hooks must use 'continue' boolean, not 'decision' string."""
         input_json = create_valid_task_input("test")
         result = run_hook(HOOK_PATH, input_json)
 
         assert result["is_valid_json"]
-        assert "decision" in result["output"], (
-            "REGRESSION: Output must have 'decision' field.\n"
+        # Empty {} is acceptable
+        if result["output"] == {}:
+            return
+
+        # SEC-038: PreToolUse hooks use {"continue": true} per official docs
+        # The string "decision": "continue" is NEVER valid
+        assert "decision" not in result["output"] or result["output"].get("decision") not in ("continue",), (
+            "SEC-038: 'decision: continue' is NEVER valid.\n"
+            f"PreToolUse hooks must use {{'continue': true}}.\n"
             f"Got: {result['output']}"
-        )
-        # Old bug: {"continue": true} instead of {"decision": "continue"}
-        assert "continue" not in result["output"] or result["output"].get("decision"), (
-            "REGRESSION: Using old format {\"continue\": true} instead of {\"decision\": \"continue\"}"
         )
 
     def test_regression_insights_populated(self):
@@ -661,8 +664,13 @@ class TestInjectSessionContextHook:
             f"stdout: {result['stdout']}"
         )
 
-    def test_uses_decision_field(self):
-        """REGRESSION: Must use 'decision' not 'continue' field."""
+    def test_uses_continue_field(self):
+        """REGRESSION v2.57.3: PostToolUse hooks must use 'continue' field, NOT 'decision'.
+
+        Per official Claude Code documentation:
+        - PostToolUse/PreToolUse/UserPromptSubmit: {"continue": true/false}
+        - Stop hooks ONLY: {"decision": "approve"/"block"}
+        """
         input_json = json.dumps({
             "tool_name": "Task",
             "session_id": "test-456"
@@ -670,8 +678,9 @@ class TestInjectSessionContextHook:
         result = run_hook(INJECT_CONTEXT_HOOK, input_json)
 
         assert result["is_valid_json"]
-        assert "decision" in result["output"], (
-            "REGRESSION: Must use 'decision' field format"
+        # PostToolUse hooks MUST use 'continue' field (boolean), NOT 'decision'
+        assert "continue" in result["output"] or result["output"] == {}, (
+            f"REGRESSION v2.57.3: PostToolUse hooks must use 'continue' field format, got: {result['output']}"
         )
 
     def test_non_task_returns_quickly(self):
@@ -716,9 +725,10 @@ def test_comprehensive_hook_summary():
             "find -exec used": "-exec grep" in content,
             "Control char removal": "tr -d '[:cntrl:]'" in content,
         },
-        "Output Format": {
-            "decision field": '"decision"' in content,
-            "continue value": '"continue"' in content,
+        "Output Format (PostToolUse)": {
+            # PostToolUse hooks use 'continue' field (boolean), NOT 'decision'
+            "continue field": '"continue"' in content,
+            "true value": 'true' in content,
         },
     }
 

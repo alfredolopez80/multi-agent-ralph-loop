@@ -9,12 +9,12 @@
 #   - session_id: Current session identifier
 #
 # Output (JSON):
-#   - {"decision": "continue"} - Standard hook response format
+#   - {"continue": true} - Standard hook response format
 #   - Note: hookSpecificOutput is ONLY for SessionStart hooks
 #
 # Part of Ralph v2.43 Context Engineering
 
-# VERSION: 2.57.0
+# VERSION: 2.57.3
 # Note: Not using set -e because we need graceful fallback on errors
 set -uo pipefail
 
@@ -33,15 +33,18 @@ log() {
     echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] [$level] $*" >> "$LOG_FILE" 2>/dev/null || true
 }
 
-# Safe JSON output - PreToolUse hooks use {"decision": "continue"} format
+# Safe JSON output - PreToolUse hooks use {"continue": true} format
+# SEC-039: NEVER use {"decision": "continue"} - that format is INVALID
 output_json() {
     local context="${1:-}"
     local message="${2:-}"
 
+    # PreToolUse hooks MUST use {"continue": true/false}, NOT {"decision": "..."}
     if [[ -n "$message" ]]; then
-        echo "{\"decision\": \"continue\", \"additionalContext\": \"$message\"}"
+        # Use additionalContext with continue field (per official Claude Code docs)
+        echo "{\"continue\": true, \"additionalContext\": \"$message\"}"
     else
-        echo '{"decision": "continue"}'
+        echo '{"continue": true}'
     fi
 }
 
@@ -71,14 +74,14 @@ log "INFO" "PreToolUse hook triggered - tool: $TOOL_NAME, session: $SESSION_ID"
 # Only inject context for Task tool calls
 if [[ "$TOOL_NAME" != "Task" ]]; then
     log "DEBUG" "Skipping non-Task tool: $TOOL_NAME"
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
 # Check if context injection is enabled
 if ! check_feature_enabled "RALPH_INJECT_CONTEXT" "true"; then
     log "INFO" "Context injection disabled via features.json"
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -127,7 +130,7 @@ CONTEXT+="**Session**: $SESSION_ID\\n"
 # 5. Add claude-mem reminder
 CONTEXT+="**Memory**: Use claude-mem MCP (search → timeline → get_observations) for persistent context.\\n"
 
-# PreToolUse hooks should return {"decision": "continue"} to allow the tool call
+# PreToolUse hooks should return {"continue": true} to allow the tool call
 # The context injection feature is deprecated - PreToolUse cannot inject context
 # Context injection is only available for SessionStart hooks
 log "INFO" "PreToolUse hook allowing Task tool (context injection not available for PreToolUse)"

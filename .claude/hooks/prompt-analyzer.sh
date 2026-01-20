@@ -1,8 +1,8 @@
 #!/bin/bash
 # prompt-analyzer.sh - Analiza y clasifica prompts del usuario
 # Parte del sistema de orquestación multi-agente con Codex-First
-# VERSION: 2.57.1
-# v2.57.1: Fixed JSON output using jq for safe construction (SEC-031)
+# VERSION: 2.57.3
+# v2.57.3: Fixed newline escaping in JSON messages (SEC-031 continued)
 
 set -uo pipefail
 
@@ -44,44 +44,28 @@ fi
 # COMPLEJA TÉCNICA - Preguntar al usuario
 if echo "$PROMPT_LOWER" | grep -qE '(architecture|review|code review|security|vulnerabilities|unit test|coverage|bugs|codebase|analyze code|refactor|optimize|performance|implement|feature|api|integration)'; then
     trap - EXIT
-    jq -n '{
-        action: "ask_user",
-        type: "technical_complex",
-        message: "🔧 Tarea COMPLEJA TÉCNICA detectada\n\n¿Activar modo plan con orquestación de agentes?\n\nAgentes sugeridos: Codex (technical) + Opus (coordinator)",
-        suggested_agents: ["codex", "opus", "sonnet"]
-    }'
+    jq -n --arg msg "🔧 Tarea COMPLEJA TÉCNICA detectada. ¿Activar modo plan con orquestación de agentes? Agentes sugeridos: Codex (technical) + Opus (coordinator)" \
+        '{action: "ask_user", type: "technical_complex", message: $msg, suggested_agents: ["codex", "opus", "sonnet"]}'
     exit 0
 fi
 
 # COMPLEJA ESTRATÉGICA - Preguntar al usuario
 if echo "$PROMPT_LOWER" | grep -qE '(compare|decide|strategy|evaluate|pros cons|trade-offs|plan|roadmap|design|architect|choose)'; then
     trap - EXIT
-    jq -n '{
-        action: "ask_user",
-        type: "strategic_complex",
-        message: "🎯 Tarea COMPLEJA ESTRATÉGICA detectada\n\n¿Activar modo plan con orquestación?\n\nAgentes sugeridos: Opus (coordinator) + Codex (analysis)",
-        suggested_agents: ["opus", "codex"]
-    }'
+    jq -n --arg msg "🎯 Tarea COMPLEJA ESTRATÉGICA detectada. ¿Activar modo plan con orquestación? Agentes sugeridos: Opus (coordinator) + Codex (analysis)" \
+        '{action: "ask_user", type: "strategic_complex", message: $msg, suggested_agents: ["opus", "codex"]}'
     exit 0
 fi
 
 # ULTRA-COMPLEJA - Preguntar con advertencia de costo
 if echo "$PROMPT_LOWER" | grep -qE '(security audit|comprehensive|full analysis|deep dive|critical review|complete overhaul|system-wide)'; then
     trap - EXIT
-    jq -n '{
-        action: "ask_user",
-        type: "ultra_complex",
-        message: "⚠️ TAREA ULTRA-COMPLEJA detectada\n\n¿Activar modo plan con Opus + UltraThink?\n\n⚠️ ADVERTENCIA: Alto costo (15-20x vs Sonnet)\n\nAgentes sugeridos: Codex (audit) + Gemini (context) + Opus+UltraThink (synthesis)",
-        suggested_agents: ["opus+ultrathink", "codex", "gemini"]
-    }'
+    jq -n --arg msg "⚠️ TAREA ULTRA-COMPLEJA detectada. ¿Activar modo plan con Opus + UltraThink? ADVERTENCIA: Alto costo (15-20x vs Sonnet). Agentes sugeridos: Codex (audit) + Gemini (context) + Opus+UltraThink (synthesis)" \
+        '{action: "ask_user", type: "ultra_complex", message: $msg, suggested_agents: ["opus+ultrathink", "codex", "gemini"]}'
     exit 0
 fi
 
 # DEFAULT - Si hay duda, preguntar al usuario
 trap - EXIT
-jq -n '{
-    action: "ask_user",
-    type: "unknown",
-    message: "❓ No pude clasificar esta tarea automáticamente\n\n¿Requiere modo plan/orquestación o ejecución directa?",
-    options: ["plan", "direct"]
-}'
+jq -n --arg msg "❓ No pude clasificar esta tarea automáticamente. ¿Requiere modo plan/orquestación o ejecución directa?" \
+    '{action: "ask_user", type: "unknown", message: $msg, options: ["plan", "direct"]}'

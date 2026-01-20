@@ -21,13 +21,13 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 
 # Only process Edit/Write operations (PostToolUse schema: "continue" not "decision")
 if [[ "$TOOL_NAME" != "Edit" ]] && [[ "$TOOL_NAME" != "Write" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
 # Skip if no file path
 if [[ -z "$FILE_PATH" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -35,7 +35,7 @@ fi
 # Resolve to absolute path and check it's within allowed directories
 FILE_PATH_REAL=$(realpath -e "$FILE_PATH" 2>/dev/null || echo "")
 if [[ -z "$FILE_PATH_REAL" ]] || [[ ! -f "$FILE_PATH_REAL" ]]; then
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 

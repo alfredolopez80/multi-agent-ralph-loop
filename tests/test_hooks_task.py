@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Task Hook Testing Suite - v2.57.2
+Task Hook Testing Suite - v2.57.3
 
 Tests for hooks that execute on PreToolUse(Task) and PostToolUse(Task) events:
 
@@ -19,13 +19,16 @@ PostToolUse:Task:
 
 All tests validate:
 - JSON output is ALWAYS valid
-- Correct format: {"decision": "continue"} (not {"continue": true})
+- Correct format per OFFICIAL Claude Code documentation:
+  * PostToolUse/PreToolUse: {"continue": true, ...}
+  * Stop hooks ONLY: {"decision": "approve|block", ...}
 - No timeout (< configured seconds)
 - Proper error handling
 - Security patterns
 
-VERSION: 2.57.2
-SEC-033: PostToolUse hooks must use {"decision": "continue"} format
+VERSION: 2.57.3
+SEC-038: CORRECTED - PostToolUse/PreToolUse hooks use {"continue": true}
+         The string "decision": "continue" is NEVER valid per official docs.
 """
 import os
 import json
@@ -126,8 +129,12 @@ def run_hook(hook_name: str, input_json: Dict[str, Any], timeout: int = HOOK_TIM
         try:
             output = json.loads(result.stdout)
             is_valid_json = True
-            # Check format
-            has_correct_format = "decision" in output or output == {}
+            # SEC-038: Correct format is {"continue": true} for PostToolUse/PreToolUse
+            # Empty {} is also acceptable, or "continue" must be boolean
+            has_correct_format = (
+                output == {} or
+                ("continue" in output and isinstance(output.get("continue"), bool))
+            )
         except (json.JSONDecodeError, ValueError):
             pass
 
@@ -201,7 +208,7 @@ class TestPreToolUseTaskHooks:
 
     @pytest.mark.parametrize("hook_name", PRE_TOOLUSE_TASK_HOOKS)
     def test_has_correct_format(self, hook_name):
-        """PreToolUse hooks must use {"decision": "continue"} format"""
+        """PreToolUse hooks must use {"continue": true} format (per official docs)"""
         input_json = make_pretooluse_input()
         result = run_hook(hook_name, input_json)
 
@@ -215,8 +222,11 @@ class TestPreToolUseTaskHooks:
         if result["output"] == {}:
             return
 
-        assert result["has_correct_format"], (
-            f"Hook {hook_name} uses wrong format. Expected 'decision' key.\n"
+        # SEC-038: PreToolUse hooks use {"continue": true}, NOT {"decision": "continue"}
+        # The string "continue" is NEVER valid for the decision field per official docs
+        assert "decision" not in result["output"] or result["output"].get("decision") not in ("continue",), (
+            f"Hook {hook_name} uses WRONG format 'decision: continue'.\n"
+            f"PreToolUse hooks must use {{'continue': true}}.\n"
             f"Got: {result['output']}"
         )
 
@@ -272,27 +282,8 @@ class TestPostToolUseTaskHooks:
         )
 
     @pytest.mark.parametrize("hook_name", POST_TOOLUSE_TASK_HOOKS)
-    def test_has_correct_format_not_continue_true(self, hook_name):
-        """SEC-033: PostToolUse hooks MUST NOT use {"continue": true}"""
-        input_json = make_posttooluse_input()
-        result = run_hook(hook_name, input_json)
-
-        if result["returncode"] == -2:
-            pytest.skip(f"Hook not found: {hook_name}")
-
-        if not result["is_valid_json"]:
-            pytest.fail(f"Hook {hook_name} did not return valid JSON")
-
-        # Check NOT using wrong format
-        assert "continue" not in result["output"] or isinstance(result["output"].get("continue"), str), (
-            f"SEC-033: Hook {hook_name} uses wrong format {{\"continue\": true}}.\n"
-            f"Must use {{\"decision\": \"continue\"}}.\n"
-            f"Got: {result['output']}"
-        )
-
-    @pytest.mark.parametrize("hook_name", POST_TOOLUSE_TASK_HOOKS)
-    def test_has_decision_key(self, hook_name):
-        """PostToolUse hooks must have 'decision' key (or be empty {})"""
+    def test_has_correct_format_continue_true(self, hook_name):
+        """SEC-038: PostToolUse hooks MUST use {"continue": true} (per official docs)"""
         input_json = make_posttooluse_input()
         result = run_hook(hook_name, input_json)
 
@@ -306,8 +297,38 @@ class TestPostToolUseTaskHooks:
         if result["output"] == {}:
             return
 
-        assert "decision" in result["output"], (
-            f"Hook {hook_name} missing 'decision' key.\n"
+        # SEC-038: PostToolUse hooks use {"continue": true}, NOT {"decision": "continue"}
+        # The string "decision": "continue" is NEVER valid per official Claude Code docs
+        assert "decision" not in result["output"] or result["output"].get("decision") not in ("continue",), (
+            f"SEC-038: Hook {hook_name} uses WRONG format 'decision: continue'.\n"
+            f"PostToolUse hooks must use {{'continue': true}}.\n"
+            f"Got: {result['output']}"
+        )
+
+    @pytest.mark.parametrize("hook_name", POST_TOOLUSE_TASK_HOOKS)
+    def test_has_continue_key(self, hook_name):
+        """PostToolUse hooks must have 'continue' boolean key (per official docs)"""
+        input_json = make_posttooluse_input()
+        result = run_hook(hook_name, input_json)
+
+        if result["returncode"] == -2:
+            pytest.skip(f"Hook not found: {hook_name}")
+
+        if not result["is_valid_json"]:
+            pytest.fail(f"Hook {hook_name} did not return valid JSON")
+
+        # Empty {} is acceptable
+        if result["output"] == {}:
+            return
+
+        # SEC-038: PostToolUse hooks use {"continue": true} per official docs
+        assert "continue" in result["output"], (
+            f"Hook {hook_name} missing 'continue' key.\n"
+            f"PostToolUse hooks must use {{'continue': true}}.\n"
+            f"Got: {result['output']}"
+        )
+        assert isinstance(result["output"]["continue"], bool), (
+            f"Hook {hook_name}: 'continue' must be boolean, not string.\n"
             f"Got: {result['output']}"
         )
 
@@ -361,10 +382,10 @@ class TestProceduralInjectHook:
 
 
 class TestTodoPlanSyncHook:
-    """Tests for todo-plan-sync.sh (SEC-033)"""
+    """Tests for todo-plan-sync.sh (SEC-038)"""
 
-    def test_uses_decision_not_continue(self):
-        """SEC-033: Must use 'decision' not 'continue'"""
+    def test_uses_continue_not_decision(self):
+        """SEC-038: Must use 'continue: true' not 'decision: continue' (per official docs)"""
         input_json = {
             "tool_name": "TodoWrite",
             "tool_input": {"todos": []},
@@ -376,10 +397,18 @@ class TestTodoPlanSyncHook:
             pytest.skip("Hook not found")
 
         assert result["is_valid_json"], "Invalid JSON output"
-        assert "decision" in result["output"], (
-            f"Expected 'decision' key, got: {result['output']}"
+
+        # Empty {} is acceptable
+        if result["output"] == {}:
+            return
+
+        # SEC-038: PostToolUse hooks use {"continue": true} per official docs
+        assert "continue" in result["output"], (
+            f"Expected 'continue' key, got: {result['output']}"
         )
-        assert result["output"]["decision"] == "continue"
+        assert result["output"]["continue"] is True, (
+            f"'continue' must be boolean true, got: {result['output']['continue']}"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -437,7 +466,7 @@ class TestTaskHooksRegressions:
         )
 
     def test_todo_plan_sync_correct_format(self):
-        """Regression: todo-plan-sync.sh used {\"continue\": true}"""
+        """SEC-038: todo-plan-sync.sh must use {"continue": true} (per official docs)"""
         input_json = {
             "tool_name": "TodoWrite",
             "tool_input": {"todos": []},
@@ -449,8 +478,17 @@ class TestTaskHooksRegressions:
             pytest.skip("Hook not found")
 
         assert result["is_valid_json"], "Invalid JSON"
-        assert "continue" not in result["output"] or "decision" in result["output"], (
-            f"Wrong format - should use 'decision' not 'continue':\n{result['output']}"
+
+        # Empty {} is acceptable
+        if result["output"] == {}:
+            return
+
+        # SEC-038: PostToolUse hooks use {"continue": true} per official docs
+        # The string "decision": "continue" is NEVER valid
+        assert "decision" not in result["output"] or result["output"].get("decision") not in ("continue",), (
+            f"Wrong format - 'decision: continue' is NEVER valid.\n"
+            f"PostToolUse hooks must use {{'continue': true}}.\n"
+            f"Got: {result['output']}"
         )
 
 
