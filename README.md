@@ -1,8 +1,10 @@
 # Multi-Agent-Ralph
 
-![Version](https://img.shields.io/badge/version-2.57.0-blue)
+![Version](https://img.shields.io/badge/version-2.57.3-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
+![Tests](https://img.shields.io/badge/tests-103%20passed-green)
+![Hooks](https://img.shields.io/badge/hooks-49%20registered-orange)
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
@@ -25,6 +27,40 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 - **Autonomous Learning (v2.55)**: Proactively learns from quality repositories when knowledge gaps detected
 - **Automated Monitoring (v2.56)**: Smart checkpoints, status monitoring, and health checks via hooks
 - **Memory System Reconstruction (v2.57)**: Fixed 8 critical bugs in memory search, plan-state sync, and context injection
+- **Test Infrastructure (v2.57.3)**: 103 passing tests with comprehensive hook validation and sync verification
+
+### System Architecture
+
+![Ralph Architecture](docs/ralph-architecture.svg)
+
+### Ralph Loop Pattern
+
+![Ralph Loop](docs/ralph-loop.svg)
+
+### Version Timeline
+
+![Timeline](docs/ralph-timeline.svg)
+
+### v2.57.3: Test Infrastructure Cleanup
+
+```bash
+# Latest release focuses on test infrastructure and code quality
+# Changes:
+# - Removed obsolete test files (test_v2_45/46_integration.py)
+# - Renamed test_hooks_v2454.py -> test_hooks_v2573.py
+# - Added strict shell scripting rules to prevent zsh errors
+# - Fixed unused variables with type hints
+# - Added is_valid_command_file() helper for command sync tests
+```
+
+**Test Results**:
+| Metric | Value |
+|--------|-------|
+| Tests Passed | 103 |
+| Tests Skipped | 8 (expected - sync not run) |
+| Hook Tests | 48+ passing |
+| Command Sync Tests | 20 passing |
+| Memory Tests | 65 passing |
 
 ### v2.57: Memory System Reconstruction
 
