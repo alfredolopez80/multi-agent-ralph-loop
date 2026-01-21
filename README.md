@@ -1,18 +1,38 @@
-# Multi-Agent-Ralph
+# Multi-Agent Ralph Wiggum v2.58.0
 
-![Version](https://img.shields.io/badge/version-2.57.5-blue)
+![Version](https://img.shields.io/badge/version-2.58.0-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 ![Tests](https://img.shields.io/badge/tests-103%20passed-green)
 ![Hooks](https://img.shields.io/badge/hooks-52%20registered-orange)
+![Skills](https://img.shields.io/badge/skills-25%2B-orange)
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
 ---
 
+## Table of Contents
+
+1. [Overview](#overview)
+2. [What It Does](#what-it-does)
+3. [Tech Stack](#tech-stack)
+4. [Prerequisites](#prerequisites)
+5. [Getting Started](#getting-started)
+6. [Architecture](#architecture)
+7. [Key Features](#key-features)
+8. [Commands Reference](#commands-reference)
+9. [Hooks System](#hooks-system)
+10. [Testing](#testing)
+11. [Deployment](#deployment)
+12. [Troubleshooting](#troubleshooting)
+13. [Contributing](#contributing)
+14. [License](#license)
+
+---
+
 ## Overview
 
-**Multi-Agent-Ralph** is a sophisticated orchestration system for Claude Code and OpenCode that coordinates multiple AI models to deliver high-quality validated code through iterative refinement cycles.
+**Multi-Agent Ralph Wiggum** is a sophisticated orchestration system for Claude Code and OpenCode that coordinates multiple AI models to deliver high-quality validated code through iterative refinement cycles.
 
 The system addresses the fundamental challenge of AI-assisted programming: **ensuring quality and consistency in complex tasks**. Instead of relying on a single AI model's output, Ralph orchestrates multiple specialized agents working in parallel, with automatic validation gates and adversarial debates for rigorous requirements.
 
@@ -27,120 +47,107 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 - **Autonomous Learning (v2.55)**: Proactively learns from quality repositories when knowledge gaps detected
 - **Automated Monitoring (v2.56)**: Smart checkpoints, status monitoring, and health checks via hooks
 - **Memory System Reconstruction (v2.57)**: Fixed 8 critical bugs in memory search, plan-state sync, and context injection
-- **Test Infrastructure (v2.57.3)**: 103 passing tests with comprehensive hook validation and sync verification
+- **Claude Code Skills Ecosystem**: 25+ specialized skills including marketing (23 skills), documentation generation, and React best practices from Vercel
 
-### System Architecture
+---
 
-![Ralph Architecture](docs/ralph-architecture.svg)
+## Tech Stack
 
-### Ralph Loop Pattern
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| **Base Platform** | Claude Code CLI | AI orchestration engine |
+| **Shell Environment** | Bash 5.x + zsh | Hooks automation |
+| **Python** | 3.11+ | Utilities and tooling |
+| **Memory System** | claude-mem MCP + SQLite FTS | Semantic/episodic/procedural memory |
+| **Model Routing** | Claude Opus/Sonnet + MiniMax M2.1 + Codex | Multi-model coordination |
+| **Validation** | semgrep + gitleaks + ast-grep | Security and quality scanning |
+| **Package Management** | uv (Python) | Dependency management |
+| **Version Control** | Git + GitHub CLI | Code management and PRs |
+| **Skills Ecosystem** | Claude Code Skills + Vercel agent-skills | Specialized task skills |
 
-![Ralph Loop](docs/ralph-loop.svg)
+---
 
-### Version Timeline
+## Prerequisites
 
-![Timeline](docs/ralph-timeline.svg)
+### Required Tools
 
-### v2.57.3: Test Infrastructure Cleanup
+| Tool | Minimum Version | Installation |
+|------|-----------------|--------------|
+| **Claude Code CLI** | Latest | `brew install claude` or `pipx install claude` |
+| **jq** | 1.6+ | `brew install jq` |
+| **curl** | Any | Pre-installed on macOS |
+| **Git** | 2.0+ | Pre-installed on macOS |
+| **Bash** | 5.0+ | `brew install bash` (macOS) |
 
-```bash
-# Latest release focuses on test infrastructure and code quality
-# Changes:
-# - Removed obsolete test files (test_v2_45/46_integration.py)
-# - Renamed test_hooks_v2454.py -> test_hooks_v2573.py
-# - Added strict shell scripting rules to prevent zsh errors
-# - Fixed unused variables with type hints
-# - Added is_valid_command_file() helper for command sync tests
-```
+### Optional but Recommended
 
-**Test Results**:
-| Metric | Value |
-|--------|-------|
-| Tests Passed | 103 |
-| Tests Skipped | 8 (expected - sync not run) |
-| Hook Tests | 48+ passing |
-| Command Sync Tests | 20 passing |
-| Memory Tests | 65 passing |
+| Tool | Purpose | Installation |
+|------|---------|--------------|
+| **GitHub CLI (gh)** | PR workflow | `brew install gh` |
+| **Codex CLI** | Advanced planning | `npm install -g @openai/codex` |
+| **MiniMax CLI** | Cost-optimized validation | `uvx minimax-coding-plan-mcp` |
+| **uv** | Fast Python package manager | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 
-### v2.57: Memory System Reconstruction
+---
 
-```bash
-# 8 critical issues fixed from dual-model adversarial audit
-# Key fixes:
-# - todo-plan-sync.sh: sort_by(tonumber) → sort (step-X-Y keys)
-# - smart-memory-search.sh: JSON files → SQLite FTS
-# - inject-session-context.sh: JSON output → exit 0 (PreToolUse can't modify tool_input)
-```
+## Getting Started
 
-**Fixed Issues**:
-| Issue | Bug | Fix |
-|-------|-----|-----|
-| Plan-state sync stuck at 0% | `sort_by(tonumber)` fails on "step-1-1" keys | Use `keys \| sort` |
-| Memory search returns empty | Searched JSON files but claude-mem uses SQLite | SQLite FTS query |
-| Context injection broken | PreToolUse tried to modify tool_input via JSON | Exit 0, use cache file |
-| Semantic memory test data | Only test data, no real facts | Real-time extraction hooks |
-
-**New Test Coverage**: 48 tests for memory system (all passing)
-
-### v2.56: Automated Monitoring
+### 1. Clone the Repository
 
 ```bash
-# Monitoring is 100% automatic via hooks - no manual commands needed
-# Hooks automatically:
-# - Show orchestration status every 5 operations
-# - Create checkpoints before risky edits (auth, security, config files)
-# - Run health checks every 5 minutes for stuck detection
+git clone https://github.com/alfredolopez80/multi-agent-ralph-loop.git
+cd multi-agent-ralph-loop
 ```
 
-**Automation Hooks (v2.56)**:
-| Hook | Trigger | Purpose |
-|------|---------|---------|
-| `status-auto-check.sh` | PostToolUse (Edit/Write/Bash) | Auto-shows status every 5 operations |
-| `checkpoint-smart-save.sh` | PreToolUse (Edit/Write) | Smart checkpoints on risky edits |
-| `statusline-health-monitor.sh` | UserPromptSubmit | Health checks every 5 minutes |
-
-**Smart Checkpoint Triggers**:
-- `high_complexity`: Plan complexity ≥ 7
-- `high_risk_step`: Step involves auth/security/payment
-- `critical_file`: Config, settings, .env, database files
-- `security_file`: Files with auth/secret/credential in name
-
-### v2.55: Autonomous Self-Improvement
+### 2. Run the Installer
 
 ```bash
-# Memory system health check
-ralph health              # Full report
-ralph health --compact    # One-line: 🏥 HEALTH: 7/9 OK, 1 WARN, 1 CRIT
+# Make executable
+chmod +x install.sh
 
-# Auto-triggers when:
-# - ZERO relevant rules for a task domain → CRITICAL, learning REQUIRED
-# - <3 rules AND complexity ≥7 → HIGH, learning RECOMMENDED
+# Run installation (requires sudo for some operations)
+./install.sh
+
+# Reload shell to pick up new commands
+source ~/.zshrc  # or source ~/.bashrc
 ```
 
-**Auto-Learning Hooks**:
-| Hook | Trigger | Purpose |
-|------|---------|---------|
-| `orchestrator-auto-learn.sh` | PreToolUse (Task) | Detects knowledge gaps, recommends `/curator` |
-| `agent-memory-auto-init.sh` | PreToolUse (Task) | Auto-initializes agent memory buffers |
-| `semantic-auto-extractor.sh` | Stop | Extracts facts from git diff |
-| `decision-extractor.sh` | PostToolUse | Detects architectural patterns |
+The installer automatically sets up **5 specialized skills**:
+- **Marketing skills** (23 skills from coreyhaines31/marketingskills)
+- **Documentation skill** (`/readme` for comprehensive project docs)
+- **React Best Practices** (Vercel's official patterns)
+- Plus 52 hooks, 14 agents, and all CLI commands
 
-### Why Use It
+### 3. Verify Installation
 
-| Challenge | Ralph Solution |
-|-----------|----------------|
-| AI output varies in quality | Multi-model debate via adversarial-spec |
-| Single step often insufficient | Iterative cycles (15-60 iterations) until VERIFIED_DONE |
-| Manual review is bottleneck | Automatic quality gates + human on critical decisions |
-| Context limits | MiniMax (1M tokens) + Context7 MCP for documentation |
-| Context loss on compaction | Automatic ledger/handoff preservation (85-90% token reduction) |
-| High API costs | Optimized routing (WebSearch FREE, MiniMax 8%, strategic Opus) |
+```bash
+# Check integrations
+ralph integrations
+
+# Verify all hooks are registered
+ralph health
+
+# Show version
+ralph --version
+```
+
+### 4. Quick Test
+
+```bash
+# Run the test suite
+cd tests
+./run_tests.sh
+
+# Or run individual test modules
+python -m pytest test_memory_v2_49.py -v
+python -m pytest test_command_sync.py -v
+```
 
 ---
 
 ## Architecture
 
-### General System Diagram
+### System Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -200,83 +207,79 @@ ralph health --compact    # One-line: 🏥 HEALTH: 7/9 OK, 1 WARN, 1 CRIT
 │  │  │                  ┌─────────────┐      ┌─────────────┐              │  │   │
 │  │  │                  │ITERATE LOOP │      │ VERIFIED_   │              │  │   │
 │  │  │                  │  (max 25)   │      │    DONE     │              │  │   │
-│  │  │                  └─────────────┘      └─────────────┘              │  │   │
+│  │  │                  └──────┬──────┘      └─────────────┘              │  │   │
+│  │  │                         │                                     │  │   │
+│  │  │                         └──────────▶ Back to EXECUTE          │  │   │
 │  │  └────────────────────────────────────────────────────────────────────┘  │   │
 │  │                                                                             │
 │  └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-> **Complete Diagram**: See `ARCHITECTURE_DIAGRAM_v2.52.0.md` for detailed diagrams (Memory Architecture, Hooks Registry, Tools Matrix, Security Pattern)
-
-### Automatic Feedback Loop (Background Processing)
+### Directory Structure
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│              AUTOMATIC FEEDBACK LOOP (v2.49) - Background Process          │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                         ACTIVE SESSION                               │   │
-│   │   User ──▶ Task ──▶ Execute ──▶ Validate ──▶ VERIFIED_DONE         │   │
-│   │                         │                                            │   │
-│   │                         ▼                                            │   │
-│   │              ┌─────────────────────────┐                            │   │
-│   │              │   Session Transcript    │                            │   │
-│   │              │   (Auto-saved)          │                            │   │
-│   │              └───────────┬─────────────┘                            │   │
-│   └──────────────────────────┼──────────────────────────────────────────┘   │
-│                              │                                               │
-│                              ▼ (Stop Event)                                  │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                    BACKGROUND PROCESS (Async)                       │   │
-│   │                                                                     │   │
-│   │   ┌─────────────────────────────────────────────────────────────┐   │   │
-│   │   │              reflection-engine.sh (Triggered)               │   │   │
-│   │   │                        │                                     │   │   │
-│   │   │                        ▼                                     │   │   │
-│   │   │              ┌─────────────────────────┐                    │   │   │
-│   │   │              │   reflection-executor.py │                    │   │   │
-│   │   │              └───────────┬─────────────┘                    │   │   │
-│   │   │                          │                                   │   │   │
-│   │   │         ┌────────────────┼────────────────┐                  │   │   │
-│   │   │         ▼                ▼                ▼                  │   │   │
-│   │   │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐         │   │   │
-│   │   │  │ Extract      │ │ Detect       │ │ Generate     │         │   │   │
-│   │   │  │ Episodes     │ │ Patterns     │ │ Rules        │         │   │   │
-│   │   │  │ from Transcript│ │ Across Sessions │ │ (confidence ≥0.8) │    │   │   │
-│   │   │  └──────┬───────┘ └──────┬───────┘ └──────┬───────┘         │   │   │
-│   │   │         │                │                │                  │   │   │
-│   │   │         └────────────────┼────────────────┘                  │   │   │
-│   │   │                          │                                   │   │   │
-│   │   │                          ▼                                   │   │   │
-│   │   │              ┌─────────────────────────────────┐             │   │   │
-│   │   │              │    PROCEDURAL MEMORY UPDATE     │             │   │   │
-│   │   │              │  ~/.ralph/procedural/rules.json │             │   │   │
-│   │   │              └─────────────────────────────────┘             │   │   │
-│   │   └─────────────────────────────────────────────────────────────┘   │   │
-│   │                              │                                       │
-│   │                              ▼ (Next Session)                       │
-│   │   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │   │              PROCEDURAL INJECTION (PreToolUse Task)               │   │
-│   │   │                                                                     │   │
-│   │   │   Task Hook ──▶ Match rule.trigger ──▶ Inject as additionalContext │   │
-│   │   │                                                                     │   │
-│   │   │   Claude Receives: "Based on past experience: [learned behavior]"  │   │
-│   │   └─────────────────────────────────────────────────────────────────────┘   │
-│   │                                                                              │
-│   └─────────────────────────────────────────────────────────────────────────────┘
+multi-agent-ralph-loop/
+├── .claude/                    # Claude Code configuration
+│   ├── agents/                # 14 specialized AI agents
+│   ├── commands/              # Slash commands
+│   ├── hooks/                 # 52 event hooks (v2.57.4)
+│   ├── scripts/               # Utility scripts
+│   ├── skills/                # Claude Code skills (install script only)
+│   └── schemas/               # JSON schemas for validation
+├── scripts/                   # Main CLI tools
+│   ├── ralph                  # Main CLI (331KB shell script)
+│   ├── ralph                  # MiniMax CLI wrapper
+│   └── *.sh                   # Utility scripts (20+ files)
+├── tests/                     # Test suite (74 test files)
+│   ├── test_*.py              # Python tests
+│   ├── test_*.sh              # Shell tests
+│   └── HOOK_TESTING_PATTERNS.md
+├── src/                       # Source code
+│   └── applications/          # Python applications
+├── docs/                      # Documentation
+├── .ralph/                    # Ralph runtime data
+│   ├── memory/                # Semantic memory
+│   ├── episodes/              # Episodic memory (30-day TTL)
+│   ├── procedural/            # Procedural rules
+│   ├── events/                # Event bus log
+│   ├── checkpoints/           # State snapshots
+│   ├── curator/               # Repository curator data
+│   └── logs/                  # Hook execution logs
+├── install.sh                 # Global installer
+├── uninstall.sh               # Cleanup script
+├── CLAUDE.md                  # Quick reference guide
+├── README.md                  # This file
+├── CHANGELOG.md               # Version history
+├── AGENTS.md                  # Agent documentation
+├── ARCHITECTURE_DIAGRAM_v2.52.0.md  # Detailed diagrams
+└── TESTING.md                 # Testing guide
 ```
 
-**Key Components**:
-| Component | Trigger | Purpose |
-|-----------|---------|---------|
-| `reflection-engine.sh` | Stop event | Trigger async reflection |
-| `reflection-executor.py` | After session | Extract episodes, detect patterns, generate rules |
-| `procedural-inject.sh` | PreToolUse (Task) | Inject learned behaviors into task context |
+### Memory Architecture
+
+```
+SMART MEMORY SEARCH (PARALLEL)
+┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
+│claude-mem│ │ memvid   │ │ handoffs │ │  ledgers │
+│  (MCP)   │ │  (HNSW)  │ │ (30d TTL)│ │CONTINUITY│
+└────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘
+     │ PARALLEL   │ PARALLEL   │ PARALLEL   │ PARALLEL
+     └────────────┴────────────┴────────────┘
+                    ↓
+         .claude/memory-context.json
+```
+
+**Three Memory Types**:
+
+| Type | Purpose | Storage | TTL |
+|------|---------|---------|-----|
+| **Semantic** | Facts, preferences, learned patterns | `~/.ralph/memory/semantic.json` | Never |
+| **Episodic** | Experiences, session transcripts | `~/.ralph/episodes/` | 30 days |
+| **Procedural** | Learned behaviors, best practices | `~/.ralph/procedural/rules.json` | Never |
 
 ---
 
-## Main Workflow
+## Key Features
 
 ### 1. The Ralph Loop Pattern
 
@@ -303,486 +306,57 @@ ralph health --compact    # One-line: 🏥 HEALTH: 7/9 OK, 1 WARN, 1 CRIT
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Complete Orchestration Flow (12 Steps)
-
-```
-0. EVALUATE    → Quick classification (trivial?)
-1. CLARIFY     → AskUserQuestion (MUST_HAVE/NICE_TO_HAVE)
-2. CLASSIFY    → task-classifier (complexity 1-10)
-3. PLAN        → Detailed design
-4. PLAN MODE   → EnterPlanMode (reads analysis)
-5. DELEGATE    → Route to optimal model
-6. EXECUTE-WITH-SYNC → Nested loop per step:
-   6a. LSA-VERIFY  → Architecture pre-check
-   6b. IMPLEMENT   → Execute step
-   6c. PLAN-SYNC   → Detect drift
-   6d. MICRO-GATE  → Per-step quality (3-fix rule)
-7. VALIDATE    → Multi-stage validation:
-   7a. QUALITY-AUDITOR → Pragmatic audit
-   7b. GATES → Quality gates (9 languages)
-   7c. ADVERSARIAL-SPEC → Specification refinement
-   7d. ADVERSARIAL-PLAN → Opus+Codex cross-validation
-8. RETROSPECT  → Self-improvement
-```
-
----
-
-## Key Features
-
-### Multi-Agent Orchestration
-
-| Feature | Description |
-|----------------|-------------|
-| **14 Specialized Agents** | 9 core + 5 auxiliary review |
-| **12-Step Workflow** | Evaluate → Clarify → Plan → Execute → Validate |
-| **Parallel Execution** | Multiple agents work simultaneously |
-| **Model Routing** | Automatic selection: Opus (critical), Sonnet (standard), MiniMax (extended) |
-
-**Core Agents (9)**:
-`orchestrator`, `security-auditor`, `code-reviewer`, `test-architect`, `debugger`, `refactorer`, `docs-writer`, `frontend-reviewer`, `minimax-reviewer`
-
-### Smart Memory (v2.49)
-
-```
-SMART MEMORY SEARCH (PARALLEL)
-┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
-│claude-mem│ │ memvid   │ │ handoffs │ │  ledgers │
-└────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘
-     │ PARALLEL   │ PARALLEL   │ PARALLEL   │ PARALLEL
-     └────────────┴────────────┴────────────┘
-                    ↓
-         .claude/memory-context.json
-```
-
-**Three Memory Types**:
-| Type | Purpose | Storage |
-|------|---------|----------------|
-| **Semantic** | Facts, preferences | `~/.ralph/memory/semantic.json` |
-| **Episodic** | Experiences (30-day TTL) | `~/.ralph/episodes/` |
-| **Procedural** | Learned behaviors | `~/.ralph/procedural/rules.json` |
-
-### Repository Learner (v2.50) - NEW
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    REPOSITORY LEARNER (v2.50)                              │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   /repo-learn https://github.com/{owner}/{repo}                            │
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                     5-PHASE WORKFLOW                                 │   │
-│   │                                                                     │   │
-│   │   1. ACQUIRE → Clone repo or fetch via GitHub API                   │   │
-│   │   2. ANALYZE → AST-based pattern extraction (Python, TS, Rust, Go)  │   │
-│   │   3. CLASSIFY → Categorize patterns:                                 │   │
-│   │      • error_handling     • type_safety      • async_patterns        │   │
-│   │      • architecture        • testing          • security             │   │
-│   │   4. GENERATE → Procedural rules with confidence scores             │   │
-│   │   5. ENRICH → Atomic write to ~/.ralph/procedural/rules.json        │   │
-│   │                                                                     │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                              │
-│   Result: Claude learns best practices from quality repositories            │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-**Usage**:
-```bash
-# Learn from a repository
-/repo-learn https://github.com/python/cpython
-
-# Focus on specific pattern categories
-/repo-learn https://github.com/tiangolo/fastapi --category error_handling
-
-# Set minimum confidence threshold
-/repo-learn https://github.com/facebook/react --category security --min-confidence 0.9
-```
-
-**Output**:
-```
-Repository: https://github.com/org/repo
-Files Analyzed: 150
-Patterns Extracted: 45
-Rules Generated: 32
-Added to Procedural Memory: 28 rules
-
-Claude will now consider learned patterns when:
-- Implementing error handling
-- Writing async code
-- Designing architecture
-- Writing tests
-```
-
-**Security**: Read-only analysis, atomic writes with backup, validated rules.
-
-### Repo Curator (v2.55)
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                       REPO CURATOR (v2.55)                                  │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   /curator "best backend TypeScript repos with clean architecture"         │
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                     5-PHASE WORKFLOW                                 │   │
-│   │                                                                     │   │
-│   │   1. DISCOVERY → GitHub API search (100-500 candidates)             │   │
-│   │   2. SCORING   → QualityScore + Context Relevance (v2.55)           │   │
-│   │   3. RANKING   → Top N (configurable, max per org)                  │   │
-│   │   4. REVIEW    → User approves/rejects repos                        │   │
-│   │   5. LEARN     → repository-learner extracts patterns               │   │
-│   │                                                                     │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                              │
-│   Pricing Tiers:                                                            │
-│   ┌──────────┬─────────┬────────────────────────────────────┐              │
-│   │ TIER     │ COST    │ FEATURES                           │              │
-│   ├──────────┼─────────┼────────────────────────────────────┤              │
-│   │ free     │ $0.00   │ GitHub API + local scoring         │              │
-│   │ economic │ ~$0.30  │ + OpenSSF + MiniMax (DEFAULT)      │              │
-│   │ full     │ ~$0.95  │ + Claude + Codex (with fallback)   │              │
-│   └──────────┴─────────┴────────────────────────────────────┘              │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-**Scripts & Options (v2.55)**:
-
-| Script | Purpose | Key Options |
-|--------|---------|-------------|
-| `curator-discovery.sh` | GitHub API search | `--type`, `--lang`, `--query`, `--tier`, `--max-results`, `--output` |
-| `curator-scoring.sh` | Quality metrics | `--input`, `--output`, `--tier`, `--context` (v2.55), `--verbose` |
-| `curator-rank.sh` | Generate rankings | `--input`, `--output`, `--top-n`, `--max-per-org` |
-| `curator-ingest.sh` | Clone to corpus | `--repo`, `--output-dir`, `--approve`, `--source`, `--depth` |
-| `curator-approve.sh` | Approve repos | `--repo`, `--all` |
-| `curator-reject.sh` | Reject repos | `--repo`, `--reason` |
-| `curator-learn.sh` | Extract patterns | `--type`, `--lang`, `--repo`, `--all` |
-| `curator-queue.sh` | View queue status | `--type`, `--lang` |
-
-**Usage**:
-```bash
-# Full pipeline (economic tier - default)
-/curator full --type backend --lang typescript
-
-# Discovery with custom query and max results
-/curator discovery --query "enterprise microservice" --max-results 200 --tier free
-
-# Scoring with context relevance (v2.55 NEW)
-/curator scoring --input candidates.json --output scored.json --context "error handling,retry,resilience"
-
-# Ranking with custom limits
-/curator rank --input scored.json --output ranking.json --top-n 15 --max-per-org 3
-
-# Show ranking
-/curator show --type backend --lang typescript
-
-# Review queue
-/curator pending --type backend --lang typescript
-
-# Approve/reject repos
-/curator approve nestjs/nest
-/curator approve --all
-/curator reject some/repo --reason "Low test coverage"
-
-# Ingest with source attribution
-/curator ingest --repo prisma/prisma --approve --source "enterprise-db-patterns"
-
-# Execute learning
-/curator learn --type backend --lang typescript
-/curator learn --repo nestjs/nest
-/curator learn --all
-```
-
-**Context Relevance Scoring (v2.55 NEW)**:
-```bash
-# Repos are scored on relevance to your context keywords:
-# +3 points if description contains context keywords
-# +2 points if repo name contains context keywords
-# -1 point if no description or irrelevant description
-
-/curator scoring --context "error handling,retry,circuit breaker"
-```
-
-**Full Pipeline Example (Step-by-Step)**:
-
-```bash
-# ╔══════════════════════════════════════════════════════════════════════════════╗
-# ║                    CURATOR FULL PIPELINE EXAMPLE                              ║
-# ║                                                                               ║
-# ║  Goal: Find best TypeScript backend repos for learning error handling        ║
-# ║  patterns in microservices architecture                                       ║
-# ╚══════════════════════════════════════════════════════════════════════════════╝
-
-# ┌─────────────────────────────────────────────────────────────────────────────┐
-# │ STEP 1: DISCOVERY - Search GitHub for candidate repositories                │
-# │                                                                             │
-# │ Parameters:                                                                 │
-# │   --type backend      → Filter: backend applications (not frontend/CLI)    │
-# │   --lang typescript   → Filter: TypeScript language only                   │
-# │   --query "..."       → Custom search: microservices with error handling   │
-# │   --tier economic     → Pricing: ~$0.30 (uses MiniMax for validation)      │
-# │   --max-results 150   → Limit: fetch up to 150 candidates                  │
-# │   --output file.json  → Output: save results to specific file              │
-# └─────────────────────────────────────────────────────────────────────────────┘
-
-ralph curator discovery \
-  --type backend \
-  --lang typescript \
-  --query "microservice error handling resilience" \
-  --tier economic \
-  --max-results 150 \
-  --output ~/.ralph/curator/candidates/backend_ts_errors.json
-
-# Output: ~/.ralph/curator/candidates/backend_ts_errors.json (150 repos)
-
-# ┌─────────────────────────────────────────────────────────────────────────────┐
-# │ STEP 2: SCORING - Calculate quality score for each repository              │
-# │                                                                             │
-# │ Parameters:                                                                 │
-# │   --input file.json   → Input: candidates from discovery step              │
-# │   --output file.json  → Output: scored repositories                        │
-# │   --tier economic     → Pricing tier for external validations              │
-# │   --context "..."     → NEW v2.55: Keywords for relevance scoring          │
-# │   --verbose           → Show detailed scoring breakdown                    │
-# │                                                                             │
-# │ Scoring Formula:                                                            │
-# │   QualityScore = stars(30%) + tests(25%) + CI/CD(20%) + docs(15%) + activity(10%)  │
-# │   + ContextRelevance: +3 (description match) +2 (name match) -1 (irrelevant)       │
-# └─────────────────────────────────────────────────────────────────────────────┘
-
-ralph curator scoring \
-  --input ~/.ralph/curator/candidates/backend_ts_errors.json \
-  --output ~/.ralph/curator/scored/backend_ts_errors_scored.json \
-  --tier economic \
-  --context "error handling,retry,circuit breaker,resilience,fault tolerance" \
-  --verbose
-
-# Output: Each repo now has QualityScore (0-100) + ContextRelevance bonus
-
-# ┌─────────────────────────────────────────────────────────────────────────────┐
-# │ STEP 3: RANKING - Select top repositories with diversity constraints       │
-# │                                                                             │
-# │ Parameters:                                                                 │
-# │   --input file.json   → Input: scored repositories                         │
-# │   --output file.json  → Output: final ranking                              │
-# │   --top-n 10          → Limit: select top 10 repositories                  │
-# │   --max-per-org 2     → Diversity: max 2 repos per organization            │
-# │                        (prevents nestjs/nest, nestjs/config, nestjs/cli    │
-# │                         from dominating the list)                          │
-# └─────────────────────────────────────────────────────────────────────────────┘
-
-ralph curator rank \
-  --input ~/.ralph/curator/scored/backend_ts_errors_scored.json \
-  --output ~/.ralph/curator/rankings/backend_ts_errors_ranking.json \
-  --top-n 10 \
-  --max-per-org 2
-
-# Output: Top 10 repos, max 2 per organization, sorted by QualityScore
-
-# ┌─────────────────────────────────────────────────────────────────────────────┐
-# │ STEP 4: REVIEW - Show ranking and manage approval queue                    │
-# └─────────────────────────────────────────────────────────────────────────────┘
-
-# View the ranking
-ralph curator show --type backend --lang typescript
-
-# View pending repos in queue
-ralph curator pending --type backend --lang typescript
-
-# ┌─────────────────────────────────────────────────────────────────────────────┐
-# │ STEP 5: APPROVE/REJECT - User decides which repos to learn from            │
-# │                                                                             │
-# │ Approve options:                                                            │
-# │   --repo owner/name   → Approve specific repository                        │
-# │   --all               → Approve all staged repositories                    │
-# │                                                                             │
-# │ Reject options:                                                             │
-# │   --repo owner/name   → Reject specific repository                         │
-# │   --reason "..."      → Document why (for future reference)                │
-# └─────────────────────────────────────────────────────────────────────────────┘
-
-# Approve high-quality repos
-ralph curator approve --repo nestjs/nest
-ralph curator approve --repo prisma/prisma
-ralph curator approve --repo trpc/trpc
-
-# Reject with reason (documented for future reference)
-ralph curator reject --repo some/low-quality --reason "No tests, outdated dependencies"
-
-# Or approve all at once
-ralph curator approve --all
-
-# ┌─────────────────────────────────────────────────────────────────────────────┐
-# │ STEP 6: INGEST - Clone approved repos to local corpus                      │
-# │                                                                             │
-# │ Parameters:                                                                 │
-# │   --repo owner/name   → Repository to clone                                │
-# │   --output-dir path   → Custom output directory                            │
-# │   --approve           → Skip staging, go directly to approved              │
-# │   --source "label"    → Attribution label for generated rules              │
-# │   --depth 1           → Shallow clone (faster, less disk space)            │
-# └─────────────────────────────────────────────────────────────────────────────┘
-
-ralph curator ingest \
-  --repo nestjs/nest \
-  --approve \
-  --source "enterprise-typescript-patterns" \
-  --depth 1
-
-# Output: Repo cloned to ~/.ralph/curator/corpus/approved/nestjs_nest/
-
-# ┌─────────────────────────────────────────────────────────────────────────────┐
-# │ STEP 7: LEARN - Extract patterns and update procedural memory              │
-# │                                                                             │
-# │ Parameters:                                                                 │
-# │   --type backend      → Filter by type                                     │
-# │   --lang typescript   → Filter by language                                 │
-# │   --repo owner/name   → Learn from specific repository                     │
-# │   --all               → Learn from ALL approved repositories               │
-# │                                                                             │
-# │ Output: Rules added to ~/.ralph/procedural/rules.json                      │
-# │         Each rule has source_repo attribution for traceability             │
-# └─────────────────────────────────────────────────────────────────────────────┘
-
-# Learn from specific repo
-ralph curator learn --repo nestjs/nest
-
-# Or learn from all approved repos
-ralph curator learn --all
-
-# Or filter by type/language
-ralph curator learn --type backend --lang typescript
-
-# ╔══════════════════════════════════════════════════════════════════════════════╗
-# ║                           RESULT                                             ║
-# ║                                                                               ║
-# ║  Procedural Memory Updated:                                                   ║
-# ║  ~/.ralph/procedural/rules.json                                               ║
-# ║                                                                               ║
-# ║  Example rule generated:                                                      ║
-# ║  {                                                                            ║
-# ║    "rule_id": "repo-nestjs-1705789234",                                       ║
-# ║    "source_repo": "nestjs/nest",                                              ║
-# ║    "trigger": "dependency-injection",                                         ║
-# ║    "behavior": "Use constructor injection with @Injectable() decorator",      ║
-# ║    "confidence": 0.92,                                                        ║
-# ║    "category": "architecture"                                                 ║
-# ║  }                                                                            ║
-# ║                                                                               ║
-# ║  Now Ralph will apply these patterns in future implementations!               ║
-# ╚══════════════════════════════════════════════════════════════════════════════╝
-```
-
-### Codex Planner (v2.50) - NEW
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                       CODEX PLANNER (v2.50)                                │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   /codex-plan "Design a distributed caching system"                        │
-│   /orchestrator "Implement microservices" --use-codex                      │
-│                                                                              │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                     3-PHASE WORKFLOW                                 │   │
-│   │                                                                     │   │
-│   │   1. CLARIFY → AskUser questions (MUST_HAVE + NICE_TO_HAVE)         │   │
-│   │   2. EXECUTE → Codex 5.2 with `xhigh` reasoning depth               │   │
-│   │   3. SAVE → Plan saved to `http://codex-plan.md`                    │   │
-│   │                                                                     │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                              │
-│   Requirements:                                                             │
-│   • Codex CLI: npm install -g @openai/codex                                │
-│   • Access to gpt-5.2-codex model                                          │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-**Usage**:
-```bash
-# Direct Codex planning
-/codex-plan "Design a distributed caching system"
-
-# Orchestrator with Codex for complex planning
-/orchestrator "Implement microservices architecture" --use-codex
-/orchestrator "Design event-driven system" --codex
-```
-
-### Command Synchronization (v2.50) - NEW
-
-Ralph maintains **bidirectional synchronization** between Claude Code and OpenCode:
-
-```
-~/.claude/commands/  ←→  ~/.config/opencode/command/
-```
-
-**Features**:
-- **Automatic Sync**: New commands are automatically synced to both platforms
-- **Format Validation**: YAML frontmatter with VERSION headers required
-- **20 Unit Tests**: Verify sync integrity, format compliance, and integration
-
-**Scripts**:
-- `~/.claude/scripts/sync-commands.sh` - Verification and sync utility
-- `~/.claude/scripts/fix-command-format.sh` - Auto-fix format issues
-
-**Test Suite** (`tests/test_command_sync.py`):
-```bash
-# Run all sync tests
-python -m pytest tests/test_command_sync.py -v
-
-# All 20 tests passing
-# ✓ Sync verification
-# ✓ Version headers
-# ✓ Frontmatter format
-# ✓ Curator integration
-# ✓ Auto-sync integration
-```
-
-### Local Observability (v2.52) - NEW
-
-Zero-dependency observability using local files:
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                      LOCAL OBSERVABILITY (v2.52)                            │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   LAYER 1: StatusLine (Passive)                                            │
-│   ──────────────────────────────                                           │
-│   ⎇ main* │ 📊 3/7 42% │ [claude-hud metrics]                              │
-│                                                                              │
-│   LAYER 2: ralph status (On-Demand)                                        │
-│   ─────────────────────────────────                                        │
-│   $ ralph status --compact                                                 │
-│   📊 STANDARD Step 3/7 (42%) - Implementing OAuth2                         │
-│                                                                              │
-│   $ ralph status --steps                                                   │
-│   ┌────────────────────────────────────────┐                               │
-│   │ ✅ CLARIFY    ✅ CLASSIFY  ✅ PLAN     │                               │
-│   │ 🔄 EXECUTE    ⏳ VALIDATE  ⏳ RETROSPECT│                               │
-│   └────────────────────────────────────────┘                               │
-│                                                                              │
-│   LAYER 3: ralph trace (Historical)                                        │
-│   ──────────────────────────────────                                       │
-│   $ ralph trace show                  # Recent events                      │
-│   $ ralph trace search "checkpoint"   # Search events                      │
-│   $ ralph trace timeline              # Visual timeline                    │
-│   $ ralph trace export json           # Export for analysis                │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-**Data Sources** (all local, no external dependencies):
-- `.claude/plan-state.json` - Current orchestration state
-- `~/.ralph/events/event-log.jsonl` - Event bus history
-- `~/.ralph/checkpoints/` - Checkpoint snapshots
-- `~/.ralph/agent-memory/` - Agent-scoped memory buffers
-
-### Quality-First Validation (v2.46)
+### 2. 12-Step Orchestration Workflow
+
+| Step | Name | Description |
+|------|------|-------------|
+| 0 | EVALUATE | Quick classification (trivial tasks → fast-path) |
+| 1 | CLARIFY | AskUserQuestion (MUST_HAVE + NICE_TO_HAVE) |
+| 2 | CLASSIFY | task-classifier (complexity 1-10 scale) |
+| 3 | PLAN | Detailed design with phases and risks |
+| 4 | PLAN MODE | EnterPlanMode (reads analysis) |
+| 5 | DELEGATE | Route to optimal model (Opus/Sonnet/MiniMax) |
+| 6 | EXECUTE-WITH-SYNC | Nested loop: LSA-VERIFY → IMPLEMENT → PLAN-SYNC → MICRO-GATE |
+| 7 | VALIDATE | Multi-stage: CORRECTNESS → QUALITY → CONSISTENCY → ADVERSARIAL |
+| 8 | RETROSPECT | Self-improvement analysis |
+
+### 3. 3-Dimension Classification (RLM-Inspired)
+
+| Dimension | Values | Purpose |
+|-----------|--------|---------|
+| **Complexity** | 1-10 | Scope, risk, ambiguity |
+| **Information Density** | CONSTANT / LINEAR / QUADRATIC | How answer scales with input |
+| **Context Requirement** | FITS / CHUNKED / RECURSIVE | Whether decomposition needed |
+
+**Workflow Routing**:
+
+| Density | Context | Complexity | Route | Max Iter |
+|---------|---------|------------|-------|----------|
+| CONSTANT | FITS | 1-3 | **FAST_PATH** | 3 |
+| CONSTANT | FITS | 4-10 | STANDARD | 25 |
+| LINEAR | CHUNKED | ANY | PARALLEL_CHUNKS | 15/chunk |
+| QUADRATIC | ANY | ANY | RECURSIVE_DECOMPOSE | 15/sub |
+
+### 4. 14 Specialized Agents
+
+| Agent | Model | Purpose |
+|-------|-------|---------|
+| `orchestrator` | opus | Coordinator, planning, delegation |
+| `security-auditor` | opus | Security vulnerabilities, code review |
+| `debugger` | opus | Bug detection, error analysis |
+| `code-reviewer` | sonnet | Code quality, pattern analysis |
+| `test-architect` | sonnet | Test generation, coverage analysis |
+| `refactorer` | sonnet | Refactoring, code improvement |
+| `frontend-reviewer` | sonnet | UI/UX, accessibility |
+| `docs-writer` | minimax | Documentation, README |
+| `minimax-reviewer` | minimax | Validation, second opinion |
+| `repository-learner` | sonnet | Pattern extraction, rule generation |
+| `repo-curator` | sonnet | Repository discovery, scoring |
+| `kieran-python-reviewer` | minimax | Python code quality |
+| `kieran-typescript-reviewer` | minimax | TypeScript code quality |
+| `codex-planner` | codex | Advanced planning with GPT-5.2 |
+
+### 5. Quality-First Validation (v2.46)
 
 ```
 Stage 1: CORRECTNESS  → Syntax errors (BLOCKING)
@@ -791,158 +365,606 @@ Stage 2.5: SECURITY   → semgrep + gitleaks (BLOCKING)
 Stage 3: CONSISTENCY  → Linting (ADVISORY - not blocking)
 ```
 
-### 3-Dimension Classification (RLM)
+### 6. Claude Code Skills Ecosystem (v2.57)
 
-| Dimension | Values |
-|-----------|---------|
-| **Complexity** | 1-10 |
-| **Information Density** | CONSTANT / LINEAR / QUADRATIC |
-| **Context Requirement** | FITS / CHUNKED / RECURSIVE |
+Ralph includes a comprehensive **Claude Code Skills** ecosystem for specialized tasks:
 
----
+| Skill Category | Count | Purpose |
+|----------------|-------|---------|
+| **Marketing Skills** | 23 | Copywriting, positioning, pricing, channels, messaging, funnel, CRO, analytics, branding, email, content, SEO, social, paid ads, partnerships, product, launch, retention, community, conversion, strategy, research |
+| **Documentation** | 1 | `/readme` - Comprehensive project documentation generation |
+| **React Best Practices** | 1 | Vercel's official React patterns and best practices |
 
-## Quick Installation
+#### Marketing Skills Available
 
-```bash
-# Clone repository
-git clone https://github.com/alfredolopez80/multi-agent-ralph-loop.git
-cd multi-agent-ralph-loop
-
-# Install
-chmod +x install.sh
-./install.sh
-source ~/.zshrc
-
-# Verify
-ralph integrations
+```
+├── ab-test-setup/              # A/B testing configuration
+├── brand-positioning/          # Brand strategy and positioning
+├── channel-strategy/           # Distribution channel planning
+├── content-marketing/          # Content strategy and creation
+├── conversion-optimization/    # CRO and funnel optimization
+├── copywriting/                # Persuasive copy writing
+├── crm-setup/                  # Customer relationship management
+├── email-marketing/            # Email campaign strategy
+├── funnel-design/              # Marketing funnel architecture
+├── go-to-market/               # Product launch strategy
+├── keyword-research/           # SEO keyword analysis
+├── landing-page-copy/          # High-converting landing pages
+├── market-research/            # Market analysis and research
+├── messaging-framework/        # Value proposition crafting
+├── partnerships/               # Strategic partnership development
+├── pricing-strategy/           # Product pricing models
+├── product-marketing/          # Product positioning and messaging
+├── paid-advertising/           # Digital ads optimization
+├── seo-optimization/           # Search engine optimization
+├── social-media/               # Social media strategy
+├── strategy-roadmap/           # Marketing strategy planning
+├── user-research/              # User persona development
+└── analytics-setup/            # Marketing analytics configuration
 ```
 
-### Requirements
+#### Documentation Skill
 
-| Tool | Required | Purpose |
-|-------------|-----------|-----------|
-| Claude CLI | Yes | Base orchestration |
-| jq | Yes | JSON processing |
-| git | Yes | Version control |
-| GitHub CLI | For PRs | PR creation/review |
+The `/readme` skill generates comprehensive project documentation:
+
+```bash
+# Generate comprehensive README
+/readme "Create documentation for my project"
+
+/readme "Update existing README with new features"
+```
+
+**Features**:
+- Automatic table of contents generation
+- Code example formatting
+- Architecture diagram integration
+- Multi-language support (English/Spanish)
+- Badge and metadata inclusion
+
+#### Vercel React Best Practices Skill
+
+Ralph automatically installs **Vercel's official React Best Practices** skill:
+
+```bash
+/react-best-practices "How should I structure my React components?"
+/react-best-practices "Best patterns for custom hooks"
+```
+
+**Covers**:
+- Component design (composition, small focused components)
+- React hooks (functional updates, useEffect, custom hooks)
+- Performance optimization (useMemo, useCallback, lazy loading)
+- State management (appropriate strategies, context)
+- Error handling (error boundaries)
+- TypeScript integration
+- Accessibility (semantic HTML, ARIA)
+- Server Components for Next.js
 
 ---
 
-## Essential Commands
+## Commands Reference
+
+### Core Orchestration
 
 ```bash
-# Orchestration
+# Full orchestration with classification and planning
 /orchestrator "Implement OAuth2 with Google"
-ralph orch "task"              # Full orchestration
-ralph loop "fix errors"        # Loop until VERIFIED_DONE
-/clarify                       # Intensive clarification
+ralph orch "task description"
 
-# Quality
-/gates                         # Quality gates
-/adversarial                   # Specification refinement
+# Loop until VERIFIED_DONE
+/loop "fix all type errors"
+ralph loop "task"
 
-# Memory (v2.49)
-ralph memory-search "query"    # Parallel search
-ralph fork-suggest "task"      # Suggest sessions
+# Intensive clarification
+/clarify
 
-# Repository Learning (v2.50)
-/repo-learn https://github.com/python/cpython          # Learn from repo
+# 3-dimension classification
+/classify "Implement OAuth for Google, GitHub, Microsoft"
+```
+
+### Quality Validation
+
+```bash
+# Quality gates (9 languages)
+/gates
+
+# Adversarial specification refinement
+/adversarial src/critical/
+
+# Security audit
+ralph security src/
+ralph security-loop src/
+```
+
+### Memory Management
+
+```bash
+# Parallel memory search
+ralph memory-search "query"
+
+# Fork suggestion (find similar sessions)
+ralph fork-suggest "task"
+
+# Health check
+ralph health
+ralph health --compact
+ralph health --json
+ralph health --fix
+```
+
+### Repository Learning (v2.50)
+
+```bash
+# Learn from a repository
+/repo-learn https://github.com/python/cpython
+
+# Focused learning
 /repo-learn https://github.com/fastapi/fastapi --category error_handling
+/repo-learn https://github.com/facebook/react --category security --min-confidence 0.9
+```
 
-# Repo Curator (v2.55)
-ralph curator full --type backend --lang typescript   # Full pipeline
-ralph curator discovery --query "microservice" --max-results 200  # Custom search
-ralph curator scoring --context "error handling,retry"  # Context relevance (v2.55)
-ralph curator rank --top-n 15 --max-per-org 3         # Custom ranking
-ralph curator show --type backend --lang typescript   # View ranking
-ralph curator pending --type backend                  # View queue
-ralph curator approve nestjs/nest                     # Approve single
-ralph curator approve --all                           # Approve all staged
-ralph curator reject some/repo --reason "Low quality" # Reject with reason
-ralph curator ingest --repo x/y --approve --source "patterns"  # Direct ingest
-ralph curator learn --repo nestjs/nest                # Learn specific
-ralph curator learn --all                             # Learn all approved
+### Repo Curator (v2.55)
 
-# Codex Planning (v2.50)
-/codex-plan "Design distributed system"               # Codex planning
-/orchestrator "task" --use-codex                      # Orchestrator with Codex
+```bash
+# Full pipeline (economic tier - DEFAULT)
+/curator full --type backend --lang typescript
 
-# Security
-ralph security src/            # Security audit
-ralph security-loop src/       # Iterative audit
+# Custom discovery
+/curator discovery --query "microservice" --max-results 200 --tier free
 
-# Git Worktree
-ralph worktree "feature"       # Create isolated worktree
-ralph worktree-pr <branch>     # PR with review
+# Scoring with context relevance
+/curator scoring --input candidates.json --context "error handling,retry"
 
-# Context
-ralph ledger save              # Save session state
-ralph handoff create           # Create handoff
-ralph compact                  # Manual save (extensions)
+# Custom ranking
+/curator rank --input scored.json --top-n 15 --max-per-org 3
 
-# Local Observability (v2.52)
-ralph status                   # Full orchestration status
+# View ranking
+/curator show --type backend --lang typescript
+/curator pending --type backend
+
+# Approve/reject
+/curator approve nestjs/nest
+/curator approve --all
+/curator reject some/repo --reason "Low test coverage"
+
+# Learn from approved repos
+/curator learn --repo nestjs/nest
+/curator learn --all
+```
+
+### Codex Planning (v2.50)
+
+```bash
+# Direct Codex planning
+/codex-plan "Design a distributed caching system"
+
+# Orchestrator with Codex
+/orchestrator "Implement microservices" --use-codex
+/orchestrator "Design event-driven system" --codex
+```
+
+### Local Observability (v2.52)
+
+```bash
+# Full status
+ralph status
 ralph status --compact         # One-line: 📊 STANDARD Step 3/7 (42%)
 ralph status --steps           # Step-by-step breakdown
-ralph status --json            # JSON output for scripts
+ralph status --json            # JSON output
 
-ralph trace show               # Recent events (last 50)
+# Trace events
+ralph trace show 30            # Recent events
 ralph trace search "error"     # Search events
 ralph trace timeline           # Visual timeline
 ralph trace export json        # Export to JSON/CSV
-ralph trace summary            # Event statistics
+ralph trace summary            # Session summary
+```
+
+### Checkpoint System (v2.51)
+
+```bash
+# Save checkpoint
+ralph checkpoint save "before-refactor" "Pre-auth module refactoring"
+
+# List checkpoints
+ralph checkpoint list
+
+# Restore
+ralph checkpoint restore "before-refactor"
+
+# Compare
+ralph checkpoint diff "before-refactor"
+```
+
+### Handoff API (v2.51)
+
+```bash
+# Transfer task between agents
+ralph handoff transfer --from orchestrator --to security-auditor \
+    --task "Audit authentication module"
+
+# List agents
+ralph handoff agents
+
+# Validate agent
+ralph handoff validate debugger
+
+# History
+ralph handoff history
+```
+
+### Event-Driven Engine (v2.51)
+
+```bash
+# Emit event
+ralph events emit step.complete '{"step_id": "step1"}'
+
+# Check barriers
+ralph events barrier check phase-1
+ralph events barrier wait phase-1 300
+
+# List barriers
+ralph events barrier list
+
+# Event history
+ralph events history 20
+```
+
+### Git Worktree
+
+```bash
+# Create isolated worktree
+ralph worktree "feature"
+
+# PR with review
+ralph worktree-pr <branch>
+```
+
+### Context Preservation
+
+```bash
+# Manual save (for extension limitations)
+ralph compact
+
+# Ledger management
+ralph ledger save
+ralph ledger list
+ralph ledger load <session-id>
+
+# Handoff
+ralph handoff create
+ralph handoff load <session-id>
+```
+
+### Claude Code Skills
+
+```bash
+# Marketing skills (23 skills available)
+/ab-test-setup "Design A/B test for pricing page"
+/copywriting "Write landing page copy for SaaS product"
+/funnel-design "Create marketing funnel for B2B software"
+/brand-positioning "Position our AI startup against competitors"
+
+/react-best-practices "Best practices for React component composition"
+/readme "Generate comprehensive README for my project"
+/readme "Update existing README with new features"
 ```
 
 ---
 
-## Model Architecture
+## Hooks System
 
-```
-┌────────────────────────────────────────────────────────────┐
-│  PRIMARY (Sonnet manages)  │  SECONDARY (8% cost)         │
-├────────────────────────────┼───────────────────────────────┤
-│  Claude Opus/Sonnet        │  MiniMax M2.1                │
-│  Codex GPT-5               │  (Second opinion)            │
-│  Gemini 2.5 Pro            │  (Independent validation)    │
-├────────────────────────────┼───────────────────────────────┤
-│  Implementation            │  Validation                  │
-│  Testing                   │  Catch missed issues         │
-│  Documentation             │  Opus quality at 8% cost     │
-└────────────────────────────┴───────────────────────────────┘
-```
+### Overview
 
-### Cost Optimization
+Ralph uses **52 registered hooks** across 6 event types to automate workflows:
 
-| Model | Max Iterations | Cost vs Claude | Use Case |
-|--------|-----------------|-----------------|----------|
-| Claude Opus | 25 | 100% | Critical review, architecture |
-| Claude Sonnet | 25 | 60% | Standard implementation |
-| MiniMax M2.1 | 50 | 8% | Extended loops, second opinion |
-| MiniMax-lightning | 100 | 4% | Very long tasks |
+| Event Type | Count | Purpose |
+|------------|-------|---------|
+| **SessionStart** | 2 | Context preservation at startup |
+| **PreCompact** | 1 | Save state before compaction |
+| **PostToolUse** | 15 | Quality gates after Edit/Write/Bash |
+| **PreToolUse** | 16 | Security guards before Bash/Skill/Task |
+| **UserPromptSubmit** | 8 | Context warnings, reminders |
+| **Stop** | 10 | Session reports, reflection, learning |
 
----
+### Key Hooks
 
-## Hooks (38 Registered)
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `status-auto-check.sh` | PostToolUse | Auto-shows status every 5 operations |
+| `checkpoint-smart-save.sh` | PreToolUse (Edit/Write) | Smart checkpoints on risky edits |
+| `statusline-health-monitor.sh` | UserPromptSubmit | Health checks every 5 minutes |
+| `orchestrator-auto-learn.sh` | PreToolUse (Task) | Detects knowledge gaps |
+| `reflection-engine.sh` | Stop | Trigger async reflection |
+| `procedural-inject.sh` | PreToolUse (Task) | Inject learned behaviors |
 
-| Event Type | Purpose |
-|-------------|-----------|
-| SessionStart | Context preservation at startup |
-| PreCompact | Save state before compaction |
-| PostToolUse | Quality gates after Edit/Write |
-| PreToolUse | Security guards before Bash/Skill |
-| UserPromptSubmit | Context warnings, reminders |
-| Stop | Session reports |
+### Smart Checkpoint Triggers
+
+| Trigger | Condition |
+|---------|-----------|
+| `high_complexity` | Plan complexity ≥ 7 |
+| `high_risk_step` | Step involves auth/security/payment |
+| `critical_file` | Config, settings, .env, database files |
+| `security_file` | Files with auth/secret/credential in name |
 
 ---
 
-## Additional Documentation
+## Testing
+
+### Running Tests
+
+```bash
+# Run all tests
+cd tests
+./run_tests.sh
+
+# Run specific test categories
+python -m pytest test_memory_v2_49.py -v           # Memory tests
+python -m pytest test_command_sync.py -v           # Command sync tests
+python -m pytest test_hooks_comprehensive.py -v    # Hook tests
+python -m pytest test_context_engine.py -v         # Context tests
+
+# Run shell tests
+bash test_v2.25_search_hierarchy.sh
+bash test_v2.27_security_loop.sh
+```
+
+### Test Coverage
+
+| Category | Test Count | Status |
+|----------|------------|--------|
+| Memory Tests | 48+ | ✅ Passing |
+| Command Sync Tests | 20 | ✅ Passing |
+| Hook Tests | 48+ | ✅ Passing |
+| Context Engine Tests | 15+ | ✅ Passing |
+| Security Tests | 10+ | ✅ Passing |
+| **Total** | **103+** | ✅ Passing |
+
+### Test Structure
+
+```
+tests/
+├── test_*.py              # Python unit tests
+├── test_*.sh              # Shell integration tests
+├── conftest.py            # Pytest fixtures
+└── HOOK_TESTING_PATTERNS.md  # Hook testing guide
+```
+
+---
+
+## Deployment
+
+### Local Development
+
+Ralph is designed for **local development** and **global installation**. The installer sets up:
+
+1. **CLI Commands**: `ralph`, `mmc` in `~/.local/bin/`
+2. **Global Configuration**: `~/.claude/` directory with:
+   - 14 AI agents
+   - 52 event hooks
+   - 35+ slash commands
+   - **25+ Claude Code skills** (marketing, documentation, React)
+3. **Runtime Data**: `~/.ralph/` directory with:
+   - Memory storage
+   - Event logs
+   - Checkpoints
+   - Agent memory buffers
+
+### Production Use
+
+Ralph is **not deployed as a service**. It's a **development tool** that runs locally alongside Claude Code.
+
+**To update**:
+
+```bash
+cd /path/to/multi-agent-ralph-loop
+git pull origin main
+./install.sh
+```
+
+**To uninstall**:
+
+```bash
+cd /path/to/multi-agent-ralph-loop
+./uninstall.sh
+```
+
+---
+
+## Troubleshooting
+
+### Database Connection Issues
+
+**Error**: Memory operations failing
+
+**Solution**:
+```bash
+# Check claude-mem MCP status
+ralph health --json | jq '.memory'
+
+# Verify SQLite FTS
+ls ~/.ralph/memory/
+```
+
+### Hook Not Firing
+
+**Error**: Expected hook behavior not occurring
+
+**Solution**:
+```bash
+# Check hook registration
+ralph health | grep hooks
+
+# Verify settings.json
+cat ~/.claude/settings.json | jq '.hooks'
+
+# Check hook logs
+ls ~/.ralph/logs/
+cat ~/.ralph/logs/latest.log
+```
+
+### Context Loss
+
+**Error**: Session context not preserved
+
+**Solution**:
+```bash
+# Manual ledger save
+ralph ledger save
+
+# Check ledgers
+ralph ledger list
+
+# Restore from handoff
+ralph handoff history
+ralph handoff load <session-id>
+```
+
+### Quality Gates Failing
+
+**Error**: Gates blocking valid code
+
+**Solution**:
+```bash
+# Run gates with verbose output
+/gates --verbose
+
+# Check specific language handler
+cat ~/.claude/scripts/gates.sh | grep -A5 "typescript"
+
+# Bypass advisory checks
+/gates --advisory-only
+```
+
+### Installation Failures
+
+**Error**: Installer errors
+
+**Solution**:
+```bash
+# Check dependencies
+brew install jq curl git
+
+# Manual installation
+mkdir -p ~/.local/bin
+cp scripts/ralph ~/.local/bin/
+cp scripts/mmc ~/.local/bin/
+chmod +x ~/.local/bin/ralph ~/.local/bin/mmc
+
+# Add to PATH
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+### Skills Not Appearing
+
+**Error**: `/readme` or marketing skills not available
+
+**Solution**:
+```bash
+# Check skills installation
+ls ~/.claude/skills/
+
+# Verify skill structure
+cat ~/.claude/skills/readme/SKILL.md | head -20
+
+# Re-run installer
+cd /path/to/multi-agent-ralph-loop
+./install.sh
+
+# Reload Claude Code
+# (restart your Claude Code session)
+```
+
+### React Best Practices Skill Missing
+
+**Error**: `/react-best-practices` skill not available
+
+**Solution**:
+```bash
+# Check if skill exists
+ls ~/.claude/skills/react-best-practices/
+
+# Manual installation
+mkdir -p ~/.claude/skills/react-best-practices
+curl -fsSL https://raw.githubusercontent.com/vercel-labs/agent-skills/main/skills/react-best-practices/SKILL.md \
+    -o ~/.claude/skills/react-best-practices/SKILL.md
+
+# Verify
+cat ~/.claude/skills/react-best-practices/SKILL.md | head -10
+```
+
+---
+
+## Contributing
+
+### Development Setup
+
+1. Fork the repository
+2. Create a feature branch
+3. Make changes
+4. Run tests: `./run_tests.sh`
+5. Submit PR
+
+### Adding New Hooks
+
+1. Create hook file in `~/.claude/hooks/`
+2. Add to `~/.claude/settings.json`
+3. Document in `CLAUDE.md`
+4. Test with `/gates`
+
+### Adding New Agents
+
+1. Create agent file in `~/.claude/agents/`
+2. Register in `~/.claude/settings.json`
+3. Document in `AGENTS.md`
+4. Add to README.md
+
+### Adding New Skills
+
+1. Create skill file in `~/.claude/skills/<skill-name>/SKILL.md`
+2. Add YAML frontmatter with name and description:
+```yaml
+---
+name: skill-name
+description: When to use this skill
+allowed-tools: Bash,Read,Write
+---
+```
+3. Document skill functionality in Markdown
+4. Add to install.sh for automatic installation
+5. Update README.md with skill description
+
+---
+
+## License
+
+This project is licensed under the **Business Source License 1.1 (BSL 1.1)**.
+
+See [`LICENSE`](./LICENSE) for full terms.
+
+---
+
+## Acknowledgments
+
+- **Claude Code** - Base AI orchestration platform
+- **Ralph Wiggum** - Inspiration (The Simpsons)
+- **OpenAI Codex** - Advanced planning capabilities
+- **MiniMax** - Cost-optimized validation
+- **Claude.ai** - Core model capabilities
+
+---
+
+## References
 
 | Document | Purpose |
-|-----------|-----------|
-| [`CHANGELOG.md`](./CHANGELOG.md) | **Complete version history** (best practices) |
-| [`ARCHITECTURE_DIAGRAM_v2.52.0.md`](./ARCHITECTURE_DIAGRAM_v2.52.0.md) | Complete architecture diagrams |
-| [`CLAUDE.md`](./CLAUDE.md) | Quick reference (compact) |
-| `tests/HOOK_TESTING_PATTERNS.md` | Hook testing patterns |
+|----------|---------|
+| [`CHANGELOG.md`](./CHANGELOG.md) | Complete version history |
+| [`ARCHITECTURE_DIAGRAM_v2.52.0.md`](./ARCHITECTURE_DIAGRAM_v2.52.0.md) | Detailed architecture diagrams |
+| [`CLAUDE.md`](./CLAUDE.md) | Quick reference guide |
+| [`AGENTS.md`](./AGENTS.md) | Agent documentation |
+| [`TESTING.md`](./TESTING.md) | Testing guide |
+| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Contribution guidelines |
 
 ---
 

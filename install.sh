@@ -223,6 +223,389 @@ install_scripts() {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# INSTALL VERCEL REACT BEST PRACTICES SKILL
+# ═══════════════════════════════════════════════════════════════════════════════
+install_vercel_react_skill() {
+    log_info "Installing Vercel React Best Practices skill..."
+
+    local REACT_SKILL_DIR="${CLAUDE_DIR}/skills/react-best-practices"
+    local REACT_SKILL_URL="https://github.com/vercel-labs/agent-skills/tree/main/skills/react-best-practices"
+
+    # Create the skill directory
+    mkdir -p "$REACT_SKILL_DIR"
+
+    # Download the SKILL.md file from Vercel agent-skills repo
+    local SKILL_URL="https://raw.githubusercontent.com/vercel-labs/agent-skills/main/skills/react-best-practices/SKILL.md"
+
+    if command -v curl &>/dev/null; then
+        if curl -fsSL "$SKILL_URL" -o "${REACT_SKILL_DIR}/SKILL.md" 2>/dev/null; then
+            log_success "React Best Practices skill installed from Vercel"
+            log_info "  Source: $REACT_SKILL_URL"
+            return 0
+        fi
+    fi
+
+    # Fallback: Create skill file manually if download fails
+    cat > "${REACT_SKILL_DIR}/SKILL.md" << 'SKILLEOF'
+---
+name: react-best-practices
+description: When the user wants to write, review, or improve React code. Use when you see React, JSX, React hooks, or any frontend framework patterns. This skill provides Vercel's best practices for building high-quality React applications.
+---
+
+# React Best Practices
+
+You are an expert React developer following Vercel's best practices for building high-quality React applications.
+
+## Core Principles
+
+### 1. Component Design
+
+**Prefer Composition Over Inheritance**
+```jsx
+// GOOD: Composition
+function Card({ children }) {
+  return <div className="card">{children}</div>;
+}
+function UserCard({ user }) {
+  return (
+    <Card>
+      <Avatar src={user.avatar} />
+      <Name name={user.name} />
+    </Card>
+  );
+}
+
+// AVOID: Deep nesting or inheritance
+class UserCard extends React.Component { ... }
+```
+
+**Small, Focused Components**
+Each component should do one thing well. If a component grows too large, split it.
+
+```jsx
+// GOOD: Focused components
+function UserAvatar({ src, alt }) {
+  return <img src={src} alt={alt} className="avatar" />;
+}
+function UserInfo({ user }) {
+  return (
+    <div>
+      <UserAvatar src={user.avatar} alt={user.name} />
+      <span>{user.name}</span>
+    </div>
+  );
+}
+```
+
+### 2. React Hooks
+
+**Use Functional Updates**
+```jsx
+// GOOD
+const [count, setCount] = useState(0);
+setCount(prev => prev + 1);
+
+// AVOID
+setCount(count + 1); // May use stale value
+```
+
+**Use useEffect Correctly**
+```jsx
+// GOOD: Proper cleanup
+useEffect(() => {
+  const subscription = subscribe(id, handleChange);
+  return () => {
+    subscription.unsubscribe();
+  };
+}, [id]);
+
+// AVOID: Missing cleanup
+useEffect(() => {
+  subscribe(id, handleChange);
+}, [id]);
+```
+
+**Custom Hooks for Reusable Logic**
+```jsx
+// GOOD: Extract logic to custom hook
+function useDataFetching(url) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(url).then(setData).finally(() => setLoading(false));
+  }, [url]);
+
+  return { data, loading };
+}
+
+function UserProfile({ userId }) {
+  const { data: user, loading } = useDataFetching(`/api/users/${userId}`);
+  if (loading) return <Spinner />;
+  return <UserInfo user={user} />;
+}
+```
+
+### 3. Performance
+
+**Use useMemo and useCallback Appropriately**
+```jsx
+// GOOD: Memoize expensive computations
+const expensiveValue = useMemo(() => {
+  return compute(a, b);
+}, [a, b]);
+
+// GOOD: Memoize callbacks
+const handleClick = useCallback(() => {
+  doSomething(id);
+}, [id]);
+```
+
+**Lazy Loading with React.lazy and Suspense**
+```jsx
+// GOOD: Code splitting
+const HeavyComponent = lazy(() => import('./HeavyComponent'));
+
+function MyComponent() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <HeavyComponent />
+    </Suspense>
+  );
+}
+```
+
+**Virtualize Long Lists**
+```jsx
+// GOOD: Use react-window for long lists
+import { FixedSizeList as List } from 'react-window';
+
+function Row({ index, style }) {
+  return <div style={style}>{items[index]}</div>;
+}
+
+function VirtualList({ items }) {
+  return <List height={600} itemCount={items.length} itemSize={35} width="100%" />;
+}
+```
+
+### 4. State Management
+
+**Use the Right State Strategy**
+```jsx
+// GOOD: Local state for UI
+const [isOpen, setIsOpen] = useState(false);
+
+// GOOD: Derived state from props
+function UserProfile({ user }) {
+  const fullName = `${user.firstName} ${user.lastName}`; // Derived, no state needed
+  return <div>{fullName}</div>;
+}
+
+// GOOD: State machines for complex state
+const [state, send] = useMachine(userMachine);
+```
+
+**Avoid Prop Drilling with Context**
+```jsx
+// GOOD: Use Context for deeply nested consumers
+const ThemeContext = createContext('light');
+
+function App() {
+  return (
+    <ThemeContext.Provider value="dark">
+      <Toolbar />
+    </ThemeContext.Provider>
+  );
+}
+
+function Toolbar() {
+  const theme = useContext(ThemeContext); // No props needed
+  return <button className={theme}>OK</button>;
+}
+```
+
+### 5. Error Handling
+
+**Error Boundaries**
+```jsx
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, info) {
+    logError(error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <Fallback />;
+    }
+    return this.props.children;
+  }
+}
+
+// Usage
+<ErrorBoundary>
+  <Widget />
+</ErrorBoundary>
+```
+
+### 6. Testing
+
+**Test Behavior, Not Implementation**
+```jsx
+// GOOD: Test user behavior
+test('shows loading then user data', async () => {
+  render(<UserProfile userId="123" />);
+  expect(screen.getByText('Loading...')).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByText('John')).toBeInTheDocument());
+});
+
+// AVOID: Testing implementation details
+test('calls useUser hook', () => {
+  const { result } = renderHook(() => useUser('123'));
+  expect(result.current.isLoading).toBe(true);
+});
+```
+
+### 7. TypeScript Integration
+
+**Use TypeScript for Safety**
+```tsx
+// GOOD: Well-typed components
+interface ButtonProps {
+  variant: 'primary' | 'secondary';
+  onClick: () => void;
+  children: React.ReactNode;
+}
+
+function Button({ variant, onClick, children }: ButtonProps) {
+  return <button className={variant}>{children}</button>;
+}
+
+// GOOD: Generic components
+function List<T>({ items, render }: ListProps<T>) {
+  return (
+    <ul>
+      {items.map(item => <li key={item.id}>{render(item)}</li>)}
+    </ul>
+  );
+}
+```
+
+### 8. Accessibility
+
+**Use Semantic HTML**
+```jsx
+// GOOD: Semantic elements
+<nav>...</nav>
+<main>...</main>
+<article>...</article>
+<button onClick={handleClick}>Submit</button>
+
+// AVOID: Non-semantic
+<div onClick={handleClick}>Submit</div>
+```
+
+**Add ARIA Attributes When Needed**
+```jsx
+// GOOD: Accessible
+<button aria-expanded={isOpen} aria-haspopup="menu">
+  Menu
+</button>
+
+<input
+  type="text"
+  aria-label="Search"
+  aria-describedby="search-help"
+  id="search"
+/>
+<span id="search-help">Enter keywords to search</span>
+```
+
+### 9. Server Components (Next.js)
+
+**Use Server Components by Default**
+```tsx
+// This is a Server Component - runs on server
+async function Page({ params }) {
+  const data = await db.user.findUnique({ where: { id: params.id } });
+  return <UserCard user={data} />;
+}
+```
+
+**Use 'use client' Sparingly**
+```tsx
+// Only use 'use client' when you need:
+// - useState, useEffect, useRef
+// - Event handlers (onClick, onChange)
+// - Client-side lifecycle (onMount, onUnmount)
+
+'use client';
+'use client';
+
+function Counter() {
+  const [count, setCount] = useState(0); // Needs 'use client'
+  return <button onClick={() => setCount(c => c + 1)}>{count}</button>;
+}
+```
+
+### 10. Project Structure
+
+```
+src/
+├── app/                    # Next.js App Router
+│   ├── page.tsx           # Route: /
+│   ├── layout.tsx         # Root layout
+│   └── users/             # Route: /users
+│       ├── page.tsx
+│       └── [id]/
+│           └── page.tsx
+├── components/            # Shared components
+│   ├── ui/               # Generic UI (Button, Input)
+│   └── features/         # Feature-specific components
+├── hooks/                 # Custom hooks
+├── lib/                   # Utilities, API clients
+├── types/                 # TypeScript types
+└── styles/                # Global styles
+```
+
+## Code Style
+
+1. **File Naming**: PascalCase for components, camelCase for hooks
+2. **Component Order**: Props → State → Effects → Handlers → Render
+3. **Imports**: React → External → Internal → CSS/Assets
+4. **Props Destructure** for clarity
+
+## When Helping Users
+
+1. **Explain the "Why"** - Don't just write code, explain the reasoning
+2. **Show Examples** - Provide before/after comparisons
+3. **Consider Performance** - Suggest optimizations when appropriate
+4. **Error Handling** - Always handle edge cases
+5. **Accessibility** - Ensure your code is accessible
+6. **Testing** - Suggest how to test what you write
+
+## Triggers
+
+This skill activates when:
+- User asks about React, JSX, or React hooks
+- User wants to build or improve React components
+- User mentions Next.js, Remix, or other React frameworks
+- User asks about React patterns or best practices
+SKILLEOF
+
+    log_success "React Best Practices skill created (fallback mode)"
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # INSTALL CLAUDE CODE COMPONENTS
 # ═══════════════════════════════════════════════════════════════════════════════
 install_claude_components() {
@@ -240,11 +623,14 @@ install_claude_components() {
         log_success "Commands installed ($(ls -1 "${CLAUDE_DIR}/commands/" 2>/dev/null | wc -l | tr -d ' ') files)"
     fi
 
-    # Skills
+    # Skills (from project)
     if [ -d "${SCRIPT_DIR}/.claude/skills" ]; then
         cp -r "${SCRIPT_DIR}/.claude/skills/"* "${CLAUDE_DIR}/skills/" 2>/dev/null || true
-        log_success "Skills installed"
+        log_success "Project skills installed"
     fi
+
+    # Vercel React Best Practices skill (external)
+    install_vercel_react_skill
 
     # Hooks (with proper permissions)
     if [ -d "${SCRIPT_DIR}/.claude/hooks" ]; then
@@ -471,7 +857,7 @@ main() {
     echo "    • mmc (MiniMax wrapper) to ~/.local/bin/"
     echo "    • 9 agents to ~/.claude/agents/"
     echo "    • 15 commands to ~/.claude/commands/"
-    echo "    • 4 skills to ~/.claude/skills/"
+    echo "    • 5 skills to ~/.claude/skills/ (including React Best Practices from Vercel)"
     echo "    • Git Safety Guard (blocks destructive commands) - ALWAYS ACTIVE"
     echo "    • Quality Gates (9-language validation) - Manual via 'ralph gates'"
     echo "    • Git Worktree + PR Workflow (v2.20) - 'ralph worktree'"
