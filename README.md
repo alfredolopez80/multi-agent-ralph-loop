@@ -4,7 +4,7 @@
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 ![Tests](https://img.shields.io/badge/tests-103%20passed-green)
-![Hooks](https://img.shields.io/badge/hooks-52%20registered-orange)
+![Hooks](https://img.shields.io/badge/hooks-53%20registered-orange)
 ![Skills](https://img.shields.io/badge/skills-25%2B-orange)
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
@@ -442,6 +442,54 @@ Ralph automatically installs **Vercel's official React Best Practices** skill:
 
 ---
 
+### 7. Sec-Context Security Hook (v1.0.3)
+
+Ralph includes a **security quality gate hook** that automatically detects critical security vulnerabilities:
+
+| Pattern | Severity | Priority |
+|---------|----------|----------|
+| Hardcoded Secrets (API keys, passwords) | Critical | 23 |
+| SQL Injection (string concatenation) | High | 22 |
+| XSS (innerHTML without sanitization) | Critical | 23 |
+| Command Injection (os.system, subprocess) | High | 22 |
+| JWT None Algorithm | High | 22 |
+| Weak Cryptography (MD5, SHA1, ECB) | High | 20 |
+| Insecure Random (Math.random) | Medium | 18 |
+
+#### Hook Behavior
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              SEC-CONTEXT VALIDATE HOOK                          │
+├─────────────────────────────────────────────────────────────────┤
+│  Trigger: PostToolUse (Edit/Write)                             │
+│  Timeout: 60 seconds | Max File: 10MB                          │
+│                                                                 │
+│  Edit/Write → Pattern Scan (7 patterns) → Issues?              │
+│                                          NO ──→ Log: OK        │
+│                                          YES ──→ Report + Alert│
+│  Log: ~/.ralph/logs/sec-context-YYYYMMDD.log                   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Installation & Testing
+
+```bash
+# Run test suite (16 tests)
+bash ~/.claude/hooks/test-sec-context-hook.sh
+# Result: 16/16 tests passed
+```
+
+#### Sec-Context Depth Skill
+
+AI-powered security analysis:
+
+```bash
+/sec-context-depth "Review my authentication module"
+```
+
+---
+
 ## Commands Reference
 
 ### Core Orchestration
@@ -656,13 +704,13 @@ ralph handoff load <session-id>
 
 ### Overview
 
-Ralph uses **52 registered hooks** across 6 event types to automate workflows:
+Ralph uses **53 registered hooks** across 6 event types to automate workflows:
 
 | Event Type | Count | Purpose |
 |------------|-------|---------|
 | **SessionStart** | 2 | Context preservation at startup |
 | **PreCompact** | 1 | Save state before compaction |
-| **PostToolUse** | 15 | Quality gates after Edit/Write/Bash |
+| **PostToolUse** | 16 | Quality gates after Edit/Write/Bash |
 | **PreToolUse** | 16 | Security guards before Bash/Skill/Task |
 | **UserPromptSubmit** | 8 | Context warnings, reminders |
 | **Stop** | 10 | Session reports, reflection, learning |
@@ -672,6 +720,7 @@ Ralph uses **52 registered hooks** across 6 event types to automate workflows:
 | Hook | Trigger | Purpose |
 |------|---------|---------|
 | `status-auto-check.sh` | PostToolUse | Auto-shows status every 5 operations |
+| `sec-context-validate.sh` | PostToolUse (Edit/Write) | **Security quality gate** - detects 7 critical patterns |
 | `checkpoint-smart-save.sh` | PreToolUse (Edit/Write) | Smart checkpoints on risky edits |
 | `statusline-health-monitor.sh` | UserPromptSubmit | Health checks every 5 minutes |
 | `orchestrator-auto-learn.sh` | PreToolUse (Task) | Detects knowledge gaps |
@@ -741,9 +790,9 @@ Ralph is designed for **local development** and **global installation**. The ins
 1. **CLI Commands**: `ralph`, `mmc` in `~/.local/bin/`
 2. **Global Configuration**: `~/.claude/` directory with:
    - 14 AI agents
-   - 52 event hooks
+   - 53 event hooks
    - 35+ slash commands
-   - **25+ Claude Code skills** (marketing, documentation, React)
+   - **25+ Claude Code skills** (marketing, documentation, React, security)
 3. **Runtime Data**: `~/.ralph/` directory with:
    - Memory storage
    - Event logs
