@@ -840,6 +840,50 @@ verify_installation() {
     [ -f "${CLAUDE_DIR}/settings.json" ] && log_success "Settings with hooks configured" || log_warn "Settings.json missing"
     [ -d "${RALPH_DIR}/logs" ] && log_success "Hybrid logging directory ready" || log_warn "Logs directory missing"
 
+
+
+    # Verify curator and repo-learn scripts
+    log_info "Running post-installation tests..."
+
+    if [ -x "${RALPH_DIR}/curator/curator.sh" ]; then
+        log_success "curator.sh installed"
+    else
+        log_error "curator.sh not found or not executable"
+        ((ERRORS++))
+    fi
+
+    if [ -x "${RALPH_DIR}/scripts/repo-learn.sh" ]; then
+        log_success "repo-learn.sh installed"
+    else
+        log_error "repo-learn.sh not found or not executable"
+        ((ERRORS++))
+    fi
+
+    # Run validation script if available
+    if [ -x "${RALPH_DIR}/tests/validate_commands.sh" ]; then
+        log_info "Running validation tests..."
+        if "${RALPH_DIR}/tests/validate_commands.sh" > /dev/null 2>&1; then
+            log_success "All validation tests passed"
+        else
+            log_warn "Some validation tests failed - check ${RALPH_DIR}/logs/"
+            ((ERRORS++))
+        fi
+    fi
+
+    # Verify commands work
+    if "$INSTALL_DIR/ralph" repo-learn --help > /dev/null 2>&1; then
+        log_success "ralph repo-learn command works"
+    else
+        log_error "ralph repo-learn command failed"
+        ((ERRORS++))
+    fi
+
+    if "$INSTALL_DIR/ralph" curator > /dev/null 2>&1; then
+        log_success "ralph curator command works"
+    else
+        log_error "ralph curator command failed"
+        ((ERRORS++))
+    fi
     return $ERRORS
 }
 
