@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.61.0] - 2026-01-22
+
+### Added (Adversarial Council v2.61 - LLM-Council Enhanced)
+
+**Severity**: ENHANCEMENT
+**Impact**: Major upgrade to /adversarial skill with llm-council patterns
+
+#### New Features
+
+| Feature | Description |
+|---------|-------------|
+| **Python Orchestration** | `adversarial_council.py` script for automated multi-model review |
+| **Provider-Specific Extraction** | Codex, Claude, Gemini response parsing with fallbacks |
+| **Exponential Backoff** | `2^attempt` seconds between retries (1s, 2s, 4s...) |
+| **Command Allowlist** | Security: Only whitelisted commands for custom agents |
+| **Path Validation** | Security: Prevents path traversal in output directory |
+| **Feature Status Table** | Documentation: Clear Implemented vs Planned markers |
+
+#### Security Hardening
+
+| Fix | Severity | Description |
+|-----|----------|-------------|
+| Command Injection | HIGH | Added `ALLOWED_CUSTOM_COMMANDS` allowlist |
+| Path Traversal | MEDIUM | Added `validate_output_path()` function |
+| Config Validation | MEDIUM | Schema validation for agents.json |
+
+#### Validation Results
+
+| Model | Score | Notes |
+|-------|-------|-------|
+| Codex CLI | 6/10 | Identified initial issues |
+| Claude Opus | 6.4/10 | Identified security vulnerabilities |
+| Gemini | **9/10 Security**, **8/10 Quality** | Post-fix validation |
+
+#### Files Changed
+
+| File | Change |
+|------|--------|
+| `~/.claude/skills/adversarial/skill.md` | v2.61 with feature status table |
+| `~/.claude/skills/adversarial/scripts/adversarial_council.py` | New orchestration script |
+
+### Added (Security Audit - API Key Detection)
+
+| Check | Result |
+|-------|--------|
+| MiniMax API Key | ✅ Not exposed |
+| OpenAI API Key | ✅ Not exposed |
+| JWT Tokens | ✅ Not exposed |
+| .gitignore | ✅ Properly configured |
+| Git History | ✅ Clean |
+
+**Report**: `.claude/SECURITY_AUDIT_API_KEYS.md`
+
+---
+
 ## [2.57.5] - 2026-01-20
 
 ### Fixed (Stop Hook JSON Format Error)
