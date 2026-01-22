@@ -1,12 +1,12 @@
-# Multi-Agent Ralph Wiggum v2.58.0
+# Multi-Agent Ralph Wiggum v2.60.0
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.58.0-blue)
+![Version](https://img.shields.io/badge/version-2.60.0-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 ![Tests](https://img.shields.io/badge/tests-103%20passed-green)
-![Hooks](https://img.shields.io/badge/hooks-52%20registered-orange)
+![Hooks](https://img.shields.io/badge/hooks-52%20registered-green)
 ![Skills](https://img.shields.io/badge/skills-266%2B-orange)
 
 ---
@@ -55,6 +55,10 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 - **Autonomous Learning (v2.55)**: Proactively learns from quality repositories when knowledge gaps detected
 - **Automated Monitoring (v2.56)**: Smart checkpoints, status monitoring, and health checks via hooks
 - **Memory System Reconstruction (v2.57)**: Fixed 8 critical bugs in memory search, plan-state sync, and context injection
+- **Security Hardening (v2.58)**: SEC-034 security hooks, anti-pattern detection, adversarial validation
+- **Learning System v2.59**: 319 procedural rules with confidence scoring, feedback loop, and auto-cleanup
+- **Hook System Audit (v2.60)**: Reduced hooks from 64 to 52, removed deprecated scripts, adversarial validation
+- **Smart Skill Reminder v2.0 (v2.60)**: Context-aware skill suggestions with session gating and rate limiting
 - **Claude Code Skills Ecosystem**: 266+ specialized skills including marketing (23 skills), documentation generation, and React best practices from Vercel
 
 ---
@@ -82,13 +86,22 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 | **Procedural** | Learned behaviors, best practices | `~/.ralph/procedural/rules.json` | Never |
 | **Agent-Scoped** | Isolated buffers per agent | `~/.ralph/agent-memory/<agent>/` | Varies |
 
-### Auto-Learning
+### Auto-Learning (v2.50-v2.59)
 
 | Component | Purpose | Version |
 |-----------|---------|---------|
-| **Repository Learner** | Extract patterns from quality repositories | v2.50 |
+| **Repository Learner** | Extract patterns from quality repositories via AST | v2.50 |
 | **Repo Curator** | Discover, score, and curate quality repos | v2.55 |
 | **Auto-Learning Hooks** | Detect knowledge gaps proactively | v2.55 |
+| **Learning System v2.59** | 319 rules, confidence scoring, feedback loop | v2.59 |
+
+### Security (v2.58)
+
+| Component | Purpose |
+|-----------|---------|
+| **SEC-034 Security Hooks** | Comprehensive security validation |
+| **sec-context-validate.sh** | Security context validation (BLOCKING) |
+| **Anti-Pattern Detection** | 34 security anti-patterns detected |
 
 ---
 
@@ -98,102 +111,130 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 |-----------|------------|---------|
 | **Base Platform** | Claude Code CLI | AI orchestration engine |
 | **Shell Environment** | Bash 5.x + zsh | Hooks automation |
-| **Python** | 3.11+ | Utilities and tooling |
-| **Memory System** | claude-mem MCP + SQLite FTS | Semantic/episodic/procedural memory |
-| **Model Routing** | Claude Opus/Sonnet + MiniMax M2.1 + Codex | Multi-model coordination |
-| **Validation** | semgrep + gitleaks + ast-grep | Security and quality scanning |
-| **Package Management** | uv (Python) | Dependency management |
-| **Version Control** | Git + GitHub CLI | Code management and PRs |
-| **Skills Ecosystem** | Claude Code Skills + Vercel agent-skills | Specialized task skills |
-| **3D Modeling** | Blender MCP | 3D asset creation via Blender |
+| **Scripting** | Python 3.11+ | Utility scripts, memory management |
+| **Configuration** | JSON + YAML | Settings, schemas, rules |
+| **Memory Storage** | JSON + SQLite FTS | Semantic, episodic, procedural memory |
+| **Code Analysis** | AST-grep | Structural code search |
+| **MCP Servers** | Context7, Playwright, MiniMax, Blender | Documentation, testing, AI analysis |
+| **CLI Tools** | Codex CLI, Gemini CLI, GitHub CLI | Multi-model orchestration |
 
 ---
 
 ## Prerequisites
 
-### Required Tools
+### Required
 
-| Tool | Minimum Version | Installation |
-|------|-----------------|--------------|
-| **Claude Code CLI** | Latest | `brew install claude` or `pipx install claude` |
-| **jq** | 1.6+ | `brew install jq` |
-| **curl** | Any | Pre-installed on macOS |
-| **Git** | 2.0+ | Pre-installed on macOS |
-| **Bash** | 5.0+ | `brew install bash` (macOS) |
+```bash
+# Core dependencies
+command -v jq    # JSON processing (REQUIRED)
+command -v curl  # HTTP requests (REQUIRED)
+command -v git   # Version control (REQUIRED)
+command -v bash  # Shell scripts (REQUIRED, version 5.0+)
+```
 
-### Optional but Recommended
+### Optional (Recommended)
 
-| Tool | Purpose | Installation |
-|------|---------|--------------|
-| **GitHub CLI (gh)** | PR workflow | `brew install gh` |
-| **Codex CLI** | Advanced planning | `npm install -g @openai/codex` |
-| **MiniMax CLI** | Cost-optimized validation | `uvx minimax-coding-plan-mcp` |
-| **uv** | Fast Python package manager | `curl -LsSf https://astral.sh/uv/install.sh | sh` |
-| **Blender** | 3D asset creation | `brew install --cask blender` |
-| **Docker** | Containerized deployment | `brew install --cask docker` |
+```bash
+# AI Orchestration
+command -v claude  # Claude Code CLI (primary)
+command -v codex   # OpenAI Codex CLI (adversarial review)
+command -v gemini  # Google Gemini CLI (analysis)
+
+# Development Tools
+command -v gh      # GitHub CLI (PR workflow)
+command -v npx     # Node.js (TypeScript, ESLint)
+command -v ruff    # Python linter
+command -v pyright # Python type checker
+
+# Security Tools
+command -v semgrep  # Security scanning
+command -v gitleaks # Secrets detection
+```
+
+### Installation
+
+```bash
+# macOS
+brew install jq curl git gh npx ruff
+
+# Verify versions
+jq --version   # >= 1.6
+curl --version # Any recent version
+git --version  # Any recent version
+```
 
 ---
 
 ## Getting Started
 
-### 1. Clone the Repository
+### Installation
 
 ```bash
-git clone https://github.com/alfredolopez80/multi-agent-ralph-loop.git
+# Clone the repository
+git clone https://github.com/your-org/multi-agent-ralph-loop.git
 cd multi-agent-ralph-loop
-```
 
-### 2. Run the Installer
-
-The installer sets up the global CLI and integrates with Claude Code:
-
-```bash
-# Make executable
-chmod +x install.sh
-
-# Run installer (requires jq, curl)
+# Run the global installer
 ./install.sh
 
-# Verify installation
-ralph --version
-ralph status
+# The installer will:
+# 1. Backup existing ~/.claude/ configuration
+# 2. Install ralph CLI to ~/.local/bin/
+# 3. Copy hooks, agents, commands, skills to ~/.claude/
+# 4. Register hooks in ~/.claude/settings.json
+# 5. Initialize Ralph memory system in ~/.ralph/
+
+# Restart Claude Code to load new configuration
 ```
 
-### 3. Verify Global Installation
-
-After installation, these paths should exist:
+### Verification
 
 ```bash
-# CLI tool
-which ralph
-# Expected: ~/.local/bin/ralph
-
-# Configuration
-ls -la ~/.ralph/
-# Expected: directories for memory, logs, config, etc.
-
-# Global hooks
-ls -la ~/.claude/hooks/
-# Expected: 52+ .sh hook files
-
-# Global skills
-ls -la ~/.claude/skills/
-# Expected: 266+ skill directories
-```
-
-### 4. Quick Validation
-
-Run a quick validation to ensure everything works:
-
-```bash
-# Check Ralph status
-ralph status
-
-# Check memory health
+# Check Ralph health
 ralph health
 
+# Should output something like:
+# === Memory System Health ===
+# Semantic: OK (1452 facts)
+# Procedural: OK (319 rules)
+# Episodic: OK (234 episodes)
+# Total: OK
+
 # Check hooks registration
-ralph hooks check
+ls ~/.claude/hooks/*.sh | wc -l
+# Should output: 52 (after v2.60 cleanup)
+
+# Test quality gates
+/gates
+# Should show: Quality gates ready
+```
+
+### Quick Start Commands
+
+```bash
+# 1. Full orchestration with classification
+/orchestrator "Implement OAuth2 authentication with JWT tokens"
+
+# 2. Quality validation
+/gates          # Quality gates
+/adversarial    # Spec refinement with dual-model
+
+# 3. Iterative loop (until VERIFIED_DONE)
+/loop "fix all type errors in src/"
+
+# 4. Checkpoint (v2.51)
+ralph checkpoint save "before-refactor" "Pre-auth module changes"
+ralph checkpoint restore "before-refactor"
+
+# 5. Agent handoff (v2.51)
+ralph handoff transfer --from orchestrator --to security-auditor \
+    --task "Audit authentication module"
+
+# 6. Learn from repository (v2.50)
+/repo-learn https://github.com/fastapi/fastapi
+
+# 7. Curate quality repos (v2.55)
+/curator full --type backend --lang python
 ```
 
 ---
@@ -204,65 +245,61 @@ ralph hooks check
 
 ```
 multi-agent-ralph-loop/
-├── .claude/                    # Claude Code configuration
-│   ├── agents/                 # 30+ specialized agent definitions
-│   ├── commands/               # Slash command implementations
-│   ├── hooks/                  # 52+ hook scripts (in settings.json)
-│   ├── skills/                 # Local project skills
-│   ├── rules/                  # Global rules (Plan Mode, etc.)
-│   ├── settings.local.json     # Project permissions
-│   └── schemas/                # JSON schemas
-├── scripts/                    # Utility scripts
-│   ├── validate-integration.sh
-│   ├── validate-global-architecture.sh
-│   └── ...
-├── src/                        # Source code (minimal)
-├── tests/                      # Test suite
-├── docs/                       # Documentation
-├── install.sh                  # Global installer
-├── README.md                   # This file
-├── CLAUDE.md                   # Project instructions
-├── AGENTS.md                   # Agent reference
-└── CHANGELOG.md                # Version history
-
-~/.ralph/                       # Global Ralph data (after installation)
-├── memory/
-│   ├── semantic.json           # Semantic memory
-│   ├── memvid.json             # Memvid checkpoints
-│   └── episodes/               # Episodic memory (30-day TTL)
-├── procedural/
-│   └── rules.json              # Learned procedural rules
-├── agent-memory/               # Per-agent isolated memory
-├── checkpoints/                # LangGraph-style checkpoints
-├── ledgers/                    # Session continuity
-├── handoffs/                   # Agent-to-agent context transfer
-├── events/                     # Event bus log
-├── logs/                       # Hook and system logs
-├── curator/                    # Repo curation data
-└── config/                     # Agent registry, etc.
-
-~/.claude/                      # Global Claude Code config (after installation)
-├── settings.json               # 52 hooks registered
-├── hooks/                      # 58 hook scripts total
-│   ├── fast-path-check.sh
-│   ├── parallel-explore.sh
-│   ├── recursive-decompose.sh
-│   ├── quality-gates-v2.sh
-│   ├── sec-context-validate.sh
-│   └── ... (52 more)
-├── agents/                     # Global agent definitions
-├── commands/                   # Global slash commands
-├── skills/                     # 266+ global skills
-│   ├── orchestrator/           # Orchestration skill
-│   ├── marketing-skills/       # 23 marketing skills
-│   ├── readme/                 # README generation skill
-│   └── vercel-react-best-practices/
-└── rules/                      # Global behavior rules
+├── .claude/                      # Claude Code configuration
+│   ├── agents/                   # Specialized agents (11 default)
+│   │   ├── orchestrator.sh       # Main orchestration agent
+│   │   ├── security-auditor.sh   # Security-focused agent
+│   │   ├── debugger.sh           # Bug detection/fix agent
+│   │   ├── code-reviewer.sh      # Code review agent
+│   │   ├── test-architect.sh     # Testing agent
+│   │   ├── refactorer.sh         # Refactoring agent
+│   │   ├── frontend-reviewer.sh  # UI/UX agent
+│   │   ├── docs-writer.sh        # Documentation agent
+│   │   ├── minimax-reviewer.sh   # MiniMax validation
+│   │   ├── repository-learner.sh # Learning agent
+│   │   └── repo-curator.sh       # Curation agent
+│   ├── commands/                 # Slash commands
+│   ├── hooks/                    # Hook scripts (52 registered, v2.60)
+│   │   ├── quality-gates-v2.sh   # Quality validation (BLOCKING)
+│   │   ├── sec-context-validate.sh # Security validation (BLOCKING)
+│   │   ├── smart-memory-search.sh # Memory search
+│   │   ├── procedural-inject.sh  # Rules injection
+│   │   ├── orchestrator-auto-learn.sh # Auto-learning
+│   │   ├── smart-skill-reminder.sh # Context-aware skill suggestions (v2.0)
+│   │   ├── skill-pre-warm.sh     # Pre-warm skills on session start
+│   │   └── ... (45 more hooks)
+│   ├── skills/                   # Claude Code skills (266+)
+│   │   ├── marketing-ideas/      # 140 marketing strategies
+│   │   ├── marketingskills/      # 23 marketing skills
+│   │   ├── react-best-practices/ # React optimization
+│   │   └── readme/               # Documentation generation
+│   ├── settings.json             # Global hooks configuration
+│   └── plan-state.json           # Current orchestration state
+├── scripts/                      # Utility scripts (40+)
+│   ├── ralph*                    # Main CLI commands
+│   ├── curator-*                 # Repo curation scripts
+│   ├── memory-*                  # Memory management scripts
+│   ├── handoff.sh                # Agent transfer script
+│   ├── event-bus.sh              # Event-driven engine
+│   ├── checkpoint-*.sh           # Checkpoint management
+│   ├── install-security-tools.sh # Security tools installer
+│   └── validate-hooks.sh         # Hook validation
+├── tests/                        # Test suite (74+ tests)
+│   ├── test_hooks_*.py           # Hook tests
+│   ├── test_memory_*.py          # Memory tests
+│   ├── test_v2_*.sh              # Integration tests
+│   └── run_tests.sh              # Test runner
+├── config/                       # Configuration
+├── docs/                         # Documentation
+├── install.sh                    # Global installer
+├── uninstall.sh                  # Uninstaller
+├── CLAUDE.md                     # Project instructions
+├── AGENTS.md                     # Agent documentation
+├── README.md                     # This file
+└── CHANGELOG.md                  # Version history
 ```
 
-### Core Workflow
-
-The orchestration follows a 12-step workflow (v2.46):
+### Core Workflow (12 Steps) - v2.46
 
 ```
 0. EVALUATE     → 3-dimension classification (FAST_PATH vs STANDARD)
@@ -276,185 +313,364 @@ The orchestration follows a 12-step workflow (v2.46):
 8. RETROSPECT   → Analyze and improve
 ```
 
-**Fast-Path** (complexity ≤ 3): `DIRECT_EXECUTE → MICRO_VALIDATE → DONE` (3 steps)
+**Fast-Path** (complexity ≤ 3): DIRECT_EXECUTE → MICRO_VALIDATE → DONE (3 steps)
 
-### 3-Dimension Classification
+### 3-Dimension Classification (RLM)
 
-The system uses RLM-inspired routing based on three dimensions:
-
-| Dimension | Values | Description |
-|-----------|--------|-------------|
+| Dimension | Values | Purpose |
+|-----------|--------|---------|
 | **Complexity** | 1-10 | Scope, risk, ambiguity |
 | **Information Density** | CONSTANT / LINEAR / QUADRATIC | How answer scales with input |
 | **Context Requirement** | FITS / CHUNKED / RECURSIVE | Whether decomposition needed |
 
-#### Workflow Routing Matrix
+#### Workflow Routing
 
-| Density | Context | Complexity | Route |
-|---------|---------|------------|-------|
-| CONSTANT | FITS | 1-3 | **FAST_PATH** |
-| CONSTANT | FITS | 4-10 | STANDARD |
-| LINEAR | CHUNKED | ANY | PARALLEL_CHUNKS |
-| QUADRATIC | ANY | ANY | RECURSIVE_DECOMPOSE |
+| Density | Context | Complexity | Route | Model | Max Iter |
+|---------|---------|------------|-------|-------|----------|
+| CONSTANT | FITS | 1-3 | **FAST_PATH** | sonnet | 3 |
+| CONSTANT | FITS | 4-10 | STANDARD | minimax-m2.1 | 25 |
+| LINEAR | CHUNKED | ANY | PARALLEL_CHUNKS | sonnet | 15/chunk |
+| QUADRATIC | ANY | ANY | RECURSIVE_DECOMPOSE | opus | 15/sub |
 
-#### Model Routing by Route
+---
 
-| Route | Primary | Secondary | Max Iter |
-|-------|---------|-----------|----------|
-| FAST_PATH | sonnet | - | 3 |
-| STANDARD (1-4) | minimax-m2.1 | sonnet | 25 |
-| STANDARD (5-6) | sonnet | opus | 25 |
-| STANDARD (7-10) | opus | sonnet | 25 |
-| PARALLEL_CHUNKS | sonnet (chunks) | opus (aggregate) | 15/chunk |
-| RECURSIVE | opus (root) | sonnet (sub) | 15/sub |
+## Memory Architecture
 
-### Memory Architecture
+### Three Memory Types
 
 ```
 SMART MEMORY SEARCH (PARALLEL)
 ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
 │claude-mem│ │ memvid   │ │ handoffs │ │ ledgers  │
+│  MCP     │ │          │ │          │ │          │
 └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘
      │ PARALLEL   │ PARALLEL   │ PARALLEL   │ PARALLEL
      └────────────┴────────────┴────────────┘
                     ↓
          .claude/memory-context.json
+                    ↓
+              Subagent Context
 ```
-
-#### Memory Types
 
 | Type | Purpose | Storage | TTL |
-|------|---------|---------|-----|
-| **Semantic** | Facts, preferences | `~/.ralph/memory/semantic.json` | Never |
-| **Episodic** | Experiences (30-day TTL) | `~/.ralph/episodes/` | 30 days |
-| **Procedural** | Learned behaviors | `~/.ralph/procedural/rules.json` | Never |
+|-------------|---------|---------|-----|
+| **Semantic** | Facts, preferences, learned rules | `~/.ralph/memory/semantic.json` | Never |
+| **Episodic** | Experiences, decisions, patterns | `~/.ralph/episodes/` | 30 days |
+| **Procedural** | Learned behaviors, best practices | `~/.ralph/procedural/rules.json` | Dynamic |
+| **Agent-Scoped** | Isolated buffers per agent | `~/.ralph/agent-memory/<agent>/` | Varies |
 
-#### Memory Commands
+### Repository Learner (v2.50)
+
+Extracts best practices from GitHub repositories using AST-based pattern analysis.
 
 ```bash
-# Memory search (parallel - v2.49)
-ralph memory-search "session goal"
+# Learn from a specific repository
+/repo-learn https://github.com/python/cpython
 
-# Fork suggest (find similar sessions)
-ralph fork-suggest "implement OAuth"
-
-# Checkpoint system (v2.51)
-ralph checkpoint save "before-refactor" "Pre-auth changes"
-ralph checkpoint restore "before-refactor"
-ralph checkpoint list
-ralph checkpoint diff "checkpoint1" "checkpoint2"
-
-# Handoff API (v2.51)
-ralph handoff transfer --from orchestrator --to security-auditor \
-    --task "Audit auth module"
-ralph handoff agents
-ralph handoff history
-
-# Agent-Scoped Memory (v2.51)
-ralph agent-memory init security-auditor
-ralph agent-memory write security-auditor semantic "Found SQL injection"
-ralph agent-memory read security-auditor
+# Learn focused on specific patterns
+/repo-learn https://github.com/fastapi/fastapi --category error_handling
 ```
 
-### Hooks System
+**Process**:
+1. Acquire repository via git clone or GitHub API
+2. Analyze code using AST-based pattern extraction
+3. Classify patterns (error_handling, async_patterns, type_safety, architecture, testing, security)
+4. Generate procedural rules with confidence scores
+5. Enrich `~/.ralph/procedural/rules.json` with deduplication
 
-Ralph uses a comprehensive hooks system with 52 registered hooks across 6 event types.
+### Repo Curator (v2.55)
 
-#### Hook Event Types
+Discovers, scores, and curates quality repositories for learning.
 
-| Event Type | Purpose | Number of Hooks |
-|------------|---------|-----------------|
-| **SessionStart** | Context preservation at startup | 8 |
-| **PreCompact** | Save state before compaction | 2 |
-| **PostToolUse** | Quality gates after operations | 25 |
-| **PreToolUse** | Safety guards before operations | 12 |
-| **UserPromptSubmit** | Context warnings, reminders | 3 |
-| **Stop** | Session reports | 2 |
+```bash
+# Full pipeline (economic tier, default)
+/curator full --type backend --lang typescript
 
-#### Key Hooks
+# Discovery with options
+/curator discovery --query "microservice" --max-results 200 --tier free
 
-| Hook | Trigger | Purpose |
-|------|---------|---------|
-| `fast-path-check.sh` | PreToolUse (Task) | Detect trivial tasks → FAST_PATH routing |
-| `parallel-explore.sh` | PostToolUse (Task) | Launch 5 concurrent exploration tasks |
-| `recursive-decompose.sh` | PostToolUse (Task) | Trigger sub-orchestrators for complex tasks |
-| `quality-gates-v2.sh` | PostToolUse (Edit/Write) | Quality-first validation (consistency advisory) |
-| `sec-context-validate.sh` | PostToolUse (Edit/Write) | Security context validation |
-| `semantic-realtime-extractor.sh` | PostToolUse (Edit/Write) | Real-time semantic extraction |
-| `agent-memory-auto-init.sh` | PreToolUse (Task) | Auto-initialize agent memory buffers |
-| `status-auto-check.sh` | PostToolUse (Edit/Write/Bash) | Auto-show status every 5 operations |
-| `checkpoint-smart-save.sh` | PreToolUse (Edit/Write) | Smart checkpoints on risky edits |
+# Scoring with context relevance (v2.55)
+/curator scoring --context "error handling,retry,resilience"
 
-#### Hook Registration
+# Custom ranking
+/curator rank --top-n 15 --max-per-org 3
 
-Hooks are registered in `~/.claude/settings.json`:
+# Approve/reject repos
+/curator approve nestjs/nest
+/curator approve --all
+/curator reject some/repo --reason "Low test coverage"
+
+# Execute learning
+/curator learn --type backend --lang typescript
+```
+
+#### Pricing Tiers
+
+| Tier | Cost | Features |
+|------|------|----------|
+| `--tier free` | $0.00 | GitHub API + local scoring |
+| `--tier economic` | ~$0.30 | + OpenSSF + MiniMax (DEFAULT) |
+| `--tier full` | ~$0.95 | + Claude + Codex adversarial |
+
+### Learning System v2.59
+
+The Learning System automatically extracts and stores behavioral patterns for continuous improvement.
+
+```bash
+# Check learning system health
+ralph health
+
+# View procedural rules count
+ralph memory-index --rules
+
+# Feedback loop
+ralph-feedback record --rule-id err-001 --used-in task-123
+ralph-feedback complete --rule-id err-001 --success true
+ralph-feedback calibrate     # Run confidence calibration
+
+# Auto-cleanup old rules
+memory-auto-cleanup.py run
+
+# Convert high-confidence rules to native behavior
+convert-high-confidence-rules.py list
+convert-high-confidence-rules.py convert --all
+```
+
+#### Procedural Rules Structure
 
 ```json
 {
-  "hooks": {
-    "PostToolUse": [
-      {
-        "name": "quality-gates-v2",
-        "script": "quality-gates-v2.sh",
-        "matchers": [
-          {"type": "Edit"},
-          {"type": "Write"}
-        ]
-      }
-    ]
+  "version": "2.59.0",
+  "rules": [
+    {
+      "rule_id": "hook-json-format-sec039",
+      "trigger": "Writing or modifying Claude Code hooks",
+      "behavior": "CRITICAL: Use correct JSON format per hook type...",
+      "confidence": 1.0,
+      "source_repo": "claude-code-official-docs",
+      "tags": ["security", "hooks", "json-format"],
+      "usage_count": 42,
+      "success_count": 40,
+      "success_rate": 0.95
+    }
+  ]
+}
+```
+
+**Statistics (v2.59.0)**:
+- Total rules: 319
+- High confidence (≥0.9): 47
+- Average confidence: 0.78
+- Success rate: 95%
+
+### Hook System Audit (v2.60)
+
+Comprehensive audit and cleanup of the hooks system with adversarial validation.
+
+**Results**:
+- Scripts before audit: 64
+- Registered hooks: 52
+- Deleted (deprecated): 8
+- Archived (utilities): 5
+- Kept (libraries): 3
+
+#### Smart Skill Reminder v2.0
+
+Context-aware skill suggestions that fire **before** writing code (PreToolUse).
+
+```bash
+# Replaced skill-reminder.sh (v1.0) with smart-skill-reminder.sh (v2.0)
+# Key improvements:
+# 1. Fires on PreToolUse (BEFORE code is written, not after)
+# 2. Session gating: only reminds once per session
+# 3. Context-aware: suggests specific skills based on file type/path
+# 4. Rate limiting: respects 30-minute cooldown period
+# 5. Skill invocation detection: skips if skill was recently used
+```
+
+**Priority Order for Suggestions**:
+1. **Test files** (`*test*`, `*spec*`) → `/test-driven-development`
+2. **Security files** (`*auth*`, `*token*`, `*payment*`) → `/security-loop`
+3. **Language-specific** (`.py`, `.ts`, `.sh`, `.sol`) → Language skill
+4. **Architecture files** (`Dockerfile`, `.tf`, `k8s`) → Infrastructure skill
+5. **Directory patterns** (`api/`, `components/`) → Domain skill
+
+#### Deleted Scripts (8)
+
+| Script | Reason |
+|--------|--------|
+| `skill-reminder.sh` | Replaced by `smart-skill-reminder.sh` v2.0 |
+| `quality-gates.sh` | Replaced by `quality-gates-v2.sh` |
+| `curator-trigger.sh` | Replaced by `curator-suggestion.sh` |
+| `test-sec-context-hook.sh` | Test suite, not production |
+| `orchestrator-helper.sh` | Obsolete |
+| `state-sync.sh` | Obsolete |
+| `post-commit-command-verify.sh` | Never configured |
+| `pre-commit-command-validation.sh` | Never configured |
+
+#### Archived Scripts (5)
+
+Moved to `~/.claude/hooks-archive/utilities/`:
+- `cleanup-secrets-db.js` - Database cleanup utility
+- `sanitize-secrets.js` - Secrets sanitization
+- `procedural-forget.sh` - Memory cleanup
+- `sentry-check-status.sh` - Sentry integration
+- `sentry-correlation.sh` - Sentry correlation
+
+#### Library Scripts (3)
+
+Kept as dependencies for other hooks:
+- `detect-environment.sh` - Used by context-warning.sh, pre-compact-handoff.sh
+- `plan-state-init.sh` - Used by auto-plan-state.sh
+- `semantic-write-helper.sh` - Used by semantic-realtime-extractor.sh
+
+#### Skill Pre-Warm (Fixed)
+
+The `skill-pre-warm.sh` hook now correctly finds all skills:
+
+```bash
+# Before fix: 9/10 skills pre-warmed (repository-learner failed)
+# After fix: 10/10 skills pre-warmed
+
+# Fix applied (GAP-SKILL-002):
+mkdir -p ~/.claude/skills/repository-learner
+mv ~/.claude/skills/repository-learner.md ~/.claude/skills/repository-learner/SKILL.md
+```
+
+---
+
+## Hooks System
+
+### Hook Types and Events
+
+Claude Code hooks execute at specific lifecycle events:
+
+| Event Type | Trigger | Common Use Cases |
+|------------|---------|------------------|
+| **SessionStart** | New session begins | Context restoration, ledger loading |
+| **PreToolUse** | Before tool execution | Validation, context injection, permission checks |
+| **PostToolUse** | After tool completion | Quality gates, formatting, extraction |
+| **UserPromptSubmit** | User sends message | Context warnings, reminders |
+| **PreCompact** | Before context compaction | State saving, ledger creation |
+| **Stop** | Response completes | Session reports, cleanup |
+
+### Registered Hooks (52 total) - v2.60
+
+#### PreToolUse Hooks
+
+| Hook | Matcher | Purpose |
+|------|---------|---------|
+| `git-safety-guard.py` | Bash | Validate git commands before execution |
+| `skill-validator.sh` | Skill | Validate skill usage |
+| `orchestrator-auto-learn.sh` | Task | Detect knowledge gaps, recommend learning |
+| `fast-path-check.sh` | Task | Detect trivial tasks → FAST_PATH |
+| `inject-session-context.sh` | Task | Restore session context from ledger |
+| `smart-memory-search.sh` | Task | Parallel search across memory sources |
+| `procedural-inject.sh` | Task | Inject relevant procedural rules |
+| `agent-memory-auto-init.sh` | Task | Auto-initialize agent memory buffers |
+| `lsa-pre-step.sh` | Edit/Write | Pre-step LSA verification |
+| `checkpoint-smart-save.sh` | Edit/Write | Smart checkpoints on risky edits |
+| `smart-skill-reminder.sh` | Edit/Write | Context-aware skill suggestions (v2.0) |
+
+#### PostToolUse Hooks
+
+| Hook | Matcher | Purpose |
+|------|---------|---------|
+| `quality-gates-v2.sh` | Edit/Write | Quality-first validation (BLOCKING) |
+| `sec-context-validate.sh` | Edit/Write | Security context validation (BLOCKING) |
+| `checkpoint-auto-save.sh` | Edit/Write | Auto-save checkpoints |
+| `plan-sync-post-step.sh` | Edit/Write | Sync plan state after edits |
+| `progress-tracker.sh` | Edit/Write | Track progress (every 5 ops) |
+| `decision-extractor.sh` | Edit/Write | Extract architectural decisions |
+| `status-auto-check.sh` | Edit/Write | Show status every 5 ops |
+| `semantic-realtime-extractor.sh` | Edit/Write | Extract semantic facts in real-time |
+| `episodic-auto-convert.sh` | Edit/Write | Convert experiences to episodic memory |
+
+### Hook Output Format
+
+#### PreToolUse Output
+
+```json
+{
+  "continue": true,
+  "additionalContext": "Injected context for the tool execution"
+}
+```
+
+**Blocking**:
+```json
+{
+  "continue": false,
+  "reason": "Why the tool is blocked"
+}
+```
+
+#### PostToolUse Output
+
+```json
+{
+  "hookSpecificOutput": {
+    "additionalContext": "Additional context for Claude"
   }
 }
 ```
 
-### Agent System
+---
 
-Ralph orchestrates 30+ specialized agents across different domains.
+## Agent System
 
-#### Core Orchestration Agents
-
-| Agent | Model | Purpose |
-|-------|-------|---------|
-| `@orchestrator` | opus | Main coordinator - 12-step workflow |
-| `@lead-software-architect` | opus | Architecture guardian - LSA verification |
-| `@plan-sync` | sonnet | Drift detection & downstream patching |
-| `@gap-analyst` | opus | Pre-implementation gap analysis |
-| `@quality-auditor` | opus | 6-phase pragmatic code audit |
-| `@adversarial-plan-validator` | opus | Dual-model plan validation (Claude + Codex) |
-
-#### Review & Security Agents
+### Default Agents (11)
 
 | Agent | Model | Purpose |
 |-------|-------|---------|
-| `@security-auditor` | sonnet→codex | Security vulnerabilities & OWASP compliance |
-| `@code-reviewer` | sonnet→codex | Code quality, patterns, best practices |
-| `@blockchain-security-auditor` | opus | Smart contract & DeFi security |
-| `@ai-output-code-review-super-auditor` | opus | AI-generated code verification |
+| `@orchestrator` | opus | Coordinator, planning, classification, delegation |
+| `@security-auditor` | opus | Security, vulnerability scan, code review |
+| `@debugger` | opus | Debugging, error analysis, fix generation |
+| `@code-reviewer` | sonnet | Code review, pattern analysis, quality check |
+| `@test-architect` | sonnet | Testing, test generation, coverage analysis |
+| `@refactorer` | sonnet | Refactoring, pattern application |
+| `@frontend-reviewer` | sonnet | Frontend, UI review, accessibility |
+| `@docs-writer` | minimax | Documentation, README, API docs |
+| `@minimax-reviewer` | minimax | Validation, quick review, second opinion |
+| `@repository-learner` | sonnet | Learning, pattern extraction, rule generation |
+| `@repo-curator` | sonnet | Curation, scoring, discovery |
 
-#### Implementation Agents
+### Agent Handoffs (v2.51)
 
-| Agent | Model | Purpose |
-|-------|-------|---------|
-| `@test-architect` | sonnet | Test generation & coverage |
-| `@debugger` | opus | Bug detection & root cause analysis |
-| `@refactorer` | sonnet→codex | Code refactoring & modernization |
-| `@docs-writer` | sonnet→gemini | Documentation generation |
+```bash
+# Transfer task from orchestrator to security-auditor
+ralph handoff transfer --from orchestrator --to security-auditor \
+    --task "Audit authentication module" \
+    --context '{"files": ["src/auth/"]}'
 
-#### Language-Specific Reviewers
+# List available agents
+ralph handoff agents
 
-| Agent | Model | Purpose |
-|-------|-------|---------|
-| `@kieran-python-reviewer` | sonnet | Python type hints, patterns, testability |
-| `@kieran-typescript-reviewer` | sonnet | TypeScript type safety, modern patterns |
-| `@frontend-reviewer` | opus | React/Next.js, UI/UX, accessibility |
+# Validate agent exists
+ralph handoff validate debugger
 
-#### Blockchain & DeFi Agents
+# View handoff history
+ralph handoff history
+```
 
-| Agent | Model | Purpose |
-|-------|-------|---------|
-| `@Hyperliquid-DeFi-Protocol-Specialist` | opus | Hyperliquid protocol integration |
-| `@liquid-staking-specialist` | opus | Liquid staking protocols |
-| `@defi-protocol-economist` | opus | Token economics & DeFi modeling |
-| `@chain-infra-specialist-blockchain` | opus | Chain infrastructure & RPC |
+### Agent-Scoped Memory (v2.51)
+
+LlamaIndex AgentWorkflow-style isolated memory buffers per agent.
+
+```bash
+# Initialize memory for an agent
+ralph agent-memory init security-auditor
+
+# Write to agent's memory
+ralph agent-memory write security-auditor semantic "Found SQL injection in auth.py:42"
+ralph agent-memory write security-auditor working "Currently analyzing user input validation"
+
+# Read agent's memory
+ralph agent-memory read security-auditor
+
+# Transfer memory during handoff
+ralph agent-memory transfer security-auditor code-reviewer relevant
+```
 
 ---
 
@@ -462,119 +678,163 @@ Ralph orchestrates 30+ specialized agents across different domains.
 
 ### Core Commands
 
-| Command | Alias | Description |
-|---------|-------|-------------|
-| `ralph orch "task"` | `rho` | Full orchestration with fast-path |
-| `ralph loop "task"` | - | Execute until VERIFIED_DONE |
-| `ralph gates` | `rhg` | Quality-first validation |
-| `ralph adversarial "path"` | `rha` | Adversarial spec refinement |
-| `ralph compact` | - | Manual context save |
-| `ralph health` | - | Memory system health check |
-| `ralph status` | - | Full orchestration status |
+```bash
+# Orchestration
+ralph orch "task"           # Full orchestration
+/orchestrator "task"        # Claude Code slash command
 
-### Memory Commands (v2.49+)
+# Quality validation
+/gates                       # Quality gates (CORRECTNESS + QUALITY + CONSISTENCY)
+/adversarial                 # Dual-model spec refinement
 
-| Command | Description |
-|---------|-------------|
-| `ralph memory-search "query"` | Parallel search across memory types |
-| `ralph fork-suggest "task"` | Find sessions to fork |
-| `ralph checkpoint save "name" "desc"` | Save state checkpoint |
-| `ralph checkpoint restore "name"` | Restore from checkpoint |
-| `ralph checkpoint list` | List all checkpoints |
-| `ralph handoff transfer --from X --to Y --task "desc"` | Agent handoff |
-| `ralph handoff agents` | List available agents |
+# Loop pattern
+/loop "task"                 # Execute until VERIFIED_DONE
+ralph loop "task"            # CLI alternative
 
-### Repository Learning Commands (v2.50+)
+# Manual context save
+/compact                     # Manual context compaction
+```
 
-| Command | Description |
-|---------|-------------|
-| `repo-learn https://github.com/org/repo` | Learn patterns from repository |
-| `repo-learn https://github.com/org/repo --category error_handling` | Focused category learning |
+### Memory Commands
 
-### Repo Curator Commands (v2.55+)
+```bash
+# Search memory in parallel
+ralph memory-search "query"  # Search claude-mem, memvid, handoffs
 
-| Command | Description |
-|---------|-------------|
-| `ralph curator full --type backend --lang typescript` | Full curation pipeline |
-| `ralph curator discovery --query "microservice"` | Custom discovery |
-| `ralph curator show --type backend` | View ranking |
-| `ralph curator approve nestjs/nest` | Approve single repo |
-| `ralph curator learn --repo nestjs/nest` | Learn from approved repo |
+# Suggest sessions to fork
+ralph fork-suggest "task"    # Find similar past sessions
 
-### Checkpoint Commands (v2.51+)
+# Memory system health
+ralph health                 # Full health report
+ralph health --compact       # One-line summary
+ralph health --json          # JSON output
+ralph health --fix           # Auto-fix critical issues
 
-| Command | Description |
-|---------|-------------|
-| `ralph checkpoint save "name" "description"` | Save state |
-| `ralph checkpoint restore "name"` | Restore from checkpoint |
-| `ralph checkpoint list` | List all checkpoints |
-| `ralph checkpoint diff "n1" "n2"` | Compare checkpoints |
+# Learning system (v2.59)
+ralph-feedback record --rule-id err-001 --used-in task-123
+ralph-feedback complete --rule-id err-001 --success true
+ralph-feedback calibrate     # Run confidence calibration
+```
 
-### Event-Driven Engine Commands (v2.51+)
+### Repository Learning Commands
 
-| Command | Description |
-|---------|-------------|
-| `ralph events emit <type> [payload]` | Emit event |
-| `ralph events barrier check <phase>` | Check WAIT-ALL barrier |
-| `ralph events barrier wait <phase> [timeout]` | Wait for barrier |
-| `ralph events status` | Event bus status |
-| `ralph events history [count]` | Event history |
+```bash
+# Learn from GitHub repo
+repo-learn https://github.com/python/cpython
+repo-learn https://github.com/fastapi/fastapi --category error_handling
 
-### Observability Commands (v2.52+)
+# Curator pipeline
+ralph curator full --type backend --lang typescript
+ralph curator discovery --query "microservice"
+ralph curator scoring --context "error handling,retry"
+ralph curator rank --top-n 15
+ralph curator show --type backend
+ralph curator approve nestjs/nest
+ralph curator learn --all
+```
 
-| Command | Description |
-|---------|-------------|
-| `ralph status` | Full orchestration status |
-| `ralph status --compact` | One-line summary |
-| `ralph status --steps` | Detailed step breakdown |
-| `ralph status --json` | JSON output |
-| `ralph trace show [count]` | Recent events |
-| `ralph trace search <query>` | Search events |
-| `ralph trace summary` | Session summary |
+### Checkpoint Commands (v2.51)
+
+```bash
+# Save state before risky operation
+ralph checkpoint save "before-auth-refactor" "Pre-auth changes"
+
+# List all checkpoints
+ralph checkpoint list
+
+# Restore if something goes wrong
+ralph checkpoint restore "before-auth-refactor"
+
+# Compare checkpoint vs current
+ralph checkpoint diff "before-auth-refactor"
+```
+
+### Event-Driven Engine Commands (v2.51)
+
+```bash
+# Emit an event
+ralph events emit step.complete '{"step_id": "step1"}'
+
+# Subscribe to events
+ralph events subscribe phase.complete /path/to/handler.sh
+
+# Check barrier status (WAIT-ALL)
+ralph events barrier check phase-1
+ralph events barrier wait phase-1 300
+
+# Advance to next phase
+ralph events advance phase-2
+
+# View event history
+ralph events history 20
+```
+
+### Observability Commands (v2.52)
+
+```bash
+# Full orchestration status
+ralph status
+ralph status --compact       # One-line summary
+ralph status --steps         # Detailed breakdown
+ralph status --json          # JSON for scripts
+
+# Traceability
+ralph trace show 30          # Recent events
+ralph trace search "handoff" # Search events
+ralph trace timeline         # Visual timeline
+ralph trace export csv ./report.csv
+ralph trace summary          # Session summary
+```
+
+### Schema Migration Commands (v2.51)
+
+```bash
+# Check if migration needed
+ralph migrate check
+
+# Execute migration
+ralph migrate run
+
+# Preview migration
+ralph migrate dry-run
+```
 
 ### Security Commands
 
-| Command | Description |
-|---------|-------------|
-| `ralph security src/` | Security audit |
-| `ralph security-loop src/` | Iterative security audit |
+```bash
+# Security audit
+ralph security src/          # Full audit
+ralph security-loop src/     # Iterative audit
 
-### Context Commands
-
-| Command | Description |
-|---------|-------------|
-| `ralph ledger save` | Save session state |
-| `ralph handoff create` | Create handoff |
+# Security tools installation
+install-security-tools.sh    # Install semgrep, gitleaks
+```
 
 ---
 
 ## Ralph Loop Pattern
 
-The core iteration pattern:
-
 ```
 EXECUTE → VALIDATE → Quality Passed?
-                      ↓ NO
-                  ITERATE (max 25)
-                      ↓
-                Back to EXECUTE
+                          ↓ NO
+                      ITERATE (max 25)
+                          ↓
+                    Back to EXECUTE
 ```
 
 `VERIFIED_DONE` = plan approved + MUST_HAVE answered + classified + implemented + gates passed + retrospective done
 
-### Model Iteration Limits
+### Iteration Limits
 
-| Model | Max Iter | Use Case |
-|-------|----------|----------|
-| Claude | **25** | Complex reasoning |
+| Model | Max Iterations | Use Case |
+|-------|----------------|----------|
+| Claude (Sonnet/Opus) | **25** | Complex reasoning |
 | MiniMax M2.1 | **50** | Standard (2x) |
 | MiniMax-lightning | **100** | Extended (4x) |
 
 ---
 
 ## Quality-First Validation
-
-Ralph implements a 3-stage validation pipeline (v2.46):
 
 ```
 Stage 1: CORRECTNESS → Syntax errors (BLOCKING)
@@ -583,58 +843,49 @@ Stage 2.5: SECURITY  → semgrep + gitleaks (BLOCKING)
 Stage 3: CONSISTENCY → Linting (ADVISORY - not blocking)
 ```
 
-### Quality Gates by Language
+### Quality Gates (v2.46)
 
-| Language | Linter | Type Checker | Security Scanner |
-|----------|--------|--------------|------------------|
-| TypeScript | ESLint | tsc | semgrep |
-| Python | ruff | pyright | semgrep |
-| Go | gofmt/golint | go build | semgrep |
-| Rust | rustfmt | cargo check | semgrep |
-| Solidity | solhint | solc | slither |
-| Java | prettier | - | semgrep |
-| JSON | jq (validate) | - | - |
-| YAML | yamllint | - | - |
+| Language | Syntax | Types | Linting |
+|----------|--------|-------|---------|
+| TypeScript | ✓ | ✓ | ✓ (eslint) |
+| Python | ✓ | ✓ (pyright) | ✓ (ruff) |
+| Go | ✓ | ✓ (gotype) | ✓ (gofmt) |
+| Rust | ✓ | ✓ (rustc) | ✓ (rustfmt) |
+| Solidity | ✓ | - | ✓ (solhint) |
+| Swift | ✓ | ✓ (swiftc) | ✓ (swiftformat) |
+| JavaScript | ✓ | ✓ | ✓ (eslint) |
+| JSON/YAML | ✓ | - | ✓ |
 
 ---
 
 ## Claude Code Skills Ecosystem
 
-Ralph includes 266+ specialized skills for domain-specific tasks.
+### Available Skills (266+)
 
-### Skills Categories
+| Skill Category | Count | Purpose |
+|----------------|-------|---------|
+| Marketing | 140+ | Marketing strategies, content ideas |
+| Documentation | 50+ | README generation, API docs |
+| React | 40+ | Best practices from Vercel |
+| Security | 25+ | Security patterns, validation |
+| Testing | 20+ | Test patterns, coverage |
+| Architecture | 15+ | Design patterns, clean code |
 
-| Category | Count | Examples |
-|----------|-------|----------|
-| **Marketing** | 23 | A/B testing, copywriting, funnel design, brand positioning |
-| **Documentation** | 1 | README generation |
-| **React** | 1 | Vercel React Best Practices |
-| **Orchestration** | 1 | Orchestrator skill |
-| **Total** | 266+ | Multiple categories |
-
-### Installing Additional Skills
+### Skill Usage
 
 ```bash
-# Skills are installed to ~/.claude/skills/
-# Global skills are available in all projects
+# Skills are auto-invoked based on task context
+# Manual invocation:
+Skill: marketing-ideas
+Topic: Social media campaign for product launch
 
-# Install from GitHub
-git clone https://github.com/user/skill-name ~/.claude/skills/skill-name
-
-# Verify installation
-ralph skills list
-```
-
-### Skill Structure
-
-```
-~/.claude/skills/
-├── skill-name/
-│   ├── SKILL.md          # Skill definition and usage
-│   ├── AGENTS.md         # Agent definitions (optional)
-│   ├── README.md         # Documentation (optional)
-│   ├── metadata.json     # Skill metadata (optional)
-│   └── rules/            # Additional rules (optional)
+# Smart skill reminder (v2.0) suggests relevant skills
+# based on file context before writing code:
+#
+# Example suggestions:
+# - test_auth.py → "/test-driven-development for test files"
+# - src/auth/login.ts → "/security-loop for security-sensitive code"
+# - components/Button.tsx → "/frontend-mobile-development:frontend-developer for UI components"
 ```
 
 ---
@@ -645,253 +896,185 @@ ralph skills list
 
 ```bash
 # Run all tests
-python -m pytest tests/ -v
+./tests/run_tests.sh
 
 # Run specific test category
-python -m pytest tests/test_hooks_comprehensive.py -v
+./tests/run_tests.sh hooks          # Hook tests
+./tests/run_tests.sh memory         # Memory tests
+./tests/run_tests.sh security       # Security tests
 
-# Run hook security tests
-python -m pytest tests/test_hooks_comprehensive.py::TestSecurityCommandInjection -v
-
-# Run with coverage
-python -m pytest tests/ --cov=. --cov-report=html
-```
-
-### Test Structure
-
-```
-tests/
-├── test_hooks_comprehensive.py  # 38 hook tests (7 categories)
-├── test_memory_system.py        # Memory system tests
-├── test_quality_gates.py        # Quality validation tests
-└── ...
+# Run individual test
+python -m pytest tests/test_learning_system.py -v
+bash tests/test_v2_47_smart_memory.py
 ```
 
 ### Test Categories
 
-| Category | Tests | Purpose |
-|----------|-------|---------|
-| JSON Output | 7 | Hook ALWAYS returns valid JSON |
-| Command Injection | 4 | Shell metacharacters blocked |
-| Path Traversal | 2 | Symlinks resolved, paths validated |
-| Race Conditions | 4 | umask 077, noclobber, chmod 700 |
-| Edge Cases | 6 | Unicode, long inputs, null bytes |
-| Error Handling | 3 | Exit 0 always, stderr clean |
-| Regressions | 5 | Past bugs don't return |
-| Performance | 3 | Hooks complete in <5s |
+| Category | Location | Tests | Purpose |
+|----------|----------|-------|---------|
+| Hook Tests | `tests/test_hooks_*.py` | 15+ | Hook registration, output format |
+| Memory Tests | `tests/test_memory_*.py` | 10+ | Memory search, episodic storage |
+| Security Tests | `tests/test_security_*.py` | 8+ | Security validation, scanning |
+| Integration Tests | `tests/test_v2_*.py` | 20+ | Full workflow integration |
+| Quality Tests | `tests/test_quality_*.py` | 12+ | Linting, type checking |
+| Learning System | `tests/test_learning_system.py` | 39 | v2.59 learning system |
 
-### Codex CLI Validation
+### Test Coverage
 
 ```bash
-# Run adversarial validation
-codex exec -m gpt-5.2-codex --sandbox read-only \
-  --config model_reasoning_effort=high \
-  "review ~/.claude/hooks/<hook>.sh --focus security"
+# Generate coverage report
+./tests/run_tests.sh --coverage
+
+# View coverage
+cat .coverage/index.html
 ```
 
 ---
 
 ## Deployment
 
-### Local Development
-
-Ralph is designed for local development with Claude Code. No server deployment required.
-
-```bash
-# Update Ralph to latest version
-cd multi-agent-ralph-loop
-git pull origin main
-./install.sh
-```
-
 ### Global Installation
 
-The installer sets up:
-
-1. **CLI Tool**: `~/.local/bin/ralph`
-2. **Configuration**: `~/.ralph/` (memory, logs, config)
-3. **Global Hooks**: `~/.claude/hooks/`
-4. **Global Skills**: `~/.claude/skills/`
-5. **Global Agents**: `~/.claude/agents/`
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `RALPH_HOME` | Ralph configuration directory | `~/.ralph` |
-| `RALPH_LOG_LEVEL` | Logging verbosity | `info` |
-| `RALPH_HOOKS_DIR` | Hooks directory | `~/.claude/hooks` |
-
-### Docker (Optional)
+The system is designed for **global installation** via Claude Code:
 
 ```bash
-# Build development image
-docker build -t ralph-dev .
+# 1. Clone repository
+git clone https://github.com/your-org/multi-agent-ralph-loop.git
+cd multi-agent-ralph-loop
 
-# Run tests
-docker run -it --rm -v ~/.claude:/root/.claude ralph-dev \
-  python -m pytest tests/ -v
+# 2. Run installer (one-time)
+./install.sh
+
+# 3. Restart Claude Code
+# New hooks, agents, and commands are now available
 ```
+
+### Updating
+
+```bash
+# Pull latest changes
+git pull origin main
+
+# Re-run installer (preserves settings)
+./install.sh
+
+# Or update specific components
+ralph sync global  # Sync global configuration
+```
+
+### Configuration Locations
+
+| Component | Location |
+|-----------|----------|
+| Global Settings | `~/.claude/settings.json` |
+| Global Hooks | `~/.claude/hooks/*.sh` |
+| Global Agents | `~/.claude/agents/*.sh` |
+| Global Skills | `~/.claude/skills/*/` |
+| Ralph Config | `~/.ralph/` |
+| Logs | `~/.ralph/logs/` |
 
 ---
 
 ## Troubleshooting
 
-### Installation Issues
+### Hooks Not Firing
 
-**Error**: `jq not found`
+**Error**: Hooks not executing on expected events
 
 **Solution**:
-```bash
-# macOS
-brew install jq
+1. Check hook is registered in `~/.claude/settings.json`
+2. Verify matcher pattern matches the tool name
+3. Check hook has execute permissions: `chmod +x ~/.claude/hooks/*.sh`
+4. Review hook logs: `tail -50 ~/.ralph/logs/*.log`
 
-# Linux
-sudo apt-get install jq
+```bash
+# Verify hook registration
+cat ~/.claude/settings.json | jq '.hooks.PostToolUse[].hooks[].command'
+
+# Check hook permissions
+ls -la ~/.claude/hooks/quality-gates-v2.sh
 ```
 
-**Error**: `jq: error during parse (...)` during hook execution
+### Quality Gates Failing
+
+**Error**: Quality gates blocking valid code
 
 **Solution**:
-```bash
-# Check jq version (requires 1.6+)
-jq --version
+1. Check which stage is failing: CORRECTNESS, QUALITY, or CONSISTENCY
+2. Review specific error message
+3. Some stages are ADVISORY (CONSISTENCY) and don't block
 
-# Reinstall newer version
-brew upgrade jq
+```bash
+# Run gates with verbose output
+/gates --verbose
+
+# Skip consistency check (not recommended for production)
+/gates --no-consistency
 ```
 
-### Memory Issues
+### Memory Search Not Returning Results
 
-**Error**: `Could not acquire lock` in semantic-write.log
+**Error**: Smart memory search returns empty context
 
 **Solution**:
+1. Verify claude-mem MCP is configured
+2. Check memory files exist
+3. Review search logs
+
 ```bash
-# Check for stuck processes
-ps aux | grep ralph
+# Check memory files
+ls -la ~/.ralph/memory/
+ls -la ~/.ralph/episodes/
 
-# Clear lock file (if stale)
-rm -f ~/.ralph/logs/semantic-write.lock
+# Test memory search manually
+ralph memory-search "test query"
 
-# Restart Claude Code session
+# Check claude-mem MCP
+claude-mem search "test query"
 ```
 
-**Error**: `Unknown command: memvid`
+### Context Preservation Issues
+
+**Error**: Session context lost after compaction
+
+**Solution**:
+1. Verify ledger was created: `ls ~/.ralph/ledgers/`
+2. Check SessionStart hook is registered
+3. Review ledger content
+
+```bash
+# List recent ledgers
+ls -la ~/.ralph/ledgers/ | tail -10
+
+# View ledger content
+cat ~/.ralph/ledgers/CONTINUITY_RALPH-*.md | head -50
+```
+
+### Installation Failures
+
+**Error**: install.sh fails with missing dependencies
 
 **Solution**:
 ```bash
-# Verify memvid is installed
-python3 -c "import memvid"
+# Install required dependencies
+brew install jq curl git
 
-# Re-run installer to register memvid commands
-cd multi-agent-ralph-loop
+# Retry installation
+./install.sh --dry-run  # Preview first
 ./install.sh
-
-# Verify commands
-ralph memvid status
-```
-
-### Hook Issues
-
-**Error**: Hook not triggering
-
-**Solution**:
-```bash
-# Check hook registration
-ralph hooks list
-
-# Verify settings.json contains hook
-grep "hook-name" ~/.claude/settings.json
-
-# Test hook manually
-bash ~/.claude/hooks/hook-name.sh
-```
-
-**Error**: Stop hook JSON format error
-
-**Solution**:
-```bash
-# Check orchestrator-report.sh output format
-bash ~/.claude/hooks/orchestrator-report.sh
-
-# Expected: {"decision": "approve"} (not "continue")
-```
-
-### Memory Health Issues
-
-**Error**: `ralph health` reports failures
-
-**Solution**:
-```bash
-# Run health check with fix
-ralph health --fix
-
-# Manual repair
-mkdir -p ~/.ralph/memory
-mkdir -p ~/.ralph/logs
-mkdir -p ~/.ralph/procedural
-```
-
-### Context Issues
-
-**Error**: Context not preserved between sessions
-
-**Solution**:
-```bash
-# Check ledger status
-ralph ledger list
-
-# Restore from ledger
-ralph ledger load <session-id>
-
-# Check handoff
-ralph handoff history
 ```
 
 ---
 
 ## Contributing
 
-### Adding New Hooks
-
-1. Create hook script in `~/.claude/hooks/`
-2. Register in `~/.claude/settings.json`:
-
-```json
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "name": "my-hook",
-        "script": "my-hook.sh",
-        "matchers": [
-          {"type": "Edit"},
-          {"type": "Write"}
-        ]
-      }
-    ]
-  }
-}
-```
-
-3. Test hook with `python -m pytest tests/test_hooks_comprehensive.py::TestJSONOutput -v`
-
-### Adding New Agents
-
-1. Create agent definition in `.claude/agents/<agent-name>.md`
-2. Register in agent registry (optional)
-
-### Adding New Skills
-
-1. Create skill in `~/.claude/skills/<skill-name>/`
-2. Include `SKILL.md` with YAML frontmatter
-3. Document usage in README.md
-
-### Submitting Changes
+### Development Setup
 
 ```bash
-# Fork repository
-git fork https://github.com/alfredolopez80/multi-agent-ralph-loop.git
+# Fork the repository
+# Clone your fork
+git clone https://github.com/YOUR-USER/multi-agent-ralph-loop.git
+cd multi-agent-ralph-loop
 
 # Create feature branch
 git checkout -b feature/new-hook
@@ -899,48 +1082,51 @@ git checkout -b feature/new-hook
 # Make changes
 # ...
 
-# Run tests
-python -m pytest tests/ -v
+# Test changes
+./tests/run_tests.sh
 
-# Commit with conventional format
-git commit -m "feat: Add new hook for X"
+# Commit (use conventional commits)
+git commit -m "feat(hooks): add new security hook"
 
-# Submit PR
-gh pr create
+# Push and create PR
+git push origin feature/new-hook
 ```
+
+### Adding New Hooks
+
+1. Create hook script in `~/.claude/hooks/`
+2. Add to `~/.claude/settings.json` under appropriate event type
+3. Add tests in `tests/test_hooks_*.py`
+4. Document in CLAUDE.md and AGENTS.md
+
+### Code Style
+
+- **Shell scripts**: Follow Google Shell Style Guide
+- **Python scripts**: Follow PEP 8, use ruff for linting
+- **JSON**: Valid JSON with 2-space indentation
+- **Documentation**: English only, clear and concise
 
 ---
 
 ## License
 
-This project is licensed under the **Business Source License 1.1** (BSL 1.1).
-
-See [LICENSE](LICENSE) for full terms.
-
-### What This Means
-
-- **Free to use**: Anyone can use Ralph for development
-- **Source available**: Full source code is available
-- **Production use**: May require license for production deployments
-- **Contributions**: Subject to contribution agreement
+This project is licensed under the BSL 1.1 License.
 
 ---
 
 ## Resources
 
-| Resource | Description |
-|----------|-------------|
-| [README.es.md](README.es.md) | Spanish translation |
-| [CLAUDE.md](CLAUDE.md) | Project instructions for Claude |
-| [AGENTS.md](AGENTS.md) | Agent reference documentation |
-| [CHANGELOG.md](CHANGELOG.md) | Version history |
-| [TESTING.md](TESTING.md) | Testing guide |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
-| [docs/](docs/) | Additional documentation |
-| [.claude/](.claude/) | Configuration and agent definitions |
+| Resource | Link |
+|----------|------|
+| Repository | https://github.com/your-org/multi-agent-ralph-loop |
+| CLAUDE.md | [Project Instructions](CLAUDE.md) |
+| AGENTS.md | [Agent Documentation](AGENTS.md) |
+| CHANGELOG.md | [Version History](CHANGELOG.md) |
+| Architecture | [ARCHITECTURE_DIAGRAM_v2.52.0.md](ARCHITECTURE_DIAGRAM_v2.52.0.md) |
+| Security Audit | [security-audit-v2.45.1.md](security-audit-v2.45.1.md) |
 
 ---
 
-*Generated with the README Skill - "Absurdly thorough documentation"*
-
-*Version: 2.58.0 | Last Updated: 2026-01-21*
+**Version**: 2.60.0
+**Last Updated**: 2026-01-22
+**Next Review**: 2026-02-22

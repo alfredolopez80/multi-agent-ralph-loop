@@ -1,5 +1,5 @@
 #!/bin/bash
-# Orchestrator Auto-Learn Hook (v2.57.0)
+# Orchestrator Auto-Learn Hook (v2.59.2)
 # Hook: PreToolUse (Task)
 # Purpose: Proactively trigger learning when orchestrator faces complex tasks
 #
@@ -9,13 +9,12 @@
 # 2. Checks for relevant procedural rules
 # 3. If insufficient, INJECTS learning recommendation into Task prompt
 #
+# v2.59.2: FIXED - Single JSON output (was emitting two objects)
 # v2.57.0: Fixed to actually inject context (Issue #5 from Memory System Reconstruction)
-# Previously wrote auto-learn-context.md but never used it - now injects directly
 #
 # The goal is autonomous self-improvement through proactive learning.
 #
-# VERSION: 2.57.5
-# v2.57.2: Fixed JSON output (SEC-034) - must output JSON, not silent exit
+# VERSION: 2.59.2
 # SECURITY: SEC-006 compliant
 
 set -euo pipefail
@@ -49,18 +48,37 @@ if [[ "$SUBAGENT_TYPE" != "orchestrator" ]] && [[ "$SUBAGENT_TYPE" != "Plan" ]];
     fi
 fi
 
-# Paths
-PLAN_STATE="${HOME}/.claude/.plan-state.json"
+# Paths - Use consistent path across Ralph Loop system
+PLAN_STATE="${HOME}/.ralph/plan-state/plan-state.json"
 RULES_FILE="${HOME}/.ralph/procedural/rules.json"
 CONTEXT_FILE="${HOME}/.ralph/state/auto-learn-context.md"
 LOG_DIR="${HOME}/.ralph/logs"
 
-mkdir -p "$LOG_DIR" "${HOME}/.ralph/state"
+mkdir -p "$LOG_DIR" "${HOME}/.ralph/state" "$(dirname "$PLAN_STATE")"
 
 # Check plan-state for complexity (if exists)
 COMPLEXITY=0
 if [[ -f "$PLAN_STATE" ]]; then
     COMPLEXITY=$(jq -r '.classification.complexity // 0' "$PLAN_STATE" 2>/dev/null || echo "0")
+fi
+
+# ============================================================================
+# Info-Density Detection (v2.59.1)
+# ============================================================================
+# GAP-G02: High info-density (QUADRATIC) tasks with low complexity may lack rules
+# Detect QUADRATIC density based on prompt length and complexity indicators
+# ============================================================================
+INFO_DENSITY="LINEAR"
+PROMPT_LENGTH=${#PROMPT}
+
+# Detect QUADRATIC density: very long prompts with multiple concerns
+QUADRATIC_INDICATORS=0
+echo "$PROMPT_LOWER" | grep -qE 'multiple|several|many|all the|every |comprehensive|exhaustive|end-to-end' && QUADRATIC_INDICATORS=$((QUADRATIC_INDICATORS + 1))
+[[ $PROMPT_LENGTH -gt 2000 ]] && QUADRATIC_INDICATORS=$((QUADRATIC_INDICATORS + 1))
+echo "$PROMPT_LOWER" | grep -qE 'and|also|plus|additionally' && QUADRATIC_INDICATORS=$((QUADRATIC_INDICATORS + 1))
+
+if [[ $QUADRATIC_INDICATORS -ge 2 ]]; then
+    INFO_DENSITY="QUADRATIC"
 fi
 
 # If no plan-state yet, estimate complexity from prompt keywords
@@ -127,10 +145,12 @@ fi
 
 # Minimum required rules for confident implementation
 MIN_RULES_FOR_DOMAIN=3
+MIN_RULES_FOR_QUADRATIC=5  # Higher threshold for QUADRATIC density
 
 # Determine if learning is needed:
 # 1. ZERO relevant rules = ALWAYS learn (knowledge gap for any task)
 # 2. Less than MIN_RULES AND complexity >= 7 = learn (insufficient for complex task)
+# 3. QUADRATIC density with low rules = learn (extensive context needs patterns)
 SHOULD_LEARN=false
 LEARN_REASON=""
 
@@ -140,16 +160,20 @@ if [[ "$RELEVANT_COUNT" -eq 0 ]]; then
 elif [[ "$RELEVANT_COUNT" -lt "$MIN_RULES_FOR_DOMAIN" ]] && [[ "$COMPLEXITY" -ge 7 ]]; then
     SHOULD_LEARN=true
     LEARN_REASON="Insufficient rules for high-complexity task"
+elif [[ "$INFO_DENSITY" == "QUADRATIC" ]] && [[ "$RELEVANT_COUNT" -lt "$MIN_RULES_FOR_QUADRATIC" ]]; then
+    SHOULD_LEARN=true
+    LEARN_REASON="QUADRATIC density task needs more patterns ($RELEVANT_COUNT/$MIN_RULES_FOR_QUADRATIC rules)"
 fi
 
 # Log analysis
 {
     echo "[$(date -Iseconds)] Auto-learn analysis:"
     echo "  Task complexity: $COMPLEXITY/10"
+    echo "  Info density: $INFO_DENSITY"
     echo "  Domain: $DOMAIN"
     echo "  Total rules: $RULES_COUNT"
     echo "  Relevant rules: $RELEVANT_COUNT"
-    echo "  Required: $MIN_RULES_FOR_DOMAIN"
+    echo "  Required: $MIN_RULES_FOR_DOMAIN (or $MIN_RULES_FOR_QUADRATIC for QUADRATIC)"
     echo "  Should learn: $SHOULD_LEARN ($LEARN_REASON)"
 } >> "${LOG_DIR}/auto-learn-$(date +%Y%m%d).log" 2>&1
 
@@ -213,6 +237,32 @@ EOF
 
     echo "[$(date -Iseconds)] Learning context written to: $CONTEXT_FILE" >> "${LOG_DIR}/auto-learn-$(date +%Y%m%d).log" 2>&1
 
+    # ============================================================================
+    # UPDATE learning_state in plan-state.json (v2.59.0)
+    # ============================================================================
+    # This closes the gap identified by codex analysis:
+    # "learning_state in plan-state is initialized but not updated by hooks"
+    # ============================================================================
+    PLAN_STATE_TEMP="${PLAN_STATE}.tmp.$$"
+    if [[ -f "$PLAN_STATE" ]]; then
+        # Update learning_state fields atomically
+        if jq --argjson recommended true \
+           --arg reason "$LEARN_REASON" \
+           --arg domain "$DOMAIN" \
+           --argjson complexity "$COMPLEXITY" \
+           --arg ts "$(date -Iseconds)" \
+           '.learning_state = {
+               recommended: $recommended,
+               reason: $reason,
+               domain: $domain,
+               complexity: $complexity,
+               timestamp: $ts
+           }' "$PLAN_STATE" > "$PLAN_STATE_TEMP" 2>/dev/null; then
+            mv "$PLAN_STATE_TEMP" "$PLAN_STATE"
+            echo "[$(date -Iseconds)] Updated learning_state in plan-state.json" >> "${LOG_DIR}/auto-learn-$(date +%Y%m%d).log" 2>&1
+        fi
+    fi
+
     # v2.57.0: INJECT the learning recommendation into the Task prompt
     # Build the learning recommendation text (simplified for prompt injection)
     LEARN_RECOMMENDATION="🎓 **AUTO-LEARN RECOMMENDATION** ($SEVERITY)
@@ -239,11 +289,13 @@ Reason: $LEARN_REASON
         # Build modified tool_input
         NEW_TOOL_INPUT=$(echo "$INPUT" | jq --arg new_prompt "$MODIFIED_PROMPT" '.tool_input + {prompt: $new_prompt}' 2>/dev/null)
 
-        if [[ -n "$NEW_TOOL_INPUT" ]] && [[ "$NEW_TOOL_INPUT" != "null" ]]; then
-            echo "[$(date -Iseconds)] Injecting learning recommendation into Task prompt" >> "${LOG_DIR}/auto-learn-$(date +%Y%m%d).log" 2>&1
-            echo "{\"tool_input\": $NEW_TOOL_INPUT}"
-            trap - EXIT; echo '{"continue": true}'; exit 0
-        fi
+    # v2.59.2: FIXED - Emit single JSON with continue:true and tool_input merged
+    # Previously emitted two JSON objects (violating hook contract)
+    if [[ -n "$NEW_TOOL_INPUT" ]] && [[ "$NEW_TOOL_INPUT" != "null" ]]; then
+        echo "[$(date -Iseconds)] Injecting learning recommendation into Task prompt" >> "${LOG_DIR}/auto-learn-$(date +%Y%m%d).log" 2>&1
+        # Emit single JSON with tool_input merged and continue:true
+        jq -n --argjson tool_input "$NEW_TOOL_INPUT" '{"continue": true, "tool_input": $tool_input}'
+        trap - EXIT; exit 0
     fi
 
     # Fallback: output empty to allow but log the recommendation was written
@@ -251,5 +303,5 @@ Reason: $LEARN_REASON
 fi
 
 # Allow task to proceed unchanged
-echo '{}'
+echo '{"continue": true}'
 exit 0
