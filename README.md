@@ -1,8 +1,8 @@
-# Multi-Agent Ralph Wiggum v2.60.0
+# Multi-Agent Ralph Wiggum v2.61.0
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.60.0-blue)
+![Version](https://img.shields.io/badge/version-2.61.0-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 ![Tests](https://img.shields.io/badge/tests-103%20passed-green)
@@ -59,6 +59,8 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 - **Learning System v2.59**: 319 procedural rules with confidence scoring, feedback loop, and auto-cleanup
 - **Hook System Audit (v2.60)**: Reduced hooks from 64 to 52, removed deprecated scripts, adversarial validation
 - **Smart Skill Reminder v2.0 (v2.60)**: Context-aware skill suggestions with session gating and rate limiting
+- **Adversarial Council v2.61**: LLM-council enhanced multi-model review with Python orchestration, provider-specific extraction, exponential backoff, and security hardening (command allowlist, path traversal prevention)
+- **Security Audit**: Comprehensive API key leak detection validated by Codex, Gemini, and Claude Opus (9/10 security score)
 - **Claude Code Skills Ecosystem**: 266+ specialized skills including marketing (23 skills), documentation generation, and React best practices from Vercel
 
 ---
