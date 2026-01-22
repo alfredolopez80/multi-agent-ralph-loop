@@ -2,7 +2,11 @@
 # orchestrator-report.sh - Orchestrator Session Report Hook
 # Hook: Stop
 # Purpose: Generate comprehensive session report when user ends session
+# VERSION: 2.59.0
 #
+# v2.59.0: Added effectiveness metrics and domain-specific recommendations
+# v2.57.5: Fixed JSON output format (SEC-039) - use "decision": "approve" not "continue"
+
 # When: Triggered on Stop event (session ending)
 # What: Analyzes session activity, learning outcomes, and recommendations
 #
@@ -97,9 +101,31 @@ fi
 
 # 2. Analyze learning outcomes
 TOTAL_RULES=0
+EFFECTIVENESS_METRICS="{}"
 if [[ -f "$PROCEDURAL_FILE" ]]; then
     TOTAL_RULES=$(jq -r '.rules | length // 0' "$PROCEDURAL_FILE" 2>/dev/null || echo "0")
     log "Learning: $TOTAL_RULES rules in procedural memory"
+
+    # Calculate effectiveness metrics (v2.59.0)
+    TOTAL_USAGE=$(jq -r '[.rules[].usage_count // 0] | add // 0' "$PROCEDURAL_FILE" 2>/dev/null || echo "0")
+    RULES_WITH_USAGE=$(jq -r '[.rules[] | select(.usage_count > 0)] | length // 0' "$PROCEDURAL_FILE" 2>/dev/null || echo "0")
+    UTILIZATION_PCT=0
+    if [[ "$TOTAL_RULES" -gt 0 ]]; then
+        UTILIZATION_PCT=$((RULES_WITH_USAGE * 100 / TOTAL_RULES))
+    fi
+
+    EFFECTIVENESS_METRICS=$(jq -n \
+        --argjson total_rules "$TOTAL_RULES" \
+        --argjson rules_with_usage "$RULES_WITH_USAGE" \
+        --argjson total_usage "$TOTAL_USAGE" \
+        --argjson utilization "$UTILIZATION_PCT" \
+        '{
+            total_rules: $total_rules,
+            rules_with_usage: $rules_with_usage,
+            total_usage_count: $total_usage,
+            utilization_percent: $utilization
+        }')
+    log "Effectiveness metrics: $EFFECTIVENESS_METRICS"
 fi
 
 # 3. Session duration (estimate from logs)
@@ -125,24 +151,37 @@ if [[ "$PENDING_COUNT" -gt 0 ]]; then
         }]')
 fi
 
-# 5. Check if learning was recommended but not done
+# 5. Check if learning was recommended but not done (with domain-specific recommendation)
 LEARNING_DONE="false"
+LEARNING_DOMAIN=""
 if [[ -f "$PLAN_STATE" ]]; then
     LEARNING_DONE=$(jq -r '.learning_state.curator_invoked // false' "$PLAN_STATE" 2>/dev/null || echo "false")
+    LEARNING_DOMAIN=$(jq -r '.learning_state.domain // ""' "$PLAN_STATE" 2>/dev/null || echo "")
 fi
 if [[ "$LEARNING_DONE" == "false" ]]; then
-    RECOMMENDATIONS=$(echo "$RECOMMENDATIONS" | jq '. + [{
-        type: "learning",
-        priority: "medium",
-        message: "Consider learning patterns for better quality",
-        command: "/curator full"
-    }]' 2>/dev/null || echo "$RECOMMENDATIONS")
+    if [[ -n "$LEARNING_DOMAIN" ]]; then
+        # Domain-specific recommendation (v2.59.0)
+        RECOMMENDATIONS=$(echo "$RECOMMENDATIONS" | jq --arg domain "$LEARNING_DOMAIN" '. + [{
+            type: "targeted_learning",
+            priority: "high",
+            message: "Domain \($domain) patterns recommended - learn before implementing",
+            command: "/curator full --type \($domain) --lang typescript",
+            domain: $domain
+        }]' 2>/dev/null || echo "$RECOMMENDATIONS")
+    else
+        RECOMMENDATIONS=$(echo "$RECOMMENDATIONS" | jq '. + [{
+            type: "learning",
+            priority: "medium",
+            message: "Consider learning patterns for better quality",
+            command: "/curator full"
+        }]' 2>/dev/null || echo "$RECOMMENDATIONS")
+    fi
 fi
 
 # 6. Save report to file (not stdout)
 END_TIME=$(date -Iseconds)
 
-# Build JSON report safely
+# Build JSON report safely - include effectiveness metrics (v2.59.0)
 TEMP_REPORT="${REPORT_FILE}.$$"
 {
     echo "{"
@@ -160,7 +199,8 @@ TEMP_REPORT="${REPORT_FILE}.$$"
     echo "  \"progress_percent\": $PROGRESS_PCT,"
     echo "  \"iterations\": $ITERATIONS,"
     echo "  \"learning\": {"
-    echo "    \"total_rules\": $TOTAL_RULES"
+    echo "    \"total_rules\": $TOTAL_RULES,"
+    echo "    \"effectiveness\": $EFFECTIVENESS_METRICS"
     echo "  },"
     echo "  \"recommendations\": $RECOMMENDATIONS"
     echo "}"
@@ -177,6 +217,6 @@ fi
 log "=== Report Generation Complete ==="
 
 # Stop hook output format (per CLAUDE.md conventions)
-# Stop hooks MUST use {"decision": "approve"} or {"decision": "block"}
 # Only output the decision JSON - report is saved to file
+# SEC-039: Stop hooks MUST use "decision": "approve" or "decision": "block"
 echo '{"decision": "approve"}'

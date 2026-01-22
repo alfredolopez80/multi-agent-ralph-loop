@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.58.0
+# Multi-Agent Ralph v2.60.0
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
@@ -330,7 +330,7 @@ ralph agent-memory gc
 | Type | Purpose | TTL |
 |------|---------|-----|
 | `semantic` | Persistent facts and knowledge | Never expires |
-| `episodic` | Experiences and observations | 24 hours |
+| `episodic` | Experiences and observations | 30 days |
 | `working` | Current task context | Session-based |
 
 **Transfer Filters**:
@@ -641,7 +641,7 @@ ralph handoff create      # Create handoff
 
 ---
 
-## Hooks (52 registered) - v2.57.4
+## Hooks (52 registered) - v2.60.0
 
 | Event Type | Purpose |
 |------------|---------|
