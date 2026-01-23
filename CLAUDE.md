@@ -641,7 +641,7 @@ ralph handoff create      # Create handoff
 
 ---
 
-## Hooks (55 registered) - v2.62.0
+## Hooks (51 registered) - v2.62.2
 
 | Event Type | Purpose |
 |------------|---------|

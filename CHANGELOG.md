@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.62.2] - 2026-01-23
+
+### Fixed (PreToolUse Hook JSON Format Standardization)
+
+**Severity**: HIGH
+**Impact**: SEC-039 Compliance - All PreToolUse hooks now use correct JSON format
+
+#### Overview
+
+Comprehensive adversarial audit discovered that 8 PreToolUse hooks were using the wrong JSON output format (`{"continue": true}` instead of `{"decision": "allow"}`).
+
+#### Fixed Hooks
+
+| Hook | Issue |
+|------|-------|
+| `procedural-inject.sh` | Fixed FEEDBACK_RESULT + 9 exit points |
+| `orchestrator-auto-learn.sh` | All exit points updated |
+| `fast-path-check.sh` | All exit points updated |
+| `inject-session-context.sh` | All exit points updated |
+| `smart-memory-search.sh` | All exit points updated |
+| `agent-memory-auto-init.sh` | All exit points updated |
+| `skill-validator.sh` | Added missing JSON output |
+| `smart-skill-reminder.sh` | Changed `{}` to decision format |
+
+#### Pre-commit Hook Fix
+
+- Now recognizes `# Hook:` header (not just `# Trigger:`)
+- Corrected format rules message to show accurate requirements
+
+---
+
+## [2.62.1] - 2026-01-23
+
+### Fixed (Adversarial Audit Fixes)
+
+**Severity**: HIGH
+**Impact**: Fixed critical syntax error and missing shebang
+
+#### Fixes
+
+| Issue | Fix |
+|-------|-----|
+| `orchestrator-auto-learn.sh` syntax error | Added missing `fi` for if block |
+| `procedural-inject.sh` missing shebang | Added `#!/bin/bash` |
+| Hook JSON format violations | Fixed 9 instances of wrong format |
+| Registered v2.62.0 hooks to global | Copied and registered in settings.json |
+
+---
+
 ## [2.62.0] - 2026-01-23
 
 ### Added (Claude Code Task Primitive Integration)
