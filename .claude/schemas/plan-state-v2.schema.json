@@ -1,15 +1,15 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "plan-state-v2",
-  "title": "Plan State Schema v2.54.0",
-  "description": "Schema for plan execution with phases, barriers, strict WAIT-ALL consistency, and unified state management",
+  "title": "Plan State Schema v2.62.0",
+  "description": "Schema for plan execution with phases, barriers, strict WAIT-ALL consistency, unified state management, and verification via subagents",
   "type": "object",
   "required": ["version", "plan_id", "phases", "steps", "barriers"],
   "properties": {
     "version": {
       "type": "string",
-      "pattern": "^2\\.5[1-9]\\.[0-9]+$",
-      "description": "Schema version (2.51.x - 2.59.x)"
+      "pattern": "^2\\.(5[1-9]|6[0-9])\\.[0-9]+$",
+      "description": "Schema version (2.51.x - 2.69.x)"
     },
     "plan_id": {
       "type": "string",
@@ -116,6 +116,53 @@
           "completed_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "verification": {
+            "type": ["object", "null"],
+            "description": "Verification tracking via subagent (v2.62.0 - Claude Code Task primitive)",
+            "properties": {
+              "required": {
+                "type": "boolean",
+                "default": false,
+                "description": "Whether verification is required for this step"
+              },
+              "method": {
+                "type": "string",
+                "enum": ["subagent", "manual", "automated", "skip"],
+                "default": "subagent",
+                "description": "Verification method"
+              },
+              "agent": {
+                "type": ["string", "null"],
+                "description": "Agent to perform verification (e.g., test-architect, code-reviewer)"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["pending", "in_progress", "passed", "failed", "skipped"],
+                "default": "pending"
+              },
+              "result": {
+                "type": ["object", "null"],
+                "description": "Verification result details",
+                "properties": {
+                  "passed": { "type": "boolean" },
+                  "message": { "type": ["string", "null"] },
+                  "details": { "type": ["object", "null"] }
+                }
+              },
+              "started_at": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
+              "completed_at": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
+              "task_id": {
+                "type": ["string", "null"],
+                "description": "Task tool subagent ID for tracking"
+              }
+            }
           },
           "_v1_data": {
             "type": ["object", "null"],
