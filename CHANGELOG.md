@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.66.8] - 2026-01-23
+
+### Adversarial Validation Loop - HIGH Priority Fixes (Phase 3)
+
+**Scope**: Final phase of multi-model adversarial validation, addressing HIGH severity issues
+
+#### HIGH Severity Fixes
+
+| Issue ID | File | Problem | Fix |
+|----------|------|---------|-----|
+| HIGH-001 | `plan.sh` | Missing phases[], barriers{}, verification in reset template | Added complete schema-compliant template fields |
+| HIGH-003 | Multiple files | Version inconsistencies across hook ecosystem | Synchronized 7 hooks to v2.66.8 |
+| HIGH-004 | `lsa-pre-step.sh` | ASCII art output on stdout (conflicts with JSON) | Redirected to stderr with `>&2` |
+| SEC-051 | `repo-boundary-guard.sh` | Tilde expansion bypass in path validation | Added `realpath -m` for proper path canonicalization |
+| SEC-053 | `pre-compact-handoff.sh` | Two remaining `{"continue": true}` instead of `{"decision": "allow"}` | Fixed JSON format (lines 84, 202) |
+
+#### Issues Verified Already Fixed (No Changes Needed)
+
+| Issue ID | File | Status |
+|----------|------|--------|
+| SEC-052 | `checkpoint-smart-save.sh` | RACE-001 atomic mkdir already implemented |
+| SEC-050 | `semantic-realtime-extractor.sh` | `jq --arg` properly escapes content |
+| HIGH-005 | `git-safety-guard.py` | Fail-closed try/except already implemented |
+| HIGH-006 | `context-warning.sh` | Correct JSON format for UserPromptSubmit hook |
+
+#### Deferred (Technical Debt)
+
+| Issue ID | Scope | Reason |
+|----------|-------|--------|
+| DUP-002 | 30+ hooks | JSON output helper duplication - refactoring deferred (no functional impact) |
+| HIGH-002 | Node.js hooks | Feature not yet implemented (directory doesn't exist) |
+
+#### Files Updated
+
+| File | Old Version | New Version |
+|------|-------------|-------------|
+| `plan.sh` | 2.66.6 | 2.66.8 |
+| `lsa-pre-step.sh` | 2.62.3 | 2.66.8 |
+| `repo-boundary-guard.sh` | 2.62.3 | 2.66.8 |
+| `pre-compact-handoff.sh` | 2.66.6 | 2.66.8 |
+| `checkpoint-smart-save.sh` | 2.57.5 | 2.66.8 |
+| `git-safety-guard.py` | 2.43.0 | 2.66.8 |
+| `context-warning.sh` | 2.57.5 | 2.66.8 |
+| `semantic-realtime-extractor.sh` | 2.57.5 | 2.66.8 |
+
+#### Validation Summary
+
+All 8 modified files validated:
+- Bash syntax: `bash -n` ✅
+- Python syntax: `python3 -m py_compile` ✅
+
+**Total v2.66.6-v2.66.8 Cycle**: 22 issues resolved (4 CRITICAL, 18 HIGH)
+
+---
+
 ## [2.66.7] - 2026-01-23
 
 ### Adversarial Validation Loop - Critical Fixes (Phase 2)
