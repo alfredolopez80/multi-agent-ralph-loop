@@ -527,7 +527,7 @@ class TestV2451Hooks:
         )
 
     def test_auto_plan_state_has_version_marker(self, global_hooks_dir):
-        """auto-plan-state.sh should have VERSION: 2.45.1 marker."""
+        """auto-plan-state.sh should have VERSION marker (2.45.x - 2.99.x)."""
         hook_path = os.path.join(global_hooks_dir, "auto-plan-state.sh")
         if not os.path.exists(hook_path):
             pytest.skip("auto-plan-state.sh not found")
@@ -535,8 +535,11 @@ class TestV2451Hooks:
         with open(hook_path) as f:
             content = f.read()
 
-        assert "VERSION:" in content and "2.45" in content, (
-            "auto-plan-state.sh should have VERSION: 2.45.1 marker.\n"
+        import re
+        # v2.62.3: Accept any version from 2.45 to 2.99
+        version_match = re.search(r'VERSION:\s*2\.(4[5-9]|[5-9][0-9])\.\d+', content)
+        assert "VERSION:" in content and version_match, (
+            "auto-plan-state.sh should have VERSION: 2.45.x+ marker.\n"
             "This helps track hook versions."
         )
 
