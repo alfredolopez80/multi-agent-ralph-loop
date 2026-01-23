@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.66.6] - 2026-01-23
+
+### Adversarial Validation Loop - Critical Security Fixes
+
+**Scope**: Comprehensive multi-model adversarial validation (Claude Opus, Sonnet) from v2.60 to v2.66.5
+
+#### CRITICAL Security Fixes
+
+| Issue ID | File | Vulnerability | Fix |
+|----------|------|---------------|-----|
+| SEC-041 | `quality-gates-v2.sh:161,174` | Python command injection via `$FILE_PATH` interpolation | Use `sys.argv[1]` instead of string interpolation |
+| SEC-042 | `auto-plan-state.sh:16` | Malformed JSON trap (missing quote escapes) | Fixed `{\"continue\": true}` escaping |
+
+#### HIGH Severity Fixes
+
+| Issue ID | File | Problem | Fix |
+|----------|------|---------|-----|
+| SEC-043 | `inject-session-context.sh` | JSON injection in additionalContext | Use `jq -n --arg` for safe JSON construction |
+| SEC-044 | `plan.sh` | Undefined `PROJECT_DIR` in path validation | Added `PROJECT_DIR=$(pwd)` definition |
+| SEC-045 | `quality-gates-v2.sh` | `realpath -e` doesn't exist on macOS | Removed `-e` flag (portable) |
+| SEC-046 | `pre-compact-handoff.sh` | PreCompact using wrong JSON format (`{"continue": true}` instead of `{"decision": "allow"}`) | Fixed JSON format for PreCompact event type |
+| SEC-047 | `plan-sync-post-step.sh` | Missing error trap for guaranteed JSON output | Added `trap 'echo "{\"continue\": true}"' ERR EXIT` |
+| SEC-048 | `project-backup-metadata.sh` | `jq --argint` doesn't exist on macOS | Changed to `--argjson` (portable) |
+| SEC-049 | `checkpoint-auto-save.sh` | Hook registered as PostToolUse but coded as PreToolUse | Moved registration to PreToolUse in settings.json |
+| GAP-003 | `orchestrator-report.sh` | Duplicate VERSION comments (2.59.0 and 2.57.5) | Consolidated to single VERSION: 2.66.6 |
+| DEAD-001 | `global-task-sync.sh` | Dead code `sync_from_global()` (35 lines) | Removed deprecated function |
+
+#### Files Updated
+
+| File | Old Version | New Version |
+|------|-------------|-------------|
+| `quality-gates-v2.sh` | 2.57.5 | 2.66.6 |
+| `auto-plan-state.sh` | 2.62.3 | 2.66.6 |
+| `orchestrator-report.sh` | 2.59.0/2.57.5 | 2.66.6 |
+| `inject-session-context.sh` | 2.66.4 | 2.66.6 |
+| `plan.sh` | 1.0.0 | 2.66.6 |
+| `global-task-sync.sh` | 2.66.5 | 2.66.6 |
+| `pre-compact-handoff.sh` | 2.62.3 | 2.66.6 |
+| `plan-sync-post-step.sh` | - | 2.66.6 |
+| `project-backup-metadata.sh` | 1.0.0 | 2.66.6 |
+| `checkpoint-auto-save.sh` | 2.66.3 | 2.66.6 |
+| `settings.json` | - | Fixed hook registration |
+
+#### Validation Methodology
+
+Multi-model adversarial analysis using 4 parallel agents:
+- **Gap Analyst (Opus)**: 24 issues found (3 CRITICAL, 7 HIGH)
+- **Security Auditor (Opus)**: 21 issues found (2 CRITICAL, 6 HIGH)
+- **Code Reviewer (Sonnet)**: 16 issues found (5 HIGH)
+- **Hook Validator (Sonnet)**: 4 registration/format issues found
+
+**Total Issues Fixed**: 11 (2 CRITICAL, 9 HIGH)
+- SEC-041 through SEC-049: Security and compatibility fixes
+- GAP-003: Version consistency fix
+- DEAD-001: Dead code removal
+
+---
+
 ## [2.66.5] - 2026-01-23
 
 ### Fixed (DUP-001: Code Duplication - Domain Inference)
