@@ -9,7 +9,7 @@ set -euo pipefail
 
 # Guaranteed valid JSON on error
 output_json() {
-    echo '{"continue": true}'
+    echo '{"decision": "allow"}'
 }
 trap 'output_json' ERR
 umask 077
@@ -21,7 +21,7 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 
 # Only process Task tool calls
 if [[ "$TOOL_NAME" != "Task" ]]; then
-    echo '{"continue": true}'
+    echo '{"decision": "allow"}'
     exit 0
 fi
 
@@ -31,7 +31,7 @@ TASK_PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty')
 
 # Skip if already in orchestrator context
 if [[ "$TASK_TYPE" == "orchestrator" ]]; then
-    echo '{"continue": true}'
+    echo '{"decision": "allow"}'
     exit 0
 fi
 

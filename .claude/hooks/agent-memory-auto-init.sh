@@ -15,7 +15,7 @@ umask 077
 
 # SEC-034: Guaranteed JSON output on any error or exit
 output_json() {
-    echo '{"continue": true}'
+    echo '{"decision": "allow"}'
 }
 trap 'output_json' ERR EXIT
 
@@ -25,7 +25,7 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
 
 # Only process Task tool
 if [[ "$TOOL_NAME" != "Task" ]]; then
-    trap - EXIT; echo '{"continue": true}'; exit 0
+    trap - EXIT; echo '{"decision": "allow"}'; exit 0
 fi
 
 # Extract subagent type
@@ -33,7 +33,7 @@ SUBAGENT_TYPE=$(echo "$INPUT" | jq -r '.tool_input.subagent_type // empty' 2>/de
 
 # Skip if no subagent type
 if [[ -z "$SUBAGENT_TYPE" ]]; then
-    trap - EXIT; echo '{"continue": true}'; exit 0
+    trap - EXIT; echo '{"decision": "allow"}'; exit 0
 fi
 
 # Agent memory directory
@@ -42,7 +42,7 @@ AGENT_DIR="${AGENT_MEM_DIR}/${SUBAGENT_TYPE}"
 
 # Skip if already initialized
 if [[ -d "$AGENT_DIR" ]] && [[ -f "${AGENT_DIR}/memory.json" ]]; then
-    trap - EXIT; echo '{"continue": true}'; exit 0
+    trap - EXIT; echo '{"decision": "allow"}'; exit 0
 fi
 
 # Log directory
