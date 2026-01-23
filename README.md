@@ -1,8 +1,8 @@
-# Multi-Agent Ralph Wiggum v2.66.5
+# Multi-Agent Ralph Wiggum v2.66.8
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.66.5-blue)
+![Version](https://img.shields.io/badge/version-2.66.8-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 ![Tests](https://img.shields.io/badge/tests-103%20passed-green)
@@ -86,6 +86,9 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 - **macOS Compatibility (v2.66.3)**: Portable `mkdir`-based locking replacing Linux-only `flock` (SEC-009/010)
 - **Hook JSON Format Fix (v2.66.4)**: SEC-039 compliance - all PreToolUse hooks now return correct `{"decision": "allow"}` format
 - **Code Quality (v2.66.5)**: DUP-001 shared domain-classifier library, RACE-001 atomic locking, SEC-040 path validation, DATA-001 JSON corruption detection, SC2168 shellcheck fix
+- **Adversarial Validation Phase 1 (v2.66.6)**: 11 issues fixed (SEC-041 to SEC-049), command injection prevention, malformed JSON traps, macOS realpath compatibility, PreCompact JSON format fixes
+- **Critical Fixes (v2.66.7)**: CRIT-001 explicit JSON output in agent-memory-auto-init.sh, CRIT-002 schema v2.66 with phases/barriers/verification
+- **HIGH Priority Fixes (v2.66.8)**: Plan reset template with phases/barriers/verification, ASCII art to stderr in LSA hooks, realpath canonicalization for path validation, version sync across 8 hooks (22 total issues resolved in v2.66.6-v2.66.8 cycle)
 - **Adversarial Validation**: Comprehensive multi-model audit (Claude Opus, Sonnet, MiniMax, Codex, Gemini) with iterative loop until zero issues
 - **Security Audit**: Comprehensive API key leak detection validated by Codex, Gemini, and Claude Opus (9/10 security score)
 - **Claude Code Skills Ecosystem**: 266+ specialized skills including marketing (23 skills), documentation generation, and React best practices from Vercel
