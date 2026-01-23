@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.66.7] - 2026-01-23
+
+### Adversarial Validation Loop - Critical Fixes (Phase 2)
+
+**Scope**: Continuation of multi-model adversarial validation, addressing CRITICAL issues from Gap Analyst
+
+#### CRITICAL Fixes
+
+| Issue ID | File | Problem | Fix |
+|----------|------|---------|-----|
+| CRIT-001 | `agent-memory-auto-init.sh` | Missing explicit JSON output on success path (relied on trap) | Added `trap - EXIT; echo '{"decision": "allow"}'` for explicit output |
+| CRIT-002 | `schemas/plan-state-v2.json` | Schema v2.54 missing phases, barriers, verification fields from v2.62+ | Updated to v2.66 with phases[], barriers{}, verification object |
+
+#### Schema Updates (CRIT-002)
+
+New fields added to plan-state-v2.66 schema:
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `phases[]` | array | WAIT-ALL phase barriers with phase_id, step_ids, execution_mode |
+| `barriers{}` | object | Phase completion tracking (additionalProperties: boolean) |
+| `verification` | object | Verification subagent tracking (enabled, agent_type, result) |
+
+#### Files Updated
+
+| File | Old Version | New Version |
+|------|-------------|-------------|
+| `agent-memory-auto-init.sh` | 2.57.5 | 2.66.7 |
+| `schemas/plan-state-v2.json` | v2.54 | v2.66 |
+
+---
+
 ## [2.66.6] - 2026-01-23
 
 ### Adversarial Validation Loop - Critical Security Fixes
