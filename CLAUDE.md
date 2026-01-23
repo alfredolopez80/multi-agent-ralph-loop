@@ -1,8 +1,10 @@
-# Multi-Agent Ralph v2.62.0
+# Multi-Agent Ralph v2.62.3
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, checkpoints, agent handoffs, local observability, autonomous self-improvement, and **Claude Code Task Primitive integration**.
+**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, checkpoints, agent handoffs, local observability, autonomous self-improvement, **Claude Code Task Primitive integration**, and **adversarial-validated hook system**.
+
+> **v2.62.3**: All 44 registered hooks have error traps. Schema v2 supports backward compatibility via `oneOf`. P0/P1 race conditions fixed with `flock` atomic writes.
 
 ---
 
@@ -641,7 +643,9 @@ ralph handoff create      # Create handoff
 
 ---
 
-## Hooks (51 registered) - v2.62.2
+## Hooks (52 registered) - v2.62.3
+
+> **v2.62.3**: All 44 execution hooks now have error traps guaranteeing valid JSON output. 8 SessionStart/helper hooks don't require traps.
 
 | Event Type | Purpose |
 |------------|---------|
@@ -651,6 +655,18 @@ ralph handoff create      # Create handoff
 | PreToolUse | Safety guards before Bash/Skill/Task, **task optimization** (v2.62) |
 | UserPromptSubmit | Context warnings, reminders |
 | Stop | Session reports |
+
+### Error Trap Coverage (v2.62.3) - NEW
+
+| Type | Hook Count | Trap Pattern | Required |
+|------|------------|--------------|----------|
+| PreToolUse | 12 | `{"decision": "allow"}` | ✅ All have traps |
+| PostToolUse | 18 | `{"continue": true}` | ✅ All have traps |
+| PreCompact | 1 | `{"continue": true}` | ✅ Has trap |
+| Stop | 5 | `{"decision": "approve"}` | ✅ All have traps |
+| UserPromptSubmit | 8 | `{}` or context | ✅ All have traps |
+| SessionStart | 6 | (no JSON required) | N/A |
+| Helpers | 2 | N/A (not registered) | N/A |
 
 ### Task Primitive Integration (v2.62.0) - NEW
 

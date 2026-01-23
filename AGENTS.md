@@ -1,8 +1,10 @@
-# Multi-Agent Ralph Wiggum - Agents Reference v2.60.0
+# Multi-Agent Ralph Wiggum - Agents Reference v2.62.3
 
 ## Overview
 
 Ralph orchestrates **33 specialized agents** across different domains. Each agent has specific expertise and is routed based on task complexity and requirements.
+
+> **v2.62.3 Update**: All registered agents now have proper error trap patterns ensuring valid JSON output on failures. Memory system race conditions fixed with `flock` atomic writes.
 
 ## Core Orchestration Agents (v2.50)
 
