@@ -1,15 +1,17 @@
-# Multi-Agent Ralph Wiggum v2.62.3
+# Multi-Agent Ralph Wiggum v2.65.2
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.62.3-blue)
+![Version](https://img.shields.io/badge/version-2.65.2-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 ![Tests](https://img.shields.io/badge/tests-103%20passed-green)
-![Hooks](https://img.shields.io/badge/hooks-52%20registered-green)
+![Hooks](https://img.shields.io/badge/hooks-55%20registered-green)
 ![Skills](https://img.shields.io/badge/skills-266%2B-orange)
-![Error Traps](https://img.shields.io/badge/error%20traps-44%2F52-brightgreen)
+![Error Traps](https://img.shields.io/badge/error%20traps-47%2F55-brightgreen)
 ![Task Primitive](https://img.shields.io/badge/Task%20Primitive-integrated-blue)
+![Dynamic Contexts](https://img.shields.io/badge/Contexts-4%20modes-purple)
+![Plan Lifecycle](https://img.shields.io/badge/Plan%20Lifecycle-CLI-green)
 
 ---
 
@@ -27,17 +29,20 @@
    - [Memory Architecture](#memory-architecture)
    - [Hooks System](#hooks-system)
    - [Agent System](#agent-system)
-7. [Commands Reference](#commands-reference)
-8. [Ralph Loop Pattern](#ralph-loop-pattern)
-9. [Quality-First Validation](#quality-first-validation)
-10. [Claude Code Task Primitive Integration](#claude-code-task-primitive-integration)
-11. [Claude Code Skills Ecosystem](#claude-code-skills-ecosystem)
-12. [Testing](#testing)
-13. [Deployment](#deployment)
-14. [Troubleshooting](#troubleshooting)
-15. [Contributing](#contributing)
-16. [License](#license)
-17. [Resources](#resources)
+7. [Dynamic Contexts System (v2.63)](#dynamic-contexts-system-v263)
+8. [Eval-Driven Development (v2.64)](#eval-driven-development-v264)
+9. [Plan Lifecycle Management (v2.65)](#plan-lifecycle-management-v265)
+10. [Commands Reference](#commands-reference)
+11. [Ralph Loop Pattern](#ralph-loop-pattern)
+12. [Quality-First Validation](#quality-first-validation)
+13. [Claude Code Task Primitive Integration](#claude-code-task-primitive-integration)
+14. [Claude Code Skills Ecosystem](#claude-code-skills-ecosystem)
+15. [Testing](#testing)
+16. [Deployment](#deployment)
+17. [Troubleshooting](#troubleshooting)
+18. [Contributing](#contributing)
+19. [License](#license)
+20. [Resources](#resources)
 
 ---
 
@@ -69,6 +74,12 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 - **Schema v2 Compliance (v2.62.3)**: Plan-state schema updated with `oneOf` for backward compatibility (v1 array + v2 object formats)
 - **Error Traps (v2.62.3)**: All 44 registered hooks now have proper error traps guaranteeing valid JSON output
 - **Race Condition Fixes (v2.62.3)**: P0/P1 memory system race conditions fixed with `flock` atomic writes
+- **Dynamic Contexts System (v2.63)**: 4 operational modes (dev, review, research, debug) that dynamically change Claude's behavior
+- **Hook Improvements (v2.63.1)**: console-log-detector, typescript-quick-check, auto-format-prettier for better code quality
+- **Eval-Driven Development (v2.64)**: EDD framework with pass@k metrics (pass@1, pass@3, pass^k) for AI code quality measurement
+- **Cross-Platform Hooks (v2.65)**: Node.js library for Windows/Linux/macOS compatibility + continuous-learning hook
+- **Task Primitive Sync Fix (v2.65.1)**: TaskCreate/TaskUpdate/TaskList hooks with v1/v2 format auto-detection
+- **Plan Lifecycle Management (v2.65.2)**: Full CLI for archive/reset/show/history/restore operations on plan-state
 - **Security Audit**: Comprehensive API key leak detection validated by Codex, Gemini, and Claude Opus (9/10 security score)
 - **Claude Code Skills Ecosystem**: 266+ specialized skills including marketing (23 skills), documentation generation, and React best practices from Vercel
 
@@ -89,6 +100,10 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 | **Local Observability** | Query-based status and traceability without external services | v2.52 |
 | **Task Primitive** | Claude Code Task architecture integration with bidirectional sync | v2.62 |
 | **Repository Isolation** | Prevents accidental work in external repositories | v2.62.3 |
+| **Dynamic Contexts** | 4 operational modes (dev/review/research/debug) | v2.63 |
+| **Eval-Driven Development** | pass@k metrics framework for AI code quality | v2.64 |
+| **Cross-Platform Hooks** | Node.js library for Windows/Linux/macOS | v2.65 |
+| **Plan Lifecycle CLI** | Archive, reset, show, history, restore operations | v2.65.2 |
 
 ### Memory System
 
@@ -687,6 +702,212 @@ ralph agent-memory read security-auditor
 
 # Transfer memory during handoff
 ralph agent-memory transfer security-auditor code-reviewer relevant
+```
+
+---
+
+## Dynamic Contexts System (v2.63)
+
+### Overview
+
+The Dynamic Contexts System allows switching between operational modes that change Claude's behavior, priorities, and focus.
+
+### Available Contexts
+
+| Context | Focus | Behavior |
+|---------|-------|----------|
+| `dev` | Development | Code first, explain after. Prioritizes working code over documentation. |
+| `review` | Code Review | Thorough analysis, pattern detection, quality suggestions. |
+| `research` | Research | Deep exploration, comprehensive documentation, alternatives comparison. |
+| `debug` | Debugging | Systematic diagnosis, hypothesis testing, minimal changes. |
+
+### Usage
+
+```bash
+# Switch to development mode
+ralph context dev
+
+# Switch to review mode
+ralph context review
+
+# Switch to research mode
+ralph context research
+
+# Switch to debug mode
+ralph context debug
+
+# Show active context
+ralph context show
+
+# List all contexts
+ralph context list
+```
+
+### Context Files
+
+Contexts are defined in `~/.claude/contexts/`:
+
+```
+~/.claude/contexts/
+├── dev.md       # Development context definition
+├── review.md    # Code review context definition
+├── research.md  # Research context definition
+└── debug.md     # Debugging context definition
+```
+
+### Hook Integration
+
+The `context-injector.sh` hook automatically injects the active context at session start.
+
+---
+
+## Eval-Driven Development (v2.64)
+
+### Overview
+
+Eval-Driven Development (EDD) treats AI code quality evals as "unit tests for AI development". Inspired by the concept that evals should be first-class citizens in AI-assisted programming.
+
+### Key Metrics
+
+| Metric | Description | Formula |
+|--------|-------------|---------|
+| `pass@1` | Success rate on first attempt | correct_first / total |
+| `pass@3` | Success rate within 3 attempts | correct_within_3 / total |
+| `pass^k` | Geometric mean across difficulties | (pass@easy × pass@med × pass@hard)^(1/3) |
+
+### Usage
+
+```bash
+# List all evals
+edd list
+
+# Run a specific eval
+edd run <eval-name>
+
+# Run all evals in a category
+edd run-category testing
+
+# Show eval results
+edd results
+
+# Create new eval
+edd create <eval-name>
+```
+
+### Eval Definition Format
+
+Evals are defined in `~/.claude/evals/`:
+
+```yaml
+---
+name: error-handling-basic
+category: error_handling
+difficulty: easy
+pass_criteria: |
+  - Must use try/catch
+  - Must log errors
+  - Must return meaningful error messages
+---
+
+# Error Handling Eval
+
+Given a function that makes an API call, add proper error handling.
+
+## Input
+```python
+def fetch_user(user_id):
+    response = requests.get(f"/api/users/{user_id}")
+    return response.json()
+```
+
+## Expected Behavior
+- Handle network errors
+- Handle JSON parsing errors
+- Return structured error response
+```
+
+### EDD Skill
+
+The `eval-harness.md` skill provides guidance for implementing EDD in your workflow.
+
+---
+
+## Plan Lifecycle Management (v2.65)
+
+### Overview
+
+Plan Lifecycle Management provides CLI commands for managing `plan-state.json` throughout its lifecycle: creation, execution, completion, archiving, and restoration.
+
+### Commands
+
+```bash
+# Show current plan status
+ralph plan show
+
+# Archive current plan and start fresh
+ralph plan archive "Completed OAuth implementation"
+
+# Reset plan to empty state
+ralph plan reset
+
+# Show archived plans history
+ralph plan history
+ralph plan history 5    # Last 5 plans
+
+# Restore from archive
+ralph plan restore <archive-id>
+ralph plan restore plan-20260123-
+```
+
+### Lifecycle Flow
+
+```
+┌──────────┐    ┌──────────┐    ┌──────────┐
+│  START   │───▶│ EXECUTE  │───▶│ COMPLETE │
+│  (new)   │    │(progress)│    │(all done)│
+└──────────┘    └──────────┘    └────┬─────┘
+                                     │
+                                     ▼
+                            ┌──────────────┐
+                            │   ARCHIVE    │
+                            │ (save + tag) │
+                            └──────┬───────┘
+                                   │
+            ┌──────────────────────┼──────────────────┐
+            │                      │                  │
+            ▼                      ▼                  │
+     ┌──────────┐          ┌──────────┐              │
+     │  RESET   │          │ RESTORE  │◀─────────────┘
+     │(fresh)   │          │(rollback)│
+     └──────────┘          └──────────┘
+```
+
+### Archive Storage
+
+Plans are archived to `~/.ralph/archive/plans/` with metadata:
+
+```json
+{
+  "_archive_metadata": {
+    "archived_at": "2026-01-23T15:46:20Z",
+    "description": "User provided description",
+    "source": ".claude/plan-state.json"
+  }
+}
+```
+
+### Task Primitive Sync (v2.65.1)
+
+The `task-primitive-sync.sh` hook automatically syncs Claude's TaskCreate/TaskUpdate/TaskList operations with `plan-state.json`:
+
+- **Auto-detection**: Detects v1 (array) vs v2 (object) format automatically
+- **Bidirectional sync**: Updates flow both directions
+- **Progress tracking**: Enables statusline to show correct progress
+
+```
+Claude TaskCreate → Hook → plan-state.json → StatusLine
+                                ↑
+Claude TaskUpdate → Hook ───────┘
 ```
 
 ---
@@ -1295,6 +1516,6 @@ This project is licensed under the BSL 1.1 License.
 
 ---
 
-**Version**: 2.62.3
+**Version**: 2.65.2
 **Last Updated**: 2026-01-23
 **Next Review**: 2026-02-23

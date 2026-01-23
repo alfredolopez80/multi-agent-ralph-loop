@@ -7,6 +7,236 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.65.2] - 2026-01-23
+
+### Added (Plan Lifecycle Management)
+
+**Severity**: ENHANCEMENT
+**Impact**: Proper lifecycle management for plan-state.json
+
+#### Overview
+
+Addresses the gap where completed/stale plans were not being properly archived before starting new work. Provides CLI commands for full plan lifecycle management.
+
+#### New Commands
+
+```bash
+ralph plan archive [desc]  # Archive current plan and start fresh
+ralph plan reset           # Reset plan-state to empty
+ralph plan show            # Show current plan status
+ralph plan history [n]     # Show archived plans
+ralph plan restore <id>    # Restore from archive
+```
+
+#### New Files
+
+| File | Purpose |
+|------|---------|
+| `~/.ralph/scripts/plan.sh` | Plan lifecycle CLI |
+
+#### Key Features
+
+- **Auto-archive**: Archives plan with metadata before reset
+- **Format detection**: Works with both v1 (array) and v2 (object) schemas
+- **Restore capability**: Can restore previous plans from archive
+- **Status display**: Color-coded progress with step details
+
+#### Archive Storage
+
+Plans archived to `~/.ralph/archive/plans/plan-<timestamp>-<task-slug>.json` with metadata:
+```json
+{
+  "_archive_metadata": {
+    "archived_at": "2026-01-23T15:46:20Z",
+    "description": "User provided description",
+    "source": ".claude/plan-state.json"
+  }
+}
+```
+
+---
+
+## [2.65.1] - 2026-01-23
+
+### Fixed (Task Primitive Statusline Integration)
+
+**Severity**: HIGH
+**Impact**: Fixes task tracking in statusline when using Claude Code Task primitives
+
+#### Problem
+
+The statusline was not updating when using Claude Code's native Task primitives (`TaskCreate`, `TaskUpdate`, `TaskList`) because:
+1. `TodoWrite` does NOT trigger hooks (by design in Claude Code)
+2. The `global-task-sync.sh` hook was only registered for the `Task` matcher (subagents)
+3. No hook was syncing Task primitive updates back to `plan-state.json`
+
+#### Solution
+
+Created new `task-primitive-sync.sh` hook (v1.1.0) that:
+- Triggers on `TaskCreate|TaskUpdate|TaskList` PostToolUse events
+- Syncs task state back to `.claude/plan-state.json`
+- Allows statusline-ralph.sh to show correct progress
+- **v1.1.0**: Supports both v1 (array) and v2 (object) plan-state formats
+  - Detects format dynamically via `jq -r '.steps | type'`
+  - Preserves existing structure during updates
+  - Creates new files in v2 (object) format
+
+#### New Files
+
+| File | Purpose |
+|------|---------|
+| `~/.claude/hooks/task-primitive-sync.sh` | Sync Task primitives to plan-state |
+
+#### Configuration Change
+
+Added new PostToolUse hook registration:
+```json
+{
+  "matcher": "TaskCreate|TaskUpdate|TaskList",
+  "hooks": [{
+    "command": "${HOME}/.claude/hooks/task-primitive-sync.sh",
+    "timeout": 15
+  }]
+}
+```
+
+---
+
+## [2.65.0] - 2026-01-23
+
+### Added (Cross-Platform Hook Support)
+
+**Severity**: ENHANCEMENT
+**Impact**: New cross-platform Node.js hook library for Windows/Linux/macOS compatibility
+
+#### Overview
+
+Phase 4 of the ECC improvement plan. Adds Node.js alternatives for critical hooks, enabling cross-platform support.
+
+#### New Files
+
+| File | Purpose |
+|------|---------|
+| `~/.claude/hooks/lib/cross-platform.js` | Cross-platform utilities library |
+| `~/.claude/hooks/node/context-injector.js` | Node.js version of context injector |
+| `~/.claude/hooks/continuous-learning.sh` | Session pattern extraction at end |
+
+#### Cross-Platform Library Functions
+
+- `getHomeDir()` - Cross-platform home directory
+- `readStdinJson()` - Async stdin reading
+- `allowTool()` / `blockTool(reason)` - PreToolUse responses
+- `continueExecution()` - PostToolUse response
+- `approveStop()` - Stop hook response
+- `getActiveContext()` / `setActiveContext(ctx)` - Context management
+- `getRalphDirs()` - All Ralph directory paths
+
+---
+
+## [2.64.0] - 2026-01-23
+
+### Added (Eval Harness / EDD Framework)
+
+**Severity**: ENHANCEMENT
+**Impact**: New Eval-Driven Development framework with pass@k metrics
+
+#### Overview
+
+Phase 3 of the ECC improvement plan. Implements EDD (Eval-Driven Development) - treating evals as "unit tests of AI development".
+
+#### New Files
+
+| File | Purpose |
+|------|---------|
+| `~/.claude/skills/eval-harness.md` | Skill definition for EDD |
+| `~/.ralph/scripts/edd.sh` | CLI for eval management |
+| `~/.claude/evals/` | Directory for eval definitions |
+
+#### Usage
+
+```bash
+ralph eval define auth-module    # Create eval definition
+ralph eval check auth-module     # Run checks (pass@k tracking)
+ralph eval report auth-module    # Generate full report
+ralph eval list                  # List all evals
+```
+
+#### Metrics Supported
+
+- **pass@1**: First attempt success rate
+- **pass@3**: Success within 3 attempts
+- **pass^k**: All k trials succeed (for regression checks)
+
+---
+
+## [2.63.1] - 2026-01-23
+
+### Added (Hook Improvements from ECC)
+
+**Severity**: ENHANCEMENT
+**Impact**: 3 new hooks for code quality automation
+
+#### New Hooks
+
+| Hook | Purpose |
+|------|---------|
+| `console-log-detector.sh` | Warn about console.log in JS/TS files |
+| `typescript-quick-check.sh` | Quick TypeScript check after edits |
+| `auto-format-prettier.sh` | Auto-format JS/TS/JSON with Prettier |
+
+All hooks registered in PostToolUse for Edit|Write matcher.
+
+---
+
+## [2.63.0] - 2026-01-23
+
+### Added (Dynamic Contexts System)
+
+**Severity**: ENHANCEMENT
+**Impact**: New feature - Dynamic context switching for different work modes
+
+#### Overview
+
+Inspired by [everything-claude-code](https://github.com/affaan-m/everything-claude-code), this release adds a dynamic contexts system that allows switching Claude's behavior based on the task at hand.
+
+#### New Contexts
+
+| Context | Mode | Focus |
+|---------|------|-------|
+| `dev` | Development | Code first, explain after. Action-oriented. |
+| `review` | Code Review | Analysis, security, structured feedback. |
+| `research` | Research | Exploration, citations, comprehensive docs. |
+| `debug` | Debugging | Systematic investigation, root cause analysis. |
+
+#### New Files
+
+| File | Purpose |
+|------|---------|
+| `~/.claude/contexts/dev.md` | Development context definition |
+| `~/.claude/contexts/review.md` | Code review context definition |
+| `~/.claude/contexts/research.md` | Research context definition |
+| `~/.claude/contexts/debug.md` | Debug context definition |
+| `~/.ralph/scripts/context.sh` | Context CLI switcher |
+| `~/.claude/hooks/context-injector.sh` | SessionStart hook for context injection |
+| `~/.claude/rules/context-aware-behavior.md` | Rule for context-aware responses |
+
+#### Usage
+
+```bash
+ralph context dev       # Switch to development mode
+ralph context review    # Switch to code review mode
+ralph context research  # Switch to research mode
+ralph context debug     # Switch to debug mode
+ralph context show      # Show current active context
+ralph context list      # List all available contexts
+```
+
+#### Source
+
+Based on analysis of [everything-claude-code](https://github.com/affaan-m/everything-claude-code) repository (21k+ stars). See `.claude/ADVERSARIAL_IMPROVEMENT_PLAN_ECC.md` for full analysis.
+
+---
+
 ## [2.62.3] - 2026-01-23
 
 ### Fixed (Memory System + Schema Validation)
