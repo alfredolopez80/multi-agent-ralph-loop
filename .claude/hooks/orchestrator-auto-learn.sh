@@ -300,6 +300,7 @@ Reason: $LEARN_REASON
 
     # Fallback: output empty to allow but log the recommendation was written
     echo "[$(date -Iseconds)] Could not inject, recommendation in: $CONTEXT_FILE" >> "${LOG_DIR}/auto-learn-$(date +%Y%m%d).log" 2>&1
+    fi
 fi
 
 # Allow task to proceed unchanged
