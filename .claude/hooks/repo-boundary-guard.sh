@@ -1,0 +1,167 @@
+#!/usr/bin/env bash
+# repo-boundary-guard.sh - Repository Isolation Enforcement
+# Hook: PreToolUse (Edit|Write|Bash)
+# Purpose: Prevent accidental work in external repositories
+# VERSION: 1.0.0
+
+set -euo pipefail
+
+# Error trap: Always output valid JSON for PreToolUse
+trap 'echo "{\"decision\": \"allow\"}"' ERR EXIT
+
+# Configuration
+LOG_FILE="${HOME}/.ralph/logs/repo-boundary.log"
+CURRENT_REPO=""
+GITHUB_DIR="${HOME}/Documents/GitHub"
+
+# Ensure log directory exists
+mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
+
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE" 2>/dev/null || true
+}
+
+# Get current repository root
+get_current_repo() {
+    git rev-parse --show-toplevel 2>/dev/null || echo ""
+}
+
+# Check if a path is within the current repo or allowed locations
+is_allowed_path() {
+    local path="$1"
+    local current_repo="$2"
+
+    # Expand ~ to HOME
+    path="${path/#\~/$HOME}"
+
+    # Allow global config directories
+    if [[ "$path" == "${HOME}/.claude"* ]] || \
+       [[ "$path" == "${HOME}/.ralph"* ]] || \
+       [[ "$path" == "${HOME}/.config"* ]] || \
+       [[ "$path" == "/tmp"* ]] || \
+       [[ "$path" == "/var"* ]]; then
+        return 0  # Allowed
+    fi
+
+    # If no current repo detected, allow
+    if [[ -z "$current_repo" ]]; then
+        return 0
+    fi
+
+    # Check if path is within current repo
+    if [[ "$path" == "$current_repo"* ]]; then
+        return 0  # Allowed - within current repo
+    fi
+
+    # Check if path is in another GitHub repo
+    if [[ "$path" == "$GITHUB_DIR"* ]] && [[ "$path" != "$current_repo"* ]]; then
+        return 1  # BLOCKED - another repo
+    fi
+
+    # Allow other paths (system, etc.)
+    return 0
+}
+
+# Extract paths from tool input
+extract_paths() {
+    local input="$1"
+
+    # Extract file_path, path, or command paths
+    echo "$input" | jq -r '
+        .tool_input // . |
+        if type == "object" then
+            (.file_path // .path // .command // "")
+        else
+            ""
+        end
+    ' 2>/dev/null || echo ""
+}
+
+# Main logic
+main() {
+    local input
+    input=$(cat 2>/dev/null) || input=""
+
+    if [[ -z "$input" ]]; then
+        log "DEBUG: Empty input, allowing"
+        trap - ERR EXIT
+        echo '{"decision": "allow"}'
+        exit 0
+    fi
+
+    # Get current repo
+    CURRENT_REPO=$(get_current_repo)
+
+    if [[ -z "$CURRENT_REPO" ]]; then
+        log "DEBUG: Not in a git repo, allowing"
+        trap - ERR EXIT
+        echo '{"decision": "allow"}'
+        exit 0
+    fi
+
+    # Extract tool name
+    local tool_name
+    tool_name=$(echo "$input" | jq -r '.tool_name // ""' 2>/dev/null || echo "")
+
+    # Only check Edit, Write, Bash
+    case "$tool_name" in
+        Edit|Write|Bash)
+            ;;
+        *)
+            log "DEBUG: Tool $tool_name not checked, allowing"
+            trap - ERR EXIT
+            echo '{"decision": "allow"}'
+            exit 0
+            ;;
+    esac
+
+    # Extract paths from input
+    local paths
+    paths=$(extract_paths "$input")
+
+    # For Bash, also check command content
+    if [[ "$tool_name" == "Bash" ]]; then
+        local command
+        command=$(echo "$input" | jq -r '.tool_input.command // ""' 2>/dev/null || echo "")
+
+        # Quick check for paths in command
+        # Look for patterns like /Users/.../GitHub/OtherRepo
+        if echo "$command" | grep -qE "${GITHUB_DIR}/[^/]+/" 2>/dev/null; then
+            local mentioned_path
+            mentioned_path=$(echo "$command" | grep -oE "${GITHUB_DIR}/[^/[:space:]]+" | head -1)
+
+            if ! is_allowed_path "$mentioned_path" "$CURRENT_REPO"; then
+                log "BLOCKED: Bash command references external repo: $mentioned_path"
+                trap - ERR EXIT
+                cat << EOF
+{
+  "decision": "block",
+  "reason": "⚠️ REPO BOUNDARY: Command references external repository ($mentioned_path). Use /repo-learn to learn from it instead, or explicitly switch repos."
+}
+EOF
+                exit 0
+            fi
+        fi
+    fi
+
+    # Check extracted paths
+    for path in $paths; do
+        if [[ -n "$path" ]] && ! is_allowed_path "$path" "$CURRENT_REPO"; then
+            log "BLOCKED: Access to external repo path: $path (current: $CURRENT_REPO)"
+            trap - ERR EXIT
+            cat << EOF
+{
+  "decision": "block",
+  "reason": "⚠️ REPO BOUNDARY: Path $path is outside current repo ($CURRENT_REPO). Use /repo-learn to learn from external repos, or explicitly switch."
+}
+EOF
+            exit 0
+        fi
+    done
+
+    log "ALLOWED: All paths within boundary"
+    trap - ERR EXIT
+    echo '{"decision": "allow"}'
+}
+
+main "$@"

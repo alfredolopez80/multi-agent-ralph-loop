@@ -778,6 +778,50 @@ EXECUTE → VALIDATE → Quality Passed?
 
 ---
 
+## Repository Isolation Rule (v2.62.3) - NEW
+
+> **When working in Repository A, you MUST NOT treat Repository B as your workspace.**
+
+### Prohibited Actions on External Repos
+
+| Action | Example | Risk |
+|--------|---------|------|
+| Edit/Write files | Modify files in `~/GitHub/OtherRepo/` | HIGH |
+| Git operations | Commit/push to external repo | HIGH |
+| Run commands | Execute tests in another project | MEDIUM |
+| Extensive analysis | Debug issues in external codebase | MEDIUM |
+
+### Allowed Actions (Reference Only)
+
+| Action | Skill | Purpose |
+|--------|-------|---------|
+| Learn patterns | `/repo-learn` | Extract best practices for local use |
+| Curate repos | `/curator` | Discover quality repos to learn from |
+| Copy snippets | Manual | Reference with attribution |
+| Compare code | Read tool | Inform local implementation |
+
+### Detection
+
+The `repo-boundary-guard.sh` hook automatically blocks:
+- File operations outside current repo
+- Bash commands targeting `~/Documents/GitHub/<other-repo>/`
+- Git commands referencing external repositories
+
+### Error Response
+
+```
+⚠️ REPO BOUNDARY VIOLATION
+Current repo: /path/to/current-repo
+Attempted access: /path/to/other-repo
+
+Options:
+1. Use /repo-learn to learn from external repo
+2. Use /curator to curate and learn patterns
+3. Explicitly say "switch to [repo-name]" if intentional
+```
+
+---
+
 ## References
 
 | Topic | Documentation |
