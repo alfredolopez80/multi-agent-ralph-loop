@@ -1,12 +1,19 @@
 #!/bin/bash
 # ============================================================================
-# checkpoint-auto-save.sh - v2.30
-# Hook: pre-command
+# checkpoint-auto-save.sh - v2.62.3
+# Hook: PreToolUse (Edit|Write|Bash)
 # Purpose: Auto-save checkpoint before critical operations
 # GLOBAL: Enabled by default for all projects
+# Output: {"decision": "allow"} (PreToolUse JSON format)
 # ============================================================================
 
-# VERSION: 2.57.5
+set -euo pipefail
+umask 077
+
+# VERSION: 2.62.3
+
+# Error trap: Always output valid JSON for PreToolUse
+trap 'echo "{\"decision\": \"allow\"}"' ERR EXIT
 RALPH_DIR="${HOME}/.ralph"
 CHECKPOINT_DIR="${RALPH_DIR}/checkpoints"
 CONFIG_FILE="${RALPH_DIR}/checkpoint-config.json"
@@ -99,38 +106,52 @@ detect_critical_operation() {
     return 1
 }
 
+# Output JSON and exit
+allow_and_exit() {
+    trap - ERR EXIT  # Disable trap before explicit output
+    echo '{"decision": "allow"}'
+    exit 0
+}
+
 # Main execution
 main() {
     load_config
 
     if [ "$AUTO_SAVE_ENABLED" != "true" ]; then
         log_auto "DEBUG" "Auto-save disabled, skipping"
-        exit 0
+        allow_and_exit
     fi
 
-    # Get the command being executed
-    local command="${1:-}"
+    # Get the command being executed (from stdin for PreToolUse)
+    local input
+    input=$(cat 2>/dev/null || true)
+
+    # Extract tool_input from JSON if available
+    local command=""
+    if [ -n "$input" ]; then
+        command=$(echo "$input" | jq -r '.tool_input // empty' 2>/dev/null || echo "$input")
+    fi
 
     if [ -z "$command" ]; then
-        exit 0
+        allow_and_exit
     fi
 
     # Check for critical operation
     local trigger
-    trigger=$(detect_critical_operation "$command")
+    trigger=$(detect_critical_operation "$command") || true
 
     if [ -n "$trigger" ]; then
         local cp_file
-        cp_file=$(create_checkpoint "$trigger" "Auto-save before $trigger operation")
+        cp_file=$(create_checkpoint "$trigger" "Auto-save before $trigger operation") || true
 
         if [ -n "$cp_file" ] && [ -f "$cp_file" ]; then
-            # Notify user (non-blocking)
+            # Notify user (non-blocking via stderr)
             echo "💾 Auto-checkpoint saved before $trigger operation" >&2
             log_auto "INFO" "Checkpoint saved: $cp_file"
         fi
     fi
 
-    exit 0
+    allow_and_exit
 }
 
 main "$@"

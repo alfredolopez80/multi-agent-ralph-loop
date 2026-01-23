@@ -1,11 +1,15 @@
 #!/bin/bash
 # Stop Hook Verification - Verifica completitud antes de terminar sesión
+# Hook: Stop
 # Origen: planning-with-files pattern
-# v2.45.4 - Added JSON return for Claude Code hook protocol
+# v2.62.3 - Added JSON return for Claude Code hook protocol
 
-# VERSION: 2.57.5
+# VERSION: 2.62.3
 # v2.57.3: Fixed JSON format - Stop hooks use {"decision": "approve|block"} (SEC-038)
 set -euo pipefail
+
+# Error trap: Always output valid JSON for Stop
+trap 'echo "{\"decision\": \"approve\"}"' ERR EXIT
 
 # Configuración
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"

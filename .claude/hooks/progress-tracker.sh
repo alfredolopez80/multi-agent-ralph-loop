@@ -1,5 +1,6 @@
 #!/bin/bash
-# progress-tracker.sh - PostToolUse Hook for Ralph v2.41
+# progress-tracker.sh - PostToolUse Hook for Ralph v2.62.3
+# Hook: PostToolUse (Edit|Write|Bash)
 # Auto-registro de intentos/errores en .claude/progress.md por proyecto
 #
 # Input (JSON via stdin):
@@ -15,8 +16,11 @@
 # Part of Ralph v2.41 Context Engineering - progress.md system
 # Based on: docs/yt/stop-using-ralph-plugin-summary.md
 
-# VERSION: 2.57.5
+# VERSION: 2.62.3
 set -euo pipefail
+
+# Error trap: Always output valid JSON for PostToolUse
+trap 'echo "{\"continue\": true}"' ERR EXIT
 
 # Configuration
 LOG_FILE="${HOME}/.ralph/logs/progress-tracker.log"

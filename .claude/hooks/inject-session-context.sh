@@ -1,5 +1,6 @@
 #!/bin/bash
-# inject-session-context.sh - PreToolUse Hook for Ralph v2.43
+# inject-session-context.sh - PreToolUse Hook for Ralph v2.62.3
+# Hook: PreToolUse (Task)
 # Injects session context before Task tool calls
 #
 # Input (JSON via stdin):
@@ -9,14 +10,17 @@
 #   - session_id: Current session identifier
 #
 # Output (JSON):
-#   - {"continue": true} - Standard hook response format
+#   - {"decision": "allow"} - Standard hook response format
 #   - Note: hookSpecificOutput is ONLY for SessionStart hooks
 #
 # Part of Ralph v2.43 Context Engineering
 
-# VERSION: 2.57.5
+# VERSION: 2.62.3
 # Note: Not using set -e because we need graceful fallback on errors
 set -uo pipefail
+
+# Error trap: Always output valid JSON for PreToolUse
+trap 'echo "{\"decision\": \"allow\"}"' ERR EXIT
 
 # Configuration
 LOG_FILE="${HOME}/.ralph/logs/inject-context.log"
@@ -33,7 +37,7 @@ log() {
     echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] [$level] $*" >> "$LOG_FILE" 2>/dev/null || true
 }
 
-# Safe JSON output - PreToolUse hooks use {"continue": true} format
+# Safe JSON output - PreToolUse hooks use {"decision": "allow"} format
 # SEC-039: NEVER use {"decision": "continue"} - that format is INVALID
 output_json() {
     local context="${1:-}"
@@ -44,7 +48,7 @@ output_json() {
         # Use additionalContext with continue field (per official Claude Code docs)
         echo "{\"continue\": true, \"additionalContext\": \"$message\"}"
     else
-        echo '{"continue": true}'
+        echo '{"decision": "allow"}'
     fi
 }
 
@@ -74,14 +78,14 @@ log "INFO" "PreToolUse hook triggered - tool: $TOOL_NAME, session: $SESSION_ID"
 # Only inject context for Task tool calls
 if [[ "$TOOL_NAME" != "Task" ]]; then
     log "DEBUG" "Skipping non-Task tool: $TOOL_NAME"
-    echo '{"continue": true}'
+    echo '{"decision": "allow"}'
     exit 0
 fi
 
 # Check if context injection is enabled
 if ! check_feature_enabled "RALPH_INJECT_CONTEXT" "true"; then
     log "INFO" "Context injection disabled via features.json"
-    echo '{"continue": true}'
+    echo '{"decision": "allow"}'
     exit 0
 fi
 
@@ -130,7 +134,7 @@ CONTEXT+="**Session**: $SESSION_ID\\n"
 # 5. Add claude-mem reminder
 CONTEXT+="**Memory**: Use claude-mem MCP (search → timeline → get_observations) for persistent context.\\n"
 
-# PreToolUse hooks should return {"continue": true} to allow the tool call
+# PreToolUse hooks should return {"decision": "allow"} to allow the tool call
 # The context injection feature is deprecated - PreToolUse cannot inject context
 # Context injection is only available for SessionStart hooks
 log "INFO" "PreToolUse hook allowing Task tool (context injection not available for PreToolUse)"

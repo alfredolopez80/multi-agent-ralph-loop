@@ -1,5 +1,6 @@
 #!/bin/bash
-# pre-compact-handoff.sh - PreCompact Hook for Ralph v2.44
+# pre-compact-handoff.sh - PreCompact Hook for Ralph v2.62.3
+# Hook: PreCompact
 # Auto-saves state BEFORE context compaction to prevent information loss
 #
 # v2.44 IMPROVEMENTS:
@@ -20,8 +21,11 @@
 #
 # Part of Ralph v2.44 Context Engineering - GitHub #15021 Workaround
 
-# VERSION: 2.57.5
+# VERSION: 2.62.3
 set -euo pipefail
+
+# Error trap: Always output valid JSON for PreCompact
+trap 'echo "{\"continue\": true}"' ERR EXIT
 
 # Configuration
 LEDGER_DIR="${HOME}/.ralph/ledgers"
