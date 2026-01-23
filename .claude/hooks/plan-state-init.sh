@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# VERSION: 2.57.5
+# VERSION: 2.62.3
 # Hook: Plan State Initialization
 # Purpose: Initialize plan-state.json from orchestrator analysis
 # Security: v2.45.1 - Fixed race condition with atomic updates
+# v2.62.3: Updated to v2 schema with phases, barriers, and object-based steps
 
 set -euo pipefail
 
@@ -68,14 +69,18 @@ init_plan_state() {
 
     cat << EOF > "$PLAN_STATE"
 {
-  "\$schema": "plan-state-v1",
+  "\$schema": "plan-state-v2",
+  "version": "2.62.3",
   "plan_id": "$plan_id",
   "task": "$task_description",
   "created_at": "$timestamp",
   "updated_at": "$timestamp",
   "classification": {
     "complexity": $complexity,
+    "information_density": "LINEAR",
+    "context_requirement": "FITS",
     "model_routing": "$model_routing",
+    "route": "STANDARD",
     "adversarial_required": $([ "$complexity" -ge 7 ] && echo "true" || echo "false"),
     "worktree": {
       "enabled": false,
@@ -87,7 +92,12 @@ init_plan_state() {
     "must_have": [],
     "nice_to_have": []
   },
-  "steps": [],
+  "phases": [],
+  "steps": {},
+  "barriers": {},
+  "current_phase": null,
+  "active_agent": "orchestrator",
+  "current_handoff_id": null,
   "drift_log": [],
   "loop_state": {
     "current_iteration": 0,
@@ -97,6 +107,15 @@ init_plan_state() {
   },
   "gap_analysis": {
     "performed": false
+  },
+  "handoffs": [],
+  "checkpoints": [],
+  "state_coordinator": {
+    "last_sync": null,
+    "sync_count": 0,
+    "last_barrier_check": null,
+    "consistency_repairs": 0,
+    "active": true
   }
 }
 EOF
@@ -127,32 +146,52 @@ add_step() {
         return 1
     }
 
+    # v2.62.3: Use object format for steps (schema v2 compliance)
     if jq --arg id "$step_id" \
        --arg title "$title" \
        --arg file "$file_path" \
        --arg action "$action" \
        --arg desc "$description" \
        --arg ts "$timestamp" '
-      .steps += [{
-        "id": $id,
-        "title": $title,
+      .steps[$id] = {
+        "name": $title,
         "status": "pending",
-        "spec": {
-          "file": $file,
-          "action": $action,
-          "description": $desc,
-          "exports": [],
-          "dependencies": [],
-          "signatures": {},
-          "return_types": {}
+        "result": null,
+        "error": null,
+        "agent": null,
+        "handoff_id": null,
+        "checkpoint_id": null,
+        "started_at": null,
+        "completed_at": null,
+        "verification": {
+          "required": false,
+          "method": "skip",
+          "agent": null,
+          "status": "pending",
+          "result": null,
+          "started_at": null,
+          "completed_at": null,
+          "task_id": null
         },
-        "actual": null,
-        "drift": null,
-        "lsa_verification": null,
-        "quality_audit": null,
-        "micro_gate": null,
-        "created_at": $ts
-      }] |
+        "_v1_data": {
+          "title": $title,
+          "spec": {
+            "file": $file,
+            "action": $action,
+            "description": $desc,
+            "exports": [],
+            "dependencies": [],
+            "signatures": {},
+            "return_types": {}
+          },
+          "actual": null,
+          "drift": null,
+          "lsa_verification": null,
+          "quality_audit": null,
+          "micro_gate": null,
+          "created_at": $ts
+        }
+      } |
       .updated_at = $ts
     ' "$PLAN_STATE" > "$temp_file"; then
         mv "$temp_file" "$PLAN_STATE"

@@ -9,10 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.62.3] - 2026-01-23
 
-### Fixed (Memory System Race Condition)
+### Fixed (Memory System + Schema Validation)
 
-**Severity**: CRITICAL (P0) + HIGH (P1)
-**Impact**: Prevents data corruption in semantic memory and reduces false positives
+**Severity**: CRITICAL
+**Impact**: Prevents data corruption, fixes schema mismatches, ensures backward compatibility
 
 #### P0 Fix: Race Condition in decision-extractor.sh
 
@@ -24,15 +24,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - JSON/YAML/TOML files now excluded from design pattern detection
 - These file types only trigger config file change detection
-- Eliminates false positives like "Factory pattern detected" in package.json
 
-#### Technical Details
+#### Schema v2 Compliance (from Plan-State Validation Agent)
 
-| Change | Before | After |
-|--------|--------|-------|
-| Semantic writes | Direct jq read-modify-write | Via `semantic-write-helper.sh` with flock |
-| Index writes | No locking | flock on `.index.lock` |
-| Config file patterns | All patterns | Config changes only |
+| Issue | Severity | Fix |
+|-------|----------|-----|
+| Schema v1 references | CRITICAL | Updated to `plan-state-v2` in init hooks |
+| Missing required fields | HIGH | Added `phases`, `barriers`, `version`, `verification` |
+| Array vs Object mismatch | CRITICAL | Schema now accepts both formats (backward compatible) |
+| LSA hook array queries | HIGH | Updated to handle both formats |
+
+#### Updated Files
+
+| File | Change |
+|------|--------|
+| `plan-state-init.sh` | v2 schema, object steps, all required fields |
+| `auto-plan-state.sh` | v2 schema, array→object conversion |
+| `lsa-pre-step.sh` | Dual format support, JSON output |
+| `plan-state-v2.schema.json` | `oneOf` for steps (array OR object) |
+
+#### Backward Compatibility
+
+The schema now uses `oneOf` for steps, allowing:
+- **v1 format**: `"steps": [{"id": "1", ...}]` (legacy, still supported)
+- **v2 format**: `"steps": {"step1": {...}}` (preferred for new implementations)
+
+This enables gradual migration without breaking existing hooks.
 
 ---
 

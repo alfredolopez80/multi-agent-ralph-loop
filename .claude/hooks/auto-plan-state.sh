@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VERSION: 2.57.5
+# VERSION: 2.62.3
 # Hook: auto-plan-state.sh
 # Trigger: PostToolUse (Write) matcher: orchestrator-analysis
 # Purpose: Automatically create plan-state.json when orchestrator-analysis.md is written
@@ -7,6 +7,8 @@
 # This hook bridges the gap between orchestrator documentation and automation.
 # When the orchestrator writes its analysis file, this hook extracts the structure
 # and creates the plan-state.json for LSA verification and Plan-Sync.
+#
+# v2.62.3: Updated to v2 schema with phases, barriers, and object-based steps
 
 set -euo pipefail
 umask 077
@@ -134,36 +136,96 @@ main() {
         plan_id="plan-$(date +%s)-$$"
     fi
 
-    # Create plan-state.json
+    # v2.62.3: Convert steps array to object format
+    local steps_object
+    steps_object=$(echo "$steps_json" | jq '
+        reduce .[] as $step ({};
+            . + { ($step.id // ("step-" + (length | tostring))): {
+                "name": ($step.title // "Unnamed step"),
+                "status": ($step.status // "pending"),
+                "result": null,
+                "error": null,
+                "agent": null,
+                "handoff_id": null,
+                "checkpoint_id": null,
+                "started_at": null,
+                "completed_at": null,
+                "verification": {
+                    "required": false,
+                    "method": "skip",
+                    "agent": null,
+                    "status": "pending",
+                    "result": null,
+                    "started_at": null,
+                    "completed_at": null,
+                    "task_id": null
+                },
+                "_v1_data": $step
+            }}
+        )
+    ')
+
+    # Create plan-state.json (v2.62.3: schema v2 with object-based steps)
     local plan_state
     plan_state=$(jq -n \
-        --arg schema "plan-state-v1" \
+        --arg schema "plan-state-v2" \
+        --arg version "2.62.3" \
         --arg plan_id "$plan_id" \
         --arg task "$task" \
         --argjson complexity "$complexity" \
         --arg model "$model" \
         --argjson adversarial "$adversarial" \
-        --argjson steps "$steps_json" \
+        --argjson steps "$steps_object" \
         --arg created "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
         '{
             "$schema": $schema,
+            "version": $version,
             "plan_id": $plan_id,
             "task": $task,
+            "created_at": $created,
+            "updated_at": $created,
             "classification": {
                 "complexity": $complexity,
+                "information_density": "LINEAR",
+                "context_requirement": "FITS",
                 "model_routing": $model,
-                "adversarial_required": $adversarial
+                "route": "STANDARD",
+                "adversarial_required": $adversarial,
+                "worktree": {
+                    "enabled": false,
+                    "path": null,
+                    "branch": null
+                }
             },
+            "clarification": {
+                "must_have": [],
+                "nice_to_have": []
+            },
+            "phases": [],
             "steps": $steps,
+            "barriers": {},
+            "current_phase": null,
+            "active_agent": "orchestrator",
+            "current_handoff_id": null,
             "loop_state": {
                 "current_iteration": 0,
                 "max_iterations": 25,
-                "validate_attempts": 0
+                "validate_attempts": 0,
+                "last_gate_result": "pending"
+            },
+            "handoffs": [],
+            "checkpoints": [],
+            "state_coordinator": {
+                "last_sync": null,
+                "sync_count": 0,
+                "last_barrier_check": null,
+                "consistency_repairs": 0,
+                "active": true
             },
             "metadata": {
                 "created_at": $created,
                 "created_by": "auto-plan-state-hook",
-                "version": "2.45.1"
+                "version": "2.62.3"
             }
         }')
 
