@@ -1,8 +1,8 @@
-# Multi-Agent Ralph v2.61.0
+# Multi-Agent Ralph v2.62.0
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, checkpoints, agent handoffs, local observability, and **autonomous self-improvement**.
+**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, checkpoints, agent handoffs, local observability, autonomous self-improvement, and **Claude Code Task Primitive integration**.
 
 ---
 
@@ -641,16 +641,32 @@ ralph handoff create      # Create handoff
 
 ---
 
-## Hooks (52 registered) - v2.60.0
+## Hooks (55 registered) - v2.62.0
 
 | Event Type | Purpose |
 |------------|---------|
 | SessionStart | Context preservation at startup, **auto-migrate plan-state** (v2.51) |
 | PreCompact | Save state before compaction |
-| PostToolUse | Quality gates after Edit/Write/Bash |
-| PreToolUse | Safety guards before Bash/Skill/Task |
+| PostToolUse | Quality gates after Edit/Write/Bash, **verification subagent** (v2.62) |
+| PreToolUse | Safety guards before Bash/Skill/Task, **task optimization** (v2.62) |
 | UserPromptSubmit | Context warnings, reminders |
 | Stop | Session reports |
+
+### Task Primitive Integration (v2.62.0) - NEW
+
+Claude Code's evolved Task primitive patterns integrated via 3 new hooks:
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `global-task-sync.sh` | PostToolUse (TodoWrite/TaskUpdate/TaskCreate) | Sync plan-state ↔ `~/.claude/tasks/<session>/` |
+| `verification-subagent.sh` | PostToolUse (TaskUpdate) | Suggest verification subagent after step completion |
+| `task-orchestration-optimizer.sh` | PreToolUse (Task) | Detect parallelization + context-hiding opportunities |
+
+**Key Patterns**:
+- **Verification via Subagent**: Auto-suggest review for high-complexity or security-related steps
+- **Parallelization Detection**: Identify independent tasks that can run concurrently
+- **Context-Hiding**: Suggest `run_in_background: true` for large prompts (>2000 chars)
+- **Model Optimization**: Recommend `model: "sonnet"` for low-complexity tasks using opus
 
 ### Hook Review Policy (v2.57.0)
 
@@ -758,6 +774,7 @@ EXECUTE → VALIDATE → Quality Passed?
 | Plan State v2 Schema | `.claude/schemas/plan-state-v2.schema.json` |
 | v2.51 Improvements | `.claude/v2.51-improvements-analysis.md` |
 | v2.55 Auto-Learning | `~/.claude/hooks/orchestrator-auto-learn.sh` |
+| v2.62 Task Primitive | `.claude/hooks/verification-subagent.sh` |
 
 ---
 

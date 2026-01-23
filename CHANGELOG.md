@@ -7,6 +7,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.62.0] - 2026-01-23
+
+### Added (Claude Code Task Primitive Integration)
+
+**Severity**: ENHANCEMENT
+**Impact**: Major integration with Claude Code's evolved Task primitive (from TodoWrite)
+
+#### Overview
+
+This release integrates Claude Code Cowork Mode's new Task primitive patterns:
+- **Verification via subagents** after step completion
+- **Global task sync** with `~/.claude/tasks/<session>/`
+- **Parallelization detection** for independent tasks
+- **Context-hiding** optimization for high-token tasks
+
+#### New Features
+
+| Feature | Description |
+|---------|-------------|
+| **Verification Pattern** | Spawn verification subagent after each step completion |
+| **Global Task Sync** | Bidirectional sync with `~/.claude/tasks/<session>/` |
+| **Subagent Optimizer** | Auto-detect parallelization and context-hiding opportunities |
+| **Schema v2.62.0** | Added `verification` object to steps |
+
+#### Schema Changes
+
+```json
+{
+  "steps": {
+    "step-1": {
+      "verification": {
+        "required": true,
+        "method": "subagent",
+        "agent": "code-reviewer",
+        "status": "pending|in_progress|passed|failed|skipped",
+        "result": { "passed": true, "message": "..." },
+        "task_id": "subagent-task-id"
+      }
+    }
+  }
+}
+```
+
+#### New Hooks
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `global-task-sync.sh` | PostToolUse (TodoWrite, TaskUpdate) | Sync with `~/.claude/tasks/` |
+| `verification-subagent.sh` | PostToolUse (TaskUpdate) | Suggest verification after completion |
+| `task-orchestration-optimizer.sh` | PreToolUse (Task) | Optimize Task tool usage |
+
+#### New Workflow
+
+```
+EXECUTE-WITH-SYNC
+    6a. LSA-VERIFY
+    6b. IMPLEMENT
+    6c. PLAN-SYNC
+    6d. MICRO-GATE
+    6e. VERIFICATION-SUBAGENT   ← NEW
+
+VALIDATE
+    7a-d. (existing)
+    7e. COLLECT-VERIFICATIONS   ← NEW
+```
+
+#### Files Changed
+
+| File | Change |
+|------|--------|
+| `.claude/schemas/plan-state-v2.schema.json` | Added verification object, version 2.62.0 |
+| `.claude/hooks/global-task-sync.sh` | NEW - Global task sync |
+| `.claude/hooks/verification-subagent.sh` | NEW - Verification pattern |
+| `.claude/hooks/task-orchestration-optimizer.sh` | NEW - Subagent optimization |
+
+#### References
+
+- Tweet: @claudecoders on Cowork Mode Task primitive
+- Context7 Claude Code documentation
+
+---
+
 ## [2.61.0] - 2026-01-22
 
 ### Added (Adversarial Council v2.61 - LLM-Council Enhanced)
