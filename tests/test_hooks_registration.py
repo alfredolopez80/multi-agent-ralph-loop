@@ -41,10 +41,10 @@ HOOK_REGISTRY = {
         "version": "2.35",
         "cli_only": False,
     },
-    "quality-gates.sh": {
+    "quality-gates-v2.sh": {
         "event": "PostToolUse",
         "matchers": ["Edit", "Write"],
-        "version": "2.35",
+        "version": "2.46",  # Updated from quality-gates.sh
         "cli_only": False,
     },
     "git-safety-guard.py": {
@@ -119,18 +119,11 @@ HOOK_REGISTRY = {
         "version": "2.43",
         "cli_only": False,
     },
-    "sentry-check-status.sh": {
-        "event": "PostToolUse",
-        "matchers": ["Bash"],
-        "version": "2.43",
-        "cli_only": False,
-    },
-    "sentry-correlation.sh": {
-        "event": "PostToolUse",
-        "matchers": ["Bash"],
-        "version": "2.43",
-        "cli_only": False,
-    },
+    # NOTE: sentry-check-status.sh and sentry-correlation.sh were archived in v2.60
+    # They are now in ~/.claude/hooks-archive/utilities/
+    # Keeping entries commented for reference:
+    # "sentry-check-status.sh": {"event": "PostToolUse", "version": "2.43", "cli_only": True},
+    # "sentry-correlation.sh": {"event": "PostToolUse", "version": "2.43", "cli_only": True},
     "skill-validator.sh": {
         "event": "PreToolUse",
         "matchers": ["Skill"],
@@ -194,12 +187,9 @@ HOOK_REGISTRY = {
         "version": "2.44",
         "cli_only": True,  # Sourced by other scripts, not auto-triggered
     },
-    "orchestrator-helper.sh": {
-        "event": None,
-        "matchers": None,
-        "version": "2.43",
-        "cli_only": True,  # Invoked by orchestrator command
-    },
+    # NOTE: orchestrator-helper.sh was archived in v2.60
+    # It is now in ~/.ralph/backups/ - functionality merged into orchestrator skill
+    # "orchestrator-helper.sh": {"event": None, "version": "2.43", "cli_only": True},
     "plan-state-init.sh": {
         "event": None,
         "matchers": None,
@@ -552,12 +542,17 @@ class TestV2451Hooks:
 
 
 class TestV243SentryHooks:
-    """Test v2.43 Sentry integration hooks."""
+    """Test v2.43 Sentry integration hooks.
 
-    SENTRY_HOOKS = ["sentry-check-status.sh", "sentry-correlation.sh", "sentry-report.sh"]
+    NOTE: sentry-check-status.sh and sentry-correlation.sh were archived in v2.60.
+    Only sentry-report.sh remains active.
+    """
+
+    # Only sentry-report.sh is still active (v2.60+)
+    SENTRY_HOOKS = ["sentry-report.sh"]
 
     def test_sentry_hooks_exist(self, global_hooks_dir):
-        """Sentry hooks should exist."""
+        """Active Sentry hooks should exist."""
         missing = []
         for hook in self.SENTRY_HOOKS:
             if not os.path.exists(os.path.join(global_hooks_dir, hook)):
@@ -567,18 +562,9 @@ class TestV243SentryHooks:
 
     def test_sentry_hooks_registered(self, registered_hooks):
         """Sentry hooks should be registered."""
-        post_hooks = [h["name"] for h in registered_hooks.get("PostToolUse", [])]
         stop_hooks = [h["name"] for h in registered_hooks.get("Stop", [])]
 
-        # sentry-check-status.sh and sentry-correlation.sh -> PostToolUse
-        assert "sentry-check-status.sh" in post_hooks, (
-            "sentry-check-status.sh not registered in PostToolUse"
-        )
-        assert "sentry-correlation.sh" in post_hooks, (
-            "sentry-correlation.sh not registered in PostToolUse"
-        )
-
-        # sentry-report.sh -> Stop
+        # sentry-report.sh -> Stop (only active sentry hook after v2.60)
         assert "sentry-report.sh" in stop_hooks, (
             "sentry-report.sh not registered in Stop"
         )
