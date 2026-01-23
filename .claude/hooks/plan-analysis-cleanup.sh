@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
-# VERSION: 2.57.5
+# VERSION: 2.62.3
 # plan-analysis-cleanup.sh
+# Hook: PostToolUse (ExitPlanMode)
 # Cleans up orchestrator analysis file after ExitPlanMode
-# Trigger: PostToolUse matcher: "ExitPlanMode"
+# Output: {"continue": true}
 
 set -euo pipefail
 umask 077
+
+# Error trap: Always output valid JSON for PostToolUse
+trap 'echo "{\"continue\": true}"' ERR EXIT
 
 ANALYSIS_FILE=".claude/orchestrator-analysis.md"
 BACKUP_DIR="${HOME}/.ralph/analysis"

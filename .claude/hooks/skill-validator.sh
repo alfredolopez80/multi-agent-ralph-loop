@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # skill-validator.sh - Validate YAML-based skills before execution
-# v2.32 - Part of lightweight skills system (H70-inspired)
+# Hook: PreToolUse (Skill)
+# v2.62.3 - Part of lightweight skills system (H70-inspired)
 #
 # This hook runs on PreToolUse/Skill to validate:
 # - YAML structure and syntax
@@ -8,12 +9,16 @@
 # - Regex patterns in validations and sharp-edges
 # - File references (validations_ref, sharp_edges_ref, collaboration_ref)
 # - Collaboration rules integrity
+# Output: {"decision": "allow"} or {"decision": "block", "reason": "..."}
 
-# VERSION: 2.57.5
+# VERSION: 2.62.3
 set -euo pipefail
 
+# Error trap: Always output valid JSON for PreToolUse
+trap 'echo "{\"decision\": \"allow\"}"' ERR EXIT
+
 # Configuration
-SKILLS_DIR="${HOME}/.ralph/skills"
+SKILLS_DIR="${HOME}/.claude/skills"
 LOG_FILE="${HOME}/.ralph/skill-validation.log"
 VALIDATION_TIMEOUT=10
 
@@ -298,6 +303,7 @@ except:
     if [[ -z "$skill_name" ]]; then
         log_error "No skill name provided in hook input"
         echo "⚠️  Skill validator: No skill name provided" >&2
+        echo '{"decision": "allow"}'
         exit 0  # Don't block if no skill specified
     fi
 
@@ -306,6 +312,7 @@ except:
 
     if [[ -z "$skill_name" ]]; then
         log_error "Skill name became empty after sanitization (contained only invalid characters)"
+        echo '{"decision": "allow"}'
         exit 0
     fi
 
@@ -313,9 +320,11 @@ except:
     # Source this script to make functions available
     if timeout "$VALIDATION_TIMEOUT" bash -c "source '${BASH_SOURCE[0]}' && validate_skill '$skill_name'"; then
         log_success "Validation completed successfully for: $skill_name"
+        echo '{"decision": "allow"}'
         exit 0
     else
         log_error "Validation failed or timed out for: $skill_name"
+        echo '{"decision": "block", "reason": "Skill validation failed"}'
         exit 1  # Block skill execution on validation failure
     fi
 }
