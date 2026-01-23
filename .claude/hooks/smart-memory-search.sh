@@ -19,8 +19,9 @@
 #   - recommended_patterns: Best practices from history
 #   - fork_suggestions: Top 5 sessions to fork from
 #
-# VERSION: 2.57.5 (Security Hardened + Portability)
-# Fixes: SECURITY-001, 002, 003, ADV-001, ADV-002, ADV-003, ADV-004, ADV-005, ADV-006
+# VERSION: 2.57.8 (Security Hardened + Portability + macOS Compatibility)
+# Fixes: SECURITY-001, 002, 003, ADV-001, ADV-002, ADV-003, ADV-004, ADV-005, ADV-006, GAP-MEM-001
+# v2.57.6: FIX GAP-MEM-001 - macOS realpath doesn't support -e flag, use glob instead of regex
 # v2.47.3: Removed unused variable, fixed $KEYWORDS_SAFE usage, date portability, noclobber
 
 set -euo pipefail
@@ -66,7 +67,7 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 
 # Only trigger on Task tool (orchestration start)
 if [[ "$TOOL_NAME" != "Task" ]]; then
-    echo '{"continue": true}'
+    echo '{"decision": "allow"}'
     exit 0
 fi
 
@@ -81,7 +82,7 @@ if [[ "$TASK_TYPE" != "orchestrator" ]] && \
    [[ "$TASK_TYPE" != "gap-analyst" ]] && \
    [[ "$TASK_TYPE" != "Explore" ]] && \
    [[ "$TASK_TYPE" != "general-purpose" ]]; then
-    echo '{"continue": true}'
+    echo '{"decision": "allow"}'
     exit 0
 fi
 
@@ -120,15 +121,21 @@ escape_for_grep() {
 }
 
 # Validate file path is within allowed base directory (SECURITY-002 fix)
+# v2.57.6: FIX GAP-MEM-001 - macOS realpath doesn't support -e flag
 validate_file_path() {
     local file="$1"
     local base_dir="$2"
 
-    # Resolve symlinks and canonicalize
+    # FIX GAP-MEM-001: macOS realpath doesn't support -e flag
+    # Check file exists first, then resolve path
     local real_path
-    real_path=$(realpath -e "$file" 2>/dev/null || echo "")
+    if [[ -e "$file" ]]; then
+        real_path=$(realpath "$file" 2>/dev/null || echo "")
+    else
+        real_path=""
+    fi
 
-    # Verify path is under base directory
+    # Verify path was resolved
     if [[ -z "$real_path" ]]; then
         echo "ERROR: Cannot resolve path: $file" >> "$LOG_FILE"
         return 1
@@ -137,7 +144,9 @@ validate_file_path() {
     # Check if real path starts with base directory
     local real_base
     real_base=$(realpath "$base_dir" 2>/dev/null || echo "")
-    if [[ -z "$real_base" ]] || [[ ! "$real_path" =~ ^"$real_base" ]]; then
+
+    # FIX GAP-MEM-001: Use glob pattern instead of regex for portability
+    if [[ -z "$real_base" ]] || [[ "$real_path" != "${real_base}"* ]]; then
         echo "WARNING: Path traversal blocked: $file -> $real_path" >> "$LOG_FILE"
         return 1
     fi
@@ -199,6 +208,9 @@ create_initial_file "$LEDGERS_FILE" '{"results": [], "source": "ledgers"}'
 
 # Task 1: claude-mem MCP search (if available)
 (
+    # GAP-MEM-001 FIX v2.57.7: Disable set -e inside subshell to prevent premature exit
+    set +e
+
     echo "  [1/4] Searching claude-mem..." >> "$LOG_FILE"
 
     # Check if claude-mem MCP is available by looking for cached hints
@@ -215,8 +227,9 @@ create_initial_file "$LEDGERS_FILE" '{"results": [], "source": "ledgers"}'
         if [[ -n "$MATCHES" ]]; then
             # SECURITY-002 fix: Validate file paths before reading
             while read -r file; do
-                validated=$(validate_file_path "$file" "$CLAUDE_MEM_DATA_DIR")
-                if [[ $? -eq 0 ]] && [[ -n "$validated" ]]; then
+                # GAP-MEM-001 FIX: Add || true to prevent set -e from killing subshell
+                validated=$(validate_file_path "$file" "$CLAUDE_MEM_DATA_DIR" 2>/dev/null) || validated=""
+                if [[ -n "$validated" ]]; then
                     cat "$validated" 2>/dev/null || true
                 fi
             done <<< "$MATCHES" | jq -s '{results: ., source: "claude-mem"}' > "$CLAUDE_MEM_FILE" 2>/dev/null || \
@@ -230,6 +243,9 @@ PID1=$!
 
 # Task 2: memvid search (if available)
 (
+    # GAP-MEM-001 FIX v2.57.7: Disable set -e inside subshell to prevent premature exit
+    set +e
+
     echo "  [2/4] Searching memvid..." >> "$LOG_FILE"
 
     MEMVID_FILE_PATH="$HOME/.ralph/memory/ralph-memory.mv2"
@@ -250,6 +266,9 @@ PID2=$!
 
 # Task 3: handoffs search (grep-based, fast)
 (
+    # GAP-MEM-001 FIX v2.57.7: Disable set -e inside subshell to prevent premature exit
+    set +e
+
     echo "  [3/4] Searching handoffs..." >> "$LOG_FILE"
 
     HANDOFFS_DIR="$HOME/.ralph/handoffs"
@@ -270,8 +289,9 @@ PID2=$!
             RESULTS="[]"
             while read -r file; do
                 # SECURITY-002 fix: Validate file path before processing
-                validated=$(validate_file_path "$file" "$HANDOFFS_DIR")
-                if [[ $? -eq 0 ]] && [[ -n "$validated" ]]; then
+                # GAP-MEM-001 FIX: Add || true to prevent set -e from killing subshell
+                validated=$(validate_file_path "$file" "$HANDOFFS_DIR" 2>/dev/null) || validated=""
+                if [[ -n "$validated" ]]; then
                     # Extract session ID and summary
                     SESSION_NAME=$(basename "$(dirname "$validated")")
                     TIMESTAMP=$(basename "$validated" | sed 's/handoff-//; s/.md$//')
@@ -295,6 +315,9 @@ PID3=$!
 
 # Task 4: ledgers search (grep-based, fast)
 (
+    # GAP-MEM-001 FIX v2.57.7: Disable set -e inside subshell to prevent premature exit
+    set +e
+
     echo "  [4/4] Searching ledgers..." >> "$LOG_FILE"
 
     LEDGERS_DIR="$HOME/.ralph/ledgers"
@@ -315,8 +338,9 @@ PID3=$!
             RESULTS="[]"
             while read -r file; do
                 # SECURITY-002 fix: Validate file path before processing
-                validated=$(validate_file_path "$file" "$LEDGERS_DIR")
-                if [[ $? -eq 0 ]] && [[ -n "$validated" ]]; then
+                # GAP-MEM-001 FIX: Add || true to prevent set -e from killing subshell
+                validated=$(validate_file_path "$file" "$LEDGERS_DIR" 2>/dev/null) || validated=""
+                if [[ -n "$validated" ]]; then
                     SESSION_NAME=$(basename "$validated" | sed 's/CONTINUITY_RALPH-//; s/.md$//')
                     CONTENT=$(head -100 "$validated" | sed 's/"/\\"/g' | tr '\n' ' ')
 
@@ -336,8 +360,10 @@ PID3=$!
 PID4=$!
 
 # Wait for ALL parallel tasks (max 30 seconds)
-echo "  Waiting for parallel memory searches (max 30s)..." >> "$LOG_FILE"
-timeout 30 wait $PID1 $PID2 $PID3 $PID4 2>/dev/null || true
+# GAP-MEM-001 FIX v2.57.8: timeout cannot work with wait built-in (PIDs not children of timeout's shell)
+# Use direct wait instead - operations are fast (<1s each) and don't need timeout
+echo "  Waiting for parallel memory searches..." >> "$LOG_FILE"
+wait $PID1 $PID2 $PID3 $PID4 2>/dev/null || true
 echo "  All memory searches completed" >> "$LOG_FILE"
 
 # ═══════════════════════════════════════════════════════════════════════════════
