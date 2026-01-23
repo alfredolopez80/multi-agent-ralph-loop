@@ -9,6 +9,7 @@
 ![Hooks](https://img.shields.io/badge/hooks-52%20registered-green)
 ![Skills](https://img.shields.io/badge/skills-266%2B-orange)
 ![Error Traps](https://img.shields.io/badge/error%20traps-44%2F52-brightgreen)
+![Task Primitive](https://img.shields.io/badge/Task%20Primitive-integrated-blue)
 
 ---
 
@@ -29,13 +30,14 @@
 7. [Commands Reference](#commands-reference)
 8. [Ralph Loop Pattern](#ralph-loop-pattern)
 9. [Quality-First Validation](#quality-first-validation)
-10. [Claude Code Skills Ecosystem](#claude-code-skills-ecosystem)
-11. [Testing](#testing)
-12. [Deployment](#deployment)
-13. [Troubleshooting](#troubleshooting)
-14. [Contributing](#contributing)
-15. [License](#license)
-16. [Resources](#resources)
+10. [Claude Code Task Primitive Integration](#claude-code-task-primitive-integration)
+11. [Claude Code Skills Ecosystem](#claude-code-skills-ecosystem)
+12. [Testing](#testing)
+13. [Deployment](#deployment)
+14. [Troubleshooting](#troubleshooting)
+15. [Contributing](#contributing)
+16. [License](#license)
+17. [Resources](#resources)
 
 ---
 
@@ -62,6 +64,8 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 - **Smart Skill Reminder v2.0 (v2.60)**: Context-aware skill suggestions with session gating and rate limiting
 - **Adversarial Council v2.61**: LLM-council enhanced multi-model review with Python orchestration, provider-specific extraction, exponential backoff, and security hardening (command allowlist, path traversal prevention)
 - **Adversarial Hook Audit (v2.62)**: Comprehensive multi-model audit (Claude Opus, Sonnet, MiniMax, Codex, Gemini) with iterative loop until zero issues
+- **Task Primitive Integration (v2.62)**: Full integration with Claude Code's Task architecture (TaskCreate, TaskUpdate, TaskList), bidirectional sync, parallelization detection, and verification subagent pattern
+- **Repository Isolation Rule (v2.62.3)**: Prevents accidental work in wrong repository with hook enforcement
 - **Schema v2 Compliance (v2.62.3)**: Plan-state schema updated with `oneOf` for backward compatibility (v1 array + v2 object formats)
 - **Error Traps (v2.62.3)**: All 44 registered hooks now have proper error traps guaranteeing valid JSON output
 - **Race Condition Fixes (v2.62.3)**: P0/P1 memory system race conditions fixed with `flock` atomic writes
@@ -83,6 +87,8 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 | **Handoff API** | OpenAI Agents SDK-style agent-to-agent transfers | v2.51 |
 | **Event-Driven Engine** | LangGraph-style event bus with WAIT-ALL barriers | v2.51 |
 | **Local Observability** | Query-based status and traceability without external services | v2.52 |
+| **Task Primitive** | Claude Code Task architecture integration with bidirectional sync | v2.62 |
+| **Repository Isolation** | Prevents accidental work in external repositories | v2.62.3 |
 
 ### Memory System
 
@@ -575,7 +581,9 @@ Claude Code hooks execute at specific lifecycle events:
 | `smart-memory-search.sh` | Task | Parallel search across memory sources |
 | `procedural-inject.sh` | Task | Inject relevant procedural rules |
 | `agent-memory-auto-init.sh` | Task | Auto-initialize agent memory buffers |
+| `task-orchestration-optimizer.sh` | Task | Detect parallelization and context-hiding opportunities |
 | `lsa-pre-step.sh` | Edit/Write | Pre-step LSA verification |
+| `repo-boundary-guard.sh` | Edit/Write/Bash | Prevent accidental work in external repositories |
 | `checkpoint-smart-save.sh` | Edit/Write | Smart checkpoints on risky edits |
 | `smart-skill-reminder.sh` | Edit/Write | Context-aware skill suggestions (v2.0) |
 
@@ -592,6 +600,8 @@ Claude Code hooks execute at specific lifecycle events:
 | `status-auto-check.sh` | Edit/Write | Show status every 5 ops |
 | `semantic-realtime-extractor.sh` | Edit/Write | Extract semantic facts in real-time |
 | `episodic-auto-convert.sh` | Edit/Write | Convert experiences to episodic memory |
+| `global-task-sync.sh` | TodoWrite/TaskUpdate/TaskCreate | Bidirectional sync with global task storage |
+| `verification-subagent.sh` | TaskUpdate | Spawn verification subagent after step completion |
 
 ### Hook Output Format
 
@@ -865,6 +875,157 @@ Stage 3: CONSISTENCY → Linting (ADVISORY - not blocking)
 
 ---
 
+## Claude Code Task Primitive Integration
+
+### Overview (v2.62)
+
+Multi-Agent Ralph Loop fully integrates with Claude Code's **Task Primitive** architecture, migrating from the deprecated `TodoWrite` tool to the modern `TaskCreate`, `TaskUpdate`, and `TaskList` tools. This enables:
+
+- **Bidirectional Sync**: Local `plan-state.json` syncs with Claude Code's global task storage
+- **Parallelization Detection**: Auto-detect independent tasks that can run concurrently
+- **Verification Subagents**: Automatic verification spawning after step completion
+- **Context Hiding**: Reduce context pollution with background execution
+
+### Task Primitive Hooks (3)
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `global-task-sync.sh` | PostToolUse (TodoWrite, TaskUpdate, TaskCreate) | Bidirectional sync with `~/.claude/tasks/<session>/` |
+| `task-orchestration-optimizer.sh` | PreToolUse (Task) | Detect parallelization and context-hiding opportunities |
+| `verification-subagent.sh` | PostToolUse (TaskUpdate) | Spawn verification subagent after step completion |
+
+### Bidirectional Task Sync
+
+The `global-task-sync.sh` hook implements bidirectional synchronization:
+
+```
+Local Plan-State                    Global Task Storage
+┌────────────────────┐              ┌────────────────────┐
+│ .claude/           │   ←─────→   │ ~/.claude/tasks/   │
+│   plan-state.json  │     SYNC     │   <session>/       │
+│                    │              │     tasks.json     │
+└────────────────────┘              └────────────────────┘
+```
+
+**Features**:
+- Session ID detection from `$CLAUDE_SESSION_ID`, plan_id, or fallback generation
+- Atomic writes with `flock` locking (P1 race condition fix)
+- Timestamp-based conflict resolution
+- Status mapping: `completed`/`verified` → `completed`, `in_progress` → `in_progress`, else → `pending`
+
+**Task Format Conversion**:
+```json
+{
+  "session_id": "ralph-20260123-12345",
+  "task": "Implement OAuth2 authentication",
+  "tasks": [
+    {
+      "id": "step1",
+      "subject": "Setup JWT middleware",
+      "status": "completed",
+      "agent": "@security-auditor",
+      "verification": { "status": "passed" }
+    }
+  ],
+  "source": "ralph-v2.62"
+}
+```
+
+### Parallelization Detection
+
+The `task-orchestration-optimizer.sh` hook detects opportunities for parallel execution:
+
+**Detection Criteria**:
+1. **Parallel Phase**: Current phase has `execution_mode: "parallel"`
+2. **Multiple Pending**: 2+ pending tasks in the same phase
+3. **No Dependencies**: Tasks are independent
+
+**Optimization Suggestions**:
+```
+⚡ Parallelization Opportunity Detected
+3 independent tasks can run in parallel:
+- Setup JWT middleware, Configure OAuth providers, Add refresh tokens
+
+Consider launching multiple Task tools in a single message.
+```
+
+**Additional Optimizations**:
+- **Context-Hiding**: Suggests `run_in_background: true` for prompts > 2000 chars
+- **Model Optimization**: Suggests sonnet for complexity < 5 when opus is used
+- **Pending Verifications**: Warns about unverified steps before proceeding
+
+### Verification Subagent Pattern
+
+The `verification-subagent.sh` hook implements Claude Code's verification pattern:
+
+```
+Step Completed → Check Verification Required → Spawn Subagent
+       ↓                    ↓                        ↓
+   TaskUpdate       Complexity ≥ 7?           Task tool with:
+   status:           OR explicit              - subagent_type: reviewer
+   completed         OR security-related      - run_in_background: true
+                                              - model: sonnet
+```
+
+**Auto-Verification Triggers**:
+| Trigger | Verification Agent |
+|---------|-------------------|
+| Complexity ≥ 7 | `code-reviewer` |
+| Security keywords (auth, token, encrypt) | `security-auditor` |
+| Test keywords (test, spec, coverage) | `test-architect` |
+| Explicit `verification.required: true` | Configured agent |
+
+**Verification Prompt Template**:
+```
+Verify the implementation of step '<step-name>'. Check for:
+1. Correctness - Does it meet requirements?
+2. Quality - Is the code clean and maintainable?
+3. Security - Are there any vulnerabilities?
+4. Edge cases - Are edge cases handled?
+
+Report findings concisely.
+```
+
+### Migration from TodoWrite
+
+The Task Primitive replaces the deprecated `TodoWrite` tool:
+
+| Old (TodoWrite) | New (Task Primitive) | Benefit |
+|-----------------|---------------------|---------|
+| Single-session scope | Global session storage | Persistence across restarts |
+| No sync | Bidirectional sync | Multi-agent awareness |
+| Manual verification | Auto-verification hooks | Quality assurance |
+| Sequential only | Parallel detection | Performance optimization |
+| No background | Context-hiding support | Reduced context pollution |
+
+**Usage Example**:
+
+```bash
+# Old way (deprecated)
+# TodoWrite with internal task list
+
+# New way (Task Primitive)
+TaskCreate:
+  subject: "Implement authentication"
+  description: "Add JWT-based auth with refresh tokens"
+  activeForm: "Implementing authentication"
+
+TaskUpdate:
+  taskId: "task-123"
+  status: "completed"
+  # → Triggers verification-subagent.sh automatically
+```
+
+### Best Practices
+
+1. **Use TaskCreate for new steps**: Creates proper tracking and enables sync
+2. **Update status via TaskUpdate**: Triggers verification hooks
+3. **Check TaskList before new work**: See global task state
+4. **Enable run_in_background for heavy tasks**: Reduces context pollution
+5. **Let hooks handle verification**: Don't manually verify after each step
+
+---
+
 ## Claude Code Skills Ecosystem
 
 ### Available Skills (266+)
@@ -1134,6 +1295,6 @@ This project is licensed under the BSL 1.1 License.
 
 ---
 
-**Version**: 2.60.0
-**Last Updated**: 2026-01-22
-**Next Review**: 2026-02-22
+**Version**: 2.62.3
+**Last Updated**: 2026-01-23
+**Next Review**: 2026-02-23
