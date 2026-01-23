@@ -1,3 +1,4 @@
+#!/bin/bash
 # Procedural Memory Injection (v2.59.2)
 # Hook: PreToolUse (Task)
 # Purpose: Inject relevant procedural rules into subagent context
