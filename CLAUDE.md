@@ -1,10 +1,10 @@
-# Multi-Agent Ralph v2.65.2
+# Multi-Agent Ralph v2.66.5
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
 **Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, checkpoints, agent handoffs, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, and **adversarial-validated hook system**.
 
-> **v2.65.2**: Plan Lifecycle CLI (`ralph plan archive/reset/show/history/restore`). v2.65.1: Task Primitive sync with v1/v2 format detection. v2.65.0: Cross-platform Node.js hook library + Eval Harness (pass@k metrics) + Dynamic Contexts. Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) analysis.
+> **v2.66.5**: DUP-001 fix - Shared domain-classifier.sh library eliminates code duplication. RACE-001/SEC-040/DATA-001 fixes. v2.66.4: SEC-039 PreToolUse JSON format fix. v2.66.3: macOS portability. v2.66.2: Security hardening. Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) analysis.
 
 ---
 
