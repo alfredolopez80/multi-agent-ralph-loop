@@ -1,10 +1,10 @@
-# Multi-Agent Ralph v2.66.5
+# Multi-Agent Ralph v2.66.6
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
 **Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, checkpoints, agent handoffs, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, and **adversarial-validated hook system**.
 
-> **v2.66.5**: DUP-001 fix - Shared domain-classifier.sh library eliminates code duplication. RACE-001/SEC-040/DATA-001 fixes. v2.66.4: SEC-039 PreToolUse JSON format fix. v2.66.3: macOS portability. v2.66.2: Security hardening. Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) analysis.
+> **v2.66.6**: Adversarial validation loop - 11 fixes (SEC-041 to SEC-049: Python injection, JSON traps, path validation, macOS compatibility, hook registration). v2.66.5: DUP-001 shared library. v2.66.4: SEC-039 PreToolUse JSON. v2.66.3: macOS portability. Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) analysis.
 
 ---
 
