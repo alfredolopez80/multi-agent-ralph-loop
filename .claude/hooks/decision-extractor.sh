@@ -1,5 +1,5 @@
 #!/bin/bash
-# Decision Extractor Hook (v2.57.0)
+# Decision Extractor Hook (v2.62.3)
 # Hook: PostToolUse (Edit|Write)
 # Purpose: Extract architectural decisions from code changes
 #
@@ -10,9 +10,11 @@
 # - Design patterns used
 #
 # v2.57.0: Also writes to SEMANTIC memory (not just episodic)
-# Fixes Issue #7 - ensures patterns are persisted for future reference
+# v2.57.4: Uses atomic write helper to prevent race conditions (GAP-003 fix)
+# v2.62.3: P0 FIX - Use semantic-write-helper.sh for all semantic writes
+#          P1 FIX - Exclude JSON/YAML from pattern detection (config files only)
 #
-# VERSION: 2.57.5
+# VERSION: 2.62.3
 # SECURITY: SEC-006 compliant
 
 set -euo pipefail
@@ -49,8 +51,15 @@ FILE_NAME=$(basename "$FILE_PATH")
 FILE_EXT="${FILE_NAME##*.}"
 
 # Only process source code files
+# P1 FIX: JSON/YAML/TOML only processed for config file detection, not pattern detection
+IS_CONFIG_FILE=false
 case "$FILE_EXT" in
-    py|js|ts|tsx|jsx|go|rs|java|kt|rb|sh|bash|yaml|yml|json|toml)
+    py|js|ts|tsx|jsx|go|rs|java|kt|rb|sh|bash)
+        # Source code - full pattern detection
+        ;;
+    yaml|yml|json|toml)
+        # Config files - only detect config changes, not code patterns
+        IS_CONFIG_FILE=true
         ;;
     *)
         echo '{"continue": true}'
@@ -104,27 +113,32 @@ fi
     # Detect architectural patterns
     CONTENT_LOWER=$(echo "$CONTENT" | tr '[:upper:]' '[:lower:]')
 
-    # 1. Design Patterns
+    # Initialize arrays
     PATTERNS=()
-    echo "$CONTENT_LOWER" | grep -qE 'singleton|instance.*=.*null|_instance' && PATTERNS+=("Singleton pattern detected")
-    echo "$CONTENT_LOWER" | grep -qE 'factory|create.*instance|build.*object' && PATTERNS+=("Factory pattern detected")
-    echo "$CONTENT_LOWER" | grep -qE 'observer|subscribe|publish|emit|event.*listener' && PATTERNS+=("Observer pattern detected")
-    echo "$CONTENT_LOWER" | grep -qE 'strategy|interface.*execute|algorithm' && PATTERNS+=("Strategy pattern detected")
-    echo "$CONTENT_LOWER" | grep -qE 'decorator|@.*\(|wrapper' && PATTERNS+=("Decorator pattern detected")
-    echo "$CONTENT_LOWER" | grep -qE 'adapter|convert|transform|map.*to' && PATTERNS+=("Adapter pattern detected")
-    echo "$CONTENT_LOWER" | grep -qE 'repository|.*repository|data.*access' && PATTERNS+=("Repository pattern detected")
-    echo "$CONTENT_LOWER" | grep -qE 'middleware|next\(\)|chain' && PATTERNS+=("Middleware pattern detected")
-
-    # 2. Architectural Decisions
     ARCH_DECISIONS=()
-    echo "$CONTENT_LOWER" | grep -qE 'async|await|promise|future' && ARCH_DECISIONS+=("Uses async/await for asynchronous operations")
-    echo "$CONTENT_LOWER" | grep -qE 'try.*catch|except|error.*handling' && ARCH_DECISIONS+=("Implements error handling")
-    echo "$CONTENT_LOWER" | grep -qE 'cache|redis|memcache|lru' && ARCH_DECISIONS+=("Implements caching strategy")
-    echo "$CONTENT_LOWER" | grep -qE 'rate.*limit|throttle|debounce' && ARCH_DECISIONS+=("Implements rate limiting")
-    echo "$CONTENT_LOWER" | grep -qE 'retry|backoff|resilience' && ARCH_DECISIONS+=("Implements retry/resilience pattern")
-    echo "$CONTENT_LOWER" | grep -qE 'validate|schema|zod|joi|pydantic' && ARCH_DECISIONS+=("Uses schema validation")
-    echo "$CONTENT_LOWER" | grep -qE 'log|logger|logging|winston|pino' && ARCH_DECISIONS+=("Implements structured logging")
-    echo "$CONTENT_LOWER" | grep -qE 'metric|prometheus|statsd|telemetry' && ARCH_DECISIONS+=("Implements metrics/observability")
+
+    # P1 FIX: Only detect patterns in source code, not JSON/YAML/TOML config files
+    if [[ "$IS_CONFIG_FILE" != "true" ]]; then
+        # 1. Design Patterns
+        echo "$CONTENT_LOWER" | grep -qE 'singleton|instance.*=.*null|_instance' && PATTERNS+=("Singleton pattern detected")
+        echo "$CONTENT_LOWER" | grep -qE 'factory|create.*instance|build.*object' && PATTERNS+=("Factory pattern detected")
+        echo "$CONTENT_LOWER" | grep -qE 'observer|subscribe|publish|emit|event.*listener' && PATTERNS+=("Observer pattern detected")
+        echo "$CONTENT_LOWER" | grep -qE 'strategy|interface.*execute|algorithm' && PATTERNS+=("Strategy pattern detected")
+        echo "$CONTENT_LOWER" | grep -qE 'decorator|@.*\(|wrapper' && PATTERNS+=("Decorator pattern detected")
+        echo "$CONTENT_LOWER" | grep -qE 'adapter|convert|transform|map.*to' && PATTERNS+=("Adapter pattern detected")
+        echo "$CONTENT_LOWER" | grep -qE 'repository|.*repository|data.*access' && PATTERNS+=("Repository pattern detected")
+        echo "$CONTENT_LOWER" | grep -qE 'middleware|next\(\)|chain' && PATTERNS+=("Middleware pattern detected")
+
+        # 2. Architectural Decisions (only for source code)
+        echo "$CONTENT_LOWER" | grep -qE 'async|await|promise|future' && ARCH_DECISIONS+=("Uses async/await for asynchronous operations")
+        echo "$CONTENT_LOWER" | grep -qE 'try.*catch|except|error.*handling' && ARCH_DECISIONS+=("Implements error handling")
+        echo "$CONTENT_LOWER" | grep -qE 'cache|redis|memcache|lru' && ARCH_DECISIONS+=("Implements caching strategy")
+        echo "$CONTENT_LOWER" | grep -qE 'rate.*limit|throttle|debounce' && ARCH_DECISIONS+=("Implements rate limiting")
+        echo "$CONTENT_LOWER" | grep -qE 'retry|backoff|resilience' && ARCH_DECISIONS+=("Implements retry/resilience pattern")
+        echo "$CONTENT_LOWER" | grep -qE 'validate|schema|zod|joi|pydantic' && ARCH_DECISIONS+=("Uses schema validation")
+        echo "$CONTENT_LOWER" | grep -qE 'log|logger|logging|winston|pino' && ARCH_DECISIONS+=("Implements structured logging")
+        echo "$CONTENT_LOWER" | grep -qE 'metric|prometheus|statsd|telemetry' && ARCH_DECISIONS+=("Implements metrics/observability")
+    fi
 
     # 3. Configuration Files
     if [[ "$FILE_NAME" == "package.json" ]] || [[ "$FILE_NAME" == "pyproject.toml" ]] || [[ "$FILE_NAME" == "Cargo.toml" ]]; then
@@ -162,41 +176,45 @@ fi
 }
 EPISODEJSON
 
-        # Update index
+        # Update index (P0 FIX: with flock for atomic write)
         INDEX_FILE="${EPISODES_DIR}/index.json"
+        INDEX_LOCK="${EPISODES_DIR}/.index.lock"
         if [[ ! -f "$INDEX_FILE" ]]; then
             echo '{}' > "$INDEX_FILE"
         fi
 
-        jq --arg id "$EPISODE_ID" \
-           --arg ts "$TIMESTAMP" \
-           --arg file "$FILE_PATH" \
-           '. + {($id): {"timestamp": $ts, "file": $file, "type": "decision"}}' \
-           "$INDEX_FILE" > "${INDEX_FILE}.tmp" && mv "${INDEX_FILE}.tmp" "$INDEX_FILE"
+        # Use flock for atomic index update
+        (
+            flock -x 200 || { echo "[$(date -Iseconds)] ERROR: Could not acquire index lock"; exit 1; }
+            jq --arg id "$EPISODE_ID" \
+               --arg ts "$TIMESTAMP" \
+               --arg file "$FILE_PATH" \
+               '. + {($id): {"timestamp": $ts, "file": $file, "type": "decision"}}' \
+               "$INDEX_FILE" > "${INDEX_FILE}.tmp" && mv "${INDEX_FILE}.tmp" "$INDEX_FILE"
+        ) 200>"$INDEX_LOCK"
 
         echo "[$(date -Iseconds)] Created episode: $EPISODE_ID with $TOTAL_DECISIONS decisions"
 
-        # v2.57.0: Also write patterns and decisions to semantic memory
+        # v2.62.3: Use semantic-write-helper.sh for atomic writes (P0 FIX)
+        SEMANTIC_WRITE_HELPER="${HOME}/.claude/hooks/semantic-write-helper.sh"
         SEMANTIC_ADDED=0
 
-        # Helper function to add semantic fact
+        # Helper function to add semantic fact using atomic write helper
         add_semantic_fact() {
             local content="$1"
             local category="$2"
 
-            # Check if fact already exists
-            local EXISTS
-            EXISTS=$(jq -r --arg f "$content" '.facts[] | select(.content == $f) | .id' "$SEMANTIC_FILE" 2>/dev/null || echo "")
-            if [[ -z "$EXISTS" ]]; then
-                local FACT_ID="sem-$(date +%s)-$RANDOM"
-                jq --arg id "$FACT_ID" \
-                   --arg content "$content" \
-                   --arg cat "$category" \
-                   --arg ts "$TIMESTAMP" \
-                   --arg file "$FILE_PATH" \
-                   '.facts += [{"id": $id, "content": $content, "category": $cat, "timestamp": $ts, "source": "decision-extract", "file": $file}]' \
-                   "$SEMANTIC_FILE" > "${SEMANTIC_FILE}.tmp" && mv "${SEMANTIC_FILE}.tmp" "$SEMANTIC_FILE"
-                SEMANTIC_ADDED=$((SEMANTIC_ADDED + 1))
+            if [[ -x "$SEMANTIC_WRITE_HELPER" ]]; then
+                local result
+                result=$("$SEMANTIC_WRITE_HELPER" --add \
+                    "$(jq -n --arg c "$content" --arg cat "$category" --arg f "$FILE_PATH" \
+                        '{content: $c, category: $cat, file: $f, source: "decision-extract"}')" 2>&1)
+
+                if echo "$result" | grep -q "^ADDED:"; then
+                    SEMANTIC_ADDED=$((SEMANTIC_ADDED + 1))
+                fi
+            else
+                echo "[$(date -Iseconds)] WARNING: semantic-write-helper.sh not found, skipping semantic write"
             fi
         }
 
@@ -212,7 +230,7 @@ EPISODEJSON
             add_semantic_fact "$decision" "architectural_decisions"
         done
 
-        echo "[$(date -Iseconds)] Also added $SEMANTIC_ADDED facts to semantic memory"
+        echo "[$(date -Iseconds)] Also added $SEMANTIC_ADDED facts to semantic memory (via atomic helper)"
     else
         echo "[$(date -Iseconds)] No architectural decisions detected"
     fi

@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.62.3] - 2026-01-23
+
+### Fixed (Memory System Race Condition)
+
+**Severity**: CRITICAL (P0) + HIGH (P1)
+**Impact**: Prevents data corruption in semantic memory and reduces false positives
+
+#### P0 Fix: Race Condition in decision-extractor.sh
+
+- `decision-extractor.sh` now uses `semantic-write-helper.sh` for atomic writes
+- Added `flock` protection for `index.json` updates
+- Prevents concurrent write corruption in episodic memory index
+
+#### P1 Fix: False Positives in Pattern Detection
+
+- JSON/YAML/TOML files now excluded from design pattern detection
+- These file types only trigger config file change detection
+- Eliminates false positives like "Factory pattern detected" in package.json
+
+#### Technical Details
+
+| Change | Before | After |
+|--------|--------|-------|
+| Semantic writes | Direct jq read-modify-write | Via `semantic-write-helper.sh` with flock |
+| Index writes | No locking | flock on `.index.lock` |
+| Config file patterns | All patterns | Config changes only |
+
+---
+
 ## [2.62.2] - 2026-01-23
 
 ### Fixed (PreToolUse Hook JSON Format Standardization)
