@@ -1,10 +1,10 @@
-# Multi-Agent Ralph v2.62.3
+# Multi-Agent Ralph v2.65.2
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, checkpoints, agent handoffs, local observability, autonomous self-improvement, **Claude Code Task Primitive integration**, and **adversarial-validated hook system**.
+**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, checkpoints, agent handoffs, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, and **adversarial-validated hook system**.
 
-> **v2.62.3**: All 44 registered hooks have error traps. Schema v2 supports backward compatibility via `oneOf`. P0/P1 race conditions fixed with `flock` atomic writes.
+> **v2.65.2**: Plan Lifecycle CLI (`ralph plan archive/reset/show/history/restore`). v2.65.1: Task Primitive sync with v1/v2 format detection. v2.65.0: Cross-platform Node.js hook library + Eval Harness (pass@k metrics) + Dynamic Contexts. Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) analysis.
 
 ---
 
@@ -56,6 +56,12 @@ ralph checkpoint restore "before-refactor"
 # v2.51: Handoffs (Agent-to-Agent)
 ralph handoff transfer --from orchestrator --to security-auditor --task "Audit auth module"
 ralph handoff agents   # List available agents
+
+# v2.63: Dynamic Contexts
+ralph context dev       # Development mode (code first)
+ralph context review    # Code review mode (analysis)
+ralph context research  # Research mode (exploration)
+ralph context debug     # Debug mode (investigation)
 ```
 
 ---
@@ -536,6 +542,14 @@ ralph health              # Memory system health check (v2.55)
 ralph health --compact    # One-line health summary
 ralph health --fix        # Auto-fix critical issues
 
+# Contexts (v2.63)
+ralph context dev         # Development mode
+ralph context review      # Code review mode
+ralph context research    # Research mode
+ralph context debug       # Debug mode
+ralph context show        # Show active context
+ralph context list        # List all contexts
+
 # Memory (v2.49)
 ralph memory-search "query"  # Parallel search
 ralph fork-suggest "task"    # Find sessions to fork
@@ -568,6 +582,13 @@ ralph checkpoint restore "name"                       # Restore from checkpoint
 ralph checkpoint list                                 # List all checkpoints
 ralph checkpoint show "name"                          # Show checkpoint details
 ralph checkpoint diff "n1" "n2"                       # Compare checkpoints
+
+# Plan Lifecycle (v2.65.2)
+ralph plan show                                       # Show current plan status
+ralph plan archive "description"                      # Archive plan and start fresh
+ralph plan reset                                      # Reset to empty plan
+ralph plan history [n]                                # Show last n archived plans
+ralph plan restore <archive-id>                       # Restore from archive
 
 # Handoff API (v2.51)
 ralph handoff transfer --from X --to Y --task "desc"  # Agent handoff
