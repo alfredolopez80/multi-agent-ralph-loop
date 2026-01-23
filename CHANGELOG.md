@@ -7,6 +7,293 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.66.5] - 2026-01-23
+
+### Fixed (DUP-001: Code Duplication - Domain Inference)
+
+**Severity**: MEDIUM (Quality/Maintenance)
+**Impact**: Duplicated domain inference logic in two files creates maintenance burden and behavioral divergence risk
+
+#### Problem
+
+Domain inference logic was duplicated in:
+- `~/.ralph/scripts/repo-learn.sh` (lines 185-239): `infer_domain_from_category()`, `infer_domain_from_repo()`
+- `~/.claude/hooks/orchestrator-auto-learn.sh` (lines 125-143): inline grep pattern detection
+
+Same logic with subtle differences could lead to inconsistent domain classification.
+
+#### Solution
+
+Created shared library `~/.ralph/lib/domain-classifier.sh` with unified functions:
+
+| Function | Purpose |
+|----------|---------|
+| `infer_domain_from_text()` | Infer domain from free-form text (prompts) |
+| `infer_domain_from_category()` | Infer domain from category name |
+| `infer_domain_from_repo()` | Infer domain from repository URL |
+| `get_domain_keywords()` | Get search keywords for rule matching |
+| `infer_domain_combined()` | Combined inference (URL → category → fallback) |
+
+#### Files Updated
+
+| File | Version | Changes |
+|------|---------|---------|
+| `~/.ralph/lib/domain-classifier.sh` | 1.0.0 | **NEW** - Shared domain classification library |
+| `~/.ralph/scripts/repo-learn.sh` | 1.3.0 | Sources shared library, removed duplicate functions |
+| `~/.claude/hooks/orchestrator-auto-learn.sh` | 2.66.5 | Sources shared library with fallback |
+
+#### Backward Compatibility
+
+Both scripts include fallback logic if the shared library is missing:
+- `repo-learn.sh`: Defines minimal fallback functions
+- `orchestrator-auto-learn.sh`: Falls back to inline grep patterns
+
+### Also Fixed in This Release
+
+| Issue | File | Fix |
+|-------|------|-----|
+| RACE-001 | `checkpoint-smart-save.sh` | Atomic mkdir locking for race condition |
+| SEC-040 | `plan.sh` | Path validation to prevent traversal |
+| DATA-001 | `repo-learn.sh` | JSON corruption detection after merge |
+| SC2168 | `global-task-sync.sh` | Removed `local` keyword outside functions (shellcheck) |
+
+---
+
+## [2.66.4] - 2026-01-23
+
+### Fixed (SEC-039: PreToolUse Hook JSON Format)
+
+**Severity**: CRITICAL
+**Impact**: PreToolUse hooks returning wrong JSON format caused "PreToolUse:Task hook error"
+
+#### Problem
+
+PreToolUse hooks were returning `{"continue": true}` instead of `{"decision": "allow"}`:
+- **PreToolUse hooks** MUST return `{"decision": "allow"}` or `{"decision": "block"}`
+- **PostToolUse hooks** use `{"continue": true}` (different format!)
+
+| Hook | Wrong Format | Correct Format |
+|------|--------------|----------------|
+| `fast-path-check.sh` | `{"continue": true}` | `{"decision": "allow"}` |
+| `smart-memory-search.sh` | `{"continue": true}` | `{"decision": "allow"}` |
+| `inject-session-context.sh` | `{"continue": true}` | `{"decision": "allow"}` |
+| `orchestrator-auto-learn.sh` | `{"continue": true}` | `{"decision": "allow"}` |
+
+#### Hooks Updated
+
+| Hook | Old Version | New Version |
+|------|-------------|-------------|
+| `fast-path-check.sh` | 2.57.5 | 2.66.4 |
+| `smart-memory-search.sh` | 2.66.3 | 2.66.4 |
+| `inject-session-context.sh` | 2.62.3 | 2.66.4 |
+| `orchestrator-auto-learn.sh` | 2.60.1 | 2.66.4 |
+
+#### Hook JSON Format Reference (SEC-039)
+
+| Hook Type | Format | Example |
+|-----------|--------|---------|
+| **PreToolUse** | `{"decision": "allow/block"}` | `{"decision": "allow", "additionalContext": "..."}` |
+| **PostToolUse** | `{"continue": true/false}` | `{"continue": true, "systemMessage": "..."}` |
+| **Stop** | `{"decision": "approve"}` | `{"decision": "approve", "reason": "..."}` |
+
+### Documentation Fix
+
+- **README.md**: Corrected "SQLite FTS" → "grep-based search" for Memory Storage
+  - Note: SQLite FTS was planned in v2.46.0 but smart-memory-search.sh uses JSON file search with `find` and `grep`
+  - This correction reflects the actual implementation
+
+---
+
+## [2.66.3] - 2026-01-23
+
+### Fixed (macOS Compatibility - flock → mkdir)
+
+**Severity**: CRITICAL
+**Impact**: Hooks failed on macOS because `flock` is Linux-only
+
+#### Portable Locking Mechanism
+
+Replaced `flock` (Linux-only) with `mkdir`-based locking (portable to macOS and Linux):
+
+| Hook | Issue | Fix |
+|------|-------|-----|
+| `decision-extractor.sh` | `flock: command not found` | SEC-009: mkdir-based lock |
+| `semantic-write-helper.sh` | `flock: command not found` | mkdir-based lock |
+| `global-task-sync.sh` | `flock: command not found` | SEC-010: mkdir-based lock |
+
+**Pattern used**:
+```bash
+# Acquire (atomic on all platforms)
+while ! mkdir "$LOCK_DIR" 2>/dev/null; do sleep 0.1; done
+
+# Release
+rmdir "$LOCK_DIR" 2>/dev/null || true
+```
+
+---
+
+## [2.66.2] - 2026-01-23
+
+### Security (Critical Vulnerability Remediation)
+
+**Severity**: CRITICAL to HIGH
+**Impact**: Fixes 8 security vulnerabilities discovered during adversarial audit
+
+#### CRITICAL - JSON Injection Fixes
+
+| Vuln ID | Hook | Issue | Fix |
+|---------|------|-------|-----|
+| VULN-002 | `checkpoint-smart-save.sh` | Heredoc with `$FILE_PATH` | SEC-002: Use `jq --arg` |
+| VULN-003 | `decision-extractor.sh` | Heredoc with `$FILE_PATH` | SEC-003: Use `jq --arg` |
+| SEC-007 | `smart-memory-search.sh` | Insufficient sed escaping | Use `jq --arg` |
+| SEC-008 | `checkpoint-auto-save.sh` | Heredoc with `$(pwd)` | Use `jq --arg` |
+
+#### CRITICAL - Path Traversal Fix
+
+| Vuln ID | Hook | Issue | Fix |
+|---------|------|-------|-----|
+| VULN-001 | `global-task-sync.sh` | Session ID used in path without sanitization | SEC-001: `tr -cd 'a-zA-Z0-9_-'` + length validation |
+
+#### HIGH - Insecure Temp File Permissions
+
+| Vuln ID | Hook | Issue | Fix |
+|---------|------|-------|-----|
+| VULN-004 | `global-task-sync.sh` | Missing umask | SEC-004: Added `umask 077` |
+| VULN-005 | `task-primitive-sync.sh` | Missing umask | SEC-005: Added `umask 077` |
+
+#### Version Updates
+
+| Hook | Old Version | New Version |
+|------|-------------|-------------|
+| `global-task-sync.sh` | 2.66.0 | 2.66.2 |
+| `checkpoint-smart-save.sh` | 2.57.5 | 2.57.5 (SEC-002 added) |
+| `decision-extractor.sh` | 2.62.3 | 2.66.3 |
+| `task-primitive-sync.sh` | 1.2.0 | 1.2.1 |
+| `smart-memory-search.sh` | 2.57.8 | 2.66.3 |
+| `checkpoint-auto-save.sh` | 2.62.3 | 2.66.3 |
+
+#### Security Pattern Reference
+
+All hooks now follow these patterns:
+
+```bash
+# SEC-001: Path sanitization
+SESSION_ID=$(echo "$SESSION_ID" | tr -cd 'a-zA-Z0-9_-')
+
+# SEC-002/003/007/008: Safe JSON construction
+jq -n --arg var "$UNTRUSTED" '{field: $var}'
+
+# SEC-004/005: Restrictive permissions
+umask 077
+```
+
+---
+
+## [2.66.1] - 2026-01-23
+
+### Fixed (Adversarial Validation Loop)
+
+**Severity**: MEDIUM
+**Impact**: Fixes gaps discovered during exhaustive adversarial review
+
+#### GAP-001/002: Hook Registration
+
+- **task-project-tracker.sh** now registered in settings.json (PostToolUse: TaskCreate|TaskUpdate|TaskList)
+- **project-backup-metadata.sh** now registered in settings.json (SessionStart + Stop)
+
+#### GAP-004/005: Schema Compliance
+
+- **plan-state.json** now includes required `phases[]` and `barriers{}` fields
+- Schema version bumped to 2.66.0
+- 8 hooks that depend on `.phases[0]` now work correctly
+
+#### GAP-010: SEC-033 Error Trap Compliance
+
+Added SEC-033 error traps to 5 hooks that were missing them:
+
+| Hook | Type | Trap Output |
+|------|------|-------------|
+| `console-log-detector.sh` | PostToolUse | `{"continue": true}` |
+| `typescript-quick-check.sh` | PostToolUse | `{"continue": true}` |
+| `auto-format-prettier.sh` | PostToolUse | `{"continue": true}` |
+| `continuous-learning.sh` | Stop | `{"decision": "approve"}` |
+| `context-injector.sh` | SessionStart | Text fallback |
+
+#### Test Coverage
+
+- Created `tests/test_v256_task_primitives.bats` with 25 tests
+- All tests passing (hook existence, versions, JSON output, error traps, schema compliance)
+- Updated test runner to v2.66.0
+
+---
+
+## [2.66.0] - 2026-01-23
+
+### Fixed (Task Primitive Integration - 5 Phases)
+
+**Severity**: HIGH
+**Impact**: Fixes critical bugs in Claude Code Task Primitive synchronization
+
+#### Overview
+
+Comprehensive fix of the hook system to properly integrate with Claude Code's Task Primitive architecture. Based on adversarial analysis and Codex CLI review.
+
+#### Phase 1: Session ID Canonical Source
+
+**Files Modified**: `global-task-sync.sh`, `task-primitive-sync.sh`, `task-project-tracker.sh`
+
+- **Before**: Hooks didn't read `INPUT.session_id` from stdin, causing session fragmentation
+- **After**: `INPUT.session_id` is now the canonical source (first priority)
+- Fallback cascade: INPUT → CLAUDE_SESSION_ID env → SESSION_ID env → `.claude/session-id` file → plan_id → timestamp
+
+#### Phase 2: Individual File Format
+
+**File**: `global-task-sync.sh` (v2.66.0)
+
+- **Before**: Wrote monolithic `tasks.json` file
+- **After**: Writes individual `{id}.json` files (e.g., `1.json`, `2.json`)
+- This matches Claude Code's expected format for task storage
+
+#### Phase 3: TodoWrite Removal
+
+**File**: `global-task-sync.sh` (v2.66.0)
+
+- **Before**: Case statement included `TodoWrite` which never triggers
+- **After**: Removed `TodoWrite` from matchers (it's declarative, not executive)
+- Note: By design, Claude Code does NOT trigger hooks for `TodoWrite`
+
+#### Phase 4: Unidirectional Sync
+
+**File**: `global-task-sync.sh` (v2.66.0)
+
+- **Before**: Bidirectional sync with timestamp comparison
+- **After**: Unidirectional sync (plan-state.json → Claude Code Tasks)
+- **Rationale**: plan-state.json is the single source of truth for orchestration
+- `sync_from_global()` function deprecated but kept for rollback compatibility
+
+#### Phase 5: Documentation Updates
+
+- Updated version numbers in all modified hooks
+- Updated CHANGELOG.md with comprehensive change documentation
+- Updated header comments explaining new behavior
+
+#### Files Modified
+
+| File | Version | Changes |
+|------|---------|---------|
+| `~/.claude/hooks/global-task-sync.sh` | 2.66.0 | All 4 phases |
+| `~/.claude/hooks/task-primitive-sync.sh` | 1.2.0 | Session ID fix |
+| `~/.claude/hooks/task-project-tracker.sh` | 1.1.0 | Session ID fix |
+
+#### Architecture Clarification
+
+| Concern | Source of Truth | Display |
+|---------|-----------------|---------|
+| Orchestration (phases, barriers, loops) | `plan-state.json` | StatusLine |
+| Task UI/Viewer | Claude Code Tasks | `~/.claude/tasks/<session>/` |
+
+---
+
 ## [2.65.2] - 2026-01-23
 
 ### Added (Plan Lifecycle Management)

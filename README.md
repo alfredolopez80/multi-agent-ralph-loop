@@ -1,17 +1,19 @@
-# Multi-Agent Ralph Wiggum v2.65.2
+# Multi-Agent Ralph Wiggum v2.66.5
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.65.2-blue)
+![Version](https://img.shields.io/badge/version-2.66.5-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 ![Tests](https://img.shields.io/badge/tests-103%20passed-green)
 ![Hooks](https://img.shields.io/badge/hooks-55%20registered-green)
 ![Skills](https://img.shields.io/badge/skills-266%2B-orange)
-![Error Traps](https://img.shields.io/badge/error%20traps-47%2F55-brightgreen)
+![Error Traps](https://img.shields.io/badge/error%20traps-52%2F55-brightgreen)
+![Security](https://img.shields.io/badge/security-SEC--039%20compliant-green)
 ![Task Primitive](https://img.shields.io/badge/Task%20Primitive-integrated-blue)
 ![Dynamic Contexts](https://img.shields.io/badge/Contexts-4%20modes-purple)
 ![Plan Lifecycle](https://img.shields.io/badge/Plan%20Lifecycle-CLI-green)
+![Adversarial](https://img.shields.io/badge/Adversarial-validated-brightgreen)
 
 ---
 
@@ -80,6 +82,11 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 - **Cross-Platform Hooks (v2.65)**: Node.js library for Windows/Linux/macOS compatibility + continuous-learning hook
 - **Task Primitive Sync Fix (v2.65.1)**: TaskCreate/TaskUpdate/TaskList hooks with v1/v2 format auto-detection
 - **Plan Lifecycle Management (v2.65.2)**: Full CLI for archive/reset/show/history/restore operations on plan-state
+- **Security Hardening (v2.66.2)**: Critical fixes for JSON injection, path traversal, umask permissions (SEC-001 to SEC-008)
+- **macOS Compatibility (v2.66.3)**: Portable `mkdir`-based locking replacing Linux-only `flock` (SEC-009/010)
+- **Hook JSON Format Fix (v2.66.4)**: SEC-039 compliance - all PreToolUse hooks now return correct `{"decision": "allow"}` format
+- **Code Quality (v2.66.5)**: DUP-001 shared domain-classifier library, RACE-001 atomic locking, SEC-040 path validation, DATA-001 JSON corruption detection, SC2168 shellcheck fix
+- **Adversarial Validation**: Comprehensive multi-model audit (Claude Opus, Sonnet, MiniMax, Codex, Gemini) with iterative loop until zero issues
 - **Security Audit**: Comprehensive API key leak detection validated by Codex, Gemini, and Claude Opus (9/10 security score)
 - **Claude Code Skills Ecosystem**: 266+ specialized skills including marketing (23 skills), documentation generation, and React best practices from Vercel
 
@@ -141,7 +148,7 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 | **Shell Environment** | Bash 5.x + zsh | Hooks automation |
 | **Scripting** | Python 3.11+ | Utility scripts, memory management |
 | **Configuration** | JSON + YAML | Settings, schemas, rules |
-| **Memory Storage** | JSON + SQLite FTS | Semantic, episodic, procedural memory |
+| **Memory Storage** | JSON + grep-based search | Semantic, episodic, procedural memory |
 | **Code Analysis** | AST-grep | Structural code search |
 | **MCP Servers** | Context7, Playwright, MiniMax, Blender | Documentation, testing, AI analysis |
 | **CLI Tools** | Codex CLI, Gemini CLI, GitHub CLI | Multi-model orchestration |
