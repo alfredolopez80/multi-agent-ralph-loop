@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# VERSION: 2.57.5
-# Hook: LSA Pre-Step Verification
-# Trigger: PreToolUse (when tool is Edit or Write in orchestrated context)
+# VERSION: 2.62.3
+# LSA Pre-Step Verification
+# Hook: PreToolUse (Edit|Write)
 # Purpose: Verify architecture compliance BEFORE implementation
 # Security: v2.45.1 - Fixed race condition with atomic updates
+# v2.62.3: Support both array (v1) and object (v2) steps format
 
 set -euo pipefail
 
@@ -21,30 +22,46 @@ log() {
 # Check if we're in orchestrated context (plan-state exists)
 if [ ! -f "$PLAN_STATE" ]; then
     # Not in orchestrated mode, skip LSA verification
-    exit 0
+    echo '{"decision": "allow"}'; exit 0
 fi
 
 # Get current step from environment or plan-state
 CURRENT_STEP="${RALPH_CURRENT_STEP:-}"
 
 if [ -z "$CURRENT_STEP" ]; then
-    # Find first in_progress step
-    CURRENT_STEP=$(jq -r '.steps[] | select(.status == "in_progress") | .id' "$PLAN_STATE" 2>/dev/null | head -1)
+    # v2.62.3: Find first in_progress step (handles both array and object format)
+    CURRENT_STEP=$(jq -r '
+        if (.steps | type) == "array" then
+            # v1 array format
+            .steps[] | select(.status == "in_progress") | .id
+        else
+            # v2 object format
+            .steps | to_entries[] | select(.value.status == "in_progress") | .key
+        end
+    ' "$PLAN_STATE" 2>/dev/null | head -1)
 fi
 
 if [ -z "$CURRENT_STEP" ]; then
     log "No active step found, skipping LSA pre-check"
-    exit 0
+    echo '{"decision": "allow"}'; exit 0
 fi
 
 log "LSA Pre-Step Check for step: $CURRENT_STEP"
 
-# Extract spec for current step
-SPEC=$(jq -r ".steps[] | select(.id == \"$CURRENT_STEP\") | .spec" "$PLAN_STATE" 2>/dev/null)
+# v2.62.3: Extract spec for current step (handles both formats)
+SPEC=$(jq -r --arg id "$CURRENT_STEP" '
+    if (.steps | type) == "array" then
+        # v1 array format
+        .steps[] | select(.id == $id) | .spec
+    else
+        # v2 object format - check _v1_data for spec or use name
+        .steps[$id] | if ._v1_data then ._v1_data.spec else {name: .name} end
+    end
+' "$PLAN_STATE" 2>/dev/null)
 
 if [ "$SPEC" = "null" ] || [ -z "$SPEC" ]; then
     log "No spec found for step $CURRENT_STEP"
-    exit 0
+    echo '{"decision": "allow"}'; exit 0
 fi
 
 # Output verification reminder
@@ -79,15 +96,26 @@ TEMP_FILE=$(mktemp "${PLAN_STATE}.XXXXXX") || {
 
 trap 'rm -f "$TEMP_FILE"' EXIT
 
+# v2.62.3: Update plan-state with LSA pre-check (handles both formats)
 if jq --arg step "$CURRENT_STEP" --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '
-  .steps |= map(
-    if .id == $step then
-      .lsa_verification.pre_check = {
-        "triggered_at": $ts,
-        "spec_loaded": true
-      }
-    else . end
-  )
+  if (.steps | type) == "array" then
+    # v1 array format
+    .steps |= map(
+      if .id == $step then
+        .lsa_verification.pre_check = {
+          "triggered_at": $ts,
+          "spec_loaded": true
+        }
+      else . end
+    )
+  else
+    # v2 object format
+    .steps[$step].verification.started_at = $ts |
+    .steps[$step]._v1_data.lsa_verification.pre_check = {
+      "triggered_at": $ts,
+      "spec_loaded": true
+    }
+  end
 ' "$PLAN_STATE" > "$TEMP_FILE"; then
     mv "$TEMP_FILE" "$PLAN_STATE"
     trap - EXIT
@@ -98,3 +126,6 @@ else
 fi
 
 log "LSA pre-check completed for step $CURRENT_STEP"
+
+# v2.62.3: PreToolUse hooks must output JSON
+echo '{"decision": "allow"}'

@@ -75,8 +75,36 @@
       }
     },
     "steps": {
+      "oneOf": [
+        {
+          "type": "object",
+          "description": "v2 format: Steps keyed by ID with execution details",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["name", "status"],
+            "properties": {}
+          }
+        },
+        {
+          "type": "array",
+          "description": "v1 format (legacy): Array of step objects with id field",
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "status"],
+            "properties": {
+              "id": {"type": "string"},
+              "title": {"type": "string"},
+              "status": {"type": "string"}
+            }
+          }
+        }
+      ],
+      "description": "Steps container - supports both v2 object and v1 array formats for backward compatibility. New implementations should use object format.",
+      "_migrationNote": "v2.62.3: Added oneOf to support both array (v1) and object (v2) formats during transition period"
+    },
+    "_steps_v2_object": {
       "type": "object",
-      "description": "Steps keyed by ID with execution details",
+      "description": "Reference schema for v2 object-based steps (preferred format)",
       "additionalProperties": {
         "type": "object",
         "required": ["name", "status"],
