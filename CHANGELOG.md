@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.68.23] - 2026-01-24
+
+### Adversarial Validation Phase 9 - Critical Security & Code Quality Fixes
+
+Comprehensive adversarial audit cycle fixing critical security vulnerabilities and code quality issues.
+
+#### CRIT-001: SEC-117 Command Injection via eval (FIXED)
+
+| File | Issue | Fix |
+|------|-------|-----|
+| `~/.local/bin/ralph` | `eval echo "$path"` allowed command injection | Replaced with safe parameter expansion `${path/#\~/$HOME}` |
+
+#### HIGH-001: SEC-104 Weak Cryptographic Hash (FIXED)
+
+| File | Issue | Fix |
+|------|-------|-----|
+| `checkpoint-smart-save.sh` | MD5 used for file hash (cryptographically weak) | Replaced with SHA-256 via `shasum -a 256` |
+
+#### HIGH-003: SEC-111 Input Length Validation (FIXED in 3 hooks)
+
+DoS prevention by limiting stdin input to 100KB:
+
+| Hook | Fix |
+|------|-----|
+| `orchestrator-auto-learn.sh` | Added `${#INPUT} -gt $MAX_INPUT_LEN` check |
+| `global-task-sync.sh` | Changed `cat` to `head -c 100000` |
+| *(Previous session)* | Third hook already fixed |
+
+#### CRIT-003: Duplicate JSON Output via EXIT Trap (FIXED in 5 hooks)
+
+Added `trap - ERR EXIT` before explicit JSON output to prevent duplicate output:
+
+| Hook | Event Type |
+|------|------------|
+| `auto-plan-state.sh` | PostToolUse |
+| `plan-analysis-cleanup.sh` | PostToolUse |
+| `recursive-decompose.sh` | PostToolUse |
+| `sentry-report.sh` | Stop |
+| `orchestrator-report.sh` | Stop |
+
+#### Code Quality: ShellCheck Violations (FIXED)
+
+| Issue | File | Fix |
+|-------|------|-----|
+| SC2038 | `session-start-ledger.sh` | Changed `find \| xargs ls` to `find -exec ls {} +` |
+| SC2124 | `plan-state-init.sh` | Changed `"$@"` to `"$*"` in 2 functions |
+
+#### Documentation Updates
+
+- README.md: Badge updated to v2.68.23
+- CLAUDE.md: Version and changelog updated
+
+---
+
 ## [2.68.22] - 2026-01-24
 
 ### Technical Debt Cleanup - Full CLI Implementation & Security Hardening

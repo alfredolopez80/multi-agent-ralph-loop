@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run_tests.sh - Execute all tests for Multi-Agent Ralph Loop v2.37
+# run_tests.sh - Execute all tests for Multi-Agent Ralph Loop v2.66.0
 #
 # Usage:
 #   ./tests/run_tests.sh           # Run all tests
@@ -9,6 +9,8 @@
 #   ./tests/run_tests.sh v218      # Run only v2.19 security fix tests
 #   ./tests/run_tests.sh v236      # Run only v2.36 skills unification tests
 #   ./tests/run_tests.sh v237      # Run only v2.37 tldr integration tests
+#   ./tests/run_tests.sh v256      # Run only v2.56+ task primitive tests
+#   ./tests/run_tests.sh hooks     # Run only hook validation tests
 
 set -euo pipefail
 
