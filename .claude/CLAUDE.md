@@ -46,20 +46,10 @@
 |----|------|---|-------|------|
 | #12177 | 9:48 PM | ✅ | Updated Project Documentation and Changelog | ~125 |
 
-### Jan 20, 2026
-
-| ID | Time | T | Title | Read |
-|----|------|---|-------|------|
-| #12333 | 2:59 PM | ⚖️ | v2.57.0 Memory System Reconstruction Plan - Comprehensive Architecture Redesign | ~1704 |
-| #12201 | 12:48 PM | 🔵 | Plan-State System Analysis Reveals Multiple Integration Issues | ~593 |
-| #12193 | 12:47 PM | 🔵 | Local Settings File Contains No StatusLine Override | ~329 |
-
 ### Jan 21, 2026
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #13011 | 4:32 PM | ✅ | **Progress.md Git Diff Verification** | ~326 |
-| #12830 | 1:59 PM | ✅ | Significant Repository Changes Ready for Commit | ~229 |
 | #12752 | 11:41 AM | 🔵 | Local Project Skills Directory Structure | ~390 |
 
 ### Jan 22, 2026
@@ -95,11 +85,4 @@
 | #13253 | 10:11 AM | 🔄 | Multi-Agent Ralph Loop v2.58 Architectural Audit Completion | ~554 |
 | #13247 | 9:47 AM | 🔵 | Comprehensive Adversarial Architectural Audit and Gap Remediation of Multi-Agent Ralph Loop | ~975 |
 | #13246 | 9:46 AM | 🔵 | Comprehensive Adversarial Architectural Audit of Multi-Agent Ralph Loop v2.50-v2.58 | ~765 |
-
-### Jan 23, 2026
-
-| ID | Time | T | Title | Read |
-|----|------|---|-------|------|
-| #14101 | 3:59 PM | ✅ | Corrected adversarial improvement plan removing invalid plugin system gap | ~461 |
-| #13902 | 12:57 PM | ⚖️ | Architected Claude Code Task Primitive integration strategy | ~523 |
 </claude-mem-context>

@@ -1,10 +1,10 @@
-# Multi-Agent Ralph v2.68.23
+# Multi-Agent Ralph v2.68.24
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
 **Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, and **full CLI implementation**.
 
-> **v2.68.23**: Adversarial validation Phase 9 - CRIT-001 (SEC-117 eval injection), HIGH-001 (SEC-104 MD5→SHA256), HIGH-003 (SEC-111 input length DoS prevention in 3 hooks), CRIT-003 (5 hooks duplicate JSON output via EXIT trap). Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) and [claude-code-docs](https://github.com/ericbuess/claude-code-docs).
+> **v2.68.24**: Statusline Ralph enhancement with claude-hud v0.0.6 upgrade, multi-model adversarial validation (Adversarial + Codex-CLI + Gemini-CLI), and GLM-4.7 MCP ecosystem integration (zai-mcp-server, web-search-prime, web-reader, zread). Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) and [claude-code-docs](https://github.com/ericbuess/claude-code-docs).
 
 ---
 
@@ -728,9 +728,9 @@ ralph handoff create      # Create handoff
 
 ---
 
-## Hooks (67 files, 80 registrations) - v2.68.23
+## Hooks (67 files, 80 registrations) - v2.68.24
 
-> **v2.68.23**: All 66 bash hooks now have error traps guaranteeing valid JSON output. 67 hook files (66 bash + 1 python) with 80 event registrations across all event types. Adversarial validation complete with SEC-111 (DoS prevention), SEC-104 (SHA-256), SEC-117 (command injection prevention), CRIT-003 (duplicate JSON prevention).
+> **v2.68.24**: Statusline Ralph validated via multi-model adversarial review. claude-hud upgraded to v0.0.6 with complete dist/ directory (45 files). GLM-4.7 MCP ecosystem integrated (4 new servers + 1 plugin). Total MCP servers: 26.
 
 | Event Type | Purpose |
 |------------|---------|
