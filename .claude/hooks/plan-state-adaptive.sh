@@ -133,7 +133,8 @@ create_plan_state() {
     timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
     # Generate plan ID
-    local plan_id="adaptive-$(date +%Y%m%d-%H%M%S)-$$"
+    local plan_id
+    plan_id="adaptive-$(date +%Y%m%d-%H%M%S)-$$"
 
     # Set parameters based on complexity
     local complexity model max_iter step_name

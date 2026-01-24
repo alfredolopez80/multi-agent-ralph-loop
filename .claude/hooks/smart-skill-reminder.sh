@@ -104,16 +104,18 @@ suggest_skill_for_file() {
     dir_path=$(dirname "$file_path" 2>/dev/null || echo "")
 
     # HIGHEST PRIORITY: Test files (check first to avoid false positives like test_auth.py)
+    # SC2221/SC2222 FIX: Removed redundant patterns (*test* already covers *.test.* and *__tests__*)
     case "$file_path" in
-        *test*|*spec*|*.test.*|*.spec.*|*__tests__*)
+        *test*|*spec*)
             echo "/test-driven-development for test files"
             return 0
             ;;
     esac
 
     # Security-sensitive files
+    # SC2221/SC2222 FIX: Removed *oauth* (already covered by *auth*)
     case "$file_path" in
-        *auth*|*login*|*password*|*credential*|*secret*|*token*|*jwt*|*oauth*)
+        *auth*|*login*|*password*|*credential*|*secret*|*token*|*jwt*)
             echo "/security-loop for security-sensitive code"
             return 0
             ;;

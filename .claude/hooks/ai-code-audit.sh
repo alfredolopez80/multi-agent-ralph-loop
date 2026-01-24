@@ -87,8 +87,9 @@ is_test_file() {
     local filename
     filename=$(basename "$file_path" 2>/dev/null | tr '[:upper:]' '[:lower:]' || echo "")
     
+    # SC2221/SC2222 FIX: *test* already covers *.test.*, *spec* covers *.spec.*
     case "$filename" in
-        *test*|*spec*|*.test.*|*.spec.*)
+        *test*|*spec*)
             return 0
             ;;
     esac

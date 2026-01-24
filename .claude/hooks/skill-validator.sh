@@ -84,7 +84,8 @@ except Exception as e:
 # Validate skill.yaml required fields
 validate_skill_yaml() {
     local skill_file="$1"
-    local skill_name=$(basename "$(dirname "$skill_file")")
+    local skill_name
+    skill_name=$(basename "$(dirname "$skill_file")")
 
     log "Validating skill.yaml for: $skill_name"
 
@@ -139,7 +140,8 @@ if 'keywords' not in triggers and 'file_patterns' not in triggers and 'context_p
 # Validate validations.yaml regex patterns
 validate_validations_yaml() {
     local validations_file="$1"
-    local skill_name=$(basename "$(dirname "$validations_file")")
+    local skill_name
+    skill_name=$(basename "$(dirname "$validations_file")")
 
     if [[ ! -f "$validations_file" ]]; then
         log_warning "validations.yaml not found for $skill_name (optional)"
@@ -187,7 +189,8 @@ for v in validations:
 # Validate sharp-edges.yaml patterns
 validate_sharp_edges_yaml() {
     local sharp_edges_file="$1"
-    local skill_name=$(basename "$(dirname "$sharp_edges_file")")
+    local skill_name
+    skill_name=$(basename "$(dirname "$sharp_edges_file")")
 
     if [[ ! -f "$sharp_edges_file" ]]; then
         log_warning "sharp-edges.yaml not found for $skill_name (optional)"
@@ -229,7 +232,8 @@ for edge in sharp_edges:
 # Validate collaboration.yaml structure
 validate_collaboration_yaml() {
     local collaboration_file="$1"
-    local skill_name=$(basename "$(dirname "$collaboration_file")")
+    local skill_name
+    skill_name=$(basename "$(dirname "$collaboration_file")")
 
     if [[ ! -f "$collaboration_file" ]]; then
         log_warning "collaboration.yaml not found for $skill_name (optional)"

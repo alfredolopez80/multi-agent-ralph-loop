@@ -24,7 +24,9 @@ trap 'echo "{\"continue\": true}"' ERR EXIT
 
 readonly VERSION="2.68.0"
 readonly LOG_DIR="${HOME}/.ralph/logs"
-readonly LOG_FILE="${LOG_DIR}/sec-context-$(date +%Y%m%d).log"
+# SC2155: Separate declaration from command substitution
+LOG_FILE="${LOG_DIR}/sec-context-$(date +%Y%m%d).log"
+readonly LOG_FILE
 readonly MAX_FILE_SIZE=10485760  # 10MB in bytes
 
 log() {

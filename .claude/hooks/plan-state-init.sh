@@ -64,8 +64,10 @@ init_plan_state() {
     local complexity="${2:-5}"
     local model_routing="${3:-sonnet}"
 
-    local plan_id=$(generate_uuid)
-    local timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    local plan_id
+    local timestamp
+    plan_id=$(generate_uuid)
+    timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
     cat << EOF > "$PLAN_STATE"
 {
@@ -137,7 +139,8 @@ add_step() {
         return 1
     fi
 
-    local timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    local timestamp
+    timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
     # SECURITY: Use atomic update (v2.45.1)
     local temp_file
@@ -211,7 +214,8 @@ add_step_exports() {
     local exports="$@"
 
     # Convert to JSON array
-    local exports_json=$(echo "$exports" | tr ' ' '\n' | jq -R . | jq -s .)
+    local exports_json
+    exports_json=$(echo "$exports" | tr ' ' '\n' | jq -R . | jq -s .)
 
     # SECURITY: Atomic update (v2.45.1)
     local temp_file
@@ -235,7 +239,8 @@ add_step_dependencies() {
     shift
     local deps="$@"
 
-    local deps_json=$(echo "$deps" | tr ' ' '\n' | jq -R . | jq -s .)
+    local deps_json
+    deps_json=$(echo "$deps" | tr ' ' '\n' | jq -R . | jq -s .)
 
     # SECURITY: Atomic update (v2.45.1)
     local temp_file
@@ -279,7 +284,8 @@ add_step_signature() {
 # Mark step as in_progress
 start_step() {
     local step_id="$1"
-    local timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    local timestamp
+    timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
     # SECURITY: Atomic updates (v2.45.1)
     local temp_file
@@ -318,7 +324,8 @@ start_step() {
 # Mark step as completed
 complete_step() {
     local step_id="$1"
-    local timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    local timestamp
+    timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
     # SECURITY: Atomic update (v2.45.1)
     local temp_file
@@ -341,7 +348,8 @@ complete_step() {
 # Mark step as verified (after LSA post-check passes)
 verify_step() {
     local step_id="$1"
-    local timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    local timestamp
+    timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
     # SECURITY: Atomic update (v2.45.1)
     local temp_file
@@ -389,11 +397,12 @@ show_status() {
     echo ""
 
     # Summary
-    local total=$(jq '.steps | length' "$PLAN_STATE")
-    local verified=$(jq '[.steps[] | select(.status == "verified")] | length' "$PLAN_STATE")
-    local completed=$(jq '[.steps[] | select(.status == "completed")] | length' "$PLAN_STATE")
-    local pending=$(jq '[.steps[] | select(.status == "pending")] | length' "$PLAN_STATE")
-    local drift_count=$(jq '[.steps[] | select(.drift.detected == true)] | length' "$PLAN_STATE")
+    local total verified completed pending drift_count
+    total=$(jq '.steps | length' "$PLAN_STATE")
+    verified=$(jq '[.steps[] | select(.status == "verified")] | length' "$PLAN_STATE")
+    completed=$(jq '[.steps[] | select(.status == "completed")] | length' "$PLAN_STATE")
+    pending=$(jq '[.steps[] | select(.status == "pending")] | length' "$PLAN_STATE")
+    drift_count=$(jq '[.steps[] | select(.drift.detected == true)] | length' "$PLAN_STATE")
 
     echo "Summary: $verified verified, $completed completed, $pending pending (of $total total)"
     if [ "$drift_count" -gt 0 ]; then

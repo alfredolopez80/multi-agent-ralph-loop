@@ -37,7 +37,8 @@ log() {
 # Process a single episode file
 process_episode() {
     local episode_file="$1"
-    local episode_id=$(basename "$episode_file" .json)
+    local episode_id
+    episode_id=$(basename "$episode_file" .json)
 
     # Skip if already processed
     if [[ -f "$PROCESSED_DIR/$episode_id" ]]; then
@@ -79,7 +80,8 @@ process_episode() {
     fi
 
     # Generate rule ID
-    local rule_id="ep-auto-$(echo "$episode_id" | cut -d'-' -f2-)"
+    local rule_id
+    rule_id="ep-auto-$(echo "$episode_id" | cut -d'-' -f2-)"
 
     # Build trigger from patterns
     local trigger
@@ -120,7 +122,8 @@ process_episode() {
 # Main auto-conversion logic
 auto_convert() {
     local input="$1"
-    local tool_name=$(echo "$input" | jq -r '.tool_name // ""' 2>/dev/null || echo "")
+    local tool_name
+    tool_name=$(echo "$input" | jq -r '.tool_name // ""' 2>/dev/null || echo "")
 
     # Only run after Edit/Write operations
     if [[ "$tool_name" != "Edit" ]] && [[ "$tool_name" != "Write" ]]; then
@@ -144,13 +147,15 @@ auto_convert() {
     fi
 
     # Find unprocessed episodes
-    local temp_rules_file=$(mktemp)
+    local temp_rules_file
+    temp_rules_file=$(mktemp)
     local new_rules=0
 
     while IFS= read -r episode_file; do
         [[ -z "$episode_file" ]] && continue
 
-        local episode_id=$(basename "$episode_file" .json)
+        local episode_id
+        episode_id=$(basename "$episode_file" .json)
         if [[ -f "$PROCESSED_DIR/$episode_id" ]]; then
             continue
         fi

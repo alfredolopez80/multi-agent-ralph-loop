@@ -282,21 +282,17 @@ case "$HOOK_TYPE" in
         CURRENT_FILE="${METADATA_DIR}/current-project.json"
 
         if [[ -f "$CURRENT_FILE" ]]; then
-            local session_id project_json
+            # SC2168 FIX: Removed 'local' - not inside a function
             session_id=$(jq -r '.session_id' "$CURRENT_FILE")
             project_json=$(jq -r '.project' "$CURRENT_FILE")
 
-            local end_time
             end_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-            local start_time
             start_time=$(jq -r '.session_start' "$CURRENT_FILE")
 
             backup_session "$project_json" "$session_id"
 
-            local duration
             duration=$(get_session_duration "$start_time" "$end_time")
 
-            local repo_name
             repo_name=$(jq -r '.repo' <<< "$project_json")
 
             echo ""
