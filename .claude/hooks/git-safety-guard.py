@@ -78,15 +78,25 @@ def normalize_command(command: str) -> str:
 
 
 def log_security_event(event_type: str, command: str, reason: str = ""):
-    """Log security events to stderr for audit trail."""
+    """Log security events to file (NOT stderr - causes Claude Code hook errors)."""
     import datetime
+    import os
+
+    # v2.69.0: Write to file instead of stderr to avoid Claude Code hook error warnings
+    log_file = os.path.expanduser("~/.ralph/logs/git-safety-guard.log")
+    os.makedirs(os.path.dirname(log_file), exist_ok=True)
 
     timestamp = datetime.datetime.now().isoformat()
     log_msg = f"[{timestamp}] git-safety-guard: {event_type}"
     if reason:
         log_msg += f" - {reason}"
     log_msg += f" | cmd: {command[:100]}"
-    sys.stderr.write(log_msg + "\n")
+
+    try:
+        with open(log_file, "a") as f:
+            f.write(log_msg + "\n")
+    except Exception:
+        pass  # Silently fail logging - don't break hook execution
 
 
 # Patterns that are ALWAYS safe (checked first)
