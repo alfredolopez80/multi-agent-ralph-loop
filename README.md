@@ -1,19 +1,19 @@
-# Multi-Agent Ralph Wiggum v2.66.8
+# Multi-Agent Ralph Wiggum v2.68.2
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.66.8-blue)
+![Version](https://img.shields.io/badge/version-2.68.2-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
 ![Tests](https://img.shields.io/badge/tests-103%20passed-green)
-![Hooks](https://img.shields.io/badge/hooks-55%20registered-green)
+![Hooks](https://img.shields.io/badge/hooks-63%20registered-green)
 ![Skills](https://img.shields.io/badge/skills-266%2B-orange)
-![Error Traps](https://img.shields.io/badge/error%20traps-52%2F55-brightgreen)
-![Security](https://img.shields.io/badge/security-SEC--039%20compliant-green)
+![Error Traps](https://img.shields.io/badge/error%20traps-63%2F63-brightgreen)
+![Security](https://img.shields.io/badge/security-SEC--053%20compliant-green)
 ![Task Primitive](https://img.shields.io/badge/Task%20Primitive-integrated-blue)
 ![Dynamic Contexts](https://img.shields.io/badge/Contexts-4%20modes-purple)
 ![Plan Lifecycle](https://img.shields.io/badge/Plan%20Lifecycle-CLI-green)
-![Adversarial](https://img.shields.io/badge/Adversarial-validated-brightgreen)
+![Adversarial](https://img.shields.io/badge/Adversarial-CRIT%20validated-brightgreen)
 
 ---
 
@@ -65,7 +65,7 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 - **Autonomous Learning (v2.55)**: Proactively learns from quality repositories when knowledge gaps detected
 - **Automated Monitoring (v2.56)**: Smart checkpoints, status monitoring, and health checks via hooks
 - **Memory System Reconstruction (v2.57)**: Fixed 8 critical bugs in memory search, plan-state sync, and context injection
-- **Security Hardening (v2.58)**: SEC-034 security hooks, anti-pattern detection, adversarial validation
+- **Security Hardening (v2.68)**: 27 security anti-patterns from sec-context framework, CWE coverage, P0-P2 priority classification
 - **Learning System v2.59**: 319 procedural rules with confidence scoring, feedback loop, and auto-cleanup
 - **Hook System Audit (v2.60)**: Reduced hooks from 64 to 52, removed deprecated scripts, adversarial validation
 - **Smart Skill Reminder v2.0 (v2.60)**: Context-aware skill suggestions with session gating and rate limiting
@@ -89,6 +89,10 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 - **Adversarial Validation Phase 1 (v2.66.6)**: 11 issues fixed (SEC-041 to SEC-049), command injection prevention, malformed JSON traps, macOS realpath compatibility, PreCompact JSON format fixes
 - **Critical Fixes (v2.66.7)**: CRIT-001 explicit JSON output in agent-memory-auto-init.sh, CRIT-002 schema v2.66 with phases/barriers/verification
 - **HIGH Priority Fixes (v2.66.8)**: Plan reset template with phases/barriers/verification, ASCII art to stderr in LSA hooks, realpath canonicalization for path validation, version sync across 8 hooks (22 total issues resolved in v2.66.6-v2.66.8 cycle)
+- **Double-JSON Bug Fix (v2.68.2)**: Fixed critical EXIT trap pattern causing duplicate JSON output in 9 hooks (CRIT-002 to CRIT-011). The fix pattern: `trap - EXIT` before explicit JSON output prevents the EXIT trap from firing on `exit 0`
+- **Schema Upgrade (v2.68.2)**: Plan-state schema upgraded from v2.54 to v2.66 with `phases[]`, `barriers{}`, `current_phase`, and `verification_state` fields for full lifecycle management
+- **Hook Version Sync (v2.68.2)**: 54 hooks bulk version bumped to v2.68.2 for consistency; 9 critical hooks synced from global to project directory
+- **Gap Analysis Resolution (v2.68.2)**: Comprehensive adversarial gap analysis identified 13 issues (3 CRITICAL, 5 HIGH, 5 MEDIUM) - all resolved or documented in TECHNICAL_DEBT.md
 - **Adversarial Validation**: Comprehensive multi-model audit (Claude Opus, Sonnet, MiniMax, Codex, Gemini) with iterative loop until zero issues
 - **Security Audit**: Comprehensive API key leak detection validated by Codex, Gemini, and Claude Opus (9/10 security score)
 - **Claude Code Skills Ecosystem**: 266+ specialized skills including marketing (23 skills), documentation generation, and React best practices from Vercel
@@ -114,6 +118,8 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 | **Eval-Driven Development** | pass@k metrics framework for AI code quality | v2.64 |
 | **Cross-Platform Hooks** | Node.js library for Windows/Linux/macOS | v2.65 |
 | **Plan Lifecycle CLI** | Archive, reset, show, history, restore operations | v2.65.2 |
+| **Double-JSON Bug Fix** | EXIT trap pattern fix across 9 hooks (CRIT-002 to CRIT-011) | v2.68.2 |
+| **Schema v2.66** | Phases, barriers, verification_state for full lifecycle | v2.68.2 |
 
 ### Memory System
 
@@ -133,13 +139,14 @@ The system addresses the fundamental challenge of AI-assisted programming: **ens
 | **Auto-Learning Hooks** | Detect knowledge gaps proactively | v2.55 |
 | **Learning System v2.59** | 319 rules, confidence scoring, feedback loop | v2.59 |
 
-### Security (v2.58)
+### Security (v2.68)
 
 | Component | Purpose |
 |-----------|---------|
-| **SEC-034 Security Hooks** | Comprehensive security validation |
-| **sec-context-validate.sh** | Security context validation (BLOCKING) |
-| **Anti-Pattern Detection** | 34 security anti-patterns detected |
+| **sec-context-validate.sh** | Comprehensive security validation (BLOCKING) |
+| **Anti-Pattern Detection** | 27 security anti-patterns (P0-P2 priority) |
+| **CWE Coverage** | 20+ CWE references from sec-context framework |
+| **Source** | Based on [Arcanum-Sec/sec-context](https://github.com/Arcanum-Sec/sec-context) |
 
 ---
 
@@ -240,7 +247,7 @@ ralph health
 
 # Check hooks registration
 ls ~/.claude/hooks/*.sh | wc -l
-# Should output: 52 (after v2.60 cleanup)
+# Should output: 63 (after v2.68.2 updates)
 
 # Test quality gates
 /gates
@@ -297,7 +304,7 @@ multi-agent-ralph-loop/
 │   │   ├── repository-learner.sh # Learning agent
 │   │   └── repo-curator.sh       # Curation agent
 │   ├── commands/                 # Slash commands
-│   ├── hooks/                    # Hook scripts (52 registered, v2.60)
+│   ├── hooks/                    # Hook scripts (63 registered, v2.68.2)
 │   │   ├── quality-gates-v2.sh   # Quality validation (BLOCKING)
 │   │   ├── sec-context-validate.sh # Security validation (BLOCKING)
 │   │   ├── smart-memory-search.sh # Memory search
@@ -592,7 +599,7 @@ Claude Code hooks execute at specific lifecycle events:
 | **PreCompact** | Before context compaction | State saving, ledger creation |
 | **Stop** | Response completes | Session reports, cleanup |
 
-### Registered Hooks (52 total) - v2.60
+### Registered Hooks (63 total) - v2.68.2
 
 #### PreToolUse Hooks
 
@@ -1526,6 +1533,6 @@ This project is licensed under the BSL 1.1 License.
 
 ---
 
-**Version**: 2.65.2
-**Last Updated**: 2026-01-23
-**Next Review**: 2026-02-23
+**Version**: 2.68.2
+**Last Updated**: 2026-01-24
+**Next Review**: 2026-02-24
