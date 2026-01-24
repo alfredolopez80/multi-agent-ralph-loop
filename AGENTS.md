@@ -1,10 +1,99 @@
-# Multi-Agent Ralph Wiggum - Agents Reference v2.62.3
+# Multi-Agent Ralph Wiggum - Agents Reference v2.68.24
 
 ## Overview
 
-Ralph orchestrates **33 specialized agents** across different domains. Each agent has specific expertise and is routed based on task complexity and requirements.
+Ralph orchestrates **33 specialized agents** across different domains, now with **multi-model support** including Claude (Opus/Sonnet/Haiku), MiniMax M2.1 (cost-effective), Codex GPT-5.2, Gemini 2.5 Pro, and GLM-4.7 (vision & enterprise capabilities).
 
-> **v2.62.3 Update**: All registered agents now have proper error trap patterns ensuring valid JSON output on failures. Memory system race conditions fixed with `flock` atomic writes.
+> **v2.68.24 Update**: Statusline Ralph enhanced with claude-hud v0.0.6, multi-model adversarial validation (Adversarial + Codex-CLI + Gemini-CLI), and GLM-4.7 MCP ecosystem integration (4 new servers + 1 plugin). MiniMax M2.1 and GLM-4.7 are now major components of the multi-agent orchestration system.
+
+## Model Support (v2.68.24) - NEW
+
+Ralph now supports **multiple AI models** for optimal cost/performance trade-offs:
+
+| Model | Provider | Cost | Use Case | Context |
+|-------|----------|------|----------|---------|
+| **Claude Opus** | Anthropic | 15x | Complex reasoning, security audits, architecture | 200K tokens |
+| **Claude Sonnet** | Anthropic | 5x | Standard tasks, implementation, review | 200K tokens |
+| **Claude Haiku** | Anthropic | 1x | Fast simple tasks | 200K tokens |
+| **MiniMax M2.1** | MiniMax | **0.08x** | Validation, second opinion, extended loops | Large |
+| **Codex GPT-5.2** | OpenAI | Variable | Code generation, refactoring, deep analysis | Large |
+| **Gemini 2.5 Pro** | Google | Variable | Cross-validation, web search grounding, codebase analysis | 1M tokens |
+| **GLM-4.7** | Z.AI | Variable | Vision, image analysis, video processing, Chinese language support | Large |
+
+### MiniMax M2.1 Integration
+
+**Purpose**: Cost-effective validation and extended iteration loops.
+
+**Features**:
+- 92% cost reduction vs Claude Sonnet
+- High-quality code generation and review
+- Extended Ralph Loop (up to 100 iterations vs 25 with Claude)
+- Ideal for validation, second opinions, and rapid prototyping
+
+**Usage**:
+```bash
+# Ralph automatically routes to MiniMax for:
+- Validation tasks (quality gates)
+- Second opinion reviews
+- Extended loop iterations (>25)
+- Cost-sensitive batch operations
+
+# Manual invocation
+/minimax-review "review this code for potential issues"
+```
+
+### GLM-4.7 Integration (v2.68.24) - NEW
+
+**Purpose**: Enterprise-grade vision, image analysis, and Chinese language support.
+
+**MCP Servers Installed**:
+| Server | Tools | Use Case |
+|--------|-------|----------|
+| **zai-mcp-server** | ui_to_artifact, extract_text_from_screenshot, diagnose_error_screenshot, understand_technical_diagram, analyze_data_visualization, ui_diff_check, image_analysis, video_analysis | Screenshot debugging, diagram understanding, data viz analysis, UI testing |
+| **web-search-prime** | webSearchPrime | Advanced web search with real-time data |
+| **web-reader** | webReader | Web content extraction to markdown |
+| **zread** | search_doc, get_repo_structure, read_file | Repository knowledge access |
+
+**Usage**:
+```bash
+# Image analysis
+mcp__nanobanana__generate_image "create a diagram showing..."
+
+# Web search
+mcp__web_search__search "latest React 19 features"
+
+# Web content extraction
+mcp__web_reader__webReader "https://example.com"
+
+# Repository knowledge
+mcp__zread__search_doc "TypeScript patterns"
+```
+
+### Multi-Model Adversarial Validation
+
+**v2.68.24**: Three-model validation for critical changes:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                   ADVERSARIAL VALIDATION COUNCIL                │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
+│  │   CODEX     │  │   CLAUDE    │  │   GEMINI    │             │
+│  │  GPT-5.2    │  │   Opus      │  │  2.5 Pro    │             │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘             │
+│         └────────────────┼────────────────┘                     │
+│                          ▼                                      │
+│                  ┌───────────────┐                              │
+│                  │    JUDGE      │  (Claude Opus)              │
+│                  └───────┬───────┘                              │
+│                          ▼                                      │
+│                  CONSENSUS REQUIRED                             │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Exit Criteria**: All three models must agree "NO ISSUES FOUND" before validation passes.
 
 ## Core Orchestration Agents (v2.50)
 
