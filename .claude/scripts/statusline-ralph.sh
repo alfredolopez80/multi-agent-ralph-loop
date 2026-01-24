@@ -378,35 +378,33 @@ if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
         first_line=$(echo "$hud_output" | head -1)
         rest=$(echo "$hud_output" | tail -n +2)
 
-        # v2.69.0: Format third line (stats) with icons for better readability
-        # Original: "3 CLAUDE.md | 7 rules | 13 MCPs | 6 hooks"
-        # Enhanced: "📁 main* | 📄 3 files | 📋 7 rules | 🔌 13 MCPs | ⚙️ 6 hooks"
+        # v2.69.0: Combine git branch line with stats line
+        # Goal: "multi-agent-ralph-loop git:(main*) | 3 CLAUDE.md | 7 rules | 13 MCPs | 6 hooks"
         if [[ -n "$rest" ]]; then
-            # Extract stats from the last line and reformat with icons
-            stats_line=$(echo "$rest" | tail -1)
+            # Split rest into lines
+            line_count=$(echo "$rest" | wc -l | awk '{print $1}')
 
-            # Parse the stats line: "3 CLAUDE.md | 7 rules | 13 MCPs | 6 hooks"
-            # Format with icons: "📄 3 files | 📋 7 rules | 🔌 13 MCPs | ⚙️ 6 hooks"
-            if echo "$stats_line" | grep -q "CLAUDE.md"; then
-                # Extract numbers using awk for reliable parsing
-                num_files=$(echo "$stats_line" | awk '{print $1}')
-                num_rules=$(echo "$stats_line" | awk -F'|' '{print $2}' | awk '{print $1}')
-                num_mcps=$(echo "$stats_line" | awk -F'|' '{print $3}' | awk '{print $1}')
-                num_hooks=$(echo "$stats_line" | awk -F'|' '{print $4}' | awk '{print $1}')
+            if [[ "$line_count" -ge 2 ]]; then
+                # Get first line (git branch) and second line (stats)
+                git_branch_line=$(echo "$rest" | head -1)
+                stats_line=$(echo "$rest" | head -2 | tail -1)
+                remaining_rest=$(echo "$rest" | tail -n +3)
 
-                formatted_stats="📄 ${num_files} files | 📋 ${num_rules} rules | 🔌 ${num_mcps} MCPs | ⚙️ ${num_hooks} hooks"
+                # Check if stats_line contains "CLAUDE.md" pattern
+                if echo "$stats_line" | grep -q "CLAUDE.md"; then
+                    # Remove ANSI color codes for clean combination
+                    clean_git=$(echo "$git_branch_line" | sed 's/\x1b\[[0-9;]*m//g')
+                    clean_stats=$(echo "$stats_line" | sed 's/\x1b\[[0-9;]*m//g')
 
-                # Replace the last line with formatted version
-                # macOS-compatible: use sed '$d' instead of head -n -1
-                if [[ -n "$rest" ]]; then
-                    rest=$(echo "$rest" | sed '$d')
-                    if [[ -n "$rest" ]]; then
-                        rest="${rest}"$'\n'"${formatted_stats}"
+                    # Combine with separator
+                    combined_line="${clean_git} | ${clean_stats}"
+
+                    # Reconstruct rest with combined line
+                    if [[ -n "$remaining_rest" ]]; then
+                        rest="${combined_line}"$'\n'"${remaining_rest}"
                     else
-                        rest="${formatted_stats}"
+                        rest="${combined_line}"
                     fi
-                else
-                    rest="${formatted_stats}"
                 fi
             fi
         fi
