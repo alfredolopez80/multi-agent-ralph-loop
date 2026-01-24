@@ -48,17 +48,17 @@ log() {
 
 log_error() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] ERROR: $*" >> "$LOG_FILE"
-    echo "❌ Skill Validation Error: $*" >&2 2>/dev/null || true
+    echo "❌ Skill Validation Error: $*" >&2 2>/dev/null || true > /dev/null
 }
 
 log_warning() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] WARNING: $*" >> "$LOG_FILE"
-    echo "⚠️  Warning: $*" >&2 2>/dev/null || true
+    echo "⚠️  Warning: $*" >&2 2>/dev/null || true > /dev/null
 }
 
 log_success() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] SUCCESS: $*" >> "$LOG_FILE"
-    echo "✅ $*" >&2 2>/dev/null || true
+    echo "✅ $*" >&2 2>/dev/null || true > /dev/null
 }
 
 # Validate YAML syntax using Python
@@ -74,10 +74,12 @@ try:
         yaml.safe_load(f)
     sys.exit(0)
 except yaml.YAMLError as e:
-    print(f"YAML syntax error: {e}", file=sys.stderr)
+    # v2.69.0: Print to stdout (captured by 2>&1) instead of stderr directly
+    print(f"YAML syntax error: {e}")
     sys.exit(1)
 except Exception as e:
-    print(f"Error reading file: {e}", file=sys.stderr)
+    # v2.69.0: Print to stdout (captured by 2>&1) instead of stderr directly
+    print(f"Error reading file: {e}")
     sys.exit(1)
 ' "$file" 2>&1; then
         log_error "Invalid YAML syntax in $file"
@@ -174,13 +176,15 @@ for v in validations:
         try:
             re.compile(pattern['regex'])
         except re.error as e:
-            print(f\"Invalid regex in {v.get('id', 'unknown')}: {e}\", file=sys.stderr)
+            # v2.69.0: Print to stdout instead of stderr
+            print(f\"Invalid regex in {v.get('id', 'unknown')}: {e}\")
             sys.exit(1)
     if 'negative_regex' in pattern:
         try:
             re.compile(pattern['negative_regex'])
         except re.error as e:
-            print(f\"Invalid negative_regex in {v.get('id', 'unknown')}: {e}\", file=sys.stderr)
+            # v2.69.0: Print to stdout instead of stderr
+            print(f\"Invalid negative_regex in {v.get('id', 'unknown')}: {e}\")
             sys.exit(1)
 " 2>&1; then
         log_error "Invalid regex patterns in $validations_file"
@@ -223,7 +227,8 @@ for edge in sharp_edges:
         try:
             re.compile(pattern['regex'])
         except re.error as e:
-            print(f\"Invalid regex in {edge.get('id', 'unknown')}: {e}\", file=sys.stderr)
+            # v2.69.0: Print to stdout instead of stderr
+            print(f\"Invalid regex in {edge.get('id', 'unknown')}: {e}\")
             sys.exit(1)
 " 2>&1; then
         log_error "Invalid detection patterns in $sharp_edges_file"
@@ -319,7 +324,7 @@ except:
 
     if [[ -z "$skill_name" ]]; then
         log_error "No skill name provided in hook input"
-        echo "⚠️  Skill validator: No skill name provided" >&2 2>/dev/null || true
+        echo "⚠️  Skill validator: No skill name provided" >&2 2>/dev/null || true > /dev/null
         trap - EXIT  # CRIT-004: Clear trap before explicit output
         echo '{"decision": "allow"}'
         exit 0  # Don't block if no skill specified

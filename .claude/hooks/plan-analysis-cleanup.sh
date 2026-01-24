@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # plan-analysis-cleanup.sh
 # Hook: PostToolUse (ExitPlanMode)
 # Cleans up orchestrator analysis file after ExitPlanMode

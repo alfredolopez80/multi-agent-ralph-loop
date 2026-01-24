@@ -1,5 +1,5 @@
 #!/bin/bash
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 #===============================================================================
 # SEC-CONTEXT VALIDATE HOOK v2.68.0
 # Hook: PostToolUse (Edit|Write)
@@ -42,7 +42,7 @@ log() {
     local sanitized
     sanitized=$(printf '%s' "$*" | tr -d '\n\r')
     echo "[${timestamp}] [${level}] ${sanitized}" >> "${LOG_FILE}"
-    echo "sec-context:[${level}] ${sanitized}" >&2
+    # v2.69.0: Removed stderr output (causes hook error warnings). Logs go to LOG_FILE only.
 }
 
 ensure_log_dir() { mkdir -p "${LOG_DIR}"; }
@@ -305,12 +305,16 @@ validate_code() {
     #---------------------------------------------------------------------------
 
     if [[ ${found_issues} -eq 1 ]]; then
-        echo "=== SEC-CONTEXT FINDINGS (v${VERSION}) ===" >&2
-        echo "File: ${file}" >&2
-        echo "Patterns Checked: 27" >&2
-        echo "" >&2
-        echo "${findings}" >&2
-        echo "================================" >&2
+        # v2.69.0: Write findings to LOG_FILE instead of stderr (fixes hook error warnings)
+        # stderr causes Claude Code to display "hook error" even when hook succeeds
+        {
+            echo "=== SEC-CONTEXT FINDINGS (v${VERSION}) ==="
+            echo "File: ${file}"
+            echo "Patterns Checked: 27"
+            echo ""
+            echo "${findings}"
+            echo "================================"
+        } >> "${LOG_FILE}" 2>/dev/null || true
         return 1
     fi
 
@@ -364,7 +368,8 @@ main() {
 }
 
 if [[ $# -lt 2 ]]; then
-    echo "Usage: $0 <action> <file_path>" >&2
+    # v2.69.0: Removed stderr output (causes hook error warnings)
+    # Usage errors logged to LOG_FILE only, not displayed to user
     exit 0
 fi
 

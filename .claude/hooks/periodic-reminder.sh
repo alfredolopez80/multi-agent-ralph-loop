@@ -14,7 +14,7 @@ set -euo pipefail
 umask 077
 
 # Configuration
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # v2.57.1: Added JSON output (SEC-030) to prevent "empty output" error
 RALPH_DIR="${HOME}/.ralph"
 GOAL_FILE="${RALPH_DIR}/current_goal"

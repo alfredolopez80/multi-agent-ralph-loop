@@ -18,7 +18,7 @@
 #
 
 # No usar set -e para evitar que errores de tldr detengan la sesión
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # v2.52: Fixed JSON output format for SessionStart hooks
 set +e
 
@@ -84,8 +84,8 @@ main() {
         echo "[$(date)] Completed tldr warm"
     } > "$LOG_FILE" 2>&1 &
 
-    # Mensaje informativo a stderr (v2.52: stdout debe ser JSON)
-    echo "llm-tldr warming index in background (95% token savings)..." >&2
+    # v2.69.0: Removed stderr output (causes hook error warnings)
+    # Info message now included in JSON additionalContext instead
 
     # Return JSON for SessionStart (v2.52 fix)
     echo '{"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "llm-tldr warming index in background (95% token savings)..."}}'

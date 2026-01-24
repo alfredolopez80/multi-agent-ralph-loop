@@ -44,11 +44,12 @@ fi
 MATCHES=$(grep -n 'console\.log' "$FILE_PATH" 2>/dev/null | head -5 || true)
 
 if [[ -n "$MATCHES" ]]; then
-    echo "[Hook] ⚠️  console.log found in ${FILE_PATH##*/}:" >&2 2>/dev/null || true
-    echo "$MATCHES" | while read -r line; do
-        echo "  $line" >&2 2>/dev/null || true
-    done
-    echo "[Hook] Remove console.log before committing" >&2 2>/dev/null || true
+    # v2.69.0: Use systemMessage instead of stderr (fixes hook error warnings)
+    # Count lines for summary
+    LINE_COUNT=$(echo "$MATCHES" | wc -l | tr -d ' ')
+    MSG="⚠️ console.log found in ${FILE_PATH##*/} (${LINE_COUNT} occurrences) - remove before committing"
+    echo "{\"continue\": true, \"systemMessage\": \"${MSG}\"}"
+    exit 0
 fi
 
 echo '{"continue": true}'

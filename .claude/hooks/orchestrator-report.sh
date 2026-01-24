@@ -2,7 +2,7 @@
 # orchestrator-report.sh - Orchestrator Session Report Hook
 # Hook: Stop
 # Purpose: Generate comprehensive session report when user ends session
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 #
 # v2.66.6: Fixed duplicate VERSION (GAP-003) and consolidated version history
 # v2.59.0: Added effectiveness metrics and domain-specific recommendations

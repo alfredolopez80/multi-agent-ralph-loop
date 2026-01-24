@@ -1,5 +1,5 @@
 #!/bin/bash
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # post-compact-restore.sh - Multi-Agent Ralph v2.68.7
 # Restores context after compaction using ledger + claude-mem MCP
 # Triggered by PostCompact hook event

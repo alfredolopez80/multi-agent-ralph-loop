@@ -11,7 +11,7 @@
 #   - ui_diff_check: Compare before/after screenshots
 #   - analyze_image: General visual analysis
 #
-# VERSION: 2.68.26
+# VERSION: 2.69.0
 # v2.68.26: Initial implementation for GLM-4.7 integration
 
 # SEC-111: Read input from stdin with length limit (100KB max)

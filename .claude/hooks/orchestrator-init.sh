@@ -21,8 +21,9 @@ INPUT=$(head -c 100000)
 
 set -euo pipefail
 
-# Error trap for guaranteed JSON output (v2.62.3)
-trap 'echo "SessionStart trap triggered" >&2' ERR EXIT
+# v2.69.0: Error trap for SessionStart hooks (plain text OK, no JSON required)
+# Removed stderr which causes hook error warnings
+trap 'echo "SessionStart orchestrator-init recovery"' ERR EXIT
 
 umask 077
 

@@ -78,29 +78,29 @@ if [ "$SPEC" = "null" ] || [ -z "$SPEC" ]; then
     echo '{"decision": "allow"}'; exit 0
 fi
 
-# Output verification reminder to stderr (HIGH-004: stdout reserved for JSON)
-cat >&2 << EOF
+# v2.69.0: Write verification banner to log file instead of stderr (fixes hook error warnings)
+# stderr causes Claude Code to display "hook error" even when hook succeeds
+LOG_FILE="${HOME}/.ralph/logs/lsa-pre-step.log"
+mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
 
-╔══════════════════════════════════════════════════════════════════╗
-║                    LSA PRE-STEP VERIFICATION                      ║
-╠══════════════════════════════════════════════════════════════════╣
-║  Step: $CURRENT_STEP
-║                                                                   ║
-║  VERIFY BEFORE IMPLEMENTING:                                      ║
-║  ┌────────────────────────────────────────────────────────────┐  ║
-║  │ [ ] Target file matches spec                               │  ║
-║  │ [ ] Dependencies available                                 │  ║
-║  │ [ ] Patterns from architecture understood                  │  ║
-║  │ [ ] Export names match spec exactly                        │  ║
-║  │ [ ] Function signatures match spec                         │  ║
-║  └────────────────────────────────────────────────────────────┘  ║
-║                                                                   ║
-║  Spec Summary:                                                    ║
-$(echo "$SPEC" | jq -r 'to_entries | .[] | "║  • \(.key): \(.value | tostring | .[0:50])"' 2>/dev/null || echo "║  (Unable to parse spec)")
-║                                                                   ║
-╚══════════════════════════════════════════════════════════════════╝
+{
+    echo ""
+    echo "╔══════════════════════════════════════════════════════════════════╗"
+    echo "║                    LSA PRE-STEP VERIFICATION                      ║"
+    echo "╠══════════════════════════════════════════════════════════════════╣"
+    echo "║  Step: $CURRENT_STEP"
+    echo "║  Time: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    echo "║                                                                   ║"
+    echo "║  VERIFY BEFORE IMPLEMENTING:                                      ║"
+    echo "║  • Target file matches spec                                       ║"
+    echo "║  • Dependencies available                                         ║"
+    echo "║  • Patterns from architecture understood                          ║"
+    echo "╚══════════════════════════════════════════════════════════════════╝"
+    echo ""
+} >> "$LOG_FILE" 2>/dev/null || true
 
-EOF
+# Create additionalContext message for Claude
+LSA_CONTEXT="🔍 LSA Pre-Step: Verifying step '$CURRENT_STEP' - check spec compliance before implementing"
 
 # SECURITY: Atomic update using mktemp to prevent race conditions (v2.45.1)
 TEMP_FILE=$(mktemp "${PLAN_STATE}.XXXXXX") || {
@@ -141,6 +141,6 @@ fi
 
 log "LSA pre-check completed for step $CURRENT_STEP"
 
-# v2.62.3: PreToolUse hooks must output JSON
+# v2.69.0: PreToolUse hooks output JSON with additionalContext (instead of stderr)
 trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-echo '{"decision": "allow"}'
+echo "{\"decision\": \"allow\", \"additionalContext\": \"$LSA_CONTEXT\"}"

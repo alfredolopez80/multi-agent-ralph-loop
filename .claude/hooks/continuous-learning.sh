@@ -1,6 +1,6 @@
 #!/bin/bash
 # continuous-learning.sh - Extract reusable patterns from session at end
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # Hook: Stop
 # Part of Multi-Agent Ralph Loop v2.68.2
 #
@@ -23,7 +23,7 @@ output_json() {
 trap 'output_json' ERR EXIT
 
 # Read stdin
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 
 LEARNED_DIR="${HOME}/.claude/skills/learned"
 mkdir -p "$LEARNED_DIR"
@@ -87,8 +87,10 @@ Transcript: ${TRANSCRIPT}
 [Add extracted patterns here after manual review]
 EOF
 
-    echo "[Hook] Learning opportunity detected in session" >&2
-    echo "[Hook] Review: ${PATTERNS_FILE}" >&2
+    # v2.69.0: Write to log file instead of stderr (fixes hook error warnings)
+    LOG_FILE="${HOME}/.ralph/logs/continuous-learning.log"
+    mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Learning opportunity detected - Review: ${PATTERNS_FILE}" >> "$LOG_FILE" 2>/dev/null || true
 fi
 
 trap - EXIT

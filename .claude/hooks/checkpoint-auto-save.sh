@@ -154,9 +154,11 @@ main() {
         cp_file=$(create_checkpoint "$trigger" "Auto-save before $trigger operation") || true
 
         if [ -n "$cp_file" ] && [ -f "$cp_file" ]; then
-            # Notify user (non-blocking via stderr)
-            echo "💾 Auto-checkpoint saved before $trigger operation" >&2 2>/dev/null || true
+            # v2.69.0: Use additionalContext instead of stderr (fixes hook error warnings)
             log_auto "INFO" "Checkpoint saved: $cp_file"
+            trap - ERR EXIT
+            echo "{\"decision\": \"allow\", \"additionalContext\": \"💾 Auto-checkpoint saved before $trigger operation\"}"
+            exit 0
         fi
     fi
 

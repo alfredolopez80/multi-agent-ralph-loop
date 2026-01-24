@@ -3,7 +3,7 @@
 # Generates Sentry summary report at orchestrator completion
 # Once: true
 
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # v2.68.8: Fixed Hook comment format for pre-commit validation
 # v2.57.3: Added proper Stop hook JSON output (SEC-039)
 set -euo pipefail

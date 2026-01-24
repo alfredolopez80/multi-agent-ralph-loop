@@ -1,6 +1,6 @@
 #!/bin/bash
 # plan-state-lifecycle.sh - Manage plan-state lifecycle
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # v2.68.11: SEC-111 FIX - Input length validation to prevent DoS
 # v2.68.2: FIX CRIT-008 - Clear EXIT trap before explicit JSON output
 #
@@ -103,7 +103,7 @@ archive_plan() {
 }
 
 # Read input from stdin
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 
 # Get user prompt
 USER_PROMPT=$(echo "$INPUT" | jq -r '.userPromptContent // ""' 2>/dev/null || echo "")

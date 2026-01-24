@@ -5,7 +5,7 @@
 #
 # Usage: semantic-write-helper.sh --add '{"content": "...", "category": "...", "file": "..."}'
 #
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # SECURITY: SEC-006 compliant
 
 # SEC-111: Read input from stdin with length limit (100KB max)
