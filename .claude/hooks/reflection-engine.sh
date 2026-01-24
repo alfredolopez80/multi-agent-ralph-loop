@@ -1,5 +1,6 @@
 #!/bin/bash
-# Reflection Engine - Cold Path Processing (v2.55.0)
+# Reflection Engine - Cold Path Processing (v2.68.12)
+# v2.68.12: BUG-001 FIX - Integer comparison (< → -lt) for date strings
 # Hook: Stop
 # Purpose: Extract patterns and update memory after session ends
 #
@@ -134,7 +135,8 @@ fi
     LAST_CLEANUP="0"
     [[ -f "$CLEANUP_MARKER" ]] && LAST_CLEANUP=$(cat "$CLEANUP_MARKER" 2>/dev/null || echo "0")
 
-    if [[ "$LAST_CLEANUP" < "$WEEK_AGO" ]]; then
+    # BUG-001: Use -lt for numeric comparison (not < which is string comparison)
+    if [[ "$LAST_CLEANUP" -lt "$WEEK_AGO" ]]; then
         echo "[$(date -Iseconds)] Running weekly cleanup..."
         python3 "$REFLECTION_SCRIPT" cleanup 2>&1 || true
         mkdir -p "$HOME/.ralph/state"
