@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # Usage Count Consolidation Hook (v2.68.6)
 # Hook: SessionStart
 # Purpose: Consolidate pending usage_count updates at session start
@@ -13,7 +13,7 @@
 set -euo pipefail
 
 # Error trap for guaranteed JSON output (v2.62.3)
-trap 'echo "SessionStart trap triggered" >&2' ERR
+trap 'echo "SessionStart trap triggered" >&2' ERR EXIT
 
 umask 077
 

@@ -2,7 +2,7 @@
 # repo-boundary-guard.sh - Repository Isolation Enforcement
 # Hook: PreToolUse (Edit|Write|Bash)
 # Purpose: Prevent accidental work in external repositories
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # v2.66.8: SEC-051 - Use realpath for proper path canonicalization
 
 # SEC-111: Read input from stdin with length limit (100KB max)
@@ -87,8 +87,8 @@ extract_paths() {
 
 # Main logic
 main() {
-    local input
-    input=$(cat 2>/dev/null) || input=""
+    # v2.69: Use $INPUT from SEC-111 read instead of second cat (fixes double-read bug)
+    local input="$INPUT"
 
     if [[ -z "$input" ]]; then
         log "DEBUG: Empty input, allowing"

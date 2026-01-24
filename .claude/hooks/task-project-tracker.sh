@@ -1,6 +1,6 @@
 #!/bin/bash
 # task-project-tracker.sh - Track project metadata for all tasks
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 #
 # Purpose: Add project metadata to every task created, enabling
 #          multi-project tracking and claude-task-viewer integration.
@@ -25,7 +25,7 @@ umask 077
 output_json() {
     echo '{"continue": true}'
 }
-trap 'output_json' ERR
+trap 'output_json' ERR EXIT
 
 # Configuration
 CLAUDE_TASKS_DIR="${HOME}/.claude/tasks"

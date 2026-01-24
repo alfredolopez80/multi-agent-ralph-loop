@@ -14,7 +14,7 @@
 # v2.62.3: P0 FIX - Use semantic-write-helper.sh for all semantic writes
 #          P1 FIX - Exclude JSON/YAML from pattern detection (config files only)
 #
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # SECURITY: SEC-003 (jq JSON), SEC-006 (error trap), SEC-009 (portable mkdir lock)
 
 # SEC-111: Read input from stdin with length limit (100KB max)
@@ -30,10 +30,10 @@ umask 077
 output_json() {
     echo '{"continue": true}'
 }
-trap 'output_json' ERR
+trap 'output_json' ERR EXIT
 
 # Parse input
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
 
 # Only process Edit and Write tools

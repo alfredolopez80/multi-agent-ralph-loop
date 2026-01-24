@@ -11,7 +11,7 @@
 # 3. Update procedural rules
 # 4. Cleanup old episodes
 #
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # v2.55: Multi-source transcript fallback (claude-projects → ralph-ledger → ralph-handoff)
 #        Added content verification (-s flag) to skip empty files
 # v2.53: FIXED - Stop hooks use {"decision": "approve|block"} per official Claude Code docs
@@ -30,7 +30,7 @@ umask 077
 output_json() {
     echo '{"decision": "approve"}'
 }
-trap 'output_json' ERR
+trap 'output_json' ERR EXIT
 
 # Helper: Escape string for JSON (SEC-001)
 escape_json() {
@@ -40,7 +40,7 @@ escape_json() {
 }
 
 # Parse input
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 RAW_SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"' 2>/dev/null || echo "unknown")
 # Validate and sanitize SESSION_ID (alphanumeric, dash, underscore only)
 SESSION_ID=$(echo "$RAW_SESSION_ID" | tr -cd 'a-zA-Z0-9_-' | head -c 64)

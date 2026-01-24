@@ -1,6 +1,6 @@
 #!/bin/bash
 # console-log-detector.sh - Warn about console.log statements after JS/TS edits
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # HOOK: PostToolUse (Edit|Write)
 # Part of Multi-Agent Ralph Loop v2.66.0
 
@@ -15,10 +15,10 @@ set -euo pipefail
 output_json() {
     echo '{"continue": true}'
 }
-trap 'output_json' ERR
+trap 'output_json' ERR EXIT
 
 # Read stdin
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 
 # Only process JS/TS files
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null || echo "")
@@ -44,11 +44,11 @@ fi
 MATCHES=$(grep -n 'console\.log' "$FILE_PATH" 2>/dev/null | head -5 || true)
 
 if [[ -n "$MATCHES" ]]; then
-    echo "[Hook] ⚠️  console.log found in ${FILE_PATH##*/}:" >&2
+    echo "[Hook] ⚠️  console.log found in ${FILE_PATH##*/}:" >&2 2>/dev/null || true
     echo "$MATCHES" | while read -r line; do
-        echo "  $line" >&2
+        echo "  $line" >&2 2>/dev/null || true
     done
-    echo "[Hook] Remove console.log before committing" >&2
+    echo "[Hook] Remove console.log before committing" >&2 2>/dev/null || true
 fi
 
 echo '{"continue": true}'

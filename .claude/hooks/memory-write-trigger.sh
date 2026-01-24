@@ -10,7 +10,7 @@
 # - "keep in mind"
 # - "for future reference"
 #
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # v2.68.11: SEC-111 FIX - Input length validation to prevent DoS
 # v2.68.10: SEC-110 FIX - Redact sensitive data (API keys, tokens, passwords) before logging
 # SECURITY: Added ERR trap for guaranteed JSON output, MATCHED escaping
@@ -27,7 +27,7 @@ umask 077
 output_json() {
     echo '{"continue": true}'
 }
-trap 'output_json' ERR
+trap 'output_json' ERR EXIT
 
 # Helper: Escape string for JSON (SEC-002)
 escape_json() {
@@ -50,7 +50,7 @@ redact_sensitive() {
 }
 
 # Parse input
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 USER_PROMPT=$(echo "$INPUT" | jq -r '.user_prompt // empty' 2>/dev/null || echo "")
 
 # SEC-111: Input length validation to prevent DoS from large prompts

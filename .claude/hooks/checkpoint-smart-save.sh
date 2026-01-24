@@ -1,6 +1,7 @@
 #!/bin/bash
 # checkpoint-smart-save.sh - Smart checkpoint based on risk/complexity
-# VERSION: 2.68.23
+# VERSION: 2.69.0
+# v2.69.0: VERSION sync - all CRIT-003b fixes were already in place
 # v2.68.10: SEC-105 FIX - Atomic noclobber (O_EXCL) eliminates TOCTOU gap completely
 # v2.68.1: FIX CRIT-003 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 # v2.66.8: HIGH-003 version sync, RACE-001 atomic mkdir already implemented
@@ -53,7 +54,7 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
 }
 
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null || echo "")
 
 # Only process Edit, Write

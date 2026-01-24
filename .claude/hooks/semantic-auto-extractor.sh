@@ -9,7 +9,7 @@
 # - Configuration changes
 # - Architectural decisions
 #
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # SECURITY: SEC-006 compliant with ERR trap for guaranteed JSON output
 
 # SEC-111: Read input from stdin with length limit (100KB max)
@@ -25,10 +25,10 @@ umask 077
 output_json() {
     echo '{"decision": "approve", "suppressOutput": true}'
 }
-trap 'output_json' ERR
+trap 'output_json' ERR EXIT
 
 # Parse input
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"' 2>/dev/null || echo "unknown")
 
 # Config check

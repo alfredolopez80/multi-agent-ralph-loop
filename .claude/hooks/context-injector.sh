@@ -1,5 +1,5 @@
 #!/bin/bash
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # v2.68.9: SEC-107 FIX - Validate active context name to prevent path traversal
 # context-injector.sh - Injects active context into session
 # HOOK: SessionStart
@@ -14,13 +14,13 @@ INPUT=$(head -c 100000)
 set -euo pipefail
 
 # SEC-033: Graceful error handling (SessionStart outputs text as additionalContext)
-trap 'echo "Context injection skipped"' ERR
+trap 'echo "Context injection skipped"' ERR EXIT
 
 CONTEXTS_DIR="${HOME}/.claude/contexts"
 STATE_FILE="${HOME}/.ralph/state/active-context.txt"
 
 # Read stdin (hook input)
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 
 # Check if there's an active context
 if [[ -f "$STATE_FILE" ]]; then
@@ -41,9 +41,9 @@ if [[ -f "$STATE_FILE" ]]; then
         FOCUS=$(grep -m1 '^\*\*Focus\*\*:' "$CONTEXT_FILE" 2>/dev/null | sed 's/.*: //' || echo "Unknown")
 
         # Output context reminder to stderr (shown to user)
-        echo "[Context] Active: ${ACTIVE_CONTEXT}" >&2
-        echo "[Context] Mode: ${MODE}" >&2
-        echo "[Context] Focus: ${FOCUS}" >&2
+        echo "[Context] Active: ${ACTIVE_CONTEXT}" >&2 2>/dev/null || true
+        echo "[Context] Mode: ${MODE}" >&2 2>/dev/null || true
+        echo "[Context] Focus: ${FOCUS}" >&2 2>/dev/null || true
 
         # Inject context into session via environment-like mechanism
         # The context file itself is in ~/.claude/contexts/ and can be read by Claude

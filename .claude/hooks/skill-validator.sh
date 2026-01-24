@@ -16,7 +16,7 @@
 INPUT=$(head -c 100000)
 
 
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # v2.68.9: SEC-103 FIX - Use sys.argv for file path instead of string interpolation
 # v2.68.2: FIX CRIT-004b - Only set trap when not sourced to prevent subshell JSON duplication
 # v2.68.1: FIX CRIT-004 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
@@ -48,17 +48,17 @@ log() {
 
 log_error() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] ERROR: $*" >> "$LOG_FILE"
-    echo "❌ Skill Validation Error: $*" >&2
+    echo "❌ Skill Validation Error: $*" >&2 2>/dev/null || true
 }
 
 log_warning() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] WARNING: $*" >> "$LOG_FILE"
-    echo "⚠️  Warning: $*" >&2
+    echo "⚠️  Warning: $*" >&2 2>/dev/null || true
 }
 
 log_success() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] SUCCESS: $*" >> "$LOG_FILE"
-    echo "✅ $*" >&2
+    echo "✅ $*" >&2 2>/dev/null || true
 }
 
 # Validate YAML syntax using Python
@@ -301,10 +301,8 @@ validate_skill() {
 
 # Entry point
 main() {
-    # Parse arguments from Claude Code hook invocation
-    # Hook receives JSON input with skill information
-    local input
-    input=$(cat)
+    # v2.69: Use $INPUT from SEC-111 read instead of second cat (fixes CRIT-001 double-read bug)
+    local input="$INPUT"
 
     # Extract skill name from input
     # For now, assume input is JSON: {"skill": "skill-name", "action": "load"}
@@ -321,7 +319,7 @@ except:
 
     if [[ -z "$skill_name" ]]; then
         log_error "No skill name provided in hook input"
-        echo "⚠️  Skill validator: No skill name provided" >&2
+        echo "⚠️  Skill validator: No skill name provided" >&2 2>/dev/null || true
         trap - EXIT  # CRIT-004: Clear trap before explicit output
         echo '{"decision": "allow"}'
         exit 0  # Don't block if no skill specified

@@ -9,7 +9,7 @@
 INPUT=$(head -c 100000)
 
 
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # v2.57.3: Fixed LAST remaining {"decision": "continue"} on line 89 (SEC-037)
 # v2.57.2: Fixed JSON output format (SEC-036) - PostToolUse hooks MUST output JSON
 set -euo pipefail
@@ -18,7 +18,7 @@ set -euo pipefail
 output_json() {
     echo '{"continue": true}'
 }
-trap 'output_json' ERR
+trap 'output_json' ERR EXIT
 
 # Configuración
 SAVE_INTERVAL=${RALPH_AUTO_SAVE_INTERVAL:-5}  # Cada 5 operaciones por defecto
@@ -35,7 +35,7 @@ log() {
 }
 
 # Leer input de Claude
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 
 # Obtener contador actual
 if [ -f "$COUNTER_FILE" ]; then

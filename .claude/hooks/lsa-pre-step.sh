@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # LSA Pre-Step Verification
+# v2.69.0: CRIT-003 - Added EXIT to trap + trap clears before outputs
 # v2.68.7: CRIT-002 - Added error trap for guaranteed JSON output
 # v2.66.8: HIGH-004 - Redirect ASCII art to stderr (stdout reserved for JSON)
 # Hook: PreToolUse (Edit|Write)
@@ -15,8 +16,8 @@ INPUT=$(head -c 100000)
 
 set -euo pipefail
 
-# SEC-006: Guaranteed JSON output on any error (CRIT-002 fix)
-trap 'echo "{\"decision\": \"allow\"}"' ERR
+# SEC-006: Guaranteed JSON output on any error (CRIT-002 + CRIT-003 fix)
+trap 'echo "{\"decision\": \"allow\"}"' ERR EXIT
 
 # Configuration
 PLAN_STATE=".claude/plan-state.json"
@@ -32,6 +33,7 @@ log() {
 # Check if we're in orchestrated context (plan-state exists)
 if [ ! -f "$PLAN_STATE" ]; then
     # Not in orchestrated mode, skip LSA verification
+    trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
     echo '{"decision": "allow"}'; exit 0
 fi
 
@@ -53,6 +55,7 @@ fi
 
 if [ -z "$CURRENT_STEP" ]; then
     log "No active step found, skipping LSA pre-check"
+    trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
     echo '{"decision": "allow"}'; exit 0
 fi
 
@@ -71,6 +74,7 @@ SPEC=$(jq -r --arg id "$CURRENT_STEP" '
 
 if [ "$SPEC" = "null" ] || [ -z "$SPEC" ]; then
     log "No spec found for step $CURRENT_STEP"
+    trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
     echo '{"decision": "allow"}'; exit 0
 fi
 
@@ -138,4 +142,5 @@ fi
 log "LSA pre-check completed for step $CURRENT_STEP"
 
 # v2.62.3: PreToolUse hooks must output JSON
+trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
 echo '{"decision": "allow"}'

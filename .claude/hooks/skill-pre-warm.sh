@@ -6,7 +6,7 @@
 # This hook identifies and pre-validates commonly used skills so they're
 # ready to use immediately without validation delay on first invocation.
 #
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # CRITICAL: Closes GAP-003 - Missing skill pre-load mechanism
 
 # SEC-111: Read input from stdin with length limit (100KB max)
@@ -21,7 +21,7 @@ umask 077
 output_json() {
     echo '{"continue": true}'
 }
-trap 'output_json' ERR
+trap 'output_json' ERR EXIT
 
 # Configuration
 SKILLS_DIR="${HOME}/.claude/skills"

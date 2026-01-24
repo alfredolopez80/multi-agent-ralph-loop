@@ -1,6 +1,6 @@
 #!/bin/bash
 # project-backup-metadata.sh - SessionStart/Stop hooks for project metadata backup
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 #
 # Purpose: Track project sessions globally for multi-project task tracking.
 #          Enables viewing task history across different repositories.
@@ -26,7 +26,7 @@ set -euo pipefail
 output_json_stop() {
     echo '{"decision": "approve"}'
 }
-trap 'output_json_stop' ERR
+trap 'output_json_stop' ERR EXIT
 
 # Configuration
 METADATA_DIR="${HOME}/.ralph/metadata"

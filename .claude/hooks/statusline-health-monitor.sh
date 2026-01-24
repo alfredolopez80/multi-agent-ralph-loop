@@ -1,6 +1,7 @@
 #!/bin/bash
 # statusline-health-monitor.sh - Periodic health check for statusline
-# VERSION: 2.68.23
+# VERSION: 2.69.0
+# v2.69.0: FIX CRIT-001 - Removed duplicate stdin read (cat > /dev/null)
 # v2.68.2: FIX CRIT-009 - Clear EXIT trap before explicit JSON output
 #
 # Purpose: Validate statusline health every 5 minutes
@@ -45,8 +46,8 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
 }
 
-# Read input but we only care about timing
-cat > /dev/null
+# CRIT-001 FIX: Removed duplicate stdin read
+# stdin already consumed by SEC-111 read at top of script
 
 # Check if we should run (every 5 minutes)
 NOW=$(date +%s)

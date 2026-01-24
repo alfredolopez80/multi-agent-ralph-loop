@@ -1,6 +1,6 @@
 #!/bin/bash
-# VERSION: 2.68.23
-# Procedural Memory Injection (v2.68.5)
+# VERSION: 2.69.0
+# Procedural Memory Injection (v2.69.0)
 # Hook: PreToolUse (Task)
 # Purpose: Inject relevant procedural rules into subagent context
 # v2.68.5: HIGH-001 - Increased lock retries 3→10 (300ms→1s) for high concurrency scenarios
@@ -24,17 +24,18 @@ readonly VERSION="2.68.5"
 output_json() {
     echo '{"decision": "allow"}'
 }
-trap 'output_json' ERR
+trap 'output_json' ERR EXIT
 
 # Lock file for thread-safe updates
 LOCK_FILE="${HOME}/.ralph/procedural/rules.json.lock"
 
 # Parse input
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
 
 # Only process Task tool
 if [[ "$TOOL_NAME" != "Task" ]]; then
+    trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
     echo '{"decision": "allow"}'
     exit 0
 fi
@@ -45,6 +46,7 @@ PROCEDURAL_FILE="$HOME/.ralph/procedural/rules.json"
 TEMP_FILE="${PROCEDURAL_FILE}.tmp.$$"
 
 if [[ ! -f "$CONFIG_FILE" ]]; then
+    trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
     echo '{"decision": "allow"}'
     exit 0
 fi
@@ -54,12 +56,14 @@ INJECT_ENABLED=$(jq -r '.procedural.inject_to_prompts // true' "$CONFIG_FILE" 2>
 MIN_CONFIDENCE=$(jq -r '.procedural.min_confidence // 0.7' "$CONFIG_FILE" 2>/dev/null || echo "0.7")
 
 if [[ "$INJECT_ENABLED" != "true" ]]; then
+    trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
     echo '{"decision": "allow"}'
     exit 0
 fi
 
 # Check if rules file exists
 if [[ ! -f "$PROCEDURAL_FILE" ]]; then
+    trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
     echo '{"decision": "allow"}'
     exit 0
 fi
@@ -76,6 +80,7 @@ TASK_LOWER=$(printf '%s' "$TASK_TEXT" | tr '[:upper:]' '[:lower:]')
 
 # Skip if no task text
 if [[ -z "${TASK_LOWER// }" ]]; then
+    trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
     echo '{"decision": "allow"}'
     exit 0
 fi
@@ -115,6 +120,7 @@ FILTERED_RULES=$(jq -c --arg domain "$DETECTED_DOMAIN" --arg min_conf "$MIN_CONF
 MATCH_COUNT=$(echo "$FILTERED_RULES" | jq 'length' 2>/dev/null || echo "0")
 
 if [[ "$MATCH_COUNT" -eq 0 ]]; then
+    trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
     echo '{"decision": "allow"}'
     exit 0
 fi
@@ -134,6 +140,7 @@ mkdir -p "$LOG_DIR"
 
 # If no matches, continue without injection
 if [[ -z "$MATCHING_RULES" ]]; then
+    trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
     echo '{"decision": "allow"}'
     exit 0
 fi
@@ -157,7 +164,7 @@ FULL_CONTEXT="${CONTEXT_HEADER}${MATCHING_RULES}${CONTEXT_FOOTER}"
 # Use jq for safe JSON construction - jq will properly escape the \n sequences
 # Note: Using --rawfile or direct string keeps \n as literal characters
 # SEC-039: PreToolUse hooks MUST use {"decision": "allow"}, NOT {"decision": "allow"}
-FEEDBACK_RESULT=$(jq -n --arg rules "$FULL_CONTEXT" \
+FEEDBACK_RESULT=$(jq -c -n --arg rules "$FULL_CONTEXT" \
     --argjson rules_matched "$MATCH_COUNT" \
     --arg ts "$(date -Iseconds)" \
     '{
@@ -247,4 +254,5 @@ if [[ "$MATCH_COUNT" -gt 0 ]]; then
 fi
 
 # Output the injection result
+trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
 echo "$FEEDBACK_RESULT"

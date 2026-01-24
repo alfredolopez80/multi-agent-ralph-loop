@@ -9,7 +9,7 @@
 # Fixes Issue #7: semantic memory populated in real-time, not just at session end
 # v2.57.4: Uses atomic write helper to prevent race conditions (GAP-003 fix)
 #
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # v2.66.8: HIGH-003 version sync, SEC-050 verified jq --arg escapes content properly
 # SECURITY: SEC-006 compliant
 
@@ -25,10 +25,10 @@ umask 077
 output_json() {
     echo '{"continue": true}'
 }
-trap 'output_json' ERR
+trap 'output_json' ERR EXIT
 
 # Parse input
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
 
 # Only process Edit and Write tools

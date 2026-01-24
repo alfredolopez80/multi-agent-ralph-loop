@@ -1,6 +1,6 @@
 #!/bin/bash
 # verification-subagent.sh - Spawn verification subagent after step completion
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 #
 # Purpose: Implement Claude Code's verification pattern
 #          Spawn a subagent to verify each completed step.
@@ -30,7 +30,7 @@ set -euo pipefail
 output_json() {
     echo '{"continue": true}'
 }
-trap 'output_json' ERR
+trap 'output_json' ERR EXIT
 
 # Configuration
 PLAN_STATE=".claude/plan-state.json"
@@ -43,7 +43,7 @@ log() {
 }
 
 # Read input from stdin
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 
 # Extract tool name
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null || echo "")

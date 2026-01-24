@@ -1,6 +1,7 @@
 #!/bin/bash
 # task-orchestration-optimizer.sh - Optimize Task tool usage patterns
-# VERSION: 2.68.23
+# VERSION: 2.69.0
+# v2.69.0: FIX CRIT-003 - Added EXIT to trap for guaranteed JSON output
 #
 # Purpose: Implement Claude Code's Task primitive optimization
 #          Auto-detect parallelization and context-hiding opportunities.
@@ -23,7 +24,7 @@ set -euo pipefail
 output_json() {
     echo '{"decision": "allow"}'
 }
-trap 'output_json' ERR
+trap 'output_json' ERR EXIT
 
 # Configuration
 PLAN_STATE=".claude/plan-state.json"
@@ -41,6 +42,7 @@ INPUT=$(head -c 100000)
 # Validate JSON before processing
 if ! echo "$INPUT" | jq empty 2>/dev/null; then
     log "Invalid JSON input, skipping hook"
+    trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
     echo '{"decision": "allow"}'
     exit 0
 fi
@@ -50,6 +52,7 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null || echo "")
 
 # Only process Task tool
 if [[ "$TOOL_NAME" != "Task" ]]; then
+    trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
     echo '{"decision": "allow"}'
     exit 0
 fi
@@ -64,6 +67,7 @@ PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // ""' 2>/dev/null || echo ""
 # Check if plan-state exists
 if [[ ! -f "$PLAN_STATE" ]]; then
     log "No plan-state.json, allowing Task without optimization"
+    trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
     echo '{"decision": "allow"}'
     exit 0
 fi
@@ -160,6 +164,7 @@ Consider \`model: \"sonnet\"\` for cost efficiency."
 fi
 
 # Build response
+trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
 if [[ "$OPTIMIZATION_APPLIED" == "true" ]]; then
     # Escape suggestions for JSON
     ESCAPED_SUGGESTIONS=$(echo "$SUGGESTIONS" | jq -Rs '.')
