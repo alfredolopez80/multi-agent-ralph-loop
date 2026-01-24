@@ -4,7 +4,7 @@
 # PostToolUse hook - AUTO-INVOKE code review after step completion
 #===============================================================================
 #
-# VERSION: 2.68.0
+# VERSION: 2.68.2
 # TRIGGER: PostToolUse (TaskUpdate - when step completes)
 # PURPOSE: Automatically invoke code review for completed steps
 #

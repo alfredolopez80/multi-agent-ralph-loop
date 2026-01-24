@@ -15,11 +15,19 @@
 # v2.59.2: FIXED - Single JSON output
 # v2.57.0: Fixed to actually inject context
 #
-# VERSION: 2.60.1
+# VERSION: 2.68.2
 # SECURITY: SEC-006 compliant
+# v2.66.5: DUP-001 FIX - Use shared domain-classifier.sh library
 
 set -euo pipefail
 umask 077
+
+# DUP-001: Source shared domain classifier library
+DOMAIN_CLASSIFIER="${HOME}/.ralph/lib/domain-classifier.sh"
+if [[ -f "$DOMAIN_CLASSIFIER" ]]; then
+    # shellcheck source=/dev/null
+    source "$DOMAIN_CLASSIFIER"
+fi
 
 # SEC-034: Guaranteed JSON output on any error
 output_json() {
@@ -118,28 +126,35 @@ if [[ "$COMPLEXITY" -eq 0 ]]; then
     [[ $COMPLEXITY -gt 10 ]] && COMPLEXITY=10
 fi
 
-# Detect task domain
+# Detect task domain using shared library (DUP-001)
 DOMAIN=""
 DOMAIN_KEYWORDS=""
 
-if echo "$PROMPT_LOWER" | grep -qE 'backend|api|server|microservice|rest'; then
-    DOMAIN="backend"
-    DOMAIN_KEYWORDS="error_handling|async_patterns|api_design|validation"
-elif echo "$PROMPT_LOWER" | grep -qE 'frontend|react|vue|angular|ui|ux'; then
-    DOMAIN="frontend"
-    DOMAIN_KEYWORDS="component|state_management|rendering|hooks"
-elif echo "$PROMPT_LOWER" | grep -qE 'security|auth|encryption|vulnerability'; then
-    DOMAIN="security"
-    DOMAIN_KEYWORDS="authentication|authorization|encryption|input_validation"
-elif echo "$PROMPT_LOWER" | grep -qE 'database|sql|orm|migration|schema'; then
-    DOMAIN="database"
-    DOMAIN_KEYWORDS="query_optimization|migration|transaction|indexing"
-elif echo "$PROMPT_LOWER" | grep -qE 'devops|deploy|kubernetes|docker|ci'; then
-    DOMAIN="devops"
-    DOMAIN_KEYWORDS="containerization|orchestration|pipeline|monitoring"
+if type infer_domain_from_text &>/dev/null; then
+    # Use shared library functions
+    DOMAIN=$(infer_domain_from_text "$PROMPT")
+    DOMAIN_KEYWORDS=$(get_domain_keywords "$DOMAIN")
 else
-    DOMAIN="general"
-    DOMAIN_KEYWORDS="architecture|testing|error_handling|patterns"
+    # Fallback if library not loaded (backward compatibility)
+    if echo "$PROMPT_LOWER" | grep -qE 'backend|api|server|microservice|rest'; then
+        DOMAIN="backend"
+        DOMAIN_KEYWORDS="error_handling|async_patterns|api_design|validation"
+    elif echo "$PROMPT_LOWER" | grep -qE 'frontend|react|vue|angular|ui|ux'; then
+        DOMAIN="frontend"
+        DOMAIN_KEYWORDS="component|state_management|rendering|hooks"
+    elif echo "$PROMPT_LOWER" | grep -qE 'security|auth|encryption|vulnerability'; then
+        DOMAIN="security"
+        DOMAIN_KEYWORDS="authentication|authorization|encryption|input_validation"
+    elif echo "$PROMPT_LOWER" | grep -qE 'database|sql|orm|migration|schema'; then
+        DOMAIN="database"
+        DOMAIN_KEYWORDS="query_optimization|migration|transaction|indexing"
+    elif echo "$PROMPT_LOWER" | grep -qE 'devops|deploy|kubernetes|docker|ci'; then
+        DOMAIN="devops"
+        DOMAIN_KEYWORDS="containerization|orchestration|pipeline|monitoring"
+    else
+        DOMAIN="general"
+        DOMAIN_KEYWORDS="architecture|testing|error_handling|patterns"
+    fi
 fi
 
 # Check procedural memory for relevant rules
@@ -412,7 +427,8 @@ if [[ -n "$ORIGINAL_PROMPT" ]]; then
 
     if [[ -n "$NEW_TOOL_INPUT" ]] && [[ "$NEW_TOOL_INPUT" != "null" ]]; then
         echo "[$(date -Iseconds)] Injecting learning recommendation into Task prompt" >> "${LOG_DIR}/auto-learn-$(date +%Y%m%d).log" 2>&1
-        jq -n --argjson tool_input "$NEW_TOOL_INPUT" '{"continue": true, "tool_input": $tool_input}'
+        # SEC-039: PreToolUse hooks MUST use {"decision": "allow"}, NOT {"continue": true}
+        jq -n --argjson tool_input "$NEW_TOOL_INPUT" '{"decision": "allow", "tool_input": $tool_input}'
         trap - EXIT; exit 0
     fi
 fi

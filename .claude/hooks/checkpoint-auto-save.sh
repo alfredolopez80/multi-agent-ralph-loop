@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================================
-# checkpoint-auto-save.sh - v2.62.3
-# Hook: PreToolUse (Edit|Write|Bash)
+# checkpoint-auto-save.sh - v2.66.6
+# Hook: PreToolUse (Edit|Write)
 # Purpose: Auto-save checkpoint before critical operations
 # GLOBAL: Enabled by default for all projects
 # Output: {"decision": "allow"} (PreToolUse JSON format)
@@ -10,7 +10,8 @@
 set -euo pipefail
 umask 077
 
-# VERSION: 2.62.3
+# VERSION: 2.68.2
+# v2.66.6: SEC-049 - Fixed registration (was PostToolUse, now PreToolUse)
 
 # Error trap: Always output valid JSON for PreToolUse
 trap 'echo "{\"decision\": \"allow\"}"' ERR EXIT
@@ -54,19 +55,23 @@ create_checkpoint() {
     timestamp=$(date -u +"%Y%m%d_%H%M%S")
     local cp_file="${CHECKPOINT_DIR}/cp_${timestamp}_${trigger}.json"
 
-    # Create checkpoint JSON
-    cat > "$cp_file" << EOF
-{
-  "id": "cp_${timestamp}_${trigger}",
-  "timestamp": "$(date -u +"%Y-%m-%d %H:%M:%S")",
-  "trigger": "$trigger",
-  "description": "$description",
-  "auto_saved": true,
-  "global": true,
-  "cwd": "$(pwd)",
-  "version": "2.30"
-}
-EOF
+    # SEC-008: Create checkpoint JSON using jq for safe construction
+    jq -n \
+        --arg id "cp_${timestamp}_${trigger}" \
+        --arg ts "$(date -u +"%Y-%m-%d %H:%M:%S")" \
+        --arg trig "$trigger" \
+        --arg desc "$description" \
+        --arg cwd "$(pwd)" \
+        '{
+            id: $id,
+            timestamp: $ts,
+            trigger: $trig,
+            description: $desc,
+            auto_saved: true,
+            global: true,
+            cwd: $cwd,
+            version: "2.66"
+        }' > "$cp_file"
 
     echo "$cp_file"
     log_auto "INFO" "Auto-saved checkpoint: $cp_file"

@@ -5,7 +5,7 @@
 #
 # Usage: semantic-write-helper.sh --add '{"content": "...", "category": "...", "file": "..."}'
 #
-# VERSION: 2.57.5
+# VERSION: 2.68.2
 # SECURITY: SEC-006 compliant
 
 set -euo pipefail
@@ -29,37 +29,48 @@ add_fact() {
     local source="$3"
     local file="$4"
 
-    # Use flock for atomic write (BSD/macOS compatible)
-    (
-        flock -x 200 || { echo "[$(date -Iseconds)] ERROR: Could not acquire lock" >> "${LOG_DIR}/semantic-write.log"; exit 1; }
+    # Use mkdir for portable atomic locking (works on macOS and Linux)
+    local LOCK_DIR="${LOCK_FILE}.d"
+    local LOCK_ATTEMPTS=0
 
-        # Check if fact already exists (deduplication)
-        local EXISTS
-        EXISTS=$(jq -r --arg f "$content" '.facts[] | select(.content == $f) | .id' "$SEMANTIC_FILE" 2>/dev/null || echo "")
-
-        if [[ -z "$EXISTS" ]]; then
-            local FACT_ID="sem-$(date +%s)-$RANDOM"
-            local TIMESTAMP=$(date -Iseconds)
-
-            # Atomic write using temp file
-            jq --arg id "$FACT_ID" \
-               --arg content "$content" \
-               --arg cat "$category" \
-               --arg ts "$TIMESTAMP" \
-               --arg src "$source" \
-               --arg fl "$file" \
-               '.facts += [{"id": $id, "content": $content, "category": $cat, "timestamp": $ts, "source": $src, "file": $fl}]' \
-               "$SEMANTIC_FILE" > "${SEMANTIC_FILE}.tmp" && mv "${SEMANTIC_FILE}.tmp" "$SEMANTIC_FILE"
-
-            echo "[$TIMESTAMP] ADDED: $content (category: $category, source: $source)" >> "${LOG_DIR}/semantic-write.log"
-            echo "ADDED:$content"
-            exit 0
-        else
-            echo "[$(date -Iseconds)] SKIP (exists): $content" >> "${LOG_DIR}/semantic-write.log"
-            echo "SKIP:$content"
-            exit 0
+    # Acquire lock
+    while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+        LOCK_ATTEMPTS=$((LOCK_ATTEMPTS + 1))
+        if [[ $LOCK_ATTEMPTS -gt 50 ]]; then
+            echo "[$(date -Iseconds)] ERROR: Could not acquire lock after 5s" >> "${LOG_DIR}/semantic-write.log"
+            echo "ERROR:lock_timeout"
+            return 1
         fi
-    ) 200>"$LOCK_FILE"
+        sleep 0.1
+    done
+
+    # Ensure lock is released on exit
+    trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' RETURN
+
+    # Check if fact already exists (deduplication)
+    local EXISTS
+    EXISTS=$(jq -r --arg f "$content" '.facts[] | select(.content == $f) | .id' "$SEMANTIC_FILE" 2>/dev/null || echo "")
+
+    if [[ -z "$EXISTS" ]]; then
+        local FACT_ID="sem-$(date +%s)-$RANDOM"
+        local TIMESTAMP=$(date -Iseconds)
+
+        # Atomic write using temp file
+        jq --arg id "$FACT_ID" \
+           --arg content "$content" \
+           --arg cat "$category" \
+           --arg ts "$TIMESTAMP" \
+           --arg src "$source" \
+           --arg fl "$file" \
+           '.facts += [{"id": $id, "content": $content, "category": $cat, "timestamp": $ts, "source": $src, "file": $fl}]' \
+           "$SEMANTIC_FILE" > "${SEMANTIC_FILE}.tmp" && mv "${SEMANTIC_FILE}.tmp" "$SEMANTIC_FILE"
+
+        echo "[$TIMESTAMP] ADDED: $content (category: $category, source: $source)" >> "${LOG_DIR}/semantic-write.log"
+        echo "ADDED:$content"
+    else
+        echo "[$(date -Iseconds)] SKIP (exists): $content" >> "${LOG_DIR}/semantic-write.log"
+        echo "SKIP:$content"
+    fi
 }
 
 # Parse arguments
@@ -77,7 +88,7 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: $0 --add '{\"content\": \"...\", \"category\": \"...\", \"file\": \"...\"}'"
             echo ""
             echo "Atomic writer for semantic.json"
-            echo "Uses flock for cross-platform locking"
+            echo "Uses mkdir for portable cross-platform locking"
             exit 0
             ;;
         *)

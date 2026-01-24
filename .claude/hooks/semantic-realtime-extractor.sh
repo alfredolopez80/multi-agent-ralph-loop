@@ -1,5 +1,5 @@
 #!/bin/bash
-# Semantic Realtime Extractor (v2.57.0)
+# Semantic Realtime Extractor (v2.57.4)
 # Hook: PostToolUse (Edit|Write)
 # Purpose: Extract semantic facts in real-time after code changes
 #
@@ -7,8 +7,10 @@
 # this hook extracts facts IMMEDIATELY from the content being edited/written.
 #
 # Fixes Issue #7: semantic memory populated in real-time, not just at session end
+# v2.57.4: Uses atomic write helper to prevent race conditions (GAP-003 fix)
 #
-# VERSION: 2.57.5
+# VERSION: 2.68.2
+# v2.66.8: HIGH-003 version sync, SEC-050 verified jq --arg escapes content properly
 # SECURITY: SEC-006 compliant
 
 set -euo pipefail
@@ -94,24 +96,19 @@ fi
 
     FACTS_ADDED=0
 
-    # Helper to add fact with deduplication
+    # Helper to add fact using atomic write helper (v2.57.4 - GAP-003 fix)
     add_fact() {
         local content="$1"
         local category="$2"
         local file="$3"
 
-        # Check if fact already exists
-        local EXISTS
-        EXISTS=$(jq -r --arg f "$content" '.facts[] | select(.content == $f) | .id' "$SEMANTIC_FILE" 2>/dev/null || echo "")
-        if [[ -z "$EXISTS" ]]; then
-            local FACT_ID="sem-$(date +%s)-$RANDOM"
-            jq --arg id "$FACT_ID" \
-               --arg content "$content" \
-               --arg cat "$category" \
-               --arg ts "$(date -Iseconds)" \
-               --arg file "$file" \
-               '.facts += [{"id": $id, "content": $content, "category": $cat, "timestamp": $ts, "source": "realtime-extract", "file": $file}]' \
-               "$SEMANTIC_FILE" > "${SEMANTIC_FILE}.tmp" && mv "${SEMANTIC_FILE}.tmp" "$SEMANTIC_FILE"
+        # Use atomic write helper with flock
+        local result
+        result=$("${HOME}/.claude/hooks/semantic-write-helper.sh" --add \
+            "$(jq -n --arg c "$content" --arg cat "$category" --arg f "$file" \
+                '{content: $c, category: $cat, file: $f, source: "realtime-extract"}')" 2>&1)
+
+        if echo "$result" | grep -q "^ADDED:"; then
             FACTS_ADDED=$((FACTS_ADDED + 1))
             echo "  Added: $content"
         fi

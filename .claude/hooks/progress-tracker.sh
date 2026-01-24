@@ -16,7 +16,7 @@
 # Part of Ralph v2.41 Context Engineering - progress.md system
 # Based on: docs/yt/stop-using-ralph-plugin-summary.md
 
-# VERSION: 2.68.1
+# VERSION: 2.68.2
 # v2.68.1: FIX CRIT-006 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 set -euo pipefail
 

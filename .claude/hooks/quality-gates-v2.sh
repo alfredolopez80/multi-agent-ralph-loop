@@ -2,7 +2,7 @@
 # Quality Gates v2.48 - Quality Over Consistency + Security Scanning
 # Hook: PostToolUse (Edit, Write)
 # Purpose: Validate code changes with quality-first approach
-# VERSION: 2.68.1
+# VERSION: 2.68.2
 # v2.68.1: FIX CRIT-005 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 #
 # Stage 2.5 SECURITY: semgrep (SAST) + gitleaks (secrets)

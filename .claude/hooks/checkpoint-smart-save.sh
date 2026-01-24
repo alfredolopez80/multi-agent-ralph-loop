@@ -1,6 +1,6 @@
 #!/bin/bash
 # checkpoint-smart-save.sh - Smart checkpoint based on risk/complexity
-# VERSION: 2.68.1
+# VERSION: 2.68.2
 # v2.68.1: FIX CRIT-003 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 # v2.66.8: HIGH-003 version sync, RACE-001 atomic mkdir already implemented
 #

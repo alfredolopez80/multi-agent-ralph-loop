@@ -1,10 +1,10 @@
-# Multi-Agent Ralph v2.68.7
+# Multi-Agent Ralph v2.68.8
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
 **Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, checkpoints, agent handoffs, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, and **Claude Code Documentation Mirror**.
 
-> **v2.68.7**: CRIT-001/CRIT-002 JSON output compliance. v2.68.6: 100% version consistency. v2.68.5: HIGH-001 lock retry. v2.68.4: 3 CRITICAL + 2 MEDIUM. Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) and [claude-code-docs](https://github.com/ericbuess/claude-code-docs).
+> **v2.68.8**: Project hooks cleanup (9 legacy removed) + sync (39 updated). v2.68.7: CRIT-001/CRIT-002 JSON output compliance. v2.68.6: 100% version consistency. Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) and [claude-code-docs](https://github.com/ericbuess/claude-code-docs).
 
 ---
 

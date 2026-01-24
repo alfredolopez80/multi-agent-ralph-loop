@@ -4,7 +4,7 @@
 # PostToolUse hook - AUTO-INVOKE /adversarial for high complexity tasks
 #===============================================================================
 #
-# VERSION: 2.68.0
+# VERSION: 2.68.2
 # TRIGGER: PostToolUse (Task - when orchestrator step completes)
 # PURPOSE: Automatically invoke /adversarial for complexity >= 7
 #

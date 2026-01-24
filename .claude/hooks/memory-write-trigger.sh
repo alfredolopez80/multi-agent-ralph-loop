@@ -10,7 +10,7 @@
 # - "keep in mind"
 # - "for future reference"
 #
-# VERSION: 2.57.5
+# VERSION: 2.68.2
 # SECURITY: Added ERR trap for guaranteed JSON output, MATCHED escaping
 
 set -euo pipefail
@@ -123,7 +123,6 @@ CONTEXT_ESCAPED=$(echo "$CONTEXT" | jq -R -s '.')
 # Escape MATCHED for safe JSON inclusion (SEC-002)
 MATCHED_ESCAPED=$(escape_json "$MATCHED")
 
-# v2.57.5: Fixed JSON format - UserPromptSubmit hooks use {"continue": true} NOT {"decision": "continue"}
 echo "{
     \"continue\": true,
     \"additionalContext\": $CONTEXT_ESCAPED,

@@ -19,8 +19,8 @@
 #   - recommended_patterns: Best practices from history
 #   - fork_suggestions: Top 5 sessions to fork from
 #
-# VERSION: 2.57.8 (Security Hardened + Portability + macOS Compatibility)
-# Fixes: SECURITY-001, 002, 003, ADV-001, ADV-002, ADV-003, ADV-004, ADV-005, ADV-006, GAP-MEM-001
+# VERSION: 2.68.2 (Security Hardened + Portability + macOS Compatibility + SEC-039 Fix)
+# Fixes: SECURITY-001, 002, 003, ADV-001, ADV-002, ADV-003, ADV-004, ADV-005, ADV-006, GAP-MEM-001, SEC-007
 # v2.57.6: FIX GAP-MEM-001 - macOS realpath doesn't support -e flag, use glob instead of regex
 # v2.47.3: Removed unused variable, fixed $KEYWORDS_SAFE usage, date portability, noclobber
 
@@ -36,20 +36,21 @@ validate_input_schema() {
     local input="$1"
 
     # Check if input is valid JSON
+    # SEC-039: PreToolUse hooks MUST use {"decision": "allow"}, NOT {"continue": true}
     if ! echo "$input" | jq empty 2>/dev/null; then
-        echo '{"continue": true, "error": "Invalid JSON input"}'
+        echo '{"decision": "allow"}'
         exit 0
     fi
 
     # Check required field exists
     if ! echo "$input" | jq -e '.tool_name' >/dev/null 2>&1; then
-        echo '{"continue": true, "error": "Missing required field: tool_name"}'
+        echo '{"decision": "allow"}'
         exit 0
     fi
 
     # Check tool_name is a string (jq type check)
     if [[ $(echo "$input" | jq -r '.tool_name | type' 2>/dev/null) != "string" ]]; then
-        echo '{"continue": true, "error": "tool_name must be a string"}'
+        echo '{"decision": "allow"}'
         exit 0
     fi
 
@@ -94,7 +95,8 @@ CACHE_DURATION=1800  # 30 minutes
 if [[ -f "$MEMORY_CONTEXT" ]]; then
     CACHE_AGE=$(($(date +%s) - $(stat -f %m "$MEMORY_CONTEXT" 2>/dev/null || stat -c %Y "$MEMORY_CONTEXT" 2>/dev/null || echo 0)))
     if [[ $CACHE_AGE -lt $CACHE_DURATION ]]; then
-        echo '{"continue": true, "additionalContext": "SMART_MEMORY: Using cached results from .claude/memory-context.json ('"$CACHE_AGE"'s old)"}'
+        # SEC-039: PreToolUse hooks MUST use {"decision": "allow"}, NOT {"continue": true}
+        echo '{"decision": "allow", "additionalContext": "SMART_MEMORY: Using cached results from .claude/memory-context.json ('"$CACHE_AGE"'s old)"}'
         exit 0
     fi
 fi
@@ -519,13 +521,6 @@ if [[ $HANDOFFS_COUNT -gt 0 ]]; then
     CONTEXT_MSG+="\n- FORK SUGGESTION: Consider forking from session '$FIRST_SUGGESTION' for similar context"
 fi
 
-# Escape for JSON
-CONTEXT_MSG_ESCAPED=$(echo "$CONTEXT_MSG" | sed 's/"/\\"/g' | tr '\n' ' ')
-
-# Return with injected context
-cat << EOF
-{
-    "continue": true,
-    "additionalContext": "$CONTEXT_MSG_ESCAPED"
-}
-EOF
+# SEC-007: Use jq for safe JSON construction (avoid sed escaping vulnerabilities)
+# SEC-039: PreToolUse hooks MUST use {"decision": "allow"}, NOT {"continue": true}
+jq -n --arg ctx "$CONTEXT_MSG" '{"decision": "allow", "additionalContext": $ctx}'

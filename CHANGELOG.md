@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.68.8] - 2026-01-24
+
+### Project Hooks Cleanup & Synchronization
+
+Adversarial validation identified hooks inconsistency between project and global directories.
+
+#### Cleanup: 9 Legacy Orphan Hooks Removed
+
+The following hooks were identified as **orphaned** (not registered in any settings.json) and **superseded** by modern equivalents:
+
+| Removed Hook | Superseded By | Version |
+|--------------|---------------|---------|
+| `curator-trigger.sh` | `curator-suggestion.sh` | v2.57.5 |
+| `detect-environment.sh` | (unused) | v2.57.5 |
+| `orchestrator-helper.sh` | (unused) | v2.57.5 |
+| `procedural-forget.sh` | (manual tool) | v2.59.2 |
+| `quality-gates.sh` | `quality-gates-v2.sh` | v2.57.5 |
+| `sentry-check-status.sh` | `sentry-report.sh` | v2.57.5 |
+| `sentry-correlation.sh` | `sentry-report.sh` | v2.57.5 |
+| `state-sync.sh` | `global-task-sync.sh` | v2.54.0 |
+| `todo-plan-sync.sh` | `plan-sync-post-step.sh` | v2.57.2 |
+
+**Result**: Project hooks reduced from 75 to 66 (matching global count).
+
+#### Sync: 39 Hooks Updated from Global
+
+The following hooks had outdated versions in the project directory and were synchronized with their global counterparts:
+
+| Hook | Old Version | New Version |
+|------|-------------|-------------|
+| `adversarial-auto-trigger.sh` | v2.60.0 | v2.68.2 |
+| `agent-memory-auto-init.sh` | v2.57.5 | v2.68.2 |
+| `auto-plan-state.sh` | v2.62.3 | v2.68.2 |
+| `auto-save-context.sh` | v2.57.5 | v2.68.2 |
+| `repo-boundary-guard.sh` | v1.0.0 | v2.68.2 |
+| ... and 34 more hooks | | |
+
+**Result**: All 66 project hooks now at v2.66+ (100% compliance).
+
+---
+
 ## [2.68.7] - 2026-01-24
 
 ### CRITICAL Fixes - JSON Output Compliance

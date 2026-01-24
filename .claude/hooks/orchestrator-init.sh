@@ -11,10 +11,14 @@
 # - Sets up plan-state if not exists
 # - Validates procedural memory accessibility
 #
-# VERSION: 2.57.5
+# VERSION: 2.68.2
 # SECURITY: SEC-006 compliant
 
 set -euo pipefail
+
+# Error trap for guaranteed JSON output (v2.62.3)
+trap 'echo "SessionStart trap triggered" >&2' ERR
+
 umask 077
 
 # Paths - Initialize all variables before use
