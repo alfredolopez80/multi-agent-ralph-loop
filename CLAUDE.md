@@ -1,14 +1,14 @@
-# Multi-Agent Ralph v2.66.7
+# Multi-Agent Ralph v2.68.2
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, checkpoints, agent handoffs, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, and **adversarial-validated hook system**.
+**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, checkpoints, agent handoffs, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, and **Claude Code Documentation Mirror**.
 
-> **v2.66.7**: Adversarial validation Phase 2 - CRIT-001 (explicit JSON output) + CRIT-002 (schema v2.66 with phases/barriers/verification). v2.66.6: 11 security fixes (SEC-041 to SEC-049). Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) analysis.
+> **v2.68.2**: Fixed 6 CRITICAL double-JSON bugs in hook EXIT traps (CRIT-002 to CRIT-006). v2.68.0: Added auto-invoke hooks (ai-code-audit, adversarial-auto-trigger, security-full-audit, code-review-auto, deslop-auto-clean). 58 unit tests. Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) and [claude-code-docs](https://github.com/ericbuess/claude-code-docs).
 
 ---
 
-## Language Policy (Política de Idioma)
+## Language Policy (Politica de Idioma)
 
 > **IMPORTANT**: This repository follows English-only documentation standards.
 
@@ -49,6 +49,12 @@ ralph orch "Migrate database from MySQL to PostgreSQL"
 # Loop until VERIFIED_DONE
 /loop "fix all type errors"
 
+# v2.66.8: Claude Code Documentation (NEW)
+/docs hooks           # Read hooks documentation
+/docs mcp             # Read MCP documentation
+/docs what's new      # See recent doc changes
+/docs changelog       # Claude Code release notes
+
 # v2.51: Checkpoints (Time Travel)
 ralph checkpoint save "before-refactor" "Pre-auth module refactoring"
 ralph checkpoint restore "before-refactor"
@@ -69,18 +75,18 @@ ralph context debug     # Debug mode (investigation)
 ## Core Workflow (12 Steps) - v2.46
 
 ```
-0. EVALUATE     → 3-dimension classification (FAST_PATH vs STANDARD)
-1. CLARIFY      → AskUserQuestion (MUST_HAVE + NICE_TO_HAVE)
-2. CLASSIFY     → Complexity 1-10 + Info Density + Context Req
-3. PLAN         → orchestrator-analysis.md → Plan Mode
-4. PLAN MODE    → EnterPlanMode (reads analysis)
-5. DELEGATE     → Route to optimal model
-6. EXECUTE-WITH-SYNC → LSA-VERIFY → IMPLEMENT → PLAN-SYNC → MICRO-GATE
-7. VALIDATE     → CORRECTNESS (block) + QUALITY (block) + CONSISTENCY (advisory)
-8. RETROSPECT   → Analyze and improve
+0. EVALUATE     -> 3-dimension classification (FAST_PATH vs STANDARD)
+1. CLARIFY      -> AskUserQuestion (MUST_HAVE + NICE_TO_HAVE)
+2. CLASSIFY     -> Complexity 1-10 + Info Density + Context Req
+3. PLAN         -> orchestrator-analysis.md -> Plan Mode
+4. PLAN MODE    -> EnterPlanMode (reads analysis)
+5. DELEGATE     -> Route to optimal model
+6. EXECUTE-WITH-SYNC -> LSA-VERIFY -> IMPLEMENT -> PLAN-SYNC -> MICRO-GATE
+7. VALIDATE     -> CORRECTNESS (block) + QUALITY (block) + CONSISTENCY (advisory)
+8. RETROSPECT   -> Analyze and improve
 ```
 
-**Fast-Path** (complexity ≤ 3): DIRECT_EXECUTE → MICRO_VALIDATE → DONE (3 steps)
+**Fast-Path** (complexity <= 3): DIRECT_EXECUTE -> MICRO_VALIDATE -> DONE (3 steps)
 
 ---
 
@@ -103,16 +109,67 @@ ralph context debug     # Debug mode (investigation)
 
 ---
 
+## Claude Code Documentation Mirror (v2.66.8) - NEW
+
+Local mirror of official Claude Code documentation with auto-updates.
+
+```bash
+# List all available topics
+/docs
+
+# Read specific documentation
+/docs hooks           # Hooks reference
+/docs mcp             # MCP integration
+/docs skills          # Skills documentation
+/docs settings        # Configuration reference
+/docs memory          # Memory system
+
+# Check sync status
+/docs -t              # Show freshness status
+/docs -t hooks        # Check + read
+
+# Recent changes
+/docs what's new      # Documentation updates
+/docs changelog       # Claude Code release notes
+```
+
+### Available Topics
+
+| Category | Topics |
+|----------|--------|
+| **Getting Started** | overview, quickstart, setup, features-overview |
+| **Core Features** | hooks, hooks-guide, mcp, memory, skills, sub-agents |
+| **Configuration** | settings, model-config, terminal-config, network-config |
+| **IDE Integration** | vs-code, jetbrains, devcontainer |
+| **Cloud Providers** | amazon-bedrock, google-vertex-ai, microsoft-foundry |
+| **CI/CD** | github-actions, gitlab-ci-cd, headless |
+| **Security** | security, sandboxing, iam, data-usage |
+| **Advanced** | plugins, plugins-reference, statusline, output-styles |
+
+### Auto-Updates
+
+- Documentation syncs automatically when accessed (~0.4s)
+- PreToolUse hook triggers git pull on Read operations
+- Source: [ericbuess/claude-code-docs](https://github.com/ericbuess/claude-code-docs)
+
+### Installation (if needed)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ericbuess/claude-code-docs/main/install.sh | bash
+```
+
+---
+
 ## Memory Architecture (v2.49)
 
 ```
 SMART MEMORY SEARCH (PARALLEL)
-┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
-│claude-mem│ │ memvid   │ │ handoffs │ │ ledgers  │
-└────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘
-     │ PARALLEL   │ PARALLEL   │ PARALLEL   │ PARALLEL
-     └────────────┴────────────┴────────────┘
-                    ↓
++----------+ +----------+ +----------+ +----------+
+|claude-mem| | memvid   | | handoffs | | ledgers  |
++----+-----+ +----+-----+ +----+-----+ +----+-----+
+     | PARALLEL   | PARALLEL   | PARALLEL   | PARALLEL
+     +------------+------------+------------+
+                    |
          .claude/memory-context.json
 ```
 
@@ -145,11 +202,11 @@ SMART MEMORY SEARCH (PARALLEL)
 ```
 
 **What it does**:
-1. **DISCOVERY** → GitHub API search for candidate repositories
-2. **SCORING** → Quality metrics + Context Relevance (v2.55)
-3. **RANKING** → Top N repos (configurable, max per org)
-4. **USER REVIEW** → Interactive queue for approve/reject
-5. **LEARN** → Extract patterns from approved repos via repository-learner
+1. **DISCOVERY** -> GitHub API search for candidate repositories
+2. **SCORING** -> Quality metrics + Context Relevance (v2.55)
+3. **RANKING** -> Top N repos (configurable, max per org)
+4. **USER REVIEW** -> Interactive queue for approve/reject
+5. **LEARN** -> Extract patterns from approved repos via repository-learner
 
 **Pricing Tiers**:
 | Tier | Cost | Features |
@@ -207,9 +264,9 @@ SMART MEMORY SEARCH (PARALLEL)
 ```
 
 **What it does**:
-1. **CLARIFY** → AskUser questions (MUST_HAVE + NICE_TO_HAVE)
-2. **EXECUTE** → Codex 5.2 with `xhigh` reasoning
-3. **SAVE** → Plan saved to `http://codex-plan.md`
+1. **CLARIFY** -> AskUser questions (MUST_HAVE + NICE_TO_HAVE)
+2. **EXECUTE** -> Codex 5.2 with `xhigh` reasoning
+3. **SAVE** -> Plan saved to `http://codex-plan.md`
 
 **Integration with Orchestrator**:
 Use `--use-codex` or `--codex` flag to invoke Codex planning:
@@ -405,7 +462,7 @@ ralph status
 
 # Compact one-liner
 ralph status --compact
-# Output: 🔄 STANDARD Step 3/7 (42%) - in_progress
+# Output: STANDARD Step 3/7 (42%) - in_progress
 
 # Detailed step breakdown
 ralph status --steps
@@ -417,7 +474,7 @@ ralph status --json | jq '.plan.status'
 **StatusLine Integration**:
 Progress is shown in the statusline automatically:
 ```
-⎇ main* │ 📊 3/7 42% │ [claude-hud metrics]
+main* | 3/7 42% | [claude-hud metrics]
 ```
 
 | Icon | Meaning |
@@ -465,7 +522,7 @@ ralph health --fix              # Auto-fix critical issues
 | Condition | Severity | Action |
 |-----------|----------|--------|
 | ZERO relevant rules (any complexity) | CRITICAL | Learning REQUIRED before implementation |
-| <3 rules AND complexity ≥7 | HIGH | Learning RECOMMENDED for better quality |
+| <3 rules AND complexity >=7 | HIGH | Learning RECOMMENDED for better quality |
 
 **New Hooks (v2.55)**:
 | Hook | Trigger | Purpose |
@@ -495,7 +552,7 @@ ralph health --fix              # Auto-fix critical issues
 **Smart Checkpoint Triggers**:
 | Trigger | Condition |
 |---------|-----------|
-| `high_complexity` | Plan complexity ≥ 7 |
+| `high_complexity` | Plan complexity >= 7 |
 | `high_risk_step` | Step involves auth/security/payment |
 | `critical_file` | Config, settings, .env, database files |
 | `security_file` | Files with auth/secret/credential in name |
@@ -511,10 +568,10 @@ ralph health --fix              # Auto-fix critical issues
 ## Quality-First Validation (v2.46)
 
 ```
-Stage 1: CORRECTNESS → Syntax errors (BLOCKING)
-Stage 2: QUALITY     → Type errors (BLOCKING)
-Stage 2.5: SECURITY  → semgrep + gitleaks (BLOCKING)
-Stage 3: CONSISTENCY → Linting (ADVISORY - not blocking)
+Stage 1: CORRECTNESS -> Syntax errors (BLOCKING)
+Stage 2: QUALITY     -> Type errors (BLOCKING)
+Stage 2.5: SECURITY  -> semgrep + gitleaks (BLOCKING)
+Stage 3: CONSISTENCY -> Linting (ADVISORY - not blocking)
 ```
 
 ---
@@ -541,6 +598,13 @@ ralph compact             # Manual context save
 ralph health              # Memory system health check (v2.55)
 ralph health --compact    # One-line health summary
 ralph health --fix        # Auto-fix critical issues
+
+# Documentation (v2.66.8 NEW)
+/docs                     # List all topics
+/docs <topic>             # Read documentation (hooks, mcp, skills, etc.)
+/docs -t                  # Check sync status
+/docs what's new          # Recent documentation changes
+/docs changelog           # Claude Code release notes
 
 # Contexts (v2.63)
 ralph context dev         # Development mode
@@ -673,7 +737,7 @@ ralph handoff create      # Create handoff
 | SessionStart | Context preservation at startup, **auto-migrate plan-state** (v2.51) |
 | PreCompact | Save state before compaction |
 | PostToolUse | Quality gates after Edit/Write/Bash, **verification subagent** (v2.62) |
-| PreToolUse | Safety guards before Bash/Skill/Task, **task optimization** (v2.62) |
+| PreToolUse | Safety guards before Bash/Skill/Task, **task optimization** (v2.62), **docs auto-update** (v2.66.8) |
 | UserPromptSubmit | Context warnings, reminders |
 | Stop | Session reports |
 
@@ -681,11 +745,11 @@ ralph handoff create      # Create handoff
 
 | Type | Hook Count | Trap Pattern | Required |
 |------|------------|--------------|----------|
-| PreToolUse | 12 | `{"decision": "allow"}` | ✅ All have traps |
-| PostToolUse | 18 | `{"continue": true}` | ✅ All have traps |
-| PreCompact | 1 | `{"continue": true}` | ✅ Has trap |
-| Stop | 5 | `{"decision": "approve"}` | ✅ All have traps |
-| UserPromptSubmit | 8 | `{}` or context | ✅ All have traps |
+| PreToolUse | 12 | `{"decision": "allow"}` | All have traps |
+| PostToolUse | 18 | `{"continue": true}` | All have traps |
+| PreCompact | 1 | `{"continue": true}` | Has trap |
+| Stop | 5 | `{"decision": "approve"}` | All have traps |
+| UserPromptSubmit | 8 | `{}` or context | All have traps |
 | SessionStart | 6 | (no JSON required) | N/A |
 | Helpers | 2 | N/A (not registered) | N/A |
 
@@ -695,7 +759,7 @@ Claude Code's evolved Task primitive patterns integrated via 3 new hooks:
 
 | Hook | Trigger | Purpose |
 |------|---------|---------|
-| `global-task-sync.sh` | PostToolUse (TodoWrite/TaskUpdate/TaskCreate) | Sync plan-state ↔ `~/.claude/tasks/<session>/` |
+| `global-task-sync.sh` | PostToolUse (TodoWrite/TaskUpdate/TaskCreate) | Sync plan-state with `~/.claude/tasks/<session>/` |
 | `verification-subagent.sh` | PostToolUse (TaskUpdate) | Suggest verification subagent after step completion |
 | `task-orchestration-optimizer.sh` | PreToolUse (Task) | Detect parallelization + context-hiding opportunities |
 
@@ -710,11 +774,11 @@ Claude Code's evolved Task primitive patterns integrated via 3 new hooks:
 > **IMPORTANT**: When updating hook versions, ALL hooks must be validated.
 
 **Review Checklist**:
-1. ✅ Verify JSON output format matches event type (see Known Limitations)
-2. ✅ Test hook execution with manual invocation
-3. ✅ Check hook logs for errors: `~/.ralph/logs/`
-4. ✅ Validate version numbers are consistent across all hooks
-5. ✅ Run `/gates` to ensure no regressions
+1. Verify JSON output format matches event type (see Known Limitations)
+2. Test hook execution with manual invocation
+3. Check hook logs for errors: `~/.ralph/logs/`
+4. Validate version numbers are consistent across all hooks
+5. Run `/gates` to ensure no regressions
 
 **Version Bump Command**:
 ```bash
@@ -731,8 +795,8 @@ done
 
 | Type | Tools | Hooks |
 |------|-------|-------|
-| **Executive** (modify system) | `Edit`, `Write`, `Bash` | ✅ PreToolUse + PostToolUse |
-| **Declarative** (organize/plan) | `TodoWrite` | ❌ No hooks |
+| **Executive** (modify system) | `Edit`, `Write`, `Bash` | PreToolUse + PostToolUse |
+| **Declarative** (organize/plan) | `TodoWrite` | No hooks |
 
 **Rationale** (from Claude.ai):
 - **Executive tools** need PostToolUse hooks to validate effects (file created? command succeeded?)
@@ -741,15 +805,15 @@ done
 
 | Tool | Type | PreToolUse | PostToolUse |
 |------|------|------------|-------------|
-| `Bash` | Executive | ✅ | ✅ |
-| `Edit` | Executive | ✅ | ✅ |
-| `Write` | Executive | ✅ | ✅ |
-| `Read` | Read-only | ✅ | ✅ |
-| `Glob` | Read-only | ✅ | ✅ |
-| `Grep` | Read-only | ✅ | ✅ |
-| `Task` | Orchestration | ✅ | ✅ |
-| `mcp__*` | Varies | ✅ | ✅ |
-| **`TodoWrite`** | Declarative | ❌ | ❌ |
+| `Bash` | Executive | Yes | Yes |
+| `Edit` | Executive | Yes | Yes |
+| `Write` | Executive | Yes | Yes |
+| `Read` | Read-only | Yes | Yes |
+| `Glob` | Read-only | Yes | Yes |
+| `Grep` | Read-only | Yes | Yes |
+| `Task` | Orchestration | Yes | Yes |
+| `mcp__*` | Varies | Yes | Yes |
+| **`TodoWrite`** | Declarative | No | No |
 
 **Impact**: Hooks cannot react to todo list changes directly.
 
@@ -760,10 +824,10 @@ done
 Hooks execute from unpredictable directories. Always use **absolute paths**:
 
 ```bash
-# ❌ BAD - May fail depending on CWD
+# BAD - May fail depending on CWD
 PLAN_STATE=".claude/plan-state.json"
 
-# ✅ GOOD - Always works
+# GOOD - Always works
 PLAN_STATE="${PROJECT_ROOT}/.claude/plan-state.json"
 # or
 PLAN_STATE="$(git rev-parse --show-toplevel 2>/dev/null)/.claude/plan-state.json"
@@ -774,10 +838,10 @@ PLAN_STATE="$(git rev-parse --show-toplevel 2>/dev/null)/.claude/plan-state.json
 ## Ralph Loop Pattern
 
 ```
-EXECUTE → VALIDATE → Quality Passed?
-                          ↓ NO
+EXECUTE -> VALIDATE -> Quality Passed?
+                          | NO
                       ITERATE (max 25)
-                          ↓
+                          |
                     Back to EXECUTE
 ```
 
@@ -831,7 +895,7 @@ The `repo-boundary-guard.sh` hook automatically blocks:
 ### Error Response
 
 ```
-⚠️ REPO BOUNDARY VIOLATION
+REPO BOUNDARY VIOLATION
 Current repo: /path/to/current-repo
 Attempted access: /path/to/other-repo
 
@@ -856,6 +920,7 @@ Options:
 | v2.51 Improvements | `.claude/v2.51-improvements-analysis.md` |
 | v2.55 Auto-Learning | `~/.claude/hooks/orchestrator-auto-learn.sh` |
 | v2.62 Task Primitive | `.claude/hooks/verification-subagent.sh` |
+| Claude Code Docs | `~/.claude-code-docs/` |
 
 ---
 

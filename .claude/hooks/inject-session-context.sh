@@ -15,7 +15,8 @@
 #
 # Part of Ralph v2.43 Context Engineering
 
-# VERSION: 2.62.3
+# VERSION: 2.68.1
+# v2.68.1: FIX CRIT-002 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 # Note: Not using set -e because we need graceful fallback on errors
 set -uo pipefail
 
@@ -38,15 +39,17 @@ log() {
 }
 
 # Safe JSON output - PreToolUse hooks use {"decision": "allow"} format
-# SEC-039: NEVER use {"decision": "continue"} - that format is INVALID
+# SEC-039: PreToolUse hooks MUST use {"decision": "allow/block"}, NOT {"continue": true}
+# SEC-043: Use jq for JSON construction to prevent injection
 output_json() {
     local context="${1:-}"
     local message="${2:-}"
 
-    # PreToolUse hooks MUST use {"continue": true/false}, NOT {"decision": "..."}
+    # SEC-039 FIXED: PreToolUse hooks use {"decision": "allow"}, NOT {"continue": true}
+    # SEC-043 FIXED: Use jq --arg to safely escape message content
     if [[ -n "$message" ]]; then
-        # Use additionalContext with continue field (per official Claude Code docs)
-        echo "{\"continue\": true, \"additionalContext\": \"$message\"}"
+        # Use jq for safe JSON construction (prevents JSON injection)
+        jq -n --arg ctx "$message" '{"decision": "allow", "additionalContext": $ctx}'
     else
         echo '{"decision": "allow"}'
     fi
@@ -78,6 +81,7 @@ log "INFO" "PreToolUse hook triggered - tool: $TOOL_NAME, session: $SESSION_ID"
 # Only inject context for Task tool calls
 if [[ "$TOOL_NAME" != "Task" ]]; then
     log "DEBUG" "Skipping non-Task tool: $TOOL_NAME"
+    trap - EXIT  # CRIT-002: Clear trap before explicit output
     echo '{"decision": "allow"}'
     exit 0
 fi
@@ -85,6 +89,7 @@ fi
 # Check if context injection is enabled
 if ! check_feature_enabled "RALPH_INJECT_CONTEXT" "true"; then
     log "INFO" "Context injection disabled via features.json"
+    trap - EXIT  # CRIT-002: Clear trap before explicit output
     echo '{"decision": "allow"}'
     exit 0
 fi
@@ -138,5 +143,6 @@ CONTEXT+="**Memory**: Use claude-mem MCP (search → timeline → get_observatio
 # The context injection feature is deprecated - PreToolUse cannot inject context
 # Context injection is only available for SessionStart hooks
 log "INFO" "PreToolUse hook allowing Task tool (context injection not available for PreToolUse)"
+trap - EXIT  # CRIT-002: Clear trap before explicit output
 output_json "" "Task tool allowed"
 exit 0

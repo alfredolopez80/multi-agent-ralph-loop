@@ -2,7 +2,8 @@
 # Quality Gates v2.48 - Quality Over Consistency + Security Scanning
 # Hook: PostToolUse (Edit, Write)
 # Purpose: Validate code changes with quality-first approach
-# VERSION: 2.57.5
+# VERSION: 2.68.1
+# v2.68.1: FIX CRIT-005 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 #
 # Stage 2.5 SECURITY: semgrep (SAST) + gitleaks (secrets)
 # Install tools: ~/.claude/scripts/install-security-tools.sh
@@ -11,6 +12,10 @@
 # Quality issues (correctness, security, types) are BLOCKING
 
 set -euo pipefail
+
+# Error trap for guaranteed JSON output (v2.62.3)
+trap 'echo "{\"continue\": true}"' ERR EXIT
+
 umask 077
 
 # Parse JSON input
@@ -21,29 +26,35 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 
 # Only process Edit/Write operations (PostToolUse schema: "continue" not "decision")
 if [[ "$TOOL_NAME" != "Edit" ]] && [[ "$TOOL_NAME" != "Write" ]]; then
+    trap - EXIT  # CRIT-005: Clear trap before explicit output
     echo '{"continue": true}'
     exit 0
 fi
 
 # Skip if no file path
 if [[ -z "$FILE_PATH" ]]; then
+    trap - EXIT  # CRIT-005: Clear trap before explicit output
     echo '{"continue": true}'
     exit 0
 fi
 
 # SECURITY: Canonicalize and validate path to prevent path traversal
+# SEC-045: Fixed realpath -e which doesn't exist on macOS (use realpath without -e)
 # Resolve to absolute path and check it's within allowed directories
-FILE_PATH_REAL=$(realpath -e "$FILE_PATH" 2>/dev/null || echo "")
+FILE_PATH_REAL=$(realpath "$FILE_PATH" 2>/dev/null || echo "")
 if [[ -z "$FILE_PATH_REAL" ]] || [[ ! -f "$FILE_PATH_REAL" ]]; then
+    trap - EXIT  # CRIT-005: Clear trap before explicit output
     echo '{"continue": true}'
     exit 0
 fi
 
 # Get current working directory (project root)
-PROJECT_ROOT=$(realpath -e "$(pwd)" 2>/dev/null || pwd)
+# SEC-045: Fixed macOS compatibility - realpath without -e flag
+PROJECT_ROOT=$(realpath "$(pwd)" 2>/dev/null || pwd)
 
 # Verify file is within project or allowed paths (home dir)
 if [[ "$FILE_PATH_REAL" != "$PROJECT_ROOT"* ]] && [[ "$FILE_PATH_REAL" != "$HOME"* ]]; then
+    trap - EXIT  # CRIT-005: Clear trap before explicit output
     echo '{"continue": false, "reason": "Path traversal blocked: file outside allowed directories"}'
     exit 0
 fi
@@ -154,7 +165,8 @@ log_check() {
 
         json)
             CHECKS_RUN=$((CHECKS_RUN + 1))
-            if python3 -c "import json; json.load(open('$FILE_PATH'))" 2>&1; then
+            # SEC-041: Fixed Python command injection - use sys.argv instead of interpolation
+            if python3 -c 'import json, sys; json.load(open(sys.argv[1]))' "$FILE_PATH" 2>&1; then
                 log_check "JSON syntax" "PASS" "Valid JSON"
                 CHECKS_PASSED=$((CHECKS_PASSED + 1))
             else
@@ -165,7 +177,8 @@ log_check() {
 
         yaml|yml)
             CHECKS_RUN=$((CHECKS_RUN + 1))
-            if python3 -c "import yaml; yaml.safe_load(open('$FILE_PATH'))" 2>&1; then
+            # SEC-041: Fixed Python command injection - use sys.argv instead of interpolation
+            if python3 -c 'import yaml, sys; yaml.safe_load(open(sys.argv[1]))' "$FILE_PATH" 2>&1; then
                 log_check "YAML syntax" "PASS" "Valid YAML"
                 CHECKS_PASSED=$((CHECKS_PASSED + 1))
             else
@@ -245,12 +258,31 @@ log_check() {
             CHECKS_PASSED=$((CHECKS_PASSED + 1))
         fi
     else
-        log_check "semgrep SAST" "SKIP" "Not installed"
-        # First-run suggestion: inform user about missing tools
-        if [[ ! -f "$HOME/.ralph/state/.security-tools-suggested" ]]; then
-            mkdir -p "$HOME/.ralph/state"
-            echo "[$(date -Iseconds)] Security tools suggestion shown" > "$HOME/.ralph/state/.security-tools-suggested"
-            ADVISORY_WARNINGS+="💡 TIP: Install security scanning tools for enhanced protection:\n    ~/.claude/scripts/install-security-tools.sh\n    This enables semgrep (SAST) + gitleaks (secret detection)\n"
+        # GAP-011: Auto-install semgrep if not present (blocking if fails)
+        log_check "semgrep SAST" "AUTOINSTALL" "Installing semgrep..."
+        if bash "${HOME}/.claude/scripts/install-security-tools.sh" --check 2>/dev/null | grep -q "not installed"; then
+            bash "${HOME}/.claude/scripts/install-security-tools.sh" 2>&1 | tail -5 >> "$LOG_FILE" || true
+        fi
+
+        # Verify installation
+        if command -v semgrep &>/dev/null; then
+            log_check "semgrep SAST" "INSTALL" "semgrep installed, re-running check..."
+            # Re-run the check now that semgrep is installed
+            CHECKS_RUN=$((CHECKS_RUN + 1))
+            SEMGREP_OUTPUT=$(timeout 10 semgrep --config="auto" \
+                --severity=ERROR --severity=WARNING \
+                --json --quiet "$FILE_PATH" 2>/dev/null || echo '{"results":[]}')
+            SEMGREP_ERRORS=$(echo "$SEMGREP_OUTPUT" | jq '.results | length' 2>/dev/null || echo "0")
+            if [[ "$SEMGREP_ERRORS" -gt 0 ]]; then
+                log_check "semgrep SAST" "FAIL" "$SEMGREP_ERRORS security issues"
+                BLOCKING_ERRORS+="Security issues in $FILE_PATH ($SEMGREP_ERRORS findings)\n"
+            else
+                log_check "semgrep SAST" "PASS" "No security issues"
+                CHECKS_PASSED=$((CHECKS_PASSED + 1))
+            fi
+        else
+            log_check "semgrep SAST" "FAIL" "Auto-install failed, security scan skipped"
+            BLOCKING_ERRORS+="semgrep installation failed. Run manually: ~/.claude/scripts/install-security-tools.sh\n"
         fi
     fi
 
@@ -277,7 +309,20 @@ log_check() {
             fi
         fi
     else
-        log_check "gitleaks secrets" "SKIP" "Not installed (run install-security-tools.sh)"
+        # GAP-011: Auto-install gitleaks if not present (blocking if fails)
+        log_check "gitleaks secrets" "AUTOINSTALL" "Installing gitleaks..."
+        if bash "${HOME}/.claude/scripts/install-security-tools.sh" --check 2>/dev/null | grep -q "not installed"; then
+            bash "${HOME}/.claude/scripts/install-security-tools.sh" 2>&1 | tail -3 >> "$LOG_FILE" || true
+        fi
+
+        # Verify installation
+        if command -v gitleaks &>/dev/null; then
+            log_check "gitleaks secrets" "INSTALL" "gitleaks installed"
+            CHECKS_PASSED=$((CHECKS_PASSED + 1))
+        else
+            log_check "gitleaks secrets" "FAIL" "Auto-install failed"
+            BLOCKING_ERRORS+="gitleaks installation failed. Run manually: ~/.claude/scripts/install-security-tools.sh\n"
+        fi
     fi
 
     echo ""
