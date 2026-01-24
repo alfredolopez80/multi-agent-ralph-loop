@@ -1,6 +1,6 @@
 #!/bin/bash
 # project-backup-metadata.sh - SessionStart/Stop hooks for project metadata backup
-# VERSION: 1.0.0
+# VERSION: 2.68.6
 #
 # Purpose: Track project sessions globally for multi-project task tracking.
 #          Enables viewing task history across different repositories.

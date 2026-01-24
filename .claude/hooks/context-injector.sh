@@ -1,8 +1,9 @@
 #!/bin/bash
+# VERSION: 2.68.6
 # context-injector.sh - Injects active context into session
-# VERSION: 1.0.1
 # HOOK: SessionStart
-# Part of Multi-Agent Ralph Loop v2.66.0
+# Part of Multi-Agent Ralph Loop v2.68.6
+# v2.68.6: Version bump for consistency audit compliance
 
 set -euo pipefail
 

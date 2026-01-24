@@ -7,6 +7,91 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.68.7] - 2026-01-24
+
+### CRITICAL Fixes - JSON Output Compliance
+
+Final adversarial audit identified 2 CRITICAL issues with missing JSON output that could cause silent hook failures.
+
+#### CRIT-001: post-compact-restore.sh Missing JSON Output
+
+**Issue**: PostCompact hook terminated without required JSON response.
+
+**Fix**: Added error trap and `{"continue": true}` output at hook completion.
+
+```diff
++ trap 'echo "{\"continue\": true}"' ERR EXIT
+...
++ trap - ERR EXIT
++ echo '{"continue": true}'
+```
+
+#### CRIT-002: lsa-pre-step.sh Missing Error Trap
+
+**Issue**: PreToolUse hook could exit without JSON on unexpected jq failures.
+
+**Fix**: Added SEC-006 compliant error trap.
+
+```diff
++ trap 'echo "{\"decision\": \"allow\"}"' ERR
+```
+
+#### Files Modified
+
+| File | Change |
+|------|--------|
+| `~/.claude/hooks/post-compact-restore.sh` | v2.68.2 → v2.68.7 (CRIT-001) |
+| `~/.claude/hooks/lsa-pre-step.sh` | v2.68.2 → v2.68.7 (CRIT-002) |
+| `.claude/hooks/` | Synced both fixes |
+
+---
+
+## [2.68.6] - 2026-01-24
+
+### Version Consistency Audit - 100% Compliance Achieved
+
+**Issue**: Version Consistency Audit revealed 11 hooks with outdated versions and 2 hooks missing standard `# VERSION:` marker format.
+
+**Root Cause**: Legacy hooks from v1.x-v2.0 were never version-bumped during v2.66+ development cycle.
+
+**Fix**: All 11 hooks updated to v2.68.6 with standard VERSION marker format.
+
+#### HIGH Priority Fixes (2)
+
+| Hook | Issue | Resolution |
+|------|-------|------------|
+| `procedural-inject.sh` | VERSION in variable only, not standard comment | Added `# VERSION: 2.68.5` + corrected version 2.68.3→2.68.5 |
+| `sec-context-validate.sh` | VERSION in variable only, not standard comment | Added `# VERSION: 2.68.0` marker |
+
+#### MEDIUM Priority Updates (2)
+
+| Hook | Old Version | New Version | Change |
+|------|-------------|-------------|--------|
+| `context-injector.sh` | v1.0.1 | v2.68.6 | Version bump + description update |
+| `usage-consolidate.sh` | v1.0.0 | v2.68.6 | Version bump + reference update |
+
+#### LOW Priority Updates (7)
+
+| Hook | Old Version | New Version |
+|------|-------------|-------------|
+| `auto-format-prettier.sh` | v1.0.1 | v2.68.6 |
+| `console-log-detector.sh` | v1.0.1 | v2.68.6 |
+| `project-backup-metadata.sh` | v1.0.0 | v2.68.6 |
+| `smart-skill-reminder.sh` | v2.0.0 | v2.68.6 |
+| `task-primitive-sync.sh` | v1.2.1 | v2.68.6 |
+| `task-project-tracker.sh` | v1.1.0 | v2.68.6 |
+| `typescript-quick-check.sh` | v1.0.1 | v2.68.6 |
+
+#### Result
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Total hooks | 67 | 67 |
+| Hooks ≥v2.66 | 56 (83%) | 67 (100%) |
+| Missing VERSION marker | 2 | 0 |
+
+---
+
 ## [2.68.5] - 2026-01-24
 
 ### HIGH-001 Fix: Procedural Inject Lock Retry Enhancement

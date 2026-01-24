@@ -1,6 +1,6 @@
 #!/bin/bash
 # task-primitive-sync.sh - Sync Claude Code Task primitives with plan-state.json
-# VERSION: 1.2.1
+# VERSION: 2.68.6
 # HOOK: PostToolUse (TaskCreate|TaskUpdate|TaskList)
 # Part of Multi-Agent Ralph Loop v2.65.1
 #

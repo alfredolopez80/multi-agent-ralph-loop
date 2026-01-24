@@ -1,6 +1,6 @@
 #!/bin/bash
 # console-log-detector.sh - Warn about console.log statements after JS/TS edits
-# VERSION: 1.0.1
+# VERSION: 2.68.6
 # HOOK: PostToolUse (Edit|Write)
 # Part of Multi-Agent Ralph Loop v2.66.0
 

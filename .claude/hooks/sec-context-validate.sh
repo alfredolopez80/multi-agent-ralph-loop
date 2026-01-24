@@ -1,4 +1,5 @@
 #!/bin/bash
+# VERSION: 2.68.0
 #===============================================================================
 # SEC-CONTEXT VALIDATE HOOK v2.68.0
 # Hook: PostToolUse (Edit|Write)
