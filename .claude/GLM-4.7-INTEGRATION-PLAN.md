@@ -2,7 +2,7 @@
 
 **Date**: 2026-01-24 (Updated: 2026-01-25)
 **Analyst**: Opus 4.5 (Lead Software Architect)
-**Status**: ✅ ALL PHASES COMPLETE + ORCHESTRATOR AGENT UPDATED
+**Status**: ✅ ALL PHASES COMPLETE + CLI SCRIPTS UPDATED
 
 ## Implementation Summary
 
@@ -15,10 +15,60 @@
 | 5 | MiniMax fallback strategy | ✅ COMPLETE |
 | 6 | **Orchestrator Agent Update** | ✅ COMPLETE (v2.69.0) |
 | 7 | **Full MiniMax Deprecation** | ✅ COMPLETE (v2.69.0) |
+| 8 | **CLI Scripts Migration (mmc + ralph)** | ✅ COMPLETE (v2.69.0) |
 
 **Key Discovery**: MCP endpoints (`/api/mcp/...`) require paas balance, but GLM Coding API (`/api/coding/paas/v4`) uses plan quota. All hooks updated to use Coding API for reliable operation.
 
-### Phase 7: Full MiniMax Deprecation (COMPLETE) - NEW
+### Phase 8: CLI Scripts Migration (COMPLETE) - NEW
+
+**Files Modified**:
+- `scripts/mmc` → v2.69.0
+- `scripts/ralph` → v2.69.0
+
+**BREAKING CHANGES**:
+
+#### mmc Script (v2.69.0)
+| Component | Before | After |
+|-----------|--------|-------|
+| Primary Model | MiniMax M2.1 | GLM-4.7 |
+| Fallback | None | MiniMax M2.1 |
+| Config File | `~/.ralph/config/minimax.json` | `~/.ralph/config/glm.json` |
+| API Endpoint | `api.minimax.io/anthropic` | `api.z.ai/api/coding/paas/v4` |
+| Web Search | Not available | `mmc --web-search "query"` |
+| Setup | `mmc --setup` (MiniMax only) | `mmc --setup` (GLM + optional MiniMax) |
+
+**New mmc Commands**:
+```bash
+mmc --query "prompt"      # GLM-4.7 query (MiniMax fallback)
+mmc --web-search "query"  # GLM-4.7 web search
+mmc --loop N "task"       # GLM-4.7 loop (50 iter default)
+mmc --status              # Show GLM + MiniMax config
+```
+
+#### ralph Script (v2.69.0)
+| Component | Before | After |
+|-----------|--------|-------|
+| EXPLORATION_MODEL | `minimax` | `glm` |
+| VALIDATION_MODEL | `minimax` | `glm` |
+| MINIMAX_MAX_ITER | 50 (primary) | 30 (fallback) |
+| GLM_MAX_ITER | N/A | 50 (primary) |
+| `run_minimax()` | MiniMax only | Wrapper for `run_glm()` |
+| `cmd_minimax` | MiniMax only | Alias for `cmd_glm` |
+
+**New ralph Commands**:
+```bash
+ralph glm "query"         # GLM-4.7 query (PRIMARY)
+ralph minimax "query"     # Alias → ralph glm (backward compat)
+ralph websearch "query"   # GLM-4.7 web search
+ralph image "prompt" path # GLM-4.7 image analysis
+```
+
+**Backward Compatibility**:
+- `ralph minimax` → routes to `ralph glm`
+- `run_minimax()` → calls `run_glm()`
+- `cmd_minimax` → alias for `cmd_glm`
+
+### Phase 7: Full MiniMax Deprecation (COMPLETE)
 
 **Commit**: e1acaf4
 
@@ -317,6 +367,7 @@ GLM_RESULT=$(timeout 10 mcp__web-search-prime__webSearchPrime "$QUERY" 2>/dev/nu
 | Version | Date | Changes |
 |---------|------|---------|
 | 2.68.25 | 2026-01-24 | Phase 1 complete, plan created |
+| 2.69.0 | 2026-01-25 | **Phase 8: CLI scripts (mmc + ralph) fully migrated to GLM-4.7 PRIMARY** |
 
 ---
 

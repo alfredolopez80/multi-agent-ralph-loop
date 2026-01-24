@@ -2,83 +2,58 @@
 
 ## Overview
 
-Ralph orchestrates **33 specialized agents** across different domains, now with **multi-model support** including Claude (Opus/Sonnet/Haiku), MiniMax M2.1 (cost-effective), Codex GPT-5.2, Gemini 2.5 Pro, and GLM-4.7 (reasoning & web search).
+Ralph orchestrates **33 specialized agents** across different domains with **multi-model support**: Claude (Opus/Sonnet), GLM-4.7 (PRIMARY economic), Codex GPT-5.2, and Gemini 2.5 Pro. MiniMax is deprecated.
 
-> **v2.69 Update**: GLM-4.7 now integrated as **4th planner** in Adversarial Council via Coding API. New standalone skills `/glm-4.7` and `/glm-web-search` for direct model access. MCP endpoints require paas balance; Coding API uses plan quota (key discovery). adversarial_council.py updated to v2.68.26 with GLM support.
+> **v2.69.0 Update**: GLM-4.7 is now **PRIMARY** for complexity 1-4 tasks. MiniMax fully deprecated (optional fallback only). `mmc` and `ralph` CLI updated to use GLM-4.7 with automatic MiniMax fallback.
 
 ## Model Support (v2.69) - UPDATED
 
 Ralph now supports **multiple AI models** for optimal cost/performance trade-offs:
 
-| Model | Provider | Cost | Use Case | Context |
-|-------|----------|------|----------|---------|
-| **Claude Opus** | Anthropic | 15x | Complex reasoning, security audits, architecture | 200K tokens |
-| **Claude Sonnet** | Anthropic | 5x | Standard tasks, implementation, review | 200K tokens |
-| **Claude Haiku** | Anthropic | 1x | Fast simple tasks | 200K tokens |
-| **MiniMax M2.1** | MiniMax | **0.08x** | Validation, second opinion, extended loops | Large |
-| **Codex GPT-5.2** | OpenAI | Variable | Code generation, refactoring, deep analysis | Large |
-| **Gemini 2.5 Pro** | Google | Variable | Cross-validation, web search grounding, codebase analysis | 1M tokens |
-| **GLM-4.7** | Z.AI | **~0.15x** | Reasoning review, web search, code analysis | Large |
+| Model | Provider | Cost | Use Case | Status |
+|-------|----------|------|----------|--------|
+| **Claude Opus** | Anthropic | 15x | Complex reasoning, security, architecture | PRIMARY |
+| **Claude Sonnet** | Anthropic | 5x | Standard tasks, implementation, review | PRIMARY |
+| **GLM-4.7** | Z.AI | **~0.15x** | Complexity 1-4, web search, vision | **PRIMARY** |
+| **Codex GPT-5.2** | OpenAI | Variable | Code generation, deep analysis | PRIMARY |
+| **Gemini 2.5 Pro** | Google | Variable | Cross-validation, 1M context | SECONDARY |
+| **MiniMax M2.1** | MiniMax | 0.08x | Optional fallback only | **DEPRECATED** |
 
-### MiniMax M2.1 Integration
+### GLM-4.7 Integration (v2.69.0) - PRIMARY
 
-**Purpose**: Cost-effective validation and extended iteration loops.
+**Purpose**: Cost-effective PRIMARY model for complexity 1-4 tasks.
 
 **Features**:
-- 92% cost reduction vs Claude Sonnet
-- High-quality code generation and review
-- Extended Ralph Loop (up to 100 iterations vs 25 with Claude)
-- Ideal for validation, second opinions, and rapid prototyping
+- ~85% cost reduction vs Claude Sonnet
+- 14 tools: vision, web search, documentation
+- Reasoning model with `reasoning_content` support
+- Extended loops (50 iterations)
+- 4th planner in Adversarial Council
 
 **Usage**:
 ```bash
-# Ralph automatically routes to MiniMax for:
-- Validation tasks (quality gates)
-- Second opinion reviews
-- Extended loop iterations (>25)
-- Cost-sensitive batch operations
-
-# Manual invocation
-/minimax-review "review this code for potential issues"
-```
-
-### GLM-4.7 Integration (v2.69) - UPDATED
-
-**Purpose**: Cost-effective reasoning review, web search, and adversarial validation.
-
-**Key Discovery**: MCP endpoints (`/api/mcp/...`) require paas balance, but **Coding API** (`/api/coding/paas/v4`) uses plan quota. All GLM integrations now use Coding API.
-
-#### Standalone Skills (NEW)
-
-| Skill | Script | Purpose |
-|-------|--------|---------|
-| `/glm-4.7` | `~/.claude/skills/glm-4.7/glm-query.sh` | Direct GLM-4.7 queries |
-| `/glm-web-search` | `~/.claude/skills/glm-web-search/glm-web-search.sh` | Web search with GLM |
-
-**Usage**:
-```bash
-# Direct code review
-/glm-4.7 "Review this authentication code for security vulnerabilities"
-
-# With file content
-~/.claude/skills/glm-4.7/glm-query.sh --code src/auth.ts "Find issues"
-
-# Custom system prompt
-~/.claude/skills/glm-4.7/glm-query.sh --system "You are a security auditor" "Audit this"
+# Direct query
+/glm-4.7 "Review this authentication code"
 
 # Web search
 /glm-web-search "TypeScript best practices 2026"
+
+# Via mmc CLI (auto-routes to GLM-4.7)
+mmc --query "Analyze this code"
 ```
 
-#### Response Handling
+### MiniMax M2.1 - DEPRECATED (v2.69.0)
 
-GLM-4.7 is a **reasoning model** - responses may be in:
-- `choices[0].message.content` (standard)
-- `choices[0].message.reasoning_content` (reasoning chain)
+> ⚠️ MiniMax is deprecated. GLM-4.7 is now PRIMARY for economic tasks.
 
-Both are automatically extracted by skills and `adversarial_council.py`.
+**Migration Table**:
+| Old | New |
+|-----|-----|
+| `mmc --query` | `mmc --query` (auto-routes to GLM) |
+| `@minimax-reviewer` | `@glm-reviewer` |
+| `/minimax-review` | `/glm-4.7` |
 
-#### MCP Servers (4)
+### GLM-4.7 MCP Servers (4)
 
 | Server | Tools | Use Case |
 |--------|-------|----------|
@@ -173,7 +148,8 @@ Both are automatically extracted by skills and `adversarial_council.py`.
 
 | Agent | Model | Cost | Purpose |
 |-------|-------|------|---------|
-| `@minimax-reviewer` | MiniMax M2.1 | 8% | Second opinion, extended loops |
+| `@glm-reviewer` | GLM-4.7 | 15% | Second opinion, web search, vision (PRIMARY) |
+| `@minimax-reviewer` | MiniMax M2.1 | 8% | DEPRECATED - fallback only |
 | `@blender-3d-creator` | opus | Variable | 3D asset creation via Blender MCP |
 
 ## Blockchain & DeFi Agents
@@ -308,7 +284,7 @@ ralph health         # Full memory system check
 | Tier | Cost | Features |
 |------|------|----------|
 | `--tier free` | $0.00 | GitHub API + local scoring heuristics |
-| `--tier economic` | ~$0.30 | + OpenSSF Scorecard + MiniMax validation |
+| `--tier economic` | ~$0.30 | + OpenSSF Scorecard + GLM-4.7 validation |
 | `--tier full` | ~$0.95 | + Claude + Codex adversarial (with fallback) |
 
 **Usage**:
