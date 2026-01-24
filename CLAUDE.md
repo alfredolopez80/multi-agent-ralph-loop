@@ -1,10 +1,10 @@
-# Multi-Agent Ralph v2.68.22
+# Multi-Agent Ralph v2.68.23
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
 **Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, and **full CLI implementation**.
 
-> **v2.68.22**: Technical debt cleanup - 6 CLI commands fully implemented (checkpoint, handoff, events, agent-memory, migrate, ledger), SEC-116 umask 077 in all 66 hooks, shared JSON library created. Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) and [claude-code-docs](https://github.com/ericbuess/claude-code-docs).
+> **v2.68.23**: Adversarial validation Phase 9 - CRIT-001 (SEC-117 eval injection), HIGH-001 (SEC-104 MD5→SHA256), HIGH-003 (SEC-111 input length DoS prevention in 3 hooks), CRIT-003 (5 hooks duplicate JSON output via EXIT trap). Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) and [claude-code-docs](https://github.com/ericbuess/claude-code-docs).
 
 ---
 

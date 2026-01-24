@@ -2,7 +2,7 @@
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-![Version](https://img.shields.io/badge/v2.68.13-blue) ![Tests](https://img.shields.io/badge/903_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange)
+![Version](https://img.shields.io/badge/v2.68.23-blue) ![Tests](https://img.shields.io/badge/903_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange)
 
 ---
 
@@ -181,7 +181,7 @@ ralph health
 
 # Check hooks registration
 ls ~/.claude/hooks/*.sh | wc -l
-# Should output: 63 (after v2.68.2 updates)
+# Should output: 63 (after v2.68.23 updates)
 
 # Test quality gates
 /gates
@@ -238,7 +238,7 @@ multi-agent-ralph-loop/
 │   │   ├── repository-learner.sh # Learning agent
 │   │   └── repo-curator.sh       # Curation agent
 │   ├── commands/                 # Slash commands
-│   ├── hooks/                    # Hook scripts (63 registered, v2.68.2)
+│   ├── hooks/                    # Hook scripts (63 registered, v2.68.23)
 │   │   ├── quality-gates-v2.sh   # Quality validation (BLOCKING)
 │   │   ├── sec-context-validate.sh # Security validation (BLOCKING)
 │   │   ├── smart-memory-search.sh # Memory search
@@ -533,7 +533,7 @@ Claude Code hooks execute at specific lifecycle events:
 | **PreCompact** | Before context compaction | State saving, ledger creation |
 | **Stop** | Response completes | Session reports, cleanup |
 
-### Registered Hooks (63 total) - v2.68.2
+### Registered Hooks (63 total) - v2.68.23
 
 #### PreToolUse Hooks
 
@@ -566,7 +566,7 @@ Claude Code hooks execute at specific lifecycle events:
 | `status-auto-check.sh` | Edit/Write | Show status every 5 ops |
 | `semantic-realtime-extractor.sh` | Edit/Write | Extract semantic facts in real-time |
 | `episodic-auto-convert.sh` | Edit/Write | Convert experiences to episodic memory |
-| `global-task-sync.sh` | TodoWrite/TaskUpdate/TaskCreate | Bidirectional sync with global task storage |
+| `global-task-sync.sh` | TaskUpdate/TaskCreate | Unidirectional sync: plan-state → global storage |
 | `verification-subagent.sh` | TaskUpdate | Spawn verification subagent after step completion |
 
 ### Hook Output Format
@@ -852,7 +852,7 @@ Plans are archived to `~/.ralph/archive/plans/` with metadata:
 The `task-primitive-sync.sh` hook automatically syncs Claude's TaskCreate/TaskUpdate/TaskList operations with `plan-state.json`:
 
 - **Auto-detection**: Detects v1 (array) vs v2 (object) format automatically
-- **Bidirectional sync**: Updates flow both directions
+- **Unidirectional sync**: Claude Tasks → plan-state.json (plan-state is source of truth)
 - **Progress tracking**: Enables statusline to show correct progress
 
 ```
@@ -1053,7 +1053,7 @@ Stage 3: CONSISTENCY → Linting (ADVISORY - not blocking)
 
 Multi-Agent Ralph Loop fully integrates with Claude Code's **Task Primitive** architecture, migrating from the deprecated `TodoWrite` tool to the modern `TaskCreate`, `TaskUpdate`, and `TaskList` tools. This enables:
 
-- **Bidirectional Sync**: Local `plan-state.json` syncs with Claude Code's global task storage
+- **Unidirectional Sync**: Local `plan-state.json` (source of truth) syncs to Claude Code's global task storage
 - **Parallelization Detection**: Auto-detect independent tasks that can run concurrently
 - **Verification Subagents**: Automatic verification spawning after step completion
 - **Context Hiding**: Reduce context pollution with background execution
@@ -1062,27 +1062,27 @@ Multi-Agent Ralph Loop fully integrates with Claude Code's **Task Primitive** ar
 
 | Hook | Trigger | Purpose |
 |------|---------|---------|
-| `global-task-sync.sh` | PostToolUse (TodoWrite, TaskUpdate, TaskCreate) | Bidirectional sync with `~/.claude/tasks/<session>/` |
+| `global-task-sync.sh` | PostToolUse (TaskUpdate, TaskCreate) | Unidirectional sync: plan-state → `~/.claude/tasks/<session>/` |
 | `task-orchestration-optimizer.sh` | PreToolUse (Task) | Detect parallelization and context-hiding opportunities |
 | `verification-subagent.sh` | PostToolUse (TaskUpdate) | Spawn verification subagent after step completion |
 
-### Bidirectional Task Sync
+### Unidirectional Task Sync (v2.66.0+)
 
-The `global-task-sync.sh` hook implements bidirectional synchronization:
+The `global-task-sync.sh` hook implements **unidirectional** synchronization where `plan-state.json` is the single source of truth:
 
 ```
 Local Plan-State                    Global Task Storage
 ┌────────────────────┐              ┌────────────────────┐
-│ .claude/           │   ←─────→   │ ~/.claude/tasks/   │
-│   plan-state.json  │     SYNC     │   <session>/       │
-│                    │              │     tasks.json     │
+│ .claude/           │   ──────→   │ ~/.claude/tasks/   │
+│   plan-state.json  │    SYNC      │   <session>/       │
+│  (Source of Truth) │              │     1.json, 2.json │
 └────────────────────┘              └────────────────────┘
 ```
 
 **Features**:
-- Session ID detection from `$CLAUDE_SESSION_ID`, plan_id, or fallback generation
-- Atomic writes with `flock` locking (P1 race condition fix)
-- Timestamp-based conflict resolution
+- Session ID detection from `INPUT.session_id` (canonical), `$CLAUDE_SESSION_ID`, plan_id, or fallback
+- Atomic writes with `mkdir`-based portable locking (HIGH-002 fix)
+- Individual task files (`1.json`, `2.json`) instead of monolithic `tasks.json`
 - Status mapping: `completed`/`verified` → `completed`, `in_progress` → `in_progress`, else → `pending`
 
 **Task Format Conversion**:
@@ -1165,7 +1165,7 @@ The Task Primitive replaces the deprecated `TodoWrite` tool:
 | Old (TodoWrite) | New (Task Primitive) | Benefit |
 |-----------------|---------------------|---------|
 | Single-session scope | Global session storage | Persistence across restarts |
-| No sync | Bidirectional sync | Multi-agent awareness |
+| No sync | Unidirectional sync (plan-state → global) | Multi-agent awareness |
 | Manual verification | Auto-verification hooks | Quality assurance |
 | Sequential only | Parallel detection | Performance optimization |
 | No background | Context-hiding support | Reduced context pollution |
