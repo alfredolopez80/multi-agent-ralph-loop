@@ -15,7 +15,8 @@
 # v2.59.2: FIXED - Single JSON output
 # v2.57.0: Fixed to actually inject context
 #
-# VERSION: 2.68.2
+# VERSION: 2.68.10
+# v2.68.10: SEC-110 FIX - Redact sensitive data before logging (API keys, tokens)
 # SECURITY: SEC-006 compliant
 # v2.66.5: DUP-001 FIX - Use shared domain-classifier.sh library
 
@@ -34,6 +35,16 @@ output_json() {
     echo '{"decision": "allow"}'
 }
 trap 'output_json' ERR EXIT
+
+# SEC-110: Redact sensitive data before logging
+redact_sensitive() {
+    local str="$1"
+    # Redact common API key patterns
+    str=$(echo "$str" | sed -E 's/(sk-|pk-|api_|key_|token_|secret_|password[=:_ ]*)[a-zA-Z0-9_-]{10,}/\1[REDACTED]/gi')
+    # Redact long alphanumeric strings (potential tokens/keys - 32+ chars)
+    str=$(echo "$str" | sed -E 's/[a-zA-Z0-9_-]{32,}/[REDACTED]/g')
+    echo "$str"
+}
 
 # Parse input
 INPUT=$(cat)
@@ -296,9 +307,13 @@ if [[ "$IS_CRITICAL" == "true" ]] && [[ "$AUTO_LEARN_ENABLED" == "true" ]]; then
     if [[ "$AUTO_LEARN_BLOCKING" == "true" ]]; then
         LEARNING_OUTPUT=$("${HOME}/.ralph/curator/curator.sh" full --type "$DOMAIN" --lang "$LANG" --tier economic 2>&1) || true
         LEARNING_EXECUTED=true
-        echo "[$(date -Iseconds)] Learning output: ${LEARNING_OUTPUT:0:500}" >> "${LOG_DIR}/auto-learn-$(date +%Y%m%d).log" 2>&1
+        # SEC-110: Redact sensitive data before logging
+        SAFE_OUTPUT=$(redact_sensitive "${LEARNING_OUTPUT:0:500}")
+        echo "[$(date -Iseconds)] Learning output: ${SAFE_OUTPUT}" >> "${LOG_DIR}/auto-learn-$(date +%Y%m%d).log" 2>&1
 
-        EVENT_PAYLOAD=$(jq -n --arg domain "$DOMAIN" --argjson success true --arg output "${LEARNING_OUTPUT:0:1000}" '{
+        # SEC-110: Also redact event payload output
+        SAFE_EVENT_OUTPUT=$(redact_sensitive "${LEARNING_OUTPUT:0:1000}")
+        EVENT_PAYLOAD=$(jq -n --arg domain "$DOMAIN" --argjson success true --arg output "$SAFE_EVENT_OUTPUT" '{
             domain: $domain, success: $success, output: $output
         }')
         emit_learning_event "learning.completed" "$EVENT_PAYLOAD"

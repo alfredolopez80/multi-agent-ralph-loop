@@ -1,6 +1,7 @@
 #!/bin/bash
 # checkpoint-smart-save.sh - Smart checkpoint based on risk/complexity
-# VERSION: 2.68.2
+# VERSION: 2.68.10
+# v2.68.10: SEC-105 FIX - Atomic noclobber (O_EXCL) eliminates TOCTOU gap completely
 # v2.68.1: FIX CRIT-003 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 # v2.66.8: HIGH-003 version sync, RACE-001 atomic mkdir already implemented
 #
@@ -102,16 +103,20 @@ fi
 # CRIT-003: Update trap to clean lock AND clear on exit
 trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
 
-if [[ -f "$EDITED_FLAG" ]]; then
-    log "File already edited this session: $FILE_PATH"
+# SEC-105: Atomic check-and-create using noclobber (O_EXCL)
+# This eliminates TOCTOU gap - single syscall for check+create
+# noclobber translates to open(path, O_CREAT | O_EXCL | O_WRONLY, 0666)
+if ! (set -C; echo "$$" > "$EDITED_FLAG") 2>/dev/null; then
+    # File already exists - another process beat us to it
+    log "File already edited this session (atomic check): $FILE_PATH"
     rmdir "$LOCK_DIR" 2>/dev/null || true  # Clean lock before exit
     trap - EXIT  # CRIT-003: Clear trap before explicit output
     echo '{"decision": "allow"}'
     exit 0
 fi
 
-# Mark file as edited (now safe - we hold the lock)
-touch "$EDITED_FLAG"
+# File successfully created with our PID - we're the first editor
+# No need for touch - noclobber already created the file
 
 # Determine if checkpoint is needed
 TRIGGER_REASON=""

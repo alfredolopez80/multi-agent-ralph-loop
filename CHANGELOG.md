@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.68.10] - 2026-01-24
+
+### Adversarial Validation Phase 7 - Deep Dive Fixes
+
+Continued adversarial validation loop addressing HIGH severity issues and documentation accuracy.
+
+#### Security Fixes (2)
+
+| ID | File | Issue | Fix |
+|----|------|-------|-----|
+| **SEC-105** | `checkpoint-smart-save.sh` | TOCTOU race condition | Atomic noclobber (O_EXCL) syscall |
+| **SEC-110** | `memory-write-trigger.sh`, `orchestrator-auto-learn.sh` | User prompts logged without redaction | Added `redact_sensitive()` function |
+
+#### Code Quality Fixes (2)
+
+| ID | File | Issue | Fix |
+|----|------|-------|-----|
+| **HIGH-002** | `inject-session-context.sh` | 43 lines of dead code (context never used) | Removed dead code, added documentation |
+| **HIGH-003** | `CHANGELOG.md` | Claimed SQLite FTS but uses grep | Corrected documentation to reflect actual implementation |
+
+#### FALSE POSITIVES Verified
+
+The security audit identified several issues that were verified as **FALSE POSITIVES**:
+
+| ID | Claimed Issue | Actual State |
+|----|---------------|--------------|
+| SEC-112 | Insecure temp files | All hooks use `mktemp` correctly |
+| SEC-114 | Unbounded loops | All loops have 50-iter bounds |
+| SEC-115 | Glob expansion risk | No `rm *` patterns found |
+
+#### Files Modified
+
+- `~/.claude/hooks/checkpoint-smart-save.sh` (v2.68.10)
+- `~/.claude/hooks/memory-write-trigger.sh` (v2.68.10)
+- `~/.claude/hooks/orchestrator-auto-learn.sh` (v2.68.10)
+- `~/.claude/hooks/inject-session-context.sh` (v2.68.10)
+- `CHANGELOG.md` (documentation corrections)
+- `.claude/TECHNICAL_DEBT.md` (marked 4 items DONE)
+
+---
+
 ## [2.68.9] - 2026-01-24
 
 ### Adversarial Validation Phase 6 - Security Hardening
@@ -1444,7 +1485,7 @@ This release addresses 8 critical issues discovered in a dual-model adversarial 
 | # | Issue | Fix |
 |---|-------|-----|
 | 1 | `todo-plan-sync.sh` used `sort_by(tonumber)` failing on step-X-Y keys | Changed to `keys \| sort` |
-| 2 | `smart-memory-search.sh` searched JSON files but claude-mem uses SQLite | Implemented SQLite FTS query |
+| 2 | `smart-memory-search.sh` searched JSON files but claude-mem uses SQLite | Uses grep on JSON cache (SQLite FTS via claude-mem MCP) |
 | 3 | `inject-session-context.sh` output JSON but PreToolUse can't modify tool_input | Removed JSON output, uses cache file |
 | 4 | Reflection-executor extracted JSON metadata instead of real decisions | Filters JSON content from extraction |
 | 5 | Pattern detection threshold never met despite 162 episodes | Lowered threshold, improved matching |
@@ -1468,7 +1509,7 @@ This release addresses 8 critical issues discovered in a dual-model adversarial 
 | Hook | Change |
 |------|--------|
 | `todo-plan-sync.sh` | Fixed `sort_by(tonumber)` → `sort` for step-X-Y keys |
-| `smart-memory-search.sh` | SQLite FTS instead of JSON file search |
+| `smart-memory-search.sh` | Grep-based parallel search on JSON cache files |
 | `inject-session-context.sh` | Removed JSON output, uses exit 0 only |
 | `semantic-realtime-extractor.sh` | NEW: Real-time extraction from Edit/Write |
 | `decision-extractor.sh` | Writes patterns to semantic memory |
@@ -1485,7 +1526,7 @@ This release addresses 8 critical issues discovered in a dual-model adversarial 
 #### Key Learnings
 
 1. **PreToolUse hooks**: Can ONLY block (exit 2) or allow (exit 0) - CANNOT modify tool_input
-2. **claude-mem storage**: Uses SQLite (`claude-mem.db`) with FTS, NOT JSON files
+2. **claude-mem storage**: SQLite DB with FTS exists but hook uses grep on JSON cache for speed
 3. **jq sort_by(tonumber)**: Fails silently on non-numeric strings like "step-1-1"
 4. **Hook JSON output**: PostToolUse uses `{"continue": true}`, Stop uses `{"decision": "approve"}`
 
