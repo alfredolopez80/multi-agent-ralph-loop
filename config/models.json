@@ -1,43 +1,50 @@
 {
-  "version": "2.22.0",
+  "version": "2.69.0",
+  "primary_economic_model": "glm-4.7",
+  "deprecated": ["minimax"],
   "model_by_task": {
     "exploration": {
-      "model": "minimax",
-      "description": "Research, exploration, docs - large context, low cost",
+      "model": "glm-4.7",
+      "description": "Research, web search, vision - large context, low cost",
       "cli": "mmc --query",
-      "context_window": "1M+ tokens"
+      "context_window": "Large",
+      "status": "PRIMARY"
     },
     "implementation": {
       "model": "sonnet",
       "description": "Features, refactors, tests - balanced quality/speed",
       "cli": "claude --print -m sonnet",
-      "context_window": "200K tokens"
+      "context_window": "200K tokens",
+      "status": "PRIMARY"
     },
     "review": {
       "model": "opus",
       "description": "Pre-merge critical review - surgical precision",
       "cli": "claude --print -m opus",
-      "context_window": "200K tokens"
+      "context_window": "200K tokens",
+      "status": "PRIMARY"
     },
     "validation": {
-      "model": "minimax",
-      "description": "Second opinion, parallel review - high quality at 8% cost",
+      "model": "glm-4.7",
+      "description": "Second opinion, web search, vision analysis",
       "cli": "mmc --query",
-      "context_window": "1M+ tokens"
+      "context_window": "Large",
+      "status": "PRIMARY"
     }
   },
   "iteration_limits": {
-    "claude_sonnet": 15,
-    "claude_opus": 15,
+    "claude_sonnet": 25,
+    "claude_opus": 25,
+    "glm_4_7": 50,
     "minimax_m21": 30,
-    "minimax_lightning": 60
+    "minimax_lightning": 50
   },
   "model_routing": {
-    "complexity_1_2": "minimax_lightning",
-    "complexity_3_4": "minimax_m21",
-    "complexity_5_6": "sonnet",
-    "complexity_7_8": "opus",
-    "complexity_9_10": "opus"
+    "complexity_1_2": "glm_4_7_lightning",
+    "complexity_3_4": "glm_4_7",
+    "complexity_5_6": "sonnet_with_codex_gemini",
+    "complexity_7_8": "opus_with_sonnet_clis",
+    "complexity_9_10": "opus_thinking"
   },
   "subagent_models": {
     "orchestrator": "opus",
@@ -46,32 +53,30 @@
     "test-architect": "sonnet",
     "debugger": "opus",
     "refactorer": "sonnet",
-    "docs-writer": "minimax",
+    "docs-writer": "sonnet",
     "frontend-reviewer": "sonnet",
-    "minimax-reviewer": "minimax"
+    "glm-reviewer": "glm-4.7",
+    "minimax-reviewer": "minimax (deprecated)"
   },
   "cost_comparison": {
-    "claude_opus": {"input": 5.00, "output": 25.00, "relative": "baseline"},
+    "claude_opus": {"input": 5.00, "output": 25.00, "relative": "100%"},
     "claude_sonnet": {"input": 3.00, "output": 15.00, "relative": "60%"},
-    "minimax_m21": {"input": 0.30, "output": 1.20, "relative": "8%"},
-    "minimax_lightning": {"input": 0.15, "output": 0.60, "relative": "4%"}
+    "glm_4_7": {"input": 0.75, "output": 3.75, "relative": "15%"},
+    "minimax_m21": {"input": 0.30, "output": 1.20, "relative": "8% (deprecated)"}
   },
   "adversarial": {
-    "mode": "adversarial-spec",
-    "runtime_models": {
-      "claude": [
-        "claude-4.5-opus",
-        "claude-4.5-sonnet",
-        "openai/gpt-5.2-codex",
-        "minimax/minimax-m2.1"
-      ],
-      "opencode": ["openai/gpt-5.2-codex", "minimax/minimax-m2.1"]
-    }
+    "mode": "4-planner-council",
+    "consensus_required": 4,
+    "models": ["codex", "claude-opus", "gemini", "glm-4.7"]
   },
-  "efficiency_notes": {
-    "haiku_not_recommended": "Rework rate >30% cancels cost savings for code tasks",
-    "minimax_surprise": "74% SWE-bench = Opus quality at 8% cost",
-    "sonnet_sweet_spot": "Best balance for 85% of implementation tasks",
-    "opus_surgical": "Use for final review - catches bugs others miss"
+  "glm_4_7_tools": {
+    "vision": ["ui_to_artifact", "extract_text_from_screenshot", "diagnose_error_screenshot", "understand_technical_diagram", "analyze_data_visualization", "ui_diff_check", "analyze_image", "analyze_video"],
+    "search": ["webSearchPrime", "webReader"],
+    "docs": ["search_doc", "read_file", "get_repo_structure"]
+  },
+  "migration_v2_69": {
+    "mmc_query": "routes to GLM-4.7 with MiniMax fallback",
+    "minimax_reviewer": "deprecated, use glm-reviewer",
+    "minimax_validation": "deprecated, use glm-4.7"
   }
 }
