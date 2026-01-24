@@ -1,10 +1,10 @@
-# Multi-Agent Ralph v2.68.24
+# Multi-Agent Ralph v2.69
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, and **full CLI implementation**.
+**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, **GLM-4.7 Unified MCP Access**, and **full CLI implementation**.
 
-> **v2.68.24**: Statusline Ralph enhancement with claude-hud v0.0.6 upgrade, multi-model adversarial validation (Adversarial + Codex-CLI + Gemini-CLI), and GLM-4.7 MCP ecosystem integration (zai-mcp-server, web-search-prime, web-reader, zread). Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) and [claude-code-docs](https://github.com/ericbuess/claude-code-docs).
+> **v2.69**: GLM-4.7 now 4th planner in Adversarial Council. New unified `/glm-mcp` skill for 14 MCP tools (vision, web search, repo knowledge). Standalone `/glm-4.7` and `/glm-web-search` skills. Coding API discovery: uses plan quota, not paas balance. Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) and [claude-code-docs](https://github.com/ericbuess/claude-code-docs).
 
 ---
 
@@ -68,6 +68,14 @@ ralph context dev       # Development mode (code first)
 ralph context review    # Code review mode (analysis)
 ralph context research  # Research mode (exploration)
 ralph context debug     # Debug mode (investigation)
+
+# v2.69: GLM-4.7 MCP Ecosystem (NEW)
+/glm-mcp diagnose ~/error.png    # Diagnose error screenshot
+/glm-mcp diagram ~/arch.png      # Understand architecture diagram
+/glm-mcp search "React 2026"     # Web search
+/glm-mcp structure github/repo   # Repo structure
+/glm-4.7 "Review this code"      # Direct GLM-4.7 query
+/glm-web-search "latest news"    # GLM web search
 ```
 
 ---
