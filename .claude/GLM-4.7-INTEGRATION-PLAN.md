@@ -1,8 +1,8 @@
-# GLM-4.7 MCP Integration Plan v2.68.26
+# GLM-4.7 MCP Integration Plan v2.69.0
 
 **Date**: 2026-01-24 (Updated: 2026-01-25)
 **Analyst**: Opus 4.5 (Lead Software Architect)
-**Status**: ✅ ALL PHASES COMPLETE
+**Status**: ✅ ALL PHASES COMPLETE + ORCHESTRATOR AGENT UPDATED
 
 ## Implementation Summary
 
@@ -13,8 +13,24 @@
 | 3 | Visual validation hook | ✅ COMPLETE |
 | 4 | Documentation search | ✅ COMPLETE |
 | 5 | MiniMax fallback strategy | ✅ COMPLETE |
+| 6 | **Orchestrator Agent Update** | ✅ COMPLETE (v2.69.0) |
 
 **Key Discovery**: MCP endpoints (`/api/mcp/...`) require paas balance, but GLM Coding API (`/api/coding/paas/v4`) uses plan quota. All hooks updated to use Coding API for reliable operation.
+
+### Phase 6: Orchestrator Agent Update (COMPLETE)
+
+**Files Modified**:
+- `.claude/agents/orchestrator.md` → v2.69.0
+
+**Changes**:
+1. ✅ VERSION header updated to 2.69.0
+2. ✅ Description includes GLM-4.7 multimodal capabilities
+3. ✅ Tools list includes all GLM-4.7 MCP servers
+4. ✅ New v2.69 Changes section with 14-tool matrix
+5. ✅ v2.24 section marked as superseded
+6. ✅ Workflow diagram updated with GLM integration points (1c, 6e, 7c)
+7. ✅ Research Strategy section completely rewritten for GLM-4.7 PRIMARY
+8. ✅ Migration notice added (GLM primary, MiniMax fallback)
 
 ---
 
