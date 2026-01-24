@@ -1,19 +1,8 @@
-# Multi-Agent Ralph Wiggum v2.68.13
+# Multi-Agent Ralph Wiggum
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-![Version](https://img.shields.io/badge/version-2.68.13-blue)
-![License](https://img.shields.io/badge/license-BSL%201.1-orange)
-![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
-![Tests](https://img.shields.io/badge/tests-903%20passed-brightgreen)
-![Hooks](https://img.shields.io/badge/hooks-66%20registered-green)
-![Skills](https://img.shields.io/badge/skills-266%2B-orange)
-![ShellCheck](https://img.shields.io/badge/ShellCheck-A%2B%2B%2B-brightgreen)
-![Security](https://img.shields.io/badge/security-SEC--111%20compliant-green)
-![Task Primitive](https://img.shields.io/badge/Task%20Primitive-integrated-blue)
-![Dynamic Contexts](https://img.shields.io/badge/Contexts-4%20modes-purple)
-![Plan Lifecycle](https://img.shields.io/badge/Plan%20Lifecycle-CLI-green)
-![Adversarial](https://img.shields.io/badge/Adversarial-VERIFIED__DONE-brightgreen)
+![Version](https://img.shields.io/badge/v2.68.13-blue) ![Tests](https://img.shields.io/badge/903_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange)
 
 ---
 
@@ -50,127 +39,63 @@
 
 ## Overview
 
-**Multi-Agent Ralph Wiggum** is a sophisticated orchestration system for Claude Code and OpenCode that coordinates multiple AI models to deliver high-quality validated code through iterative refinement cycles.
+Ralph coordinates multiple AI models (Claude, Codex, Gemini, MiniMax) to produce validated code. Rather than trust one model's output, it runs them in parallel with quality gates.
 
-The system addresses the fundamental challenge of AI-assisted programming: **ensuring quality and consistency in complex tasks**. Instead of relying on a single AI model's output, Ralph orchestrates multiple specialized agents working in parallel, with automatic validation gates and adversarial debates for rigorous requirements.
+The core idea: **execute → validate → iterate** until the code passes.
 
 ### What It Does
 
-- **Orchestrates Multiple AI Models**: Coordinates Claude (Opus/Sonnet), OpenAI Codex, Google Gemini, and MiniMax in parallel workflows
-- **Iterative Refinement**: Implements the "Ralph Loop" pattern - execute, validate, iterate until quality gates pass
-- **Quality Assurance**: Quality gates in 9 languages (TypeScript, Python, Go, Rust, Solidity, Swift, JSON, YAML, JavaScript)
-- **Adversarial Specification Refinement**: Adversarial debate to harden specifications before execution
-- **Automatic Context Preservation**: 100% automatic ledger/handoff system preserves session state (v2.35)
-- **Self-Improvement**: Retrospective analysis after each task to propose workflow improvements
-- **Autonomous Learning (v2.55)**: Proactively learns from quality repositories when knowledge gaps detected
-- **Automated Monitoring (v2.56)**: Smart checkpoints, status monitoring, and health checks via hooks
-- **Memory System Reconstruction (v2.57)**: Fixed 8 critical bugs in memory search, plan-state sync, and context injection
-- **Security Hardening (v2.68)**: 27 security anti-patterns from sec-context framework, CWE coverage, P0-P2 priority classification
-- **Learning System v2.59**: 319 procedural rules with confidence scoring, feedback loop, and auto-cleanup
-- **Hook System Audit (v2.60)**: Reduced hooks from 64 to 52, removed deprecated scripts, adversarial validation
-- **Smart Skill Reminder v2.0 (v2.60)**: Context-aware skill suggestions with session gating and rate limiting
-- **Adversarial Council v2.61**: LLM-council enhanced multi-model review with Python orchestration, provider-specific extraction, exponential backoff, and security hardening (command allowlist, path traversal prevention)
-- **Adversarial Hook Audit (v2.62)**: Comprehensive multi-model audit (Claude Opus, Sonnet, MiniMax, Codex, Gemini) with iterative loop until zero issues
-- **Task Primitive Integration (v2.62)**: Full integration with Claude Code's Task architecture (TaskCreate, TaskUpdate, TaskList), bidirectional sync, parallelization detection, and verification subagent pattern
-- **Repository Isolation Rule (v2.62.3)**: Prevents accidental work in wrong repository with hook enforcement
-- **Schema v2 Compliance (v2.62.3)**: Plan-state schema updated with `oneOf` for backward compatibility (v1 array + v2 object formats)
-- **Error Traps (v2.62.3)**: All 44 registered hooks now have proper error traps guaranteeing valid JSON output
-- **Race Condition Fixes (v2.62.3)**: P0/P1 memory system race conditions fixed with `flock` atomic writes
-- **Dynamic Contexts System (v2.63)**: 4 operational modes (dev, review, research, debug) that dynamically change Claude's behavior
-- **Hook Improvements (v2.63.1)**: console-log-detector, typescript-quick-check, auto-format-prettier for better code quality
-- **Eval-Driven Development (v2.64)**: EDD framework with pass@k metrics (pass@1, pass@3, pass^k) for AI code quality measurement
-- **Cross-Platform Hooks (v2.65)**: Node.js library for Windows/Linux/macOS compatibility + continuous-learning hook
-- **Task Primitive Sync Fix (v2.65.1)**: TaskCreate/TaskUpdate/TaskList hooks with v1/v2 format auto-detection
-- **Plan Lifecycle Management (v2.65.2)**: Full CLI for archive/reset/show/history/restore operations on plan-state
-- **Security Hardening (v2.66.2)**: Critical fixes for JSON injection, path traversal, umask permissions (SEC-001 to SEC-008)
-- **macOS Compatibility (v2.66.3)**: Portable `mkdir`-based locking replacing Linux-only `flock` (SEC-009/010)
-- **Hook JSON Format Fix (v2.66.4)**: SEC-039 compliance - all PreToolUse hooks now return correct `{"decision": "allow"}` format
-- **Code Quality (v2.66.5)**: DUP-001 shared domain-classifier library, RACE-001 atomic locking, SEC-040 path validation, DATA-001 JSON corruption detection, SC2168 shellcheck fix
-- **Adversarial Validation Phase 1 (v2.66.6)**: 11 issues fixed (SEC-041 to SEC-049), command injection prevention, malformed JSON traps, macOS realpath compatibility, PreCompact JSON format fixes
-- **Critical Fixes (v2.66.7)**: CRIT-001 explicit JSON output in agent-memory-auto-init.sh, CRIT-002 schema v2.66 with phases/barriers/verification
-- **HIGH Priority Fixes (v2.66.8)**: Plan reset template with phases/barriers/verification, ASCII art to stderr in LSA hooks, realpath canonicalization for path validation, version sync across 8 hooks (22 total issues resolved in v2.66.6-v2.66.8 cycle)
-- **Double-JSON Bug Fix (v2.68.2)**: Fixed critical EXIT trap pattern causing duplicate JSON output in 9 hooks (CRIT-002 to CRIT-011). The fix pattern: `trap - EXIT` before explicit JSON output prevents the EXIT trap from firing on `exit 0`
-- **Schema Upgrade (v2.68.2)**: Plan-state schema upgraded from v2.54 to v2.66 with `phases[]`, `barriers{}`, `current_phase`, and `verification_state` fields for full lifecycle management
-- **Hook Version Sync (v2.68.2)**: 54 hooks bulk version bumped to v2.68.2 for consistency; 9 critical hooks synced from global to project directory
-- **Gap Analysis Resolution (v2.68.2)**: Comprehensive adversarial gap analysis identified 13 issues (3 CRITICAL, 5 HIGH, 5 MEDIUM) - all resolved or documented in TECHNICAL_DEBT.md
-- **Adversarial Validation**: Comprehensive multi-model audit (Claude Opus, Sonnet, MiniMax, Codex, Gemini) with iterative loop until zero issues
-- **Security Audit**: Comprehensive API key leak detection validated by Codex, Gemini, and Claude Opus (9/10 security score)
-- **Claude Code Skills Ecosystem**: 266+ specialized skills including marketing (23 skills), documentation generation, and React best practices from Vercel
-- **Input Validation (v2.68.11)**: SEC-111 maximum input length validation (100KB) preventing DoS attacks
-- **BUG-001 Fix (v2.68.12)**: Integer comparison fix in reflection-engine.sh (string to integer)
-- **Code Quality A+++ (v2.68.13)**: 39 critical ShellCheck issues → 0, 903 tests passing, 100% feature coverage
-  - SC2155: 28 violations fixed (declare and assign separately)
-  - SC2221/SC2222: 6 pattern conflicts fixed
-  - SC2168: 5 'local' outside function errors fixed
-  - 108 new tests for v2.61-v2.65 features
+- **Multi-model orchestration** — Claude, Codex, Gemini, MiniMax working together
+- **Quality gates** — 9 languages supported (TS, Python, Go, Rust, Solidity, etc.)
+- **Memory system** — Semantic, episodic, procedural memory with 30-day TTL
+- **66 hooks** — Automated validation, checkpoints, context preservation
+- **266+ skills** — Specialized capabilities for common tasks
+- **Dynamic contexts** — Switch between dev, review, research, debug modes
+
+See [CHANGELOG.md](CHANGELOG.md) for version history
 
 ---
 
 ## Key Features
 
-### Core Orchestration
+### Orchestration
 
-| Feature | Description | Version |
-|---------|-------------|---------|
-| **Smart Memory Search** | Parallel memory search across semantic, episodic, procedural memories | v2.49 |
-| **RLM-Inspired Routing** | 3-dimension classification (Complexity + Density + Context) | v2.46 |
-| **Quality-First Validation** | Blocking correctness/quality, advisory consistency | v2.46 |
-| **Checkpoint System** | LangGraph-style "time travel" for orchestration state | v2.51 |
-| **Handoff API** | OpenAI Agents SDK-style agent-to-agent transfers | v2.51 |
-| **Event-Driven Engine** | LangGraph-style event bus with WAIT-ALL barriers | v2.51 |
-| **Local Observability** | Query-based status and traceability without external services | v2.52 |
-| **Task Primitive** | Claude Code Task architecture integration with bidirectional sync | v2.62 |
-| **Repository Isolation** | Prevents accidental work in external repositories | v2.62.3 |
-| **Dynamic Contexts** | 4 operational modes (dev/review/research/debug) | v2.63 |
-| **Eval-Driven Development** | pass@k metrics framework for AI code quality | v2.64 |
-| **Cross-Platform Hooks** | Node.js library for Windows/Linux/macOS | v2.65 |
-| **Plan Lifecycle CLI** | Archive, reset, show, history, restore operations | v2.65.2 |
-| **Double-JSON Bug Fix** | EXIT trap pattern fix across 9 hooks (CRIT-002 to CRIT-011) | v2.68.2 |
-| **Schema v2.66** | Phases, barriers, verification_state for full lifecycle | v2.68.2 |
-| **Input Validation** | SEC-111 max input length (100KB) preventing DoS | v2.68.11 |
-| **Code Quality A+++** | 0 critical ShellCheck issues, 903 tests passing | v2.68.13 |
+- **Smart routing** — Classifies tasks by complexity, density, and context requirements
+- **Checkpoints** — Save and restore orchestration state (time travel)
+- **Handoffs** — Transfer work between specialized agents
+- **Plan lifecycle** — Archive, reset, restore plans via CLI
 
-### Memory System
+### Memory
 
-| Memory Type | Purpose | Storage | TTL |
-|-------------|---------|---------|-----|
-| **Semantic** | Facts, preferences, learned rules | `~/.ralph/memory/semantic.json` | Never |
-| **Episodic** | Experiences, decisions, patterns | `~/.ralph/episodes/` | 30 days |
-| **Procedural** | Learned behaviors, best practices | `~/.ralph/procedural/rules.json` | Never |
-| **Agent-Scoped** | Isolated buffers per agent | `~/.ralph/agent-memory/<agent>/` | Varies |
+| Type | What it stores | TTL |
+|------|----------------|-----|
+| Semantic | Facts, preferences | Forever |
+| Episodic | Decisions, patterns | 30 days |
+| Procedural | Best practices, rules | Forever |
 
-### Auto-Learning (v2.50-v2.59)
+### Learning
 
-| Component | Purpose | Version |
-|-----------|---------|---------|
-| **Repository Learner** | Extract patterns from quality repositories via AST | v2.50 |
-| **Repo Curator** | Discover, score, and curate quality repos | v2.55 |
-| **Auto-Learning Hooks** | Detect knowledge gaps proactively | v2.55 |
-| **Learning System v2.59** | 319 rules, confidence scoring, feedback loop | v2.59 |
+Ralph learns from repositories you point it at:
+- Extracts patterns via AST analysis
+- Scores and curates repos by quality
+- Stores 300+ procedural rules with confidence scores
 
-### Security (v2.68)
+### Security
 
-| Component | Purpose |
-|-----------|---------|
-| **sec-context-validate.sh** | Comprehensive security validation (BLOCKING) |
-| **Anti-Pattern Detection** | 27 security anti-patterns (P0-P2 priority) |
-| **CWE Coverage** | 20+ CWE references from sec-context framework |
-| **Source** | Based on [Arcanum-Sec/sec-context](https://github.com/Arcanum-Sec/sec-context) |
+Based on [sec-context](https://github.com/Arcanum-Sec/sec-context):
+- 27 anti-patterns checked
+- 20+ CWE references
+- Blocks on security issues (not advisory)
 
 ---
 
 ## Tech Stack
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| **Base Platform** | Claude Code CLI | AI orchestration engine |
-| **Shell Environment** | Bash 5.x + zsh | Hooks automation |
-| **Scripting** | Python 3.11+ | Utility scripts, memory management |
-| **Configuration** | JSON + YAML | Settings, schemas, rules |
-| **Memory Storage** | JSON + grep-based search | Semantic, episodic, procedural memory |
-| **Code Analysis** | AST-grep | Structural code search |
-| **MCP Servers** | Context7, Playwright, MiniMax, Blender | Documentation, testing, AI analysis |
-| **CLI Tools** | Codex CLI, Gemini CLI, GitHub CLI | Multi-model orchestration |
+- **Claude Code CLI** — Base orchestration
+- **Bash/zsh** — 66 hooks for automation
+- **Python 3.11+** — Utility scripts
+- **JSON** — Configuration, memory storage
+- **MCP servers** — Context7, Playwright, etc.
 
 ---
 
