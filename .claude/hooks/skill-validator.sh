@@ -11,7 +11,8 @@
 # - Collaboration rules integrity
 # Output: {"decision": "allow"} or {"decision": "block", "reason": "..."}
 
-# VERSION: 2.68.2
+# VERSION: 2.68.9
+# v2.68.9: SEC-103 FIX - Use sys.argv for file path instead of string interpolation
 # v2.68.2: FIX CRIT-004b - Only set trap when not sourced to prevent subshell JSON duplication
 # v2.68.1: FIX CRIT-004 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 set -euo pipefail
@@ -56,20 +57,24 @@ log_success() {
 }
 
 # Validate YAML syntax using Python
+# SEC-103 FIX: Pass file path via sys.argv to prevent code injection
 validate_yaml_syntax() {
     local file="$1"
 
-    if ! python3 -c "
+    if ! python3 -c '
 import yaml
 import sys
 try:
-    with open('$file', 'r') as f:
+    with open(sys.argv[1], "r") as f:
         yaml.safe_load(f)
     sys.exit(0)
 except yaml.YAMLError as e:
-    print(f'YAML syntax error: {e}', file=sys.stderr)
+    print(f"YAML syntax error: {e}", file=sys.stderr)
     sys.exit(1)
-" 2>&1; then
+except Exception as e:
+    print(f"Error reading file: {e}", file=sys.stderr)
+    sys.exit(1)
+' "$file" 2>&1; then
         log_error "Invalid YAML syntax in $file"
         return 1
     fi

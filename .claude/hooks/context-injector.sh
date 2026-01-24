@@ -1,5 +1,6 @@
 #!/bin/bash
-# VERSION: 2.68.6
+# VERSION: 2.68.9
+# v2.68.9: SEC-107 FIX - Validate active context name to prevent path traversal
 # context-injector.sh - Injects active context into session
 # HOOK: SessionStart
 # Part of Multi-Agent Ralph Loop v2.68.6
@@ -19,6 +20,14 @@ INPUT=$(cat)
 # Check if there's an active context
 if [[ -f "$STATE_FILE" ]]; then
     ACTIVE_CONTEXT=$(cat "$STATE_FILE")
+
+    # SEC-107 FIX: Validate context name to prevent path traversal
+    # Only allow alphanumeric, underscore, and dash characters
+    if [[ ! "$ACTIVE_CONTEXT" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+        echo "Context injection skipped (invalid context name)"
+        exit 0
+    fi
+
     CONTEXT_FILE="${CONTEXTS_DIR}/${ACTIVE_CONTEXT}.md"
 
     if [[ -f "$CONTEXT_FILE" ]]; then

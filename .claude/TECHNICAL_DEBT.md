@@ -137,27 +137,100 @@ Node.js hook infrastructure **EXISTS** but is not registered:
 
 ---
 
-### GAP-HIGH-005: EDD (Eval-Driven Development) Skill Not Implemented (P3)
+### GAP-HIGH-005: EDD (Eval-Driven Development) Skill Not Implemented (DONE)
 
 **Created**: 2026-01-24 (v2.68.2 gap analysis)
-**Status**: Open - Feature Not Implemented
-**Effort**: High (16-24 hours)
+**Completed**: 2026-01-24 (v2.68.9 adversarial validation Phase 6)
+**Status**: DONE
+
+**Solution**:
+- Created `~/.claude/skills/edd/skill.md` with workflow documentation
+- Created `~/.claude/evals/TEMPLATE.md` with definition template
+- Script `~/.ralph/scripts/edd.sh` was already functional (v1.0.0)
+
+---
+
+### HIGH-002: inject-session-context.sh Builds Unused Context (P3)
+
+**Created**: 2026-01-24 (v2.68.9 adversarial audit)
+**Status**: Open - By Design
+**Effort**: Low (1-2 hours)
 
 **Problem**:
-EDD skill referenced in documentation but infrastructure not created:
-- `~/.claude/skills/edd/` - Directory not found
-- `~/.claude/evals/` - Directory not found
+`inject-session-context.sh` (lines 98-137) builds context that cannot be injected:
+- PreToolUse hooks CANNOT inject context (only allow/block)
+- 50+ lines of context-building code is dead/unused
+- Hook always returns `{"decision": "allow"}`
 
-**Purpose**:
-Eval-Driven Development framework for:
-- Defining success criteria as evaluations
-- Running evals before/after implementation
-- Tracking eval pass rates over time
+**Options**:
+1. Remove dead code (simplify hook)
+2. Convert to SessionStart hook (can inject context)
+3. Use for logging/audit purposes
 
-**When to Implement**:
-- When eval-driven workflow is prioritized
-- When team requests structured validation framework
-- During v2.70+ feature development
+**Why Deferred**:
+- No functional impact (hook works correctly)
+- May be intentionally kept for future use
+
+---
+
+### HIGH-003: smart-memory-search.sh Documentation Mismatch (P3)
+
+**Created**: 2026-01-24 (v2.68.9 adversarial audit)
+**Status**: Open - Documentation Issue
+**Effort**: Low (30 minutes)
+
+**Problem**:
+CHANGELOG v2.57.0 claims "Implemented SQLite FTS query" but hook uses grep:
+```bash
+MATCHES=$(find "$CLAUDE_MEM_DATA_DIR" -name "*.json" -type f \
+    -exec grep -l -i -F "$KEYWORDS_SAFE" {} \; 2>/dev/null | head -5)
+```
+
+**Options**:
+1. Update documentation to reflect grep-based implementation
+2. Implement actual SQLite FTS (significant effort)
+
+---
+
+### SEC-105: Race Condition in Checkpoint File Operations (P2)
+
+**Created**: 2026-01-24 (v2.68.9 security audit)
+**Status**: Open
+**Effort**: Medium (2-4 hours)
+
+**Problem**:
+`checkpoint-smart-save.sh` has TOCTOU gap between checking `$EDITED_FLAG` and touching it.
+The mkdir lock helps but doesn't fully eliminate the window.
+
+**Proposed Fix**:
+Use atomic file creation with exclusive mode:
+```bash
+(set -C; echo "$$" > "$EDITED_FLAG") 2>/dev/null || exit 0
+```
+
+---
+
+### SEC-108 to SEC-122: Medium/Low Security Issues (P3)
+
+**Created**: 2026-01-24 (v2.68.9 security audit)
+**Status**: Open - Low Priority
+**Effort**: Medium (4-8 hours total)
+
+| ID | Issue | Impact |
+|----|-------|--------|
+| SEC-108 | Unquoted variables in bash conditions | Word splitting |
+| SEC-109 | Missing error trap consistency | Silent failures |
+| SEC-110 | Sensitive data in log files | Info disclosure |
+| SEC-111 | Missing input length validation | Resource exhaustion |
+| SEC-112 | Insecure temp file creation | Predictable names |
+| SEC-113 | Missing content-type validation | Parsing errors |
+| SEC-114 | Unbounded loop in lock acquisition | Potential hang |
+| SEC-115 | Shell glob expansion in file ops | Glob injection |
+| SEC-116 | Inconsistent umask settings | Permission issues |
+
+**When to Fix**:
+- During dedicated security sprint
+- If specific issue causes production problem
 
 ---
 

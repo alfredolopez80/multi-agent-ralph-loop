@@ -6,7 +6,8 @@
 # When a Task tool spawns an agent, this hook checks if the agent
 # has a memory buffer. If not, it initializes one automatically.
 #
-# VERSION: 2.68.2
+# VERSION: 2.68.9
+# v2.68.9: SEC-101 FIX - Validate SUBAGENT_TYPE to prevent sed command injection
 # v2.66.7: CRIT-001 fix - explicit JSON output on success path
 # v2.57.2: Fixed JSON output (SEC-034) - must output JSON, not silent exit
 # SECURITY: SEC-006 compliant with ERR trap for guaranteed clean exit
@@ -34,6 +35,12 @@ SUBAGENT_TYPE=$(echo "$INPUT" | jq -r '.tool_input.subagent_type // empty' 2>/de
 
 # Skip if no subagent type
 if [[ -z "$SUBAGENT_TYPE" ]]; then
+    trap - EXIT; echo '{"decision": "allow"}'; exit 0
+fi
+
+# SEC-101 FIX: Validate SUBAGENT_TYPE to prevent command injection
+# Only allow alphanumeric, underscore, dash, and colon (for namespaced agents like "plugin:name")
+if [[ ! "$SUBAGENT_TYPE" =~ ^[a-zA-Z0-9_:-]+$ ]]; then
     trap - EXIT; echo '{"decision": "allow"}'; exit 0
 fi
 
