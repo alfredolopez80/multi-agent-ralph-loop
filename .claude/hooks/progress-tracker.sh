@@ -16,7 +16,8 @@
 # Part of Ralph v2.41 Context Engineering - progress.md system
 # Based on: docs/yt/stop-using-ralph-plugin-summary.md
 
-# VERSION: 2.62.3
+# VERSION: 2.68.1
+# v2.68.1: FIX CRIT-006 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 set -euo pipefail
 
 # Error trap: Always output valid JSON for PostToolUse
@@ -53,6 +54,7 @@ case "$TOOL_NAME" in
         ;;
     *)
         # Skip non-relevant tools silently
+        trap - EXIT  # CRIT-006: Clear trap before explicit output
         echo '{"continue": true}'
         exit 0
         ;;
@@ -197,6 +199,9 @@ main() {
 
 # Run main
 main
+
+# CRIT-006: Clear trap before explicit output
+trap - EXIT
 
 # Return success (hook should not block execution)
 echo '{"continue": true}'

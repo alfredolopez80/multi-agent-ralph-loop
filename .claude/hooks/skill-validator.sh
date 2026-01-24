@@ -11,11 +11,16 @@
 # - Collaboration rules integrity
 # Output: {"decision": "allow"} or {"decision": "block", "reason": "..."}
 
-# VERSION: 2.62.3
+# VERSION: 2.68.2
+# v2.68.2: FIX CRIT-004b - Only set trap when not sourced to prevent subshell JSON duplication
+# v2.68.1: FIX CRIT-004 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 set -euo pipefail
 
-# Error trap: Always output valid JSON for PreToolUse
-trap 'echo "{\"decision\": \"allow\"}"' ERR EXIT
+# Error trap: Only set when running directly (not when sourced by timeout subshell)
+# This prevents duplicate JSON from nested bash invocations
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    trap 'echo "{\"decision\": \"allow\"}"' ERR EXIT
+fi
 
 # Configuration
 SKILLS_DIR="${HOME}/.claude/skills"
@@ -303,6 +308,7 @@ except:
     if [[ -z "$skill_name" ]]; then
         log_error "No skill name provided in hook input"
         echo "⚠️  Skill validator: No skill name provided" >&2
+        trap - EXIT  # CRIT-004: Clear trap before explicit output
         echo '{"decision": "allow"}'
         exit 0  # Don't block if no skill specified
     fi
@@ -312,6 +318,7 @@ except:
 
     if [[ -z "$skill_name" ]]; then
         log_error "Skill name became empty after sanitization (contained only invalid characters)"
+        trap - EXIT  # CRIT-004: Clear trap before explicit output
         echo '{"decision": "allow"}'
         exit 0
     fi
@@ -320,10 +327,12 @@ except:
     # Source this script to make functions available
     if timeout "$VALIDATION_TIMEOUT" bash -c "source '${BASH_SOURCE[0]}' && validate_skill '$skill_name'"; then
         log_success "Validation completed successfully for: $skill_name"
+        trap - EXIT  # CRIT-004: Clear trap before explicit output
         echo '{"decision": "allow"}'
         exit 0
     else
         log_error "Validation failed or timed out for: $skill_name"
+        trap - EXIT  # CRIT-004: Clear trap before explicit output
         echo '{"decision": "block", "reason": "Skill validation failed"}'
         exit 1  # Block skill execution on validation failure
     fi

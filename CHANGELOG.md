@@ -7,6 +7,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.68.2] - 2026-01-24
+
+### Adversarial Validation Loop - Double JSON Bug Fixes
+
+**Scope**: Critical fixes for hook EXIT trap pattern causing duplicate JSON output
+
+**Root Cause**: Hooks with `trap 'echo JSON' ERR EXIT` produced duplicate JSON when:
+1. Explicit `echo '{"decision": "allow"}'` was called
+2. Then `exit 0` triggered the EXIT trap, producing second JSON
+
+This caused Claude Code errors: `AttributeError: 'list' object has no attribute 'get'` (18 PreToolUse:Task hook errors reported by user)
+
+#### CRITICAL Fixes
+
+| Issue ID | File | Problem | Fix |
+|----------|------|---------|-----|
+| CRIT-002 | `inject-session-context.sh` | Double JSON on Task tool | Add `trap - EXIT` before explicit output |
+| CRIT-003 | `checkpoint-smart-save.sh` | Double JSON on Edit/Write | Add `trap - EXIT` before explicit output |
+| CRIT-004 | `skill-validator.sh` | Double JSON on Skill tool | Add `trap - EXIT` before explicit output |
+| CRIT-004b | `skill-validator.sh` | Triple JSON from timeout subshell | Only set trap when not sourced |
+| CRIT-005 | `quality-gates-v2.sh` | Double JSON on Edit/Write | Add `trap - EXIT` before explicit output |
+| CRIT-006 | `progress-tracker.sh` | Double JSON on Edit/Write/Bash | Add `trap - EXIT` before explicit output |
+
+#### Files Updated
+
+| File | Old Version | New Version |
+|------|-------------|-------------|
+| `inject-session-context.sh` | 2.66.4 | 2.68.1 |
+| `checkpoint-smart-save.sh` | 2.66.8 | 2.68.1 |
+| `skill-validator.sh` | 2.62.3 | 2.68.2 |
+| `quality-gates-v2.sh` | 2.66.6 | 2.68.1 |
+| `progress-tracker.sh` | 2.62.3 | 2.68.1 |
+
+#### Pattern Applied
+
+```bash
+# BEFORE (broken - produces 2 JSON objects)
+trap 'echo "{\"decision\": \"allow\"}"' ERR EXIT
+# ... code ...
+echo '{"decision": "allow"}'
+exit 0  # ← EXIT trap fires here, producing second JSON
+
+# AFTER (fixed - produces 1 JSON object)
+trap 'echo "{\"decision\": \"allow\"}"' ERR EXIT
+# ... code ...
+trap - EXIT  # ← Clear trap before explicit output
+echo '{"decision": "allow"}'
+exit 0
+```
+
+#### Additional Auto-Invoke Hooks (v2.68.0)
+
+Added new auto-invoke hooks from previous session:
+- `ai-code-audit.sh` - Detects AI anti-patterns (dead code, overkill, fallback)
+- `adversarial-auto-trigger.sh` - Auto-triggers adversarial validation
+- `security-full-audit.sh` - Comprehensive security scanning
+- `code-review-auto.sh` - Auto-triggers code review on task completion
+- `deslop-auto-clean.sh` - Auto-triggers deslop cleanup
+
+#### Test Coverage
+
+58 unit tests added in `tests/test_v268_auto_invoke_hooks.bats`:
+- Hook registration verification (6 tests)
+- File existence and permissions (6 tests)
+- Bash syntax validation (6 tests)
+- Version header checks (5 tests)
+- SEC-033 error trap compliance (5 tests)
+- Functional tests for each hook (22 tests)
+- Project sync verification (5 tests)
+- Integration tests (2 tests)
+- Regression prevention tests (2 tests)
+
+---
+
 ## [2.66.8] - 2026-01-23
 
 ### Adversarial Validation Loop - HIGH Priority Fixes (Phase 3)
