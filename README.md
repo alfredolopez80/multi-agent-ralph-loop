@@ -51,7 +51,7 @@ The core idea: **execute → validate → iterate** until the code passes.
 - **Quality gates** — 9 languages supported (TS, Python, Go, Rust, Solidity, etc.)
 - **Memory system** — Semantic, episodic, procedural memory with 30-day TTL
 - **67 hooks** (66 bash + 1 python) — Automated validation, checkpoints, context preservation (80 event registrations)
-- **268+ skills** — Specialized capabilities for common tasks (39 command shortcuts)
+- **8 core skills** — Specialized capabilities for common tasks (39 command shortcuts)
 - **Dynamic contexts** — Switch between dev, review, research, debug modes
 - **Statusline Ralph** — Real-time context tracking with claude-hud v0.0.6
 - **GLM-4.7 Coding API** — Direct access via `/glm-4.7` skill with reasoning model support
@@ -1337,18 +1337,20 @@ TaskUpdate:
 
 ## Claude Code Skills Ecosystem
 
-### Available Skills (268+)
+### Core Skills (8)
 
-| Skill Category | Count | Purpose |
-|----------------|-------|---------|
-| Marketing | 1 skill (565 lines) | Comprehensive marketing strategies, content ideas |
-| Documentation | 50+ | README generation, API docs |
-| React | 40+ | Best practices from Vercel |
-| Security | 25+ | Security patterns, validation |
-| Testing | 20+ | Test patterns, coverage |
-| Architecture | 15+ | Design patterns, clean code |
+| Skill | Purpose |
+|-------|---------|
+| ask-questions-if-underspecified | Clarification and requirements gathering |
+| codex-cli | OpenAI Codex integration for planning |
+| openai-docs | Access OpenAI documentation |
+| retrospective | Post-task analysis and improvements |
+| task-classifier | 3-dimension task classification |
+| compact | Manual context preservation |
+| orchestrator | Full workflow orchestration |
+| smart-fork | Session forking recommendations |
 
-**Note**: The marketing-ideas skill contains 565 lines of comprehensive strategies, not 140 separate items. The 268+ count represents individual skill directories.
+**Note**: Additional skills may be available in the global skills directory (~/.claude/skills/).
 
 ### Skill Usage
 
