@@ -1,6 +1,6 @@
 #!/bin/bash
 # auto-format-prettier.sh - Auto-format JS/TS files with Prettier after edits
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # v2.68.9: SEC-102 FIX - Validate FILE_PATH to prevent command injection
 # HOOK: PostToolUse (Edit|Write)
 # Part of Multi-Agent Ralph Loop v2.66.0
@@ -16,10 +16,10 @@ set -euo pipefail
 output_json() {
     echo '{"continue": true}'
 }
-trap 'output_json' ERR
+trap 'output_json' ERR EXIT
 
 # Read stdin
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 
 # Only process JS/TS files
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null || echo "")

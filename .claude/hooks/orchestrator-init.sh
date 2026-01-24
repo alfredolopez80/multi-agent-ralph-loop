@@ -11,7 +11,7 @@
 # - Sets up plan-state if not exists
 # - Validates procedural memory accessibility
 #
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # SECURITY: SEC-006 compliant
 
 # SEC-111: Read input from stdin with length limit (100KB max)
@@ -22,7 +22,7 @@ INPUT=$(head -c 100000)
 set -euo pipefail
 
 # Error trap for guaranteed JSON output (v2.62.3)
-trap 'echo "SessionStart trap triggered" >&2' ERR
+trap 'echo "SessionStart trap triggered" >&2' ERR EXIT
 
 umask 077
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 # global-task-sync.sh - Sync plan-state with Claude Code global tasks
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 #
 # Security: SEC-001 path traversal fix, SEC-004 umask, SEC-010 portable mkdir lock
 # v2.66.5: SC2168 FIX - Removed 'local' keywords outside functions (shellcheck)
@@ -33,7 +33,7 @@ umask 077
 output_json() {
     echo '{"continue": true}'
 }
-trap 'output_json' ERR
+trap 'output_json' ERR EXIT
 
 # Configuration
 PLAN_STATE=".claude/plan-state.json"

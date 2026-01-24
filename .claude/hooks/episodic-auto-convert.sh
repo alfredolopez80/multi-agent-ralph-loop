@@ -8,7 +8,7 @@
 # 2. Converting them to procedural rules
 # 3. Updating ~/.ralph/procedural/rules.json automatically
 #
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # CRITICAL: Closes GAP-001 - Automatic episodic→procedural conversion
 
 # SEC-111: Read input from stdin with length limit (100KB max)
@@ -23,7 +23,7 @@ umask 077
 output_json() {
     echo '{"continue": true}'
 }
-trap 'output_json' ERR
+trap 'output_json' ERR EXIT
 
 # Configuration
 EPISODES_DIR="$HOME/.ralph/episodes"
@@ -236,5 +236,5 @@ EOF
 }
 
 # Read input and run
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 auto_convert "$INPUT"

@@ -4,7 +4,7 @@
 # PostToolUse hook - AUTO-INVOKE comprehensive AI code quality checks
 #===============================================================================
 #
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # TRIGGER: PostToolUse (Edit|Write) - After significant code changes
 # PURPOSE: Detect and flag AI-generated code anti-patterns:
 #   - Dead code and unused imports
@@ -208,9 +208,8 @@ detect_ai_antipatterns() {
 
 # Main logic
 main() {
-    # Read input from stdin
-    local input
-    input=$(cat 2>/dev/null || echo '{}')
+    # v2.69: Use $INPUT from SEC-111 read instead of second cat (fixes CRIT-001 double-read bug)
+    local input="$INPUT"
     
     # Extract tool name and file path
     local tool_name

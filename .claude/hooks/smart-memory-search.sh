@@ -1,5 +1,5 @@
 #!/bin/bash
-# smart-memory-search.sh - v2.47 Smart Memory-Driven Orchestration
+# smart-memory-search.sh - v2.68.26 Smart Memory-Driven Orchestration (GLM-4.7 Enhanced)
 # Hook: PreToolUse (Task - before orchestration)
 # Purpose: PARALLEL search across all memory sources for relevant context
 #
@@ -12,14 +12,19 @@
 #   2. memvid - Video-encoded vector storage
 #   3. handoffs - Recent session context
 #   4. ledgers - Session continuity data
+#   5. web_search - GLM-4.7 webSearchPrime (v2.68.26 NEW)
 #
 # Output: .claude/memory-context.json with:
 #   - past_successes: Successful implementation patterns
 #   - past_errors: Errors to avoid
 #   - recommended_patterns: Best practices from history
 #   - fork_suggestions: Top 5 sessions to fork from
+#   - web_search: External best practices (GLM-4.7)
 #
-# VERSION: 2.68.23
+# VERSION: 2.69.0
+# v2.69.0: FIX CRIT-003 - Added guaranteed JSON output trap
+# v2.68.26: GLM-4.7 web search integration - 5th parallel source via webSearchPrime API
+# v2.68.25: FIX CRIT-001 - Removed duplicate stdin read (SEC-111 already reads at top)
 # Fixes: SECURITY-001, 002, 003, ADV-001, ADV-002, ADV-003, ADV-004, ADV-005, ADV-006, GAP-MEM-001, SEC-007
 # v2.57.6: FIX GAP-MEM-001 - macOS realpath doesn't support -e flag, use glob instead of regex
 # v2.47.3: Removed unused variable, fixed $KEYWORDS_SAFE usage, date portability, noclobber
@@ -28,20 +33,19 @@
 # Prevents DoS from malicious input
 INPUT=$(head -c 100000)
 
-
 set -euo pipefail
 umask 077
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# ===============================================================================
 # ADV-001: JSON SCHEMA VALIDATION
-# ═══════════════════════════════════════════════════════════════════════════════
+# ===============================================================================
 
 # Validate JSON input has expected structure
 validate_input_schema() {
     local input="$1"
 
     # Check if input is valid JSON
-    # SEC-039: PreToolUse hooks MUST use {"decision": "allow"}, NOT {"continue": true}
+    # SEC-039: PreToolUse hooks MUST use {"decision": "allow"} format
     if ! echo "$input" | jq empty 2>/dev/null; then
         echo '{"decision": "allow"}'
         exit 0
@@ -62,9 +66,7 @@ validate_input_schema() {
     return 0
 }
 
-# Parse JSON input
-INPUT=$(cat)
-
+# CRIT-001 FIX: Removed duplicate `INPUT=$(cat)` - stdin already consumed by SEC-111 read above
 # ADV-001: Validate input schema before processing
 validate_input_schema "$INPUT"
 
@@ -100,7 +102,7 @@ CACHE_DURATION=1800  # 30 minutes
 if [[ -f "$MEMORY_CONTEXT" ]]; then
     CACHE_AGE=$(($(date +%s) - $(stat -f %m "$MEMORY_CONTEXT" 2>/dev/null || stat -c %Y "$MEMORY_CONTEXT" 2>/dev/null || echo 0)))
     if [[ $CACHE_AGE -lt $CACHE_DURATION ]]; then
-        # SEC-039: PreToolUse hooks MUST use {"decision": "allow"}, NOT {"continue": true}
+        # SEC-039: PreToolUse hooks MUST use {"decision": "allow"} format
         echo '{"decision": "allow", "additionalContext": "SMART_MEMORY: Using cached results from .claude/memory-context.json ('"$CACHE_AGE"'s old)"}'
         exit 0
     fi
@@ -118,9 +120,9 @@ KEYWORDS=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]' | \
 # Sanitize keywords for JSON
 KEYWORDS_SAFE=$(echo "$KEYWORDS" | sed 's/"/\\"/g; s/[[:cntrl:]]//g' | head -c 200)
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# ===============================================================================
 # SECURITY FUNCTIONS (v2.47.1 - Security Hardening)
-# ═══════════════════════════════════════════════════════════════════════════════
+# ===============================================================================
 
 # Escape regex metacharacters for safe grep -E usage (SECURITY-001 fix)
 escape_for_grep() {
@@ -170,7 +172,7 @@ create_initial_file() {
 
     # Check file doesn't exist (prevents symlink attack)
     if [[ -e "$file" ]]; then
-        echo "ERROR: Temp file exists (possible attack): $file" >&2
+        echo "ERROR: Temp file exists (possible attack): $file" >&2 2>/dev/null || true
         exit 1
     fi
 
@@ -180,7 +182,7 @@ create_initial_file() {
         umask 077
         echo "$content" > "$file"
     ) 2>/dev/null || {
-        echo "ERROR: Atomic file creation failed: $file" >&2
+        echo "ERROR: Atomic file creation failed: $file" >&2 2>/dev/null || true
         exit 1
     }
 }
@@ -196,22 +198,34 @@ create_initial_file() {
 # Initialize temp files for PARALLEL results (SECURITY-003 hardened)
 TEMP_DIR=$(mktemp -d)
 chmod 700 "$TEMP_DIR"  # Restrictive permissions - only owner can access
-trap 'rm -rf "$TEMP_DIR"' EXIT ERR INT TERM
+
+# CRIT-003 FIX: Combined trap for cleanup AND guaranteed JSON output on failure
+# On error/exit: clean temp dir, then output valid JSON if not already output
+cleanup_and_json() {
+    rm -rf "$TEMP_DIR" 2>/dev/null || true
+    # Output JSON only if we haven't already (script didn't reach end)
+    echo '{"decision": "allow"}'
+}
+trap 'cleanup_and_json' EXIT ERR INT TERM
 
 CLAUDE_MEM_FILE="$TEMP_DIR/claude-mem.json"
 MEMVID_FILE="$TEMP_DIR/memvid.json"
 HANDOFFS_FILE="$TEMP_DIR/handoffs.json"
 LEDGERS_FILE="$TEMP_DIR/ledgers.json"
+WEB_SEARCH_FILE="$TEMP_DIR/web-search.json"  # v2.68.26: GLM-4.7 Integration
+DOCS_SEARCH_FILE="$TEMP_DIR/docs-search.json"  # v2.68.26: GLM-4.7 Phase 4
 
 # Initialize with defaults using atomic file creation (SECURITY-003 fix)
 create_initial_file "$CLAUDE_MEM_FILE" '{"results": [], "source": "claude-mem"}'
 create_initial_file "$MEMVID_FILE" '{"results": [], "source": "memvid"}'
 create_initial_file "$HANDOFFS_FILE" '{"results": [], "source": "handoffs"}'
 create_initial_file "$LEDGERS_FILE" '{"results": [], "source": "ledgers"}'
+create_initial_file "$WEB_SEARCH_FILE" '{"results": [], "source": "web_search"}'  # v2.68.26
+create_initial_file "$DOCS_SEARCH_FILE" '{"results": [], "source": "docs_search"}'  # v2.68.26 Phase 4
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# ===============================================================================
 # PARALLEL MEMORY SEARCH
-# ═══════════════════════════════════════════════════════════════════════════════
+# ===============================================================================
 
 # Task 1: claude-mem MCP search (if available)
 (
@@ -366,16 +380,166 @@ PID3=$!
 ) &
 PID4=$!
 
+# Task 5: GLM webSearchPrime (v2.68.26 - GLM-4.7 Integration)
+(
+    # GLM-4.7 web search for recent patterns
+    set +e
+
+    echo "  [5/5] Searching web via GLM webSearchPrime..." >> "$LOG_FILE"
+
+    WEB_SEARCH_FILE="$TEMP_DIR/web-search.json"
+    echo '{"results": [], "source": "web_search"}' > "$WEB_SEARCH_FILE"
+
+    # Check for Z_AI_API_KEY (required for GLM endpoints)
+    # Try environment first, then fall back to .zshrc
+    if [[ -z "${Z_AI_API_KEY:-}" ]]; then
+        if [[ -f "$HOME/.zshrc" ]]; then
+            Z_AI_API_KEY=$(grep "^export Z_AI_API_KEY=" "$HOME/.zshrc" 2>/dev/null | head -1 | sed "s/export Z_AI_API_KEY=//; s/['\"]//g")
+        fi
+    fi
+
+    if [[ -z "${Z_AI_API_KEY:-}" ]]; then
+        echo "  [5/5] webSearchPrime: No Z_AI_API_KEY, skipping" >> "$LOG_FILE"
+        exit 0
+    fi
+
+    # Build search query from keywords
+    QUERY="${KEYWORDS_SAFE} best practices implementation 2026"
+
+    # Call GLM-4.7 Coding API for web search (uses /coding/paas/v4 which works with plan quota)
+    # Note: MCP endpoints (/api/mcp/...) require paas balance; Coding API uses plan quota
+    WEB_RESULT=$(timeout 15 curl -s -X POST \
+        "https://api.z.ai/api/coding/paas/v4/chat/completions" \
+        -H "Authorization: Bearer ${Z_AI_API_KEY}" \
+        -H "Content-Type: application/json" \
+        -d "{\"model\":\"glm-4.7\",\"messages\":[{\"role\":\"system\",\"content\":\"You are a search assistant. Provide a brief summary of best practices.\"},{\"role\":\"user\",\"content\":\"Search and summarize: $QUERY\"}],\"max_tokens\":500,\"temperature\":0.3,\"web_search\":{\"enable\":true}}" \
+        2>/dev/null) || {
+        echo "  [5/6] GLM web search: API call failed (network)" >> "$LOG_FILE"
+        exit 0
+    }
+
+    # Check for API errors - with MiniMax fallback (Phase 5)
+    GLM_SUCCESS=false
+    if echo "$WEB_RESULT" | jq -e '.error' >/dev/null 2>&1; then
+        ERROR_MSG=$(echo "$WEB_RESULT" | jq -r '.error.message // .error.code // "Unknown"' 2>/dev/null)
+        echo "  [5/6] GLM web search: API error - $ERROR_MSG, trying MiniMax fallback..." >> "$LOG_FILE"
+    elif echo "$WEB_RESULT" | jq -e '.choices[0].message' >/dev/null 2>&1; then
+        # GLM-4.7 uses reasoning_content for reasoning models, content for standard
+        CONTENT=$(echo "$WEB_RESULT" | jq -r '.choices[0].message.content // ""' 2>/dev/null)
+        REASONING=$(echo "$WEB_RESULT" | jq -r '.choices[0].message.reasoning_content // ""' 2>/dev/null)
+        # Use content if available, otherwise use reasoning_content
+        if [[ -z "$CONTENT" ]] || [[ "$CONTENT" == "null" ]]; then
+            CONTENT="$REASONING"
+        fi
+        if [[ -n "$CONTENT" ]] && [[ "$CONTENT" != "null" ]] && [[ ${#CONTENT} -gt 10 ]]; then
+            echo "{\"results\": [{\"content\": $(echo "$CONTENT" | jq -Rs .)}], \"source\": \"web_search\"}" > "$WEB_SEARCH_FILE"
+            echo "  [5/6] GLM web search: Success (${#CONTENT} chars)" >> "$LOG_FILE"
+            GLM_SUCCESS=true
+        fi
+    fi
+
+    # Phase 5: MiniMax fallback if GLM failed
+    if [[ "$GLM_SUCCESS" != "true" ]]; then
+        echo "  [5/6] Attempting MiniMax fallback..." >> "$LOG_FILE"
+        # Try MiniMax M2.1 via mmc CLI if available
+        if command -v mmc >/dev/null 2>&1; then
+            MM_RESULT=$(timeout 20 mmc --query "Search best practices for: $QUERY" --max-tokens 400 2>/dev/null) || true
+            if [[ -n "$MM_RESULT" ]] && [[ ${#MM_RESULT} -gt 10 ]]; then
+                echo "{\"results\": [{\"content\": $(echo "$MM_RESULT" | jq -Rs .)}], \"source\": \"web_search\", \"provider\": \"minimax\"}" > "$WEB_SEARCH_FILE"
+                echo "  [5/6] MiniMax fallback: Success (${#MM_RESULT} chars)" >> "$LOG_FILE"
+            else
+                echo "  [5/6] MiniMax fallback: No results" >> "$LOG_FILE"
+            fi
+        else
+            echo "  [5/6] MiniMax fallback: mmc CLI not available" >> "$LOG_FILE"
+        fi
+    fi
+) &
+PID5=$!
+
+# Task 6: zread Documentation Search (v2.68.26 - GLM-4.7 Phase 4)
+(
+    # Search documentation for project dependencies
+    set +e
+
+    echo "  [6/6] Searching documentation via zread..." >> "$LOG_FILE"
+
+    DOCS_SEARCH_FILE="$TEMP_DIR/docs-search.json"
+    echo '{"results": [], "source": "docs_search"}' > "$DOCS_SEARCH_FILE"
+
+    # Check for Z_AI_API_KEY
+    if [[ -z "${Z_AI_API_KEY:-}" ]]; then
+        if [[ -f "$HOME/.zshrc" ]]; then
+            Z_AI_API_KEY=$(grep "^export Z_AI_API_KEY=" "$HOME/.zshrc" 2>/dev/null | head -1 | sed "s/export Z_AI_API_KEY=//; s/['\"]//g")
+        fi
+    fi
+
+    if [[ -z "${Z_AI_API_KEY:-}" ]]; then
+        echo "  [6/6] zread: No Z_AI_API_KEY, skipping" >> "$LOG_FILE"
+        exit 0
+    fi
+
+    # Build search query from keywords
+    QUERY="${KEYWORDS_SAFE} documentation API reference tutorial"
+
+    # Call GLM-4.7 Coding API for documentation search (uses /coding/paas/v4)
+    DOCS_RESULT=$(timeout 15 curl -s -X POST \
+        "https://api.z.ai/api/coding/paas/v4/chat/completions" \
+        -H "Authorization: Bearer ${Z_AI_API_KEY}" \
+        -H "Content-Type: application/json" \
+        -d "{\"model\":\"glm-4.7\",\"messages\":[{\"role\":\"system\",\"content\":\"You are a documentation expert. Provide relevant API references and code examples.\"},{\"role\":\"user\",\"content\":\"Find documentation for: $QUERY\"}],\"max_tokens\":500,\"temperature\":0.2,\"web_search\":{\"enable\":true}}" \
+        2>/dev/null) || {
+        echo "  [6/6] GLM docs search: API call failed (network)" >> "$LOG_FILE"
+        exit 0
+    }
+
+    # Check for API errors - with MiniMax fallback (Phase 5)
+    GLM_SUCCESS=false
+    if echo "$DOCS_RESULT" | jq -e '.error' >/dev/null 2>&1; then
+        ERROR_MSG=$(echo "$DOCS_RESULT" | jq -r '.error.message // .error.code // "Unknown"' 2>/dev/null)
+        echo "  [6/6] GLM docs search: API error - $ERROR_MSG, trying MiniMax fallback..." >> "$LOG_FILE"
+    elif echo "$DOCS_RESULT" | jq -e '.choices[0].message' >/dev/null 2>&1; then
+        # GLM-4.7 uses reasoning_content for reasoning models, content for standard
+        CONTENT=$(echo "$DOCS_RESULT" | jq -r '.choices[0].message.content // ""' 2>/dev/null)
+        REASONING=$(echo "$DOCS_RESULT" | jq -r '.choices[0].message.reasoning_content // ""' 2>/dev/null)
+        if [[ -z "$CONTENT" ]] || [[ "$CONTENT" == "null" ]]; then
+            CONTENT="$REASONING"
+        fi
+        if [[ -n "$CONTENT" ]] && [[ "$CONTENT" != "null" ]] && [[ ${#CONTENT} -gt 10 ]]; then
+            echo "{\"results\": [{\"content\": $(echo "$CONTENT" | jq -Rs .)}], \"source\": \"docs_search\"}" > "$DOCS_SEARCH_FILE"
+            echo "  [6/6] GLM docs search: Success (${#CONTENT} chars)" >> "$LOG_FILE"
+            GLM_SUCCESS=true
+        fi
+    fi
+
+    # Phase 5: MiniMax fallback if GLM failed
+    if [[ "$GLM_SUCCESS" != "true" ]]; then
+        echo "  [6/6] Attempting MiniMax fallback..." >> "$LOG_FILE"
+        if command -v mmc >/dev/null 2>&1; then
+            MM_RESULT=$(timeout 20 mmc --query "Find documentation and API references for: $QUERY" --max-tokens 400 2>/dev/null) || true
+            if [[ -n "$MM_RESULT" ]] && [[ ${#MM_RESULT} -gt 10 ]]; then
+                echo "{\"results\": [{\"content\": $(echo "$MM_RESULT" | jq -Rs .)}], \"source\": \"docs_search\", \"provider\": \"minimax\"}" > "$DOCS_SEARCH_FILE"
+                echo "  [6/6] MiniMax fallback: Success (${#MM_RESULT} chars)" >> "$LOG_FILE"
+            else
+                echo "  [6/6] MiniMax fallback: No results" >> "$LOG_FILE"
+            fi
+        else
+            echo "  [6/6] MiniMax fallback: mmc CLI not available" >> "$LOG_FILE"
+        fi
+    fi
+) &
+PID6=$!
+
 # Wait for ALL parallel tasks (max 30 seconds)
 # GAP-MEM-001 FIX v2.57.8: timeout cannot work with wait built-in (PIDs not children of timeout's shell)
 # Use direct wait instead - operations are fast (<1s each) and don't need timeout
-echo "  Waiting for parallel memory searches..." >> "$LOG_FILE"
-wait $PID1 $PID2 $PID3 $PID4 2>/dev/null || true
+echo "  Waiting for parallel memory searches (6 sources)..." >> "$LOG_FILE"
+wait $PID1 $PID2 $PID3 $PID4 $PID5 $PID6 2>/dev/null || true
 echo "  All memory searches completed" >> "$LOG_FILE"
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# ===============================================================================
 # AGGREGATE RESULTS
-# ═══════════════════════════════════════════════════════════════════════════════
+# ===============================================================================
 
 # Read results with JSON validation
 validate_json() {
@@ -392,15 +556,19 @@ CLAUDE_MEM_RESULT=$(validate_json "$CLAUDE_MEM_FILE" '{"results": [], "source": 
 MEMVID_RESULT=$(validate_json "$MEMVID_FILE" '{"results": [], "source": "memvid"}')
 HANDOFFS_RESULT=$(validate_json "$HANDOFFS_FILE" '{"results": [], "source": "handoffs"}')
 LEDGERS_RESULT=$(validate_json "$LEDGERS_FILE" '{"results": [], "source": "ledgers"}')
+WEB_SEARCH_RESULT=$(validate_json "$WEB_SEARCH_FILE" '{"results": [], "source": "web_search"}')  # v2.68.26
+DOCS_SEARCH_RESULT=$(validate_json "$DOCS_SEARCH_FILE" '{"results": [], "source": "docs_search"}')  # v2.68.26 Phase 4
 
 # Count results per source
 CLAUDE_MEM_COUNT=$(echo "$CLAUDE_MEM_RESULT" | jq '.results | length' 2>/dev/null || echo 0)
 MEMVID_COUNT=$(echo "$MEMVID_RESULT" | jq '.results | length' 2>/dev/null || echo 0)
 HANDOFFS_COUNT=$(echo "$HANDOFFS_RESULT" | jq '.results | length' 2>/dev/null || echo 0)
 LEDGERS_COUNT=$(echo "$LEDGERS_RESULT" | jq '.results | length' 2>/dev/null || echo 0)
-TOTAL_COUNT=$((CLAUDE_MEM_COUNT + MEMVID_COUNT + HANDOFFS_COUNT + LEDGERS_COUNT))
+WEB_SEARCH_COUNT=$(echo "$WEB_SEARCH_RESULT" | jq '.results | length' 2>/dev/null || echo 0)  # v2.68.26
+DOCS_SEARCH_COUNT=$(echo "$DOCS_SEARCH_RESULT" | jq '.results | length' 2>/dev/null || echo 0)  # v2.68.26 Phase 4
+TOTAL_COUNT=$((CLAUDE_MEM_COUNT + MEMVID_COUNT + HANDOFFS_COUNT + LEDGERS_COUNT + WEB_SEARCH_COUNT + DOCS_SEARCH_COUNT))
 
-echo "  Results: claude-mem=$CLAUDE_MEM_COUNT, memvid=$MEMVID_COUNT, handoffs=$HANDOFFS_COUNT, ledgers=$LEDGERS_COUNT" >> "$LOG_FILE"
+echo "  Results: claude-mem=$CLAUDE_MEM_COUNT, memvid=$MEMVID_COUNT, handoffs=$HANDOFFS_COUNT, ledgers=$LEDGERS_COUNT, web=$WEB_SEARCH_COUNT, docs=$DOCS_SEARCH_COUNT" >> "$LOG_FILE"
 
 # Generate fork suggestions (top 5 sessions by relevance)
 FORK_SUGGESTIONS="[]"
@@ -408,10 +576,10 @@ if [[ $HANDOFFS_COUNT -gt 0 ]]; then
     FORK_SUGGESTIONS=$(echo "$HANDOFFS_RESULT" | jq '[.results[:5] | .[] | {session: .session, timestamp: .timestamp, relevance: "high"}]')
 fi
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# ===============================================================================
 # INSIGHT EXTRACTION (v2.47.3 - Architecture Enhancement)
 # Extract patterns from memory results to populate insights object
-# ═══════════════════════════════════════════════════════════════════════════════
+# ===============================================================================
 
 # Initialize insights with empty arrays as jq-safe JSON
 PAST_SUCCESSES="[]"
@@ -475,9 +643,9 @@ fi
 
 echo "  Insights extracted: successes=$(echo "$PAST_SUCCESSES" | jq 'length'), errors=$(echo "$PAST_ERRORS" | jq 'length'), patterns=$(echo "$RECOMMENDED_PATTERNS" | jq 'length')" >> "$LOG_FILE"
 
-# Build aggregated memory context (v2.47.3 - Now with populated insights)
+# Build aggregated memory context (v2.68.26 - GLM-4.7 Phase 4 complete)
 jq -n \
-    --arg version "2.47.3" \
+    --arg version "2.68.26" \
     --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
     --arg session_id "$SESSION_ID" \
     --arg keywords "$KEYWORDS_SAFE" \
@@ -486,6 +654,8 @@ jq -n \
     --argjson memvid "$MEMVID_RESULT" \
     --argjson handoffs "$HANDOFFS_RESULT" \
     --argjson ledgers "$LEDGERS_RESULT" \
+    --argjson web_search "$WEB_SEARCH_RESULT" \
+    --argjson docs_search "$DOCS_SEARCH_RESULT" \
     --argjson fork_suggestions "$FORK_SUGGESTIONS" \
     --argjson past_successes "$PAST_SUCCESSES" \
     --argjson past_errors "$PAST_ERRORS" \
@@ -500,7 +670,9 @@ jq -n \
             claude_mem: $claude_mem,
             memvid: $memvid,
             handoffs: $handoffs,
-            ledgers: $ledgers
+            ledgers: $ledgers,
+            web_search: $web_search,
+            docs_search: $docs_search
         },
         insights: {
             past_successes: $past_successes,
@@ -508,16 +680,16 @@ jq -n \
             recommended_patterns: $recommended_patterns
         },
         fork_suggestions: $fork_suggestions,
-        note: "Smart Memory Search v2.47 - Use fork_suggestions to continue from relevant sessions"
+        note: "Smart Memory Search v2.68.26 - 6 parallel sources (4 local + 2 GLM-4.7)"
     }' > "$MEMORY_CONTEXT"
 
 echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] Memory context written to: $MEMORY_CONTEXT" >> "$LOG_FILE"
 echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] Total results found: $TOTAL_COUNT" >> "$LOG_FILE"
 
 # Build context message for injection
-CONTEXT_MSG="SMART_MEMORY_SEARCH v2.47 complete:
-- Found $TOTAL_COUNT relevant results across all memory sources
-- claude-mem: $CLAUDE_MEM_COUNT | memvid: $MEMVID_COUNT | handoffs: $HANDOFFS_COUNT | ledgers: $LEDGERS_COUNT
+CONTEXT_MSG="SMART_MEMORY_SEARCH v2.68.26 complete:
+- Found $TOTAL_COUNT relevant results across 6 memory sources (GLM-4.7 Coding API)
+- claude-mem: $CLAUDE_MEM_COUNT | memvid: $MEMVID_COUNT | handoffs: $HANDOFFS_COUNT | ledgers: $LEDGERS_COUNT | web: $WEB_SEARCH_COUNT | docs: $DOCS_SEARCH_COUNT
 - Results saved to .claude/memory-context.json
 - Use this historical context to inform implementation decisions"
 
@@ -526,6 +698,10 @@ if [[ $HANDOFFS_COUNT -gt 0 ]]; then
     CONTEXT_MSG+="\n- FORK SUGGESTION: Consider forking from session '$FIRST_SUGGESTION' for similar context"
 fi
 
+# CRIT-003b: Clear trap before explicit JSON output to prevent duplicate output
+trap - EXIT ERR INT TERM
+rm -rf "$TEMP_DIR" 2>/dev/null || true  # Manual cleanup since we cleared trap
+
 # SEC-007: Use jq for safe JSON construction (avoid sed escaping vulnerabilities)
-# SEC-039: PreToolUse hooks MUST use {"decision": "allow"}, NOT {"continue": true}
+# SEC-039: PreToolUse hooks MUST use {"decision": "allow"} format
 jq -n --arg ctx "$CONTEXT_MSG" '{"decision": "allow", "additionalContext": $ctx}'

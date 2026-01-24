@@ -4,7 +4,7 @@
 # PostToolUse hook - AUTO-INVOKE /security for sensitive files
 #===============================================================================
 #
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # v2.68.9: SEC-104 FIX - Replace MD5 with SHA-256 for file hashing
 # TRIGGER: PostToolUse (Edit|Write)
 # PURPOSE: Automatically invoke /security for auth/payment/crypto files
@@ -109,9 +109,8 @@ update_cooldown() {
 
 # Main logic
 main() {
-    # Read input from stdin
-    local input
-    input=$(cat 2>/dev/null || echo '{}')
+    # v2.69: Use $INPUT from SEC-111 read instead of second cat (fixes CRIT-001 double-read bug)
+    local input="$INPUT"
 
     # Extract tool name and file path
     local tool_name

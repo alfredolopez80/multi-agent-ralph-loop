@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # Hook: auto-plan-state.sh
 # Trigger: PostToolUse (Write) matcher: orchestrator-analysis
 # Purpose: Automatically create plan-state.json when orchestrator-analysis.md is written
@@ -45,9 +45,8 @@ log() {
 # =============================================================================
 
 main() {
-    # Parse hook input (JSON from stdin)
-    local input
-    input=$(cat)
+    # v2.69: Use $INPUT from SEC-111 read instead of second cat (fixes CRIT-001 double-read bug)
+    local input="$INPUT"
 
     # Extract tool result path from hook context
     local tool_name file_path

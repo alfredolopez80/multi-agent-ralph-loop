@@ -15,7 +15,7 @@ INPUT=$(head -c 100000)
 set -euo pipefail
 umask 077
 
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # v2.66.6: SEC-049 - Fixed registration (was PostToolUse, now PreToolUse)
 
 # Error trap: Always output valid JSON for PreToolUse
@@ -132,9 +132,8 @@ main() {
         allow_and_exit
     fi
 
-    # Get the command being executed (from stdin for PreToolUse)
-    local input
-    input=$(cat 2>/dev/null || true)
+    # v2.69: Use $INPUT from SEC-111 read instead of second cat (fixes CRIT-001 double-read bug)
+    local input="$INPUT"
 
     # Extract tool_input from JSON if available
     local command=""
@@ -156,7 +155,7 @@ main() {
 
         if [ -n "$cp_file" ] && [ -f "$cp_file" ]; then
             # Notify user (non-blocking via stderr)
-            echo "💾 Auto-checkpoint saved before $trigger operation" >&2
+            echo "💾 Auto-checkpoint saved before $trigger operation" >&2 2>/dev/null || true
             log_auto "INFO" "Checkpoint saved: $cp_file"
         fi
     fi

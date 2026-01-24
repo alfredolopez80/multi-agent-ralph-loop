@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-# VERSION: 2.66.8
+# VERSION: 2.69.0
 # Trigger: PreToolUse (Bash)
+# v2.69.0: CRIT-002 FIX - Always output JSON for PreToolUse compliance
 # v2.66.8: HIGH-003 version sync (fail-closed error handling already implemented)
 """
 git-safety-guard.py - Blocks destructive git and filesystem commands
@@ -199,34 +200,40 @@ def check_blocked_pattern(command: str) -> tuple[bool, str]:
     return False, ""
 
 
+def allow_and_exit():
+    """CRIT-002 FIX: Always output JSON for PreToolUse compliance."""
+    print('{"decision": "allow"}')
+    sys.exit(0)
+
+
 def main():
     original_command = ""
     try:
         # Read hook input from stdin
         input_data = sys.stdin.read()
         if not input_data.strip():
-            sys.exit(0)  # No input, allow
+            allow_and_exit()  # No input, allow
 
         hook_input = json.loads(input_data)
 
         # Only process Bash tool calls
         tool_name = hook_input.get("tool_name", "")
         if tool_name != "Bash":
-            sys.exit(0)  # Not Bash, allow
+            allow_and_exit()  # Not Bash, allow
 
         # Extract the command
         tool_input = hook_input.get("tool_input", {})
         original_command = tool_input.get("command", "")
 
         if not original_command:
-            sys.exit(0)  # No command, allow
+            allow_and_exit()  # No command, allow
 
         # SECURITY: Normalize command to prevent regex bypass
         command = normalize_command(original_command)
 
         # Check safe patterns first (always allow)
         if is_safe_pattern(command):
-            sys.exit(0)
+            allow_and_exit()
 
         # Check if user already confirmed (via env var)
         if os.environ.get("GIT_FORCE_PUSH_CONFIRMED") == "1":
@@ -234,7 +241,7 @@ def main():
             log_security_event(
                 "ALLOWED_CONFIRMED", original_command, "User confirmed force push"
             )
-            sys.exit(0)
+            allow_and_exit()
 
         # Check confirmation patterns (require user consent)
         needs_confirm, confirm_reason = check_confirmation_pattern(command)
@@ -265,8 +272,8 @@ def main():
             print(json.dumps(response))
             sys.exit(1)
 
-        # Allow by default (silent exit)
-        sys.exit(0)
+        # Allow by default (CRIT-002: output JSON for compliance)
+        allow_and_exit()
 
     except json.JSONDecodeError as e:
         # SECURITY: Fail-closed on invalid JSON (could be injection attempt)

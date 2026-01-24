@@ -4,7 +4,7 @@
 # PostToolUse hook - AUTO-INVOKE /deslop after implementation phase
 #===============================================================================
 #
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # TRIGGER: PostToolUse (Edit|Write)
 # PURPOSE: Automatically invoke /deslop to clean AI-generated slop
 #
@@ -100,9 +100,8 @@ implementation_complete() {
 
 # Main logic
 main() {
-    # Read input from stdin
-    local input
-    input=$(cat 2>/dev/null || echo '{}')
+    # v2.69: Use $INPUT from SEC-111 read instead of second cat (fixes CRIT-001 double-read bug)
+    local input="$INPUT"
 
     # Extract tool name
     local tool_name

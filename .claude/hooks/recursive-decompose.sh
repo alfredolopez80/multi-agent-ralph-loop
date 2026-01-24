@@ -2,7 +2,7 @@
 # Recursive Decomposition Hook v2.46
 # Hook: PostToolUse (Task - orchestrator classification)
 # Purpose: Trigger recursive decomposition for complex tasks
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 #
 # Based on RLM Paper: "Recursive sub-calling provides strong benefits
 # on information-dense inputs"
@@ -20,7 +20,7 @@ trap 'echo "{\"continue\": true}"' ERR EXIT
 umask 077
 
 # Parse JSON input
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 
@@ -116,7 +116,7 @@ if [[ "$NEEDS_DECOMPOSITION" == "true" ]]; then
     # Update plan-state with recursion info (using --arg for safe escaping)
     if [[ -f "$PLAN_STATE_FILE" ]]; then
         TMP_FILE=$(mktemp)
-        trap 'rm -f "$TMP_FILE"' ERR
+        trap 'rm -f "$TMP_FILE"' ERR EXIT
         jq --arg reason "$DECOMPOSITION_REASON" \
             '.recursion.needs_decomposition = true |
             .recursion.decomposition_triggered = true |

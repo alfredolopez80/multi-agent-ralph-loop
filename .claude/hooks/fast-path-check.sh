@@ -2,13 +2,14 @@
 # Fast-Path Check Hook v2.46
 # Hook: PreToolUse (Task)
 # Purpose: Detect trivial tasks and route to fast-path
-# VERSION: 2.68.23
+# VERSION: 2.69.0
+# v2.69.0: FIX CRIT-003 - Added EXIT to trap for guaranteed JSON output
+# v2.68.25: FIX CRIT-001 - Removed duplicate stdin read (SEC-111 already reads at top)
 # v2.57.3: Fixed JSON output to single line format
 
 # SEC-111: Read input from stdin with length limit (100KB max)
 # Prevents DoS from malicious input
 INPUT=$(head -c 100000)
-
 
 set -euo pipefail
 
@@ -16,16 +17,17 @@ set -euo pipefail
 output_json() {
     echo '{"decision": "allow"}'
 }
-trap 'output_json' ERR
+trap 'output_json' ERR EXIT
 umask 077
 
-# Parse JSON input from stdin
-INPUT=$(cat)
+# Parse JSON input (already read above via SEC-111)
+# CRIT-001 FIX: Removed duplicate `INPUT=$(cat)` - stdin already consumed
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 
 # Only process Task tool calls
 if [[ "$TOOL_NAME" != "Task" ]]; then
+    trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
     echo '{"decision": "allow"}'
     exit 0
 fi
@@ -36,6 +38,7 @@ TASK_PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty')
 
 # Skip if already in orchestrator context
 if [[ "$TASK_TYPE" == "orchestrator" ]]; then
+    trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
     echo '{"decision": "allow"}'
     exit 0
 fi
@@ -84,6 +87,7 @@ LOG_FILE="$LOG_DIR/fast-path-$(date +%Y%m%d).log"
 
 # Return decision with classification hint (single-line JSON)
 # SEC-039: PreToolUse hooks MUST use {"decision": "allow"}, NOT {"continue": true}
+trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
 if [[ "$IS_TRIVIAL" == "true" ]]; then
     echo '{"decision": "allow", "additionalContext": "FAST_PATH_ELIGIBLE: This task appears trivial (complexity <= 3). Consider fast-path: DIRECT_EXECUTE -> MICRO_VALIDATE -> DONE."}'
 else

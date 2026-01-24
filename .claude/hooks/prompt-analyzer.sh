@@ -1,7 +1,8 @@
 #!/bin/bash
 # prompt-analyzer.sh - Analiza y clasifica prompts del usuario
 # Parte del sistema de orquestación multi-agente con Codex-First
-# VERSION: 2.68.23
+# VERSION: 2.69.0
+# v2.69.0: FIX CRIT-001 - Removed duplicate stdin read, use $INPUT from SEC-111
 # v2.57.3: Fixed newline escaping in JSON messages (SEC-031 continued)
 
 # SEC-111: Read input from stdin with length limit (100KB max)
@@ -17,8 +18,9 @@ output_json() {
 }
 trap 'output_json' EXIT
 
-# 1. Leer prompt del usuario via stdin
-PROMPT=$(cat)
+# 1. Extract user prompt from INPUT (SEC-111 already read stdin)
+# CRIT-001 FIX: Removed $(cat) - stdin already consumed by SEC-111 read
+PROMPT=$(echo "$INPUT" | jq -r '.user_prompt // ""' 2>/dev/null || echo "")
 
 # 2. Convertir a minúsculas para comparación case-insensitive
 PROMPT_LOWER=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]')

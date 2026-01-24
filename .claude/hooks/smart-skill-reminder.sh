@@ -4,7 +4,7 @@
 # PreToolUse hook - Context-aware skill suggestions BEFORE writing code
 #===============================================================================
 #
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # TRIGGER: PreToolUse (Edit|Write)
 # PURPOSE: Intelligently suggest relevant skills based on file context
 #
@@ -40,7 +40,7 @@ mkdir -p "$MARKERS_DIR" "$(dirname "$LOG_FILE")" 2>/dev/null || true
 output_empty() {
     echo '{"decision": "allow"}'
 }
-trap 'output_empty' ERR
+trap 'output_empty' ERR EXIT
 
 # Logging (silent by default)
 log() {
@@ -198,9 +198,8 @@ suggest_skill_for_file() {
 
 # Main logic
 main() {
-    # Read input from stdin (PreToolUse provides tool context)
-    local input
-    input=$(cat 2>/dev/null || echo '{"decision": "allow"}')
+    # v2.69: Use $INPUT from SEC-111 read instead of second cat (fixes CRIT-001 double-read bug)
+    local input="$INPUT"
 
     # Extract file path from tool input
     local file_path
@@ -209,6 +208,7 @@ main() {
     # Gate 1: Skip if no file path (can't make context-aware suggestion)
     if [[ -z "$file_path" ]]; then
         log "No file path in input, skipping"
+        trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
         echo '{"decision": "allow"}'
         exit 0
     fi
@@ -216,6 +216,7 @@ main() {
     # Gate 2: Skip if already reminded this session
     if already_reminded_this_session; then
         log "Already reminded this session, skipping"
+        trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
         echo '{"decision": "allow"}'
         exit 0
     fi
@@ -223,6 +224,7 @@ main() {
     # Gate 3: Skip if within cooldown period
     if is_within_cooldown; then
         log "Within cooldown period, skipping"
+        trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
         echo '{"decision": "allow"}'
         exit 0
     fi
@@ -230,6 +232,7 @@ main() {
     # Gate 4: Skip if a skill was recently invoked
     if skill_recently_invoked; then
         log "Skill recently invoked, skipping"
+        trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
         echo '{"decision": "allow"}'
         exit 0
     fi
@@ -245,11 +248,13 @@ main() {
 
         # Output suggestion
         # CRIT-012: PreToolUse MUST use {"decision": "allow"}, NOT hookSpecificOutput
+        trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
         jq -n --arg ctx "Consider using $suggestion" \
             '{"decision": "allow", "additionalContext": $ctx}'
     else
         # No suggestion for this file type
         log "No specific skill suggestion for: $file_path"
+        trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
         echo '{"decision": "allow"}'
     fi
 }

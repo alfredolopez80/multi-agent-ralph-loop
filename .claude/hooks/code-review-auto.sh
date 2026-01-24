@@ -4,7 +4,7 @@
 # PostToolUse hook - AUTO-INVOKE code review after step completion
 #===============================================================================
 #
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # TRIGGER: PostToolUse (TaskUpdate - when step completes)
 # PURPOSE: Automatically invoke code review for completed steps
 #
@@ -92,9 +92,8 @@ get_step_complexity() {
 
 # Main logic
 main() {
-    # Read input from stdin
-    local input
-    input=$(cat 2>/dev/null || echo '{}')
+    # v2.69: Use $INPUT from SEC-111 read instead of second cat (fixes CRIT-001 double-read bug)
+    local input="$INPUT"
 
     # Extract tool name
     local tool_name

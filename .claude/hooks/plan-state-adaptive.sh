@@ -1,6 +1,6 @@
 #!/bin/bash
 # plan-state-adaptive.sh - Adaptive plan-state creation for ALL tasks
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # v2.68.2: FIX CRIT-007 - Clear EXIT trap before explicit JSON output
 #
 # PROBLEM SOLVED: Plan-state was only created for orchestrator tasks,
@@ -254,9 +254,8 @@ PLANEOF
 # =============================================================================
 
 main() {
-    # Parse hook input (JSON from stdin)
-    local input
-    input=$(cat)
+    # v2.69: Use $INPUT from SEC-111 read instead of second cat (fixes CRIT-001 double-read bug)
+    local input="$INPUT"
 
     # Extract user prompt
     local prompt

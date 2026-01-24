@@ -1,6 +1,6 @@
 #!/bin/bash
 # typescript-quick-check.sh - Quick TypeScript check after editing .ts/.tsx files
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # HOOK: PostToolUse (Edit|Write)
 # Part of Multi-Agent Ralph Loop v2.66.0
 
@@ -15,10 +15,10 @@ set -euo pipefail
 output_json() {
     echo '{"continue": true}'
 }
-trap 'output_json' ERR
+trap 'output_json' ERR EXIT
 
 # Read stdin
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 
 # Only process TS files
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null || echo "")
@@ -66,9 +66,9 @@ FILE_BASENAME=$(basename "$FILE_PATH")
 ERRORS=$(echo "$TSC_OUTPUT" | grep -E "^.*${FILE_BASENAME}.*error TS" | head -5 || true)
 
 if [[ -n "$ERRORS" ]]; then
-    echo "[Hook] ⚠️  TypeScript errors in ${FILE_BASENAME}:" >&2
+    echo "[Hook] ⚠️  TypeScript errors in ${FILE_BASENAME}:" >&2 2>/dev/null || true
     echo "$ERRORS" | while read -r line; do
-        echo "  $line" >&2
+        echo "  $line" >&2 2>/dev/null || true
     done
 fi
 

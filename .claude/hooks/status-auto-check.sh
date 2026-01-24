@@ -1,6 +1,6 @@
 #!/bin/bash
 # status-auto-check.sh - Auto-show status periodically
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # v2.57.3: Fixed LAST remaining wrong format on line 119 (SEC-036)
 # v2.57.2: Fixed JSON output format (SEC-035) - use {"continue": true}
 #
@@ -26,7 +26,7 @@ set -euo pipefail
 output_json() {
     echo '{"continue": true}'
 }
-trap 'output_json' ERR
+trap 'output_json' ERR EXIT
 
 PLAN_STATE=".claude/plan-state.json"
 COUNTER_FILE="${HOME}/.ralph/cache/status-check-counter"
@@ -46,7 +46,7 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
 }
 
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null || echo "")
 
 case "$TOOL_NAME" in

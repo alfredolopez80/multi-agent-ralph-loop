@@ -2,7 +2,8 @@
 
 # SessionStart Hook: Personalized welcome message
 
-# VERSION: 2.68.23
+# VERSION: 2.69.0
+# v2.69.0: FIX CRIT-001 - Removed duplicate stdin read, use $INPUT from SEC-111
 set -euo pipefail
 
 # SEC-111: Read input from stdin with length limit (100KB max)
@@ -10,13 +11,12 @@ set -euo pipefail
 INPUT=$(head -c 100000)
 
 
-# Read hook input from stdin
-HOOK_INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - use $INPUT from SEC-111
 
-# Extract session info
-SESSION_ID=$(echo "$HOOK_INPUT" | jq -r '.session_id // "unknown"')
-SOURCE=$(echo "$HOOK_INPUT" | jq -r '.source // "startup"')
-CWD=$(echo "$HOOK_INPUT" | jq -r '.cwd // ""')
+# Extract session info from $INPUT (SEC-111 already read stdin)
+SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"' 2>/dev/null || echo "unknown")
+SOURCE=$(echo "$INPUT" | jq -r '.source // "startup"' 2>/dev/null || echo "startup")
+CWD=$(echo "$INPUT" | jq -r '.cwd // ""' 2>/dev/null || echo "")
 
 # Get current time for welcome message
 HOUR=$(date +"%H")

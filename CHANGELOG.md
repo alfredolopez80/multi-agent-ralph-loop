@@ -76,6 +76,47 @@ Updated `adversarial_council.py` to v2.68.26 with **GLM-4.7 as 4th planner**:
 - CLAUDE.md: Added GLM MCP skills to Quick Start
 - CHANGELOG.md: This entry
 
+#### CRIT-001: Stdin Double-Read Bug Fix (11 Hooks)
+
+**Root Cause**: When SEC-111 was implemented to prevent DoS attacks via stdin length limiting, `INPUT=$(head -c 100000)` was added at the top of hooks. However, the original `input=$(cat)` lines in `main()` were NOT removed, causing:
+
+1. First read (`head -c 100000`) - Consumes entire stdin into `$INPUT`
+2. Second read (`cat`) - Returns EMPTY because stdin is exhausted
+
+**Impact**: 11 hooks were affected - all receiving empty input, causing logic failures.
+
+**Fixed Hooks (all updated to v2.69.0)**:
+
+| Hook | Event Type | Impact Before Fix |
+|------|------------|-------------------|
+| `adversarial-auto-trigger.sh` | PostToolUse (Task) | No task context for adversarial validation |
+| `ai-code-audit.sh` | PostToolUse (Edit/Write) | No file info for AI audit |
+| `auto-plan-state.sh` | PostToolUse (Write) | Plan state missing tool context |
+| `checkpoint-auto-save.sh` | PreToolUse (Edit/Write) | Checkpoint decisions without file path |
+| `code-review-auto.sh` | PostToolUse (TaskUpdate) | Code review without task context |
+| `deslop-auto-clean.sh` | PostToolUse (Edit/Write) | De-slop cleaner had no content |
+| `plan-state-adaptive.sh` | UserPromptSubmit | Adaptive planning missing prompt |
+| `repo-boundary-guard.sh` | PreToolUse (Bash/Edit/Write) | Always allowed (no path data) |
+| `security-full-audit.sh` | PostToolUse (Edit/Write) | Security audit had no code to audit |
+| `skill-validator.sh` | PreToolUse (Skill) | Skill validation couldn't read skill name |
+| `smart-skill-reminder.sh` | PreToolUse (Edit/Write) | Skill suggestions without file context |
+
+**Fix Pattern Applied**:
+```bash
+# BEFORE (broken):
+INPUT=$(head -c 100000)  # First read
+...
+main() {
+    input=$(cat)         # Second read = EMPTY!
+
+# AFTER (fixed):
+INPUT=$(head -c 100000)  # Single read at top
+...
+main() {
+    # v2.69: Use $INPUT from SEC-111 read
+    local input="$INPUT"
+```
+
 ---
 
 ## [2.68.26] - 2026-01-24/25
@@ -394,6 +435,744 @@ Comprehensive adversarial audit cycle fixing critical security vulnerabilities a
 #### HIGH-003: SEC-111 Input Length Validation (Added - but incomplete)
 
 DoS prevention by limiting stdin input to 100KB - however, original `INPUT=$(cat)` lines were not removed, causing CRIT-001 in v2.68.25.
+
+---
+
+## [2.68.22] - 2026-01-24
+
+### Technical Debt Cleanup - Full CLI Implementation & Security Hardening
+
+Comprehensive technical debt closure completing ALL documented CLI commands and security improvements.
+
+#### GAP-CRIT-010: 6 CLI Commands Implemented (~1,423 lines)
+
+| Command | Script | Features | Lines |
+|---------|--------|----------|-------|
+| `ralph checkpoint` | `checkpoint.sh` | save, restore, list, show, diff | 251 |
+| `ralph handoff` | `handoff.sh` | transfer, agents, validate, history, create, load | 265 |
+| `ralph events` | `events.sh` | emit, subscribe, barrier (check/wait/list), route, advance, status, history | 290 |
+| `ralph agent-memory` | `agent-memory.sh` | init, read, write, transfer, list, gc | 310 |
+| `ralph migrate` | `migrate.sh` | check, run, dry-run | 153 |
+| `ralph ledger` | `ledger.sh` | save, load, list, show | 154 |
+
+#### SEC-116: umask 077 Added to 31 Hooks
+
+All 66 hooks now have restrictive file permissions (defense-in-depth):
+- auto-format-prettier.sh, auto-save-context.sh, auto-sync-global.sh
+- checkpoint-smart-save.sh, console-log-detector.sh, context-injector.sh
+- context-warning.sh, continuous-learning.sh, inject-session-context.sh
+- lsa-pre-step.sh, plan-state-init.sh, plan-state-lifecycle.sh
+- plan-sync-post-step.sh, post-compact-restore.sh, pre-compact-handoff.sh
+- progress-tracker.sh, project-backup-metadata.sh, prompt-analyzer.sh
+- repo-boundary-guard.sh, sec-context-validate.sh, sentry-report.sh
+- session-start-ledger.sh, session-start-tldr.sh, session-start-welcome.sh
+- skill-validator.sh, status-auto-check.sh, statusline-health-monitor.sh
+- stop-verification.sh, task-orchestration-optimizer.sh, typescript-quick-check.sh
+- verification-subagent.sh
+
+#### LOW-004: Bounded find in curator-suggestion.sh
+
+Added `-maxdepth 2` to prevent DoS on large directories.
+
+#### DUP-002: Shared JSON Library Created (Partial)
+
+Created `~/.ralph/lib/hook-json-output.sh` with type-safe functions:
+- `output_allow/block` → PreToolUse
+- `output_continue/msg` → PostToolUse
+- `output_approve` → Stop
+- `output_empty/context` → UserPromptSubmit
+- `trap_*` helpers for error trap setup
+
+Migration of 32 existing hooks deferred (working, low risk).
+
+---
+
+## [2.68.20] - 2026-01-24
+
+### Adversarial Validation Phase 9 - SEC-029 Session ID Path Traversal Fix
+
+Exhaustive adversarial audit continuation addressing critical session ID sanitization gaps.
+
+#### Security Fixes (3 hooks)
+
+| ID | File | Issue | Fix |
+|----|------|-------|-----|
+| **SEC-029** | `continuous-learning.sh` | Session ID used in file path without sanitization | Added `tr -cd 'a-zA-Z0-9_-' \| head -c 64` sanitization |
+| **SEC-029** | `pre-compact-handoff.sh` | Session ID used in directory creation | Added sanitization pattern |
+| **SEC-029** | `task-project-tracker.sh` | Session ID used in directory access | Added sanitization pattern |
+
+#### Previously Sanitized (verified)
+
+- `global-task-sync.sh` - Already had SEC-001 sanitization
+- `reflection-engine.sh` - Already had sanitization
+
+#### Not Vulnerable (verified)
+
+Hooks using session_id only for logging/JSON (no file path risk):
+- `progress-tracker.sh`, `smart-memory-search.sh`, `semantic-auto-extractor.sh`
+- `inject-session-context.sh`, `session-start-ledger.sh`, `session-start-welcome.sh`
+- `fast-path-check.sh`, `quality-gates-v2.sh`, `parallel-explore.sh`
+- `orchestrator-report.sh` (generates own timestamp-based ID)
+
+#### Bug Fixes
+
+- CRIT-004b: `stop-verification.sh` double JSON output (trap - EXIT)
+- BUG-arithmetic: Fix `((var++))` exit code in stop-verification.sh
+- BUG-arithmetic: Fix `((new_rules++))` in episodic-auto-convert.sh
+
+---
+
+## [2.68.13] - 2026-01-24
+
+### Code Quality A+++ - ShellCheck Excellence & Test Coverage
+
+Comprehensive code quality improvements achieving zero critical ShellCheck issues and 9x test coverage increase.
+
+#### ShellCheck Fixes (39 critical issues → 0)
+
+| Issue | Count | Description | Fix |
+|-------|-------|-------------|-----|
+| **SC2155** | 28 | Declare and assign separately | Split declaration/assignment |
+| **SC2221/SC2222** | 6 | Pattern conflicts in case statements | Fixed pattern syntax |
+| **SC2168** | 5 | 'local' keyword outside function | Removed invalid usage |
+
+#### Test Coverage Expansion (103 → 903 tests)
+
+| Version | Feature | Test File | Tests |
+|---------|---------|-----------|-------|
+| v2.61 | Adversarial Council | `test_v261_adversarial_council.bats` | 20 |
+| v2.63 | Dynamic Contexts | `test_v263_dynamic_contexts.bats` | 29 |
+| v2.64 | EDD Framework | `test_v264_edd_framework.bats` | 33 |
+| v2.65 | Cross-Platform Hooks | `test_v265_cross_platform_hooks.bats` | 26 |
+
+#### Documentation Updates
+
+- Version bump to v2.68.13
+- Tests: 103 → 903 (9x increase)
+- Hooks: 63 → 66
+- ShellCheck: A+++ quality badge
+- Security: SEC-111 compliant
+
+---
+
+## [2.68.12] - 2026-01-24
+
+### BUG-001: Integer Comparison Fix in reflection-engine.sh
+
+#### Fixed
+
+- Line 137 used string comparison `<` instead of numeric `-lt` for date strings (YYYYMMDD format)
+- Impact: Weekly cleanup would run at wrong intervals due to lexicographic vs numeric comparison
+- Example: `"20260120" < "20260113"` evaluates to TRUE (wrong), `"20260120" -lt "20260113"` evaluates to FALSE (correct)
+
+#### Changed
+
+- `[[ "$LAST_CLEANUP" < "$WEEK_AGO" ]]` → `[[ "$LAST_CLEANUP" -lt "$WEEK_AGO" ]]`
+
+Discovered by: Code Quality Deep Review (ShellCheck SC2071)
+
+---
+
+## [2.68.11] - 2026-01-24
+
+### Adversarial Validation Phase 8 - SEC-111 Input Validation
+
+#### Added
+
+**SEC-111: Input Length Validation (DoS Prevention)**
+
+Added MAX_INPUT_LEN=100000 validation to 3 hooks:
+- `curator-suggestion.sh` - Early exit if prompt too long
+- `memory-write-trigger.sh` - Early exit if prompt too long
+- `plan-state-lifecycle.sh` - Truncates with warning
+
+#### Fixed
+
+**SEC-109: Missing Error Traps - FALSE POSITIVE**
+
+Verified all hooks that need traps have them:
+- 5 SessionStart hooks: Don't require JSON per v2.62.3 spec
+- 3 UserPromptSubmit hooks: Already have proper error traps
+- 2 utility scripts: Not registered hooks
+
+#### Documentation
+
+**FALSE POSITIVES Verified (10 issues)**
+
+- SEC-108: Variables in numeric contexts (arithmetic/array length)
+- SEC-109: SessionStart hooks don't need JSON per v2.62.3 spec
+- SEC-112: All hooks use mktemp correctly with random suffixes
+- SEC-113: jq handles content-type properly
+- SEC-114: All loops have 50-iter bounds
+- SEC-115: No dangerous glob patterns found
+- LOW-001: Subprocess sourcing runs isolated with timeout
+- LOW-002: GITHUB_DIR is script-controlled, not user input
+- LOW-003: Patterns simple, content bounded at 50 chars
+- LOW-005: Bounded by MAX_SMART_CHECKPOINTS=20
+
+---
+
+## [2.68.10] - 2026-01-24
+
+### Adversarial Validation Phase 7 - Security & Code Quality
+
+#### Fixed
+
+**SEC-105: TOCTOU Race in checkpoint-smart-save.sh**
+
+Implemented atomic noclobber (O_EXCL) pattern:
+```bash
+(set -C; echo "$$" > "$EDITED_FLAG") 2>/dev/null || exit 0
+```
+This eliminates the TOCTOU gap - single syscall for check+create.
+
+**SEC-110: Sensitive Data Redaction**
+
+Added `redact_sensitive()` function to:
+- `memory-write-trigger.sh` - Redacts user prompt excerpt before logging
+- `orchestrator-auto-learn.sh` - Redacts learning output before logging
+
+**HIGH-002: Dead Code Removal**
+
+Removed 43 lines dead code from `inject-session-context.sh` (PreToolUse hooks can only return allow/block, not inject context)
+
+**HIGH-003: Documentation Correction**
+
+Corrected CHANGELOG v2.57.0 SQLite FTS claim (actually uses grep-based search on JSON cache files)
+
+#### Verified
+
+FALSE POSITIVES:
+- SEC-112: All hooks use mktemp correctly
+- SEC-114: All loops have 50-iter bounds
+- SEC-115: No dangerous glob patterns
+
+---
+
+## [2.68.9] - 2026-01-24
+
+### Adversarial Validation Phase 6 - 11 Security Fixes
+
+#### Fixed
+
+**CRITICAL Fixes:**
+
+- CRIT-001: Created EDD skill.md + TEMPLATE.md (evals framework)
+- CRIT-002: `quality-gates-v2.sh` - Added trap - EXIT before JSON output
+- SEC-101: `agent-memory-auto-init.sh` - SUBAGENT_TYPE regex validation
+- SEC-102: `auto-format-prettier.sh` - FILE_PATH realpath + metachar validation
+
+**HIGH Fixes:**
+
+- SEC-103: `skill-validator.sh` - Python sys.argv instead of interpolation
+- SEC-104: `security-full-audit.sh` - SHA-256 instead of MD5
+- SEC-106: `repo-learn.sh` - RALPH_TMPDIR path traversal validation
+- SEC-107: `context-injector.sh` - Context name regex validation
+- HIGH-005: `plan.sh` reset template version updated to 2.68.9
+- HIGH-006: `edd.sh` - Bash arithmetic instead of bc
+
+#### Added
+
+- `~/.claude/skills/edd/skill.md` - Eval-Driven Development workflow
+- `~/.claude/evals/TEMPLATE.md` - Evaluation definition template
+
+---
+
+## [2.68.8] - 2026-01-24
+
+### Project Hooks Cleanup & SEC-054 JSON Format Fix
+
+#### Removed
+
+**CLEANUP: 9 Orphan Legacy Hooks**
+
+- `curator-trigger.sh`, `detect-environment.sh`, `orchestrator-helper.sh`
+- `procedural-forget.sh`, `quality-gates.sh`, `sentry-check-status.sh`
+- `sentry-correlation.sh`, `state-sync.sh`, `todo-plan-sync.sh`
+
+#### Changed
+
+**SYNC: 39 Hooks Updated from Global**
+
+All project hooks now synchronized with global to v2.68+
+100% compliance: 66/66 hooks at v2.66+
+
+#### Fixed
+
+**SEC-054: PreCompact JSON Format**
+
+- `pre-compact-handoff.sh`: `{"decision": "allow"}` → `{"continue": true}`
+- PreCompact hooks use PostToolUse format (continue), not PreToolUse (decision)
+
+---
+
+## [2.68.7] - 2026-01-24
+
+### Adversarial Validation Phase 5 - CRITICAL JSON Compliance
+
+#### Fixed
+
+**v2.68.7 - CRITICAL Fixes:**
+
+- CRIT-001: `post-compact-restore.sh` - Added guaranteed JSON output for PostCompact hooks
+- CRIT-002: `lsa-pre-step.sh` - Added SEC-006 error trap for PreToolUse compliance
+
+**v2.68.6 - Version Consistency Audit (100% compliance):**
+
+- HIGH: `procedural-inject.sh`/`sec-context-validate.sh` - Added standard VERSION markers
+- MEDIUM: `context-injector.sh` (1.0.1→2.68.6), `usage-consolidate.sh` (1.0.0→2.68.6)
+- LOW: 7 hooks bumped from v1.x/v2.0 to v2.68.6:
+  - `auto-format-prettier.sh`, `console-log-detector.sh`, `project-backup-metadata.sh`
+  - `smart-skill-reminder.sh`, `task-primitive-sync.sh`, `task-project-tracker.sh`
+  - `typescript-quick-check.sh`
+
+#### Changed
+
+- 67/67 hooks pass bash -n syntax validation
+- GAP-HIGH-006 closed: 100% version compliance achieved
+
+---
+
+## [2.68.5] - 2026-01-24
+
+### Performance: procedural-inject.sh Lock Retry Enhancement
+
+#### Changed
+
+- Increased MAX_LOCK_RETRIES from 3 to 10
+- Extends retry window from 300ms to 1000ms
+- Improves concurrency tolerance for parallel Task invocations
+- Synced to project hooks directory
+
+---
+
+## [2.68.4] - 2026-01-24
+
+### Adversarial Phase 4 - 3 CRITICAL + 2 MEDIUM Security Fixes
+
+#### Fixed
+
+**CRITICAL Fixes:**
+
+- GAP-CRIT-001: Synced `global-task-sync.sh` (sync_from_global dead code removed)
+- GAP-CRIT-002: Synced `git-safety-guard.py` (v2.43.0 → v2.66.8, 23 versions)
+
+**MEDIUM Security Fixes:**
+
+- MED-006: `parallel-explore.sh` - Removed spaces from sanitizer whitelist
+- MED-008: `ai-code-audit.sh` - Added OSTYPE detection for portable stat
+
+#### Changed
+
+- Updated TECHNICAL_DEBT.md with completed items
+
+#### Validation
+
+- JSON Validator: 100% PASS (73+ hooks, 0 invalid patterns)
+- Security Auditor: 9 issues (2 MEDIUM fixed, 5 LOW documented)
+- Gap Analyst: 16 gaps (3 CRITICAL fixed, 6 HIGH documented)
+
+---
+
+## [2.68.3] - 2026-01-24
+
+### Performance: procedural-inject.sh O(n²) → O(1) Optimization
+
+#### Fixed
+
+**PERF-001: Critical Performance Issue**
+
+- Fix timeout: 3000ms → 113ms execution
+- Root cause: 393 rules × 2 loops × jq calls per rule = O(n²)
+- Solution: Single jq pre-filter call replacing all bash loops
+- Fixed undefined variables: $DOMAIN_MATCH_COUNT, $TRIGGER_MATCH_COUNT
+
+**GAP-004: Schema Syntax Error**
+
+- Fixed `plan-state-v2.json` oneOf structure syntax error
+
+**BUG: Pre-commit Hook Case-Sensitivity**
+
+- Fixed TRIGGER detection case-sensitivity
+
+#### Changed
+
+- Synced 10 missing hooks from global to project (75 total)
+
+This resolves the 14 PreToolUse:Task hook errors reported by user.
+
+---
+
+## [2.68.2] - 2026-01-24
+
+### Double-JSON Bug Fix & Schema v2.66 Upgrade
+
+Comprehensive fix for CRITICAL double-JSON output bugs affecting 9 hooks, causing Claude Code `AttributeError: 'list' object has no attribute 'get'` errors.
+
+#### Fixed
+
+**CRITICAL: Double-JSON Output (9 hooks)**
+
+Root cause: Hooks with `trap 'echo JSON' ERR EXIT` produced duplicate JSON when explicit `echo JSON` was called before `exit 0`.
+
+| Issue ID | Hook | Event Type | Fix |
+|----------|------|------------|-----|
+| CRIT-002 | `inject-session-context.sh` | PreToolUse | trap - EXIT before output |
+| CRIT-003 | `checkpoint-smart-save.sh` | PreToolUse | trap - EXIT before output |
+| CRIT-004 | `skill-validator.sh` | PreToolUse | trap - EXIT before output |
+| CRIT-005 | `quality-gates-v2.sh` | PostToolUse | trap - EXIT before output |
+| CRIT-006 | `progress-tracker.sh` | PostToolUse | trap - EXIT before output |
+| CRIT-007 | `plan-state-adaptive.sh` | UserPromptSubmit | trap - EXIT before output |
+| CRIT-008 | `plan-state-lifecycle.sh` | UserPromptSubmit | trap - EXIT before output |
+| CRIT-009 | `statusline-health-monitor.sh` | UserPromptSubmit | trap - EXIT before output |
+| CRIT-010 | `curator-suggestion.sh` | UserPromptSubmit | Wrong format (fixed to {}) |
+| CRIT-011 | `continuous-learning.sh` | Stop | Hook type case-sensitive |
+
+#### Changed
+
+**GAP-CRIT-001: Schema Upgrade v2.54 → v2.66**
+
+Added support for WAIT-ALL barriers and verification:
+- `phases[]` - Phase definitions for orchestration
+- `barriers{}` - Phase completion tracking
+- `verification_state` - Subagent verification tracking
+- `current_phase` - Active phase tracking
+
+**GAP-HIGH-002: Version Consistency**
+
+Bulk updated 54 hooks from v2.57.x-v2.66.x to v2.68.2
+
+**GAP-HIGH-003: Hook Sync**
+
+Synced 9 critical hooks from global to project:
+- `plan-state-adaptive.sh`, `plan-state-lifecycle.sh`
+- `statusline-health-monitor.sh`, `auto-migrate-plan-state.sh`
+- `context-injector.sh`, `continuous-learning.sh`
+- `reflection-engine.sh`, `semantic-auto-extractor.sh`
+- `task-primitive-sync.sh`
+
+#### Documentation
+
+- Updated README: version, hooks count (63), error traps (63/63), security (SEC-053)
+- Documented GAP-HIGH-001 & GAP-HIGH-005 as P2/P3 technical debt
+
+---
+
+## [2.66.8] - 2026-01-24
+
+### Adversarial Validation Phase 3 - HIGH Priority Fixes
+
+#### Fixed
+
+**HIGH Severity Fixes:**
+
+- HIGH-001: `plan.sh` phases/barriers/verification in reset template
+- HIGH-003: Version sync across 7 hooks to v2.66.8
+- HIGH-004: `lsa-pre-step.sh` ASCII art to stderr
+- SEC-051: `repo-boundary-guard.sh` realpath for path canonicalization
+- SEC-053: `pre-compact-handoff.sh` JSON format fixes
+
+#### Verified
+
+Already Fixed (No Changes):
+- SEC-052: `checkpoint-smart-save.sh` RACE-001 atomic mkdir
+- SEC-050: `semantic-realtime-extractor.sh` jq --arg escaping
+- HIGH-005: `git-safety-guard.py` fail-closed try/except
+- HIGH-006: `context-warning.sh` correct JSON format
+
+#### Added
+
+- `TECHNICAL_DEBT.md` - Tracking for DUP-002 and HIGH-002
+
+#### Documentation
+
+Total v2.66.6-v2.66.8 Cycle: 22 issues resolved (4 CRITICAL, 18 HIGH)
+
+---
+
+## [2.66.7] - 2026-01-24
+
+### Adversarial Validation Phase 2 - CRITICAL Fixes
+
+#### Fixed
+
+**CRIT-001: agent-memory-auto-init.sh Explicit JSON Output**
+
+Was relying on error trap for output, now explicit trap - EXIT pattern consistent with other hooks.
+
+**CRIT-002: Schema Updated v2.54 → v2.66**
+
+- Added `phases[]` for WAIT-ALL barrier support
+- Added `barriers{}` for phase completion tracking
+- Added verification object for subagent tracking
+- All documented v2.62+ features now in schema
+
+---
+
+## [2.66.6] - 2026-01-24
+
+### Adversarial Validation Loop - 11 Security & Compatibility Fixes
+
+Multi-model adversarial validation (Opus + Sonnet) from v2.60-v2.66.5.
+
+#### Fixed
+
+**Security Fixes:**
+
+- SEC-041: Python command injection in `quality-gates-v2.sh`
+- SEC-042: Malformed JSON trap in `auto-plan-state.sh`
+- SEC-043: JSON injection in `inject-session-context.sh`
+- SEC-044: Missing PROJECT_DIR in `plan.sh`
+- SEC-045: macOS realpath -e compatibility
+- SEC-046: PreCompact JSON format in `pre-compact-handoff.sh`
+- SEC-047: Missing JSON output in `plan-sync-post-step.sh`
+- SEC-048: jq --argint macOS compatibility
+- SEC-049: `checkpoint-auto-save.sh` registration mismatch
+
+**Code Quality:**
+
+- GAP-003: Duplicate VERSION in `orchestrator-report.sh`
+- DEAD-001: Removed `sync_from_global()` dead code
+
+---
+
+## [2.66.5] - 2026-01-24
+
+### Adversarial Validation Loop Complete - Security & Quality Fixes
+
+#### Fixed
+
+**Security Controls (v2.66.2-v2.66.5):**
+
+- SEC-039: PreToolUse hooks now correctly return `{"decision": "allow"}`
+- SEC-040: Path validation in `plan.sh` to prevent traversal
+- SEC-001 to SEC-008: JSON injection, path traversal, umask fixes
+- SEC-009/010: Portable mkdir-based locking (macOS compatibility)
+
+**Code Quality (v2.66.5):**
+
+- DUP-001: Shared `domain-classifier.sh` library eliminates code duplication
+- RACE-001: Atomic mkdir locking for race condition in `checkpoint-smart-save.sh`
+- DATA-001: JSON corruption detection in `repo-learn.sh`
+- SC2168: Removed 'local' keyword outside functions (shellcheck)
+
+#### Added
+
+- `~/.ralph/lib/domain-classifier.sh` (v1.0.0) - Shared classification library
+
+#### Changed
+
+- CHANGELOG.md: Full release notes for v2.66.2-v2.66.5
+- CLAUDE.md: Updated to v2.66.5
+- README.md: Updated badges and feature list
+
+---
+
+## [2.65.2] - 2026-01-24
+
+### Plan Lifecycle Management CLI
+
+#### Added
+
+**Plan Lifecycle Commands:**
+
+- `ralph plan show` - Display current plan status
+- `ralph plan archive "desc"` - Archive and start fresh
+- `ralph plan reset` - Reset to empty state
+- `ralph plan history [n]` - Show archived plans
+- `ralph plan restore <id>` - Restore from archive
+
+#### Fixed
+
+**v2.65.1 - Task Primitive Sync:**
+
+- `task-primitive-sync.sh` hook for TaskCreate/TaskUpdate/TaskList
+- Auto-detects v1 (array) vs v2 (object) plan-state format
+- Enables statusline progress tracking
+
+#### Added (v2.65.0)
+
+**Cross-Platform Hooks:**
+
+- Node.js library (`lib/cross-platform.js`)
+- Node.js context injector example
+- `continuous-learning.sh` session pattern extraction
+
+---
+
+## [2.62.3] - 2026-01-23
+
+### Error Traps & Repository Isolation
+
+#### Added
+
+**Repository Isolation Rule:**
+
+New global rule preventing accidental work in external repositories:
+- `~/.claude/rules/repo-isolation.md`
+- `repo-boundary-guard.sh` hook enforces boundaries
+
+#### Fixed
+
+**Error Trap Coverage:**
+
+- Added error traps to all registered hooks (66/66 coverage)
+- Pattern: `trap 'echo "{\"decision\": \"allow\"}"' ERR EXIT`
+
+**Schema v2 Compliance:**
+
+- Fixed backward compatibility issues
+- All hooks now support both v1 and v2 plan-state formats
+
+#### Changed
+
+- Synced corrected hooks from global to project
+- Updated version marker test for flexible versioning
+- Documentation updates: README, CLAUDE.md, AGENTS.md
+
+---
+
+## [2.62.2] - 2026-01-23
+
+### PreToolUse JSON Format Standardization
+
+#### Fixed
+
+**PreToolUse Hooks JSON Format:**
+
+All PreToolUse hooks now correctly return:
+- Success: `{"decision": "allow"}`
+- Block: `{"decision": "block", "reason": "..."}`
+
+Previously some hooks used PostToolUse format `{"continue": true}`.
+
+#### Changed
+
+- Updated hook tests for archived hooks
+- Documentation updates with audit results
+
+---
+
+## [2.62.1] - 2026-01-23
+
+### Adversarial Audit Fixes
+
+#### Fixed
+
+- Syntax error in adversarial validation script
+- Missing shebang in validation hooks
+
+---
+
+## [2.62.0] - 2026-01-23
+
+### Claude Code Task Primitive Integration
+
+Full integration with Claude Code's evolved Task primitive for better orchestration and verification.
+
+#### Added
+
+**Task Primitive Hooks:**
+
+- `global-task-sync.sh` - Bidirectional sync with `~/.claude/tasks/`
+- `verification-subagent.sh` - Auto-suggest reviews for security/test tasks
+- `task-orchestration-optimizer.sh` - Parallelization and context-hiding detection
+
+**Schema Updates:**
+
+- Added `verification` object to plan-state-v2 schema
+- Support for verification subagent tracking
+
+**Skills:**
+
+- `ethereum-rpc.md` - RPC templates and rate limits
+
+#### Features
+
+**Key Patterns Implemented:**
+
+- Verification via subagent (security/test keywords auto-detect)
+- Parallelization detection (2+ independent tasks in parallel phase)
+- Context-hiding recommendations (>2000 char prompts)
+- Model optimization suggestions (sonnet for low complexity)
+
+#### Changed
+
+- Documentation updates: CLAUDE.md (55 hooks, new patterns)
+- CHANGELOG.md with v2.62.0 entry
+
+---
+
+## [2.61.0] - 2026-01-22
+
+### Adversarial Council Enhancement & Security Audit
+
+#### Added
+
+**Adversarial Skill v2.61 Improvements:**
+
+- Python orchestration script (`adversarial_council.py`)
+- Provider-specific response extraction (Codex/Claude/Gemini)
+- Exponential backoff in retries (2^attempt seconds)
+- Command allowlist for custom agents (security)
+- Path traversal prevention (security)
+- Feature status table (Implemented vs Planned)
+
+**Security Audit:**
+
+- `.claude/SECURITY_AUDIT_API_KEYS.md` - API key exposure audit
+- Validated MiniMax, OpenAI API keys not exposed
+- Validated JWT tokens not exposed
+- Verified .gitignore configuration
+- Verified git history clean
+
+#### Validation Results
+
+| Model | Initial Score | Post-Fix Score |
+|-------|---------------|----------------|
+| Codex CLI | 6/10 | Issues identified |
+| Claude Opus | 6.4/10 | Vulnerabilities fixed |
+| Gemini | 9/10 security, 8/10 quality | Validated |
+
+---
+
+## [2.60.0] - 2026-01-22
+
+### Hook System Audit & Smart Skill Reminder v2.0
+
+#### Removed
+
+**Hook Cleanup:**
+
+- Reduced hooks from 64 to 52 (cleanup of deprecated scripts)
+- Deleted 8 deprecated hooks:
+  - `skill-reminder.sh`, `quality-gates.sh`, and 6 others
+- Archived 5 utility scripts to `~/.claude/hooks-archive/utilities/`
+- Kept 3 library scripts used as dependencies
+
+#### Added
+
+**Smart Skill Reminder v2.0:**
+
+Replaced `skill-reminder.sh` with `smart-skill-reminder.sh`:
+- Context-aware suggestions based on file type/path
+- PreToolUse trigger (fires BEFORE code is written)
+- Session gating (only reminds once per session)
+- Rate limiting (30-minute cooldown)
+- Priority order: Tests > Security > Language > Architecture
+
+#### Fixed
+
+- GAP-SKILL-002: Fixed repository-learner skill structure
+- `skill-pre-warm.sh` now finds 10/10 skills (was 9/10)
+- Test file pattern matching priority bug fixed
+
+#### Changed
+
+- Documentation updated to v2.60.0:
+  - README.md, CLAUDE.md, AGENTS.md
+- Added comprehensive audit documentation
+- Added adversarial validation reports
 
 ---
 
