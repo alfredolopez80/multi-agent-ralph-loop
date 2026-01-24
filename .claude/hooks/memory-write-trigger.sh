@@ -10,7 +10,8 @@
 # - "keep in mind"
 # - "for future reference"
 #
-# VERSION: 2.68.10
+# VERSION: 2.68.11
+# v2.68.11: SEC-111 FIX - Input length validation to prevent DoS
 # v2.68.10: SEC-110 FIX - Redact sensitive data (API keys, tokens, passwords) before logging
 # SECURITY: Added ERR trap for guaranteed JSON output, MATCHED escaping
 
@@ -46,6 +47,13 @@ redact_sensitive() {
 # Parse input
 INPUT=$(cat)
 USER_PROMPT=$(echo "$INPUT" | jq -r '.user_prompt // empty' 2>/dev/null || echo "")
+
+# SEC-111: Input length validation to prevent DoS from large prompts
+MAX_INPUT_LEN=100000
+if [[ ${#USER_PROMPT} -gt $MAX_INPUT_LEN ]]; then
+    echo '{"continue": true}'
+    exit 0
+fi
 
 # Exit if no prompt
 if [[ -z "$USER_PROMPT" ]]; then
