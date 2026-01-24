@@ -4,7 +4,8 @@
 # PostToolUse hook - AUTO-INVOKE /security for sensitive files
 #===============================================================================
 #
-# VERSION: 2.68.2
+# VERSION: 2.68.9
+# v2.68.9: SEC-104 FIX - Replace MD5 with SHA-256 for file hashing
 # TRIGGER: PostToolUse (Edit|Write)
 # PURPOSE: Automatically invoke /security for auth/payment/crypto files
 #
@@ -77,7 +78,8 @@ is_security_sensitive() {
 # Check cooldown for file
 is_within_cooldown() {
     local file_hash
-    file_hash=$(echo "$1" | md5 2>/dev/null | cut -c1-8 || echo "unknown")
+    # SEC-104 FIX: Use SHA-256 instead of MD5 (MD5 is cryptographically broken)
+    file_hash=$(echo "$1" | shasum -a 256 2>/dev/null | cut -c1-16 || echo "unknown")
     local marker="${MARKERS_DIR}/security-audit-${file_hash}"
 
     if [[ -f "$marker" ]]; then
@@ -92,7 +94,8 @@ is_within_cooldown() {
 # Update cooldown marker
 update_cooldown() {
     local file_hash
-    file_hash=$(echo "$1" | md5 2>/dev/null | cut -c1-8 || echo "unknown")
+    # SEC-104 FIX: Use SHA-256 instead of MD5 (MD5 is cryptographically broken)
+    file_hash=$(echo "$1" | shasum -a 256 2>/dev/null | cut -c1-16 || echo "unknown")
     local marker="${MARKERS_DIR}/security-audit-${file_hash}"
     touch "$marker" 2>/dev/null || true
 }

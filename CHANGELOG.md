@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.68.9] - 2026-01-24
+
+### Adversarial Validation Phase 6 - Security Hardening
+
+Comprehensive security audit via adversarial validation loop identified and fixed 11 vulnerabilities across CRITICAL, HIGH, and MEDIUM severity levels.
+
+#### CRITICAL Fixes (5)
+
+| ID | File | Issue | Fix |
+|----|------|-------|-----|
+| **CRIT-001** | `~/.claude/evals/` | EDD Framework empty | Created `edd/skill.md` and `TEMPLATE.md` |
+| **CRIT-002** | `quality-gates-v2.sh` | Double JSON output (EXIT trap not cleared) | Added `trap - EXIT` before output |
+| **CRIT-003** | `plan-state.json` | Version mismatch (2.57.0 vs 2.68) | Updated to 2.68.9 |
+| **SEC-101** | `agent-memory-auto-init.sh` | Command injection via SUBAGENT_TYPE in sed | Regex whitelist validation |
+| **SEC-102** | `auto-format-prettier.sh` | Command injection via FILE_PATH | realpath + metachar validation |
+
+#### HIGH Fixes (6)
+
+| ID | File | Issue | Fix |
+|----|------|-------|-----|
+| **HIGH-005** | `plan.sh` | Reset template version 2.65.2 | Updated to 2.68.9 |
+| **HIGH-006** | `edd.sh` | Uses `bc` (may not be installed) | Replaced with bash arithmetic |
+| **SEC-103** | `skill-validator.sh` | Python code injection via file path | Use `sys.argv` instead of interpolation |
+| **SEC-104** | `security-full-audit.sh` | MD5 weak hash | Replaced with SHA-256 |
+| **SEC-106** | `repo-learn.sh` | RALPH_TMPDIR path traversal | Validation via realpath |
+| **SEC-107** | `context-injector.sh` | Path traversal via active-context.txt | Regex whitelist validation |
+
+#### Files Modified
+
+- `~/.claude/hooks/quality-gates-v2.sh` (v2.68.9)
+- `~/.claude/hooks/agent-memory-auto-init.sh` (v2.68.9)
+- `~/.claude/hooks/auto-format-prettier.sh` (v2.68.9)
+- `~/.claude/hooks/skill-validator.sh` (v2.68.9)
+- `~/.claude/hooks/security-full-audit.sh` (v2.68.9)
+- `~/.claude/hooks/context-injector.sh` (v2.68.9)
+- `~/.ralph/scripts/plan.sh` (template version 2.68.9)
+- `~/.ralph/scripts/edd.sh` (bash arithmetic)
+- `~/.ralph/scripts/repo-learn.sh` (v1.4.0)
+- `~/.claude/skills/edd/skill.md` (NEW)
+- `~/.claude/evals/TEMPLATE.md` (NEW)
+- `.claude/plan-state.json` (version 2.68.9)
+
+#### Methodology
+
+- **Gap Analyst (Opus)**: Found 23 issues (3 CRITICAL, 7 HIGH, 8 MEDIUM, 5 LOW)
+- **Security Auditor (Opus)**: Found 28 vulnerabilities (2 CRITICAL, 8 HIGH, 12 MEDIUM, 6 LOW)
+- **Deduplication**: ~40 unique issues after overlap analysis
+
+---
+
 ## [2.68.8] - 2026-01-24
 
 ### Project Hooks Cleanup & Synchronization

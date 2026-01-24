@@ -2,7 +2,8 @@
 # Quality Gates v2.48 - Quality Over Consistency + Security Scanning
 # Hook: PostToolUse (Edit, Write)
 # Purpose: Validate code changes with quality-first approach
-# VERSION: 2.68.2
+# VERSION: 2.68.9
+# v2.68.9: CRIT-002 FIX - Actually clear EXIT trap before explicit JSON output (was documented but not implemented)
 # v2.68.1: FIX CRIT-005 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 #
 # Stage 2.5 SECURITY: semgrep (SAST) + gitleaks (secrets)
@@ -388,6 +389,9 @@ log_check() {
     echo ""
 
 } >> "$LOG_FILE" 2>&1
+
+# CRIT-002 FIX: Clear EXIT trap before explicit JSON output to prevent duplicate JSON
+trap - EXIT
 
 # Prepare response (PostToolUse schema: "continue" boolean, not "decision" string)
 if [[ -n "$BLOCKING_ERRORS" ]]; then

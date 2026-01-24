@@ -1,6 +1,7 @@
 #!/bin/bash
 # auto-format-prettier.sh - Auto-format JS/TS files with Prettier after edits
-# VERSION: 2.68.6
+# VERSION: 2.68.9
+# v2.68.9: SEC-102 FIX - Validate FILE_PATH to prevent command injection
 # HOOK: PostToolUse (Edit|Write)
 # Part of Multi-Agent Ralph Loop v2.66.0
 
@@ -34,6 +35,20 @@ if [[ ! -f "$FILE_PATH" ]]; then
     echo '{"continue": true}'
     exit 0
 fi
+
+# SEC-102 FIX: Validate FILE_PATH to prevent command injection
+# Use realpath to canonicalize and reject paths with dangerous characters
+FILE_PATH_REAL=$(realpath -m "$FILE_PATH" 2>/dev/null) || {
+    echo '{"continue": true}'
+    exit 0
+}
+# Reject paths containing shell metacharacters
+if [[ "$FILE_PATH_REAL" =~ [\;\|\&\`\$\(\)\{\}\[\]\<\>] ]]; then
+    echo '{"continue": true}'
+    exit 0
+fi
+# Use canonicalized path
+FILE_PATH="$FILE_PATH_REAL"
 
 # Check if prettier is available
 if ! command -v npx &> /dev/null; then
