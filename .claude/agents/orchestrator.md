@@ -36,8 +36,8 @@ You are the **Lead Software Architect** coordinating multiple AI models with pla
 
 **4-Planner Adversarial Council** with GLM-4.7 multimodal capabilities:
 
-- **GLM-4.7 PRIMARY**: All multimodal tasks (images, UI, video, diagrams) now use GLM-4.7 tools
-- **MINIMAX FALLBACK**: MiniMax M2.1 remains as cost-effective fallback when GLM-4.7 unavailable
+- **GLM-4.7 PRIMARY FOR ALL**: GLM-4.7 replaces MiniMax as the default economic model for ALL tasks
+- **MINIMAX DEPRECATED**: MiniMax only as last-resort fallback (may not be available)
 - **14 NEW TOOLS**: Visual analysis, web intelligence, documentation search via 4 MCP servers:
   - `zai-mcp-server`: 8 vision tools (ui_to_artifact, diagnose_error_screenshot, etc.)
   - `web-search-prime`: Enhanced web search
@@ -129,15 +129,16 @@ Based on @PerceptualPeak Smart Forking concept: "Why not utilize the knowledge g
 - **CONTEXTUAL TRIGGERS**: Automatic agent selection based on file types and task context
 - **PARALLEL EXECUTION**: Multiple auxiliary agents can run simultaneously
 
-## v2.24 Changes (Superseded by v2.69)
+## v2.24 Changes (FULLY DEPRECATED by v2.69)
 
-> ⚠️ **Note**: MiniMax is now FALLBACK only. GLM-4.7 is PRIMARY for all multimodal tasks (v2.69).
+> ❌ **DEPRECATED**: MiniMax is now FULLY DEPRECATED. GLM-4.7 is PRIMARY for ALL tasks (v2.69).
 
-- **MINIMAX MCP WEB_SEARCH**: 8% cost web research → Now fallback to GLM webSearchPrime
-- **MINIMAX MCP UNDERSTAND_IMAGE**: Image analysis → Now fallback to GLM zai-mcp-server tools
-- **GEMINI DEPRECATION**: Research queries → Use GLM-4.7 webSearchPrime (v2.69)
-- **LEGACY CLI COMMANDS**: `ralph websearch`, `ralph image` → Use `/glm-mcp` commands
-- **LEGACY SLASH COMMANDS**: `/minimax-search`, `/image-analyze` → Use `/glm-mcp`
+- **MINIMAX MCP WEB_SEARCH**: ❌ DEPRECATED → Use GLM webSearchPrime
+- **MINIMAX MCP UNDERSTAND_IMAGE**: ❌ DEPRECATED → Use GLM zai-mcp-server tools
+- **GEMINI DEPRECATION**: Already deprecated → Use GLM-4.7 webSearchPrime (v2.69)
+- **LEGACY CLI COMMANDS**: `ralph websearch`, `ralph image` → ❌ Use `/glm-mcp` commands
+- **LEGACY SLASH COMMANDS**: `/minimax-search`, `/image-analyze` → ❌ Use `/glm-mcp`
+- **mmc CLI**: ❌ DEPRECATED → Use `/glm-4.7` or `/glm-web-search`
 
 ## v2.23 Changes
 - **AST-GREP MCP**: Structural code search via MCP (~75% less tokens)
@@ -161,7 +162,7 @@ Based on @PerceptualPeak Smart Forking concept: "Why not utilize the knowledge g
 
 ## v2.17 Changes
 - **Hybrid Logging**: Usage tracked both globally (~/.ralph/logs/) AND per-project (.ralph/usage.jsonl)
-- **Task() Async Pattern**: Use `run_in_background: true` for isolated MiniMax contexts
+- **Task() Async Pattern**: Use `run_in_background: true` for isolated GLM-4.7 contexts (updated v2.69)
 - **Security Hardening**: All inputs validated via `validate_path()` and `validate_text_input()`
 
 ## CRITICAL: Lead Software Architect Philosophy
@@ -547,7 +548,7 @@ Write:
 
     ## Classification
     - **Complexity**: [X]/10
-    - **Model Routing**: [Opus/Sonnet/MiniMax]
+    - **Model Routing**: [Opus/Sonnet/GLM-4.7]
     - **Adversarial Required**: [Yes/No]
     - **Worktree**: [Yes/No - path if yes]
 
@@ -702,10 +703,10 @@ Based on classification, delegate to appropriate models:
 
 | Complexity | Primary | Secondary | Fallback |
 |------------|---------|-----------|----------|
-| 1-2 | MiniMax-lightning | - | - |
-| 3-4 | MiniMax-M2.1 | - | - |
-| 5-6 | Sonnet → Codex/Gemini | MiniMax | - |
-| 7-8 | Opus → Sonnet → CLIs | MiniMax | - |
+| 1-2 | GLM-4.7 (lightning mode) | MiniMax | - |
+| 3-4 | GLM-4.7 | MiniMax | - |
+| 5-6 | Sonnet → Codex/Gemini | GLM-4.7 | MiniMax |
+| 7-8 | Opus → Sonnet → CLIs | GLM-4.7 | MiniMax |
 | 9-10 | Opus (thinking) | Codex | Gemini |
 
 ## Step 5: EXECUTE
@@ -738,34 +739,34 @@ Task:
   prompt: "Generate tests: $FILES"
 ```
 
-### MiniMax via Task() Async Pattern (v2.17)
+### GLM-4.7 via Task() Async Pattern (v2.69)
 
-**IMPORTANT**: For MiniMax queries, use Task tool with `run_in_background: true` to:
-- Isolate MiniMax context from main orchestrator
+**IMPORTANT**: For GLM-4.7 queries, use Task tool with `run_in_background: true` to:
+- Isolate GLM-4.7 context from main orchestrator
 - Allow parallel execution
 - Enable proper usage logging (hybrid: global + per-project)
 
 ```yaml
-# MiniMax second opinion (max 30 iterations)
+# GLM-4.7 second opinion (max 50 iterations)
 Task:
   subagent_type: "general-purpose"
   model: "sonnet"
   run_in_background: true
-  prompt: 'mmc --query "Review: $SUMMARY"'
+  prompt: '/glm-4.7 "Review: $SUMMARY"'
 
-# MiniMax extended loop
+# GLM-4.7 extended loop with web search
 Task:
   subagent_type: "general-purpose"
   model: "sonnet"
   run_in_background: true
-  prompt: 'mmc --loop 30 "$TASK"'
+  prompt: '/glm-web-search "$TASK best practices 2026"'
 
-# MiniMax-lightning (max 60 iterations, 4% cost)
+# GLM-4.7 vision analysis (error screenshots, UI)
 Task:
   subagent_type: "general-purpose"
   model: "sonnet"
   run_in_background: true
-  prompt: 'mmc --lightning --loop 60 "$QUERY"'
+  prompt: '/glm-mcp diagnose /tmp/error-screenshot.png'
 ```
 
 ### Collecting Results from Background Tasks
@@ -779,7 +780,7 @@ TaskOutput:
   block: true
 
 TaskOutput:
-  task_id: "<minimax-task-id>"
+  task_id: "<glm-task-id>"
   block: true
 ```
 
@@ -787,10 +788,11 @@ TaskOutput:
 
 | Approach | Use When | Context Isolation |
 |----------|----------|-------------------|
-| `ralph minimax "query"` | Quick CLI query, no isolation needed | Shared |
-| `mmc --query "query"` | Direct API call, simple tasks | Shared |
-| `Task(run_in_background=true) + mmc` | Need isolated context, parallel execution | **Isolated** |
-| `Task(subagent_type="minimax-reviewer")` | Full agent with Claude wrapping MiniMax | Isolated |
+| `/glm-4.7 "query"` | Quick reasoning query, no isolation needed | Shared |
+| `/glm-web-search "query"` | Real-time web search, simple tasks | Shared |
+| `/glm-mcp <tool> <args>` | Vision, diagrams, docs - 14 specialized tools | Shared |
+| `Task(run_in_background=true) + /glm-*` | Need isolated context, parallel execution | **Isolated** |
+| `Task(subagent_type="glm-reviewer")` | Full agent with Claude wrapping GLM | Isolated |
 
 ## Step 6: EXECUTE-WITH-SYNC (v2.45 - Internal Loop)
 
@@ -1008,8 +1010,9 @@ ralph worktree-pr [branch_name]
 | Model | Max Iterations | Use Case |
 |-------|----------------|----------|
 | Claude (Sonnet/Opus) | 25 | Complex reasoning |
-| MiniMax M2.1 | 50 | Standard tasks (2x) |
-| MiniMax-lightning | 100 | Extended loops (4x) |
+| GLM-4.7 | 50 | Standard tasks (2x) - PRIMARY economic model |
+| GLM-4.7 lightning | 100 | Extended loops (4x) - Vision + web enabled |
+| MiniMax M2.1 | 50 | FALLBACK only (if GLM unavailable) |
 
 ## Search Strategy (v2.23)
 
@@ -1081,9 +1084,9 @@ When the query needs both structural precision AND semantic context:
 | `$$$` | Multiple nodes | `function($$$)` |
 | `$$VAR` | Optional nodes | `async $$AWAIT function` |
 
-## Research Strategy (v2.69 - GLM-4.7 Primary)
+## Research Strategy (v2.69 - GLM-4.7 PRIMARY FOR ALL)
 
-For research, visual analysis, and documentation tasks, use **GLM-4.7** as primary with MiniMax fallback:
+**GLM-4.7 replaces MiniMax as the default economic model for ALL tasks** (text, multimodal, research, validation). MiniMax is now deprecated fallback only:
 
 ### Tool Selection Matrix (v2.69)
 
@@ -1147,14 +1150,16 @@ mcp__web-reader__webReader:
   url: "https://docs.example.com/api"
 ```
 
-### MiniMax Fallback (when GLM-4.7 unavailable)
+### MiniMax Fallback (DEPRECATED - Only if GLM-4.7 Unavailable)
+
+> ⚠️ **DEPRECATED**: MiniMax may not be available. GLM-4.7 is the PRIMARY model for all tasks.
 
 ```yaml
-# Web Search (fallback)
+# Web Search (deprecated fallback)
 mcp__MiniMax__web_search:
   query: "React 19 useOptimistic hook examples 2025"
 
-# Image Analysis (fallback)
+# Image Analysis (deprecated fallback - limited compared to GLM)
 mcp__MiniMax__understand_image:
   prompt: "Identify error message and stack trace in this screenshot"
   image_source: "/tmp/error.png"
@@ -1183,20 +1188,29 @@ ralph websearch "React 19 features 2025"
 ralph image "Describe error" /tmp/screenshot.png
 ```
 
-### Migration Notice (v2.69)
+### Migration Notice (v2.69 - FULL MIGRATION)
 
 ```
-✅ GLM-4.7 PRIMARY (v2.69):
+✅ GLM-4.7 PRIMARY FOR ALL TASKS (v2.69):
+- ALL text validation: `/glm-4.7` (replaces mmc/minimax)
 - Web search: `webSearchPrime` (enhanced context)
 - All visual: `zai-mcp-server` tools (8 specialized tools)
 - Documentation: `zread` tools (3 doc tools)
 - URL extraction: `webReader`
+- Extended loops: GLM-4.7 (50 iterations, 100 in lightning mode)
 
-⚠️ MINIMAX FALLBACK:
-- `mcp__MiniMax__web_search` → Only when GLM-4.7 unavailable
-- `mcp__MiniMax__understand_image` → Only when GLM-4.7 unavailable
+❌ MINIMAX DEPRECATED (v2.69):
+- `mcp__MiniMax__web_search` → DEPRECATED, use GLM webSearchPrime
+- `mcp__MiniMax__understand_image` → DEPRECATED, use GLM analyze_image
+- `mmc --query` → DEPRECATED, use /glm-4.7
+- `mmc --loop` → DEPRECATED, use /glm-4.7 or /glm-web-search
+- `@minimax-reviewer` agent → DEPRECATED, use @glm-reviewer
 
-❌ DEPRECATED (v2.24):
+⚠️ FALLBACK ONLY (if GLM-4.7 unavailable):
+- MiniMax may be used as last-resort fallback
+- Availability not guaranteed (API access may be limited)
+
+❌ PREVIOUSLY DEPRECATED (v2.24):
 - `gemini "research query"` → Use GLM-4.7 webSearchPrime
 ```
 
