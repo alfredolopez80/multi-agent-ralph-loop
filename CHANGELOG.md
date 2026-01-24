@@ -58,6 +58,85 @@ Major statusline upgrade with multi-model adversarial validation and GLM-4.7 eco
 
 **Total MCP Servers:** 26 (4 new from GLM-4.7)
 
+#### DOCS-001: Multi-Model Documentation Update (v2.68.24)
+
+Documentation updated to reflect MiniMax M2.1 and GLM-4.7 integration:
+
+**README.md:**
+- Added "Multi-Model Support" section
+- Updated tech stack with all supported models
+- Added cost optimization strategy table
+- Documented GLM-4.7 MCP servers and capabilities
+
+**AGENTS.md:**
+- Updated to v2.68.24
+- Added "Model Support" section with detailed model descriptions
+- Documented MiniMax M2.1 cost benefits (92% reduction)
+- Documented GLM-4.7 vision and enterprise capabilities
+
+**GitHub Repository:**
+- Description updated with multi-model support details
+- Homepage linked to README.md
+
+#### Documentation Updates
+
+- README.md: Badge updated to v2.68.24, Multi-Model Support section added
+- AGENTS.md: Model Support section added with MiniMax and GLM-4.7 details
+- CLAUDE.md: Version updated to v2.68.24
+
+---
+
+## [2.68.23] - 2026-01-24
+
+### Statusline Ralph Enhancement & GLM-4.7 MCP Integration
+
+Major statusline upgrade with multi-model adversarial validation and GLM-4.7 ecosystem integration.
+
+#### FEAT-001: Statusline Ralph Context Percentage Display (FIXED)
+
+| Component | Before | After |
+|-----------|--------|-------|
+| claude-hud | v0.0.1 (57 lines, basic) | v0.0.6 (11 JS modules, full tracking) |
+| dist/ directory | Incomplete (3 files) | Complete (45 files) |
+| stdin.js | Missing (ERR_MODULE_NOT_FOUND) | Present (2.4K) |
+| Context percentage | Not displayed | ✅ Displaying correctly |
+
+**Statusline Output:**
+```
+⎇ main* ↑2 │ ⚡ 2/3 66% main │ [Unknown | Max] ██████░░░░ 60% | ░░░░░░░░░░ 2% (4h 40m / 5h)
+```
+
+**Files Modified:**
+- `~/.claude/plugins/cache/claude-hud/claude-hud/0.0.6/dist/` (45 files)
+
+#### VALIDATION-001: Multi-Model Adversarial Review (PASSED)
+
+| Model | Task ID | Veredict |
+|-------|---------|----------|
+| Adversarial (ab4e825) | Completed | ✅ PASSED |
+| Codex-CLI (a8e15bb) | Completed | ✅ PASSED |
+| Gemini-CLI (a259dd0) | Completed | ✅ PASSED |
+
+**Consensus:** "NO ISSUES FOUND - STATUSLINE RALPH IS VERIFIED"
+
+#### FEAT-002: GLM-4.7 MCP Ecosystem Integration
+
+| Component | Type | Status | Tools |
+|-----------|------|--------|-------|
+| **zai-mcp-server** | Node.js | ✅ Connected | ui_to_artifact, extract_text_from_screenshot, diagnose_error_screenshot, understand_technical_diagram, analyze_data_visualization, ui_diff_check, image_analysis, video_analysis |
+| **web-search-prime** | HTTP | ✅ Connected | webSearchPrime |
+| **web-reader** | HTTP | ✅ Connected | webReader |
+| **zread** | HTTP | ✅ Connected | search_doc, get_repo_structure, read_file |
+
+**Plugin Installed:**
+- `glm-plan-usage@zai-coding-plugins` - Plan usage monitoring (`/glm-plan-usage:usage-query`)
+
+**Configuration:**
+- Node.js v22.18.0 configured for vision-mcp-server
+- API key configured via ANTHROPIC_AUTH_TOKEN
+
+**Total MCP Servers:** 26 (4 new from GLM-4.7)
+
 #### Documentation Updates
 
 - README.md: Updated MCP server count and capabilities
