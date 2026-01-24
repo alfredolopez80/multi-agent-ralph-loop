@@ -42,6 +42,15 @@ This caused Claude Code errors: `AttributeError: 'list' object has no attribute 
 | GAP-CRIT-002 | Node.js hooks | Files exist but not registered | Documented as "deferred by design" in TECHNICAL_DEBT.md |
 | GAP-CRIT-003 | `plan-state.json` | Inconsistent status fields | Resolved - new plan-state is consistent |
 
+#### HIGH Priority Fixes
+
+| Issue ID | Scope | Problem | Fix |
+|----------|-------|---------|-----|
+| GAP-HIGH-002 | 54 hooks | Stale v2.57.x-v2.66.x versions | Bulk version bump to v2.68.2 |
+| GAP-HIGH-003 | 9 hooks | Missing in project directory | Synced from global ~/.claude/hooks/ |
+| GAP-HIGH-001 | Tests | Missing v2.61-v2.65 test coverage | Documented in TECHNICAL_DEBT.md (P2) |
+| GAP-HIGH-005 | EDD skill | Not implemented | Documented in TECHNICAL_DEBT.md (P3) |
+
 #### Files Updated
 
 | File | Old Version | New Version |
