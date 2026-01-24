@@ -1,16 +1,30 @@
 #!/bin/bash
 # statusline-ralph.sh - Enhanced StatusLine with Git + Ralph Progress
 #
-# VERSION: 2.54.0
+# VERSION: 2.69.0
 #
 # Extends statusline-git.sh with orchestration progress tracking.
 # Reads plan-state.json to show current phase and step completion.
 #
-# Format: ⎇ branch* 🌳worktree │ 📊 3/7 42% │ [claude-hud output]
+# Format: ⎇ branch* │ 📊 3/7 42% │ [claude-hud output with icons]
 #
 # Usage: Called by settings.json statusLine.command
 #
-# Part of Multi-Agent Ralph v2.52
+# Part of Multi-Agent Ralph v2.69
+#
+# v2.69.0 changes:
+# - Show phase_name instead of phase_id to avoid branch name duplication
+# - Add git info duplication detection (avoid claude-hud git:(...) overlap)
+# - Format stats line with icons: 📄 3 files | 📋 7 rules | 🔌 13 MCPs | ⚙️ 6 hooks
+# - macOS-compatible: use sed '$d' instead of head -n -1
+
+# BUG-002 FIX: Define log function (was calling macOS system log command)
+# StatusLine should be silent - log to file only if DEBUG is set
+log() {
+    if [[ -n "${STATUSLINE_DEBUG:-}" ]]; then
+        echo "[statusline] $*" >> "${HOME}/.ralph/logs/statusline.log" 2>/dev/null || true
+    fi
+}
 
 # Colors
 CYAN='\033[0;36m'
@@ -83,13 +97,67 @@ get_git_info() {
 }
 
 # Get Ralph orchestration progress
-# VERSION: 2.54.0 - Fixed to count completed steps correctly
+# VERSION: 2.68.14 - GAP-003 FIX: Use current-project.json to find active project's plan-state
 get_ralph_progress() {
     local cwd="${1:-.}"
-    local plan_state_file="${cwd}/${PLAN_STATE}"
+    local plan_state_file=""
 
-    # Check if plan-state.json exists
-    if [[ ! -f "$plan_state_file" ]]; then
+    # Step 1: Check local plan-state (highest priority)
+    if [[ -f "${cwd}/.claude/plan-state.json" ]]; then
+        plan_state_file="${cwd}/.claude/plan-state.json"
+        log "Found local plan-state at: $plan_state_file"
+    fi
+
+    # Step 2: If not found, check current-project.json for active project path
+    # GAP-003 FIX: current-project.json contains project metadata, NOT plan-state
+    # We need to extract the project path and look for plan-state there
+    if [[ -z "$plan_state_file" ]] && [[ -f "${HOME}/.ralph/metadata/current-project.json" ]]; then
+        local active_project_path
+        active_project_path=$(jq -r '.project.path // ""' "${HOME}/.ralph/metadata/current-project.json" 2>/dev/null || echo "")
+
+        # SEC-002 FIX: Validate path to prevent path traversal attacks
+        if [[ -n "$active_project_path" ]]; then
+            # Reject paths with .. (traversal) or non-absolute paths
+            if [[ "$active_project_path" =~ \.\. ]] || [[ "$active_project_path" != /* ]]; then
+                log "SEC-002: Rejected invalid project path: $active_project_path"
+                active_project_path=""
+            else
+                # Resolve symlinks to prevent symlink attacks
+                active_project_path=$(realpath "$active_project_path" 2>/dev/null || echo "")
+            fi
+        fi
+
+        if [[ -n "$active_project_path" ]] && [[ -f "${active_project_path}/.claude/plan-state.json" ]]; then
+            plan_state_file="${active_project_path}/.claude/plan-state.json"
+            log "Found plan-state via current-project.json at: $plan_state_file"
+        fi
+    fi
+
+    # Step 3: Check active-plan with PROJECT_ID or derived from git
+    if [[ -z "$plan_state_file" ]]; then
+        # First try PROJECT_ID if set
+        if [[ -n "${PROJECT_ID:-}" ]] && [[ -f "${HOME}/.ralph/active-plan/${PROJECT_ID}.json" ]]; then
+            plan_state_file="${HOME}/.ralph/active-plan/${PROJECT_ID}.json"
+            log "Found active-plan for PROJECT_ID: $PROJECT_ID"
+        else
+            # Try to derive project ID from git
+            if git -C "$cwd" rev-parse --is-inside-work-tree &>/dev/null; then
+                local repo_remote
+                repo_remote=$(git -C "$cwd" remote get-url origin 2>/dev/null || echo "")
+                if [[ -n "$repo_remote" ]]; then
+                    local project_id
+                    project_id=$(basename "$repo_remote" .git 2>/dev/null | sed 's|.*/||')
+                    if [[ -f "${HOME}/.ralph/active-plan/${project_id}.json" ]]; then
+                        plan_state_file="${HOME}/.ralph/active-plan/${project_id}.json"
+                        log "Found global plan-state for: $project_id"
+                    fi
+                fi
+            fi
+        fi
+    fi
+
+    # If still not found, return empty
+    if [[ -z "$plan_state_file" ]] || [[ ! -f "$plan_state_file" ]]; then
         return
     fi
 
@@ -219,14 +287,24 @@ get_ralph_progress() {
     esac
 
     # Extract additional plan state fields (v2.54.0)
-    local current_phase active_agent barriers status_details
+    local current_phase phase_name active_agent barriers status_details
     current_phase=$(echo "$plan_state" | jq -r '.current_phase // .loop_state.current_phase // empty' 2>/dev/null)
+
+    # Get phase_name instead of phase_id for better display (v2.69.0 fix)
+    if [[ -n "$current_phase" ]] && [[ "$current_phase" != "null" ]]; then
+        phase_name=$(echo "$plan_state" | jq -r --arg phase "$current_phase" '.phases[] | select(.phase_id == $phase) | .phase_name // empty' 2>/dev/null)
+        # Fallback to phase_id if phase_name not found
+        if [[ -z "$phase_name" ]] || [[ "$phase_name" == "null" ]]; then
+            phase_name="$current_phase"
+        fi
+    fi
+
     active_agent=$(echo "$plan_state" | jq -r '.active_agent // .loop_state.active_agent // empty' 2>/dev/null)
 
     # Build status details with phase, agent, and barriers
     status_details=""
-    if [[ -n "$current_phase" ]] && [[ "$current_phase" != "null" ]]; then
-        status_details="${status_details} ${DIM}${current_phase}${RESET}"
+    if [[ -n "$phase_name" ]] && [[ "$phase_name" != "null" ]]; then
+        status_details="${status_details} ${DIM}${phase_name}${RESET}"
     fi
     if [[ -n "$active_agent" ]] && [[ "$active_agent" != "null" ]]; then
         status_details="${status_details} ${MAGENTA}${active_agent}${RESET}"
@@ -275,10 +353,15 @@ if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
     # Run claude-hud and capture output
     hud_output=$(echo "$stdin_data" | node "${claude_hud_dir}dist/index.js" 2>/dev/null)
 
+    # v2.69.0 FIX: Detect if claude-hud already includes git info to avoid duplication
+    # claude-hud shows "git:(branch*)" in its output, so we skip our git_info
+    hud_has_git=$(echo "$hud_output" | grep -c "git:(" || echo "0")
+
     # Build combined segment
     combined_segment=""
 
-    if [[ -n "$git_info" ]]; then
+    # Only add git_info if claude-hud doesn't already have it
+    if [[ "$hud_has_git" == "0" ]] && [[ -n "$git_info" ]]; then
         combined_segment="${git_info}"
     fi
 
@@ -294,6 +377,39 @@ if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
         # Prepend to first line of hud output
         first_line=$(echo "$hud_output" | head -1)
         rest=$(echo "$hud_output" | tail -n +2)
+
+        # v2.69.0: Format third line (stats) with icons for better readability
+        # Original: "3 CLAUDE.md | 7 rules | 13 MCPs | 6 hooks"
+        # Enhanced: "📁 main* | 📄 3 files | 📋 7 rules | 🔌 13 MCPs | ⚙️ 6 hooks"
+        if [[ -n "$rest" ]]; then
+            # Extract stats from the last line and reformat with icons
+            stats_line=$(echo "$rest" | tail -1)
+
+            # Parse the stats line: "3 CLAUDE.md | 7 rules | 13 MCPs | 6 hooks"
+            # Format with icons: "📄 3 files | 📋 7 rules | 🔌 13 MCPs | ⚙️ 6 hooks"
+            if echo "$stats_line" | grep -q "CLAUDE.md"; then
+                # Extract numbers using awk for reliable parsing
+                num_files=$(echo "$stats_line" | awk '{print $1}')
+                num_rules=$(echo "$stats_line" | awk -F'|' '{print $2}' | awk '{print $1}')
+                num_mcps=$(echo "$stats_line" | awk -F'|' '{print $3}' | awk '{print $1}')
+                num_hooks=$(echo "$stats_line" | awk -F'|' '{print $4}' | awk '{print $1}')
+
+                formatted_stats="📄 ${num_files} files | 📋 ${num_rules} rules | 🔌 ${num_mcps} MCPs | ⚙️ ${num_hooks} hooks"
+
+                # Replace the last line with formatted version
+                # macOS-compatible: use sed '$d' instead of head -n -1
+                if [[ -n "$rest" ]]; then
+                    rest=$(echo "$rest" | sed '$d')
+                    if [[ -n "$rest" ]]; then
+                        rest="${rest}"$'\n'"${formatted_stats}"
+                    else
+                        rest="${formatted_stats}"
+                    fi
+                else
+                    rest="${formatted_stats}"
+                fi
+            fi
+        fi
 
         # Use non-breaking spaces for proper display
         segment="${combined_segment} │ "
