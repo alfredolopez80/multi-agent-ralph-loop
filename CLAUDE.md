@@ -1,10 +1,10 @@
-# Multi-Agent Ralph v2.69
+# Multi-Agent Ralph v2.69.0
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, **GLM-4.7 Unified MCP Access**, and **full CLI implementation**.
+**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, **GLM-4.7 PRIMARY**, and **full CLI implementation**.
 
-> **v2.69**: GLM-4.7 now 4th planner in Adversarial Council. New unified `/glm-mcp` skill for 14 MCP tools (vision, web search, repo knowledge). Standalone `/glm-4.7` and `/glm-web-search` skills. Coding API discovery: uses plan quota, not paas balance. Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) and [claude-code-docs](https://github.com/ericbuess/claude-code-docs).
+> **v2.69.0**: GLM-4.7 is now **PRIMARY** for complexity 1-4 tasks. MiniMax fully **DEPRECATED** (optional fallback). `mmc` and `ralph` CLI updated for GLM-4.7. 14 MCP tools available. Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) and [claude-code-docs](https://github.com/ericbuess/claude-code-docs).
 
 ---
 
@@ -220,7 +220,7 @@ SMART MEMORY SEARCH (PARALLEL)
 | Tier | Cost | Features |
 |------|------|----------|
 | `--tier free` | $0.00 | GitHub API + local scoring |
-| `--tier economic` | ~$0.30 | + OpenSSF + MiniMax (DEFAULT) |
+| `--tier economic` | ~$0.30 | + OpenSSF + GLM-4.7 (DEFAULT) |
 | `--tier full` | ~$0.95 | + Claude + Codex adversarial (with fallback) |
 
 **All Scripts (v2.55)**:
@@ -346,8 +346,8 @@ ralph handoff history
 | `test-architect` | sonnet | testing, test-generation, coverage-analysis |
 | `refactorer` | sonnet | refactoring, pattern-application, code-improvement |
 | `frontend-reviewer` | sonnet | frontend, ui-review, accessibility |
-| `docs-writer` | minimax | documentation, readme, api-docs |
-| `minimax-reviewer` | minimax | validation, quick-review, second-opinion |
+| `docs-writer` | sonnet | documentation, readme, api-docs |
+| `glm-reviewer` | GLM-4.7 | validation, vision, web search (PRIMARY) |
 | `repository-learner` | sonnet | learning, pattern-extraction, rule-generation |
 | `repo-curator` | sonnet | curation, scoring, discovery |
 
@@ -589,7 +589,7 @@ Stage 3: CONSISTENCY -> Linting (ADVISORY - not blocking)
 | Route | Primary | Secondary | Max Iter |
 |-------|---------|-----------|----------|
 | FAST_PATH | sonnet | - | 3 |
-| STANDARD (1-4) | minimax-m2.1 | sonnet | 25 |
+| STANDARD (1-4) | GLM-4.7 | sonnet | 25 |
 | STANDARD (5-6) | sonnet | opus | 25 |
 | STANDARD (7-10) | opus | sonnet | 25 |
 
@@ -729,16 +729,16 @@ ralph handoff create      # Create handoff
 | `@test-architect` | sonnet | Tests |
 | `@refactorer` | sonnet | Refactoring |
 | `@frontend-reviewer` | sonnet | UI/UX |
-| `@docs-writer` | minimax | Docs |
-| `@minimax-reviewer` | minimax | Second opinion |
+| `@docs-writer` | sonnet | Docs |
+| `@glm-reviewer` | GLM-4.7 | Vision, web search, validation |
 | `@repository-learner` | sonnet | Learn best practices from repos |
 | `@repo-curator` | sonnet | Curate quality repos for learning |
 
 ---
 
-## Hooks (67 files, 80 registrations) - v2.68.24
+## Hooks (67 files, 80 registrations) - v2.69.0
 
-> **v2.68.24**: Statusline Ralph validated via multi-model adversarial review. claude-hud upgraded to v0.0.6 with complete dist/ directory (45 files). GLM-4.7 MCP ecosystem integrated (4 new servers + 1 plugin). Total MCP servers: 26.
+> **v2.69.0**: GLM-4.7 now PRIMARY for complexity 1-4 tasks. MiniMax deprecated. `mmc` and `ralph` CLI updated. 14 GLM tools. 26 MCP servers total.
 
 | Event Type | Purpose |
 |------------|---------|

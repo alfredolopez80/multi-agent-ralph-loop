@@ -2,7 +2,7 @@
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-![Version](https://img.shields.io/badge/v2.69-blue) ![Tests](https://img.shields.io/badge/903_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange)
+![Version](https://img.shields.io/badge/v2.69.0-blue) ![Tests](https://img.shields.io/badge/903_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange) ![GLM-4.7](https://img.shields.io/badge/GLM--4.7-PRIMARY-green)
 
 ---
 
@@ -40,22 +40,43 @@
 
 ## Overview
 
-Ralph coordinates **multiple AI models** (Claude Opus/Sonnet/Haiku, MiniMax M2.1, Codex GPT-5.2, Gemini 2.5 Pro, GLM-4.7) to produce validated code. Rather than trust one model's output, it runs them in parallel with quality gates.
+Ralph coordinates **multiple AI models** to produce validated code. Rather than trust one model's output, it runs them in parallel with quality gates.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     MULTI-MODEL HIERARCHY                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   PRIMARY (v2.69.0)                                             │
+│   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│   │  Claude     │  │   GLM-4.7   │  │   Codex     │            │
+│   │  Opus/Son   │  │   PRIMARY   │  │   GPT-5.2   │            │
+│   │  Complex    │  │   Economic  │  │   Analysis  │            │
+│   └─────────────┘  └─────────────┘  └─────────────┘            │
+│                                                                 │
+│   FALLBACK (Optional)                                           │
+│   ┌─────────────┐  ┌─────────────┐                              │
+│   │  MiniMax    │  │   Gemini    │                              │
+│   │  DEPRECATED │  │   2.5 Pro   │                              │
+│   └─────────────┘  └─────────────┘                              │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 The core idea: **execute → validate → iterate** until the code passes.
 
 ### What It Does
 
-- **Multi-model orchestration** — Claude, Codex, Gemini, MiniMax, **GLM-4.7** working together
-- **4-Model Adversarial Council** — Codex + Claude + Gemini + **GLM-4.7** for comprehensive review
+- **Multi-model orchestration** — Claude, GLM-4.7, Codex, Gemini working together
+- **4-Model Adversarial Council** — Codex + Claude + Gemini + **GLM-4.7** for review
+- **GLM-4.7 PRIMARY** — Economic model (~15% cost) for complexity 1-4 tasks
 - **Quality gates** — 9 languages supported (TS, Python, Go, Rust, Solidity, etc.)
 - **Memory system** — Semantic, episodic, procedural memory with 30-day TTL
-- **67 hooks** (66 bash + 1 python) — Automated validation, checkpoints, context preservation (80 event registrations)
-- **8 core skills** — Specialized capabilities for common tasks (39 command shortcuts)
-- **Dynamic contexts** — Switch between dev, review, research, debug modes
-- **Statusline Ralph** — Real-time context tracking with claude-hud v0.0.6
-- **GLM-4.7 Coding API** — Direct access via `/glm-4.7` skill with reasoning model support
-- **GLM Web Search** — Real-time web search via `/glm-web-search` skill
+- **67 hooks** (66 bash + 1 python) — 80 event registrations
+- **8 core skills** — 39 command shortcuts
+- **Dynamic contexts** — dev, review, research, debug modes
+- **Statusline Ralph** — Real-time tracking with claude-hud v0.0.6
+- **GLM Web Search** — Real-time search via `/glm-web-search`
 
 See [CHANGELOG.md](CHANGELOG.md) for version history
 
@@ -98,12 +119,13 @@ Based on [sec-context](https://github.com/Arcanum-Sec/sec-context):
 ## Tech Stack
 
 - **Claude Code CLI** — Base orchestration
-- **Multi-Model AI** — Claude Opus/Sonnet/Haiku, MiniMax M2.1, Codex GPT-5.2, Gemini 2.5 Pro
-- **GLM-4.7 MCP Ecosystem** — Vision, image analysis, web search, repository knowledge
-- **Bash/zsh** — 66 bash hooks + 1 Python hook for automation
+- **GLM-4.7 PRIMARY** — Economic model for complexity 1-4, web search, vision
+- **Multi-Model AI** — Claude Opus/Sonnet, Codex GPT-5.2, Gemini 2.5 Pro
+- **MiniMax** — DEPRECATED (optional fallback only)
+- **Bash/zsh** — 66 bash hooks + 1 Python hook
 - **Python 3.11+** — Utility scripts
 - **JSON** — Configuration, memory storage
-- **26 MCP servers** — Context7, Playwright, GLM-4.7 (4 new), and more
+- **26 MCP servers** — GLM-4.7 (4), Context7, Playwright, etc.
 
 ---
 
@@ -310,12 +332,27 @@ multi-agent-ralph-loop/
 | **Information Density** | CONSTANT / LINEAR / QUADRATIC | How answer scales with input |
 | **Context Requirement** | FITS / CHUNKED / RECURSIVE | Whether decomposition needed |
 
-#### Workflow Routing
+#### Workflow Routing (v2.69.0)
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│                    MODEL ROUTING v2.69.0                        │
+├────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Complexity 1-2  ──►  GLM-4.7 (lightning)  ──►  3 iterations   │
+│  Complexity 3-4  ──►  GLM-4.7              ──►  25 iterations  │
+│  Complexity 5-6  ──►  Sonnet → Codex       ──►  25 iterations  │
+│  Complexity 7-10 ──►  Opus → Sonnet        ──►  25 iterations  │
+│                                                                 │
+│  FALLBACK: MiniMax (if GLM unavailable)                        │
+│                                                                 │
+└────────────────────────────────────────────────────────────────┘
+```
 
 | Density | Context | Complexity | Route | Model | Max Iter |
 |---------|---------|------------|-------|-------|----------|
-| CONSTANT | FITS | 1-3 | **FAST_PATH** | sonnet | 3 |
-| CONSTANT | FITS | 4-10 | STANDARD | minimax-m2.1 | 25 |
+| CONSTANT | FITS | 1-3 | **FAST_PATH** | GLM-4.7 | 3 |
+| CONSTANT | FITS | 4-10 | STANDARD | GLM-4.7 → sonnet | 25 |
 | LINEAR | CHUNKED | ANY | PARALLEL_CHUNKS | sonnet | 15/chunk |
 | QUADRATIC | ANY | ANY | RECURSIVE_DECOMPOSE | opus | 15/sub |
 
@@ -675,77 +712,67 @@ Ralph supports **multiple AI models** for optimal cost/performance trade-offs. E
 
 ### Supported Models
 
-| Model | Provider | Relative Cost | Use Case | Context |
-|-------|----------|---------------|----------|---------|
-| **Claude Opus** | Anthropic | 15x | Complex reasoning, security audits, architecture design | 200K tokens |
-| **Claude Sonnet** | Anthropic | 5x | Standard tasks, implementation, code review | 200K tokens |
-| **Claude Haiku** | Anthropic | 1x | Fast simple tasks, quick iterations | 200K tokens |
-| **MiniMax M2.1** | MiniMax | **0.08x** | Validation, second opinion, extended loops | Large |
-| **Codex GPT-5.2** | OpenAI | Variable | Code generation, refactoring, deep analysis | Large |
-| **Gemini 2.5 Pro** | Google | Variable | Cross-validation, web search grounding, codebase analysis | 1M tokens |
-| **GLM-4.7** | Z.AI | **~0.15x** | Reasoning review, web search, Chinese language | Large |
+| Model | Provider | Relative Cost | Use Case | Status |
+|-------|----------|---------------|----------|--------|
+| **Claude Opus** | Anthropic | 15x | Complex reasoning, security, architecture | PRIMARY |
+| **Claude Sonnet** | Anthropic | 5x | Standard tasks, implementation, review | PRIMARY |
+| **GLM-4.7** | Z.AI | **~0.15x** | Complexity 1-4, web search, vision | **PRIMARY** |
+| **Codex GPT-5.2** | OpenAI | Variable | Code generation, deep analysis | PRIMARY |
+| **Gemini 2.5 Pro** | Google | Variable | Cross-validation, 1M context | SECONDARY |
+| **MiniMax M2.1** | MiniMax | 0.08x | Optional fallback | **DEPRECATED** |
 
-### MiniMax M2.1 - Cost-Effective Validation
+### GLM-4.7 - PRIMARY Economic Model (v2.69.0)
 
-**92% cost reduction** compared to Claude Sonnet while maintaining high quality.
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    GLM-4.7 CAPABILITIES                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  VISION (8 tools)           SEARCH (2 tools)                │
+│  ├─ ui_to_artifact          ├─ webSearchPrime               │
+│  ├─ extract_text_from_ss    └─ webReader                    │
+│  ├─ diagnose_error_ss                                       │
+│  ├─ understand_diagram      DOCS (3 tools)                  │
+│  ├─ analyze_data_viz        ├─ search_doc                   │
+│  ├─ ui_diff_check           ├─ read_file                    │
+│  ├─ analyze_image           └─ get_repo_structure           │
+│  └─ analyze_video                                           │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
 
 **Use Cases**:
-- Extended Ralph Loop iterations (up to 100 vs 25 with Claude)
-- Validation and quality gates
-- Second opinion reviews
-- Rapid prototyping and batch operations
+- Complexity 1-4 tasks (economic primary)
+- Adversarial Council (4th planner)
+- Web search validation
+- Vision/OCR analysis
+- Extended loops (50 iterations)
 
 **Usage**:
 ```bash
-# Automatic routing for validation
-/loop "validate all type errors"  # Uses MiniMax for cost efficiency
-
-# Manual invocation
-/minimax-review "review this code for potential issues"
-```
-
-### GLM-4.7 - Reasoning & Cost-Effective Review (v2.69)
-
-**Integrated via Coding API** (`/api/coding/paas/v4`) which uses plan quota instead of paas balance.
-
-#### Standalone Skills
-
-| Skill | Purpose | Usage |
-|-------|---------|-------|
-| `/glm-4.7` | Direct GLM-4.7 queries | Code review, analysis, second opinion |
-| `/glm-web-search` | Web search with GLM | Real-time information retrieval |
-
-**Skill Examples**:
-```bash
 # Direct query
-/glm-4.7 "Review this authentication code for security"
-
-# Code file review
-~/.claude/skills/glm-4.7/glm-query.sh --code src/auth.ts "Find vulnerabilities"
+/glm-4.7 "Review this authentication code"
 
 # Web search
 /glm-web-search "TypeScript best practices 2026"
 
-# Custom system prompt
-~/.claude/skills/glm-4.7/glm-query.sh --system "You are a security auditor" "Audit this"
+# Via mmc CLI
+mmc --query "Analyze this code"
+mmc --web-search "Latest security patterns"
 ```
 
-#### GLM Response Handling
+### MiniMax M2.1 - DEPRECATED (v2.69.0)
 
-GLM-4.7 is a **reasoning model** - responses may be in:
-- `choices[0].message.content` (standard responses)
-- `choices[0].message.reasoning_content` (reasoning chain)
+> ⚠️ **DEPRECATED**: MiniMax is now optional fallback only. GLM-4.7 is PRIMARY.
 
-Both are automatically extracted by the skills and hooks.
+**Migration**:
+| Old Command | New Command |
+|-------------|-------------|
+| `mmc --query` | `/glm-4.7` or `mmc --query` (auto-routes) |
+| `@minimax-reviewer` | `@glm-reviewer` |
+| `/minimax-review` | `/glm-4.7` |
 
-#### MCP Servers (4)
-
-| Server | Tools | Capabilities |
-|--------|-------|--------------|
-| **zai-mcp-server** | 9 vision tools | UI testing, screenshot debugging, diagram understanding |
-| **web-search-prime** | webSearchPrime | Real-time web search |
-| **web-reader** | webReader | Web content extraction |
-| **zread** | search_doc, read_file | Repository knowledge access |
+MiniMax remains available as fallback when GLM-4.7 is unavailable, but may be removed in future versions.
 
 ### Multi-Model Adversarial Validation (4 Planners)
 
@@ -1150,13 +1177,13 @@ EXECUTE → VALIDATE → Quality Passed?
 
 `VERIFIED_DONE` = plan approved + MUST_HAVE answered + classified + implemented + gates passed + retrospective done
 
-### Iteration Limits
+### Iteration Limits (v2.69.0)
 
-| Model | Max Iterations | Use Case |
-|-------|----------------|----------|
-| Claude (Sonnet/Opus) | **25** | Complex reasoning |
-| MiniMax M2.1 | **50** | Standard (2x) |
-| MiniMax-lightning | **100** | Extended (4x) |
+| Model | Max Iterations | Use Case | Status |
+|-------|----------------|----------|--------|
+| Claude (Sonnet/Opus) | **25** | Complex reasoning | PRIMARY |
+| GLM-4.7 | **50** | Economic tasks | **PRIMARY** |
+| MiniMax M2.1 | 30 | Fallback only | DEPRECATED |
 
 ---
 
