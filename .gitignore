@@ -234,3 +234,17 @@ backend/hypersig_api/
 
 # Wildcard CLAUDE.md in subdirectories (use explicit paths instead)
 **/CLAUDE.md
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TEMPORARY AND ARTIFACT DIRECTORIES (v2.69.0)
+# ═══════════════════════════════════════════════════════════════════════════════
+# Path expansion artifacts
+~/
+~
+
+# Temporary review directories
+tmp-review/
+tmp-*/
+
+# Empty directories that shouldn't exist
+backend/
