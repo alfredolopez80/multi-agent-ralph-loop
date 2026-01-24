@@ -48,8 +48,8 @@ The core idea: **execute → validate → iterate** until the code passes.
 - **Multi-model orchestration** — Claude, Codex, Gemini, MiniMax working together
 - **Quality gates** — 9 languages supported (TS, Python, Go, Rust, Solidity, etc.)
 - **Memory system** — Semantic, episodic, procedural memory with 30-day TTL
-- **66 hooks** — Automated validation, checkpoints, context preservation
-- **266+ skills** — Specialized capabilities for common tasks
+- **67 hooks** (66 bash + 1 python) — Automated validation, checkpoints, context preservation (80 event registrations)
+- **268+ skills** — Specialized capabilities for common tasks (39 command shortcuts)
 - **Dynamic contexts** — Switch between dev, review, research, debug modes
 
 See [CHANGELOG.md](CHANGELOG.md) for version history
@@ -92,7 +92,7 @@ Based on [sec-context](https://github.com/Arcanum-Sec/sec-context):
 ## Tech Stack
 
 - **Claude Code CLI** — Base orchestration
-- **Bash/zsh** — 66 hooks for automation
+- **Bash/zsh** — 66 bash hooks + 1 Python hook for automation
 - **Python 3.11+** — Utility scripts
 - **JSON** — Configuration, memory storage
 - **MCP servers** — Context7, Playwright, etc.
@@ -1200,16 +1200,18 @@ TaskUpdate:
 
 ## Claude Code Skills Ecosystem
 
-### Available Skills (266+)
+### Available Skills (268+)
 
 | Skill Category | Count | Purpose |
 |----------------|-------|---------|
-| Marketing | 140+ | Marketing strategies, content ideas |
+| Marketing | 1 skill (565 lines) | Comprehensive marketing strategies, content ideas |
 | Documentation | 50+ | README generation, API docs |
 | React | 40+ | Best practices from Vercel |
 | Security | 25+ | Security patterns, validation |
 | Testing | 20+ | Test patterns, coverage |
 | Architecture | 15+ | Design patterns, clean code |
+
+**Note**: The marketing-ideas skill contains 565 lines of comprehensive strategies, not 140 separate items. The 268+ count represents individual skill directories.
 
 ### Skill Usage
 
