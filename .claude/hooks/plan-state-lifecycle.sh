@@ -1,6 +1,7 @@
 #!/bin/bash
 # plan-state-lifecycle.sh - Manage plan-state lifecycle
-# VERSION: 2.68.2
+# VERSION: 2.68.11
+# v2.68.11: SEC-111 FIX - Input length validation to prevent DoS
 # v2.68.2: FIX CRIT-008 - Clear EXIT trap before explicit JSON output
 #
 # Purpose: Auto-archive stale plans and start fresh for new tasks
@@ -101,6 +102,13 @@ INPUT=$(cat)
 
 # Get user prompt
 USER_PROMPT=$(echo "$INPUT" | jq -r '.userPromptContent // ""' 2>/dev/null || echo "")
+
+# SEC-111: Input length validation to prevent DoS from large prompts
+MAX_INPUT_LEN=100000
+if [[ ${#USER_PROMPT} -gt $MAX_INPUT_LEN ]]; then
+    log "WARNING: User prompt exceeds maximum length (${#USER_PROMPT} > $MAX_INPUT_LEN chars). Truncating."
+    USER_PROMPT="${USER_PROMPT:0:$MAX_INPUT_LEN}"
+fi
 
 # Check if plan-state exists
 if [[ ! -f "$PLAN_STATE" ]]; then

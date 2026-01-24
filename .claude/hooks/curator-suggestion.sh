@@ -6,7 +6,8 @@
 # Checks if user mentions learning patterns, best practices, or similar
 # and if the curator corpus is empty, suggests running /curator.
 #
-# VERSION: 2.68.2
+# VERSION: 2.68.11
+# v2.68.11: SEC-111 FIX - Input length validation to prevent DoS
 # v2.68.2: FIX CRIT-010 - Correct UserPromptSubmit JSON format (was using PostToolUse format)
 # SECURITY: SEC-006 compliant with ERR trap for guaranteed JSON output
 
@@ -23,6 +24,15 @@ trap 'output_json' ERR EXIT
 # Parse input
 INPUT=$(cat)
 USER_PROMPT=$(echo "$INPUT" | jq -r '.user_prompt // ""' 2>/dev/null || echo "")
+
+# SEC-111: Input length validation to prevent DoS from large prompts
+MAX_INPUT_LEN=100000
+if [[ ${#USER_PROMPT} -gt $MAX_INPUT_LEN ]]; then
+    trap - EXIT
+    echo '{}'
+    exit 0
+fi
+
 USER_PROMPT_LOWER=$(echo "$USER_PROMPT" | tr '[:upper:]' '[:lower:]')
 
 # Keywords that suggest the user wants to learn from best practices

@@ -211,29 +211,54 @@ redact_sensitive() {
 
 ---
 
-### SEC-108, SEC-109, SEC-111, SEC-116: Remaining Medium/Low Security Issues (P3)
+### SEC-109: Missing Error Traps (FALSE POSITIVE)
 
 **Created**: 2026-01-24 (v2.68.9 security audit)
-**Updated**: 2026-01-24 (v2.68.10 - SEC-110 FIXED, SEC-112/114/115 are FALSE POSITIVES)
+**Updated**: 2026-01-24 (v2.68.11 - Verified as FALSE POSITIVE)
+**Status**: FALSE POSITIVE
+
+**Analysis**:
+All 10 identified hooks were verified:
+- 5 SessionStart hooks: Don't require JSON output per v2.62.3 spec
+- 3 UserPromptSubmit hooks: Already have proper error traps
+- 2 utility scripts: Not registered hooks (plan-state-init.sh, semantic-write-helper.sh)
+
+---
+
+### SEC-111: Input Length Validation (DONE)
+
+**Created**: 2026-01-24 (v2.68.9 security audit)
+**Completed**: 2026-01-24 (v2.68.11 adversarial validation)
+**Status**: DONE
+
+**Solution**: Added MAX_INPUT_LEN=100000 validation to 3 hooks:
+- `curator-suggestion.sh` - Early exit if prompt too long
+- `memory-write-trigger.sh` - Early exit if prompt too long
+- `plan-state-lifecycle.sh` - Truncates long prompts with warning
+
+---
+
+### SEC-108, SEC-116: Remaining Low Priority Issues (P3)
+
+**Created**: 2026-01-24 (v2.68.9 security audit)
+**Updated**: 2026-01-24 (v2.68.11 - SEC-109/111 resolved)
 **Status**: Open - Low Priority
-**Effort**: Low (2-3 hours total)
+**Effort**: Low (1-2 hours total)
 
 | ID | Issue | Impact | Status |
 |----|-------|--------|--------|
 | SEC-108 | Unquoted variables in bash conditions | Word splitting | Cosmetic (all numeric) |
-| SEC-109 | Missing error trap in 10 hooks | Silent failures | To be added |
-| SEC-111 | No input length validation in 3 hooks | Resource exhaustion | To be added |
-| SEC-116 | Missing umask 077 in 30 hooks | Permission issues | To be added |
+| SEC-116 | Missing umask 077 in 30 hooks | Permission issues | Nice to have |
 
-**FALSE POSITIVES (verified in v2.68.10)**:
+**FALSE POSITIVES (verified)**:
+- SEC-109: All hooks that need traps have them (SessionStart doesn't need JSON)
 - SEC-112: All hooks use `mktemp` correctly with random suffixes
 - SEC-113: jq handles content-type properly
 - SEC-114: All loops have proper bounds (50-iter limit)
 - SEC-115: No dangerous glob patterns found
 
 **When to Fix**:
-- SEC-109: Add error traps during next hook update session
-- Others: During dedicated security hardening sprint
+- During dedicated security hardening sprint (cosmetic only)
 
 ---
 
