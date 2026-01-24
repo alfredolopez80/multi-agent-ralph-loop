@@ -8,7 +8,7 @@
 # 2. Converting them to procedural rules
 # 3. Updating ~/.ralph/procedural/rules.json automatically
 #
-# VERSION: 2.68.2
+# VERSION: 2.68.19
 # CRITICAL: Closes GAP-001 - Automatic episodic→procedural conversion
 
 set -euo pipefail
@@ -161,7 +161,7 @@ auto_convert() {
         fi
 
         if process_episode "$episode_file" >> "$temp_rules_file"; then
-            ((new_rules++))
+            new_rules=$((new_rules + 1))
             touch "$PROCESSED_DIR/$episode_id"
         fi
 

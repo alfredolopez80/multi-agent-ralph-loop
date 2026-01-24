@@ -1,6 +1,6 @@
 #!/bin/bash
 # continuous-learning.sh - Extract reusable patterns from session at end
-# VERSION: 2.68.2
+# VERSION: 2.68.20
 # Hook: Stop
 # Part of Multi-Agent Ralph Loop v2.68.2
 #
@@ -25,6 +25,9 @@ mkdir -p "$LEARNED_DIR"
 
 # Get session transcript path if available
 SESSION_ID="${CLAUDE_SESSION_ID:-unknown}"
+# SEC-029: Sanitize session_id to prevent path traversal
+SESSION_ID=$(echo "$SESSION_ID" | tr -cd 'a-zA-Z0-9_-' | head -c 64)
+[[ -z "$SESSION_ID" ]] && SESSION_ID="unknown"
 TRANSCRIPT="${HOME}/.claude/projects/${CLAUDE_PROJECT_ID:-default}/${SESSION_ID}.jsonl"
 
 # Skip if transcript doesn't exist or is too short

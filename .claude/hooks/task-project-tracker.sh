@@ -1,6 +1,6 @@
 #!/bin/bash
 # task-project-tracker.sh - Track project metadata for all tasks
-# VERSION: 2.68.6
+# VERSION: 2.68.20
 #
 # Purpose: Add project metadata to every task created, enabling
 #          multi-project tracking and claude-task-viewer integration.
@@ -17,6 +17,9 @@
 #   - {"continue": true, "systemMessage": "..."}: Continue with feedback
 
 set -euo pipefail
+
+# SEC-004: Restrictive umask for secure temp file creation
+umask 077
 
 # SEC-033: Guaranteed JSON output on any error
 output_json() {
@@ -155,7 +158,7 @@ update_task_with_project() {
     mv "$temp_file" "$task_file"
     chmod 600 "$task_file"
 
-    log "Updated task with project: $(jq -r '.project.repo // "unknown"' <<< "$project_json")"
+    log "Updated task with project: $(jq -r '.repo // "unknown"' <<< "$project_json")"
 }
 
 # Read stdin to get tool info
@@ -180,6 +183,9 @@ esac
 
 # Get session ID
 SESSION_ID=$(get_session_id)
+# SEC-029: Sanitize session_id to prevent path traversal
+SESSION_ID=$(echo "$SESSION_ID" | tr -cd 'a-zA-Z0-9_-' | head -c 64)
+[[ -z "$SESSION_ID" ]] && SESSION_ID="ralph-$(date +%Y%m%d)-$$"
 SESSION_TASKS_DIR="${CLAUDE_TASKS_DIR}/${SESSION_ID}"
 
 if [[ ! -d "$SESSION_TASKS_DIR" ]]; then

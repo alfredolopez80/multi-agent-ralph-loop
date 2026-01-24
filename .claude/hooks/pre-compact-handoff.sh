@@ -21,7 +21,7 @@
 #
 # Part of Ralph v2.44 Context Engineering - GitHub #15021 Workaround
 
-# VERSION: 2.68.8
+# VERSION: 2.68.20
 # v2.68.8: SEC-054 - Fixed PreCompact JSON format (continue:true, not decision:allow)
 set -euo pipefail
 
@@ -73,6 +73,9 @@ INPUT=$(cat)
 
 # Parse input JSON
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"' 2>/dev/null || echo "unknown")
+# SEC-029: Sanitize session_id to prevent path traversal
+SESSION_ID=$(echo "$SESSION_ID" | tr -cd 'a-zA-Z0-9_-' | head -c 64)
+[[ -z "$SESSION_ID" ]] && SESSION_ID="unknown"
 TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path // ""' 2>/dev/null || echo "")
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 
