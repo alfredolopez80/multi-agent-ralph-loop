@@ -1,12 +1,12 @@
-# Multi-Agent Ralph Wiggum - Agents Reference v2.68.24
+# Multi-Agent Ralph Wiggum - Agents Reference v2.69
 
 ## Overview
 
-Ralph orchestrates **33 specialized agents** across different domains, now with **multi-model support** including Claude (Opus/Sonnet/Haiku), MiniMax M2.1 (cost-effective), Codex GPT-5.2, Gemini 2.5 Pro, and GLM-4.7 (vision & enterprise capabilities).
+Ralph orchestrates **33 specialized agents** across different domains, now with **multi-model support** including Claude (Opus/Sonnet/Haiku), MiniMax M2.1 (cost-effective), Codex GPT-5.2, Gemini 2.5 Pro, and GLM-4.7 (reasoning & web search).
 
-> **v2.68.24 Update**: Statusline Ralph enhanced with claude-hud v0.0.6, multi-model adversarial validation (Adversarial + Codex-CLI + Gemini-CLI), and GLM-4.7 MCP ecosystem integration (4 new servers + 1 plugin). MiniMax M2.1 and GLM-4.7 are now major components of the multi-agent orchestration system.
+> **v2.69 Update**: GLM-4.7 now integrated as **4th planner** in Adversarial Council via Coding API. New standalone skills `/glm-4.7` and `/glm-web-search` for direct model access. MCP endpoints require paas balance; Coding API uses plan quota (key discovery). adversarial_council.py updated to v2.68.26 with GLM support.
 
-## Model Support (v2.68.24) - NEW
+## Model Support (v2.69) - UPDATED
 
 Ralph now supports **multiple AI models** for optimal cost/performance trade-offs:
 
@@ -18,7 +18,7 @@ Ralph now supports **multiple AI models** for optimal cost/performance trade-off
 | **MiniMax M2.1** | MiniMax | **0.08x** | Validation, second opinion, extended loops | Large |
 | **Codex GPT-5.2** | OpenAI | Variable | Code generation, refactoring, deep analysis | Large |
 | **Gemini 2.5 Pro** | Google | Variable | Cross-validation, web search grounding, codebase analysis | 1M tokens |
-| **GLM-4.7** | Z.AI | Variable | Vision, image analysis, video processing, Chinese language support | Large |
+| **GLM-4.7** | Z.AI | **~0.15x** | Reasoning review, web search, code analysis | Large |
 
 ### MiniMax M2.1 Integration
 
@@ -42,58 +42,85 @@ Ralph now supports **multiple AI models** for optimal cost/performance trade-off
 /minimax-review "review this code for potential issues"
 ```
 
-### GLM-4.7 Integration (v2.68.24) - NEW
+### GLM-4.7 Integration (v2.69) - UPDATED
 
-**Purpose**: Enterprise-grade vision, image analysis, and Chinese language support.
+**Purpose**: Cost-effective reasoning review, web search, and adversarial validation.
 
-**MCP Servers Installed**:
-| Server | Tools | Use Case |
-|--------|-------|----------|
-| **zai-mcp-server** | ui_to_artifact, extract_text_from_screenshot, diagnose_error_screenshot, understand_technical_diagram, analyze_data_visualization, ui_diff_check, image_analysis, video_analysis | Screenshot debugging, diagram understanding, data viz analysis, UI testing |
-| **web-search-prime** | webSearchPrime | Advanced web search with real-time data |
-| **web-reader** | webReader | Web content extraction to markdown |
-| **zread** | search_doc, get_repo_structure, read_file | Repository knowledge access |
+**Key Discovery**: MCP endpoints (`/api/mcp/...`) require paas balance, but **Coding API** (`/api/coding/paas/v4`) uses plan quota. All GLM integrations now use Coding API.
+
+#### Standalone Skills (NEW)
+
+| Skill | Script | Purpose |
+|-------|--------|---------|
+| `/glm-4.7` | `~/.claude/skills/glm-4.7/glm-query.sh` | Direct GLM-4.7 queries |
+| `/glm-web-search` | `~/.claude/skills/glm-web-search/glm-web-search.sh` | Web search with GLM |
 
 **Usage**:
 ```bash
-# Image analysis
-mcp__nanobanana__generate_image "create a diagram showing..."
+# Direct code review
+/glm-4.7 "Review this authentication code for security vulnerabilities"
+
+# With file content
+~/.claude/skills/glm-4.7/glm-query.sh --code src/auth.ts "Find issues"
+
+# Custom system prompt
+~/.claude/skills/glm-4.7/glm-query.sh --system "You are a security auditor" "Audit this"
 
 # Web search
-mcp__web_search__search "latest React 19 features"
-
-# Web content extraction
-mcp__web_reader__webReader "https://example.com"
-
-# Repository knowledge
-mcp__zread__search_doc "TypeScript patterns"
+/glm-web-search "TypeScript best practices 2026"
 ```
+
+#### Response Handling
+
+GLM-4.7 is a **reasoning model** - responses may be in:
+- `choices[0].message.content` (standard)
+- `choices[0].message.reasoning_content` (reasoning chain)
+
+Both are automatically extracted by skills and `adversarial_council.py`.
+
+#### MCP Servers (4)
+
+| Server | Tools | Use Case |
+|--------|-------|----------|
+| **zai-mcp-server** | 9 vision tools | Screenshot debugging, diagram understanding |
+| **web-search-prime** | webSearchPrime | Real-time web search |
+| **web-reader** | webReader | Web content extraction |
+| **zread** | search_doc, read_file | Repository knowledge access |
 
 ### Multi-Model Adversarial Validation
 
-**v2.68.24**: Three-model validation for critical changes:
+**v2.69**: Four-model validation for critical changes:
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                   ADVERSARIAL VALIDATION COUNCIL                │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
-│  │   CODEX     │  │   CLAUDE    │  │   GEMINI    │             │
-│  │  GPT-5.2    │  │   Opus      │  │  2.5 Pro    │             │
-│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘             │
-│         └────────────────┼────────────────┘                     │
-│                          ▼                                      │
-│                  ┌───────────────┐                              │
-│                  │    JUDGE      │  (Claude Opus)              │
-│                  └───────┬───────┘                              │
-│                          ▼                                      │
-│                  CONSENSUS REQUIRED                             │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      ADVERSARIAL VALIDATION COUNCIL                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐                │
+│  │  CODEX    │  │  CLAUDE   │  │  GEMINI   │  │  GLM-4.7  │                │
+│  │ GPT-5.2   │  │   Opus    │  │  2.5 Pro  │  │  Reasoning│                │
+│  │           │  │           │  │           │  │  + Web    │                │
+│  └─────┬─────┘  └─────┬─────┘  └─────┬─────┘  └─────┬─────┘                │
+│        └──────────────┼──────────────┼──────────────┘                       │
+│                       ▼              ▼                                       │
+│                   ┌──────────────────────┐                                   │
+│                   │        JUDGE         │  (Claude Opus)                   │
+│                   │  Anonymized Review   │                                   │
+│                   └──────────┬───────────┘                                   │
+│                              ▼                                               │
+│                    CONSENSUS REQUIRED                                        │
+│                    (All 4 must agree)                                        │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Exit Criteria**: All three models must agree "NO ISSUES FOUND" before validation passes.
+**Exit Criteria**: All four models must agree "NO ISSUES FOUND" before validation passes.
+
+**GLM-4.7 Advantages in Council**:
+- **~15% cost** vs Claude Opus (most economical planner)
+- **Reasoning model**: Deep analysis via `reasoning_content`
+- **Web search**: Can verify against current documentation
+- **Independent perspective**: Chinese LLM provides diverse viewpoint
 
 ## Core Orchestration Agents (v2.50)
 

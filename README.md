@@ -2,7 +2,7 @@
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-![Version](https://img.shields.io/badge/v2.68.24-blue) ![Tests](https://img.shields.io/badge/903_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange)
+![Version](https://img.shields.io/badge/v2.69-blue) ![Tests](https://img.shields.io/badge/903_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange)
 
 ---
 
@@ -20,7 +20,7 @@
    - [Memory Architecture](#memory-architecture)
    - [Hooks System](#hooks-system)
    - [Agent System](#agent-system)
-7. [Multi-Model Support (v2.68.24)](#multi-model-support-v26824)
+7. [Multi-Model Support (v2.69)](#multi-model-support-v269)
 8. [Dynamic Contexts System (v2.63)](#dynamic-contexts-system-v263)
 9. [Eval-Driven Development (v2.64)](#eval-driven-development-v264)
 10. [Plan Lifecycle Management (v2.65)](#plan-lifecycle-management-v265)
@@ -46,14 +46,16 @@ The core idea: **execute → validate → iterate** until the code passes.
 
 ### What It Does
 
-- **Multi-model orchestration** — Claude, Codex, Gemini, MiniMax, GLM-4.7 working together
+- **Multi-model orchestration** — Claude, Codex, Gemini, MiniMax, **GLM-4.7** working together
+- **4-Model Adversarial Council** — Codex + Claude + Gemini + **GLM-4.7** for comprehensive review
 - **Quality gates** — 9 languages supported (TS, Python, Go, Rust, Solidity, etc.)
 - **Memory system** — Semantic, episodic, procedural memory with 30-day TTL
 - **67 hooks** (66 bash + 1 python) — Automated validation, checkpoints, context preservation (80 event registrations)
 - **268+ skills** — Specialized capabilities for common tasks (39 command shortcuts)
 - **Dynamic contexts** — Switch between dev, review, research, debug modes
 - **Statusline Ralph** — Real-time context tracking with claude-hud v0.0.6
-- **GLM-4.7 integration** — Vision, image analysis, video processing, and web search capabilities
+- **GLM-4.7 Coding API** — Direct access via `/glm-4.7` skill with reasoning model support
+- **GLM Web Search** — Real-time web search via `/glm-web-search` skill
 
 See [CHANGELOG.md](CHANGELOG.md) for version history
 
@@ -663,11 +665,13 @@ ralph agent-memory transfer security-auditor code-reviewer relevant
 
 ---
 
-## Multi-Model Support (v2.68.24)
+## Multi-Model Support (v2.69)
 
 ### Overview
 
 Ralph supports **multiple AI models** for optimal cost/performance trade-offs. Each model is selected based on task complexity, cost constraints, and specific capabilities required.
+
+> **v2.69 Update**: GLM-4.7 now integrated as 4th planner in Adversarial Council via Coding API. New standalone skills `/glm-4.7` and `/glm-web-search` for direct model access.
 
 ### Supported Models
 
@@ -679,7 +683,7 @@ Ralph supports **multiple AI models** for optimal cost/performance trade-offs. E
 | **MiniMax M2.1** | MiniMax | **0.08x** | Validation, second opinion, extended loops | Large |
 | **Codex GPT-5.2** | OpenAI | Variable | Code generation, refactoring, deep analysis | Large |
 | **Gemini 2.5 Pro** | Google | Variable | Cross-validation, web search grounding, codebase analysis | 1M tokens |
-| **GLM-4.7** | Z.AI | Variable | Vision, image analysis, video processing, Chinese language | Large |
+| **GLM-4.7** | Z.AI | **~0.15x** | Reasoning review, web search, Chinese language | Large |
 
 ### MiniMax M2.1 - Cost-Effective Validation
 
@@ -700,50 +704,84 @@ Ralph supports **multiple AI models** for optimal cost/performance trade-offs. E
 /minimax-review "review this code for potential issues"
 ```
 
-### GLM-4.7 - Vision & Enterprise Capabilities
+### GLM-4.7 - Reasoning & Cost-Effective Review (v2.69)
 
-**4 MCP servers installed** for comprehensive capabilities:
+**Integrated via Coding API** (`/api/coding/paas/v4`) which uses plan quota instead of paas balance.
+
+#### Standalone Skills
+
+| Skill | Purpose | Usage |
+|-------|---------|-------|
+| `/glm-4.7` | Direct GLM-4.7 queries | Code review, analysis, second opinion |
+| `/glm-web-search` | Web search with GLM | Real-time information retrieval |
+
+**Skill Examples**:
+```bash
+# Direct query
+/glm-4.7 "Review this authentication code for security"
+
+# Code file review
+~/.claude/skills/glm-4.7/glm-query.sh --code src/auth.ts "Find vulnerabilities"
+
+# Web search
+/glm-web-search "TypeScript best practices 2026"
+
+# Custom system prompt
+~/.claude/skills/glm-4.7/glm-query.sh --system "You are a security auditor" "Audit this"
+```
+
+#### GLM Response Handling
+
+GLM-4.7 is a **reasoning model** - responses may be in:
+- `choices[0].message.content` (standard responses)
+- `choices[0].message.reasoning_content` (reasoning chain)
+
+Both are automatically extracted by the skills and hooks.
+
+#### MCP Servers (4)
 
 | Server | Tools | Capabilities |
 |--------|-------|--------------|
-| **zai-mcp-server** | 9 vision tools | UI testing, screenshot debugging, diagram understanding, data visualization analysis, video processing |
-| **web-search-prime** | webSearchPrime | Real-time web search with Google Search grounding |
-| **web-reader** | webReader | Extract web content as markdown with context awareness |
-| **zread** | search_doc, get_repo_structure, read_file | Access repository knowledge without cloning |
+| **zai-mcp-server** | 9 vision tools | UI testing, screenshot debugging, diagram understanding |
+| **web-search-prime** | webSearchPrime | Real-time web search |
+| **web-reader** | webReader | Web content extraction |
+| **zread** | search_doc, read_file | Repository knowledge access |
 
-**Usage Examples**:
-```bash
-# Image analysis
-mcp__4_5v_mcp__analyze_image "screenshot.png" "What errors are shown?"
+### Multi-Model Adversarial Validation (4 Planners)
 
-# Web search
-mcp__web_search__search "latest React 19 features"
-
-# Web content extraction
-mcp__web_reader__webReader "https://docs.example.com"
-
-# Repository knowledge
-mcp__zread__search_doc "TypeScript error handling patterns"
-```
-
-### Multi-Model Adversarial Validation
-
-For critical changes (complexity ≥ 7), Ralph automatically runs **three-model validation**:
+For critical changes (complexity ≥ 7), Ralph runs **four-model validation**:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                   ADVERSARIAL VALIDATION COUNCIL                │
+│            ADVERSARIAL VALIDATION COUNCIL v2.69                  │
 ├─────────────────────────────────────────────────────────────────┤
-│  1. Codex GPT-5.2    → Deep code analysis                        │
-│  2. Claude Opus       → Security and quality validation           │
-│  3. Gemini 2.5 Pro    → Cross-validation and review               │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
+│  │  CODEX   │ │  CLAUDE  │ │  GEMINI  │ │  GLM-4.7 │  ← NEW    │
+│  │ GPT-5.2  │ │   Opus   │ │ 2.5 Pro  │ │ Coding   │           │
+│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘           │
+│       └────────────┴────────────┴────────────┘                  │
 │                         ↓                                        │
-│                   CONSENSUS REQUIRED                             │
-│              All three must agree "NO ISSUES FOUND"               │
+│                ┌───────────────┐                                 │
+│                │     JUDGE     │  (Claude Opus)                  │
+│                │  Anonymized   │                                 │
+│                └───────┬───────┘                                 │
+│                        ↓                                         │
+│               CONSENSUS REQUIRED                                 │
+│        All planners evaluated, best plan synthesized             │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Exit Criteria**: Loop continues until all three models reach consensus.
+**Planners in adversarial_council.py v2.68.26**:
+```python
+DEFAULT_PLANNERS = [
+    AgentConfig(name="codex", kind="codex", model="gpt-5.2-codex"),
+    AgentConfig(name="claude-opus", kind="claude", model="opus"),
+    AgentConfig(name="gemini", kind="gemini", model="gemini-2.5-pro"),
+    AgentConfig(name="glm-4.7", kind="glm", model="glm-4.7"),  # NEW
+]
+```
+
+**Exit Criteria**: Judge synthesizes best plan from all four planners.
 
 ### Cost Optimization Strategy
 
@@ -1568,6 +1606,6 @@ This project is licensed under the BSL 1.1 License.
 
 ---
 
-**Version**: 2.68.2
-**Last Updated**: 2026-01-24
-**Next Review**: 2026-02-24
+**Version**: 2.69
+**Last Updated**: 2026-01-25
+**Next Review**: 2026-02-25
