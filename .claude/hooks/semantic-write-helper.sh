@@ -52,8 +52,9 @@ add_fact() {
     EXISTS=$(jq -r --arg f "$content" '.facts[] | select(.content == $f) | .id' "$SEMANTIC_FILE" 2>/dev/null || echo "")
 
     if [[ -z "$EXISTS" ]]; then
-        local FACT_ID="sem-$(date +%s)-$RANDOM"
-        local TIMESTAMP=$(date -Iseconds)
+        local FACT_ID TIMESTAMP
+        FACT_ID="sem-$(date +%s)-$RANDOM"
+        TIMESTAMP=$(date -Iseconds)
 
         # Atomic write using temp file
         jq --arg id "$FACT_ID" \

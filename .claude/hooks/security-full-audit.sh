@@ -50,8 +50,9 @@ is_security_sensitive() {
     dir_path=$(dirname "$file_path" 2>/dev/null | tr '[:upper:]' '[:lower:]' || echo "")
 
     # Check filename patterns
+    # SC2221/SC2222 FIX: Removed *oauth* (already covered by *auth*)
     case "$filename" in
-        *auth*|*login*|*password*|*credential*|*secret*|*token*|*jwt*|*oauth*|*session*)
+        *auth*|*login*|*password*|*credential*|*secret*|*token*|*jwt*|*session*)
             return 0
             ;;
         *payment*|*billing*|*stripe*|*checkout*|*transaction*|*wallet*)
@@ -66,8 +67,9 @@ is_security_sensitive() {
     esac
 
     # Check directory patterns
+    # SC2221/SC2222 FIX: Removed *middleware/auth* (already covered by *auth*)
     case "$dir_path" in
-        *auth*|*security*|*payment*|*crypto*|*middleware/auth*)
+        *auth*|*security*|*payment*|*crypto*)
             return 0
             ;;
     esac

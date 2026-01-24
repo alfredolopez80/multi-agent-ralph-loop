@@ -103,7 +103,8 @@ sys.exit(1)
 
 # Main pre-warm logic
 prewarm_skills() {
-    local start_time=$(date +%s)
+    local start_time
+    start_time=$(date +%s)
     local skills_prewarmed=0
     local skills_failed=0
 
@@ -131,7 +132,8 @@ prewarm_skills() {
         fi
     done <<< "$skills"
 
-    local end_time=$(date +%s)
+    local end_time
+    end_time=$(date +%s)
     local duration=$((end_time - start_time))
 
     log "Pre-warm complete: $skills_prewarmed succeeded, $skills_failed failed in ${duration}s"
