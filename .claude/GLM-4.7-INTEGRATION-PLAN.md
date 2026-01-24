@@ -14,8 +14,30 @@
 | 4 | Documentation search | ✅ COMPLETE |
 | 5 | MiniMax fallback strategy | ✅ COMPLETE |
 | 6 | **Orchestrator Agent Update** | ✅ COMPLETE (v2.69.0) |
+| 7 | **Full MiniMax Deprecation** | ✅ COMPLETE (v2.69.0) |
 
 **Key Discovery**: MCP endpoints (`/api/mcp/...`) require paas balance, but GLM Coding API (`/api/coding/paas/v4`) uses plan quota. All hooks updated to use Coding API for reliable operation.
+
+### Phase 7: Full MiniMax Deprecation (COMPLETE) - NEW
+
+**Commit**: e1acaf4
+
+**BREAKING CHANGE**: MiniMax is now FULLY DEPRECATED across the orchestrator agent.
+
+**Migration Summary**:
+| Component | Before (MiniMax) | After (GLM-4.7) |
+|-----------|------------------|-----------------|
+| Complexity 1-4 | MiniMax PRIMARY | GLM-4.7 PRIMARY |
+| Task() Async | `mmc --query` | `/glm-4.7` |
+| Iteration Limits | MiniMax 50 PRIMARY | GLM-4.7 50 PRIMARY |
+| Research Strategy | MiniMax validation | GLM-4.7 validation |
+| Agent | @minimax-reviewer | @glm-reviewer |
+
+**Deprecated Tools**:
+- `mcp__MiniMax__web_search` → use `mcp__web-search-prime__webSearchPrime`
+- `mcp__MiniMax__understand_image` → use `mcp__zai-mcp-server__analyze_image`
+- `mmc --query` → use `/glm-4.7`
+- `mmc --loop` → use `/glm-4.7` or `/glm-web-search`
 
 ### Phase 6: Orchestrator Agent Update (COMPLETE)
 
@@ -27,10 +49,10 @@
 2. ✅ Description includes GLM-4.7 multimodal capabilities
 3. ✅ Tools list includes all GLM-4.7 MCP servers
 4. ✅ New v2.69 Changes section with 14-tool matrix
-5. ✅ v2.24 section marked as superseded
+5. ✅ v2.24 section marked as FULLY DEPRECATED
 6. ✅ Workflow diagram updated with GLM integration points (1c, 6e, 7c)
-7. ✅ Research Strategy section completely rewritten for GLM-4.7 PRIMARY
-8. ✅ Migration notice added (GLM primary, MiniMax fallback)
+7. ✅ Research Strategy section: GLM-4.7 PRIMARY FOR ALL
+8. ✅ Full MiniMax deprecation notice with tool migration guide
 
 ---
 
