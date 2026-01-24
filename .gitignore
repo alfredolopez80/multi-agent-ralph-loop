@@ -219,3 +219,18 @@ tests/*.result
 *.rar
 *.7z
 tmp-review/
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PROJECT-SPECIFIC EXCLUSIONS (v2.69.0)
+# ═══════════════════════════════════════════════════════════════════════════════
+# Playwright screenshots and artifacts
+.playwright/
+.playwright-mcp/
+
+# External project directories
+apps/
+src/
+backend/hypersig_api/
+
+# Wildcard CLAUDE.md in subdirectories (use explicit paths instead)
+**/CLAUDE.md
