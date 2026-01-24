@@ -24,7 +24,7 @@
     },
     "version": {
       "type": "string",
-      "default": "2.66.0"
+      "default": "2.68.0"
     },
     "classification": {
       "type": "object",
@@ -117,90 +117,123 @@
       }
     },
     "steps": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["id", "title", "status"],
-        "properties": {
-          "id": { "type": "string" },
-          "title": { "type": "string" },
-          "description": { "type": "string" },
-          "status": {
-            "type": "string",
-            "enum": [
-              "pending",
-              "in_progress",
-              "completed",
-              "verified",
-              "blocked"
-            ]
-          },
-          "spec": {
+      "oneOf": [
+        {
+          "type": "object",
+          "description": "v2 format: Steps keyed by ID (PREFERRED)",
+          "additionalProperties": {
             "type": "object",
-            "description": "Expected specification for this step",
+            "required": ["id", "title", "status"],
             "properties": {
-              "file": { "type": "string" },
-              "exports": { "type": "array", "items": { "type": "string" } },
-              "signatures": { "type": "object" },
-              "tests": { "type": "array", "items": { "type": "string" } }
-            }
-          },
-          "actual": {
-            "type": "object",
-            "description": "Actual implementation results",
-            "properties": {
-              "exports": { "type": "array", "items": { "type": "string" } },
-              "files_modified": {
-                "type": "array",
-                "items": { "type": "string" }
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "description": { "type": "string" },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "in_progress",
+                  "completed",
+                  "verified",
+                  "blocked"
+                ]
               },
-              "updated_at": { "type": "string", "format": "date-time" }
+              "spec": { "type": "object" },
+              "actual": { "type": "object" },
+              "drift": { "type": "object" },
+              "lsa_verification": { "type": "object" },
+              "micro_gate": { "type": "object" }
             }
-          },
-          "drift": {
+          }
+        },
+        {
+          "type": "array",
+          "description": "v1 format (legacy): Array of step objects",
+          "items": {
             "type": "object",
-            "description": "Plan-Sync drift detection",
+            "required": ["id", "title", "status"],
             "properties": {
-              "detected": { "type": "boolean", "default": false },
-              "items": { "type": "array", "items": { "type": "string" } },
-              "needs_sync": { "type": "boolean", "default": false },
-              "synced_at": { "type": "string", "format": "date-time" }
-            }
-          },
-          "lsa_verification": {
-            "type": "object",
-            "description": "Lead Software Architect verification",
-            "properties": {
-              "pre_check": {
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "description": { "type": "string" },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "in_progress",
+                  "completed",
+                  "verified",
+                  "blocked"
+                ]
+              },
+              "spec": {
                 "type": "object",
+                "description": "Expected specification for this step",
                 "properties": {
-                  "passed": { "type": "boolean" },
-                  "notes": { "type": "string" },
-                  "timestamp": { "type": "string", "format": "date-time" }
+                  "file": { "type": "string" },
+                  "exports": { "type": "array", "items": { "type": "string" } },
+                  "signatures": { "type": "object" },
+                  "tests": { "type": "array", "items": { "type": "string" } }
                 }
               },
-              "post_check": {
+              "actual": {
                 "type": "object",
+                "description": "Actual implementation results",
                 "properties": {
+                  "exports": { "type": "array", "items": { "type": "string" } },
+                  "files_modified": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  },
+                  "updated_at": { "type": "string", "format": "date-time" }
+                }
+              },
+              "drift": {
+                "type": "object",
+                "description": "Plan-Sync drift detection",
+                "properties": {
+                  "detected": { "type": "boolean", "default": false },
+                  "items": { "type": "array", "items": { "type": "string" } },
+                  "needs_sync": { "type": "boolean", "default": false },
+                  "synced_at": { "type": "string", "format": "date-time" }
+                }
+              },
+              "lsa_verification": {
+                "type": "object",
+                "description": "Lead Software Architect verification",
+                "properties": {
+                  "pre_check": {
+                    "type": "object",
+                    "properties": {
+                      "passed": { "type": "boolean" },
+                      "notes": { "type": "string" },
+                      "timestamp": { "type": "string", "format": "date-time" }
+                    }
+                  },
+                  "post_check": {
+                    "type": "object",
+                    "properties": {
+                      "passed": { "type": "boolean" },
+                      "notes": { "type": "string" },
+                      "timestamp": { "type": "string", "format": "date-time" }
+                    }
+                  }
+                }
+              },
+              "micro_gate": {
+                "type": "object",
+                "description": "Per-step quality gate (3-Fix Rule)",
+                "properties": {
+                  "attempts": { "type": "integer", "default": 0 },
+                  "max_attempts": { "type": "integer", "default": 3 },
                   "passed": { "type": "boolean" },
-                  "notes": { "type": "string" },
-                  "timestamp": { "type": "string", "format": "date-time" }
+                  "errors": { "type": "array", "items": { "type": "string" } }
                 }
               }
             }
-          },
-          "micro_gate": {
-            "type": "object",
-            "description": "Per-step quality gate (3-Fix Rule)",
-            "properties": {
-              "attempts": { "type": "integer", "default": 0 },
-              "max_attempts": { "type": "integer", "default": 3 },
-              "passed": { "type": "boolean" },
-              "errors": { "type": "array", "items": { "type": "string" } }
-            }
           }
         }
-      }
+      ]
     },
     "loop_state": {
       "type": "object",
