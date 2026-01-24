@@ -161,7 +161,81 @@ Eval-Driven Development framework for:
 
 ---
 
-## Completed Items
+### LOW-001 to LOW-005: Minor Security Hardening (P3)
+
+**Created**: 2026-01-24 (v2.68.4 gap analysis)
+**Status**: Open - Low Priority
+**Effort**: Low (1-2 hours total)
+
+**Issues Identified by Security Auditor**:
+| ID | Hook | Issue | Impact |
+|----|------|-------|--------|
+| LOW-001 | `skill-validator.sh` | Subprocess sourcing pollution | Minimal |
+| LOW-002 | `repo-boundary-guard.sh` | Regex injection in grep | Minimal |
+| LOW-003 | `decision-extractor.sh` | ReDoS potential on large files | Minimal |
+| LOW-004 | `curator-suggestion.sh` | Unbounded find on corpus | Minimal |
+| LOW-005 | `checkpoint-smart-save.sh` | Unbounded deletion via xargs | Minimal |
+
+**When to Fix**:
+- During dedicated security hardening sprint
+- When performance issues are reported
+- During v2.70+ development
+
+---
+
+### GAP-HIGH-006: 20+ Hooks at Pre-v2.66 Versions (P2)
+
+**Created**: 2026-01-24 (v2.68.4 gap analysis)
+**Status**: Open - Version Drift
+**Effort**: Medium (2-4 hours)
+
+**Problem**:
+20+ hooks remain at v2.57.5 while system is at v2.68.4. Missing 11 versions of security fixes and improvements.
+
+**Affected Hooks** (sample):
+- `agent-memory-auto-init.sh` (v2.57.5)
+- `auto-save-context.sh` (v2.57.5)
+- `context-warning.sh` (v2.57.5)
+- `fast-path-check.sh` (v2.57.5)
+- `quality-gates.sh` (v2.57.5)
+- ... and 15+ more
+
+**Why Deferred**:
+- No functional regressions reported
+- Version number is documentation, not behavior
+- Risk of regression during mass update
+
+**When to Fix**:
+- During version synchronization sprint
+- When specific hook needs update for new feature
+
+---
+
+## Completed Items (v2.68.4)
+
+### GAP-CRIT-001: Dead Code sync_from_global() (DONE)
+
+**Completed**: 2026-01-24 (v2.68.4)
+**Solution**: Synced `global-task-sync.sh` from global (already had DEAD-001 removed in v2.66.6)
+
+### GAP-CRIT-002: git-safety-guard.py Version Mismatch (DONE)
+
+**Completed**: 2026-01-24 (v2.68.4)
+**Solution**: Synced from global (v2.43.0 → v2.66.8, 23 version updates)
+
+### MED-006: Command Injection in parallel-explore.sh (DONE)
+
+**Completed**: 2026-01-24 (v2.68.4)
+**Solution**: Removed spaces from sanitizer whitelist, added length limit
+
+### MED-008: macOS-Specific stat in ai-code-audit.sh (DONE)
+
+**Completed**: 2026-01-24 (v2.68.4)
+**Solution**: Added OSTYPE detection for portable stat usage
+
+---
+
+## Previously Completed
 
 ### RACE-001: Checkpoint Race Condition (DONE)
 

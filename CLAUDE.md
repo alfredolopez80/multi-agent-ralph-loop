@@ -1,10 +1,10 @@
-# Multi-Agent Ralph v2.68.3
+# Multi-Agent Ralph v2.68.4
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
 **Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, checkpoints, agent handoffs, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, and **Claude Code Documentation Mirror**.
 
-> **v2.68.3**: PERF-001 critical performance fix - procedural-inject.sh O(n²) → O(1) (3000ms → 113ms). Schema fix (GAP-004). 10 hooks synced. v2.68.2: Fixed 6 CRITICAL double-JSON bugs. Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) and [claude-code-docs](https://github.com/ericbuess/claude-code-docs).
+> **v2.68.4**: Adversarial Phase 4 - 3 CRITICAL + 2 MEDIUM security fixes (MED-006 command injection, MED-008 portable stat). 100% JSON format validation PASS. v2.68.3: PERF-001 O(n²)→O(1). Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) and [claude-code-docs](https://github.com/ericbuess/claude-code-docs).
 
 ---
 

@@ -1,25 +1,33 @@
 #!/bin/bash
 # global-task-sync.sh - Sync plan-state with Claude Code global tasks
-# VERSION: 2.62.0
+# VERSION: 2.68.2
 #
-# Purpose: Bidirectional sync between local plan-state.json and
+# Security: SEC-001 path traversal fix, SEC-004 umask, SEC-010 portable mkdir lock
+# v2.66.5: SC2168 FIX - Removed 'local' keywords outside functions (shellcheck)
+#
+# Purpose: UNIDIRECTIONAL sync from local plan-state.json to
 #          Claude Code's global task storage at ~/.claude/tasks/<session>/
+#          (plan-state.json is the single source of truth)
 #
 # This implements the Task primitive integration from Claude Code Cowork Mode.
 #
-# Trigger: PostToolUse (TodoWrite, TaskUpdate, TaskCreate)
+# Trigger: PostToolUse (TaskUpdate, TaskCreate)
+# Note: TodoWrite removed in v2.66.0 - it doesn't trigger hooks by design
 #
-# Logic:
-# 1. Detect current session ID
+# Logic (v2.66.0 - Unidirectional):
+# 1. Detect session ID from INPUT.session_id (canonical) or fallbacks
 # 2. Read local plan-state.json
-# 3. Sync to ~/.claude/tasks/<session>/tasks.json
-# 4. Check for external changes and sync back
+# 3. Sync to ~/.claude/tasks/<session>/{id}.json (individual files)
+# 4. NO bidirectional sync - plan-state is single source of truth
 #
 # Output (JSON via stdout for PostToolUse):
 #   - {"continue": true}: Allow execution to continue
 #   - {"continue": true, "systemMessage": "..."}: Continue with feedback
 
 set -euo pipefail
+
+# SEC-004: Restrictive umask for secure temp file creation
+umask 077
 
 # SEC-033: Guaranteed JSON output on any error
 output_json() {
@@ -39,17 +47,23 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] [global-task-sync] $*" >> "$LOG_FILE"
 }
 
-# Get session ID from environment or generate one
+# Get session ID - INPUT.session_id is CANONICAL (from Claude Code)
 get_session_id() {
-    # Try common session ID sources
+    # FIRST: Try INPUT.session_id (canonical source from Claude Code)
+    if [[ -n "${SESSION_ID_FROM_INPUT:-}" ]]; then
+        echo "$SESSION_ID_FROM_INPUT"
+        return
+    fi
+    # Fallback 1: Environment variables
     if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
         echo "$CLAUDE_SESSION_ID"
     elif [[ -n "${SESSION_ID:-}" ]]; then
         echo "$SESSION_ID"
+    # Fallback 2: Local session file
     elif [[ -f ".claude/session-id" ]]; then
         cat ".claude/session-id"
     else
-        # Generate from plan_id if available
+        # Fallback 3: Generate from plan_id if available
         if [[ -f "$PLAN_STATE" ]]; then
             local plan_id
             plan_id=$(jq -r '.plan_id // empty' "$PLAN_STATE" 2>/dev/null || echo "")
@@ -58,7 +72,7 @@ get_session_id() {
                 return
             fi
         fi
-        # Fallback: generate based on timestamp and PID
+        # Fallback 4: Generate timestamp-based ID
         echo "ralph-$(date +%Y%m%d)-$$"
     fi
 }
@@ -66,12 +80,15 @@ get_session_id() {
 # Read input from stdin
 INPUT=$(cat)
 
+# Extract session_id from INPUT FIRST (canonical source from Claude Code)
+SESSION_ID_FROM_INPUT=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null || echo "")
+
 # Extract tool name
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null || echo "")
 
-# Only process relevant tools
+# Only process relevant tools (TodoWrite removed - doesn't trigger hooks by design)
 case "$TOOL_NAME" in
-    TodoWrite|TaskUpdate|TaskCreate)
+    TaskUpdate|TaskCreate)
         log "Processing $TOOL_NAME for global sync"
         ;;
     *)
@@ -89,42 +106,58 @@ fi
 
 # Get session ID
 SESSION_ID=$(get_session_id)
+
+# SEC-001: Sanitize session ID to prevent path traversal attacks
+# Remove any path traversal characters and validate format
+SESSION_ID=$(echo "$SESSION_ID" | tr -cd 'a-zA-Z0-9_-')
+if [[ -z "$SESSION_ID" || ${#SESSION_ID} -gt 128 ]]; then
+    log "Invalid session ID (empty or too long), using fallback"
+    SESSION_ID="ralph-$(date +%Y%m%d)-$$"
+fi
 log "Session ID: $SESSION_ID"
 
 # Create global tasks directory for this session
 SESSION_TASKS_DIR="${CLAUDE_TASKS_DIR}/${SESSION_ID}"
 mkdir -p "$SESSION_TASKS_DIR"
 
-# Lock file for atomic operations
-LOCK_FILE="${SESSION_TASKS_DIR}/.lock"
+# Lock directory for atomic operations (portable - works on macOS and Linux)
+LOCK_DIR="${SESSION_TASKS_DIR}/.lock.d"
 
-# Acquire lock with timeout
+# Acquire lock with timeout using mkdir (portable)
 acquire_lock() {
-    local lock_fd
-    exec {lock_fd}>"$LOCK_FILE"
-    if ! flock -w "$LOCK_TIMEOUT" "$lock_fd"; then
-        log "Failed to acquire lock after ${LOCK_TIMEOUT}s"
-        return 1
-    fi
-    echo "$lock_fd"
+    local attempts=0
+    local max_attempts=$((LOCK_TIMEOUT * 10))  # 100ms intervals
+
+    while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+        attempts=$((attempts + 1))
+        if [[ $attempts -ge $max_attempts ]]; then
+            log "Failed to acquire lock after ${LOCK_TIMEOUT}s"
+            return 1
+        fi
+        sleep 0.1
+    done
+    echo "locked"
 }
 
 # Release lock
 release_lock() {
-    local lock_fd="$1"
-    flock -u "$lock_fd" 2>/dev/null || true
+    rmdir "$LOCK_DIR" 2>/dev/null || true
 }
 
 # Convert plan-state to Claude Code tasks format
 convert_to_tasks_format() {
     local plan_state="$1"
+    local project_json="$2"
 
-    jq '{
+    jq \
+        --argjson project "$project_json" \
+        '{
         session_id: .plan_id,
         task: .task,
         created_at: .metadata.created_at,
         updated_at: .updated_at,
         classification: .classification,
+        project: $project,
         tasks: [
             .steps | to_entries[] | {
                 id: .key,
@@ -144,53 +177,51 @@ convert_to_tasks_format() {
         phases: .phases,
         barriers: .barriers,
         loop_state: .loop_state,
-        source: "ralph-v2.62"
+        source: "ralph-v2.66.0"
     }' <<< "$plan_state"
 }
 
-# Convert Claude Code tasks format back to plan-state updates
-sync_from_global() {
-    local global_tasks="$1"
-    local local_plan="$2"
+# REMOVED (v2.66.6): sync_from_global() function deleted as dead code
+# Previously deprecated in v2.66.0. For historical reference, see git history.
+# Plan-state.json is the single source of truth - no bidirectional sync needed.
 
-    # Check if global has newer updates
-    local global_updated local_updated
-    global_updated=$(jq -r '.updated_at // "1970-01-01T00:00:00Z"' <<< "$global_tasks" 2>/dev/null || echo "1970-01-01T00:00:00Z")
-    local_updated=$(jq -r '.updated_at // "1970-01-01T00:00:00Z"' <<< "$local_plan" 2>/dev/null || echo "1970-01-01T00:00:00Z")
+# Write individual task file (Claude Code format: 1.json, 2.json, etc.)
+write_individual_task() {
+    local task_json="$1"
+    local task_id="$2"
+    local session_dir="$3"
+    local project_json="$4"
 
-    # Compare timestamps (basic string comparison works for ISO8601)
-    if [[ "$global_updated" > "$local_updated" ]]; then
-        log "Global tasks are newer, syncing back to local"
+    local task_file="${session_dir}/${task_id}.json"
 
-        # Update step statuses from global
-        local updated_plan="$local_plan"
+    # Add metadata to task
+    local enriched_task
+    enriched_task=$(echo "$task_json" | jq \
+        --argjson project "$project_json" \
+        --arg session "$SESSION_ID" \
+        --arg source "ralph-v2.66.0" \
+        '. + {
+            project: $project,
+            session_id: $session,
+            source: $source,
+            synced_at: (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
+        }')
 
-        while IFS= read -r task_json; do
-            local task_id status
-            task_id=$(jq -r '.id' <<< "$task_json")
-            status=$(jq -r '.status' <<< "$task_json")
+    # Write atomically
+    local temp_file
+    temp_file=$(mktemp)
+    echo "$enriched_task" | jq '.' > "$temp_file"
+    mv "$temp_file" "$task_file"
+    chmod 600 "$task_file"
 
-            # Map status back to plan-state format
-            local plan_status="$status"
-
-            updated_plan=$(jq \
-                --arg key "$task_id" \
-                --arg status "$plan_status" \
-                'if .steps[$key] then .steps[$key].status = $status else . end' \
-                <<< "$updated_plan")
-        done < <(jq -c '.tasks[]' <<< "$global_tasks" 2>/dev/null || echo "")
-
-        echo "$updated_plan"
-    else
-        echo "$local_plan"
-    fi
+    log "Wrote task $task_id to $task_file"
 }
 
-# Main sync logic
-LOCK_FD=""
+# Main sync logic - UNIDIRECTIONAL: plan-state.json → Claude Code Tasks
+# (Phase 4: Removed bidirectional sync - plan-state is single source of truth)
 {
-    # Try to acquire lock
-    LOCK_FD=$(acquire_lock) || {
+    # Try to acquire lock (portable mkdir-based locking)
+    acquire_lock || {
         log "Could not acquire lock, skipping sync"
         echo '{"continue": true}'
         exit 0
@@ -199,47 +230,55 @@ LOCK_FD=""
     # Read current plan-state
     PLAN_STATE_CONTENT=$(cat "$PLAN_STATE")
 
-    # Check for existing global tasks
-    GLOBAL_TASKS_FILE="${SESSION_TASKS_DIR}/tasks.json"
-
-    if [[ -f "$GLOBAL_TASKS_FILE" ]]; then
-        # Bidirectional sync
-        GLOBAL_TASKS=$(cat "$GLOBAL_TASKS_FILE")
-
-        # Sync any external changes back to local
-        UPDATED_PLAN=$(sync_from_global "$GLOBAL_TASKS" "$PLAN_STATE_CONTENT")
-
-        # If plan was updated, write it back
-        if [[ "$UPDATED_PLAN" != "$PLAN_STATE_CONTENT" ]]; then
-            log "Writing synced changes back to plan-state.json"
-            TEMP_FILE=$(mktemp)
-            echo "$UPDATED_PLAN" | jq '.' > "$TEMP_FILE"
-            mv "$TEMP_FILE" "$PLAN_STATE"
-            chmod 600 "$PLAN_STATE"
-            PLAN_STATE_CONTENT="$UPDATED_PLAN"
+    # Detect project metadata for enrichment
+    PROJECT_JSON="{}"
+    if git rev-parse --is-inside-work-tree &>/dev/null; then
+        # SC2168 FIX: Removed 'local' - not inside a function (brace group != function)
+        project_path=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+        repo_remote=$(git remote get-url origin 2>/dev/null || echo "")
+        if [[ "$repo_remote" =~ github\.com[:/]([^/]+)/([^/]+)(\.git)?$ ]]; then
+            repo_name="${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
+        else
+            repo_name=$(basename "$project_path" 2>/dev/null || echo "unknown")
         fi
+        branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "detached")
+        PROJECT_JSON=$(jq -n \
+            --arg path "$project_path" \
+            --arg repo "$repo_name" \
+            --arg branch "$branch" \
+            '{path: $path, repo: $repo, branch: $branch}')
     fi
 
-    # Convert and write to global
-    TASKS_JSON=$(convert_to_tasks_format "$PLAN_STATE_CONTENT")
+    # Convert plan-state to Claude Code format
+    TASKS_JSON=$(convert_to_tasks_format "$PLAN_STATE_CONTENT" "$PROJECT_JSON")
 
-    # Write atomically
-    TEMP_FILE=$(mktemp)
-    echo "$TASKS_JSON" | jq '.' > "$TEMP_FILE"
-    mv "$TEMP_FILE" "$GLOBAL_TASKS_FILE"
-    chmod 600 "$GLOBAL_TASKS_FILE"
+    # Phase 2: Write INDIVIDUAL task files (1.json, 2.json, etc.)
+    # Claude Code expects this format, not a monolithic tasks.json
+    TOTAL_TASKS=0
+    COMPLETED_TASKS=0
+
+    while IFS= read -r task_json; do
+        # SC2168 FIX: Removed 'local' - not inside a function (while loop in brace group)
+        task_id=$(echo "$task_json" | jq -r '.id // ""')
+        status=$(echo "$task_json" | jq -r '.status // "pending"')
+
+        if [[ -n "$task_id" ]]; then
+            write_individual_task "$task_json" "$task_id" "$SESSION_TASKS_DIR" "$PROJECT_JSON"
+            ((TOTAL_TASKS++))
+            if [[ "$status" == "completed" ]]; then
+                ((COMPLETED_TASKS++))
+            fi
+        fi
+    done < <(echo "$TASKS_JSON" | jq -c '.tasks[]' 2>/dev/null || echo "")
 
     # Also save session ID for future reference
+    mkdir -p ".claude" 2>/dev/null || true
     echo "$SESSION_ID" > ".claude/session-id"
 
-    # Count tasks
-    TOTAL_TASKS=$(echo "$TASKS_JSON" | jq '.tasks | length')
-    COMPLETED_TASKS=$(echo "$TASKS_JSON" | jq '[.tasks[] | select(.status == "completed")] | length')
-
-    log "Synced to global: $COMPLETED_TASKS/$TOTAL_TASKS tasks"
+    log "Synced to global: $COMPLETED_TASKS/$TOTAL_TASKS tasks (individual files)"
 
     # Release lock
-    release_lock "$LOCK_FD"
+    release_lock
 
-    echo "{\"continue\": true, \"systemMessage\": \"🔄 Global sync: $COMPLETED_TASKS/$TOTAL_TASKS tasks → ~/.claude/tasks/$SESSION_ID/\"}"
+    echo "{\"continue\": true, \"systemMessage\": \"🔄 Global sync: $COMPLETED_TASKS/$TOTAL_TASKS tasks → ~/.claude/tasks/$SESSION_ID/ (individual files)\"}"
 }

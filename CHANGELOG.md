@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.68.4] - 2026-01-24
+
+### Adversarial Validation Phase 4 - Security & Compatibility Fixes
+
+Three parallel adversarial agents (Gap Analyst, JSON Validator, Security Auditor) identified **16 gaps** with 3 CRITICAL, 6 HIGH, 4 MEDIUM, and 3 LOW severity issues. This release addresses all CRITICAL and MEDIUM issues.
+
+#### CRITICAL Fixes (3)
+
+| Issue | Description | Solution |
+|-------|-------------|----------|
+| **GAP-CRIT-001** | `sync_from_global()` dead code in `global-task-sync.sh` | Synced from global (already removed in v2.66.6) |
+| **GAP-CRIT-002** | `git-safety-guard.py` v2.43.0 (23 versions behind) | Synced from global (now v2.66.8) |
+| **GAP-CRIT-003** | `TECHNICAL_DEBT.md` referenced but existed | Updated with new gaps |
+
+#### MEDIUM Security Fixes (2)
+
+| Issue | Hook | Description | Solution |
+|-------|------|-------------|----------|
+| **MED-006** | `parallel-explore.sh` | Command injection via spaces in sanitizer | Removed spaces from whitelist, added 50-char limit |
+| **MED-008** | `ai-code-audit.sh` | macOS-specific `stat -f %m` breaks on Linux | Added `$OSTYPE` detection for portable stat |
+
+#### JSON Format Validation (100% PASS)
+
+The JSON Validator agent confirmed all 73+ hooks have correct JSON output formats:
+- 0 instances of invalid `{"decision": "continue"}` pattern
+- 54 hooks with error traps (ERR/EXIT)
+- 95 instances of trap clearing (CRIT-005 compliant)
+- 100% compliance with Claude Code hook protocol
+
+#### Technical Debt Updates
+
+**Completed**:
+- GAP-CRIT-001, GAP-CRIT-002, MED-006, MED-008
+
+**New Items Documented** (deferred):
+- LOW-001 to LOW-005: Minor security hardening (P3)
+- GAP-HIGH-006: 20+ hooks at pre-v2.66 versions (P2)
+
+#### Files Modified
+
+| File | Change |
+|------|--------|
+| `.claude/hooks/git-safety-guard.py` | v2.43.0 → v2.66.8 sync |
+| `.claude/hooks/global-task-sync.sh` | sync_from_global() removed |
+| `~/.claude/hooks/parallel-explore.sh` | MED-006 sanitizer fix |
+| `~/.claude/hooks/ai-code-audit.sh` | MED-008 portable stat |
+| `.claude/TECHNICAL_DEBT.md` | Added 4 completed, 2 new items |
+
+---
+
 ## [2.68.3] - 2026-01-24
 
 ### PERF-001: Critical Hook Performance Optimization

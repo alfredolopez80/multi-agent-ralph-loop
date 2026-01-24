@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-# VERSION: 2.43.0
+# VERSION: 2.66.8
+# Trigger: PreToolUse (Bash)
+# v2.66.8: HIGH-003 version sync (fail-closed error handling already implemented)
 """
 git-safety-guard.py - Blocks destructive git and filesystem commands
 

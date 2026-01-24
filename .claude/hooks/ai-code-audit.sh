@@ -4,7 +4,7 @@
 # PostToolUse hook - AUTO-INVOKE comprehensive AI code quality checks
 #===============================================================================
 #
-# VERSION: 2.68.0
+# VERSION: 2.68.4
 # TRIGGER: PostToolUse (Edit|Write) - After significant code changes
 # PURPOSE: Detect and flag AI-generated code anti-patterns:
 #   - Dead code and unused imports
@@ -54,8 +54,14 @@ is_within_cooldown() {
     local marker="${MARKERS_DIR}/ai-audit-cooldown-${session_id}"
     
     if [[ -f "$marker" ]]; then
-        local marker_age
-        marker_age=$(( $(date +%s) - $(stat -f %m "$marker" 2>/dev/null || echo 0) ))
+        local marker_age marker_time
+        # MED-008 FIX: Portable stat for macOS and Linux
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            marker_time=$(stat -f %m "$marker" 2>/dev/null || echo 0)
+        else
+            marker_time=$(stat -c %Y "$marker" 2>/dev/null || echo 0)
+        fi
+        marker_age=$(( $(date +%s) - marker_time ))
         (( marker_age < COOLDOWN_MINUTES * 60 ))
     else
         return 1
