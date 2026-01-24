@@ -6,18 +6,19 @@
 # Checks if user mentions learning patterns, best practices, or similar
 # and if the curator corpus is empty, suggests running /curator.
 #
-# VERSION: 2.57.5
+# VERSION: 2.68.2
+# v2.68.2: FIX CRIT-010 - Correct UserPromptSubmit JSON format (was using PostToolUse format)
 # SECURITY: SEC-006 compliant with ERR trap for guaranteed JSON output
 
 set -euo pipefail
 umask 077
 
 # Guaranteed JSON output on any error (SEC-006)
-# UserPromptSubmit hooks use {"continue": true, "systemMessage": "..."}
+# UserPromptSubmit hooks use {} or {"additionalContext": "..."}
 output_json() {
-    echo '{"continue": true}'
+    echo '{}'
 }
-trap 'output_json' ERR
+trap 'output_json' ERR EXIT
 
 # Parse input
 INPUT=$(cat)
@@ -29,7 +30,8 @@ KEYWORDS="best practice|pattern|learn from|reference|example repo|quality code|c
 
 # Check if prompt contains relevant keywords
 if ! echo "$USER_PROMPT_LOWER" | grep -qE "$KEYWORDS"; then
-    echo '{"continue": true}'
+    trap - EXIT  # CRIT-010: Clear trap before explicit output
+    echo '{}'
     exit 0
 fi
 
@@ -60,7 +62,8 @@ This will discover, score, and learn from high-quality repositories to improve c
     # Escape for JSON
     SUGGESTION_ESCAPED=$(echo "$SUGGESTION" | jq -Rs '.')
 
-    echo "{\"continue\": true, \"systemMessage\": $SUGGESTION_ESCAPED}"
+    trap - EXIT  # CRIT-010: Clear trap before explicit output
+    echo "{\"additionalContext\": $SUGGESTION_ESCAPED}"
     exit 0
 fi
 
@@ -73,9 +76,11 @@ if [[ "$CORPUS_COUNT" -gt 0 ]] && [[ "$LEARNED_COUNT" -lt 3 ]]; then
 to extract patterns from your approved repositories."
 
     SUGGESTION_ESCAPED=$(echo "$SUGGESTION" | jq -Rs '.')
-    echo "{\"continue\": true, \"systemMessage\": $SUGGESTION_ESCAPED}"
+    trap - EXIT  # CRIT-010: Clear trap before explicit output
+    echo "{\"additionalContext\": $SUGGESTION_ESCAPED}"
     exit 0
 fi
 
 # All good, continue without suggestion
-echo '{"continue": true}'
+trap - EXIT  # CRIT-010: Clear trap before explicit output
+echo '{}'

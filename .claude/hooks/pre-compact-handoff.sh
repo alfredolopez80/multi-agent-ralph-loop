@@ -1,5 +1,5 @@
 #!/bin/bash
-# pre-compact-handoff.sh - PreCompact Hook for Ralph v2.62.3
+# pre-compact-handoff.sh - PreCompact Hook for Ralph v2.68.8
 # Hook: PreCompact
 # Auto-saves state BEFORE context compaction to prevent information loss
 #
@@ -14,17 +14,18 @@
 #   - transcript_path: Path to current transcript
 #
 # Output (JSON):
-#   - continue: true (PreCompact cannot block)
+#   - {"continue": true} (PreCompact uses same format as PostToolUse)
 #
 # NOTE: PreCompact hooks CANNOT prevent compaction - they only receive
 # notification that it's about to happen. Use this to save state.
 #
 # Part of Ralph v2.44 Context Engineering - GitHub #15021 Workaround
 
-# VERSION: 2.62.3
+# VERSION: 2.68.8
+# v2.68.8: SEC-054 - Fixed PreCompact JSON format (continue:true, not decision:allow)
 set -euo pipefail
 
-# Error trap: Always output valid JSON for PreCompact
+# Error trap: Always output valid JSON for PreCompact (SEC-054 fix)
 trap 'echo "{\"continue\": true}"' ERR EXIT
 
 # Configuration
@@ -80,6 +81,7 @@ log "INFO" "PreCompact hook triggered - session: $SESSION_ID, transcript: $TRANS
 # Check if handoff feature is enabled (default: true)
 if ! check_feature_enabled "RALPH_ENABLE_HANDOFF" "true"; then
     log "INFO" "Handoff feature disabled via features.json"
+    trap - ERR EXIT
     echo '{"continue": true}'
     exit 0
 fi
@@ -197,5 +199,6 @@ python3 "$HANDOFF_SCRIPT" cleanup --days 7 --keep-min 20 >> "$LOG_FILE" 2>&1 || 
 
 log "INFO" "PreCompact hook completed successfully"
 
-# Return success (PreCompact cannot block)
+# Return success (PreCompact cannot block) - SEC-054: correct JSON format
+trap - ERR EXIT
 echo '{"continue": true}'

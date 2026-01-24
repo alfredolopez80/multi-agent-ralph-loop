@@ -2,12 +2,16 @@
 # Recursive Decomposition Hook v2.46
 # Hook: PostToolUse (Task - orchestrator classification)
 # Purpose: Trigger recursive decomposition for complex tasks
-# VERSION: 2.57.5
+# VERSION: 2.68.2
 #
 # Based on RLM Paper: "Recursive sub-calling provides strong benefits
 # on information-dense inputs"
 
 set -euo pipefail
+
+# Error trap for guaranteed JSON output (v2.62.3)
+trap 'echo "{\"continue\": true}"' ERR EXIT
+
 umask 077
 
 # Parse JSON input

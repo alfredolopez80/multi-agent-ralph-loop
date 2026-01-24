@@ -14,8 +14,8 @@
 # v2.62.3: P0 FIX - Use semantic-write-helper.sh for all semantic writes
 #          P1 FIX - Exclude JSON/YAML from pattern detection (config files only)
 #
-# VERSION: 2.62.3
-# SECURITY: SEC-006 compliant
+# VERSION: 2.68.2
+# SECURITY: SEC-003 (jq JSON), SEC-006 (error trap), SEC-009 (portable mkdir lock)
 
 set -euo pipefail
 umask 077
@@ -163,35 +163,54 @@ fi
         # Create episode file
         EPISODE_FILE="${EPISODES_DIR}/${EPISODE_ID}.json"
 
-        cat > "$EPISODE_FILE" << EPISODEJSON
-{
-  "id": "$EPISODE_ID",
-  "timestamp": "$TIMESTAMP",
-  "type": "decision",
-  "source": "auto-extract",
-  "file": "$FILE_PATH",
-  "patterns": $(printf '%s\n' "${PATTERNS[@]:-}" | jq -R . | jq -s .),
-  "architectural_decisions": $(printf '%s\n' "${ARCH_DECISIONS[@]:-}" | jq -R . | jq -s .),
-  "ttl_days": 30
-}
-EPISODEJSON
+        # SEC-003: Use jq for safe JSON construction (avoid heredoc injection)
+        PATTERNS_JSON=$(printf '%s\n' "${PATTERNS[@]:-}" | jq -R . | jq -s . 2>/dev/null || echo "[]")
+        ARCH_DECISIONS_JSON=$(printf '%s\n' "${ARCH_DECISIONS[@]:-}" | jq -R . | jq -s . 2>/dev/null || echo "[]")
 
-        # Update index (P0 FIX: with flock for atomic write)
+        jq -n \
+            --arg id "$EPISODE_ID" \
+            --arg ts "$TIMESTAMP" \
+            --arg file "$FILE_PATH" \
+            --argjson patterns "$PATTERNS_JSON" \
+            --argjson decisions "$ARCH_DECISIONS_JSON" \
+            '{
+                id: $id,
+                timestamp: $ts,
+                type: "decision",
+                source: "auto-extract",
+                file: $file,
+                patterns: $patterns,
+                architectural_decisions: $decisions,
+                ttl_days: 30
+            }' > "$EPISODE_FILE"
+
+        # Update index (portable lock using mkdir - works on macOS and Linux)
         INDEX_FILE="${EPISODES_DIR}/index.json"
-        INDEX_LOCK="${EPISODES_DIR}/.index.lock"
+        INDEX_LOCK_DIR="${EPISODES_DIR}/.index.lock.d"
         if [[ ! -f "$INDEX_FILE" ]]; then
             echo '{}' > "$INDEX_FILE"
         fi
 
-        # Use flock for atomic index update
-        (
-            flock -x 200 || { echo "[$(date -Iseconds)] ERROR: Could not acquire index lock"; exit 1; }
+        # Acquire lock using mkdir (atomic on all platforms)
+        LOCK_ATTEMPTS=0
+        while ! mkdir "$INDEX_LOCK_DIR" 2>/dev/null; do
+            LOCK_ATTEMPTS=$((LOCK_ATTEMPTS + 1))
+            if [[ $LOCK_ATTEMPTS -gt 50 ]]; then
+                echo "[$(date -Iseconds)] ERROR: Could not acquire index lock after 5s" >> "${LOG_DIR}/decision-extract-$(date +%Y%m%d).log"
+                break
+            fi
+            sleep 0.1
+        done
+
+        # Update index if lock acquired
+        if [[ -d "$INDEX_LOCK_DIR" ]]; then
             jq --arg id "$EPISODE_ID" \
                --arg ts "$TIMESTAMP" \
                --arg file "$FILE_PATH" \
                '. + {($id): {"timestamp": $ts, "file": $file, "type": "decision"}}' \
                "$INDEX_FILE" > "${INDEX_FILE}.tmp" && mv "${INDEX_FILE}.tmp" "$INDEX_FILE"
-        ) 200>"$INDEX_LOCK"
+            rmdir "$INDEX_LOCK_DIR" 2>/dev/null || true
+        fi
 
         echo "[$(date -Iseconds)] Created episode: $EPISODE_ID with $TOTAL_DECISIONS decisions"
 

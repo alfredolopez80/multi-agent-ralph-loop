@@ -2,7 +2,7 @@
 # Fast-Path Check Hook v2.46
 # Hook: PreToolUse (Task)
 # Purpose: Detect trivial tasks and route to fast-path
-# VERSION: 2.57.5
+# VERSION: 2.68.2
 # v2.57.3: Fixed JSON output to single line format
 
 set -euo pipefail
@@ -78,8 +78,9 @@ LOG_FILE="$LOG_DIR/fast-path-$(date +%Y%m%d).log"
 } >> "$LOG_FILE"
 
 # Return decision with classification hint (single-line JSON)
+# SEC-039: PreToolUse hooks MUST use {"decision": "allow"}, NOT {"continue": true}
 if [[ "$IS_TRIVIAL" == "true" ]]; then
-    echo '{"continue": true, "additionalContext": "FAST_PATH_ELIGIBLE: This task appears trivial (complexity <= 3). Consider fast-path: DIRECT_EXECUTE -> MICRO_VALIDATE -> DONE."}'
+    echo '{"decision": "allow", "additionalContext": "FAST_PATH_ELIGIBLE: This task appears trivial (complexity <= 3). Consider fast-path: DIRECT_EXECUTE -> MICRO_VALIDATE -> DONE."}'
 else
-    echo '{"continue": true, "additionalContext": "STANDARD_PATH: This task requires full orchestration workflow."}'
+    echo '{"decision": "allow", "additionalContext": "STANDARD_PATH: This task requires full orchestration workflow."}'
 fi

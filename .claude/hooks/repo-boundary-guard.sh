@@ -2,7 +2,8 @@
 # repo-boundary-guard.sh - Repository Isolation Enforcement
 # Hook: PreToolUse (Edit|Write|Bash)
 # Purpose: Prevent accidental work in external repositories
-# VERSION: 1.0.0
+# VERSION: 2.68.2
+# v2.66.8: SEC-051 - Use realpath for proper path canonicalization
 
 set -euo pipefail
 
@@ -31,8 +32,10 @@ is_allowed_path() {
     local path="$1"
     local current_repo="$2"
 
-    # Expand ~ to HOME
+    # SEC-051: Canonicalize path using realpath (handles ~, .., symlinks)
+    # First expand ~ manually, then use realpath for full canonicalization
     path="${path/#\~/$HOME}"
+    path=$(realpath -m "$path" 2>/dev/null || echo "$path")
 
     # Allow global config directories
     if [[ "$path" == "${HOME}/.claude"* ]] || \

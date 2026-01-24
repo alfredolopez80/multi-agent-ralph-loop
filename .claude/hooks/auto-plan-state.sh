@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VERSION: 2.62.3
+# VERSION: 2.68.2
 # Hook: auto-plan-state.sh
 # Trigger: PostToolUse (Write) matcher: orchestrator-analysis
 # Purpose: Automatically create plan-state.json when orchestrator-analysis.md is written
@@ -11,6 +11,9 @@
 # v2.62.3: Updated to v2 schema with phases, barriers, and object-based steps
 
 set -euo pipefail
+
+# Error trap for guaranteed JSON output (v2.66.6 SEC-042 fix)
+trap 'echo "{\"continue\": true}"' ERR EXIT
 umask 077
 
 # =============================================================================

@@ -1,6 +1,6 @@
 #!/bin/bash
 # task-orchestration-optimizer.sh - Optimize Task tool usage patterns
-# VERSION: 2.62.0
+# VERSION: 2.68.2
 #
 # Purpose: Implement Claude Code's Task primitive optimization
 #          Auto-detect parallelization and context-hiding opportunities.

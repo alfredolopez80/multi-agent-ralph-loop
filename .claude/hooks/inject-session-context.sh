@@ -15,7 +15,7 @@
 #
 # Part of Ralph v2.43 Context Engineering
 
-# VERSION: 2.68.1
+# VERSION: 2.68.2
 # v2.68.1: FIX CRIT-002 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 # Note: Not using set -e because we need graceful fallback on errors
 set -uo pipefail

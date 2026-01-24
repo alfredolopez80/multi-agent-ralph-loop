@@ -4,7 +4,7 @@
 # PostToolUse hook - AUTO-INVOKE /deslop after implementation phase
 #===============================================================================
 #
-# VERSION: 2.68.0
+# VERSION: 2.68.2
 # TRIGGER: PostToolUse (Edit|Write)
 # PURPOSE: Automatically invoke /deslop to clean AI-generated slop
 #

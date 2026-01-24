@@ -4,7 +4,7 @@
 # PostToolUse hook - AUTO-INVOKE /security for sensitive files
 #===============================================================================
 #
-# VERSION: 2.68.0
+# VERSION: 2.68.2
 # TRIGGER: PostToolUse (Edit|Write)
 # PURPOSE: Automatically invoke /security for auth/payment/crypto files
 #

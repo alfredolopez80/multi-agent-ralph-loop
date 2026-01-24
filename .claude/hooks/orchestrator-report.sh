@@ -2,25 +2,28 @@
 # orchestrator-report.sh - Orchestrator Session Report Hook
 # Hook: Stop
 # Purpose: Generate comprehensive session report when user ends session
-# VERSION: 2.59.0
+# VERSION: 2.68.2
 #
+# v2.66.6: Fixed duplicate VERSION (GAP-003) and consolidated version history
 # v2.59.0: Added effectiveness metrics and domain-specific recommendations
 # v2.57.5: Fixed JSON output format (SEC-039) - use "decision": "approve" not "continue"
-
+# v2.57.0: Created as part of Memory System Reconstruction
+#
 # When: Triggered on Stop event (session ending)
 # What: Analyzes session activity, learning outcomes, and recommendations
-#
-# v2.57.0: Created as part of Memory System Reconstruction
 # - Generates session summary
 # - Counts implemented vs pending steps
 # - Reports learning outcomes
 # - Provides recommendations for next steps
 #
-# VERSION: 2.57.5
 # SECURITY: SEC-006 compliant
 # OUTPUT: JSON report to stdout
 
 set -euo pipefail
+
+# Error trap for guaranteed JSON output (v2.62.3)
+trap 'echo "{\"decision\": \"approve\"}"' ERR EXIT
+
 umask 077
 
 # Paths - Initialize all variables before use

@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
-# VERSION: 2.57.5
+# VERSION: 2.68.2
 # Hook: Plan-Sync Post-Step
 # Trigger: PostToolUse (after Edit or Write completes in orchestrated context)
 # Purpose: Detect drift and trigger Plan-Sync agent for downstream patching
 # Security: v2.45.1 - Fixed race condition, path traversal, atomic updates
+# SEC-047: Added guaranteed JSON output for PostToolUse hooks
 
 set -euo pipefail
+
+# SEC-047: Error trap for guaranteed JSON output (PostToolUse format)
+trap 'echo "{\"continue\": true}"' ERR EXIT
 
 # Configuration
 PLAN_STATE=".claude/plan-state.json"
