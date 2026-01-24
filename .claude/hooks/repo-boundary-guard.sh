@@ -2,8 +2,13 @@
 # repo-boundary-guard.sh - Repository Isolation Enforcement
 # Hook: PreToolUse (Edit|Write|Bash)
 # Purpose: Prevent accidental work in external repositories
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 # v2.66.8: SEC-051 - Use realpath for proper path canonicalization
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 # checkpoint-smart-save.sh - Smart checkpoint based on risk/complexity
-# VERSION: 2.68.10
+# VERSION: 2.68.23
 # v2.68.10: SEC-105 FIX - Atomic noclobber (O_EXCL) eliminates TOCTOU gap completely
 # v2.68.1: FIX CRIT-003 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 # v2.66.8: HIGH-003 version sync, RACE-001 atomic mkdir already implemented
@@ -19,6 +19,11 @@
 # - Cooldown of 120 seconds between checkpoints
 # - Only triggers on first edit of each file per session
 # - Auto-cleanup keeps last 20 smart checkpoints
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 
@@ -88,7 +93,8 @@ fi
 
 # Check if file was already edited this session
 # FIX RACE-001: Use atomic mkdir for check-and-set to prevent race condition
-FILE_HASH=$(echo "$FILE_PATH" | md5sum | cut -d' ' -f1)
+# SEC-104: Use SHA-256 instead of MD5 for cryptographic hash
+FILE_HASH=$(echo "$FILE_PATH" | shasum -a 256 | cut -d' ' -f1)
 EDITED_FLAG="$TRACKING_DIR/edited-$FILE_HASH"
 LOCK_DIR="${EDITED_FLAG}.lock.d"
 

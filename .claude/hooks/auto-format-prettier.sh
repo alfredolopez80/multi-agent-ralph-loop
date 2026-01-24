@@ -1,9 +1,14 @@
 #!/bin/bash
 # auto-format-prettier.sh - Auto-format JS/TS files with Prettier after edits
-# VERSION: 2.68.9
+# VERSION: 2.68.23
 # v2.68.9: SEC-102 FIX - Validate FILE_PATH to prevent command injection
 # HOOK: PostToolUse (Edit|Write)
 # Part of Multi-Agent Ralph Loop v2.66.0
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 

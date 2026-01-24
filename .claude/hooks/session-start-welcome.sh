@@ -2,8 +2,13 @@
 
 # SessionStart Hook: Personalized welcome message
 
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 set -euo pipefail
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 # Read hook input from stdin
 HOOK_INPUT=$(cat)

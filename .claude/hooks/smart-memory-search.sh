@@ -19,10 +19,15 @@
 #   - recommended_patterns: Best practices from history
 #   - fork_suggestions: Top 5 sessions to fork from
 #
-# VERSION: 2.68.2 (Security Hardened + Portability + macOS Compatibility + SEC-039 Fix)
+# VERSION: 2.68.23
 # Fixes: SECURITY-001, 002, 003, ADV-001, ADV-002, ADV-003, ADV-004, ADV-005, ADV-006, GAP-MEM-001, SEC-007
 # v2.57.6: FIX GAP-MEM-001 - macOS realpath doesn't support -e flag, use glob instead of regex
 # v2.47.3: Removed unused variable, fixed $KEYWORDS_SAFE usage, date portability, noclobber
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 umask 077

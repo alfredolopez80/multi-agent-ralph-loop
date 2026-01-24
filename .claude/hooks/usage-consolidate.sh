@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VERSION: 2.68.6
+# VERSION: 2.68.23
 # Usage Count Consolidation Hook (v2.68.6)
 # Hook: SessionStart
 # Purpose: Consolidate pending usage_count updates at session start

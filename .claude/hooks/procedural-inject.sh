@@ -1,5 +1,5 @@
 #!/bin/bash
-# VERSION: 2.68.5
+# VERSION: 2.68.23
 # Procedural Memory Injection (v2.68.5)
 # Hook: PreToolUse (Task)
 # Purpose: Inject relevant procedural rules into subagent context
@@ -9,6 +9,11 @@
 # v2.59.4: FIXED - Use blocking flock -w 2 instead of -n to prevent feedback loop skips (GAP-CRIT-003)
 # v2.59.3: ENHANCED - Use domain taxonomy for smarter matching + trigger keywords
 # SEC-006 compliant with guaranteed JSON output
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 umask 077

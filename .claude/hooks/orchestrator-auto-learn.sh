@@ -15,11 +15,16 @@
 # v2.59.2: FIXED - Single JSON output
 # v2.57.0: Fixed to actually inject context
 #
-# VERSION: 2.68.11
+# VERSION: 2.68.23
 # v2.68.11: Version sync with SEC-111 fixes
 # v2.68.10: SEC-110 FIX - Redact sensitive data before logging (API keys, tokens)
 # SECURITY: SEC-006 compliant
 # v2.66.5: DUP-001 FIX - Use shared domain-classifier.sh library
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 umask 077

@@ -2,10 +2,15 @@
 # Recursive Decomposition Hook v2.46
 # Hook: PostToolUse (Task - orchestrator classification)
 # Purpose: Trigger recursive decomposition for complex tasks
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 #
 # Based on RLM Paper: "Recursive sub-calling provides strong benefits
 # on information-dense inputs"
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 
@@ -21,6 +26,8 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 
 # Only process Task completions
 if [[ "$TOOL_NAME" != "Task" ]]; then
+    # CRIT-003: Clear trap before explicit JSON output to avoid duplicates
+    trap - ERR EXIT
     echo '{"continue": true}'
     exit 0
 fi
@@ -31,6 +38,8 @@ TASK_PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty')
 
 # Only trigger for orchestrator classification results
 if [[ "$TASK_TYPE" != "orchestrator" ]] && ! echo "$TASK_PROMPT" | grep -qi "classify\|classification\|complexity"; then
+    # CRIT-003: Clear trap before explicit JSON output to avoid duplicates
+    trap - ERR EXIT
     echo '{"continue": true}'
     exit 0
 fi

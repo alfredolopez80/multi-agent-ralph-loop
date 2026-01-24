@@ -4,12 +4,17 @@
 # PostToolUse hook - AUTO-INVOKE /adversarial for high complexity tasks
 #===============================================================================
 #
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 # TRIGGER: PostToolUse (Task - when orchestrator step completes)
 # PURPOSE: Automatically invoke /adversarial for complexity >= 7
 #
 # CHANGE FROM v2.67: Now uses IMPERATIVE instructions, not suggestions
 # The systemMessage tells Claude to EXECUTE the skill, not just consider it
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 umask 077

@@ -2,7 +2,7 @@
 # Auto-sync global commands/agents/hooks to current project
 # Runs on SessionStart to ensure all projects have global configs
 
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 set -euo pipefail
 
 GLOBAL_DIR="${HOME}/.claude"

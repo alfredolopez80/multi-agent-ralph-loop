@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 # plan-analysis-cleanup.sh
 # Hook: PostToolUse (ExitPlanMode)
 # Cleans up orchestrator analysis file after ExitPlanMode
 # Output: {"continue": true}
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 umask 077
@@ -16,9 +21,11 @@ BACKUP_DIR="${HOME}/.ralph/analysis"
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 
 # Function to return JSON response (Claude Code hook protocol)
+# CRIT-003: Clear trap before explicit JSON output to avoid duplicates
 return_json() {
     local continue_flag="${1:-true}"
     local message="${2:-}"
+    trap - ERR EXIT
     if [ -n "$message" ]; then
         echo "{\"continue\": $continue_flag, \"message\": \"$message\"}"
     else

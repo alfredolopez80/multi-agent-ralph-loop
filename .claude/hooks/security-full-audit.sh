@@ -4,12 +4,17 @@
 # PostToolUse hook - AUTO-INVOKE /security for sensitive files
 #===============================================================================
 #
-# VERSION: 2.68.9
+# VERSION: 2.68.23
 # v2.68.9: SEC-104 FIX - Replace MD5 with SHA-256 for file hashing
 # TRIGGER: PostToolUse (Edit|Write)
 # PURPOSE: Automatically invoke /security for auth/payment/crypto files
 #
 # CHANGE FROM v2.67: Now uses IMPERATIVE instructions, not suggestions
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 umask 077

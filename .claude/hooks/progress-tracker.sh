@@ -16,7 +16,12 @@
 # Part of Ralph v2.41 Context Engineering - progress.md system
 # Based on: docs/yt/stop-using-ralph-plugin-summary.md
 
-# VERSION: 2.68.2
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
+
+# VERSION: 2.68.23
 # v2.68.1: FIX CRIT-006 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 set -euo pipefail
 

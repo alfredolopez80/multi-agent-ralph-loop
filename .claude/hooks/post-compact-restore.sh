@@ -1,9 +1,14 @@
 #!/bin/bash
-# VERSION: 2.68.7
+# VERSION: 2.68.23
 # post-compact-restore.sh - Multi-Agent Ralph v2.68.7
 # Restores context after compaction using ledger + claude-mem MCP
 # Triggered by PostCompact hook event
 # v2.68.7: CRIT-001 - Added guaranteed JSON output for PostCompact hooks
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 

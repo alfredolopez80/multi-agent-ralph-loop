@@ -12,7 +12,12 @@
 #
 # Part of Ralph v2.43 Context Engineering with Claude-Mem Integration
 #
-# VERSION: 2.68.2
+# VERSION: 2.68.23
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 

@@ -2,8 +2,13 @@
 # Fast-Path Check Hook v2.46
 # Hook: PreToolUse (Task)
 # Purpose: Detect trivial tasks and route to fast-path
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 # v2.57.3: Fixed JSON output to single line format
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 

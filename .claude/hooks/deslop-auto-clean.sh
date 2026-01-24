@@ -4,11 +4,16 @@
 # PostToolUse hook - AUTO-INVOKE /deslop after implementation phase
 #===============================================================================
 #
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 # TRIGGER: PostToolUse (Edit|Write)
 # PURPOSE: Automatically invoke /deslop to clean AI-generated slop
 #
 # CHANGE FROM v2.67: Now uses IMPERATIVE instructions, not suggestions
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 umask 077

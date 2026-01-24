@@ -18,7 +18,7 @@
 #
 
 # No usar set -e para evitar que errores de tldr detengan la sesión
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 # v2.52: Fixed JSON output format for SessionStart hooks
 set +e
 

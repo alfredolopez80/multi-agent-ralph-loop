@@ -1,5 +1,5 @@
 #!/bin/bash
-# VERSION: 2.68.0
+# VERSION: 2.68.23
 #===============================================================================
 # SEC-CONTEXT VALIDATE HOOK v2.68.0
 # Hook: PostToolUse (Edit|Write)
@@ -16,6 +16,11 @@
 # v2.68.0: Expanded from 7 to 27 patterns per sec-context BREADTH analysis
 # v2.62.3: Original 7 patterns with error trap compliance
 #===============================================================================
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 

@@ -21,7 +21,12 @@
 #
 # Part of Ralph v2.44 Context Engineering - GitHub #15021 Workaround
 
-# VERSION: 2.68.20
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
+
+# VERSION: 2.68.23
 # v2.68.8: SEC-054 - Fixed PreCompact JSON format (continue:true, not decision:allow)
 set -euo pipefail
 

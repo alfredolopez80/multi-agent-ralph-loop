@@ -1,6 +1,6 @@
 #!/bin/bash
 # plan-state-adaptive.sh - Adaptive plan-state creation for ALL tasks
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 # v2.68.2: FIX CRIT-007 - Clear EXIT trap before explicit JSON output
 #
 # PROBLEM SOLVED: Plan-state was only created for orchestrator tasks,
@@ -15,6 +15,11 @@
 #
 # This hook was created as part of v2.57.0 Memory System Reconstruction
 # to address Issue #1: Plan-state only creates for orchestrator-analysis.md
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 
