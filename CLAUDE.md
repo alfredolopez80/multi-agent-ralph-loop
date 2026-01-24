@@ -728,9 +728,9 @@ ralph handoff create      # Create handoff
 
 ---
 
-## Hooks (52 registered) - v2.62.3
+## Hooks (67 files, 80 registrations) - v2.68.23
 
-> **v2.62.3**: All 44 execution hooks now have error traps guaranteeing valid JSON output. 8 SessionStart/helper hooks don't require traps.
+> **v2.68.23**: All 66 bash hooks now have error traps guaranteeing valid JSON output. 67 hook files (66 bash + 1 python) with 80 event registrations across all event types. Adversarial validation complete with SEC-111 (DoS prevention), SEC-104 (SHA-256), SEC-117 (command injection prevention), CRIT-003 (duplicate JSON prevention).
 
 | Event Type | Purpose |
 |------------|---------|
