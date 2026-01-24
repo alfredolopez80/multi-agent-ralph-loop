@@ -18,106 +18,78 @@
 
 ## Open Items
 
-### GAP-CRIT-010: 6 Documented Commands Need Full Implementation (P1) - PARTIAL FIX v2.68.18
+### GAP-CRIT-010: 6 Documented Commands Need Full Implementation (DONE)
 
 **Created**: 2026-01-24 (v2.68.18 exhaustive audit)
-**Updated**: 2026-01-24 (v2.68.18 - Partial fix applied)
-**Status**: Open - PARTIAL FIX (stubs added)
-**Effort**: Medium (3-6 hours for full implementation)
+**Completed**: 2026-01-24 (v2.68.22 technical debt cleanup)
+**Status**: DONE
 
 **Original Problem**:
 CLAUDE.md documented 7 commands that returned "Unknown command".
 
-**Progress (v2.68.18)**:
-| Command | Status | Notes |
-|---------|--------|-------|
-| `ralph context` | ✅ FIXED | Wired to `~/.ralph/scripts/context.sh` |
-| `ralph checkpoint` | ⚠️ STUB | Shows helpful message + reference to debt |
-| `ralph handoff` | ⚠️ STUB | Shows helpful message + reference to debt |
-| `ralph events` | ⚠️ STUB | Shows helpful message + reference to debt |
-| `ralph agent-memory` | ⚠️ STUB | Shows helpful message + reference to debt |
-| `ralph migrate` | ⚠️ STUB | Shows helpful message + reference to debt |
-| `ralph ledger` | ⚠️ STUB | Shows helpful message + reference to debt |
+**Solution (v2.68.22)**:
+All 7 commands now fully implemented:
+| Command | Script | Features |
+|---------|--------|----------|
+| `ralph context` | `context.sh` | dev/review/research/debug modes |
+| `ralph checkpoint` | `checkpoint.sh` | save/restore/list/show/diff |
+| `ralph handoff` | `handoff.sh` | transfer/agents/validate/history |
+| `ralph events` | `events.sh` | emit/subscribe/barrier/route/advance |
+| `ralph agent-memory` | `agent-memory.sh` | init/read/write/transfer/list/gc |
+| `ralph migrate` | `migrate.sh` | check/run/dry-run |
+| `ralph ledger` | `ledger.sh` | save/load/list/show |
 
-**Current State**:
-- Commands no longer return "Unknown command" (improved UX)
-- `ralph context` fully functional
-- 6 commands have stubs that explain the feature is pending
-- Users are directed to TECHNICAL_DEBT.md for tracking
+**Files Created** (v2.68.22):
+- `~/.ralph/scripts/checkpoint.sh` (251 lines)
+- `~/.ralph/scripts/handoff.sh` (265 lines)
+- `~/.ralph/scripts/events.sh` (290 lines)
+- `~/.ralph/scripts/agent-memory.sh` (310 lines)
+- `~/.ralph/scripts/migrate.sh` (153 lines)
+- `~/.ralph/scripts/ledger.sh` (154 lines)
 
-**Remaining Work**:
-Implement full functionality for: checkpoint, handoff, events, agent-memory, migrate, ledger
-
-**Priority**: P1 - HIGH (downgraded from P0 since stubs provide better UX)
+**Total**: ~1,423 lines of CLI implementation
 
 ---
 
-### DUP-002: JSON Output Helper Duplication (P2)
+### DUP-002: JSON Output Helper Duplication (PARTIAL)
 
 **Created**: 2026-01-23 (v2.66.8 release)
-**Status**: Open
-**Effort**: Medium (2-4 hours)
+**Updated**: 2026-01-24 (v2.68.22 - Library created)
+**Status**: PARTIAL - Library created, migration deferred
+**Effort**: Medium (2-4 hours for full migration)
 
-**Problem**:
-30+ hooks duplicate the `output_json()` pattern:
+**Progress (v2.68.22)**:
+✅ **Library Created**: `~/.ralph/lib/hook-json-output.sh`
+- Type-safe functions for each hook event type
+- `output_allow/block` → PreToolUse
+- `output_continue/msg` → PostToolUse
+- `output_approve` → Stop
+- `output_empty/context` → UserPromptSubmit
+- `trap_*` helpers for error trap setup
 
+⏸️ **Migration Deferred**:
+32 existing hooks still use inline `output_json()`:
+- 19 PostToolUse hooks
+- 5 PreToolUse hooks
+- 3 Stop hooks
+- 5 UserPromptSubmit hooks (3 with custom logic)
+
+**Why Migration Deferred**:
+- All hooks work correctly (no functional impact)
+- High regression risk from mass-refactoring 32 hooks
+- Some hooks have custom output_json logic
+- Library available for new hooks
+
+**Usage for New Hooks**:
 ```bash
-output_json() {
-    echo '{"continue": true}'  # or {"decision": "allow"}
-}
-trap 'output_json' ERR
+source "${HOME}/.ralph/lib/hook-json-output.sh"
+trap_continue  # For PostToolUse hooks
+
+# ... hook logic ...
+
+trap_clear
+output_continue_msg "Hook completed successfully"
 ```
-
-**Files Affected**:
-- `~/.claude/hooks/procedural-inject.sh`
-- `~/.claude/hooks/semantic-auto-extractor.sh`
-- `~/.claude/hooks/auto-save-context.sh`
-- `~/.claude/hooks/orchestrator-auto-learn.sh`
-- `~/.claude/hooks/inject-session-context.sh`
-- `~/.claude/hooks/curator-suggestion.sh`
-- ... and 25+ more hooks
-
-**Proposed Solution**:
-
-1. Create shared library `~/.ralph/lib/hook-json-output.sh`:
-   ```bash
-   #!/bin/bash
-   # Shared JSON output helpers for hooks
-
-   # PreToolUse/PreCompact format
-   output_allow() { echo '{"decision": "allow"}'; }
-   output_block() { echo "{\"decision\": \"block\", \"reason\": \"$1\"}"; }
-
-   # PostToolUse format
-   output_continue() { echo '{"continue": true}'; }
-   output_continue_msg() { echo "{\"continue\": true, \"systemMessage\": \"$1\"}"; }
-
-   # Stop format
-   output_approve() { echo '{"decision": "approve"}'; }
-
-   # UserPromptSubmit format
-   output_empty() { echo '{}'; }
-   ```
-
-2. Update all hooks to source the library:
-   ```bash
-   source "${HOME}/.ralph/lib/hook-json-output.sh" 2>/dev/null || {
-       # Fallback if library not found
-       output_allow() { echo '{"decision": "allow"}'; }
-   }
-   trap 'output_allow' ERR
-   ```
-
-**Why Deferred**:
-- No functional impact (all hooks work correctly)
-- Requires updating 30+ files
-- Risk of introducing regressions during refactor
-- Each hook has different JSON format needs
-
-**When to Fix**:
-- During a dedicated refactoring sprint
-- Before adding more hooks to the system
-- If a bug is found in multiple output_json implementations
 
 ---
 
@@ -305,20 +277,27 @@ All 10 identified hooks were verified:
 
 ---
 
-### SEC-116: Missing umask 077 (P3 - Optional)
+### SEC-116: Missing umask 077 (DONE)
 
 **Created**: 2026-01-24 (v2.68.9 security audit)
-**Updated**: 2026-01-24 (v2.68.11 adversarial validation)
-**Status**: Open - Optional Improvement
-**Effort**: Low (30 minutes)
+**Completed**: 2026-01-24 (v2.68.22 technical debt cleanup)
+**Status**: DONE
 
-**Analysis**:
-- 32/66 hooks lack `umask 077`
-- **Mitigated by SEC-110**: Sensitive data already redacted before logging
-- Files created are mostly logs (not credentials)
-- Defense-in-depth only, not a security risk
+**Solution**: Added `umask 077` to all 31 hooks that were missing it.
+Now 66/66 hooks have restrictive file permissions (defense-in-depth).
 
-**When to Fix**: During routine maintenance (not urgent)
+**Files Updated** (v2.68.22):
+- auto-format-prettier.sh, auto-save-context.sh, auto-sync-global.sh
+- checkpoint-smart-save.sh, console-log-detector.sh, context-injector.sh
+- context-warning.sh, continuous-learning.sh, inject-session-context.sh
+- lsa-pre-step.sh, plan-state-init.sh, plan-state-lifecycle.sh
+- plan-sync-post-step.sh, post-compact-restore.sh, pre-compact-handoff.sh
+- progress-tracker.sh, project-backup-metadata.sh, prompt-analyzer.sh
+- repo-boundary-guard.sh, sec-context-validate.sh, sentry-report.sh
+- session-start-ledger.sh, session-start-tldr.sh, session-start-welcome.sh
+- skill-validator.sh, status-auto-check.sh, statusline-health-monitor.sh
+- stop-verification.sh, task-orchestration-optimizer.sh, typescript-quick-check.sh
+- verification-subagent.sh
 
 ---
 
@@ -339,24 +318,16 @@ All 10 identified hooks were verified:
 
 ---
 
-### LOW-004: Unbounded find (P3 - Optional)
+### LOW-004: Unbounded find (DONE)
 
 **Created**: 2026-01-24 (v2.68.4 gap analysis)
-**Updated**: 2026-01-24 (v2.68.11 adversarial validation)
-**Status**: Open - Optional Improvement
-**Effort**: Very Low (1 minute)
+**Completed**: 2026-01-24 (v2.68.21 technical debt cleanup)
+**Status**: DONE
 
-**Analysis**:
-- `curator-suggestion.sh` uses `find` without `-maxdepth`
-- Curator corpus is user-maintained, typically <100 repos
-- Only counts files, doesn't process content
-
-**Optional Fix**:
+**Solution**: Added `-maxdepth 2` to find command in `curator-suggestion.sh`:
 ```bash
-CORPUS_COUNT=$(find "$CORPUS_DIR" -maxdepth 2 -type f -name "*.json" 2>/dev/null | wc -l)
+CORPUS_COUNT=$(find "$CORPUS_DIR" -maxdepth 2 -type f -name "*.json" 2>/dev/null | wc -l | tr -d ' ')
 ```
-
-**When to Fix**: When convenient (not a real security issue)
 
 ---
 

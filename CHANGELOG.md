@@ -7,6 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.68.22] - 2026-01-24
+
+### Technical Debt Cleanup - Full CLI Implementation & Security Hardening
+
+Comprehensive technical debt closure completing ALL documented CLI commands and security improvements.
+
+#### GAP-CRIT-010: 6 CLI Commands Implemented (~1,423 lines)
+
+| Command | Script | Features | Lines |
+|---------|--------|----------|-------|
+| `ralph checkpoint` | `checkpoint.sh` | save, restore, list, show, diff | 251 |
+| `ralph handoff` | `handoff.sh` | transfer, agents, validate, history, create, load | 265 |
+| `ralph events` | `events.sh` | emit, subscribe, barrier (check/wait/list), route, advance, status, history | 290 |
+| `ralph agent-memory` | `agent-memory.sh` | init, read, write, transfer, list, gc | 310 |
+| `ralph migrate` | `migrate.sh` | check, run, dry-run | 153 |
+| `ralph ledger` | `ledger.sh` | save, load, list, show | 154 |
+
+#### SEC-116: umask 077 Added to 31 Hooks
+
+All 66 hooks now have restrictive file permissions (defense-in-depth):
+- auto-format-prettier.sh, auto-save-context.sh, auto-sync-global.sh
+- checkpoint-smart-save.sh, console-log-detector.sh, context-injector.sh
+- context-warning.sh, continuous-learning.sh, inject-session-context.sh
+- lsa-pre-step.sh, plan-state-init.sh, plan-state-lifecycle.sh
+- plan-sync-post-step.sh, post-compact-restore.sh, pre-compact-handoff.sh
+- progress-tracker.sh, project-backup-metadata.sh, prompt-analyzer.sh
+- repo-boundary-guard.sh, sec-context-validate.sh, sentry-report.sh
+- session-start-ledger.sh, session-start-tldr.sh, session-start-welcome.sh
+- skill-validator.sh, status-auto-check.sh, statusline-health-monitor.sh
+- stop-verification.sh, task-orchestration-optimizer.sh, typescript-quick-check.sh
+- verification-subagent.sh
+
+#### LOW-004: Bounded find in curator-suggestion.sh
+
+Added `-maxdepth 2` to prevent DoS on large directories.
+
+#### DUP-002: Shared JSON Library Created (Partial)
+
+Created `~/.ralph/lib/hook-json-output.sh` with type-safe functions:
+- `output_allow/block` → PreToolUse
+- `output_continue/msg` → PostToolUse
+- `output_approve` → Stop
+- `output_empty/context` → UserPromptSubmit
+- `trap_*` helpers for error trap setup
+
+Migration of 32 existing hooks deferred (working, low risk).
+
+#### Files Created/Modified
+
+**New Scripts (6)**:
+- `~/.ralph/scripts/checkpoint.sh` (v2.68.22)
+- `~/.ralph/scripts/handoff.sh` (v2.68.22)
+- `~/.ralph/scripts/events.sh` (v2.68.22)
+- `~/.ralph/scripts/agent-memory.sh` (v2.68.22)
+- `~/.ralph/scripts/migrate.sh` (v2.68.22)
+- `~/.ralph/scripts/ledger.sh` (v2.68.22)
+
+**New Library (1)**:
+- `~/.ralph/lib/hook-json-output.sh` (v2.68.22)
+
+**Updated (32)**:
+- `~/.local/bin/ralph` - CLI wired to new scripts
+- 31 hooks with `umask 077` added
+- `.claude/TECHNICAL_DEBT.md` - Updated status
+
+---
+
 ## [2.68.20] - 2026-01-24
 
 ### Adversarial Validation Phase 9 - SEC-029 Session ID Path Traversal Fix
