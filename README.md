@@ -211,7 +211,7 @@ ralph health
 
 # Check hooks registration
 ls ~/.claude/hooks/*.sh | wc -l
-# Should output: 63 (after v2.68.23 updates)
+# Should output: 67 (v2.69.0 - 67 files, 80 registrations)
 
 # Test quality gates
 /gates
@@ -253,59 +253,65 @@ ralph handoff transfer --from orchestrator --to security-auditor \
 ### Directory Structure
 
 ```
-multi-agent-ralph-loop/
-├── .claude/                      # Claude Code configuration
-│   ├── agents/                   # Specialized agents (11 default)
-│   │   ├── orchestrator.sh       # Main orchestration agent
-│   │   ├── security-auditor.sh   # Security-focused agent
-│   │   ├── debugger.sh           # Bug detection/fix agent
-│   │   ├── code-reviewer.sh      # Code review agent
-│   │   ├── test-architect.sh     # Testing agent
-│   │   ├── refactorer.sh         # Refactoring agent
-│   │   ├── frontend-reviewer.sh  # UI/UX agent
-│   │   ├── docs-writer.sh        # Documentation agent
-│   │   ├── minimax-reviewer.sh   # MiniMax validation
-│   │   ├── repository-learner.sh # Learning agent
-│   │   └── repo-curator.sh       # Curation agent
-│   ├── commands/                 # Slash commands
-│   ├── hooks/                    # Hook scripts (63 registered, v2.68.23)
-│   │   ├── quality-gates-v2.sh   # Quality validation (BLOCKING)
-│   │   ├── sec-context-validate.sh # Security validation (BLOCKING)
-│   │   ├── smart-memory-search.sh # Memory search
-│   │   ├── procedural-inject.sh  # Rules injection
-│   │   ├── orchestrator-auto-learn.sh # Auto-learning
-│   │   ├── smart-skill-reminder.sh # Context-aware skill suggestions (v2.0)
-│   │   ├── skill-pre-warm.sh     # Pre-warm skills on session start
-│   │   └── ... (45 more hooks)
-│   ├── skills/                   # Claude Code skills (266+)
-│   │   ├── marketing-ideas/      # 140 marketing strategies
-│   │   ├── marketingskills/      # 23 marketing skills
-│   │   ├── react-best-practices/ # React optimization
-│   │   └── readme/               # Documentation generation
-│   ├── settings.json             # Global hooks configuration
+multi-agent-ralph-loop/           # Repository root
+├── .claude/                      # Project-level Claude Code config
+│   ├── agents/                   # Specialized agents (35 files)
+│   │   ├── orchestrator.md       # Main orchestration agent
+│   │   ├── security-auditor.md   # Security-focused agent
+│   │   ├── debugger.md           # Bug detection/fix agent
+│   │   ├── code-reviewer.md      # Code review agent
+│   │   ├── glm-reviewer.md       # GLM-4.7 validation (NEW v2.69)
+│   │   ├── repository-learner.md # AST pattern extraction
+│   │   ├── repo-curator.md       # Repository curation
+│   │   └── ... (28 more agents)
+│   ├── commands/                 # Slash commands (39 files)
+│   ├── hooks/                    # Project hooks (synced from global)
+│   ├── scripts/                  # Utility scripts (17 files)
+│   ├── skills/                   # Project skills (26 directories)
+│   ├── archive/                  # Archived documentation
+│   │   ├── v2.24/                # Security reviews v2.24
+│   │   ├── v2.33/                # Optimizations v2.33
+│   │   └── v2.45/                # Audits v2.45
 │   └── plan-state.json           # Current orchestration state
-├── scripts/                      # Utility scripts (40+)
-│   ├── ralph*                    # Main CLI commands
-│   ├── curator-*                 # Repo curation scripts
-│   ├── memory-*                  # Memory management scripts
-│   ├── handoff.sh                # Agent transfer script
-│   ├── event-bus.sh              # Event-driven engine
-│   ├── checkpoint-*.sh           # Checkpoint management
-│   ├── install-security-tools.sh # Security tools installer
-│   └── validate-hooks.sh         # Hook validation
-├── tests/                        # Test suite (74+ tests)
-│   ├── test_hooks_*.py           # Hook tests
-│   ├── test_memory_*.py          # Memory tests
-│   ├── test_v2_*.sh              # Integration tests
-│   └── run_tests.sh              # Test runner
-├── config/                       # Configuration
+├── config/                       # Configuration files
+│   ├── models.json               # Model routing config (v2.69.0)
+│   └── ralph_rules.json          # Procedural rules
 ├── docs/                         # Documentation
+│   ├── architecture/             # Architecture diagrams
+│   └── security/                 # Security documentation
+├── scripts/                      # Main CLI scripts
+│   ├── ralph                     # Main CLI (v2.69.0)
+│   └── mmc                       # Multi-Model CLI (GLM-4.7 PRIMARY)
+├── tests/                        # Test suite (903 tests)
 ├── install.sh                    # Global installer
 ├── uninstall.sh                  # Uninstaller
 ├── CLAUDE.md                     # Project instructions
 ├── AGENTS.md                     # Agent documentation
 ├── README.md                     # This file
-└── CHANGELOG.md                  # Version history
+├── CHANGELOG.md                  # Version history
+├── CONTRIBUTING.md               # Contribution guide
+├── TESTING.md                    # Testing documentation
+└── LICENSE                       # BSL 1.1 License
+
+~/.claude/                        # Global Claude Code config
+├── hooks/                        # Global hooks (67 files, 80 registrations)
+├── agents/                       # Global agents (34 files)
+├── commands/                     # Global commands
+├── skills/                       # Global skills ecosystem
+├── contexts/                     # Dynamic contexts (dev, review, research, debug)
+├── rules/                        # Global rules (6 files)
+└── settings.json                 # Hook registrations
+
+~/.ralph/                         # Ralph runtime data
+├── memory/                       # Semantic memory
+├── episodes/                     # Episodic memory (30-day TTL)
+├── procedural/                   # Procedural rules
+├── agent-memory/                 # Per-agent memory buffers
+├── checkpoints/                  # Time-travel checkpoints
+├── ledgers/                      # Session ledgers
+├── handoffs/                     # Agent handoff records
+├── logs/                         # Hook and system logs
+└── scripts/                      # Ralph CLI scripts
 ```
 
 ### Core Workflow (12 Steps) - v2.46
@@ -578,7 +584,7 @@ Claude Code hooks execute at specific lifecycle events:
 | **PreCompact** | Before context compaction | State saving, ledger creation |
 | **Stop** | Response completes | Session reports, cleanup |
 
-### Registered Hooks (63 total) - v2.68.23
+### Registered Hooks (67 files, 80 registrations) - v2.69.0
 
 #### PreToolUse Hooks
 
@@ -647,21 +653,22 @@ Claude Code hooks execute at specific lifecycle events:
 
 ## Agent System
 
-### Default Agents (11)
+### Default Agents (12) - v2.69.0
 
-| Agent | Model | Purpose |
-|-------|-------|---------|
-| `@orchestrator` | opus | Coordinator, planning, classification, delegation |
-| `@security-auditor` | opus | Security, vulnerability scan, code review |
-| `@debugger` | opus | Debugging, error analysis, fix generation |
-| `@code-reviewer` | sonnet | Code review, pattern analysis, quality check |
-| `@test-architect` | sonnet | Testing, test generation, coverage analysis |
-| `@refactorer` | sonnet | Refactoring, pattern application |
-| `@frontend-reviewer` | sonnet | Frontend, UI review, accessibility |
-| `@docs-writer` | minimax | Documentation, README, API docs |
-| `@minimax-reviewer` | minimax | Validation, quick review, second opinion |
-| `@repository-learner` | sonnet | Learning, pattern extraction, rule generation |
-| `@repo-curator` | sonnet | Curation, scoring, discovery |
+| Agent | Model | Purpose | Status |
+|-------|-------|---------|--------|
+| `@orchestrator` | opus | Coordinator, planning, classification, delegation | PRIMARY |
+| `@security-auditor` | opus | Security, vulnerability scan, code review | PRIMARY |
+| `@debugger` | opus | Debugging, error analysis, fix generation | PRIMARY |
+| `@code-reviewer` | sonnet | Code review, pattern analysis, quality check | PRIMARY |
+| `@test-architect` | sonnet | Testing, test generation, coverage analysis | PRIMARY |
+| `@refactorer` | sonnet | Refactoring, pattern application | PRIMARY |
+| `@frontend-reviewer` | sonnet | Frontend, UI review, accessibility | PRIMARY |
+| `@glm-reviewer` | **glm-4.7** | Economic validation, web search, vision | **NEW v2.69** |
+| `@docs-writer` | glm-4.7 | Documentation, README, API docs | Updated |
+| `@minimax-reviewer` | minimax | Legacy fallback only | DEPRECATED |
+| `@repository-learner` | sonnet | Learning, pattern extraction, rule generation | PRIMARY |
+| `@repo-curator` | sonnet | Curation, scoring, discovery | PRIMARY |
 
 ### Agent Handoffs (v2.51)
 
@@ -810,14 +817,17 @@ DEFAULT_PLANNERS = [
 
 **Exit Criteria**: Judge synthesizes best plan from all four planners.
 
-### Cost Optimization Strategy
+### Cost Optimization Strategy (v2.69.0)
 
 | Task Complexity | Primary Model | Secondary | Max Iterations |
 |-----------------|---------------|-----------|----------------|
-| Simple (1-3) | Haiku | - | 3 |
-| Standard (4-6) | MiniMax M2.1 | Sonnet | 50 |
+| Simple (1-2) | GLM-4.7 lightning | - | 3 |
+| Standard (3-4) | **GLM-4.7** | Sonnet | 50 |
+| Medium (5-6) | Sonnet | Codex | 25 |
 | Complex (7-10) | Opus | Sonnet | 25 |
-| Vision/GLM | GLM-4.7 | - | 25 |
+| Vision/Web | GLM-4.7 | - | 25 |
+
+> **v2.69.0**: GLM-4.7 replaces MiniMax M2.1 as PRIMARY for complexity 1-4 tasks.
 
 ---
 
@@ -1181,9 +1191,10 @@ EXECUTE → VALIDATE → Quality Passed?
 
 | Model | Max Iterations | Use Case | Status |
 |-------|----------------|----------|--------|
-| Claude (Sonnet/Opus) | **25** | Complex reasoning | PRIMARY |
-| GLM-4.7 | **50** | Economic tasks | **PRIMARY** |
-| MiniMax M2.1 | 30 | Fallback only | DEPRECATED |
+| Claude (Sonnet/Opus) | **25** | Complex reasoning (7-10) | PRIMARY |
+| Codex GPT-5.2 | **25** | Code analysis, deep review | PRIMARY |
+| **GLM-4.7** | **50** | Economic tasks (1-4) | **PRIMARY** |
+| MiniMax M2.1 | 30 | Legacy fallback only | DEPRECATED |
 
 ---
 
@@ -1475,8 +1486,8 @@ ralph sync global  # Sync global configuration
 | Component | Location |
 |-----------|----------|
 | Global Settings | `~/.claude/settings.json` |
-| Global Hooks | `~/.claude/hooks/*.sh` |
-| Global Agents | `~/.claude/agents/*.sh` |
+| Global Hooks | `~/.claude/hooks/*.sh` (67 bash + 1 python) |
+| Global Agents | `~/.claude/agents/*.md` (35 files) |
 | Global Skills | `~/.claude/skills/*/` |
 | Ralph Config | `~/.ralph/` |
 | Logs | `~/.ralph/logs/` |
@@ -1626,12 +1637,13 @@ This project is licensed under the BSL 1.1 License.
 
 | Resource | Link |
 |----------|------|
-| Repository | https://github.com/your-org/multi-agent-ralph-loop |
+| Repository | https://github.com/alfredolopez80/multi-agent-ralph-loop |
 | CLAUDE.md | [Project Instructions](CLAUDE.md) |
 | AGENTS.md | [Agent Documentation](AGENTS.md) |
 | CHANGELOG.md | [Version History](CHANGELOG.md) |
-| Architecture | [ARCHITECTURE_DIAGRAM_v2.52.0.md](ARCHITECTURE_DIAGRAM_v2.52.0.md) |
-| Security Audit | [security-audit-v2.45.1.md](security-audit-v2.45.1.md) |
+| Architecture | [docs/ARCHITECTURE_DIAGRAM_v2.52.0.md](docs/ARCHITECTURE_DIAGRAM_v2.52.0.md) |
+| Security | [docs/SECURITY-SUMMARY.md](docs/SECURITY-SUMMARY.md) |
+| Archived Audits | [.claude/archive/](`.claude/archive/`) |
 
 ---
 
