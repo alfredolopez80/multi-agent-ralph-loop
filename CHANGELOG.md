@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.68.20] - 2026-01-24
+
+### Adversarial Validation Phase 9 - SEC-029 Session ID Path Traversal Fix
+
+Exhaustive adversarial audit continuation addressing critical session ID sanitization gaps.
+
+#### Security Fixes (3 hooks)
+
+| ID | File | Issue | Fix |
+|----|------|-------|-----|
+| **SEC-029** | `continuous-learning.sh` | Session ID used in file path without sanitization | Added `tr -cd 'a-zA-Z0-9_-' \| head -c 64` sanitization |
+| **SEC-029** | `pre-compact-handoff.sh` | Session ID used in directory creation | Added sanitization pattern |
+| **SEC-029** | `task-project-tracker.sh` | Session ID used in directory access | Added sanitization pattern |
+
+#### Previously Sanitized (verified)
+
+- `global-task-sync.sh` - Already had SEC-001 sanitization
+- `reflection-engine.sh` - Already had sanitization
+
+#### Not Vulnerable (verified)
+
+Hooks using session_id only for logging/JSON (no file path risk):
+- `progress-tracker.sh`, `smart-memory-search.sh`, `semantic-auto-extractor.sh`
+- `inject-session-context.sh`, `session-start-ledger.sh`, `session-start-welcome.sh`
+- `fast-path-check.sh`, `quality-gates-v2.sh`, `parallel-explore.sh`
+- `orchestrator-report.sh` (generates own timestamp-based ID)
+
+#### Files Modified
+
+- `~/.claude/hooks/continuous-learning.sh` (v2.68.20)
+- `~/.claude/hooks/pre-compact-handoff.sh` (v2.68.20)
+- `~/.claude/hooks/task-project-tracker.sh` (v2.68.20)
+- `.claude/TECHNICAL_DEBT.md` (SEC-029 documented as DONE)
+
+---
+
 ## [2.68.13] - 2026-01-24
 
 ### Code Quality A+++ - ShellCheck Compliance & Test Coverage 100%
@@ -1341,7 +1377,7 @@ This release integrates Claude Code Cowork Mode's new Task primitive patterns:
 | Feature | Description |
 |---------|-------------|
 | **Verification Pattern** | Spawn verification subagent after each step completion |
-| **Global Task Sync** | Bidirectional sync with `~/.claude/tasks/<session>/` |
+| **Global Task Sync** | Unidirectional sync: plan-state → `~/.claude/tasks/<session>/` |
 | **Subagent Optimizer** | Auto-detect parallelization and context-hiding opportunities |
 | **Schema v2.62.0** | Added `verification` object to steps |
 

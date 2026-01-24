@@ -1,6 +1,6 @@
 #!/bin/bash
 # global-task-sync.sh - Sync plan-state with Claude Code global tasks
-# VERSION: 2.68.2
+# VERSION: 2.68.15
 #
 # Security: SEC-001 path traversal fix, SEC-004 umask, SEC-010 portable mkdir lock
 # v2.66.5: SC2168 FIX - Removed 'local' keywords outside functions (shellcheck)
@@ -161,7 +161,7 @@ convert_to_tasks_format() {
         tasks: [
             .steps | to_entries[] | {
                 id: .key,
-                subject: .value.name,
+                subject: (.value.name // .value.title // ("Step " + .key)),
                 status: (
                     if .value.status == "completed" or .value.status == "verified" then "completed"
                     elif .value.status == "in_progress" then "in_progress"
@@ -207,10 +207,17 @@ write_individual_task() {
             synced_at: (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
         }')
 
-    # Write atomically
+    # Write atomically with mktemp validation (HIGH-001 fix)
     local temp_file
-    temp_file=$(mktemp)
-    echo "$enriched_task" | jq '.' > "$temp_file"
+    temp_file=$(mktemp) || {
+        log "CRITICAL: mktemp failed for task $task_id"
+        return 1
+    }
+    echo "$enriched_task" | jq '.' > "$temp_file" || {
+        rm -f "$temp_file"
+        log "ERROR: jq failed for task $task_id"
+        return 1
+    }
     mv "$temp_file" "$task_file"
     chmod 600 "$task_file"
 
@@ -259,14 +266,15 @@ write_individual_task() {
 
     while IFS= read -r task_json; do
         # SC2168 FIX: Removed 'local' - not inside a function (while loop in brace group)
-        task_id=$(echo "$task_json" | jq -r '.id // ""')
-        status=$(echo "$task_json" | jq -r '.status // "pending"')
+        task_id=$(echo "$task_json" | jq -r '.id // ""' 2>/dev/null || echo "")
+        status=$(echo "$task_json" | jq -r '.status // "pending"' 2>/dev/null || echo "pending")
 
         if [[ -n "$task_id" ]]; then
-            write_individual_task "$task_json" "$task_id" "$SESSION_TASKS_DIR" "$PROJECT_JSON"
-            ((TOTAL_TASKS++))
+            log "Processing task_id=$task_id status=$status"
+            write_individual_task "$task_json" "$task_id" "$SESSION_TASKS_DIR" "$PROJECT_JSON" || log "Warning: write failed for task $task_id"
+            TOTAL_TASKS=$((TOTAL_TASKS + 1))
             if [[ "$status" == "completed" ]]; then
-                ((COMPLETED_TASKS++))
+                COMPLETED_TASKS=$((COMPLETED_TASKS + 1))
             fi
         fi
     done < <(echo "$TASKS_JSON" | jq -c '.tasks[]' 2>/dev/null || echo "")

@@ -1,6 +1,6 @@
 #!/bin/bash
 # task-primitive-sync.sh - Sync Claude Code Task primitives with plan-state.json
-# VERSION: 2.68.6
+# VERSION: 2.68.16
 # HOOK: PostToolUse (TaskCreate|TaskUpdate|TaskList)
 # Part of Multi-Agent Ralph Loop v2.65.1
 #
@@ -27,6 +27,27 @@ trap 'output_json' ERR
 
 # Configuration
 PLAN_STATE=".claude/plan-state.json"
+LOCK_DIR=".claude/.plan-state-lock.d"
+LOCK_TIMEOUT=5
+
+# HIGH-002 FIX: File locking for plan-state.json (prevents race conditions)
+acquire_lock() {
+    local attempts=0
+    local max_attempts=$((LOCK_TIMEOUT * 10))
+
+    while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+        attempts=$((attempts + 1))
+        if [[ $attempts -ge $max_attempts ]]; then
+            return 1
+        fi
+        sleep 0.1
+    done
+    echo "locked"
+}
+
+release_lock() {
+    rmdir "$LOCK_DIR" 2>/dev/null || true
+}
 LOG_FILE="${HOME}/.ralph/logs/task-primitive-sync.log"
 
 mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
@@ -82,6 +103,13 @@ TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 STEPS_TYPE=$(jq -r '.steps | type' "$PLAN_STATE" 2>/dev/null || echo "null")
 log "Detected steps type: $STEPS_TYPE"
 
+# HIGH-002 FIX: Acquire lock before any plan-state modification
+acquire_lock || {
+    log "Could not acquire lock, skipping sync"
+    echo '{"continue": true}'
+    exit 0
+}
+
 # Handle each tool type with format-aware logic
 case "$TOOL_NAME" in
     TaskCreate)
@@ -90,7 +118,12 @@ case "$TOOL_NAME" in
         TASK_SUBJECT=$(echo "$INPUT" | jq -r '.tool_input.subject // ""' 2>/dev/null || echo "")
 
         if [[ -n "$TASK_ID" ]] && [[ -n "$TASK_SUBJECT" ]]; then
-            TEMP_FILE=$(mktemp)
+            TEMP_FILE=$(mktemp) || {
+                log "CRITICAL: mktemp failed"
+                release_lock
+                echo '{"continue": true}'
+                exit 1
+            }
 
             if [[ "$STEPS_TYPE" == "array" ]]; then
                 # v1 format: append to array
@@ -220,5 +253,8 @@ if [[ -f "$PLAN_STATE" ]]; then
     fi
     log "Progress: $COMPLETED/$TOTAL"
 fi
+
+# HIGH-002 FIX: Release lock
+release_lock
 
 echo '{"continue": true}'

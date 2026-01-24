@@ -4,7 +4,7 @@
 # Origen: planning-with-files pattern
 # v2.62.3 - Added JSON return for Claude Code hook protocol
 
-# VERSION: 2.68.2
+# VERSION: 2.68.18
 # v2.57.3: Fixed JSON format - Stop hooks use {"decision": "approve|block"} (SEC-038)
 set -euo pipefail
 
@@ -53,10 +53,10 @@ if [ -f "${PROJECT_DIR}/.claude/progress.md" ]; then
     if [ "$PENDING_TODOS" -gt 0 ]; then
         WARNINGS+=("TODOs pendientes: ${PENDING_TODOS} items sin completar en progress.md")
     else
-        ((CHECKS_PASSED++))
+        CHECKS_PASSED=$((CHECKS_PASSED + 1))
     fi
 else
-    ((CHECKS_PASSED++))  # No hay progress.md, no es error
+    CHECKS_PASSED=$((CHECKS_PASSED + 1))  # No hay progress.md, no es error
 fi
 
 # 2. Verificar cambios sin commit (si es repo git)
@@ -65,10 +65,10 @@ if [ -d "${PROJECT_DIR}/.git" ]; then
     if [ "$UNCOMMITTED" -gt 0 ]; then
         WARNINGS+=("Cambios sin commit: ${UNCOMMITTED} archivos modificados")
     else
-        ((CHECKS_PASSED++))
+        CHECKS_PASSED=$((CHECKS_PASSED + 1))
     fi
 else
-    ((CHECKS_PASSED++))  # No es repo git, no es error
+    CHECKS_PASSED=$((CHECKS_PASSED + 1))  # No es repo git, no es error
 fi
 
 # 3. Verificar errores de lint recientes (si existe log)
@@ -85,10 +85,10 @@ if [ -f "$LINT_LOG" ]; then
     if [ "$LINT_ERRORS" -gt 0 ]; then
         WARNINGS+=("Errores de lint: ${LINT_ERRORS} errores en la última sesión")
     else
-        ((CHECKS_PASSED++))
+        CHECKS_PASSED=$((CHECKS_PASSED + 1))
     fi
 else
-    ((CHECKS_PASSED++))  # No hay log de lint, no es error
+    CHECKS_PASSED=$((CHECKS_PASSED + 1))  # No hay log de lint, no es error
 fi
 
 # 4. Verificar tests fallidos recientes
@@ -104,10 +104,10 @@ if [ -f "$TEST_LOG" ]; then
     if [ "$TEST_FAILURES" -gt 0 ]; then
         WARNINGS+=("Tests fallidos: ${TEST_FAILURES} tests fallaron")
     else
-        ((CHECKS_PASSED++))
+        CHECKS_PASSED=$((CHECKS_PASSED + 1))
     fi
 else
-    ((CHECKS_PASSED++))  # No hay log de tests, no es error
+    CHECKS_PASSED=$((CHECKS_PASSED + 1))  # No hay log de tests, no es error
 fi
 
 # Generar output
@@ -122,10 +122,14 @@ if [ ${#WARNINGS[@]} -gt 0 ]; then
         WARNING_MSG+="$warning; "
     done
 
+    # CRIT-004: Clear trap before explicit output
+    trap - EXIT
     # Return JSON with warnings (Stop hook - approve with reason)
     return_json "approve" "$WARNING_MSG"
 else
     log "All checks passed"
+    # CRIT-004: Clear trap before explicit output
+    trap - EXIT
     return_json "approve" "Stop Verification: All ${TOTAL_CHECKS} checks passed"
 fi
 

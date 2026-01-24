@@ -18,6 +18,40 @@
 
 ## Open Items
 
+### GAP-CRIT-010: 6 Documented Commands Need Full Implementation (P1) - PARTIAL FIX v2.68.18
+
+**Created**: 2026-01-24 (v2.68.18 exhaustive audit)
+**Updated**: 2026-01-24 (v2.68.18 - Partial fix applied)
+**Status**: Open - PARTIAL FIX (stubs added)
+**Effort**: Medium (3-6 hours for full implementation)
+
+**Original Problem**:
+CLAUDE.md documented 7 commands that returned "Unknown command".
+
+**Progress (v2.68.18)**:
+| Command | Status | Notes |
+|---------|--------|-------|
+| `ralph context` | ✅ FIXED | Wired to `~/.ralph/scripts/context.sh` |
+| `ralph checkpoint` | ⚠️ STUB | Shows helpful message + reference to debt |
+| `ralph handoff` | ⚠️ STUB | Shows helpful message + reference to debt |
+| `ralph events` | ⚠️ STUB | Shows helpful message + reference to debt |
+| `ralph agent-memory` | ⚠️ STUB | Shows helpful message + reference to debt |
+| `ralph migrate` | ⚠️ STUB | Shows helpful message + reference to debt |
+| `ralph ledger` | ⚠️ STUB | Shows helpful message + reference to debt |
+
+**Current State**:
+- Commands no longer return "Unknown command" (improved UX)
+- `ralph context` fully functional
+- 6 commands have stubs that explain the feature is pending
+- Users are directed to TECHNICAL_DEBT.md for tracking
+
+**Remaining Work**:
+Implement full functionality for: checkpoint, handoff, events, agent-memory, migrate, ledger
+
+**Priority**: P1 - HIGH (downgraded from P0 since stubs provide better UX)
+
+---
+
 ### DUP-002: JSON Output Helper Duplication (P2)
 
 **Created**: 2026-01-23 (v2.66.8 release)
@@ -112,28 +146,21 @@ Node.js hook infrastructure **EXISTS** but is not registered:
 
 ---
 
-### GAP-HIGH-001: Missing Tests for v2.61-v2.65 Features (P2)
+### GAP-HIGH-001: Missing Tests for v2.61-v2.65 Features (DONE)
 
 **Created**: 2026-01-24 (v2.68.2 gap analysis)
-**Status**: Open - Feature Not Implemented
-**Effort**: High (8-16 hours)
+**Completed**: 2026-01-24 (v2.68.13 - All tests created and passing)
+**Status**: DONE
 
-**Missing Test Coverage**:
-| Version | Feature | Test File Needed |
-|---------|---------|------------------|
-| v2.61 | Adversarial Council | `test_v261_adversarial_council.bats` |
-| v2.63 | Dynamic Contexts | `test_v263_dynamic_contexts.bats` |
-| v2.64 | EDD Framework | `test_v264_edd_framework.bats` |
-| v2.65 | Cross-Platform Hooks | `test_v265_cross_platform.bats` |
+**Test Coverage Implemented**:
+| Version | Feature | Test File | Tests |
+|---------|---------|-----------|-------|
+| v2.61 | Adversarial Council | `test_v261_adversarial_council.bats` | 20 ✅ |
+| v2.63 | Dynamic Contexts | `test_v263_dynamic_contexts.bats` | 29 ✅ |
+| v2.64 | EDD Framework | `test_v264_edd_framework.bats` | 33 ✅ |
+| v2.65 | Cross-Platform Hooks | `test_v265_cross_platform_hooks.bats` | 26 ✅ |
 
-**Existing Coverage**:
-- `test_v268_auto_invoke_hooks.bats` (58 tests)
-- `test_v256_task_primitives.bats`
-
-**When to Implement**:
-- During dedicated testing sprint
-- Before major release milestones
-- When regressions occur in untested features
+**Total Coverage**: 903 tests, all passing (verified 2026-01-24)
 
 ---
 
@@ -248,6 +275,33 @@ All 10 identified hooks were verified:
 - Both instances are in numeric contexts (arithmetic `$(())` or array length `${#arr[@]}`)
 - Word splitting is **impossible** in these contexts
 - Example: `if [ $((COUNT % INTERVAL)) -eq 0 ]` - result is always numeric
+
+---
+
+### SEC-029: Session ID Path Traversal (DONE)
+
+**Created**: 2026-01-24 (v2.68.20 adversarial audit)
+**Completed**: 2026-01-24 (v2.68.20 adversarial validation)
+**Status**: DONE
+
+**Problem**: Multiple hooks extracted `session_id` from input and used it in file paths without sanitization, enabling potential path traversal attacks.
+
+**Hooks Fixed (v2.68.20)**:
+| Hook | Risk | Fix Applied |
+|------|------|-------------|
+| `continuous-learning.sh` | File path construction | `tr -cd 'a-zA-Z0-9_-' \| head -c 64` |
+| `pre-compact-handoff.sh` | Directory creation | `tr -cd 'a-zA-Z0-9_-' \| head -c 64` |
+| `task-project-tracker.sh` | Directory access | `tr -cd 'a-zA-Z0-9_-' \| head -c 64` |
+
+**Already Sanitized**:
+- `global-task-sync.sh` - Had SEC-001 sanitization
+- `reflection-engine.sh` - Had sanitization
+
+**Not Vulnerable** (session_id used only for logging/JSON):
+- `progress-tracker.sh`, `smart-memory-search.sh`, `semantic-auto-extractor.sh`
+- `inject-session-context.sh`, `session-start-ledger.sh`, `session-start-welcome.sh`
+- `fast-path-check.sh`, `quality-gates-v2.sh`, `parallel-explore.sh`
+- `orchestrator-report.sh` (generates own timestamp-based ID)
 
 ---
 
