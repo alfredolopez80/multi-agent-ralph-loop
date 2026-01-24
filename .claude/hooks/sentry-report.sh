@@ -3,16 +3,23 @@
 # Generates Sentry summary report at orchestrator completion
 # Once: true
 
-# VERSION: 2.68.8
+# VERSION: 2.68.23
 # v2.68.8: Fixed Hook comment format for pre-commit validation
 # v2.57.3: Added proper Stop hook JSON output (SEC-039)
 set -euo pipefail
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 # SEC-039: Guaranteed valid JSON output on any error (Stop hook format)
 trap 'echo '"'"'{"decision": "approve"}'"'"'' ERR EXIT
 
 # Only run if Sentry was used in this session
 if [[ ! -f ".sentry-used" ]]; then
+    # CRIT-003: Clear trap before explicit JSON output to avoid duplicates
+    trap - ERR EXIT
     echo '{"decision": "approve"}'
     exit 0
 fi
@@ -35,5 +42,7 @@ fi
 rm -f ".sentry-used"
 
 # Stop hook must output JSON
+# CRIT-003: Clear trap before explicit JSON output to avoid duplicates
+trap - ERR EXIT
 echo '{"decision": "approve"}'
 exit 0

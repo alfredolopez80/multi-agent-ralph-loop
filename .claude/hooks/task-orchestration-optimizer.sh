@@ -1,6 +1,6 @@
 #!/bin/bash
 # task-orchestration-optimizer.sh - Optimize Task tool usage patterns
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 #
 # Purpose: Implement Claude Code's Task primitive optimization
 #          Auto-detect parallelization and context-hiding opportunities.
@@ -35,8 +35,15 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] [task-optimizer] $*" >> "$LOG_FILE"
 }
 
-# Read input from stdin
-INPUT=$(cat)
+# Read input from stdin with SEC-111 length limit
+INPUT=$(head -c 100000)
+
+# Validate JSON before processing
+if ! echo "$INPUT" | jq empty 2>/dev/null; then
+    log "Invalid JSON input, skipping hook"
+    echo '{"decision": "allow"}'
+    exit 0
+fi
 
 # Extract tool name
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null || echo "")

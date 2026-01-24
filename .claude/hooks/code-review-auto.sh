@@ -4,11 +4,16 @@
 # PostToolUse hook - AUTO-INVOKE code review after step completion
 #===============================================================================
 #
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 # TRIGGER: PostToolUse (TaskUpdate - when step completes)
 # PURPOSE: Automatically invoke code review for completed steps
 #
 # CHANGE FROM v2.67: Now uses IMPERATIVE instructions, not suggestions
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 umask 077

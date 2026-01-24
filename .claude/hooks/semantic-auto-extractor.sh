@@ -9,8 +9,13 @@
 # - Configuration changes
 # - Architectural decisions
 #
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 # SECURITY: SEC-006 compliant with ERR trap for guaranteed JSON output
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 umask 077

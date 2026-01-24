@@ -4,7 +4,7 @@
 # PostToolUse hook - AUTO-INVOKE comprehensive AI code quality checks
 #===============================================================================
 #
-# VERSION: 2.68.4
+# VERSION: 2.68.23
 # TRIGGER: PostToolUse (Edit|Write) - After significant code changes
 # PURPOSE: Detect and flag AI-generated code anti-patterns:
 #   - Dead code and unused imports
@@ -15,6 +15,11 @@
 #   - YAGNI violations
 #
 # SKILLS INVOKED: /deslop, /code-reviewer, testing-anti-patterns, kaizen
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 umask 077

@@ -14,8 +14,13 @@
 # v2.62.3: P0 FIX - Use semantic-write-helper.sh for all semantic writes
 #          P1 FIX - Exclude JSON/YAML from pattern detection (config files only)
 #
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 # SECURITY: SEC-003 (jq JSON), SEC-006 (error trap), SEC-009 (portable mkdir lock)
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 umask 077

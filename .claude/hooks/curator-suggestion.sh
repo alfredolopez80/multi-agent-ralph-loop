@@ -6,10 +6,15 @@
 # Checks if user mentions learning patterns, best practices, or similar
 # and if the curator corpus is empty, suggests running /curator.
 #
-# VERSION: 2.68.11
+# VERSION: 2.68.23
 # v2.68.11: SEC-111 FIX - Input length validation to prevent DoS
 # v2.68.2: FIX CRIT-010 - Correct UserPromptSubmit JSON format (was using PostToolUse format)
 # SECURITY: SEC-006 compliant with ERR trap for guaranteed JSON output
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 umask 077

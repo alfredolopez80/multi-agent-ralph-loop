@@ -1,6 +1,6 @@
 #!/bin/bash
 # task-primitive-sync.sh - Sync Claude Code Task primitives with plan-state.json
-# VERSION: 2.68.16
+# VERSION: 2.68.23
 # HOOK: PostToolUse (TaskCreate|TaskUpdate|TaskList)
 # Part of Multi-Agent Ralph Loop v2.65.1
 #
@@ -56,8 +56,15 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] [task-primitive-sync] $*" >> "$LOG_FILE" 2>/dev/null || true
 }
 
-# Read input from stdin
-INPUT=$(cat)
+# Read input from stdin with SEC-111 length limit
+INPUT=$(head -c 100000)
+
+# Validate JSON before processing
+if ! echo "$INPUT" | jq empty 2>/dev/null; then
+    log "Invalid JSON input, skipping hook"
+    echo '{"continue": true}'
+    exit 0
+fi
 
 # Extract session_id from INPUT FIRST (canonical source from Claude Code)
 SESSION_ID_FROM_INPUT=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null || echo "")

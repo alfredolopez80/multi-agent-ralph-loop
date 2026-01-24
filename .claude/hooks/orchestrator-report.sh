@@ -2,7 +2,7 @@
 # orchestrator-report.sh - Orchestrator Session Report Hook
 # Hook: Stop
 # Purpose: Generate comprehensive session report when user ends session
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 #
 # v2.66.6: Fixed duplicate VERSION (GAP-003) and consolidated version history
 # v2.59.0: Added effectiveness metrics and domain-specific recommendations
@@ -18,6 +18,11 @@
 #
 # SECURITY: SEC-006 compliant
 # OUTPUT: JSON report to stdout
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 
@@ -222,4 +227,6 @@ log "=== Report Generation Complete ==="
 # Stop hook output format (per CLAUDE.md conventions)
 # Only output the decision JSON - report is saved to file
 # SEC-039: Stop hooks MUST use "decision": "approve" or "decision": "block"
+# CRIT-003: Clear trap before explicit JSON output to avoid duplicates
+trap - ERR EXIT
 echo '{"decision": "approve"}'

@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 # Hook: Plan-Sync Post-Step
 # Trigger: PostToolUse (after Edit or Write completes in orchestrated context)
 # Purpose: Detect drift and trigger Plan-Sync agent for downstream patching
 # Security: v2.45.1 - Fixed race condition, path traversal, atomic updates
 # SEC-047: Added guaranteed JSON output for PostToolUse hooks
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 

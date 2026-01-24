@@ -7,10 +7,15 @@
 # Output: {"decision": "allow"} (PreToolUse JSON format)
 # ============================================================================
 
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
+
 set -euo pipefail
 umask 077
 
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 # v2.66.6: SEC-049 - Fixed registration (was PostToolUse, now PreToolUse)
 
 # Error trap: Always output valid JSON for PreToolUse

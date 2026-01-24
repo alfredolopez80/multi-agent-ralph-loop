@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 # Hook: Plan State Initialization
 # Purpose: Initialize plan-state.json from orchestrator analysis
 # Security: v2.45.1 - Fixed race condition with atomic updates
 # v2.62.3: Updated to v2 schema with phases, barriers, and object-based steps
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 

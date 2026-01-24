@@ -1,8 +1,13 @@
 #!/bin/bash
 # typescript-quick-check.sh - Quick TypeScript check after editing .ts/.tsx files
-# VERSION: 2.68.6
+# VERSION: 2.68.23
 # HOOK: PostToolUse (Edit|Write)
 # Part of Multi-Agent Ralph Loop v2.66.0
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 

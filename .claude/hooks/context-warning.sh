@@ -8,9 +8,14 @@
 #   - Improved fallback estimation for extensions (GitHub #15021)
 #   - Operation counter for extensions where /context command fails
 
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
+
 # Note: Not using set -e because this is a non-blocking hook
 # Errors should not interrupt the main workflow
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 # v2.66.8: HIGH-003 version sync, HIGH-006 JSON format already correct for UserPromptSubmit
 # v2.57.2: Restructured to output all content as JSON (SEC-029)
 # v2.57.1: Added 3s timeout to claude command to prevent hook timeout

@@ -8,8 +8,13 @@
 # 2. Converting them to procedural rules
 # 3. Updating ~/.ralph/procedural/rules.json automatically
 #
-# VERSION: 2.68.19
+# VERSION: 2.68.23
 # CRITICAL: Closes GAP-001 - Automatic episodic→procedural conversion
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 umask 077

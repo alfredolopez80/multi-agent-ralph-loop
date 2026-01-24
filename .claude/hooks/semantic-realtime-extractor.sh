@@ -9,9 +9,14 @@
 # Fixes Issue #7: semantic memory populated in real-time, not just at session end
 # v2.57.4: Uses atomic write helper to prevent race conditions (GAP-003 fix)
 #
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 # v2.66.8: HIGH-003 version sync, SEC-050 verified jq --arg escapes content properly
 # SECURITY: SEC-006 compliant
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 umask 077

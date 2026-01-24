@@ -11,11 +11,16 @@
 # 3. Update procedural rules
 # 4. Cleanup old episodes
 #
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 # v2.55: Multi-source transcript fallback (claude-projects → ralph-ledger → ralph-handoff)
 #        Added content verification (-s flag) to skip empty files
 # v2.53: FIXED - Stop hooks use {"decision": "approve|block"} per official Claude Code docs
 # SECURITY: Added ERR trap for guaranteed JSON output, SESSION_ID escaping
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 umask 077

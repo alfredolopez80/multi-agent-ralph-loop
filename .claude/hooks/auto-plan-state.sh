@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 # Hook: auto-plan-state.sh
 # Trigger: PostToolUse (Write) matcher: orchestrator-analysis
 # Purpose: Automatically create plan-state.json when orchestrator-analysis.md is written
@@ -9,6 +9,11 @@
 # and creates the plan-state.json for LSA verification and Plan-Sync.
 #
 # v2.62.3: Updated to v2 schema with phases, barriers, and object-based steps
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 
@@ -253,11 +258,15 @@ main() {
         log "Created plan-state with $step_count steps"
 
         # PostToolUse JSON response with context
+        # CRIT-003: Clear trap before explicit JSON output to avoid duplicates
+        trap - ERR EXIT
         jq -n --arg msg "plan-state-created: $PLAN_STATE_FILE with $step_count steps" \
             '{continue: true, additionalContext: $msg}'
     else
         rm -f "$temp_file"
         log "ERROR: Failed to create plan-state.json"
+        # CRIT-003: Clear trap before explicit JSON output to avoid duplicates
+        trap - ERR EXIT
         echo '{"continue": true}'
         exit 1
     fi

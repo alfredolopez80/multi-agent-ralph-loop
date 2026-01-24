@@ -2,7 +2,7 @@
 # Quality Gates v2.48 - Quality Over Consistency + Security Scanning
 # Hook: PostToolUse (Edit, Write)
 # Purpose: Validate code changes with quality-first approach
-# VERSION: 2.68.9
+# VERSION: 2.68.23
 # v2.68.9: CRIT-002 FIX - Actually clear EXIT trap before explicit JSON output (was documented but not implemented)
 # v2.68.1: FIX CRIT-005 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 #
@@ -11,6 +11,11 @@
 #
 # Key Change: Consistency issues are ADVISORY (warnings only)
 # Quality issues (correctness, security, types) are BLOCKING
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 

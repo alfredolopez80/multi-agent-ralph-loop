@@ -1525,7 +1525,7 @@ This release integrates Claude Code Cowork Mode's new Task primitive patterns:
 
 | Hook | Trigger | Purpose |
 |------|---------|---------|
-| `global-task-sync.sh` | PostToolUse (TodoWrite, TaskUpdate) | Sync with `~/.claude/tasks/` |
+| `global-task-sync.sh` | PostToolUse (TaskUpdate, TaskCreate) | Sync with `~/.claude/tasks/` |
 | `verification-subagent.sh` | PostToolUse (TaskUpdate) | Suggest verification after completion |
 | `task-orchestration-optimizer.sh` | PreToolUse (Task) | Optimize Task tool usage |
 

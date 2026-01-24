@@ -1,12 +1,17 @@
 #!/bin/bash
 # continuous-learning.sh - Extract reusable patterns from session at end
-# VERSION: 2.68.20
+# VERSION: 2.68.23
 # Hook: Stop
 # Part of Multi-Agent Ralph Loop v2.68.2
 #
 # Inspired by everything-claude-code's continuous learning skill
 #
 # v2.68.2: FIX CRIT-011 - Updated hook type declaration and trap pattern
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 

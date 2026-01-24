@@ -4,7 +4,7 @@
 # PreToolUse hook - Context-aware skill suggestions BEFORE writing code
 #===============================================================================
 #
-# VERSION: 2.68.6
+# VERSION: 2.68.23
 # TRIGGER: PreToolUse (Edit|Write)
 # PURPOSE: Intelligently suggest relevant skills based on file context
 #
@@ -16,6 +16,11 @@
 # - Skill invocation detection: skips if skill was recently used
 #
 # Based on adversarial review by Claude Opus + OpenAI Codex gpt-5.2
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 umask 077

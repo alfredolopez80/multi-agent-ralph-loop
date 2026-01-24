@@ -2,7 +2,12 @@
 # Parallel Exploration Hook v2.46
 # Hook: PostToolUse (Task - after gap-analyst)
 # Purpose: Launch parallel exploration tasks
-# VERSION: 2.68.4
+# VERSION: 2.68.23
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 umask 077

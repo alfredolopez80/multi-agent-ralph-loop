@@ -1,0 +1,4891 @@
+{
+  "version": "2.57.5",
+  "updated": "2026-01-21T22:12:35.000000+00:00",
+  "rules": [
+  {
+    "rule_id": "verify-test-expectations",
+    "trigger": "When tests fail after hook changes",
+    "behavior": "FIRST verify test expectations are correct against official documentation (use Context7 MCP). Tests can be corrupted with wrong expectations. If test expects {\"decision\": \"continue\"}, the TEST is wrong - fix the test, not the hook.",
+    "confidence": 1.0,
+    "source_repo": "learned-from-incident",
+    "source_episodes": [
+      "session-642505b0-hook-format-fix"
+    ],
+    "created_at": "2026-01-20T18:45:00.000000+00:00",
+    "tags": [
+      "testing",
+      "verification",
+      "documentation"
+    ]
+  },
+  {
+    "rule_id": "hook-validation-before-commit",
+    "trigger": "Before committing changes to .claude/hooks/ or ~/.claude/hooks/",
+    "behavior": "Run validate-hooks.sh to verify all hooks produce valid JSON. Run pytest tests/test_hooks_*.py to verify format expectations. Never commit hooks that fail validation.",
+    "confidence": 1.0,
+    "source_repo": "learned-from-incident",
+    "source_episodes": [
+      "session-642505b0-hook-format-fix"
+    ],
+    "created_at": "2026-01-20T18:45:00.000000+00:00",
+    "tags": [
+      "quality-gate",
+      "pre-commit",
+      "validation"
+    ]
+  },
+  {
+    "rule_id": "hook-json-format-sec039",
+    "trigger": "Writing or modifying Claude Code hooks that output JSON",
+    "behavior": "CRITICAL: Use correct JSON format per hook type. PostToolUse/PreToolUse/UserPromptSubmit hooks MUST use {\"continue\": true/false}. Stop hooks ONLY use {\"decision\": \"approve\"/\"block\"}. The string 'continue' is NEVER valid for the 'decision' field. Verify format against tests/HOOK_FORMAT_REFERENCE.md before committing.",
+    "confidence": 1.0,
+    "source_repo": "claude-code-official-docs",
+    "source_episodes": [
+      "session-642505b0-hook-format-fix"
+    ],
+    "created_at": "2026-01-20T18:45:00.000000+00:00",
+    "tags": [
+      "security",
+      "hooks",
+      "json-format",
+      "SEC-039"
+    ],
+    "severity": "critical"
+  },
+  {
+    "rule_id": "repo-approved-1768928620",
+    "source_repo": "approved",
+    "trigger": "approved",
+    "behavior": "Pattern learned from approved",
+    "confidence": 0.8,
+    "source_episodes": [],
+    "created_at": 1768928620
+  },
+  {
+    "rule_id": "proc-test-001",
+    "trigger": "test trigger",
+    "behavior": "test behavior",
+    "confidence": 0.8,
+    "source_repo": null,
+    "source_episodes": [],
+    "created_at": "2026-01-19T01:55:59.601963"
+  },
+  {
+    "rule_id": "ep-rule-1768928772-23955",
+    "trigger": "Factory pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements rate limiting. Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928772-23955"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768928748-12264",
+    "trigger": "Architectural pattern from /Users/alfredolopez/Documents/GitHub/open-agent-ui/src/electron/libs/providers/base-provider.ts",
+    "behavior": "Uses async/await for asynchronous operations. Implements rate limiting. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928748-12264"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768928707-12943",
+    "trigger": "Architectural pattern from /Users/alfredolopez/.claude/hooks/todo-plan-sync.sh",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928707-12943"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768928701-17519",
+    "trigger": "Architectural pattern from /Users/alfredolopez/.claude/hooks/todo-plan-sync.sh",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928701-17519"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768928537-6421",
+    "trigger": "Architectural pattern from /Users/alfredolopez/Documents/GitHub/open-agent-ui/src/ui/components/PermissionModal.tsx",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928537-6421"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768928537-27608",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928537-27608"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768928536-14171",
+    "trigger": "Architectural pattern from /Users/alfredolopez/Documents/GitHub/open-agent-ui/src/ui/components/ChatPanel.tsx",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928536-14171"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768928535-28612",
+    "trigger": "Architectural pattern from /Users/alfredolopez/Documents/GitHub/open-agent-ui/src/ui/components/Sidebar.tsx",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928535-28612"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768928451-24130",
+    "trigger": "Observer pattern detected",
+    "behavior": "Pattern: Observer pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928451-24130"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768928360-30065",
+    "trigger": "Observer pattern detected",
+    "behavior": "Pattern: Observer pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928360-30065"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768928359-14522",
+    "trigger": "Observer pattern detected",
+    "behavior": "Pattern: Observer pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928359-14522"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768928297-19031",
+    "trigger": "Repository pattern detected",
+    "behavior": "Project configuration updated: package.json",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928297-19031"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768928265-32686",
+    "trigger": "Decorator pattern detected",
+    "behavior": "Implements error handling. Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928265-32686"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768928155-31030",
+    "trigger": "Architectural pattern from /Users/alfredolopez/.claude/hooks/context-warning.sh",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928155-31030"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768928089-11649",
+    "trigger": "Strategy pattern detected Adapter pattern detected",
+    "behavior": "Pattern: Strategy pattern detected, Adapter pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928089-11649"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768928055-2034",
+    "trigger": "Architectural pattern from /Users/alfredolopez/.claude/hooks/periodic-reminder.sh",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928055-2034"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768928049-15290",
+    "trigger": "Architectural pattern from /Users/alfredolopez/.claude/hooks/periodic-reminder.sh",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928049-15290"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768928024-15756",
+    "trigger": "Architectural pattern from /Users/alfredolopez/.claude/hooks/periodic-reminder.sh",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928024-15756"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768927506-31632",
+    "trigger": "Observer pattern detected Decorator pattern detected Middleware pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements caching strategy. Implements rate limiting. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768927506-31632"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768927448-17986",
+    "trigger": "Architectural pattern from /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/hooks/quality-gates-v2.sh",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768927448-17986"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768927403-28804",
+    "trigger": "Observer pattern detected Decorator pattern detected Middleware pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements caching strategy. Implements rate limiting. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768927403-28804"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768927272-10022",
+    "trigger": "Architectural pattern from /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/hooks/quality-gates-v2.sh",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768927272-10022"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768927252-14481",
+    "trigger": "Architectural pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/palmera-notif-serv/__tests__/e2e/hl-overflow-protection.test.ts",
+    "behavior": "Uses async/await for asynchronous operations. Implements caching strategy. Implements rate limiting. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768927252-14481"
+    ],
+    "created_at": "2026-01-20T23:02:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768927244-30982",
+    "trigger": "Architectural pattern from /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/hooks/quality-gates-v2.sh",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768927244-30982"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768927201-1210",
+    "trigger": "Architectural pattern from /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/hooks/parallel-explore.sh",
+    "behavior": "Uses async/await for asynchronous operations",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768927201-1210"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768927192-4933",
+    "trigger": "Architectural pattern from /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/hooks/parallel-explore.sh",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768927192-4933"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768927154-25770",
+    "trigger": "Architectural pattern from /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/hooks/auto-plan-state.sh",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768927154-25770"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768927147-16793",
+    "trigger": "Architectural pattern from /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/hooks/auto-plan-state.sh",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768927147-16793"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768927138-8083",
+    "trigger": "Architectural pattern from /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/hooks/auto-plan-state.sh",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768927138-8083"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768927081-24076",
+    "trigger": "Observer pattern detected Decorator pattern detected Middleware pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements caching strategy. Implements rate limiting. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768927081-24076"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768927001-32700",
+    "trigger": "Observer pattern detected Middleware pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements caching strategy. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768927001-32700"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768926954-15074",
+    "trigger": "Observer pattern detected Adapter pattern detected",
+    "behavior": "Pattern: Observer pattern detected, Adapter pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768926954-15074"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768925566-8192",
+    "trigger": "Architectural pattern from /Users/alfredolopez/.claude/scripts/curator-reject.sh",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768925566-8192"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768923213-4741",
+    "trigger": "Repository pattern detected",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768923213-4741"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768923202-7653",
+    "trigger": "Architectural pattern from /Users/alfredolopez/.claude/scripts/curator-approve.sh",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768923202-7653"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768923178-22703",
+    "trigger": "Repository pattern detected",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768923178-22703"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768923128-23955",
+    "trigger": "Repository pattern detected",
+    "behavior": "Pattern: Repository pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768923128-23955"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768923116-18355",
+    "trigger": "Architectural pattern from /Users/alfredolopez/.claude/scripts/curator-ingest.sh",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768923116-18355"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768923107-28610",
+    "trigger": "Repository pattern detected",
+    "behavior": "Pattern: Repository pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768923107-28610"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768923098-3699",
+    "trigger": "Repository pattern detected",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768923098-3699"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768921678-10253",
+    "trigger": "Architectural pattern from /Users/alfredolopez/.claude/hooks/recursive-decompose.sh",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768921678-10253"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768921396-30438",
+    "trigger": "Architectural pattern from /Users/alfredolopez/.claude/hooks/quality-gates-v2.sh",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768921396-30438"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768921370-2516",
+    "trigger": "Architectural pattern from /Users/alfredolopez/.claude/hooks/quality-gates-v2.sh",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768921370-2516"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768921330-18032",
+    "trigger": "Architectural pattern from /Users/alfredolopez/.claude/hooks/recursive-decompose.sh",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768921330-18032"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768921315-18872",
+    "trigger": "Architectural pattern from /Users/alfredolopez/.claude/hooks/parallel-explore.sh",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768921315-18872"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768921085-2463",
+    "trigger": "Repository pattern detected",
+    "behavior": "Pattern: Repository pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768921085-2463"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768921085-2154",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Uses async/await for asynchronous operations",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768921085-2154"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768921085-16208",
+    "trigger": "Architectural pattern from /tmp/test.py",
+    "behavior": "Implements error handling. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768921085-16208"
+    ],
+    "created_at": "2026-01-20T23:02:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768920679-30933",
+    "trigger": "Architectural pattern from /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/hooks/skill-validator.sh",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768920679-30933"
+    ],
+    "created_at": "2026-01-20T23:02:43Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-rule-1768920671-32340",
+    "trigger": "Architectural pattern from /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/hooks/skill-validator.sh",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768920671-32340"
+    ],
+    "created_at": "2026-01-20T23:02:43Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "learned"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769033446-6102",
+    "trigger": "Observer pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements caching strategy. Implements rate limiting. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769033446-6102"
+    ],
+    "created_at": "2026-01-21T22:12:35Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769033006-25315",
+    "trigger": "Observer pattern detected Adapter pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements retry/resilience pattern. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769033006-25315"
+    ],
+    "created_at": "2026-01-21T22:08:08Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769032151-683",
+    "trigger": "Pattern from /tmp/update_install.py",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769032151-683"
+    ],
+    "created_at": "2026-01-21T22:08:08Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769031998-25917",
+    "trigger": "Pattern from /tmp/update_install.sh",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769031998-25917"
+    ],
+    "created_at": "2026-01-21T22:08:08Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769031890-24221",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/install.sh",
+    "behavior": "Implements caching strategy. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769031890-24221"
+    ],
+    "created_at": "2026-01-21T21:44:59Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769031854-1018",
+    "trigger": "Repository pattern detected",
+    "behavior": "Pattern: Repository pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769031854-1018"
+    ],
+    "created_at": "2026-01-21T21:44:51Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769031694-10173",
+    "trigger": "Repository pattern detected",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769031694-10173"
+    ],
+    "created_at": "2026-01-21T21:44:51Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769031247-25371",
+    "trigger": "Pattern from /Users/alfredolopez/.ralph/tests/test_commands_implemented.sh",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769031247-25371"
+    ],
+    "created_at": "2026-01-21T21:34:19Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769031172-3152",
+    "trigger": "Pattern from /Users/alfredolopez/.ralph/tests/validate_commands.sh",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769031172-3152"
+    ],
+    "created_at": "2026-01-21T21:33:56Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769031144-23909",
+    "trigger": "Pattern from /Users/alfredolopez/.claude/hooks/post-commit-command-verify.sh",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769031144-23909"
+    ],
+    "created_at": "2026-01-21T21:33:56Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769031143-3591",
+    "trigger": "Pattern from /Users/alfredolopez/.claude/hooks/pre-commit-command-validation.sh",
+    "behavior": "Implements caching strategy. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769031143-3591"
+    ],
+    "created_at": "2026-01-21T21:33:56Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769031123-6527",
+    "trigger": "Observer pattern detected",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769031123-6527"
+    ],
+    "created_at": "2026-01-21T21:33:56Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769031009-9814",
+    "trigger": "Repository pattern detected",
+    "behavior": "Implements error handling. Implements retry/resilience pattern. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769031009-9814"
+    ],
+    "created_at": "2026-01-21T21:30:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769031008-18202",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/palmera-notif-serv/src/applications/utils/hlDeltaTypeMapper.ts",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769031008-18202"
+    ],
+    "created_at": "2026-01-21T21:30:43Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769030994-994",
+    "trigger": "Repository pattern detected",
+    "behavior": "Implements error handling. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769030994-994"
+    ],
+    "created_at": "2026-01-21T21:30:09Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769030994-17678",
+    "trigger": "Repository pattern detected",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769030994-17678"
+    ],
+    "created_at": "2026-01-21T21:30:09Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769030993-20828",
+    "trigger": "Repository pattern detected",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769030993-20828"
+    ],
+    "created_at": "2026-01-21T21:30:09Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769030947-27199",
+    "trigger": "Repository pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769030947-27199"
+    ],
+    "created_at": "2026-01-21T21:29:38Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769030947-12448",
+    "trigger": "Repository pattern detected",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769030947-12448"
+    ],
+    "created_at": "2026-01-21T21:29:38Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769030946-26772",
+    "trigger": "Repository pattern detected",
+    "behavior": "Implements error handling. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769030946-26772"
+    ],
+    "created_at": "2026-01-21T21:29:38Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769030946-22384",
+    "trigger": "Pattern from /Users/alfredolopez/.ralph/curator/scripts/curator-rank.sh",
+    "behavior": "Uses schema validation. Implements structured logging. Implements metrics/observability",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769030946-22384"
+    ],
+    "created_at": "2026-01-21T21:29:38Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769030945-25418",
+    "trigger": "Repository pattern detected",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769030945-25418"
+    ],
+    "created_at": "2026-01-21T21:29:38Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769030945-22538",
+    "trigger": "Adapter pattern detected Repository pattern detected",
+    "behavior": "Implements error handling. Implements retry/resilience pattern. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769030945-22538"
+    ],
+    "created_at": "2026-01-21T21:29:38Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769030944-32531",
+    "trigger": "Repository pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements error handling. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769030944-32531"
+    ],
+    "created_at": "2026-01-21T21:29:38Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769030846-15696",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Pattern: Adapter pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769030846-15696"
+    ],
+    "created_at": "2026-01-21T21:27:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769030405-22845",
+    "trigger": "Observer pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769030405-22845"
+    ],
+    "created_at": "2026-01-21T21:25:58Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769030308-22016",
+    "trigger": "Observer pattern detected",
+    "behavior": "Pattern: Observer pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769030308-22016"
+    ],
+    "created_at": "2026-01-21T21:25:58Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769030238-23341",
+    "trigger": "Observer pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769030238-23341"
+    ],
+    "created_at": "2026-01-21T21:18:23Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769029060-1015",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/keyper-infra/dev/chains/rpc-proxy-palmera/01-nginx-configmap.yaml",
+    "behavior": "Implements rate limiting",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769029060-1015"
+    ],
+    "created_at": "2026-01-21T20:58:47Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769027514-9641",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769027514-9641"
+    ],
+    "created_at": "2026-01-21T20:32:03Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769027270-13840",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/palmera-notif-serv/src/applications/services/hlWebSocketService.ts",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769027270-13840"
+    ],
+    "created_at": "2026-01-21T20:29:26Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769026490-11113",
+    "trigger": "Singleton pattern detected Observer pattern detected Adapter pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769026490-11113"
+    ],
+    "created_at": "2026-01-21T20:27:33Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769026367-1650",
+    "trigger": "Adapter pattern detected Middleware pattern detected",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769026367-1650"
+    ],
+    "created_at": "2026-01-21T20:27:33Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769025817-1455",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769025817-1455"
+    ],
+    "created_at": "2026-01-21T20:03:38Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769025370-19645",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/keyper-infra/dev/chains/rpc-proxy-palmera/01-nginx-configmap.yaml",
+    "behavior": "Implements rate limiting",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769025370-19645"
+    ],
+    "created_at": "2026-01-21T19:56:11Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769023777-20794",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769023777-20794"
+    ],
+    "created_at": "2026-01-21T19:56:11Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769023380-2416",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769023380-2416"
+    ],
+    "created_at": "2026-01-21T19:29:38Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769023261-15621",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769023261-15621"
+    ],
+    "created_at": "2026-01-21T19:23:01Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769022550-8868",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769022550-8868"
+    ],
+    "created_at": "2026-01-21T19:21:02Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769022538-15361",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769022538-15361"
+    ],
+    "created_at": "2026-01-21T19:09:11Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769022470-25076",
+    "trigger": "Adapter pattern detected Middleware pattern detected",
+    "behavior": "Pattern: Adapter pattern detected, Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769022470-25076"
+    ],
+    "created_at": "2026-01-21T19:08:59Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769022395-12731",
+    "trigger": "Adapter pattern detected Middleware pattern detected",
+    "behavior": "Pattern: Adapter pattern detected, Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769022395-12731"
+    ],
+    "created_at": "2026-01-21T19:07:38Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769022387-27170",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Implements rate limiting. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769022387-27170"
+    ],
+    "created_at": "2026-01-21T19:06:28Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769021479-16821",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769021479-16821"
+    ],
+    "created_at": "2026-01-21T18:51:36Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769021471-11135",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769021471-11135"
+    ],
+    "created_at": "2026-01-21T18:51:21Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769021191-17843",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/HodlProtocol/Hodlprotocol-web/src/components/common/CustomConnectButton/index.tsx",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769021191-17843"
+    ],
+    "created_at": "2026-01-21T18:51:12Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769021170-24335",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/HodlProtocol/Hodlprotocol-web/src/components/common/CustomConnectButton/index.tsx",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769021170-24335"
+    ],
+    "created_at": "2026-01-21T18:46:33Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769020720-7702",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/palmera-notif-serv/__tests__/unit/applications/services/hlNotificationService.test.ts",
+    "behavior": "Uses async/await for asynchronous operations. Implements caching strategy. Implements rate limiting. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769020720-7702"
+    ],
+    "created_at": "2026-01-21T18:45:54Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769020495-32075",
+    "trigger": "Observer pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements error handling. Implements caching strategy. Implements rate limiting. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769020495-32075"
+    ],
+    "created_at": "2026-01-21T18:45:54Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769020440-27483",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/palmera-notif-serv/__tests__/unit/applications/services/hlNotificationService.test.ts",
+    "behavior": "Uses async/await for asynchronous operations. Implements caching strategy. Implements rate limiting. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769020440-27483"
+    ],
+    "created_at": "2026-01-21T18:45:54Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769020392-30049",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Pattern: Adapter pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769020392-30049"
+    ],
+    "created_at": "2026-01-21T18:45:54Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769020386-16128",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769020386-16128"
+    ],
+    "created_at": "2026-01-21T18:33:13Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769020367-21093",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Pattern: Adapter pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769020367-21093"
+    ],
+    "created_at": "2026-01-21T18:33:13Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769020237-15878",
+    "trigger": "Observer pattern detected Adapter pattern detected Middleware pattern detected",
+    "behavior": "Pattern: Observer pattern detected, Adapter pattern detected, Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769020237-15878"
+    ],
+    "created_at": "2026-01-21T18:32:49Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769020231-28770",
+    "trigger": "Decorator pattern detected",
+    "behavior": "Pattern: Decorator pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769020231-28770"
+    ],
+    "created_at": "2026-01-21T18:32:49Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769020219-15659",
+    "trigger": "Decorator pattern detected",
+    "behavior": "Pattern: Decorator pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769020219-15659"
+    ],
+    "created_at": "2026-01-21T18:30:32Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769020211-24917",
+    "trigger": "Decorator pattern detected",
+    "behavior": "Pattern: Decorator pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769020211-24917"
+    ],
+    "created_at": "2026-01-21T18:30:20Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769020206-21958",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Pattern: Adapter pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769020206-21958"
+    ],
+    "created_at": "2026-01-21T18:30:12Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769020191-18641",
+    "trigger": "Decorator pattern detected",
+    "behavior": "Pattern: Decorator pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769020191-18641"
+    ],
+    "created_at": "2026-01-21T18:30:04Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769020181-15120",
+    "trigger": "Decorator pattern detected",
+    "behavior": "Pattern: Decorator pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769020181-15120"
+    ],
+    "created_at": "2026-01-21T18:29:52Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769020052-14161",
+    "trigger": "Observer pattern detected Decorator pattern detected Middleware pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements caching strategy. Implements rate limiting. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769020052-14161"
+    ],
+    "created_at": "2026-01-21T18:29:42Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769019988-25890",
+    "trigger": "Observer pattern detected Adapter pattern detected Middleware pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements caching strategy. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769019988-25890"
+    ],
+    "created_at": "2026-01-21T18:29:42Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769019985-5261",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/HodlProtocol/Hodlprotocol-web/src/components/Dynamic/OnrampButton.tsx",
+    "behavior": "Uses async/await for asynchronous operations. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769019985-5261"
+    ],
+    "created_at": "2026-01-21T18:29:42Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769018293-15941",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/palmera-notif-serv/__tests__/unit/server-hl-integration.test.ts",
+    "behavior": "Uses async/await for asynchronous operations",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769018293-15941"
+    ],
+    "created_at": "2026-01-21T18:26:15Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769018280-24967",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Uses async/await for asynchronous operations",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769018280-24967"
+    ],
+    "created_at": "2026-01-21T17:58:14Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769018278-31674",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/keyper-infra/dev/chains/rpc-proxy-palmera/01-nginx-configmap.yaml",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769018278-31674"
+    ],
+    "created_at": "2026-01-21T17:58:01Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769018263-13827",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Uses async/await for asynchronous operations",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769018263-13827"
+    ],
+    "created_at": "2026-01-21T17:57:59Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769018248-23993",
+    "trigger": "Observer pattern detected",
+    "behavior": "Uses async/await for asynchronous operations",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769018248-23993"
+    ],
+    "created_at": "2026-01-21T17:57:44Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769018185-19591",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769018185-19591"
+    ],
+    "created_at": "2026-01-21T17:56:26Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769018117-7593",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Implements caching strategy",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769018117-7593"
+    ],
+    "created_at": "2026-01-21T17:55:34Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769018105-23249",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769018105-23249"
+    ],
+    "created_at": "2026-01-21T17:55:06Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769017760-8075",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Implements caching strategy. Implements rate limiting. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769017760-8075"
+    ],
+    "created_at": "2026-01-21T17:55:06Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769017742-20968",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Implements caching strategy",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769017742-20968"
+    ],
+    "created_at": "2026-01-21T17:55:06Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769017732-11282",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769017732-11282"
+    ],
+    "created_at": "2026-01-21T17:55:06Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769016963-18370",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769016963-18370"
+    ],
+    "created_at": "2026-01-21T17:55:06Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769016946-28208",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Implements rate limiting. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769016946-28208"
+    ],
+    "created_at": "2026-01-21T17:55:06Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769015912-13054",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769015912-13054"
+    ],
+    "created_at": "2026-01-21T17:55:06Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769015495-18680",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769015495-18680"
+    ],
+    "created_at": "2026-01-21T17:55:06Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769014916-5676",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Implements rate limiting. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769014916-5676"
+    ],
+    "created_at": "2026-01-21T17:55:06Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769014866-8899",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/keyper-infra/dev/chains/rpc-proxy-palmera/01-nginx-configmap.yaml",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769014866-8899"
+    ],
+    "created_at": "2026-01-21T17:01:07Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769014835-7078",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769014835-7078"
+    ],
+    "created_at": "2026-01-21T17:01:07Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769014834-10015",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769014834-10015"
+    ],
+    "created_at": "2026-01-21T17:01:07Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769014833-6535",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Implements rate limiting. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769014833-6535"
+    ],
+    "created_at": "2026-01-21T17:01:07Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769014832-14499",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769014832-14499"
+    ],
+    "created_at": "2026-01-21T17:01:07Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769014831-18771",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769014831-18771"
+    ],
+    "created_at": "2026-01-21T17:01:07Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769012173-19496",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769012173-19496"
+    ],
+    "created_at": "2026-01-21T16:16:14Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769012147-30513",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Implements error handling. Implements rate limiting. Implements structured logging. Implements metrics/observability",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769012147-30513"
+    ],
+    "created_at": "2026-01-21T16:16:14Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769012104-10421",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Implements rate limiting. Implements structured logging. Implements metrics/observability",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769012104-10421"
+    ],
+    "created_at": "2026-01-21T16:16:14Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769012089-32033",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769012089-32033"
+    ],
+    "created_at": "2026-01-21T16:16:14Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769011798-15834",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769011798-15834"
+    ],
+    "created_at": "2026-01-21T16:16:14Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769011790-9433",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769011790-9433"
+    ],
+    "created_at": "2026-01-21T16:09:59Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769011778-30386",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/HodlProtocol/Hodlprotocol-web/src/components/Navbar/index.tsx",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769011778-30386"
+    ],
+    "created_at": "2026-01-21T16:09:51Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769010454-20898",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769010454-20898"
+    ],
+    "created_at": "2026-01-21T16:09:39Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769010425-6010",
+    "trigger": "Decorator pattern detected",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769010425-6010"
+    ],
+    "created_at": "2026-01-21T16:09:39Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769010354-19205",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/HodlProtocol/Hodlprotocol-web/src/components/Dynamic/OnrampButton.tsx",
+    "behavior": "Uses async/await for asynchronous operations",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769010354-19205"
+    ],
+    "created_at": "2026-01-21T16:09:39Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769010289-8250",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/HodlProtocol/Hodlprotocol-web/src/components/Dynamic/OnrampButton.tsx",
+    "behavior": "Uses async/await for asynchronous operations. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769010289-8250"
+    ],
+    "created_at": "2026-01-21T15:45:01Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769010210-7777",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/HodlProtocol/Hodlprotocol-web/src/components/Dynamic/OnrampButton.tsx",
+    "behavior": "Uses async/await for asynchronous operations. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769010210-7777"
+    ],
+    "created_at": "2026-01-21T15:44:50Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769010180-12220",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/HodlProtocol/Hodlprotocol-web/src/components/Dynamic/OnrampButton.tsx",
+    "behavior": "Uses async/await for asynchronous operations. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769010180-12220"
+    ],
+    "created_at": "2026-01-21T15:43:32Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769010142-25477",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/rpc-proxy-palmera/01-nginx-configmap.yaml",
+    "behavior": "Implements rate limiting",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769010142-25477"
+    ],
+    "created_at": "2026-01-21T15:43:02Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769010135-1464",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/rpc-proxy-palmera/01-configmap.yaml",
+    "behavior": "Implements rate limiting",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769010135-1464"
+    ],
+    "created_at": "2026-01-21T15:42:16Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769010085-6787",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/rpc-proxy-palmera/01-nginx-configmap.yaml",
+    "behavior": "Implements rate limiting",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769010085-6787"
+    ],
+    "created_at": "2026-01-21T15:41:27Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769010069-650",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/rpc-proxy-palmera/03-deployment.yaml",
+    "behavior": "Implements metrics/observability",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769010069-650"
+    ],
+    "created_at": "2026-01-21T15:41:26Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769010066-8148",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/rpc-proxy-palmera/03-deployment.yaml",
+    "behavior": "Implements metrics/observability",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769010066-8148"
+    ],
+    "created_at": "2026-01-21T15:41:09Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769009958-2601",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769009958-2601"
+    ],
+    "created_at": "2026-01-21T15:39:28Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769009421-29128",
+    "trigger": "Decorator pattern detected",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769009421-29128"
+    ],
+    "created_at": "2026-01-21T15:34:43Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769009401-1631",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769009401-1631"
+    ],
+    "created_at": "2026-01-21T15:34:43Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769009335-13295",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/HodlProtocol/Hodlprotocol-web/src/components/Dynamic/OnrampButton.tsx",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769009335-13295"
+    ],
+    "created_at": "2026-01-21T15:29:33Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769009219-17465",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769009219-17465"
+    ],
+    "created_at": "2026-01-21T15:27:43Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769008902-16248",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769008902-16248"
+    ],
+    "created_at": "2026-01-21T15:21:59Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769008459-28017",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769008459-28017"
+    ],
+    "created_at": "2026-01-21T15:14:38Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769008441-10382",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Implements rate limiting. Implements structured logging. Implements metrics/observability",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769008441-10382"
+    ],
+    "created_at": "2026-01-21T15:14:21Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769004798-25023",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769004798-25023"
+    ],
+    "created_at": "2026-01-21T14:13:20Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769004547-3441",
+    "trigger": "Adapter pattern detected Middleware pattern detected",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769004547-3441"
+    ],
+    "created_at": "2026-01-21T14:13:15Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1769004439-14882",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Pattern: Adapter pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1769004439-14882"
+    ],
+    "created_at": "2026-01-21T14:13:15Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768998921-24063",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768998921-24063"
+    ],
+    "created_at": "2026-01-21T12:43:59Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768998906-3238",
+    "trigger": "Observer pattern detected Adapter pattern detected",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768998906-3238"
+    ],
+    "created_at": "2026-01-21T12:35:21Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768998821-31598",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Pattern: Adapter pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768998821-31598"
+    ],
+    "created_at": "2026-01-21T12:34:10Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768998733-18637",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768998733-18637"
+    ],
+    "created_at": "2026-01-21T12:32:14Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768997641-5284",
+    "trigger": "Pattern from /Users/alfredolopez/.claude/settings.json",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768997641-5284"
+    ],
+    "created_at": "2026-01-21T12:32:14Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768997593-9706",
+    "trigger": "Pattern from /Users/alfredolopez/.claude/settings.json",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768997593-9706"
+    ],
+    "created_at": "2026-01-21T12:13:14Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768997196-20286",
+    "trigger": "Strategy pattern detected",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768997196-20286"
+    ],
+    "created_at": "2026-01-21T12:13:14Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768997106-8816",
+    "trigger": "Pattern from /Users/alfredolopez/.claude/hooks/test-sec-context-hook.sh",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768997106-8816"
+    ],
+    "created_at": "2026-01-21T12:13:14Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768997076-617",
+    "trigger": "Strategy pattern detected",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768997076-617"
+    ],
+    "created_at": "2026-01-21T12:13:14Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768996936-25388",
+    "trigger": "Strategy pattern detected",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768996936-25388"
+    ],
+    "created_at": "2026-01-21T12:13:14Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768996844-15599",
+    "trigger": "Pattern from /Users/alfredolopez/.claude/hooks/test-sec-context-hook.sh",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768996844-15599"
+    ],
+    "created_at": "2026-01-21T12:13:14Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768996794-24101",
+    "trigger": "Pattern from /Users/alfredolopez/.claude/hooks/test-sec-context-hook.sh",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768996794-24101"
+    ],
+    "created_at": "2026-01-21T12:13:14Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768993472-6934",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/palmera-notif-serv/src/applications/services/hlWebSocketService.ts",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768993472-6934"
+    ],
+    "created_at": "2026-01-21T11:14:20Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768992299-898",
+    "trigger": "Decorator pattern detected",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768992299-898"
+    ],
+    "created_at": "2026-01-21T11:04:33Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768992284-22045",
+    "trigger": "Observer pattern detected Strategy pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements error handling. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768992284-22045"
+    ],
+    "created_at": "2026-01-21T10:44:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768992061-19650",
+    "trigger": "Observer pattern detected Decorator pattern detected Adapter pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements caching strategy. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768992061-19650"
+    ],
+    "created_at": "2026-01-21T10:44:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768990983-13398",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768990983-13398"
+    ],
+    "created_at": "2026-01-21T10:44:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768990970-24610",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/palmera-notif-serv/src/applications/services/hlWebSocketService.ts",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768990970-24610"
+    ],
+    "created_at": "2026-01-21T10:23:07Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768990933-9706",
+    "trigger": "Observer pattern detected Middleware pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768990933-9706"
+    ],
+    "created_at": "2026-01-21T10:22:52Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768990828-20960",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/palmera-notif-serv/src/applications/services/hlWebSocketService.ts",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768990828-20960"
+    ],
+    "created_at": "2026-01-21T10:21:47Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768950257-16131",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Pattern: Adapter pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768950257-16131"
+    ],
+    "created_at": "2026-01-21T10:21:47Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768950205-7350",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768950205-7350"
+    ],
+    "created_at": "2026-01-21T10:21:47Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768950148-20139",
+    "trigger": "Pattern from /Users/alfredolopez/.ralph/scripts/episodic-to-procedural.sh",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768950148-20139"
+    ],
+    "created_at": "2026-01-21T10:21:47Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768950133-13159",
+    "trigger": "Pattern from /Users/alfredolopez/.ralph/scripts/episodic-to-procedural.sh",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768950133-13159"
+    ],
+    "created_at": "2026-01-21T10:21:47Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768950074-8468",
+    "trigger": "Pattern from /Users/alfredolopez/.ralph/scripts/episodic-to-procedural.sh",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768950074-8468"
+    ],
+    "created_at": "2026-01-21T10:21:47Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768949937-2503",
+    "trigger": "Repository pattern detected",
+    "behavior": "Implements error handling. Implements caching strategy. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768949937-2503"
+    ],
+    "created_at": "2026-01-21T10:21:46Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768949920-22953",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements caching strategy. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768949920-22953"
+    ],
+    "created_at": "2026-01-21T10:21:46Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768949891-2360",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768949891-2360"
+    ],
+    "created_at": "2026-01-21T10:21:46Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768946587-21834",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/palmera-notif-serv/__tests__/unit/applications/services/unifiedNotificationSender.v2.test.ts",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768946587-21834"
+    ],
+    "created_at": "2026-01-21T10:21:46Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768946500-28555",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/scripts/validate-hooks-consistency.sh",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768946500-28555"
+    ],
+    "created_at": "2026-01-21T10:21:46Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768946250-21520",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/scripts/validate-hooks-consistency.sh",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768946250-21520"
+    ],
+    "created_at": "2026-01-21T10:21:46Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768946158-12329",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/scripts/validate-hooks-consistency.sh",
+    "behavior": "Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768946158-12329"
+    ],
+    "created_at": "2026-01-21T10:21:46Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768945938-27296",
+    "trigger": "Pattern from /Users/alfredolopez/.claude/hooks/semantic-write-helper.sh",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768945938-27296"
+    ],
+    "created_at": "2026-01-21T10:21:46Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768945424-1766",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/palmera-notif-serv/scripts/seedHyperSigTemplates.js",
+    "behavior": "Uses async/await for asynchronous operations. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768945424-1766"
+    ],
+    "created_at": "2026-01-21T10:21:46Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768945374-11681",
+    "trigger": "Decorator pattern detected Adapter pattern detected Middleware pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements rate limiting. Implements retry/resilience pattern. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768945374-11681"
+    ],
+    "created_at": "2026-01-21T10:21:46Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768943546-1819",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Pattern: Adapter pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768943546-1819"
+    ],
+    "created_at": "2026-01-21T10:21:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768943531-19275",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Pattern: Adapter pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768943531-19275"
+    ],
+    "created_at": "2026-01-21T10:21:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768943494-14054",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Pattern: Adapter pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768943494-14054"
+    ],
+    "created_at": "2026-01-21T10:21:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768943186-16969",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768943186-16969"
+    ],
+    "created_at": "2026-01-21T10:21:45Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768942920-7229",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/palmera-notif-serv/check-templates.js",
+    "behavior": "Uses async/await for asynchronous operations. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768942920-7229"
+    ],
+    "created_at": "2026-01-21T10:21:33Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768942371-13530",
+    "trigger": "Decorator pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements rate limiting. Implements retry/resilience pattern. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768942371-13530"
+    ],
+    "created_at": "2026-01-21T10:21:33Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768942338-17564",
+    "trigger": "Decorator pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements rate limiting. Implements retry/resilience pattern. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768942338-17564"
+    ],
+    "created_at": "2026-01-21T10:21:33Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768942135-23102",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/palmera-notif-serv/src/applications/services/hlWebSocketService.ts",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768942135-23102"
+    ],
+    "created_at": "2026-01-21T10:21:33Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768942102-7255",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/palmera-notif-serv/src/applications/services/hlWebSocketService.ts",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768942102-7255"
+    ],
+    "created_at": "2026-01-21T10:21:33Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768942077-11274",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/palmera-notif-serv/src/applications/services/hlWebSocketService.ts",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768942077-11274"
+    ],
+    "created_at": "2026-01-21T10:21:32Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768942041-23051",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768942041-23051"
+    ],
+    "created_at": "2026-01-21T10:21:32Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768937008-11732",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768937008-11732"
+    ],
+    "created_at": "2026-01-21T10:21:32Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768936908-861",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768936908-861"
+    ],
+    "created_at": "2026-01-21T10:21:32Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768936814-26665",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768936814-26665"
+    ],
+    "created_at": "2026-01-21T10:21:32Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768936723-22370",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768936723-22370"
+    ],
+    "created_at": "2026-01-21T10:21:32Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768936638-10980",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/palmera-notif-serv/scripts/seedHyperSigTemplates.js",
+    "behavior": "Uses async/await for asynchronous operations. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768936638-10980"
+    ],
+    "created_at": "2026-01-21T10:21:32Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768933783-713",
+    "trigger": "Pattern from /tmp/test.py",
+    "behavior": "Implements error handling. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768933783-713"
+    ],
+    "created_at": "2026-01-21T10:21:32Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768933783-21553",
+    "trigger": "Repository pattern detected",
+    "behavior": "Pattern: Repository pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768933783-21553"
+    ],
+    "created_at": "2026-01-21T10:21:31Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768933783-18518",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Uses async/await for asynchronous operations",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768933783-18518"
+    ],
+    "created_at": "2026-01-21T10:21:31Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768931210-26670",
+    "trigger": "Decorator pattern detected",
+    "behavior": "Implements error handling. Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768931210-26670"
+    ],
+    "created_at": "2026-01-21T10:21:31Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768931151-9789",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/scripts/install-git-hooks.sh",
+    "behavior": "Implements caching strategy. Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768931151-9789"
+    ],
+    "created_at": "2026-01-21T10:21:31Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768931094-22003",
+    "trigger": "Pattern from /Users/alfredolopez/.claude/scripts/validate-hooks.sh",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768931094-22003"
+    ],
+    "created_at": "2026-01-21T10:21:31Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768931082-23549",
+    "trigger": "Pattern from /Users/alfredolopez/.claude/scripts/validate-hooks.sh",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768931082-23549"
+    ],
+    "created_at": "2026-01-21T10:21:31Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768931073-15795",
+    "trigger": "Pattern from /Users/alfredolopez/.claude/scripts/validate-hooks.sh",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768931073-15795"
+    ],
+    "created_at": "2026-01-21T10:21:31Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768931050-29056",
+    "trigger": "Pattern from /Users/alfredolopez/.claude/scripts/validate-hooks.sh",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768931050-29056"
+    ],
+    "created_at": "2026-01-21T10:21:16Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768931042-32651",
+    "trigger": "Pattern from /Users/alfredolopez/.claude/scripts/validate-hooks.sh",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768931042-32651"
+    ],
+    "created_at": "2026-01-21T10:21:15Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768931017-9952",
+    "trigger": "Pattern from /Users/alfredolopez/.ralph/procedural/rules.json",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768931017-9952"
+    ],
+    "created_at": "2026-01-21T10:21:15Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768930610-11918",
+    "trigger": "Pattern from /Users/alfredolopez/.claude/hooks/todo-plan-sync.sh",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768930610-11918"
+    ],
+    "created_at": "2026-01-21T10:21:15Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768930609-15591",
+    "trigger": "Pattern from /Users/alfredolopez/.claude/hooks/todo-plan-sync.sh",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768930609-15591"
+    ],
+    "created_at": "2026-01-21T10:21:15Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768930433-4578",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/open-agent-ui/src/ui/components/ralph/RalphPanel.tsx",
+    "behavior": "Uses async/await for asynchronous operations. Implements rate limiting",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768930433-4578"
+    ],
+    "created_at": "2026-01-21T10:21:15Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768930412-30925",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/open-agent-ui/src/ui/components/ralph/RalphPanel.tsx",
+    "behavior": "Implements rate limiting",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768930412-30925"
+    ],
+    "created_at": "2026-01-21T10:21:15Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768930308-25535",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/tests/test_hooks_task.py",
+    "behavior": "Implements error handling",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768930308-25535"
+    ],
+    "created_at": "2026-01-21T10:21:15Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768930302-21164",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/palmera-notif-serv/src/infrastructure/websocket/hlWsClient.ts",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768930302-21164"
+    ],
+    "created_at": "2026-01-21T10:21:15Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768930271-24386",
+    "trigger": "Decorator pattern detected",
+    "behavior": "Pattern: Decorator pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768930271-24386"
+    ],
+    "created_at": "2026-01-21T10:21:15Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768930270-24790",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/open-agent-ui/src/electron/ipc-handlers.ts",
+    "behavior": "Uses async/await for asynchronous operations",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768930270-24790"
+    ],
+    "created_at": "2026-01-21T10:21:14Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768930262-29100",
+    "trigger": "Decorator pattern detected",
+    "behavior": "Pattern: Decorator pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768930262-29100"
+    ],
+    "created_at": "2026-01-21T10:21:14Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768930254-22061",
+    "trigger": "Decorator pattern detected",
+    "behavior": "Pattern: Decorator pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768930254-22061"
+    ],
+    "created_at": "2026-01-21T10:21:14Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768930253-2651",
+    "trigger": "Observer pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements caching strategy. Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768930253-2651"
+    ],
+    "created_at": "2026-01-21T10:21:14Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768930239-12991",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/palmera-notif-serv/src/applications/services/unifiedNotificationSender.ts",
+    "behavior": "Uses async/await for asynchronous operations. Implements rate limiting. Implements retry/resilience pattern. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768930239-12991"
+    ],
+    "created_at": "2026-01-21T10:21:14Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768930232-32187",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/palmera-notif-serv/src/applications/services/unifiedNotificationSender.ts",
+    "behavior": "Uses async/await for asynchronous operations. Implements retry/resilience pattern",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768930232-32187"
+    ],
+    "created_at": "2026-01-21T10:21:14Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768930230-9200",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/tests/test_hooks_task.py",
+    "behavior": "Implements error handling. Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768930230-9200"
+    ],
+    "created_at": "2026-01-21T10:21:14Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768930221-17588",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/palmera-notif-serv/src/applications/services/unifiedNotificationSender.ts",
+    "behavior": "Uses async/await for asynchronous operations. Implements rate limiting. Implements retry/resilience pattern. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768930221-17588"
+    ],
+    "created_at": "2026-01-21T10:21:13Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768930214-17334",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/palmera-notif-serv/src/applications/services/unifiedNotificationSender.ts",
+    "behavior": "Uses async/await for asynchronous operations. Implements retry/resilience pattern",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768930214-17334"
+    ],
+    "created_at": "2026-01-21T10:21:13Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768930198-5771",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768930198-5771"
+    ],
+    "created_at": "2026-01-21T10:21:13Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768930176-18374",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/PalmeraDAO/palmera-notif-serv/src/applications/services/unifiedNotificationSender.ts",
+    "behavior": "Uses async/await for asynchronous operations",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768930176-18374"
+    ],
+    "created_at": "2026-01-21T10:20:58Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768930171-4705",
+    "trigger": "Middleware pattern detected",
+    "behavior": "Pattern: Middleware pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768930171-4705"
+    ],
+    "created_at": "2026-01-21T10:20:58Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768930121-24684",
+    "trigger": "Observer pattern detected",
+    "behavior": "Pattern: Observer pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768930121-24684"
+    ],
+    "created_at": "2026-01-21T10:20:58Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768930046-12736",
+    "trigger": "Pattern from /Users/alfredolopez/.claude/hooks/stop-verification.sh",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768930046-12736"
+    ],
+    "created_at": "2026-01-21T10:20:58Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929990-973",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929990-973"
+    ],
+    "created_at": "2026-01-21T10:20:58Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929925-16817",
+    "trigger": "Observer pattern detected Adapter pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements caching strategy. Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929925-16817"
+    ],
+    "created_at": "2026-01-21T10:20:58Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929886-19037",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/open-agent-ui/src/electron/libs/source-ipc.ts",
+    "behavior": "Uses async/await for asynchronous operations",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929886-19037"
+    ],
+    "created_at": "2026-01-21T10:20:57Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929857-10160",
+    "trigger": "Singleton pattern detected Observer pattern detected Adapter pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929857-10160"
+    ],
+    "created_at": "2026-01-21T10:20:57Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929848-280",
+    "trigger": "Decorator pattern detected",
+    "behavior": "Implements error handling. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929848-280"
+    ],
+    "created_at": "2026-01-21T10:20:57Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929795-26396",
+    "trigger": "Singleton pattern detected Observer pattern detected",
+    "behavior": "Uses async/await for asynchronous operations",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929795-26396"
+    ],
+    "created_at": "2026-01-21T10:20:57Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929747-15295",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/open-agent-ui/src/electron/types.ts",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929747-15295"
+    ],
+    "created_at": "2026-01-21T10:20:57Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929737-13129",
+    "trigger": "Strategy pattern detected",
+    "behavior": "Pattern: Strategy pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929737-13129"
+    ],
+    "created_at": "2026-01-21T10:20:57Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929707-4870",
+    "trigger": "Decorator pattern detected",
+    "behavior": "Pattern: Decorator pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929707-4870"
+    ],
+    "created_at": "2026-01-21T10:20:56Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929678-27671",
+    "trigger": "Pattern from /Users/alfredolopez/.claude/hooks/fast-path-check.sh",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929678-27671"
+    ],
+    "created_at": "2026-01-21T10:20:56Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929672-14698",
+    "trigger": "Observer pattern detected",
+    "behavior": "Pattern: Observer pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929672-14698"
+    ],
+    "created_at": "2026-01-21T10:20:56Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929636-679",
+    "trigger": "Observer pattern detected",
+    "behavior": "Pattern: Observer pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929636-679"
+    ],
+    "created_at": "2026-01-21T10:20:56Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929598-12352",
+    "trigger": "Decorator pattern detected Adapter pattern detected Middleware pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements rate limiting. Implements retry/resilience pattern. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929598-12352"
+    ],
+    "created_at": "2026-01-21T10:20:56Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929595-24993",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/open-agent-ui/src/ui/components/ralph/RalphPanel.tsx",
+    "behavior": "Uses async/await for asynchronous operations. Implements rate limiting",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929595-24993"
+    ],
+    "created_at": "2026-01-21T10:20:56Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929595-14302",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/open-agent-ui/src/ui/hooks/useRalph.ts",
+    "behavior": "Uses async/await for asynchronous operations",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929595-14302"
+    ],
+    "created_at": "2026-01-21T10:20:56Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929580-31660",
+    "trigger": "Decorator pattern detected",
+    "behavior": "Implements error handling. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929580-31660"
+    ],
+    "created_at": "2026-01-21T10:20:56Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929529-2969",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/open-agent-ui/src/electron/libs/ralph-ipc.ts",
+    "behavior": "Uses async/await for asynchronous operations",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929529-2969"
+    ],
+    "created_at": "2026-01-21T10:20:34Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929514-1267",
+    "trigger": "Pattern from /Users/alfredolopez/.claude/hooks/auto-save-context.sh",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929514-1267"
+    ],
+    "created_at": "2026-01-21T10:20:34Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929504-23749",
+    "trigger": "Pattern from /Users/alfredolopez/.claude/hooks/status-auto-check.sh",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929504-23749"
+    ],
+    "created_at": "2026-01-21T10:20:34Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929489-369",
+    "trigger": "Singleton pattern detected Observer pattern detected Repository pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929489-369"
+    ],
+    "created_at": "2026-01-21T10:20:34Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929463-13977",
+    "trigger": "Decorator pattern detected Adapter pattern detected Middleware pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements retry/resilience pattern. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929463-13977"
+    ],
+    "created_at": "2026-01-21T10:20:34Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929343-1029",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/open-agent-ui/src/ui/components/providers/ProviderSelector.tsx",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929343-1029"
+    ],
+    "created_at": "2026-01-21T10:20:33Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929341-12568",
+    "trigger": "Observer pattern detected",
+    "behavior": "Pattern: Observer pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929341-12568"
+    ],
+    "created_at": "2026-01-21T10:20:33Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929291-15699",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/open-agent-ui/src/ui/components/ui/index.ts",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929291-15699"
+    ],
+    "created_at": "2026-01-21T10:20:33Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929255-2996",
+    "trigger": "Adapter pattern detected",
+    "behavior": "Pattern: Adapter pattern detected",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929255-2996"
+    ],
+    "created_at": "2026-01-21T10:20:33Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929206-15421",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/open-agent-ui/package.json",
+    "behavior": "Implements structured logging. Project configuration updated: package.json",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929206-15421"
+    ],
+    "created_at": "2026-01-21T10:20:33Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768929075-17321",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/open-agent-ui/src/ui/components/ui/dialog.tsx",
+    "behavior": "Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768929075-17321"
+    ],
+    "created_at": "2026-01-21T10:20:33Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768928994-23124",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/open-agent-ui/components.json",
+    "behavior": "Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928994-23124"
+    ],
+    "created_at": "2026-01-21T10:20:33Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768928927-30789",
+    "trigger": "Decorator pattern detected",
+    "behavior": "Implements error handling. Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928927-30789"
+    ],
+    "created_at": "2026-01-21T10:20:32Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768928903-18407",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/open-agent-ui/src/electron/ipc-handlers.ts",
+    "behavior": "Uses async/await for asynchronous operations. Implements error handling. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928903-18407"
+    ],
+    "created_at": "2026-01-21T10:20:32Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768928901-31492",
+    "trigger": "Pattern from /Users/alfredolopez/Documents/GitHub/open-agent-ui/src/electron/main.ts",
+    "behavior": "Uses async/await for asynchronous operations. Uses schema validation. Implements structured logging",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928901-31492"
+    ],
+    "created_at": "2026-01-21T10:20:32Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768928861-32681",
+    "trigger": "Singleton pattern detected Factory pattern detected Adapter pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements caching strategy. Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928861-32681"
+    ],
+    "created_at": "2026-01-21T10:20:32Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768928806-3133",
+    "trigger": "Factory pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements rate limiting. Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928806-3133"
+    ],
+    "created_at": "2026-01-21T10:20:32Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768928806-10171",
+    "trigger": "Factory pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements rate limiting. Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928806-10171"
+    ],
+    "created_at": "2026-01-21T10:20:32Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768928774-4160",
+    "trigger": "Factory pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements rate limiting. Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928774-4160"
+    ],
+    "created_at": "2026-01-21T10:20:31Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  },
+  {
+    "rule_id": "ep-auto-1768928773-10307",
+    "trigger": "Factory pattern detected",
+    "behavior": "Uses async/await for asynchronous operations. Implements rate limiting. Uses schema validation",
+    "confidence": 0.75,
+    "source_repo": "auto-extract",
+    "source_episodes": [
+      "ep-1768928773-10307"
+    ],
+    "created_at": "2026-01-21T10:20:31Z",
+    "tags": [
+      "auto-extract",
+      "episodic",
+      "auto-convert"
+    ],
+    "severity": "medium"
+  }
+],
+  "curator_metadata": {
+    "enabled": true,
+    "default_confidence_threshold": 0.7,
+    "source_attribution_field": "source_repo",
+    "supported_sources": ["claude-mem", "curator", "manual", "auto-extract"]
+  }
+}

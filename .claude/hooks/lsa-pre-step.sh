@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VERSION: 2.68.7
+# VERSION: 2.68.23
 # LSA Pre-Step Verification
 # v2.68.7: CRIT-002 - Added error trap for guaranteed JSON output
 # v2.66.8: HIGH-004 - Redirect ASCII art to stderr (stdout reserved for JSON)
@@ -7,6 +7,11 @@
 # Purpose: Verify architecture compliance BEFORE implementation
 # Security: v2.45.1 - Fixed race condition with atomic updates
 # v2.62.3: Support both array (v1) and object (v2) steps format
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 

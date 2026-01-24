@@ -1,6 +1,6 @@
 #!/bin/bash
 # statusline-health-monitor.sh - Periodic health check for statusline
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 # v2.68.2: FIX CRIT-009 - Clear EXIT trap before explicit JSON output
 #
 # Purpose: Validate statusline health every 5 minutes
@@ -12,6 +12,11 @@
 # 2. Plan-state.json is valid JSON with required fields
 # 3. Stuck detection (in_progress > 30 min without change)
 # 4. Sync verification (statusline matches plan-state)
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 

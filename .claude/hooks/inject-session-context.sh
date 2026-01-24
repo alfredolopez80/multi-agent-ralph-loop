@@ -15,7 +15,12 @@
 #
 # Part of Ralph v2.43 Context Engineering
 
-# VERSION: 2.68.10
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
+
+# VERSION: 2.68.23
 # v2.68.10: HIGH-002 FIX - Removed 43 lines of dead code (context building never used)
 # v2.68.1: FIX CRIT-002 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 # Note: Not using set -e because we need graceful fallback on errors

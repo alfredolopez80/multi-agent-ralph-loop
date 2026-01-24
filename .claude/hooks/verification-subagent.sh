@@ -1,6 +1,6 @@
 #!/bin/bash
 # verification-subagent.sh - Spawn verification subagent after step completion
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 #
 # Purpose: Implement Claude Code's verification pattern
 #          Spawn a subagent to verify each completed step.
@@ -18,6 +18,11 @@
 # Output (JSON via stdout for PostToolUse):
 #   - {"continue": true}: Allow execution to continue
 #   - {"continue": true, "systemMessage": "..."}: Continue with suggestion
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 

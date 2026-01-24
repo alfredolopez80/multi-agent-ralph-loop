@@ -1,10 +1,15 @@
 #!/bin/bash
-# VERSION: 2.68.9
+# VERSION: 2.68.23
 # v2.68.9: SEC-107 FIX - Validate active context name to prevent path traversal
 # context-injector.sh - Injects active context into session
 # HOOK: SessionStart
 # Part of Multi-Agent Ralph Loop v2.68.6
 # v2.68.6: Version bump for consistency audit compliance
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 

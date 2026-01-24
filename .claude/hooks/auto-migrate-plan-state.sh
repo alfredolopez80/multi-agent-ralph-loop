@@ -1,5 +1,5 @@
 #!/bin/bash
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 # v2.52: Fixed JSON output format for SessionStart hooks
 # Hook: SessionStart - Auto-migrate plan-state.json
 # Purpose: Automatically migrate plan-state.json from v1 to v2 when session starts

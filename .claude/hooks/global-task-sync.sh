@@ -1,6 +1,6 @@
 #!/bin/bash
 # global-task-sync.sh - Sync plan-state with Claude Code global tasks
-# VERSION: 2.68.15
+# VERSION: 2.68.23
 #
 # Security: SEC-001 path traversal fix, SEC-004 umask, SEC-010 portable mkdir lock
 # v2.66.5: SC2168 FIX - Removed 'local' keywords outside functions (shellcheck)
@@ -77,8 +77,15 @@ get_session_id() {
     fi
 }
 
-# Read input from stdin
-INPUT=$(cat)
+# Read input from stdin with SEC-111 length limit
+INPUT=$(head -c 100000)
+
+# Validate JSON before processing
+if ! echo "$INPUT" | jq empty 2>/dev/null; then
+    log "Invalid JSON input, skipping hook"
+    echo '{"continue": true}'
+    exit 0
+fi
 
 # Extract session_id from INPUT FIRST (canonical source from Claude Code)
 SESSION_ID_FROM_INPUT=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null || echo "")

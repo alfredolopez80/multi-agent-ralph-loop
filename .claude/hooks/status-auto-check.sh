@@ -1,6 +1,6 @@
 #!/bin/bash
 # status-auto-check.sh - Auto-show status periodically
-# VERSION: 2.68.2
+# VERSION: 2.68.23
 # v2.57.3: Fixed LAST remaining wrong format on line 119 (SEC-036)
 # v2.57.2: Fixed JSON output format (SEC-035) - use {"continue": true}
 #
@@ -14,6 +14,11 @@
 # - Detects step completion and shows status immediately
 # - Session-aware counter (resets per session)
 # - Non-blocking via systemMessage
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 

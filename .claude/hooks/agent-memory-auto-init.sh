@@ -6,11 +6,16 @@
 # When a Task tool spawns an agent, this hook checks if the agent
 # has a memory buffer. If not, it initializes one automatically.
 #
-# VERSION: 2.68.9
+# VERSION: 2.68.23
 # v2.68.9: SEC-101 FIX - Validate SUBAGENT_TYPE to prevent sed command injection
 # v2.66.7: CRIT-001 fix - explicit JSON output on success path
 # v2.57.2: Fixed JSON output (SEC-034) - must output JSON, not silent exit
 # SECURITY: SEC-006 compliant with ERR trap for guaranteed clean exit
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
 
 set -euo pipefail
 umask 077

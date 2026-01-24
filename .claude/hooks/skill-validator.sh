@@ -11,7 +11,12 @@
 # - Collaboration rules integrity
 # Output: {"decision": "allow"} or {"decision": "block", "reason": "..."}
 
-# VERSION: 2.68.9
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
+
+# VERSION: 2.68.23
 # v2.68.9: SEC-103 FIX - Use sys.argv for file path instead of string interpolation
 # v2.68.2: FIX CRIT-004b - Only set trap when not sourced to prevent subshell JSON duplication
 # v2.68.1: FIX CRIT-004 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON

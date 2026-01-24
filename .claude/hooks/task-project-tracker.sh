@@ -1,6 +1,6 @@
 #!/bin/bash
 # task-project-tracker.sh - Track project metadata for all tasks
-# VERSION: 2.68.20
+# VERSION: 2.68.23
 #
 # Purpose: Add project metadata to every task created, enabling
 #          multi-project tracking and claude-task-viewer integration.
@@ -161,8 +161,15 @@ update_task_with_project() {
     log "Updated task with project: $(jq -r '.repo // "unknown"' <<< "$project_json")"
 }
 
-# Read stdin to get tool info
-INPUT=$(cat)
+# Read stdin to get tool info with SEC-111 length limit
+INPUT=$(head -c 100000)
+
+# Validate JSON before processing
+if ! echo "$INPUT" | jq empty 2>/dev/null; then
+    log "Invalid JSON input, skipping hook"
+    echo '{"continue": true}'
+    exit 0
+fi
 
 # Extract session_id from INPUT FIRST (canonical source from Claude Code)
 SESSION_ID_FROM_INPUT=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null || echo "")
