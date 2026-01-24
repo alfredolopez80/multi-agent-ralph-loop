@@ -1,7 +1,9 @@
 #!/bin/bash
-# Procedural Memory Injection (v2.68.3)
+# VERSION: 2.68.5
+# Procedural Memory Injection (v2.68.5)
 # Hook: PreToolUse (Task)
 # Purpose: Inject relevant procedural rules into subagent context
+# v2.68.5: HIGH-001 - Increased lock retries 3→10 (300ms→1s) for high concurrency scenarios
 # v2.68.3: PERF-001 - Critical performance fix: pre-filter rules with jq, eliminate O(n²) loops
 # v2.60.2: FIX HIGH-001 - Proper lock cleanup with trap-based guarantee + acquire_lock function
 # v2.59.4: FIXED - Use blocking flock -w 2 instead of -n to prevent feedback loop skips (GAP-CRIT-003)
@@ -11,7 +13,7 @@
 set -euo pipefail
 umask 077
 
-readonly VERSION="2.68.3"
+readonly VERSION="2.68.5"
 
 # Guaranteed JSON output on any error (SEC-006)
 output_json() {

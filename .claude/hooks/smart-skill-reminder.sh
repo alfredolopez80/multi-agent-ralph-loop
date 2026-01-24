@@ -4,7 +4,7 @@
 # PreToolUse hook - Context-aware skill suggestions BEFORE writing code
 #===============================================================================
 #
-# VERSION: 2.0.0
+# VERSION: 2.68.6
 # TRIGGER: PreToolUse (Edit|Write)
 # PURPOSE: Intelligently suggest relevant skills based on file context
 #

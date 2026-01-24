@@ -1,6 +1,6 @@
 #!/bin/bash
 # task-project-tracker.sh - Track project metadata for all tasks
-# VERSION: 1.1.0
+# VERSION: 2.68.6
 #
 # Purpose: Add project metadata to every task created, enabling
 #          multi-project tracking and claude-task-viewer integration.

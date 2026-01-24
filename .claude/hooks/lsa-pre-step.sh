@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
-# VERSION: 2.62.3
+# VERSION: 2.68.7
 # LSA Pre-Step Verification
+# v2.68.7: CRIT-002 - Added error trap for guaranteed JSON output
+# v2.66.8: HIGH-004 - Redirect ASCII art to stderr (stdout reserved for JSON)
 # Hook: PreToolUse (Edit|Write)
 # Purpose: Verify architecture compliance BEFORE implementation
 # Security: v2.45.1 - Fixed race condition with atomic updates
 # v2.62.3: Support both array (v1) and object (v2) steps format
 
 set -euo pipefail
+
+# SEC-006: Guaranteed JSON output on any error (CRIT-002 fix)
+trap 'echo "{\"decision\": \"allow\"}"' ERR
 
 # Configuration
 PLAN_STATE=".claude/plan-state.json"
@@ -64,8 +69,8 @@ if [ "$SPEC" = "null" ] || [ -z "$SPEC" ]; then
     echo '{"decision": "allow"}'; exit 0
 fi
 
-# Output verification reminder
-cat << EOF
+# Output verification reminder to stderr (HIGH-004: stdout reserved for JSON)
+cat >&2 << EOF
 
 ╔══════════════════════════════════════════════════════════════════╗
 ║                    LSA PRE-STEP VERIFICATION                      ║

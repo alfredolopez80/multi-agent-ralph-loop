@@ -1,10 +1,14 @@
 #!/bin/bash
-# post-compact-restore.sh - Multi-Agent Ralph v2.36
+# VERSION: 2.68.7
+# post-compact-restore.sh - Multi-Agent Ralph v2.68.7
 # Restores context after compaction using ledger + claude-mem MCP
 # Triggered by PostCompact hook event
+# v2.68.7: CRIT-001 - Added guaranteed JSON output for PostCompact hooks
 
-# VERSION: 2.57.5
 set -euo pipefail
+
+# SEC-006: Guaranteed JSON output on any error
+trap 'echo "{\"continue\": true}"' ERR EXIT
 
 LOG_FILE="${HOME}/.ralph/logs/post-compact.log"
 SESSION_FILE="${HOME}/.ralph/.current-session"
@@ -84,3 +88,7 @@ cat << 'EOF'
 EOF
 
 log "PostCompact hook completed"
+
+# Clear error trap and output success JSON
+trap - ERR EXIT
+echo '{"continue": true}'

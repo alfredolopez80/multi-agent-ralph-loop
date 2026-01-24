@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Usage Count Consolidation Hook (v1.0.0)
+# VERSION: 2.68.6
+# Usage Count Consolidation Hook (v2.68.6)
 # Hook: SessionStart
 # Purpose: Consolidate pending usage_count updates at session start
 #
 # This hook processes the pending-updates.jsonl file created by
-# procedural-inject.sh v2.60.0 and applies the updates to rules.json
+# procedural-inject.sh v2.68.5 and applies the updates to rules.json
 #
-# VERSION: 1.0.0
+# v2.68.6: Version bump for consistency audit compliance
 # SECURITY: SEC-006 compliant
 
 set -euo pipefail
