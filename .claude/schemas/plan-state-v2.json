@@ -1,10 +1,10 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "plan-state-v2.54",
-  "title": "Plan State v2.54",
-  "description": "Structured plan tracking with RLM-inspired classification, phases, barriers, and learning state",
+  "$id": "plan-state-v2.66",
+  "title": "Plan State v2.66",
+  "description": "Structured plan tracking with RLM-inspired classification, phases, barriers, and verification state",
   "type": "object",
-  "required": ["plan_id", "task", "classification", "steps", "loop_state", "learning_state"],
+  "required": ["plan_id", "task", "classification", "steps", "loop_state"],
   "properties": {
     "plan_id": {
       "type": "string",
@@ -24,11 +24,16 @@
     },
     "version": {
       "type": "string",
-      "default": "2.54.0"
+      "default": "2.66.0"
     },
     "classification": {
       "type": "object",
-      "required": ["complexity", "information_density", "context_requirement", "workflow_route"],
+      "required": [
+        "complexity",
+        "information_density",
+        "context_requirement",
+        "workflow_route"
+      ],
       "properties": {
         "complexity": {
           "type": "integer",
@@ -48,7 +53,12 @@
         },
         "workflow_route": {
           "type": "string",
-          "enum": ["FAST_PATH", "STANDARD", "PARALLEL_CHUNKS", "RECURSIVE_DECOMPOSE"],
+          "enum": [
+            "FAST_PATH",
+            "STANDARD",
+            "PARALLEL_CHUNKS",
+            "RECURSIVE_DECOMPOSE"
+          ],
           "description": "Determined workflow based on classification"
         },
         "model_routing": {
@@ -117,7 +127,13 @@
           "description": { "type": "string" },
           "status": {
             "type": "string",
-            "enum": ["pending", "in_progress", "completed", "verified", "blocked"]
+            "enum": [
+              "pending",
+              "in_progress",
+              "completed",
+              "verified",
+              "blocked"
+            ]
           },
           "spec": {
             "type": "object",
@@ -134,7 +150,10 @@
             "description": "Actual implementation results",
             "properties": {
               "exports": { "type": "array", "items": { "type": "string" } },
-              "files_modified": { "type": "array", "items": { "type": "string" } },
+              "files_modified": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
               "updated_at": { "type": "string", "format": "date-time" }
             }
           },
@@ -201,7 +220,13 @@
         },
         "status": {
           "type": "string",
-          "enum": ["not_started", "executing", "validating", "verified_done", "failed"]
+          "enum": [
+            "not_started",
+            "executing",
+            "validating",
+            "verified_done",
+            "failed"
+          ]
         }
       }
     },
@@ -258,7 +283,7 @@
     },
     "learning_state": {
       "type": "object",
-      "description": "Learning system state for repository patterns and rules (v2.54)",
+      "description": "Learning system state for repository patterns and rules (v2.66, optional)",
       "properties": {
         "recommended": {
           "type": "boolean",
@@ -304,6 +329,46 @@
         "worktree": { "type": "string" },
         "started_at": { "type": "string", "format": "date-time" },
         "completed_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "phases": {
+      "type": "array",
+      "description": "Phase-based execution with WAIT-ALL barriers (v2.51+)",
+      "items": {
+        "type": "object",
+        "required": ["phase_id", "phase_name", "step_ids", "status"],
+        "properties": {
+          "phase_id": { "type": "string" },
+          "phase_name": { "type": "string" },
+          "step_ids": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "depends_on": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "execution_mode": {
+            "type": "string",
+            "enum": ["sequential", "parallel"],
+            "default": "sequential"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "in_progress", "completed", "failed"]
+          }
+        }
+      }
+    },
+    "current_phase": {
+      "type": "string",
+      "description": "Currently executing phase ID"
+    },
+    "barriers": {
+      "type": "object",
+      "description": "WAIT-ALL phase barrier tracking (v2.51+)",
+      "additionalProperties": {
+        "type": "boolean"
       }
     }
   }

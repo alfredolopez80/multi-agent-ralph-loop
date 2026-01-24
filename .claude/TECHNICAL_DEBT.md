@@ -87,27 +87,28 @@ trap 'output_json' ERR
 
 ---
 
-### HIGH-002: Node.js Cross-Platform Hooks (P3)
+### HIGH-002: Node.js Cross-Platform Hooks - Registration Pending (P3)
 
 **Created**: 2026-01-23 (v2.66.8 release)
-**Status**: Open - Feature Not Implemented
-**Effort**: High (8-16 hours)
+**Updated**: 2026-01-24 (v2.68.2 - files exist, registration deferred)
+**Status**: Open - Deferred by Design
+**Effort**: Low (1-2 hours to register)
 
-**Problem**:
-Node.js hook library was planned but directory doesn't exist.
+**Current State**:
+Node.js hook infrastructure **EXISTS** but is not registered:
+- `~/.claude/hooks/node/context-injector.js` - SessionStart hook (cross-platform alternative)
+- `~/.claude/hooks/lib/cross-platform.js` - Shared utilities library
 
-**Proposed Location**: `~/.claude/hooks/node/`
+**Why Deferred**:
+- Bash hooks work on macOS/Linux (current user base)
+- Node.js alternatives are for future Windows support
+- No current demand for cross-platform hooks
+- Risk of maintaining parallel implementations
 
-**Purpose**:
-- Better Windows compatibility
-- Type-safe hook implementations
-- Async/await support for complex hooks
-- Shared utilities across hooks
-
-**When to Implement**:
-- When Windows support is needed
-- When hooks become complex enough to benefit from TypeScript
-- When async operations in hooks become common
+**When to Register**:
+- When Windows user requests support
+- When complex async operations need Node.js
+- When TypeScript type safety becomes valuable for hooks
 
 ---
 
