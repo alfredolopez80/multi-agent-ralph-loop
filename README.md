@@ -2,7 +2,7 @@
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-![Version](https://img.shields.io/badge/v2.68.23-blue) ![Tests](https://img.shields.io/badge/903_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange)
+![Version](https://img.shields.io/badge/v2.68.24-blue) ![Tests](https://img.shields.io/badge/903_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange)
 
 ---
 
@@ -20,37 +20,40 @@
    - [Memory Architecture](#memory-architecture)
    - [Hooks System](#hooks-system)
    - [Agent System](#agent-system)
-7. [Dynamic Contexts System (v2.63)](#dynamic-contexts-system-v263)
-8. [Eval-Driven Development (v2.64)](#eval-driven-development-v264)
-9. [Plan Lifecycle Management (v2.65)](#plan-lifecycle-management-v265)
-10. [Commands Reference](#commands-reference)
-11. [Ralph Loop Pattern](#ralph-loop-pattern)
-12. [Quality-First Validation](#quality-first-validation)
-13. [Claude Code Task Primitive Integration](#claude-code-task-primitive-integration)
-14. [Claude Code Skills Ecosystem](#claude-code-skills-ecosystem)
-15. [Testing](#testing)
-16. [Deployment](#deployment)
-17. [Troubleshooting](#troubleshooting)
-18. [Contributing](#contributing)
-19. [License](#license)
-20. [Resources](#resources)
+7. [Multi-Model Support (v2.68.24)](#multi-model-support-v26824)
+8. [Dynamic Contexts System (v2.63)](#dynamic-contexts-system-v263)
+9. [Eval-Driven Development (v2.64)](#eval-driven-development-v264)
+10. [Plan Lifecycle Management (v2.65)](#plan-lifecycle-management-v265)
+11. [Commands Reference](#commands-reference)
+12. [Ralph Loop Pattern](#ralph-loop-pattern)
+13. [Quality-First Validation](#quality-first-validation)
+14. [Claude Code Task Primitive Integration](#claude-code-task-primitive-integration)
+15. [Claude Code Skills Ecosystem](#claude-code-skills-ecosystem)
+16. [Testing](#testing)
+17. [Deployment](#deployment)
+18. [Troubleshooting](#troubleshooting)
+19. [Contributing](#contributing)
+20. [License](#license)
+21. [Resources](#resources)
 
 ---
 
 ## Overview
 
-Ralph coordinates multiple AI models (Claude, Codex, Gemini, MiniMax) to produce validated code. Rather than trust one model's output, it runs them in parallel with quality gates.
+Ralph coordinates **multiple AI models** (Claude Opus/Sonnet/Haiku, MiniMax M2.1, Codex GPT-5.2, Gemini 2.5 Pro, GLM-4.7) to produce validated code. Rather than trust one model's output, it runs them in parallel with quality gates.
 
 The core idea: **execute → validate → iterate** until the code passes.
 
 ### What It Does
 
-- **Multi-model orchestration** — Claude, Codex, Gemini, MiniMax working together
+- **Multi-model orchestration** — Claude, Codex, Gemini, MiniMax, GLM-4.7 working together
 - **Quality gates** — 9 languages supported (TS, Python, Go, Rust, Solidity, etc.)
 - **Memory system** — Semantic, episodic, procedural memory with 30-day TTL
 - **67 hooks** (66 bash + 1 python) — Automated validation, checkpoints, context preservation (80 event registrations)
 - **268+ skills** — Specialized capabilities for common tasks (39 command shortcuts)
 - **Dynamic contexts** — Switch between dev, review, research, debug modes
+- **Statusline Ralph** — Real-time context tracking with claude-hud v0.0.6
+- **GLM-4.7 integration** — Vision, image analysis, video processing, and web search capabilities
 
 See [CHANGELOG.md](CHANGELOG.md) for version history
 
@@ -64,6 +67,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version history
 - **Checkpoints** — Save and restore orchestration state (time travel)
 - **Handoffs** — Transfer work between specialized agents
 - **Plan lifecycle** — Archive, reset, restore plans via CLI
+- **Multi-model adversarial validation** — Three-model consensus for critical changes
 
 ### Memory
 
@@ -92,10 +96,12 @@ Based on [sec-context](https://github.com/Arcanum-Sec/sec-context):
 ## Tech Stack
 
 - **Claude Code CLI** — Base orchestration
+- **Multi-Model AI** — Claude Opus/Sonnet/Haiku, MiniMax M2.1, Codex GPT-5.2, Gemini 2.5 Pro
+- **GLM-4.7 MCP Ecosystem** — Vision, image analysis, web search, repository knowledge
 - **Bash/zsh** — 66 bash hooks + 1 Python hook for automation
 - **Python 3.11+** — Utility scripts
 - **JSON** — Configuration, memory storage
-- **MCP servers** — Context7, Playwright, etc.
+- **26 MCP servers** — Context7, Playwright, GLM-4.7 (4 new), and more
 
 ---
 
@@ -654,6 +660,99 @@ ralph agent-memory read security-auditor
 # Transfer memory during handoff
 ralph agent-memory transfer security-auditor code-reviewer relevant
 ```
+
+---
+
+## Multi-Model Support (v2.68.24)
+
+### Overview
+
+Ralph supports **multiple AI models** for optimal cost/performance trade-offs. Each model is selected based on task complexity, cost constraints, and specific capabilities required.
+
+### Supported Models
+
+| Model | Provider | Relative Cost | Use Case | Context |
+|-------|----------|---------------|----------|---------|
+| **Claude Opus** | Anthropic | 15x | Complex reasoning, security audits, architecture design | 200K tokens |
+| **Claude Sonnet** | Anthropic | 5x | Standard tasks, implementation, code review | 200K tokens |
+| **Claude Haiku** | Anthropic | 1x | Fast simple tasks, quick iterations | 200K tokens |
+| **MiniMax M2.1** | MiniMax | **0.08x** | Validation, second opinion, extended loops | Large |
+| **Codex GPT-5.2** | OpenAI | Variable | Code generation, refactoring, deep analysis | Large |
+| **Gemini 2.5 Pro** | Google | Variable | Cross-validation, web search grounding, codebase analysis | 1M tokens |
+| **GLM-4.7** | Z.AI | Variable | Vision, image analysis, video processing, Chinese language | Large |
+
+### MiniMax M2.1 - Cost-Effective Validation
+
+**92% cost reduction** compared to Claude Sonnet while maintaining high quality.
+
+**Use Cases**:
+- Extended Ralph Loop iterations (up to 100 vs 25 with Claude)
+- Validation and quality gates
+- Second opinion reviews
+- Rapid prototyping and batch operations
+
+**Usage**:
+```bash
+# Automatic routing for validation
+/loop "validate all type errors"  # Uses MiniMax for cost efficiency
+
+# Manual invocation
+/minimax-review "review this code for potential issues"
+```
+
+### GLM-4.7 - Vision & Enterprise Capabilities
+
+**4 MCP servers installed** for comprehensive capabilities:
+
+| Server | Tools | Capabilities |
+|--------|-------|--------------|
+| **zai-mcp-server** | 9 vision tools | UI testing, screenshot debugging, diagram understanding, data visualization analysis, video processing |
+| **web-search-prime** | webSearchPrime | Real-time web search with Google Search grounding |
+| **web-reader** | webReader | Extract web content as markdown with context awareness |
+| **zread** | search_doc, get_repo_structure, read_file | Access repository knowledge without cloning |
+
+**Usage Examples**:
+```bash
+# Image analysis
+mcp__4_5v_mcp__analyze_image "screenshot.png" "What errors are shown?"
+
+# Web search
+mcp__web_search__search "latest React 19 features"
+
+# Web content extraction
+mcp__web_reader__webReader "https://docs.example.com"
+
+# Repository knowledge
+mcp__zread__search_doc "TypeScript error handling patterns"
+```
+
+### Multi-Model Adversarial Validation
+
+For critical changes (complexity ≥ 7), Ralph automatically runs **three-model validation**:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                   ADVERSARIAL VALIDATION COUNCIL                │
+├─────────────────────────────────────────────────────────────────┤
+│  1. Codex GPT-5.2    → Deep code analysis                        │
+│  2. Claude Opus       → Security and quality validation           │
+│  3. Gemini 2.5 Pro    → Cross-validation and review               │
+│                         ↓                                        │
+│                   CONSENSUS REQUIRED                             │
+│              All three must agree "NO ISSUES FOUND"               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Exit Criteria**: Loop continues until all three models reach consensus.
+
+### Cost Optimization Strategy
+
+| Task Complexity | Primary Model | Secondary | Max Iterations |
+|-----------------|---------------|-----------|----------------|
+| Simple (1-3) | Haiku | - | 3 |
+| Standard (4-6) | MiniMax M2.1 | Sonnet | 50 |
+| Complex (7-10) | Opus | Sonnet | 25 |
+| Vision/GLM | GLM-4.7 | - | 25 |
 
 ---
 
