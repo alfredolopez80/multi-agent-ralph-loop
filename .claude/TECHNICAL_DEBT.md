@@ -112,6 +112,55 @@ Node.js hook infrastructure **EXISTS** but is not registered:
 
 ---
 
+### GAP-HIGH-001: Missing Tests for v2.61-v2.65 Features (P2)
+
+**Created**: 2026-01-24 (v2.68.2 gap analysis)
+**Status**: Open - Feature Not Implemented
+**Effort**: High (8-16 hours)
+
+**Missing Test Coverage**:
+| Version | Feature | Test File Needed |
+|---------|---------|------------------|
+| v2.61 | Adversarial Council | `test_v261_adversarial_council.bats` |
+| v2.63 | Dynamic Contexts | `test_v263_dynamic_contexts.bats` |
+| v2.64 | EDD Framework | `test_v264_edd_framework.bats` |
+| v2.65 | Cross-Platform Hooks | `test_v265_cross_platform.bats` |
+
+**Existing Coverage**:
+- `test_v268_auto_invoke_hooks.bats` (58 tests)
+- `test_v256_task_primitives.bats`
+
+**When to Implement**:
+- During dedicated testing sprint
+- Before major release milestones
+- When regressions occur in untested features
+
+---
+
+### GAP-HIGH-005: EDD (Eval-Driven Development) Skill Not Implemented (P3)
+
+**Created**: 2026-01-24 (v2.68.2 gap analysis)
+**Status**: Open - Feature Not Implemented
+**Effort**: High (16-24 hours)
+
+**Problem**:
+EDD skill referenced in documentation but infrastructure not created:
+- `~/.claude/skills/edd/` - Directory not found
+- `~/.claude/evals/` - Directory not found
+
+**Purpose**:
+Eval-Driven Development framework for:
+- Defining success criteria as evaluations
+- Running evals before/after implementation
+- Tracking eval pass rates over time
+
+**When to Implement**:
+- When eval-driven workflow is prioritized
+- When team requests structured validation framework
+- During v2.70+ feature development
+
+---
+
 ## Completed Items
 
 ### RACE-001: Checkpoint Race Condition (DONE)
