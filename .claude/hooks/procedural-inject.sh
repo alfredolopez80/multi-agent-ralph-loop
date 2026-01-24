@@ -198,10 +198,11 @@ if [[ "$MATCH_COUNT" -gt 0 ]]; then
         echo "$UPDATE_RECORD" > "$UNIQUE_FILE" 2>/dev/null || true
 
         # v2.60.2: FIX HIGH-001 - Robust lock acquisition with trap-based cleanup
+        # v2.68.5: Increased retries 3→10 (300ms→1s) for high concurrency scenarios
         # Function defined inline to maintain RETURN trap scope
         APPEND_LOCK="${PENDING_UPDATES_FILE}.append.lock"
         LOCK_ACQUIRED=false
-        MAX_LOCK_RETRIES=3
+        MAX_LOCK_RETRIES=10
         LOCK_RETRY=0
 
         while [[ $LOCK_RETRY -lt $MAX_LOCK_RETRIES ]]; do

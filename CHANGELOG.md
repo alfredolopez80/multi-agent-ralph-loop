@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.68.5] - 2026-01-24
+
+### HIGH-001 Fix: Procedural Inject Lock Retry Enhancement
+
+**Issue**: `procedural-inject.sh` hook could fail to acquire append lock under high concurrency scenarios (multiple Task invocations in rapid succession).
+
+**Root Cause**: Only 3 retry attempts (300ms window) before giving up on lock acquisition.
+
+**Fix**: Increased `MAX_LOCK_RETRIES` from 3 to 10, extending the retry window from 300ms to 1 second.
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Lock retries | 3 | 10 |
+| Retry window | 300ms | 1000ms |
+| Concurrency tolerance | Low | High |
+
+#### Files Modified
+
+| File | Change |
+|------|--------|
+| `~/.claude/hooks/procedural-inject.sh` | v2.68.3 → v2.68.5 (retry enhancement) |
+| `.claude/hooks/procedural-inject.sh` | Synced from global |
+
+---
+
 ## [2.68.4] - 2026-01-24
 
 ### Adversarial Validation Phase 4 - Security & Compatibility Fixes
