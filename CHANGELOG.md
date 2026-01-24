@@ -32,6 +32,7 @@ This caused Claude Code errors: `AttributeError: 'list' object has no attribute 
 | CRIT-007 | `plan-state-adaptive.sh` | Double JSON on UserPromptSubmit | Add `trap - EXIT` before explicit output |
 | CRIT-008 | `plan-state-lifecycle.sh` | Double JSON on UserPromptSubmit | Add `trap - EXIT` before explicit output |
 | CRIT-009 | `statusline-health-monitor.sh` | Double JSON on UserPromptSubmit | Add `trap - EXIT` before explicit output |
+| CRIT-010 | `curator-suggestion.sh` | Wrong JSON format (PostToolUse in UserPromptSubmit) | Changed `{"continue":true}` to `{}` |
 
 #### Gap Analysis Fixes (v2.60-v2.68)
 
@@ -54,6 +55,7 @@ This caused Claude Code errors: `AttributeError: 'list' object has no attribute 
 | `plan-state-lifecycle.sh` | 2.57.0 | 2.68.2 |
 | `statusline-health-monitor.sh` | 2.62.3 | 2.68.2 |
 | `plan-state-v2.json` (schema) | 2.54 | 2.66 |
+| `curator-suggestion.sh` | 2.57.5 | 2.68.2 |
 
 #### Pattern Applied
 
