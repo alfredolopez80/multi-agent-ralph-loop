@@ -7,6 +7,95 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.68.3] - 2026-01-24
+
+### PERF-001: Critical Hook Performance Optimization
+
+**Root Cause**: `procedural-inject.sh` hook had 393 rules in 205KB file with two O(n²) loops:
+1. First loop: Scan all rules matching domain
+2. Second loop: Scan all rules matching trigger keywords
+
+This caused **timeout (>3s)** on every `PreToolUse:Task` invocation. With 7 Task hooks firing and 2 parallel agents, this produced **14 hook errors**.
+
+#### Performance Fix
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Execution time | >3000ms (timeout) | ~113ms |
+| Complexity | O(n²) | O(1) with jq pre-filter |
+| Hook errors | 14 | 0 |
+
+#### Code Changes
+
+```bash
+# BEFORE (O(n²) - 393 rules × 2 loops)
+while IFS= read -r rule; do
+    matches=$(jq -r "..." <<< "$rule")  # jq call per rule
+done <<< "$(jq -c '.rules[]' "$PROCEDURAL_FILE")"
+
+# AFTER (O(1) - single jq pre-filter)
+FILTERED_RULES=$(jq -c --arg domain "$DETECTED_DOMAIN" '
+  .rules // [] |
+  map(select((.confidence // 0) >= ($min_conf | tonumber))) |
+  .[0:5]
+' "$PROCEDURAL_FILE" 2>/dev/null)
+```
+
+#### Additional Fixes
+
+| Issue | Description | Fix |
+|-------|-------------|-----|
+| PERF-001a | Undefined `$DOMAIN_MATCH_COUNT` variable | Removed reference |
+| PERF-001b | Undefined `$TRIGGER_MATCH_COUNT` variable | Removed reference |
+| GAP-004 | Schema JSON syntax error (line 224) | Rewrote `oneOf` structure |
+
+#### Schema Fix (plan-state-v2.json)
+
+The `steps` field `oneOf` structure was improperly nested, causing JSON parse errors:
+
+```json
+// BEFORE (broken - properties outside object)
+"steps": {
+  "oneOf": [
+    { "type": "object", "properties": {...} },
+    "spec": {},  // ← Wrong placement
+    "actual": {} // ← Wrong placement
+  ]
+}
+
+// AFTER (fixed - proper nesting)
+"steps": {
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": { "spec": {}, "actual": {} }
+      }
+    },
+    { "type": "array", "items": {...} }
+  ]
+}
+```
+
+#### Hook Sync
+
+Synced 10 missing hooks from `~/.claude/hooks/` to project directory:
+- `auto-format-prettier.sh`
+- `console-log-detector.sh`
+- `episodic-auto-convert.sh`
+- `project-backup-metadata.sh`
+- `session-start-tldr.sh`
+- `skill-pre-warm.sh`
+- `smart-skill-reminder.sh`
+- `task-project-tracker.sh`
+- `typescript-quick-check.sh`
+- `usage-consolidate.sh`
+
+**Total hooks in project**: 75 (was 65)
+
+---
+
 ## [2.68.2] - 2026-01-24
 
 ### Adversarial Validation Loop - Double JSON Bug Fixes
