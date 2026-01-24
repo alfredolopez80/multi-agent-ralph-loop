@@ -2,7 +2,7 @@
 # Quality Gates v2.48 - Quality Over Consistency + Security Scanning
 # Hook: PostToolUse (Edit, Write)
 # Purpose: Validate code changes with quality-first approach
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # v2.68.9: CRIT-002 FIX - Actually clear EXIT trap before explicit JSON output (was documented but not implemented)
 # v2.68.1: FIX CRIT-005 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 #
@@ -25,7 +25,7 @@ trap 'echo "{\"continue\": true}"' ERR EXIT
 umask 077
 
 # Parse JSON input
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')

@@ -25,8 +25,8 @@
 # Prevents DoS from malicious input
 INPUT=$(head -c 100000)
 
-
-# VERSION: 2.68.23
+# VERSION: 2.69.0
+# v2.68.25: FIX CRIT-001 - Removed duplicate stdin read (SEC-111 already reads at top)
 # v2.68.8: SEC-054 - Fixed PreCompact JSON format (continue:true, not decision:allow)
 set -euo pipefail
 
@@ -73,10 +73,8 @@ check_feature_enabled() {
     fi
 }
 
-# Read input from stdin
-INPUT=$(cat)
-
-# Parse input JSON
+# CRIT-001 FIX: Removed duplicate `INPUT=$(cat)` - stdin already consumed by SEC-111 read above
+# Parse input JSON (using INPUT from SEC-111 read at top)
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"' 2>/dev/null || echo "unknown")
 # SEC-029: Sanitize session_id to prevent path traversal
 SESSION_ID=$(echo "$SESSION_ID" | tr -cd 'a-zA-Z0-9_-' | head -c 64)

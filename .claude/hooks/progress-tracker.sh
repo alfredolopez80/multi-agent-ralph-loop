@@ -21,7 +21,7 @@
 INPUT=$(head -c 100000)
 
 
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # v2.68.1: FIX CRIT-006 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 set -euo pipefail
 
@@ -43,7 +43,7 @@ log() {
 }
 
 # Read input from stdin
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 
 # Parse input JSON
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // "unknown"' 2>/dev/null || echo "unknown")

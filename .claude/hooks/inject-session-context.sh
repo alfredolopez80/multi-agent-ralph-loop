@@ -19,8 +19,8 @@
 # Prevents DoS from malicious input
 INPUT=$(head -c 100000)
 
-
-# VERSION: 2.68.23
+# VERSION: 2.69.0
+# v2.68.25: FIX CRIT-001 - Removed duplicate stdin read (SEC-111 already reads at top)
 # v2.68.10: HIGH-002 FIX - Removed 43 lines of dead code (context building never used)
 # v2.68.1: FIX CRIT-002 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 # Note: Not using set -e because we need graceful fallback on errors
@@ -75,10 +75,8 @@ check_feature_enabled() {
     fi
 }
 
-# Read input from stdin
-INPUT=$(cat)
-
-# Parse input JSON
+# CRIT-001 FIX: Removed duplicate `INPUT=$(cat)` - stdin already consumed by SEC-111 read above
+# Parse input JSON (using INPUT from SEC-111 read at top)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null || echo "")
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"' 2>/dev/null || echo "unknown")
 

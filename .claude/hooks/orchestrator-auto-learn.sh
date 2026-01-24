@@ -15,7 +15,8 @@
 # v2.59.2: FIXED - Single JSON output
 # v2.57.0: Fixed to actually inject context
 #
-# VERSION: 2.68.23
+# VERSION: 2.69.0
+# v2.68.25: FIX CRIT-001 - Removed duplicate stdin read (SEC-111 already reads at top)
 # v2.68.11: Version sync with SEC-111 fixes
 # v2.68.10: SEC-110 FIX - Redact sensitive data before logging (API keys, tokens)
 # SECURITY: SEC-006 compliant
@@ -24,7 +25,6 @@
 # SEC-111: Read input from stdin with length limit (100KB max)
 # Prevents DoS from malicious input
 INPUT=$(head -c 100000)
-
 
 set -euo pipefail
 umask 077
@@ -52,8 +52,8 @@ redact_sensitive() {
     echo "$str"
 }
 
-# Parse input
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate `INPUT=$(cat)` - stdin already consumed by SEC-111 read above
+# Parse input (using INPUT from SEC-111 read at top)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
 
 # Only process Task tool
@@ -337,14 +337,14 @@ fi
 AUTO_EXEC_NOTE=""
 if [[ "$IS_CRITICAL" == "true" ]]; then
     if [[ "$AUTO_LEARN_ENABLED" == "true" ]]; then
-        AUTO_EXEC_NOTE="✅ **Auto-execution ENABLED** - Learning will run automatically"
+        AUTO_EXEC_NOTE="AUTO-execution ENABLED - Learning will run automatically"
         if [[ "$AUTO_LEARN_BLOCKING" == "true" ]]; then
             AUTO_EXEC_NOTE+=" (blocking mode - task waits for completion)"
         else
             AUTO_EXEC_NOTE+=" (background mode - task continues while learning runs)"
         fi
     else
-        AUTO_EXEC_NOTE="⚠️ **Auto-execution DISABLED** - Set `auto_learn.enabled: true` in memory-config.json"
+        AUTO_EXEC_NOTE="AUTO-execution DISABLED - Set auto_learn.enabled: true in memory-config.json"
     fi
 fi
 
@@ -422,7 +422,7 @@ if [[ -f "$PLAN_STATE" ]]; then
 fi
 
 # Build learning recommendation
-LEARN_RECOMMENDATION="🎓 **AUTO-LEARN RECOMMENDATION** ($SEVERITY_LABEL)
+LEARN_RECOMMENDATION="AUTO-LEARN RECOMMENDATION ($SEVERITY_LABEL)
 
 Your procedural memory lacks patterns for this $DOMAIN task ($RELEVANT_COUNT/$MIN_RULES_FOR_DOMAIN relevant rules).
 **$URGENCY**: Learn from quality repositories BEFORE implementing:

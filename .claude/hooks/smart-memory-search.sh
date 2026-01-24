@@ -45,7 +45,7 @@ validate_input_schema() {
     local input="$1"
 
     # Check if input is valid JSON
-    # SEC-039: PreToolUse hooks MUST use {"decision": "allow"} format
+    # SEC-039: PreToolUse hooks MUST use {"decision": "allow"}, NOT {"continue": true}
     if ! echo "$input" | jq empty 2>/dev/null; then
         echo '{"decision": "allow"}'
         exit 0
@@ -102,7 +102,7 @@ CACHE_DURATION=1800  # 30 minutes
 if [[ -f "$MEMORY_CONTEXT" ]]; then
     CACHE_AGE=$(($(date +%s) - $(stat -f %m "$MEMORY_CONTEXT" 2>/dev/null || stat -c %Y "$MEMORY_CONTEXT" 2>/dev/null || echo 0)))
     if [[ $CACHE_AGE -lt $CACHE_DURATION ]]; then
-        # SEC-039: PreToolUse hooks MUST use {"decision": "allow"} format
+        # SEC-039: PreToolUse hooks MUST use {"decision": "allow"}, NOT {"continue": true}
         echo '{"decision": "allow", "additionalContext": "SMART_MEMORY: Using cached results from .claude/memory-context.json ('"$CACHE_AGE"'s old)"}'
         exit 0
     fi
@@ -172,7 +172,8 @@ create_initial_file() {
 
     # Check file doesn't exist (prevents symlink attack)
     if [[ -e "$file" ]]; then
-        echo "ERROR: Temp file exists (possible attack): $file" >&2 2>/dev/null || true
+        # v2.69.0: Log to file instead of stderr (fixes hook error warnings)
+        echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] ERROR: Temp file exists (possible attack): $file" >> "$LOG_FILE" 2>/dev/null || true
         exit 1
     fi
 
@@ -182,7 +183,8 @@ create_initial_file() {
         umask 077
         echo "$content" > "$file"
     ) 2>/dev/null || {
-        echo "ERROR: Atomic file creation failed: $file" >&2 2>/dev/null || true
+        # v2.69.0: Log to file instead of stderr (fixes hook error warnings)
+        echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] ERROR: Atomic file creation failed: $file" >> "$LOG_FILE" 2>/dev/null || true
         exit 1
     }
 }
@@ -703,5 +705,5 @@ trap - EXIT ERR INT TERM
 rm -rf "$TEMP_DIR" 2>/dev/null || true  # Manual cleanup since we cleared trap
 
 # SEC-007: Use jq for safe JSON construction (avoid sed escaping vulnerabilities)
-# SEC-039: PreToolUse hooks MUST use {"decision": "allow"} format
+# SEC-039: PreToolUse hooks MUST use {"decision": "allow"}, NOT {"continue": true}
 jq -n --arg ctx "$CONTEXT_MSG" '{"decision": "allow", "additionalContext": $ctx}'

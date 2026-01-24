@@ -1,5 +1,5 @@
 #!/bin/bash
-# Stop Hook Verification - Verifica completitud antes de terminar sesión
+# Stop Hook Verification - Verifica completitud antes de terminar sesion
 # Hook: Stop
 # Origen: planning-with-files pattern
 # v2.62.3 - Added JSON return for Claude Code hook protocol
@@ -8,15 +8,15 @@
 # Prevents DoS from malicious input
 INPUT=$(head -c 100000)
 
-
-# VERSION: 2.68.23
+# VERSION: 2.69.0
+# v2.68.25: FIX CRIT-001 - Removed duplicate stdin read (SEC-111 already reads at top)
 # v2.57.3: Fixed JSON format - Stop hooks use {"decision": "approve|block"} (SEC-038)
 set -euo pipefail
 
 # Error trap: Always output valid JSON for Stop
 trap 'echo "{\"decision\": \"approve\"}"' ERR EXIT
 
-# Configuración
+# Configuracion
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 LOG_FILE="${HOME}/.ralph/logs/stop-verification.log"
 
@@ -39,8 +39,8 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
 }
 
-# Leer input de Claude (JSON con context)
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate `INPUT=$(cat)` - stdin already consumed by SEC-111 read above
+# The INPUT variable is already populated from line 9
 
 # Verificaciones de completitud
 WARNINGS=()
@@ -79,7 +79,7 @@ fi
 # 3. Verificar errores de lint recientes (si existe log)
 LINT_LOG="${HOME}/.ralph/logs/quality-gates.log"
 if [ -f "$LINT_LOG" ]; then
-    # Revisar últimas líneas del log de hoy
+    # Revisar ultimas lineas del log de hoy
     TODAY=$(date '+%Y-%m-%d')
     LINT_ERRORS=$(grep "$TODAY" "$LINT_LOG" 2>/dev/null | grep -c "ERROR\|FAILED" | tr -d ' \n') || LINT_ERRORS=0
     LINT_ERRORS=${LINT_ERRORS:-0}
@@ -88,7 +88,7 @@ if [ -f "$LINT_LOG" ]; then
         LINT_ERRORS=0
     fi
     if [ "$LINT_ERRORS" -gt 0 ]; then
-        WARNINGS+=("Errores de lint: ${LINT_ERRORS} errores en la última sesión")
+        WARNINGS+=("Errores de lint: ${LINT_ERRORS} errores en la ultima sesion")
     else
         CHECKS_PASSED=$((CHECKS_PASSED + 1))
     fi

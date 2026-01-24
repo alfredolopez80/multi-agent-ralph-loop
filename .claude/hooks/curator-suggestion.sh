@@ -6,7 +6,7 @@
 # Checks if user mentions learning patterns, best practices, or similar
 # and if the curator corpus is empty, suggests running /curator.
 #
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 # v2.68.11: SEC-111 FIX - Input length validation to prevent DoS
 # v2.68.2: FIX CRIT-010 - Correct UserPromptSubmit JSON format (was using PostToolUse format)
 # SECURITY: SEC-006 compliant with ERR trap for guaranteed JSON output
@@ -27,7 +27,7 @@ output_json() {
 trap 'output_json' ERR EXIT
 
 # Parse input
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 USER_PROMPT=$(echo "$INPUT" | jq -r '.user_prompt // ""' 2>/dev/null || echo "")
 
 # SEC-111: Input length validation to prevent DoS from large prompts

@@ -40,10 +40,11 @@ if [[ -f "$STATE_FILE" ]]; then
         MODE=$(grep -m1 '^\*\*Mode\*\*:' "$CONTEXT_FILE" 2>/dev/null | sed 's/.*: //' || echo "Unknown")
         FOCUS=$(grep -m1 '^\*\*Focus\*\*:' "$CONTEXT_FILE" 2>/dev/null | sed 's/.*: //' || echo "Unknown")
 
-        # Output context reminder to stderr (shown to user)
-        echo "[Context] Active: ${ACTIVE_CONTEXT}" >&2 2>/dev/null || true
-        echo "[Context] Mode: ${MODE}" >&2 2>/dev/null || true
-        echo "[Context] Focus: ${FOCUS}" >&2 2>/dev/null || true
+        # v2.69.0: Output context info to stdout (SessionStart hooks can use plain text)
+        # Removed stderr which causes hook error warnings in other event types
+        echo "[Context] Active: ${ACTIVE_CONTEXT}"
+        echo "[Context] Mode: ${MODE}"
+        echo "[Context] Focus: ${FOCUS}"
 
         # Inject context into session via environment-like mechanism
         # The context file itself is in ~/.claude/contexts/ and can be read by Claude

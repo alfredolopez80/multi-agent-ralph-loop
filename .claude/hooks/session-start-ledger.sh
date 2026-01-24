@@ -12,7 +12,7 @@
 #
 # Part of Ralph v2.43 Context Engineering with Claude-Mem Integration
 #
-# VERSION: 2.68.23
+# VERSION: 2.69.0
 
 # SEC-111: Read input from stdin with length limit (100KB max)
 # Prevents DoS from malicious input
@@ -79,7 +79,7 @@ Then use get_observations for details on specific IDs."
 }
 
 # Read input from stdin
-INPUT=$(cat)
+# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 
 # Parse input JSON
 SOURCE=$(echo "$INPUT" | jq -r '.source // "startup"' 2>/dev/null || echo "startup")
