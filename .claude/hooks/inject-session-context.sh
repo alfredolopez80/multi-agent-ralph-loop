@@ -15,7 +15,8 @@
 #
 # Part of Ralph v2.43 Context Engineering
 
-# VERSION: 2.68.2
+# VERSION: 2.68.10
+# v2.68.10: HIGH-002 FIX - Removed 43 lines of dead code (context building never used)
 # v2.68.1: FIX CRIT-002 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 # Note: Not using set -e because we need graceful fallback on errors
 set -uo pipefail
@@ -94,55 +95,16 @@ if ! check_feature_enabled "RALPH_INJECT_CONTEXT" "true"; then
     exit 0
 fi
 
-# Build context to inject
-CONTEXT=""
+# HIGH-002 FIX: Removed 43 lines of dead code that built context but never used it
+# PreToolUse hooks can only return {"decision": "allow/block"}, they CANNOT inject context
+# Context injection is ONLY available for SessionStart hooks
+# The removed code was:
+#   - Reading progress.md (goal, recent progress)
+#   - Reading CLAUDE.md (project name)
+#   - Building $CONTEXT variable
+#   - All of which was discarded since PreToolUse cannot inject
 
-# 1. Read current goal from progress.md if exists
-# VULN-002: Sanitize all file-derived variables
-GOAL=""
-if [[ -f ".claude/progress.md" ]]; then
-    GOAL=$(grep -A1 "## Current Goal" ".claude/progress.md" 2>/dev/null | tail -1 | head -c 500 || true)
-    # Sanitize: remove shell metacharacters
-    GOAL=$(echo "$GOAL" | tr -cd 'a-zA-Z0-9 ._:/-')
-    if [[ -n "$GOAL" ]]; then
-        CONTEXT+="**Current Goal**: $GOAL\\n"
-        log "INFO" "Loaded goal from progress.md"
-    fi
-fi
-
-# 2. Read recent progress (last 5 items)
-# VULN-002/007: Sanitize + limit output size
-if [[ -f ".claude/progress.md" ]]; then
-    RECENT=$(grep -A10 "## Recent Progress" ".claude/progress.md" 2>/dev/null | head -6 | head -c 1000 || true)
-    RECENT=$(echo "$RECENT" | tr -cd 'a-zA-Z0-9 ._:/-\n')
-    if [[ -n "$RECENT" ]]; then
-        CONTEXT+="**Recent Progress**:\\n$RECENT\\n"
-        log "INFO" "Loaded recent progress"
-    fi
-fi
-
-# 3. Add project context from CLAUDE.md header
-# VULN-002: Sanitize header extraction
-if [[ -f "CLAUDE.md" ]]; then
-    # Get first 10 lines (header/version info)
-    HEADER=$(head -10 "CLAUDE.md" 2>/dev/null | head -c 500 || true)
-    if [[ -n "$HEADER" ]]; then
-        PROJECT_NAME=$(echo "$HEADER" | grep -m1 "^#" | sed 's/^# //' | tr -cd 'a-zA-Z0-9 ._-' | head -c 100 || echo 'Unknown')
-        CONTEXT+="**Project**: $PROJECT_NAME\\n"
-        log "INFO" "Loaded project info from CLAUDE.md"
-    fi
-fi
-
-# 4. Add session ID for traceability
-CONTEXT+="**Session**: $SESSION_ID\\n"
-
-# 5. Add claude-mem reminder
-CONTEXT+="**Memory**: Use claude-mem MCP (search → timeline → get_observations) for persistent context.\\n"
-
-# PreToolUse hooks should return {"decision": "allow"} to allow the tool call
-# The context injection feature is deprecated - PreToolUse cannot inject context
-# Context injection is only available for SessionStart hooks
-log "INFO" "PreToolUse hook allowing Task tool (context injection not available for PreToolUse)"
+log "INFO" "PreToolUse hook allowing Task tool"
 trap - EXIT  # CRIT-002: Clear trap before explicit output
-output_json "" "Task tool allowed"
+echo '{"decision": "allow"}'
 exit 0

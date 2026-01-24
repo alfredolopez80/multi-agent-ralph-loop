@@ -150,87 +150,90 @@ Node.js hook infrastructure **EXISTS** but is not registered:
 
 ---
 
-### HIGH-002: inject-session-context.sh Builds Unused Context (P3)
+### HIGH-002: inject-session-context.sh Builds Unused Context (DONE)
 
 **Created**: 2026-01-24 (v2.68.9 adversarial audit)
-**Status**: Open - By Design
-**Effort**: Low (1-2 hours)
+**Completed**: 2026-01-24 (v2.68.10 adversarial validation)
+**Status**: DONE
 
-**Problem**:
-`inject-session-context.sh` (lines 98-137) builds context that cannot be injected:
-- PreToolUse hooks CANNOT inject context (only allow/block)
-- 50+ lines of context-building code is dead/unused
-- Hook always returns `{"decision": "allow"}`
-
-**Options**:
-1. Remove dead code (simplify hook)
-2. Convert to SessionStart hook (can inject context)
-3. Use for logging/audit purposes
-
-**Why Deferred**:
-- No functional impact (hook works correctly)
-- May be intentionally kept for future use
+**Solution**: Removed 43 lines of dead code that built context but never used it.
+PreToolUse hooks can only return `{"decision": "allow/block"}`, they CANNOT inject context.
 
 ---
 
-### HIGH-003: smart-memory-search.sh Documentation Mismatch (P3)
+### HIGH-003: smart-memory-search.sh Documentation Mismatch (DONE)
 
 **Created**: 2026-01-24 (v2.68.9 adversarial audit)
-**Status**: Open - Documentation Issue
-**Effort**: Low (30 minutes)
+**Completed**: 2026-01-24 (v2.68.10 adversarial validation)
+**Status**: DONE
 
-**Problem**:
-CHANGELOG v2.57.0 claims "Implemented SQLite FTS query" but hook uses grep:
-```bash
-MATCHES=$(find "$CLAUDE_MEM_DATA_DIR" -name "*.json" -type f \
-    -exec grep -l -i -F "$KEYWORDS_SAFE" {} \; 2>/dev/null | head -5)
-```
-
-**Options**:
-1. Update documentation to reflect grep-based implementation
-2. Implement actual SQLite FTS (significant effort)
+**Solution**: Corrected CHANGELOG v2.57.0 documentation to accurately describe:
+- Hook uses grep-based search on JSON cache files
+- SQLite FTS database exists but is queried via claude-mem MCP, not the hook
 
 ---
 
-### SEC-105: Race Condition in Checkpoint File Operations (P2)
+### SEC-105: Race Condition in Checkpoint File Operations (DONE)
 
 **Created**: 2026-01-24 (v2.68.9 security audit)
-**Status**: Open
-**Effort**: Medium (2-4 hours)
+**Completed**: 2026-01-24 (v2.68.10 adversarial validation)
+**Status**: DONE
 
-**Problem**:
-`checkpoint-smart-save.sh` has TOCTOU gap between checking `$EDITED_FLAG` and touching it.
-The mkdir lock helps but doesn't fully eliminate the window.
-
-**Proposed Fix**:
-Use atomic file creation with exclusive mode:
+**Solution**: Implemented atomic noclobber (O_EXCL) pattern:
 ```bash
 (set -C; echo "$$" > "$EDITED_FLAG") 2>/dev/null || exit 0
 ```
+This eliminates the TOCTOU gap - single syscall for check+create.
 
 ---
 
-### SEC-108 to SEC-122: Medium/Low Security Issues (P3)
+### SEC-110: Sensitive Data in Log Files (DONE)
 
 **Created**: 2026-01-24 (v2.68.9 security audit)
-**Status**: Open - Low Priority
-**Effort**: Medium (4-8 hours total)
+**Completed**: 2026-01-24 (v2.68.10 adversarial validation)
+**Status**: DONE
 
-| ID | Issue | Impact |
-|----|-------|--------|
-| SEC-108 | Unquoted variables in bash conditions | Word splitting |
-| SEC-109 | Missing error trap consistency | Silent failures |
-| SEC-110 | Sensitive data in log files | Info disclosure |
-| SEC-111 | Missing input length validation | Resource exhaustion |
-| SEC-112 | Insecure temp file creation | Predictable names |
-| SEC-113 | Missing content-type validation | Parsing errors |
-| SEC-114 | Unbounded loop in lock acquisition | Potential hang |
-| SEC-115 | Shell glob expansion in file ops | Glob injection |
-| SEC-116 | Inconsistent umask settings | Permission issues |
+**Problem**: User prompts logged without redaction could expose API keys, tokens.
+
+**Solution**: Added `redact_sensitive()` function to:
+- `memory-write-trigger.sh` - Redacts user prompt excerpt before logging
+- `orchestrator-auto-learn.sh` - Redacts learning output before logging
+
+**Pattern applied**:
+```bash
+redact_sensitive() {
+    local str="$1"
+    str=$(echo "$str" | sed -E 's/(sk-|pk-|api_|key_|token_|secret_)[a-zA-Z0-9_-]{10,}/\1[REDACTED]/gi')
+    str=$(echo "$str" | sed -E 's/[a-zA-Z0-9_-]{32,}/[REDACTED]/g')
+    echo "$str"
+}
+```
+
+---
+
+### SEC-108, SEC-109, SEC-111, SEC-116: Remaining Medium/Low Security Issues (P3)
+
+**Created**: 2026-01-24 (v2.68.9 security audit)
+**Updated**: 2026-01-24 (v2.68.10 - SEC-110 FIXED, SEC-112/114/115 are FALSE POSITIVES)
+**Status**: Open - Low Priority
+**Effort**: Low (2-3 hours total)
+
+| ID | Issue | Impact | Status |
+|----|-------|--------|--------|
+| SEC-108 | Unquoted variables in bash conditions | Word splitting | Cosmetic (all numeric) |
+| SEC-109 | Missing error trap in 10 hooks | Silent failures | To be added |
+| SEC-111 | No input length validation in 3 hooks | Resource exhaustion | To be added |
+| SEC-116 | Missing umask 077 in 30 hooks | Permission issues | To be added |
+
+**FALSE POSITIVES (verified in v2.68.10)**:
+- SEC-112: All hooks use `mktemp` correctly with random suffixes
+- SEC-113: jq handles content-type properly
+- SEC-114: All loops have proper bounds (50-iter limit)
+- SEC-115: No dangerous glob patterns found
 
 **When to Fix**:
-- During dedicated security sprint
-- If specific issue causes production problem
+- SEC-109: Add error traps during next hook update session
+- Others: During dedicated security hardening sprint
 
 ---
 

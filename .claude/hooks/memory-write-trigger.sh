@@ -10,7 +10,8 @@
 # - "keep in mind"
 # - "for future reference"
 #
-# VERSION: 2.68.2
+# VERSION: 2.68.10
+# v2.68.10: SEC-110 FIX - Redact sensitive data (API keys, tokens, passwords) before logging
 # SECURITY: Added ERR trap for guaranteed JSON output, MATCHED escaping
 
 set -euo pipefail
@@ -27,6 +28,19 @@ escape_json() {
     local str="$1"
     # Remove control characters and escape quotes/backslashes
     printf '%s' "$str" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+# SEC-110: Redact sensitive data before logging
+# Patterns: API keys, tokens, passwords, secrets, credentials
+redact_sensitive() {
+    local str="$1"
+    # Redact common API key patterns (sk-, pk-, api_, key_, token_, secret_)
+    str=$(echo "$str" | sed -E 's/(sk-|pk-|api_|key_|token_|secret_|password[=:_ ]*)[a-zA-Z0-9_-]{10,}/\1[REDACTED]/gi')
+    # Redact long alphanumeric strings (potential tokens/keys - 20+ chars)
+    str=$(echo "$str" | sed -E 's/[a-zA-Z0-9_-]{32,}/[REDACTED]/g')
+    # Redact base64-like patterns (40+ chars with mixed case/numbers)
+    str=$(echo "$str" | sed -E 's/[A-Za-z0-9+/=]{40,}/[REDACTED]/g')
+    echo "$str"
 }
 
 # Parse input
@@ -89,9 +103,11 @@ LOG_DIR="$HOME/.ralph/logs"
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/memory-triggers-$(date +%Y%m%d).log"
 
+# SEC-110: Redact sensitive data before logging user prompts
+SAFE_EXCERPT=$(redact_sensitive "${USER_PROMPT:0:100}")
 {
     echo "[$(date -Iseconds)] Memory trigger detected: '$MATCHED'"
-    echo "  Prompt excerpt: ${USER_PROMPT:0:100}..."
+    echo "  Prompt excerpt: ${SAFE_EXCERPT}..."
 } >> "$LOG_FILE" 2>/dev/null || true
 
 # Get recent memory stats for context
