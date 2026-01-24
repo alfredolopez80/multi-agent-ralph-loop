@@ -238,49 +238,71 @@ All 10 identified hooks were verified:
 
 ---
 
-### SEC-108, SEC-116: Remaining Low Priority Issues (P3)
+### SEC-108: Unquoted Variables (FALSE POSITIVE)
 
 **Created**: 2026-01-24 (v2.68.9 security audit)
-**Updated**: 2026-01-24 (v2.68.11 - SEC-109/111 resolved)
-**Status**: Open - Low Priority
-**Effort**: Low (1-2 hours total)
+**Updated**: 2026-01-24 (v2.68.11 adversarial validation)
+**Status**: FALSE POSITIVE - Closed
 
-| ID | Issue | Impact | Status |
-|----|-------|--------|--------|
-| SEC-108 | Unquoted variables in bash conditions | Word splitting | Cosmetic (all numeric) |
-| SEC-116 | Missing umask 077 in 30 hooks | Permission issues | Nice to have |
-
-**FALSE POSITIVES (verified)**:
-- SEC-109: All hooks that need traps have them (SessionStart doesn't need JSON)
-- SEC-112: All hooks use `mktemp` correctly with random suffixes
-- SEC-113: jq handles content-type properly
-- SEC-114: All loops have proper bounds (50-iter limit)
-- SEC-115: No dangerous glob patterns found
-
-**When to Fix**:
-- During dedicated security hardening sprint (cosmetic only)
+**Analysis** (verified by Security Auditor v2.68.11):
+- Both instances are in numeric contexts (arithmetic `$(())` or array length `${#arr[@]}`)
+- Word splitting is **impossible** in these contexts
+- Example: `if [ $((COUNT % INTERVAL)) -eq 0 ]` - result is always numeric
 
 ---
 
-### LOW-001 to LOW-005: Minor Security Hardening (P3)
+### SEC-116: Missing umask 077 (P3 - Optional)
+
+**Created**: 2026-01-24 (v2.68.9 security audit)
+**Updated**: 2026-01-24 (v2.68.11 adversarial validation)
+**Status**: Open - Optional Improvement
+**Effort**: Low (30 minutes)
+
+**Analysis**:
+- 32/66 hooks lack `umask 077`
+- **Mitigated by SEC-110**: Sensitive data already redacted before logging
+- Files created are mostly logs (not credentials)
+- Defense-in-depth only, not a security risk
+
+**When to Fix**: During routine maintenance (not urgent)
+
+---
+
+### FALSE POSITIVES Summary (v2.68.11 Verified)
+
+| ID | Claimed Issue | Why FALSE POSITIVE |
+|----|---------------|-------------------|
+| SEC-108 | Unquoted variables | Variables in numeric contexts (arithmetic/array length) |
+| SEC-109 | Missing error traps | SessionStart hooks don't need JSON, others have traps |
+| SEC-112 | Insecure temp files | All hooks use `mktemp` correctly |
+| SEC-113 | jq content-type issues | jq handles content properly |
+| SEC-114 | Unbounded loops | All loops have 50-iter bounds |
+| SEC-115 | Dangerous glob patterns | No `rm *` patterns found |
+| LOW-001 | Subprocess sourcing | Runs in isolated subprocess with timeout |
+| LOW-002 | Regex injection | GITHUB_DIR is script-controlled, not user input |
+| LOW-003 | ReDoS potential | Patterns are simple, content bounded at 50 chars |
+| LOW-005 | Unbounded deletion | Bounded by MAX_SMART_CHECKPOINTS=20 |
+
+---
+
+### LOW-004: Unbounded find (P3 - Optional)
 
 **Created**: 2026-01-24 (v2.68.4 gap analysis)
-**Status**: Open - Low Priority
-**Effort**: Low (1-2 hours total)
+**Updated**: 2026-01-24 (v2.68.11 adversarial validation)
+**Status**: Open - Optional Improvement
+**Effort**: Very Low (1 minute)
 
-**Issues Identified by Security Auditor**:
-| ID | Hook | Issue | Impact |
-|----|------|-------|--------|
-| LOW-001 | `skill-validator.sh` | Subprocess sourcing pollution | Minimal |
-| LOW-002 | `repo-boundary-guard.sh` | Regex injection in grep | Minimal |
-| LOW-003 | `decision-extractor.sh` | ReDoS potential on large files | Minimal |
-| LOW-004 | `curator-suggestion.sh` | Unbounded find on corpus | Minimal |
-| LOW-005 | `checkpoint-smart-save.sh` | Unbounded deletion via xargs | Minimal |
+**Analysis**:
+- `curator-suggestion.sh` uses `find` without `-maxdepth`
+- Curator corpus is user-maintained, typically <100 repos
+- Only counts files, doesn't process content
 
-**When to Fix**:
-- During dedicated security hardening sprint
-- When performance issues are reported
-- During v2.70+ development
+**Optional Fix**:
+```bash
+CORPUS_COUNT=$(find "$CORPUS_DIR" -maxdepth 2 -type f -name "*.json" 2>/dev/null | wc -l)
+```
+
+**When to Fix**: When convenient (not a real security issue)
 
 ---
 
