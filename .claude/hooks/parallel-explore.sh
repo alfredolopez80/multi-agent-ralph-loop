@@ -2,7 +2,7 @@
 # Parallel Exploration Hook v2.46
 # Hook: PostToolUse (Task - after gap-analyst)
 # Purpose: Launch parallel exploration tasks
-# VERSION: 2.57.5
+# VERSION: 2.68.4
 
 set -euo pipefail
 umask 077
@@ -98,9 +98,9 @@ echo "[]" > "$WEBHINTS_FILE"
     (
         if command -v ast-grep &>/dev/null || command -v sg &>/dev/null; then
             echo "  [3/4] Running pattern search..." >> "$LOG_FILE"
-            # Sanitize pattern to prevent injection (whitelist alphanumeric only)
-            PATTERN_RAW=$(echo "$KEYWORDS" | grep -oE '\b(function|class|interface|type|const|def|async)\s+[a-zA-Z0-9_]+' | head -1 || echo "function main")
-            PATTERN_SAFE=$(echo "$PATTERN_RAW" | sed 's/[^a-zA-Z0-9_ ]//g')
+            # MED-006 FIX: Sanitize pattern to prevent injection (alphanumeric + underscore ONLY, no spaces)
+            PATTERN_RAW=$(echo "$KEYWORDS" | grep -oE '\b(function|class|interface|type|const|def|async)\s+[a-zA-Z0-9_]+' | head -1 || echo "function_main")
+            PATTERN_SAFE=$(echo "$PATTERN_RAW" | sed 's/[^a-zA-Z0-9_]//g' | cut -c1-50)
             timeout 30 ast-grep --pattern "$PATTERN_SAFE" --json "$PROJECT_DIR" 2>/dev/null | head -100 > "$PATTERN_FILE" || echo "[]" > "$PATTERN_FILE"
         else
             echo "  [3/4] Skipping pattern search (ast-grep not available)" >> "$LOG_FILE"
@@ -126,20 +126,37 @@ echo "[]" > "$WEBHINTS_FILE"
 } >> "$LOG_FILE" 2>&1
 
 # Read results from temp files (with JSON validation)
+# v2.57.6: FIX - Ensure validate_json ALWAYS returns valid JSON
 validate_json() {
     local file="$1"
     local default="$2"
-    if [[ -f "$file" ]] && jq empty "$file" 2>/dev/null; then
-        cat "$file"
-    else
-        echo "$default"
+    local content=""
+
+    # Check file exists and has content
+    if [[ -f "$file" ]] && [[ -s "$file" ]]; then
+        content=$(cat "$file" 2>/dev/null || echo "")
+        # Validate JSON structure
+        if echo "$content" | jq empty 2>/dev/null; then
+            echo "$content"
+            return 0
+        fi
     fi
+
+    # Return default (guaranteed valid JSON)
+    echo "$default"
 }
 
+# Capture results with guaranteed valid JSON
 SEMANTIC_RESULT=$(validate_json "$SEMANTIC_FILE" "[]")
 STRUCTURE_RESULT=$(validate_json "$STRUCTURE_FILE" "{}")
 PATTERN_RESULT=$(validate_json "$PATTERN_FILE" "[]")
 WEBHINTS_RESULT=$(validate_json "$WEBHINTS_FILE" "[]")
+
+# Double-check results are valid JSON before passing to jq --argjson
+[[ -z "$SEMANTIC_RESULT" ]] && SEMANTIC_RESULT="[]"
+[[ -z "$STRUCTURE_RESULT" ]] && STRUCTURE_RESULT="{}"
+[[ -z "$PATTERN_RESULT" ]] && PATTERN_RESULT="[]"
+[[ -z "$WEBHINTS_RESULT" ]] && WEBHINTS_RESULT="[]"
 
 # Sanitize keywords for JSON (escape quotes, remove control chars)
 KEYWORDS_SAFE=$(echo "$KEYWORDS" | head -c 200 | tr -d '\n\r\t' | sed 's/"/\\"/g; s/[[:cntrl:]]//g')
