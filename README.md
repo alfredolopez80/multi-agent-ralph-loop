@@ -317,21 +317,21 @@ multi-agent-ralph-loop/           # Repository root
 ```
   0. EVALUATE     -> 3-dimension classification 
   1. CLARIFY      -> AskUserQuestion (MUST_HAVE + NICE_TO_HAVE) 
-  1b. GAP-ANALYST -> Pre-implementation gap analysis (v2.55)  
-  1c. PARALLEL_EXPLORE -> 5 concurrent searches (v2.46)  
+  1b. GAP-ANALYST -> Pre-implementation gap analysis 
+  1c. PARALLEL_EXPLORE -> 5 concurrent searches
   2. CLASSIFY     -> Complexity 1-10 + Info Density + Context Req 
-  2b. WORKTREE    -> Isolated worktree option (v2.46)  
+  2b. WORKTREE    -> Isolated worktree option 
   3. PLAN         -> orchestrator-analysis.md -> Plan Mode  
-  3b. PERSIST     -> Write analysis file (v2.44)    
-  3c. PLAN-STATE  -> Initialize plan-state.json (v2.51) 
-  3d. RECURSIVE_DECOMPOSE -> Sub-orchestrators if needed (v2.46)
+  3b. PERSIST     -> Write analysis file
+  3c. PLAN-STATE  -> Initialize plan-state.json
+  3d. RECURSIVE_DECOMPOSE -> Sub-orchestrators if needed 
   4. PLAN MODE    -> EnterPlanMode (reads analysis) 
   5. DELEGATE     -> Route to GLM-4.7 (PRIMARY for 1-4)
   6. EXECUTE-WITH-SYNC -> LSA-VERIFY -> IMPLEMENT -> PLAN-SYNC -> MICRO-GATE 
   7. VALIDATE     -> CORRECTNESS + QUALITY + CONSISTENCY + ADVERSARIAL
   8. RETROSPECT   -> Analyze and improve  
-  9. CHECKPOINT   -> Optional state save (v2.51) 
-  10. HANDOFF     -> Optional agent transfer (v2.51)  
+  9. CHECKPOINT   -> Optional state save 
+  10. HANDOFF     -> Optional agent transfer
 ```
 
 **Fast-Path** (complexity ≤ 3): DIRECT_EXECUTE → MICRO_VALIDATE → DONE (3 steps)
