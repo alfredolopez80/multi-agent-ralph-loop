@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.70.1] - 2026-01-25
+
+### Refactor: Dynamic Hook Classification and Platform Compatibility
+
+**Test Infrastructure Improvements**
+
+#### REFAC-001: Dynamic Hook Classification from settings.json
+
+**Problem**: Manual list of PreToolUse hooks in `get_hook_type()` required constant updates when new hooks were added.
+
+**Solution**: Refactored `get_hook_type()` function to:
+- Read hook registrations dynamically from `settings.json`
+- Search all event types for the hook name
+- Fall back to static classification for offline testing
+- Added `settings_json` fixture for test access
+
+**Benefits**:
+- Automatic detection of new hooks without code changes
+- Eliminates maintenance burden
+- Classification always matches actual registrations
+
+**File**: `tests/test_hook_json_format_regression.py`
+
+#### PLATFORM-001: Windows Platform Skip for Permission Tests
+
+**Problem**: Unix-specific permission checks fail on Windows causing test failures.
+
+**Solution**: Added `@pytest.mark.skipif(sys.platform == "win32")` decorator to `test_markers_directory_permissions`.
+
+**File**: `tests/test_auto_007_hooks.py`
+
+**Test Results**: All 40 tests passing in 0.47s
+
+---
+
 ## [2.70.0] - 2026-01-25
 
 ### AUTO-007 Pattern Implementation - Quality Gates Auto-Mode Detection
