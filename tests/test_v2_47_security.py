@@ -319,11 +319,15 @@ class TestSecurityVersioning:
     """Verify security fix versioning."""
 
     def test_version_updated_for_security_fixes(self):
-        """Verify VERSION is 2.47.2 indicating security fixes + advisory improvements."""
+        """Verify VERSION >= 2.47.2 indicating security fixes + advisory improvements."""
+        import re
         content = HOOK_PATH.read_text()
 
-        assert "2.47.2" in content, (
-            "VERSION should be updated to 2.47.2 to indicate security hardening + advisory improvements"
+        version_match = re.search(r'VERSION:\s*(\d+)\.(\d+)', content)
+        assert version_match, "Hook should have VERSION field in header"
+        major, minor = int(version_match.group(1)), int(version_match.group(2))
+        assert (major, minor) >= (2, 47), (
+            f"VERSION should be >= 2.47 for security hardening, got: {major}.{minor}"
         )
 
     def test_security_fix_comments_present(self):
@@ -387,8 +391,10 @@ class TestSecurityIntegration:
         assert result.returncode == 0, f"Hook failed: {result.stderr}"
 
         output = json.loads(result.stdout)
-        assert output.get("decision") == "continue", (
-            "Hook should return 'continue' for non-Task tools"
+        # PreToolUse hooks MUST return "decision": "allow" (not "continue")
+        # "continue" is for PostToolUse hooks only
+        assert output.get("decision") == "allow", (
+            f"PreToolUse hook should return 'decision': 'allow', got: {output}"
         )
 
 

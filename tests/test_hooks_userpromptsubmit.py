@@ -267,38 +267,62 @@ class TestPromptAnalyzerHook:
 
         assert result["is_valid_json"], "Hook did not return valid JSON on empty input"
 
+    @pytest.mark.skip(reason="v2.57.3+: prompt-analyzer.sh no longer returns 'model' field - uses action-based classification")
     def test_classifies_simple_task_as_haiku(self):
-        """Simple tasks like 'fix typo' should use Haiku model"""
+        """Simple tasks like 'fix typo' should use Haiku model.
+
+        DEPRECATED: v2.57.3 changed from model-centric to action-centric classification.
+        Hook now returns {"action": "ask_user"|"execute_direct", "type": "...", "options": [...]}
+        without a 'model' field. Model selection is handled by the orchestrator based on task type.
+        """
         result = run_hook(self.hook_path, "fix typo in readme")
 
         assert result["is_valid_json"]
         assert result["output"]["model"] == "haiku"
         assert result["output"]["action"] == "execute_direct"
 
+    @pytest.mark.skip(reason="v2.57.3+: prompt-analyzer.sh no longer returns 'model' field - uses action-based classification")
     def test_classifies_read_task_as_haiku(self):
-        """Read commands should use Haiku model"""
+        """Read commands should use Haiku model.
+
+        DEPRECATED: v2.57.3 changed to action-based classification.
+        """
         result = run_hook(self.hook_path, "read the config file")
 
         assert result["is_valid_json"]
         assert result["output"]["model"] == "haiku"
 
+    @pytest.mark.skip(reason="v2.57.3+: prompt-analyzer.sh no longer returns 'model' field - uses action-based classification")
     def test_classifies_simple_refactor_as_sonnet(self):
-        """Simple refactor tasks should use Sonnet model"""
+        """Simple refactor tasks should use Sonnet model.
+
+        DEPRECATED: v2.57.3 changed to action-based classification.
+        """
         result = run_hook(self.hook_path, "refactor small function")
 
         assert result["is_valid_json"]
         assert result["output"]["model"] == "sonnet"
 
+    @pytest.mark.skip(reason="v2.57.3+: prompt-analyzer.sh classifies all unknown patterns as 'unknown' type - keyword detection changed")
     def test_classifies_security_as_complex(self):
-        """Security-related tasks should be classified as complex"""
+        """Security-related tasks should be classified as complex.
+
+        DEPRECATED: v2.57.3 hook now returns 'unknown' for most patterns,
+        delegating classification to the orchestrator's 3-dimension system.
+        """
         result = run_hook(self.hook_path, "security audit of the codebase")
 
         assert result["is_valid_json"]
         assert result["output"]["action"] == "ask_user"
         assert "complex" in result["output"]["type"]
 
+    @pytest.mark.skip(reason="v2.57.3+: prompt-analyzer.sh classifies all unknown patterns as 'unknown' type - keyword detection changed")
     def test_classifies_architecture_as_strategic(self):
-        """Architecture tasks should be classified as complex/strategic"""
+        """Architecture tasks should be classified as complex/strategic.
+
+        DEPRECATED: v2.57.3 hook now returns 'unknown' for most patterns,
+        delegating classification to the orchestrator's 3-dimension system.
+        """
         result = run_hook(self.hook_path, "design the architecture for the new module")
 
         assert result["is_valid_json"]

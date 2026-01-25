@@ -260,7 +260,7 @@ class TestGlobalHooks:
     """Verify that hooks are available and executable globally."""
 
     REQUIRED_HOOKS = [
-        "quality-gates.sh",
+        "quality-gates-v2.sh",
         "git-safety-guard.py",
         "session-start-ledger.sh",
         "pre-compact-handoff.sh",
@@ -428,11 +428,13 @@ class TestCLICommands:
         if (major, minor, patch) < (2, 35, 0):
             pytest.fail(f"ralph version too old: {version_line}, need v2.35.0+")
 
+    @pytest.mark.skip(reason="sync-global command removed in v2.50+ - sync handled via install.sh")
     def test_sync_global_command_exists(self):
         """ralph sync-global command must exist."""
         result = subprocess.run(["ralph", "help"], capture_output=True, text=True)
         assert "sync-global" in result.stdout, "sync-global command not in help"
 
+    @pytest.mark.skip(reason="sync-global command removed in v2.50+ - sync handled via install.sh")
     def test_sync_global_dry_run(self, repo_path):
         """ralph sync-global --dry-run must work."""
         result = subprocess.run(
@@ -509,7 +511,7 @@ class TestSyncConsistency:
         hooks = [
             "session-start-ledger.sh",
             "pre-compact-handoff.sh",
-            "quality-gates.sh",
+            "quality-gates-v2.sh",
             "git-safety-guard.py",
         ]
 
@@ -633,15 +635,19 @@ class TestFeatureFlags:
 class TestFullSyncCycle:
     """Integration test for complete sync cycle."""
 
+    @pytest.mark.skip(reason="sync-global command removed in v2.50+ - sync handled via install.sh")
     def test_full_sync_cycle(self, repo_path, global_claude_dir):
         """
         Complete sync cycle test:
-        1. Run sync-global
+        1. Run sync-global (DEPRECATED - now handled via install.sh)
         2. Verify all agents synced
         3. Verify all hooks synced
         4. Verify settings.json valid
+
+        v2.69: sync-global replaced by install.sh for initial setup.
+        This test is preserved for historical reference.
         """
-        # Step 1: Run sync
+        # Step 1: Run sync (DEPRECATED)
         result = subprocess.run(
             ["ralph", "sync-global"], capture_output=True, text=True, cwd=repo_path
         )
@@ -657,7 +663,7 @@ class TestFullSyncCycle:
 
         # Step 3: Verify critical hooks
         hooks_dir = global_claude_dir / "hooks"
-        assert (hooks_dir / "quality-gates.sh").exists(), "quality-gates.sh not synced"
+        assert (hooks_dir / "quality-gates-v2.sh").exists(), "quality-gates-v2.sh not synced"
 
         # Step 4: Verify settings.json
         settings_file = global_claude_dir / "settings.json"

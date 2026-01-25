@@ -2,10 +2,14 @@
 # ==============================================================================
 # migrate-opencode-models.sh - Migrate Claude models to OpenCode-compatible models
 # ==============================================================================
-# Replaces Claude model references with OpenAI/MiniMax equivalents:
+# ⚠️  DEPRECATED v2.69.0: MiniMax is now optional fallback only.
+#     GLM-4.7 is PRIMARY for complexity 1-4 tasks.
+#     Consider using GLM-4.7 MCP tools instead.
+# ==============================================================================
+# Replaces Claude model references with OpenAI/GLM equivalents:
 #   - model: opus      → model: "gpt-5.2-codex"  (complex/deep reasoning)
-#   - model: sonnet    → model: "minimax-m2.1"   (standard tasks)
-#   - model: haiku     → model: "minimax-m2.1-lightning" (fast tasks)
+#   - model: sonnet    → model: "glm-4.7"        (standard tasks - v2.69.0 PRIMARY)
+#   - model: haiku     → model: "glm-4.7"        (fast tasks)
 # ==============================================================================
 
 set -uo pipefail
@@ -37,10 +41,12 @@ usage() {
     echo "  --verbose, -v     Show detailed output"
     echo "  --help, -h        Show this help message"
     echo ""
-    echo "Model Mapping:"
+    echo "Model Mapping (v2.69.0):"
     echo "  opus   → gpt-5.2-codex (complex/deep reasoning)"
-    echo "  sonnet → minimax-m2.1 (standard tasks)"
-    echo "  haiku  → minimax-m2.1-lightning (fast tasks)"
+    echo "  sonnet → glm-4.7 (standard tasks - PRIMARY)"
+    echo "  haiku  → glm-4.7 (fast tasks)"
+    echo ""
+    echo "NOTE: MiniMax is DEPRECATED. GLM-4.7 is now PRIMARY for complexity 1-4."
 }
 
 # Parse arguments
@@ -112,11 +118,11 @@ process_file() {
     # Replace opus → gpt-5.2-codex
     content=$(echo "$content" | sed -E 's/(model:[[:space:]]*)("?)opus("?)/\1"gpt-5.2-codex"/g')
 
-    # Replace sonnet → minimax-m2.1
-    content=$(echo "$content" | sed -E 's/(model:[[:space:]]*)("?)sonnet("?)/\1"minimax-m2.1"/g')
+    # Replace sonnet → glm-4.7
+    content=$(echo "$content" | sed -E 's/(model:[[:space:]]*)("?)sonnet("?)/\1"glm-4.7"/g')
 
-    # Replace haiku → minimax-m2.1-lightning
-    content=$(echo "$content" | sed -E 's/(model:[[:space:]]*)("?)haiku("?)/\1"minimax-m2.1-lightning"/g')
+    # Replace haiku → glm-4.7
+    content=$(echo "$content" | sed -E 's/(model:[[:space:]]*)("?)haiku("?)/\1"glm-4.7"/g')
 
     # Calculate total changes
     changes=$((opus_count + sonnet_count + haiku_count))
@@ -164,10 +170,10 @@ log_info "Updating documentation references..."
 if [ "$DRY_RUN" = false ]; then
     # Update text mentions of Claude models
     find "$OPENCODE_DIR" -name "*.md" -type f -exec sed -i '' \
-        -e 's/Claude Sonnet/MiniMax M2.1/g' \
+        -e 's/Claude Sonnet/GLM-4.7/g' \
         -e 's/Claude Opus/GPT-5.2-Codex/g' \
-        -e 's/Claude Haiku/MiniMax M2.1-Lightning/g' \
-        -e 's/Sonnet 4\.5/MiniMax M2.1/g' \
+        -e 's/Claude Haiku/GLM-4.7/g' \
+        -e 's/Sonnet 4\.5/GLM-4.7/g' \
         -e 's/Opus 4\.5/GPT-5.2-Codex/g' \
         {} \; 2>/dev/null || true
 fi
@@ -189,8 +195,8 @@ else
     echo ""
     log_info "Model mapping applied:"
     echo "  opus   → gpt-5.2-codex"
-    echo "  sonnet → minimax-m2.1"
-    echo "  haiku  → minimax-m2.1-lightning"
+    echo "  sonnet → glm-4.7"
+    echo "  haiku  → glm-4.7"
     [ "$BACKUP" = true ] && log_info "Backup saved to: $BACKUP_DIR"
 fi
 

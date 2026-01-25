@@ -48,17 +48,20 @@ log() {
 
 log_error() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] ERROR: $*" >> "$LOG_FILE"
-    echo "❌ Skill Validation Error: $*" >&2 2>/dev/null || true > /dev/null
+    # v2.69.0: Removed stderr output (causes hook error warnings in UI)
+    # echo "❌ Skill Validation Error: $*" - now only logged to file
 }
 
 log_warning() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] WARNING: $*" >> "$LOG_FILE"
-    echo "⚠️  Warning: $*" >&2 2>/dev/null || true > /dev/null
+    # v2.69.0: Removed stderr output (causes hook error warnings in UI)
+    # echo "⚠️  Warning: $*" - now only logged to file
 }
 
 log_success() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] SUCCESS: $*" >> "$LOG_FILE"
-    echo "✅ $*" >&2 2>/dev/null || true > /dev/null
+    # v2.69.0: Removed stderr output (causes hook error warnings in UI)
+    # echo "✅ $*" - now only logged to file
 }
 
 # Validate YAML syntax using Python
@@ -324,7 +327,7 @@ except:
 
     if [[ -z "$skill_name" ]]; then
         log_error "No skill name provided in hook input"
-        echo "⚠️  Skill validator: No skill name provided" >&2 2>/dev/null || true > /dev/null
+        # v2.69.0: Removed stderr output (causes hook error warnings in UI)
         trap - EXIT  # CRIT-004: Clear trap before explicit output
         echo '{"decision": "allow"}'
         exit 0  # Don't block if no skill specified

@@ -267,7 +267,11 @@ class TestHookFilesExist:
     def test_all_hook_files_exist(self, global_hooks_dir):
         """All hooks in registry should exist as files."""
         missing = []
-        for hook_name in HOOK_REGISTRY.keys():
+        for hook_name, config in HOOK_REGISTRY.items():
+            # Skip CLI-only scripts - they may be archived or optional
+            if config.get("cli_only"):
+                continue
+
             hook_path = os.path.join(global_hooks_dir, hook_name)
             if not os.path.isfile(hook_path):
                 missing.append(hook_name)
@@ -388,14 +392,17 @@ class TestHookPathsValid:
             for hook_group in event_hooks:
                 for hook in hook_group.get("hooks", []):
                     command = hook.get("command", "")
-                    # Resolve path
+                    # Resolve path - expand ${HOME} and ~
                     resolved = command.replace("${HOME}", os.path.expanduser("~"))
+                    resolved = os.path.expanduser(resolved)
+                    # Extract just the script path (before first space/argument)
+                    script_path = resolved.split()[0] if resolved else ""
 
-                    if not os.path.exists(resolved):
+                    if script_path and not os.path.exists(script_path):
                         invalid_paths.append({
                             "event": event_type,
                             "command": command,
-                            "resolved": resolved,
+                            "resolved": script_path,
                         })
 
         assert not invalid_paths, (

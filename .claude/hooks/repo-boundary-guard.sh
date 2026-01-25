@@ -32,6 +32,46 @@ get_current_repo() {
     git rev-parse --show-toplevel 2>/dev/null || echo ""
 }
 
+# v2.69.0 FIX: Check if command is read-only (safe to run on external repos)
+# This prevents false positives blocking legitimate ls, cat, grep commands
+is_readonly_command() {
+    local command="$1"
+
+    # Extract base command (first word)
+    local base_cmd
+    base_cmd=$(echo "$command" | awk '{print $1}')
+
+    # Safe read-only commands
+    case "$base_cmd" in
+        ls|ll|la|tree|find|fd)
+            return 0 ;;
+        cat|less|more|head|tail)
+            return 0 ;;
+        grep|egrep|fgrep|rg|ag)
+            return 0 ;;
+        diff|sdiff|cmp)
+            return 0 ;;
+        wc|sort|uniq)
+            return 0 ;;
+        file|stat|du)
+            return 0 ;;
+        jq|yq)
+            return 0 ;;
+        pwd|which|whereis)
+            return 0 ;;
+        md5sum|sha256sum|shasum)
+            return 0 ;;
+        echo|printf)
+            return 0 ;;
+        *)
+            # Check git read-only commands
+            if [[ "$command" =~ ^git\ (show|log|diff|status|branch) ]]; then
+                return 0
+            fi
+            return 1 ;;
+    esac
+}
+
 # Check if a path is within the current repo or allowed locations
 is_allowed_path() {
     local path="$1"
@@ -132,7 +172,16 @@ main() {
         local command
         command=$(echo "$input" | jq -r '.tool_input.command // ""' 2>/dev/null || echo "")
 
-        # Quick check for paths in command
+        # v2.69.0 FIX: Check if command is read-only FIRST
+        # Read-only commands (ls, cat, grep, etc.) are safe to run on external repos
+        if is_readonly_command "$command"; then
+            log "ALLOWED: Read-only command (safe for cross-repo): $command"
+            trap - ERR EXIT
+            echo '{"decision": "allow"}'
+            exit 0
+        fi
+
+        # Only check repo boundaries for non-readonly (potentially destructive) commands
         # Look for patterns like /Users/.../GitHub/OtherRepo
         if echo "$command" | grep -qE "${GITHUB_DIR}/[^/]+/" 2>/dev/null; then
             local mentioned_path

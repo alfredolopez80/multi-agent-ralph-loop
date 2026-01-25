@@ -100,25 +100,37 @@ class TestPreToolUseAdditionalContextHook:
         )
 
     def test_pretooluse_hook_registered_for_task(self, load_settings_json):
-        """Verify PreToolUse hook is registered for Task tool in settings.json."""
+        """Verify PreToolUse hook is registered for Task tool in settings.json.
+
+        v2.69.0: Updated to check for context injection hooks (inject-session-context.sh
+        or smart-memory-search.sh) rather than the obsolete 'output: additionalContext'
+        configuration. These hooks now return additionalContext in their JSON response.
+        """
         settings = load_settings_json()
         hooks = settings.get("hooks", {})
         pretooluse = hooks.get("PreToolUse", [])
 
-        # Find Task matcher with additionalContext output
-        task_hook_found = False
+        # Find Task matcher with context injection hooks (v2.43+ pattern)
+        context_hook_found = False
+        context_injection_hooks = [
+            "inject-session-context.sh",
+            "smart-memory-search.sh",
+            "procedural-inject.sh"
+        ]
+
         for entry in pretooluse:
             matcher = entry.get("matcher", "")
             if matcher == "Task":
                 hook_list = entry.get("hooks", [])
                 for hook in hook_list:
-                    if hook.get("output") == "additionalContext":
-                        task_hook_found = True
+                    command = hook.get("command", "")
+                    if any(h in command for h in context_injection_hooks):
+                        context_hook_found = True
                         break
 
-        assert task_hook_found, (
-            "PreToolUse hook with additionalContext output not found for Task tool. "
-            "Add to settings.json: PreToolUse -> Task -> hooks -> output: additionalContext"
+        assert context_hook_found, (
+            "No context injection hook found for PreToolUse:Task. "
+            "Hooks like inject-session-context.sh or smart-memory-search.sh should be registered."
         )
 
 

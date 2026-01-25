@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.69.1] - 2026-01-25
+
+### Adversarial Audit Remediation - Complete Test Suite Fix
+
+Full test suite now passes: **908 passed, 0 failures** (was 20 failing)
+
+#### SEC-112: Duplicate JSON Output Fix
+
+Fixed trap handlers causing duplicate JSON output in 5 hooks:
+- `semantic-realtime-extractor.sh` - 6 exit points fixed
+- `plan-state-adaptive.sh` - COMPLEX task output path fixed
+- `decision-extractor.sh` - 6 exit points fixed
+- `memory-write-trigger.sh` - Early exit paths fixed
+- `reflection-engine.sh` - Early exit paths fixed
+
+**Pattern**: `trap - ERR EXIT` added before every explicit JSON output to prevent EXIT trap from firing on successful exits.
+
+#### memory-manager.py v2.69.1 - Schema Compatibility
+
+Fixed data format mismatches between hooks (producers) and manager (consumer):
+
+| Issue | Before | After |
+|-------|--------|-------|
+| SemanticFact ID | Expects `fact_id` | Accepts `id` or `fact_id` |
+| SemanticFact timestamp | Expects `created_at` | Accepts `timestamp` or `created_at` |
+| EpisodicStore search | Expects `task` | Accepts `task` or `file` |
+| ProceduralStore load | `r["rule_id"]` crash | `r.get("rule_id", fallback)` |
+
+#### BUG-002: reflection-executor.py Index Fix
+
+Fixed `AttributeError: 'list' object has no attribute 'get'` when pruning index with mixed format entries. Now filters to only dict entries with `ep-` prefix.
+
+#### Test Suite Corrections
+
+37 files modified with test expectation fixes:
+- Hook JSON format expectations aligned with official protocol
+- `test_skill_documents_commands` updated for actual skill implementation
+- `test_auto_extracted_facts_have_source` checks real extraction sources
+- Test pollution cleanup via `teardown_class` methods
+
+---
+
 ## [2.69.0] - 2026-01-25
 
 ### GLM-4.7 Full Ecosystem Integration

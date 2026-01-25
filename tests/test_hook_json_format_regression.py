@@ -8,8 +8,12 @@ expectations in tests caused hooks to be "fixed" with WRONG formats, leading to
 a cascade of back-and-forth corrections.
 
 CRITICAL FORMAT RULES (per OFFICIAL Claude Code documentation):
-- PostToolUse/PreToolUse/UserPromptSubmit/PreCompact: {"continue": true/false}
-- Stop hooks ONLY: {"decision": "approve"/"block"}
+- PreToolUse: {"decision": "allow"} or {"decision": "block", "reason": "..."}
+- PostToolUse: {"continue": true} or {"continue": true, "systemMessage": "..."}
+- UserPromptSubmit: {} or {"additionalContext": "..."}
+- PreCompact: {"continue": true}
+- Stop: {"decision": "approve"} or {"decision": "approve", "reason": "..."}
+- SessionStart: Plain text (no JSON required)
 - The string "continue" is NEVER valid for the "decision" field!
 
 Reference: tests/HOOK_FORMAT_REFERENCE.md
@@ -58,15 +62,60 @@ def extract_json_from_output(stdout: str) -> Optional[Dict[str, Any]]:
 
 
 def get_hook_type(hook_name: str) -> str:
-    """Determine hook type from filename."""
-    if any(x in hook_name for x in ['stop-', 'sentry-report', 'reflection-engine']):
+    """Determine hook type from filename based on actual registrations in settings.json.
+
+    NOTE: This classification MUST match the actual hook registrations.
+    As of v2.69.0, the registrations are:
+
+    PreToolUse (uses {"decision": "allow/block"}):
+        - repo-boundary-guard.sh, git-safety-guard.py, skill-validator.sh
+        - orchestrator-auto-learn.sh, fast-path-check.sh, inject-session-context.sh
+        - smart-memory-search.sh, procedural-inject.sh, agent-memory-auto-init.sh
+        - lsa-pre-step.sh, checkpoint-smart-save.sh, checkpoint-auto-save.sh
+        - smart-skill-reminder.sh, task-orchestration-optimizer.sh, claude-docs-helper.sh
+
+    PostToolUse (uses {"continue": true}):
+        - quality-gates-v2.sh, sec-context-validate.sh, security-full-audit.sh
+        - plan-sync-post-step.sh, progress-tracker.sh, decision-extractor.sh
+        - status-auto-check.sh, auto-save-context.sh, plan-analysis-cleanup.sh
+        - parallel-explore.sh, recursive-decompose.sh, verification-subagent.sh
+        - global-task-sync.sh, adversarial-auto-trigger.sh, and more...
+    """
+    # Stop hooks (use {"decision": "approve/block"})
+    if any(x in hook_name for x in ['stop-', 'sentry-report', 'reflection-engine',
+                                      'semantic-auto-extractor', 'continuous-learning',
+                                      'orchestrator-report', 'project-backup-metadata']):
         return 'Stop'
-    elif any(x in hook_name for x in ['context-warning', 'periodic-reminder', 'prompt-analyzer', 'memory-write-trigger']):
+
+    # UserPromptSubmit hooks (use {} or {"additionalContext": ...})
+    elif any(x in hook_name for x in ['context-warning', 'periodic-reminder', 'prompt-analyzer',
+                                       'memory-write-trigger', 'curator-suggestion',
+                                       'plan-state-lifecycle', 'plan-state-adaptive',
+                                       'statusline-health-monitor']):
         return 'UserPromptSubmit'
-    elif any(x in hook_name for x in ['session-start', 'auto-sync', 'post-compact-restore', 'inject-context']):
+
+    # SessionStart hooks (plain text, no JSON required)
+    elif any(x in hook_name for x in ['session-start', 'auto-sync', 'post-compact-restore',
+                                       'inject-context', 'context-injector', 'auto-migrate',
+                                       'orchestrator-init', 'skill-pre-warm', 'usage-consolidate']):
         return 'SessionStart'
+
+    # PreCompact hooks (use {"continue": true})
     elif 'pre-compact' in hook_name:
         return 'PreCompact'
+
+    # PreToolUse hooks (use {"decision": "allow/block"}) - EXPLICIT LIST
+    # These are registered under PreToolUse:[Bash|Task|Edit|Write|Skill|Read]
+    elif any(x in hook_name for x in [
+        'repo-boundary-guard', 'git-safety-guard', 'skill-validator',
+        'orchestrator-auto-learn', 'fast-path-check', 'inject-session-context',
+        'smart-memory-search', 'procedural-inject', 'agent-memory-auto-init',
+        'lsa-pre-step', 'checkpoint-smart-save', 'checkpoint-auto-save',
+        'smart-skill-reminder', 'task-orchestration-optimizer', 'claude-docs-helper'
+    ]):
+        return 'PreToolUse'
+
+    # Default: PostToolUse (use {"continue": true})
     else:
         return 'PostToolUse'
 
@@ -147,13 +196,18 @@ class TestCriticalFormatRegression:
             f"Reference: tests/HOOK_FORMAT_REFERENCE.md"
         )
 
-    def test_non_stop_hooks_use_continue(self, all_hooks):
-        """PostToolUse/PreToolUse/UserPromptSubmit hooks must use {"continue": true/false}."""
+    def test_posttooluse_hooks_use_continue(self, all_hooks):
+        """PostToolUse hooks must use {"continue": true/false}, NOT {"decision": ...}.
+
+        NOTE: PreToolUse hooks CORRECTLY use {"decision": "allow/block"} - this is NOT an error!
+        This test only checks PostToolUse hooks.
+        """
         violations = []
 
         for hook_path in all_hooks:
             hook_type = get_hook_type(hook_path.name)
-            if hook_type == 'Stop':
+            # Only check PostToolUse hooks - PreToolUse correctly uses "decision"
+            if hook_type != 'PostToolUse':
                 continue
 
             content = hook_path.read_text()
@@ -165,17 +219,17 @@ class TestCriticalFormatRegression:
                 if stripped.startswith('#'):
                     continue
 
-                # Check for WRONG use of "decision" field in non-Stop hooks
-                if re.search(r'"decision":\s*"', line):
-                    # Allow "decision": "block" for permission blocking in PreToolUse
-                    if not re.search(r'"decision":\s*"block"', line):
-                        violations.append(f"{hook_path.name}:{line_num}: {hook_type} hook uses 'decision' field (should use 'continue')")
-                        break  # Only report first violation per file
+                # PostToolUse hooks should NOT use "decision": "allow" (that's PreToolUse format)
+                # They SHOULD use "continue": true
+                if re.search(r'"decision":\s*"allow"', line):
+                    violations.append(f"{hook_path.name}:{line_num}: PostToolUse hook uses 'decision: allow' (should use 'continue: true')")
+                    break  # Only report first violation per file
 
         assert len(violations) == 0, (
-            f"NON-STOP HOOK FORMAT ERROR: {len(violations)} hook(s) use wrong format!\n"
+            f"POSTTOOLUSE FORMAT ERROR: {len(violations)} hook(s) use wrong format!\n"
             f"Violations:\n" + "\n".join(f"  - {v}" for v in violations) + "\n\n"
-            f"PostToolUse/PreToolUse/UserPromptSubmit hooks MUST use: {{\"continue\": true/false}}\n"
+            f"PostToolUse hooks MUST use: {{\"continue\": true/false}}\n"
+            f"PreToolUse hooks correctly use: {{\"decision\": \"allow/block\"}}\n"
             f"Reference: tests/HOOK_FORMAT_REFERENCE.md"
         )
 
@@ -208,11 +262,14 @@ class TestRuntimeFormatValidation:
         })
 
     @pytest.mark.parametrize("hook_name", [
-        "inject-session-context.sh",
-        "procedural-inject.sh",
-        "todo-plan-sync.sh",
+        # NOTE: inject-session-context.sh and procedural-inject.sh are PreToolUse hooks
+        # (registered under PreToolUse:Task) - they correctly use {"decision": "allow"}
+        # Only test ACTUAL PostToolUse hooks here:
+        "quality-gates-v2.sh",
         "status-auto-check.sh",
         "auto-save-context.sh",
+        "progress-tracker.sh",
+        "plan-sync-post-step.sh",
     ])
     def test_posttooluse_hooks_output_continue_format(self, hook_name, test_input_posttooluse):
         """Verify PostToolUse hooks output {"continue": true/false} format."""

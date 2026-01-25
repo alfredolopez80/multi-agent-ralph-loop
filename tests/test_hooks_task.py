@@ -15,7 +15,7 @@ PreToolUse:Task:
 PostToolUse:Task:
 1. parallel-explore.sh - Parallel exploration
 2. recursive-decompose.sh - Task decomposition
-3. todo-plan-sync.sh - Todo synchronization
+3. global-task-sync.sh - Task synchronization (v2.62+, replaces todo-plan-sync.sh)
 
 All tests validate:
 - JSON output is ALWAYS valid
@@ -58,10 +58,11 @@ PRE_TOOLUSE_TASK_HOOKS = [
 ]
 
 # PostToolUse:Task hooks
+# NOTE: todo-plan-sync.sh was replaced by global-task-sync.sh in v2.62
 POST_TOOLUSE_TASK_HOOKS = [
     "parallel-explore.sh",
     "recursive-decompose.sh",
-    "todo-plan-sync.sh",
+    "global-task-sync.sh",
 ]
 
 # Default timeout
@@ -381,17 +382,17 @@ class TestProceduralInjectHook:
                 )
 
 
-class TestTodoPlanSyncHook:
-    """Tests for todo-plan-sync.sh (SEC-038)"""
+class TestGlobalTaskSyncHook:
+    """Tests for global-task-sync.sh (v2.62+, replaces todo-plan-sync.sh)"""
 
     def test_uses_continue_not_decision(self):
-        """SEC-038: Must use 'continue: true' not 'decision: continue' (per official docs)"""
+        """Must use 'continue: true' not 'decision: continue' (per official docs)"""
         input_json = {
-            "tool_name": "TodoWrite",
-            "tool_input": {"todos": []},
+            "tool_name": "TaskUpdate",
+            "tool_input": {"taskId": "1", "status": "completed"},
             "tool_result": "success"
         }
-        result = run_hook("todo-plan-sync.sh", input_json)
+        result = run_hook("global-task-sync.sh", input_json)
 
         if result["returncode"] == -2:
             pytest.skip("Hook not found")
@@ -465,14 +466,14 @@ class TestTaskHooksRegressions:
             f"JSON parsing failed (literal newlines?):\n{result['stdout'][:200]}"
         )
 
-    def test_todo_plan_sync_correct_format(self):
-        """SEC-038: todo-plan-sync.sh must use {"continue": true} (per official docs)"""
+    def test_global_task_sync_correct_format(self):
+        """v2.62+: global-task-sync.sh must use {"continue": true} (per official docs)"""
         input_json = {
-            "tool_name": "TodoWrite",
-            "tool_input": {"todos": []},
+            "tool_name": "TaskUpdate",
+            "tool_input": {"taskId": "1", "status": "completed"},
             "tool_result": "success"
         }
-        result = run_hook("todo-plan-sync.sh", input_json)
+        result = run_hook("global-task-sync.sh", input_json)
 
         if result["returncode"] == -2:
             pytest.skip("Hook not found")

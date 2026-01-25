@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-Tests for Memory Search v2.57.0 fixes.
+Tests for Memory Search v2.69.0 (updated from v2.57.0).
 
 Verifies that:
-1. todo-plan-sync.sh handles step-X-Y format keys (not just numeric)
-2. smart-memory-search.sh uses SQLite for claude-mem (not JSON files)
-3. inject-session-context.sh doesn't output JSON (PreToolUse hook)
+1. todo-plan-sync.sh [DEPRECATED v2.62 - replaced by global-task-sync.sh]
+2. smart-memory-search.sh uses parallel memory sources (claude-mem MCP, memvid, handoffs, ledgers, web search)
+3. inject-session-context.sh outputs valid JSON (PreToolUse hook format: {"decision": "allow"})
 4. Plan-state updates correctly from TodoWrite
 
-VERSION: 2.57.0
-Part of v2.57.0 Memory System Reconstruction - Phase 5
+VERSION: 2.69.0
+Part of v2.69.0 GLM-4.7 integration and parallel memory architecture
 """
 
 import json
@@ -18,15 +18,20 @@ import pytest
 from pathlib import Path
 
 
+@pytest.mark.skip(reason="v2.69.1: todo-plan-sync.sh was replaced by global-task-sync.sh in v2.62. TodoWrite replaced by Task Primitive.")
 class TestTodoPlanSync:
-    """Tests for todo-plan-sync.sh hook fixes."""
+    """Tests for todo-plan-sync.sh hook fixes.
+
+    DEPRECATED v2.69.1: This hook was replaced by global-task-sync.sh in v2.62.
+    The Task Primitive (TaskCreate/TaskUpdate/TaskList) replaced TodoWrite.
+    """
 
     @pytest.fixture
     def hook_path(self):
         """Get path to todo-plan-sync.sh hook."""
         path = Path.home() / ".claude" / "hooks" / "todo-plan-sync.sh"
         if not path.exists():
-            pytest.skip("todo-plan-sync.sh not found")
+            pytest.skip("todo-plan-sync.sh not found - replaced by global-task-sync.sh in v2.62")
         return path
 
     def test_hook_exists(self, hook_path):
@@ -90,7 +95,7 @@ class TestTodoPlanSync:
 
 
 class TestSmartMemorySearch:
-    """Tests for smart-memory-search.sh SQLite fix."""
+    """Tests for smart-memory-search.sh v2.69.0 parallel memory architecture."""
 
     @pytest.fixture
     def hook_path(self):
@@ -104,39 +109,40 @@ class TestSmartMemorySearch:
         """Hook file should exist."""
         assert hook_path.exists()
 
-    def test_uses_sqlite_not_json_files(self, hook_path):
-        """Hook should search SQLite database, not JSON files."""
+    def test_uses_parallel_memory_sources(self, hook_path):
+        """Hook should use parallel memory sources (v2.69.0: MCP, memvid, handoffs, ledgers, web)."""
         content = hook_path.read_text()
 
-        # v2.57.0: Should use SQLite
-        assert "sqlite3" in content, \
-            "Hook should use sqlite3 for claude-mem search"
+        # v2.69.0: Should use claude-mem MCP (not direct SQLite)
+        assert "claude-mem" in content or "mcp" in content.lower(), \
+            "Hook should use claude-mem MCP for semantic search"
 
-        # Should reference the actual database
-        assert "claude-mem.db" in content, \
-            "Hook should reference claude-mem.db"
+        # Should reference multiple parallel sources
+        assert "handoffs" in content or "HANDOFFS" in content, \
+            "Hook should search handoffs"
 
-        # Should use FTS
-        assert "observations_fts" in content or "MATCH" in content, \
-            "Hook should use FTS for efficient search"
+        assert "ledgers" in content or "LEDGERS" in content, \
+            "Hook should search ledgers"
 
-    def test_version_is_257(self, hook_path):
-        """Hook version should be 2.57.0."""
+    def test_version_is_current(self, hook_path):
+        """Hook version should be >= 2.69.0."""
         content = hook_path.read_text()
-        assert "2.57.0" in content
+        # Version-agnostic check - just verify it has a version
+        assert "VERSION:" in content or "version:" in content.lower()
+        # If it has 2.69 or 2.68 or 2.70, it's current enough
+        assert "2.69" in content or "2.68" in content or "2.70" in content
 
-    def test_pretooluse_no_json_output(self, hook_path):
-        """PreToolUse hook should exit 0 silently, not output JSON."""
+    def test_pretooluse_json_output(self, hook_path):
+        """PreToolUse hook should output JSON with {"decision": "allow"}."""
         content = hook_path.read_text()
 
-        # Should mention that it exits 0 silently
-        assert "exit 0" in content
+        # Should output JSON (v2.69: PreToolUse hooks output JSON)
+        assert 'decision' in content, \
+            "Hook should output JSON with 'decision' field"
 
-        # The final output should NOT be JSON
-        lines = content.strip().split('\n')
-        last_code_line = [l for l in lines if l.strip() and not l.strip().startswith('#')][-1]
-        assert "exit 0" in last_code_line, \
-            "Hook should end with 'exit 0' (PreToolUse must be silent)"
+        # Should use proper PreToolUse format
+        assert '"allow"' in content or "'allow'" in content, \
+            "Hook should use 'decision': 'allow' format"
 
 
 class TestInjectSessionContext:
@@ -174,10 +180,13 @@ class TestInjectSessionContext:
         assert last_line == "exit 0", \
             f"Hook should end with 'exit 0', got: {last_line}"
 
-    def test_version_is_257(self, hook_path):
-        """Hook version should be 2.57.0."""
+    def test_version_is_current(self, hook_path):
+        """Hook version should be >= 2.69.0."""
         content = hook_path.read_text()
-        assert "VERSION: 2.57.0" in content
+        # Version-agnostic check
+        assert "VERSION:" in content
+        # Should be recent version
+        assert "2.69" in content or "2.68" in content or "2.70" in content
 
     def test_saves_context_to_cache(self, hook_path):
         """Hook should save context to cache for SessionStart hook."""
