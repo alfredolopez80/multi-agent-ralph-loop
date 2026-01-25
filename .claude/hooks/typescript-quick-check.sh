@@ -1,6 +1,6 @@
 #!/bin/bash
 # typescript-quick-check.sh - Quick TypeScript check after editing .ts/.tsx files
-# VERSION: 2.69.0
+# VERSION: 2.69.1
 # HOOK: PostToolUse (Edit|Write)
 # Part of Multi-Agent Ralph Loop v2.66.0
 
@@ -24,18 +24,21 @@ trap 'output_json' ERR EXIT
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null || echo "")
 
 if [[ -z "$FILE_PATH" ]]; then
+    trap - ERR EXIT
     echo '{"continue": true}'
     exit 0
 fi
 
 # Check if it's a TS file
 if [[ ! "$FILE_PATH" =~ \.(ts|tsx)$ ]]; then
+    trap - ERR EXIT
     echo '{"continue": true}'
     exit 0
 fi
 
 # Check if file exists
 if [[ ! -f "$FILE_PATH" ]]; then
+    trap - ERR EXIT
     echo '{"continue": true}'
     exit 0
 fi
@@ -52,6 +55,7 @@ while [[ "$DIR" != "/" ]]; do
 done
 
 if [[ -z "$TSCONFIG" ]]; then
+    trap - ERR EXIT
     echo '{"continue": true}'
     exit 0
 fi
@@ -70,8 +74,10 @@ if [[ -n "$ERRORS" ]]; then
     # Count errors for summary
     ERROR_COUNT=$(echo "$ERRORS" | wc -l | tr -d ' ')
     MSG="⚠️ TypeScript errors in ${FILE_BASENAME}: ${ERROR_COUNT} issues found"
+    trap - ERR EXIT
     echo "{\"continue\": true, \"systemMessage\": \"${MSG}\"}"
     exit 0
 fi
 
+trap - ERR EXIT
 echo '{"continue": true}'
