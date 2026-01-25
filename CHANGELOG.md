@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.70.0] - 2026-01-25
+
+### AUTO-007 Pattern Implementation - Quality Gates Auto-Mode Detection
+
+**945 tests passing** (up from 917 in v2.69.1)
+
+#### BUG-003: quality-gates-v2.sh Auto-Mode Detection Fix
+
+Fixed quality gates blocking execution when running under `/loop` or `/orchestrator`.
+
+**Problem**: `is_auto_mode()` only checked `RALPH_AUTO_MODE` environment variable which was never set by `auto-mode-setter.sh`.
+
+**Solution**: Enhanced `is_auto_mode()` to detect automatic mode through three methods:
+1. `CLAUDE_CONTEXT=loop|orchestrator` environment variable (primary)
+2. `plan-state.json` with `loop_state.max_iterations > 0` (secondary)
+3. `RALPH_AUTO_MODE=true` (fallback for backward compatibility)
+
+**File**: `~/.claude/hooks/quality-gates-v2.sh`
+
+#### BUG-004: global-task-sync.sh JSON Output Contamination
+
+Fixed PostToolUse hook outputting non-JSON content to stdout.
+
+**Problem**: `acquire_lock()` function echoed "locked" to stdout, contaminating the JSON output required by PostToolUse hooks.
+
+**Solution**: Removed `echo "locked"` statement, making lock acquisition completely silent.
+
+**File**: `~/.claude/hooks/global-task-sync.sh`
+
+#### BUG-005: test_hook_json_format_regression.py Hook Classification
+
+Fixed test incorrectly classifying `auto-mode-setter.sh` as PostToolUse instead of PreToolUse.
+
+**Problem**: `get_hook_type()` function had an explicit list of PreToolUse hooks that didn't include `auto-mode-setter.sh`.
+
+**Solution**: Added `'auto-mode-setter'` to the PreToolUse hooks list with comment `# v2.70.0: AUTO-007 pattern - PreToolUse for Skill`.
+
+**File**: `tests/test_hook_json_format_regression.py`
+
+#### AUTO-007: Enhanced Loop/Orchestrator Integration
+
+Both `/loop` and `/orchestrator` now support automatic validation execution:
+
+**orchestrator/SKILL.md** - Step 6e: Automatic Cleanup (v2.70.0)
+```bash
+# Check for pending cleanup operations
+if [ -f "${MARKERS_DIR}/cleanup-pending-${SESSION_ID}.txt" ]; then
+    echo "🧹 Executing automatic cleanup..."
+    Skill: deslop
+fi
+```
+
+**loop/SKILL.md** - Section 2e: Automatic Cleanup (v2.70.0)
+```bash
+# Same automatic cleanup integration
+```
+
+---
+
 ## [2.69.1] - 2026-01-25
 
 ### Adversarial Audit Remediation - Complete Test Suite Fix
