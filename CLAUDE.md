@@ -4,7 +4,7 @@
 
 **Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, **GLM-4.7 PRIMARY**, and **full CLI implementation**.
 
-> **v2.69.0**: GLM-4.7 is now **PRIMARY** for complexity 1-4 tasks. MiniMax fully **DEPRECATED** (optional fallback). `mmc` and `ralph` CLI updated for GLM-4.7. 14 MCP tools available. Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) and [claude-code-docs](https://github.com/ericbuess/claude-code-docs).
+> **v2.69.1**: SEC-112 fixes applied, 917 tests passing (0 failures). GLM-4.7 remains **PRIMARY** for complexity 1-4 tasks. MiniMax fully **DEPRECATED** (optional fallback). Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) and [claude-code-docs](https://github.com/ericbuess/claude-code-docs).
 
 ---
 

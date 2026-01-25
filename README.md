@@ -2,7 +2,7 @@
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-![Version](https://img.shields.io/badge/v2.69.1-blue) ![Tests](https://img.shields.io/badge/908_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange) ![GLM-4.7](https://img.shields.io/badge/GLM--4.7-PRIMARY-green)
+![Version](https://img.shields.io/badge/v2.69.1-blue) ![Tests](https://img.shields.io/badge/917_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange) ![GLM-4.7](https://img.shields.io/badge/GLM--4.7-PRIMARY-green)
 
 ---
 
@@ -280,7 +280,7 @@ multi-agent-ralph-loop/           # Repository root
 ├── scripts/                      # Main CLI scripts
 │   ├── ralph                     # Main CLI (v2.69.0)
 │   └── mmc                       # Multi-Model CLI (GLM-4.7 PRIMARY)
-├── tests/                        # Test suite (908 tests)
+├── tests/                        # Test suite (917 tests)
 ├── install.sh                    # Global installer
 ├── uninstall.sh                  # Uninstaller
 ├── CLAUDE.md                     # Project instructions
