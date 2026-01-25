@@ -2,7 +2,41 @@
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-![Version](https://img.shields.io/badge/v2.69.1-blue) ![Tests](https://img.shields.io/badge/917_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange) ![GLM-4.7](https://img.shields.io/badge/GLM--4.7-PRIMARY-green)
+![Version](https://img.shields.io/badge/v2.70.0-blue) ![Tests](https://img.shields.io/badge/945_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange) ![GLM-4.7](https://img.shields.io/badge/GLM--4.7-PRIMARY-green)
+
+---
+
+## 🐛 Recent Bug Fixes (v2.70.0)
+
+### Quality Gates AutoMode Detection (BUG-003)
+**Issue**: `/loop` and `/orchestrator` commands were blocked by quality gates even during automatic execution.
+
+**Symptoms**: PostToolUse hooks returning `{"continue": false}` and stopping execution with "Execution stopped by PostToolUse hook".
+
+**Root Cause**: `quality-gates-v2.sh` only checked `RALPH_AUTO_MODE` environment variable which was never set by `auto-mode-setter.sh`.
+
+**Fix**: Enhanced `is_auto_mode()` function to detect automatic mode via:
+1. `CLAUDE_CONTEXT=loop|orchestrator` (primary detection)
+2. `plan-state.json` with `loop_state.max_iterations > 0` (secondary)
+3. `RALPH_AUTO_MODE=true` (fallback)
+
+### JSON Output Contamination (BUG-004)
+**Issue**: `global-task-sync.sh` PostToolUse hook producing invalid JSON output.
+
+**Symptoms**: Tests failing with "Invalid JSON output" when hook executed.
+
+**Root Cause**: `acquire_lock()` function echoing "locked" to stdout before JSON output.
+
+**Fix**: Removed `echo "locked"` statement, making lock acquisition silent.
+
+### Hook Classification Test Bug (BUG-005)
+**Issue**: Test `test_posttooluse_hooks_use_continue` incorrectly flagging `auto-mode-setter.sh`.
+
+**Symptoms**: Test reporting "PostToolUse hook uses 'decision: allow'" for a PreToolUse hook.
+
+**Root Cause**: `get_hook_type()` in test had explicit PreToolUse list missing `auto-mode-setter`.
+
+**Fix**: Added `'auto-mode-setter'` to PreToolUse hooks list.
 
 ---
 
