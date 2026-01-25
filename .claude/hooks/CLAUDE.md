@@ -46,24 +46,12 @@
 | #11510 | 10:03 PM | 🔴 | Message Count Path Corrected to STATE_DIR in Context Warning Hook | ~540 |
 | #11509 | " | ✅ | Context Warning Hook Threshold Adjustment for Proactive Compaction | ~476 |
 | #11507 | " | 🔵 | Project-Specific Context Warning Hook Configuration | ~959 |
-| #11445 | 9:18 PM | ✅ | Committed stop-verification.sh integer validation fix to git | ~269 |
-| #11444 | 9:17 PM | 🔴 | Applied integer validation to TEST_FAILURES variable | ~312 |
-| #11443 | " | 🔴 | Applied integer validation to LINT_ERRORS variable | ~284 |
-| #11442 | " | 🔴 | Fixed integer expression error in stop-verification.sh hook | ~341 |
 
 ### Jan 19, 2026
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #11882 | 4:06 PM | 🔵 | **Repo Curator Agent v2.50.0 - Planning and Exploration Phase** | ~477 |
-| #11707 | 1:37 AM | ✅ | Updated quality gates hook with first-run suggestion synchronized to project | ~178 |
-| #11701 | 1:31 AM | ✅ | Updated quality gates hook synchronized to project directory | ~186 |
-
-### Jan 20, 2026
-
-| ID | Time | T | Title | Read |
-|----|------|---|-------|------|
-| #12201 | 12:48 PM | 🔵 | Plan-State System Analysis Reveals Multiple Integration Issues | ~593 |
 
 ### Jan 22, 2026
 
@@ -72,20 +60,4 @@
 | #13556 | 5:23 PM | 🔵 | Multi-Agent Ralph Loop Comprehensive Architecture Discovery | ~513 |
 | #13540 | 3:56 PM | 🔵 | Multi-Agent Ralph Loop System Comprehensive Analysis | ~535 |
 | #13282 | 10:27 AM | ⚖️ | Claude Code vs Ralph Session Management Analysis | ~611 |
-
-### Jan 23, 2026
-
-| ID | Time | T | Title | Read |
-|----|------|---|-------|------|
-| #14058 | 2:31 PM | ✅ | Synced 8 fixed hooks from global to project repository | ~415 |
-| #14010 | 1:56 PM | ✅ | Synced decision-extractor.sh from global to project hooks | ~320 |
-| #14000 | 1:51 PM | 🔵 | Completed hook registration audit revealing TodoWrite invalid matcher and 3 orphaned hooks | ~584 |
-| #13975 | 1:41 PM | 🔴 | Synced fixed procedural-inject.sh from global to project hooks | ~315 |
-| #13962 | 1:35 PM | 🔴 | Fixed syntax errors and hook JSON format issues from adversarial audit | ~447 |
-
-### Jan 24, 2026
-
-| ID | Time | T | Title | Read |
-|----|------|---|-------|------|
-| #15142 | 10:10 PM | 🔵 | Deprecated Pattern Search - Minimal Legacy Code Found in Hooks | ~390 |
 </claude-mem-context>
