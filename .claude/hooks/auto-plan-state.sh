@@ -58,6 +58,8 @@ main() {
     # Only proceed if this is a Write to orchestrator-analysis.md
     if [[ "$file_path" != *"orchestrator-analysis.md" ]]; then
         log "Skipping: not orchestrator-analysis.md"
+        # CRIT-003: Clear trap before explicit JSON output to avoid duplicates
+        trap - ERR EXIT
         echo '{"continue": true}'
         exit 0
     fi
@@ -65,6 +67,8 @@ main() {
     # Verify analysis file exists
     if [[ ! -f "$ANALYSIS_FILE" ]]; then
         log "Analysis file not found: $ANALYSIS_FILE"
+        # CRIT-003: Clear trap before explicit JSON output to avoid duplicates
+        trap - ERR EXIT
         echo '{"continue": true}'
         exit 0
     fi

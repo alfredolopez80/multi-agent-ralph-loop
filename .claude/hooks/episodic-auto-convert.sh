@@ -1,5 +1,5 @@
 #!/bin/bash
-# Episodic to Procedural Auto-Converter Hook (v2.57.5)
+# Episodic to Procedural Auto-Converter Hook (v2.69.1)
 # Hook: PostToolUse (Edit/Write) - Runs after significant changes
 # Purpose: Automatically convert new episodic memory entries to procedural rules
 #
@@ -8,7 +8,7 @@
 # 2. Converting them to procedural rules
 # 3. Updating ~/.ralph/procedural/rules.json automatically
 #
-# VERSION: 2.69.0
+# VERSION: 2.69.1
 # CRITICAL: Closes GAP-001 - Automatic episodic→procedural conversion
 
 # SEC-111: Read input from stdin with length limit (100KB max)
@@ -132,6 +132,7 @@ auto_convert() {
 
     # Only run after Edit/Write operations
     if [[ "$tool_name" != "Edit" ]] && [[ "$tool_name" != "Write" ]]; then
+        trap - ERR EXIT
         echo '{"continue": true}'
         exit 0
     fi
@@ -147,6 +148,7 @@ auto_convert() {
     processed_count=$(find "$PROCESSED_DIR" -type f 2>/dev/null | wc -l | tr -d ' ')
 
     if [[ $episode_count -eq 0 ]]; then
+        trap - ERR EXIT
         echo '{"continue": true}'
         exit 0
     fi
@@ -175,6 +177,7 @@ auto_convert() {
 
     if [[ $new_rules -eq 0 ]]; then
         rm -f "$temp_rules_file"
+        trap - ERR EXIT
         echo '{"continue": true}'
         exit 0
     fi
@@ -203,7 +206,7 @@ auto_convert() {
 
     cat > "$PROCEDURAL_FILE" << EOF
 {
-  "version": "2.57.5",
+  "version": "2.69.1",
   "updated": "$timestamp",
   "rules": $combined_rules,
   "curator_metadata": {
@@ -221,6 +224,7 @@ EOF
     log "Procedural rules updated: $new_rules new, $total_rules total"
 
     # SEC-039: PostToolUse hooks MUST use {"continue": true}, NOT {"decision": "continue"}
+    trap - ERR EXIT
     jq -n \
         --argjson new_rules "$new_rules" \
         --argjson total_rules "$total_rules" \

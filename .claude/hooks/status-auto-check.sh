@@ -35,6 +35,8 @@ OPERATIONS_THRESHOLD=5
 
 # Check if disabled
 if [[ "${RALPH_STATUS_AUTO_CHECK:-true}" == "false" ]]; then
+    # CRIT-003: Clear trap before explicit JSON output to avoid duplicates
+    trap - ERR EXIT
     echo '{"continue": true}'
     exit 0
 fi
@@ -52,6 +54,8 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null || echo "")
 case "$TOOL_NAME" in
     Edit|Write|Bash) ;;
     *)
+        # CRIT-003: Clear trap before explicit JSON output to avoid duplicates
+        trap - ERR EXIT
         echo '{"continue": true}'
         exit 0
         ;;
@@ -68,6 +72,8 @@ echo "$CURRENT_COUNT" > "$COUNTER_FILE"
 log "Operation $CURRENT_COUNT ($TOOL_NAME)"
 
 if [[ ! -f "$PLAN_STATE" ]]; then
+    # CRIT-003: Clear trap before explicit JSON output to avoid duplicates
+    trap - ERR EXIT
     echo '{"continue": true}'
     exit 0
 fi
@@ -122,7 +128,11 @@ if [[ "$SHOW_STATUS" == "true" ]]; then
     fi
     log "Showing status: $STATUS_MSG"
     STATUS_MSG_ESCAPED=$(echo "$STATUS_MSG" | jq -Rs '.')
+    # CRIT-003: Clear trap before explicit JSON output to avoid duplicates
+    trap - ERR EXIT
     echo "{\"continue\": true, \"systemMessage\": $STATUS_MSG_ESCAPED}"
 else
+    # CRIT-003: Clear trap before explicit JSON output to avoid duplicates
+    trap - ERR EXIT
     echo '{"continue": true}'
 fi

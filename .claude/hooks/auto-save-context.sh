@@ -92,8 +92,12 @@ if [ $((CURRENT_COUNT % SAVE_INTERVAL)) -eq 0 ]; then
     log "Context saved to ${STATE_FILE}"
 
     # Output JSON válido con mensaje informativo (PostToolUse: {"continue": true})
+    # CRIT-003: Clear trap before explicit JSON output to avoid duplicates
+    trap - ERR EXIT
     echo "{\"continue\": true, \"systemMessage\": \"📸 Context snapshot #${CURRENT_COUNT} saved. Next: #$((CURRENT_COUNT + SAVE_INTERVAL))\"}"
 else
     # Always output valid JSON
+    # CRIT-003: Clear trap before explicit JSON output to avoid duplicates
+    trap - ERR EXIT
     echo '{"continue": true}'
 fi

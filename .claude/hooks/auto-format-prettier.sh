@@ -1,6 +1,6 @@
 #!/bin/bash
 # auto-format-prettier.sh - Auto-format JS/TS files with Prettier after edits
-# VERSION: 2.69.0
+# VERSION: 2.69.1
 # v2.68.9: SEC-102 FIX - Validate FILE_PATH to prevent command injection
 # HOOK: PostToolUse (Edit|Write)
 # Part of Multi-Agent Ralph Loop v2.66.0
@@ -25,18 +25,21 @@ trap 'output_json' ERR EXIT
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null || echo "")
 
 if [[ -z "$FILE_PATH" ]]; then
+    trap - ERR EXIT
     echo '{"continue": true}'
     exit 0
 fi
 
 # Check if it's a JS/TS/JSON file
 if [[ ! "$FILE_PATH" =~ \.(js|jsx|ts|tsx|json)$ ]]; then
+    trap - ERR EXIT
     echo '{"continue": true}'
     exit 0
 fi
 
 # Check if file exists
 if [[ ! -f "$FILE_PATH" ]]; then
+    trap - ERR EXIT
     echo '{"continue": true}'
     exit 0
 fi
@@ -44,11 +47,13 @@ fi
 # SEC-102 FIX: Validate FILE_PATH to prevent command injection
 # Use realpath to canonicalize and reject paths with dangerous characters
 FILE_PATH_REAL=$(realpath -m "$FILE_PATH" 2>/dev/null) || {
+    trap - ERR EXIT
     echo '{"continue": true}'
     exit 0
 }
 # Reject paths containing shell metacharacters
 if [[ "$FILE_PATH_REAL" =~ [\;\|\&\`\$\(\)\{\}\[\]\<\>] ]]; then
+    trap - ERR EXIT
     echo '{"continue": true}'
     exit 0
 fi
@@ -57,6 +62,7 @@ FILE_PATH="$FILE_PATH_REAL"
 
 # Check if prettier is available
 if ! command -v npx &> /dev/null; then
+    trap - ERR EXIT
     echo '{"continue": true}'
     exit 0
 fi
@@ -67,4 +73,5 @@ if npx prettier --write "$FILE_PATH" &>/dev/null; then
     :
 fi
 
+trap - ERR EXIT
 echo '{"continue": true}'

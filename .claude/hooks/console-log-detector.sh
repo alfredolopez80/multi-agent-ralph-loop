@@ -1,6 +1,6 @@
 #!/bin/bash
 # console-log-detector.sh - Warn about console.log statements after JS/TS edits
-# VERSION: 2.69.0
+# VERSION: 2.69.1
 # HOOK: PostToolUse (Edit|Write)
 # Part of Multi-Agent Ralph Loop v2.66.0
 
@@ -24,18 +24,21 @@ trap 'output_json' ERR EXIT
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null || echo "")
 
 if [[ -z "$FILE_PATH" ]]; then
+    trap - ERR EXIT
     echo '{"continue": true}'
     exit 0
 fi
 
 # Check if it's a JS/TS file
 if [[ ! "$FILE_PATH" =~ \.(js|jsx|ts|tsx)$ ]]; then
+    trap - ERR EXIT
     echo '{"continue": true}'
     exit 0
 fi
 
 # Check if file exists
 if [[ ! -f "$FILE_PATH" ]]; then
+    trap - ERR EXIT
     echo '{"continue": true}'
     exit 0
 fi
@@ -48,8 +51,10 @@ if [[ -n "$MATCHES" ]]; then
     # Count lines for summary
     LINE_COUNT=$(echo "$MATCHES" | wc -l | tr -d ' ')
     MSG="⚠️ console.log found in ${FILE_PATH##*/} (${LINE_COUNT} occurrences) - remove before committing"
+    trap - ERR EXIT
     echo "{\"continue\": true, \"systemMessage\": \"${MSG}\"}"
     exit 0
 fi
 
+trap - ERR EXIT
 echo '{"continue": true}'
