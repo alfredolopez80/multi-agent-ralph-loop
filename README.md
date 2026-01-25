@@ -2,13 +2,13 @@
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-![Version](https://img.shields.io/badge/v2.70.0-blue) ![Tests](https://img.shields.io/badge/945_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange) ![GLM-4.7](https://img.shields.io/badge/GLM--4.7-PRIMARY-green)
+![Version](https://img.shields.io/badge/v2.70.1-blue) ![Tests](https://img.shields.io/badge/945_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange) ![GLM-4.7](https://img.shields.io/badge/GLM--4.7-PRIMARY-green)
 
 ---
 
-## 🐛 Recent Bug Fixes (v2.70.0)
+## 🐛 Recent Bug Fixes (v2.70.0 - v2.70.1)
 
-### Quality Gates AutoMode Detection (BUG-003)
+### Quality Gates AutoMode Detection (BUG-003) ✅ FIXED
 **Issue**: `/loop` and `/orchestrator` commands were blocked by quality gates even during automatic execution.
 
 **Symptoms**: PostToolUse hooks returning `{"continue": false}` and stopping execution with "Execution stopped by PostToolUse hook".
@@ -20,7 +20,7 @@
 2. `plan-state.json` with `loop_state.max_iterations > 0` (secondary)
 3. `RALPH_AUTO_MODE=true` (fallback)
 
-### JSON Output Contamination (BUG-004)
+### JSON Output Contamination (BUG-004) ✅ FIXED
 **Issue**: `global-task-sync.sh` PostToolUse hook producing invalid JSON output.
 
 **Symptoms**: Tests failing with "Invalid JSON output" when hook executed.
@@ -29,7 +29,7 @@
 
 **Fix**: Removed `echo "locked"` statement, making lock acquisition silent.
 
-### Hook Classification Test Bug (BUG-005)
+### Hook Classification Test Bug (BUG-005) ✅ FIXED
 **Issue**: Test `test_posttooluse_hooks_use_continue` incorrectly flagging `auto-mode-setter.sh`.
 
 **Symptoms**: Test reporting "PostToolUse hook uses 'decision: allow'" for a PreToolUse hook.
@@ -37,6 +37,25 @@
 **Root Cause**: `get_hook_type()` in test had explicit PreToolUse list missing `auto-mode-setter`.
 
 **Fix**: Added `'auto-mode-setter'` to PreToolUse hooks list.
+
+---
+
+## 🚀 Improvements (v2.70.1)
+
+### Dynamic Hook Classification (REFAC-001) ✅ NEW
+
+**Problem**: Manual list of PreToolUse hooks in `get_hook_type()` required constant updates when new hooks were added.
+
+**Solution**: Refactored `get_hook_type()` to read hook registrations dynamically from `settings.json`:
+- Searches all event types for hook name automatically
+- Falls back to static classification for offline testing
+- Eliminates maintenance burden
+
+### Cross-Platform Compatibility (PLATFORM-001) ✅ NEW
+
+**Problem**: Unix-specific permission checks fail on Windows causing test failures.
+
+**Solution**: Added platform-specific test skips using `@pytest.mark.skipif(sys.platform == "win32")`.
 
 ---
 
