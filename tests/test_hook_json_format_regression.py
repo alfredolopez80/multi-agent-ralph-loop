@@ -61,26 +61,41 @@ def extract_json_from_output(stdout: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def get_hook_type(hook_name: str) -> str:
-    """Determine hook type from filename based on actual registrations in settings.json.
+def get_hook_type(hook_name: str, settings_json: dict = None) -> str:
+    """Determine hook type by reading actual settings.json registration.
 
-    NOTE: This classification MUST match the actual hook registrations.
-    As of v2.69.0, the registrations are:
+    v2.70.0: ENHANCED - Now reads dynamically from settings.json instead of using
+    a manual hardcoded list. This eliminates maintenance burden and ensures
+    classification always matches actual hook registrations.
 
-    PreToolUse (uses {"decision": "allow/block"}):
-        - repo-boundary-guard.sh, git-safety-guard.py, skill-validator.sh
-        - orchestrator-auto-learn.sh, fast-path-check.sh, inject-session-context.sh
-        - smart-memory-search.sh, procedural-inject.sh, agent-memory-auto-init.sh
-        - lsa-pre-step.sh, checkpoint-smart-save.sh, checkpoint-auto-save.sh
-        - smart-skill-reminder.sh, task-orchestration-optimizer.sh, claude-docs-helper.sh
-
-    PostToolUse (uses {"continue": true}):
-        - quality-gates-v2.sh, sec-context-validate.sh, security-full-audit.sh
-        - plan-sync-post-step.sh, progress-tracker.sh, decision-extractor.sh
-        - status-auto-check.sh, auto-save-context.sh, plan-analysis-cleanup.sh
-        - parallel-explore.sh, recursive-decompose.sh, verification-subagent.sh
-        - global-task-sync.sh, adversarial-auto-trigger.sh, and more...
+    Priority order for classification:
+    1. Stop hooks (use {"decision": "approve/block"})
+    2. UserPromptSubmit hooks (use {} or {"additionalContext": ...})
+    3. SessionStart hooks (plain text, no JSON required)
+    4. PreCompact hooks (use {"continue": true})
+    5. PreToolUse hooks (use {"decision": "allow/block"})
+    6. Default: PostToolUse (use {"continue": true})
     """
+    # Load settings.json if not provided
+    if settings_json is None:
+        settings_path = Path.home() / ".claude" / "settings.json"
+        if settings_path.exists():
+            with open(settings_path) as f:
+                settings_json = json.load(f)
+
+    # If settings.json is available, search for actual hook registration
+    if settings_json:
+        hooks_config = settings_json.get("hooks", {})
+
+        # Search in all event types for this hook
+        for event_type, event_hooks in hooks_config.items():
+            for hook_group in event_hooks:
+                for hook in hook_group.get("hooks", []):
+                    command = hook.get("command", "")
+                    if hook_name in command:
+                        return event_type
+
+    # Fallback to static classification (for missing hooks or offline testing)
     # Stop hooks (use {"decision": "approve/block"})
     if any(x in hook_name for x in ['stop-', 'sentry-report', 'reflection-engine',
                                       'semantic-auto-extractor', 'continuous-learning',
@@ -104,8 +119,8 @@ def get_hook_type(hook_name: str) -> str:
     elif 'pre-compact' in hook_name:
         return 'PreCompact'
 
-    # PreToolUse hooks (use {"decision": "allow/block"}) - EXPLICIT LIST
-    # These are registered under PreToolUse:[Bash|Task|Edit|Write|Skill|Read]
+    # PreToolUse hooks (use {"decision": "allow/block"})
+    # Note: This list is now a fallback for offline testing when settings.json is unavailable
     elif any(x in hook_name for x in [
         'repo-boundary-guard', 'git-safety-guard', 'skill-validator',
         'orchestrator-auto-learn', 'fast-path-check', 'inject-session-context',
@@ -137,6 +152,15 @@ class TestCriticalFormatRegression:
             if hooks_dir.exists():
                 hooks.extend(hooks_dir.glob("*.sh"))
         return hooks
+
+    @pytest.fixture
+    def settings_json(self) -> dict:
+        """Load Claude Code settings.json for dynamic hook classification."""
+        settings_path = Path.home() / ".claude" / "settings.json"
+        if not settings_path.exists():
+            pytest.skip("settings.json not found")
+        with open(settings_path) as f:
+            return json.load(f)
 
     def test_no_decision_continue_in_any_hook(self, all_hooks):
         """
