@@ -1,7 +1,11 @@
 ---
-# VERSION: 2.50.0
+# VERSION: 2.69.0
 name: repo-learn
-description: Learn best practices from GitHub repositories and enrich procedural memory
+prefix: "@repo-learn"
+category: tools
+color: green
+description: "Learn best practices from GitHub repositories and enrich procedural memory"
+argument-hint: "<repository-url> [--category <pattern>]"
 hidden: false
 ---
 

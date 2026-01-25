@@ -175,12 +175,15 @@ def critical_skills():
 
 @pytest.fixture
 def critical_hooks():
-    """List of critical hooks that must exist for v2.40."""
+    """List of critical hooks that must exist for v2.40+.
+
+    v2.69.0: Updated quality-gates.sh → quality-gates-v2.sh (renamed in v2.46).
+    """
     return [
         "session-start-ledger.sh",
         "session-start-tldr.sh",
         "pre-compact-handoff.sh",
-        "quality-gates.sh",
+        "quality-gates-v2.sh",  # v2.46+: renamed from quality-gates.sh
         "git-safety-guard.py",
         "auto-sync-global.sh",
     ]

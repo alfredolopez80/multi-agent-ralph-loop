@@ -18,7 +18,7 @@ set -euo pipefail
 
 # Configuration
 VERSION="2.43.0"
-PROJECT_DIR="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GLOBAL_DIR="${HOME}/.claude"
 LOG_FILE="${HOME}/.ralph/logs/version-markers.log"
 

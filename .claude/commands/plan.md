@@ -1,10 +1,10 @@
 ---
-# VERSION: 2.50.0
+# VERSION: 2.69.0
 name: plan
-prefix: "@@plan"
+prefix: "@plan"
 category: tools
-color: blue
-description: "Plan-State Management for Ralph v2.45. Create, track, and manage implementation plans with Lead Soft"
+color: green
+description: "Plan-State Management for Ralph v2.45. Create, track, and manage implementation plans with LSA verification"
 argument-hint: "<arguments>"
 ---
 

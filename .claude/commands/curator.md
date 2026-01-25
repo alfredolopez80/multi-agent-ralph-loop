@@ -1,9 +1,9 @@
 ---
-# VERSION: 2.50.0
+# VERSION: 2.69.0
 name: curator
 prefix: "@curator"
 category: tools
-color: blue
+color: green
 description: "Discover, score, and curate high-quality repositories for Ralph's learning system"
 argument-hint: "<subcommand> [options]"
 ---

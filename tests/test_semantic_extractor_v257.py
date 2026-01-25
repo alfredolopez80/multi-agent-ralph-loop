@@ -300,17 +300,29 @@ class TestSemanticMemoryIntegrity:
                 assert field in fact, f"Missing {field} in fact: {fact}"
 
     def test_auto_extracted_facts_have_source(self, semantic_file):
-        """Auto-extracted facts should have source field."""
+        """Automatically extracted facts should have source field.
+
+        v2.69.1: Updated to check for actual extractor sources:
+        - "realtime-extract" from semantic-realtime-extractor.sh
+        - "decision-extract" from decision-extractor.sh
+        - "auto-extract" from semantic-auto-extractor.sh (Stop hook)
+        """
         data = json.loads(semantic_file.read_text())
 
-        auto_extracted = [f for f in data["facts"] if "auto" in f.get("source", "")]
+        # v2.69.1: Check for actual extraction sources (not just "auto")
+        extract_sources = ["realtime-extract", "decision-extract", "auto-extract"]
+        auto_extracted = [f for f in data["facts"]
+                         if f.get("source", "") in extract_sources]
 
         # Should have some auto-extracted facts
-        assert len(auto_extracted) > 0, "No auto-extracted facts found"
+        assert len(auto_extracted) > 0, (
+            f"No auto-extracted facts found. "
+            f"Available sources: {[f.get('source') for f in data['facts']]}"
+        )
 
         for fact in auto_extracted:
             assert "source" in fact
-            assert "auto" in fact["source"]
+            assert fact["source"] in extract_sources
 
 
 if __name__ == "__main__":

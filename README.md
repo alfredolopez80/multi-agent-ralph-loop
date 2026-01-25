@@ -2,7 +2,7 @@
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-![Version](https://img.shields.io/badge/v2.69.0-blue) ![Tests](https://img.shields.io/badge/903_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange) ![GLM-4.7](https://img.shields.io/badge/GLM--4.7-PRIMARY-green)
+![Version](https://img.shields.io/badge/v2.69.1-blue) ![Tests](https://img.shields.io/badge/908_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange) ![GLM-4.7](https://img.shields.io/badge/GLM--4.7-PRIMARY-green)
 
 ---
 
@@ -45,7 +45,7 @@ Ralph coordinates **multiple AI models** to produce validated code. Rather than 
 │                     MULTI-MODEL HIERARCHY                       │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│   PRIMARY (v2.69.0)                                             │
+│   PRIMARY (v2.69.1)                                             │
 │   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
 │   │  Claude     │  │   GLM-4.7   │  │   Codex     │            │
 │   │  Opus/Son   │  │   PRIMARY   │  │   GPT-5.2   │            │
@@ -280,7 +280,7 @@ multi-agent-ralph-loop/           # Repository root
 ├── scripts/                      # Main CLI scripts
 │   ├── ralph                     # Main CLI (v2.69.0)
 │   └── mmc                       # Multi-Model CLI (GLM-4.7 PRIMARY)
-├── tests/                        # Test suite (903 tests)
+├── tests/                        # Test suite (908 tests)
 ├── install.sh                    # Global installer
 ├── uninstall.sh                  # Uninstaller
 ├── CLAUDE.md                     # Project instructions
@@ -348,7 +348,7 @@ multi-agent-ralph-loop/           # Repository root
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│                    MODEL ROUTING v2.69.0                        │
+│                    MODEL ROUTING v2.69.1                        │
 ├────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  Complexity 1-2  ──►  GLM-4.7 (lightning)  ──►  3 iterations   │
@@ -1653,6 +1653,6 @@ This project is licensed under the BSL 1.1 License.
 
 ---
 
-**Version**: 2.69
+**Version**: 2.69.1
 **Last Updated**: 2026-01-25
 **Next Review**: 2026-02-25

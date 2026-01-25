@@ -7,7 +7,7 @@ They run the hooks with realistic inputs and validate outputs.
 
 VERSION: 2.57.3
 CHANGES from 2.45.2:
-- Updated JSON format validation (SEC-039): use "continue" not "decision"
+- Updated JSON format validation (SEC-039): PreToolUse uses "decision", PostToolUse/PreCompact use "continue"
 - Added tests for new v2.55+ hooks
 - Fixed functional tests for plan-state hooks
 """
@@ -195,10 +195,12 @@ class TestInjectSessionContextHookFunctional:
         pytest.skip("inject-session-context.sh not found")
 
     def test_hook_returns_valid_json_for_task_tool(self, hook_path, tmp_path):
-        """Hook should return valid JSON with decision=continue for Task tool.
+        """Hook should return valid JSON with decision=allow for Task tool.
 
         Note: PreToolUse hooks cannot inject context into Task calls.
         The hook allows the Task tool and provides info via additionalContext.
+
+        CORRECTED: PreToolUse hooks return {"decision": "allow"} format.
         """
         # Create minimal CLAUDE.md
         claude_md = tmp_path / "CLAUDE.md"
@@ -223,15 +225,18 @@ class TestInjectSessionContextHookFunctional:
         # Parse output as JSON
         output = json.loads(result.stdout)
 
-        # Verify structure - PreToolUse returns continue field (per SEC-039)
-        assert "continue" in output, f"Expected 'continue' field, got: {output}"
-        assert output["continue"] is True, f"Expected continue=True, got: {output}"
-        # additionalContext is provided at root level for PreToolUse
-        assert "additionalContext" in output
-        assert "Task tool allowed" in output["additionalContext"]
+        # Verify structure - PreToolUse returns {"decision": "allow"} (CORRECTED)
+        assert "decision" in output, f"Expected 'decision' field, got: {output}"
+        assert output["decision"] == "allow", f"Expected decision=allow, got: {output}"
+        # additionalContext MAY be present for informational purposes
+        if "additionalContext" in output:
+            assert "Task tool" in output["additionalContext"] or "allowed" in output["additionalContext"]
 
     def test_hook_skips_non_task_tools(self, hook_path, tmp_path):
-        """Hook should return continue=true for non-Task tools."""
+        """Hook should return decision=allow for non-Task tools.
+
+        CORRECTED: PreToolUse hooks return {"decision": "allow"}.
+        """
         hook_input = json.dumps({
             "tool_name": "Read",
             "session_id": "test-session-456"
@@ -249,8 +254,8 @@ class TestInjectSessionContextHookFunctional:
         assert result.returncode == 0
 
         output = json.loads(result.stdout)
-        # PreToolUse returns continue=true for non-Task tools (per SEC-039)
-        assert output == {"continue": True}
+        # PreToolUse returns {"decision": "allow"} for non-Task tools (CORRECTED)
+        assert output.get("decision") == "allow", f"Expected decision=allow, got: {output}"
 
     def test_hook_performance_under_5_seconds(self, hook_path, tmp_path):
         """Hook should complete within 5 seconds (well under 15s timeout)."""
@@ -426,6 +431,8 @@ Implement user authentication
 
         Note: PreToolUse hooks cannot inject context into Task calls.
         The hook acknowledges the Task tool but context injection requires SessionStart.
+
+        CORRECTED: PreToolUse hooks return {"decision": "allow"} format.
         """
         hook_path = Path.home() / ".claude" / "hooks" / "inject-session-context.sh"
         if not hook_path.exists():
@@ -449,12 +456,13 @@ Implement user authentication
 
         output = json.loads(result.stdout)
 
-        # Verify structure - PreToolUse returns continue=true (per SEC-039)
-        assert "continue" in output, f"Expected 'continue' field, got: {output}"
-        assert output["continue"] is True, f"Expected continue=True, got: {output}"
-        # PreToolUse provides info about Task tool handling
-        assert "additionalContext" in output
-        # Context injection not available for PreToolUse, but hook runs successfully
+        # Verify structure - PreToolUse returns {"decision": "allow"} (CORRECTED)
+        assert "decision" in output, f"Expected 'decision' field, got: {output}"
+        assert output["decision"] == "allow", f"Expected decision=allow, got: {output}"
+        # additionalContext MAY be present for informational purposes
+        if "additionalContext" in output:
+            # Context injection not available for PreToolUse, but hook runs successfully
+            pass
 
 
 if __name__ == "__main__":

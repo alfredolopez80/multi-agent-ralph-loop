@@ -1,3 +1,13 @@
+---
+# VERSION: 2.66.8
+name: docs
+prefix: "@docs"
+category: research
+color: blue
+description: "Access Claude Code documentation from local mirror with auto-updates"
+argument-hint: "[topic] or [-t] [topic]"
+---
+
 # Claude Code Documentation Command
 
 Execute the Claude Code Docs helper script at ~/.claude-code-docs/claude-docs-helper.sh

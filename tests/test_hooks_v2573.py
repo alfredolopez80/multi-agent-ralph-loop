@@ -9,7 +9,7 @@ Tests all Claude Code hooks for:
 
 VERSION: 2.57.3
 CHANGES from 2.45.4:
-- Updated JSON format validation (SEC-039): use "continue" not "decision"
+- Updated JSON format validation (SEC-039): PreToolUse uses "decision", PostToolUse/PreCompact use "continue"
 - Added UserPromptSubmit hook support (message/context_level fields)
 - Skipped tests for non-standard hooks (text output only)
 - Fixed validate_json_output() for multiline JSON
@@ -86,14 +86,14 @@ def validate_json_output(stdout: str) -> tuple[bool, Optional[dict], str]:
         if "additionalContext" not in data.get("hookSpecificOutput", {}):
             return False, data, "SessionStart hook missing additionalContext"
     elif "continue" in data:
-        # Standard hook format (PostToolUse, PreToolUse)
+        # Standard hook format (PostToolUse, PreCompact)
         if not isinstance(data["continue"], bool):
             return False, data, "'continue' must be boolean"
     elif "decision" in data:
-        # Stop hook format: "approve" or "block" (per official Claude Code docs)
-        # Note: "allow" was incorrectly documented - the correct values are "approve|block"
-        if data["decision"] not in ("approve", "block"):
-            return False, data, "'decision' must be 'approve' or 'block' (Stop hook format)"
+        # PreToolUse hook format: "allow" or "block"
+        # Stop hook format: "approve" or "block"
+        if data["decision"] not in ("allow", "block", "approve"):
+            return False, data, "'decision' must be 'allow', 'block', or 'approve'"
     elif "message" in data or "context_level" in data:
         # UserPromptSubmit hook format (e.g., context-warning.sh)
         # These hooks output informational messages, not standard protocol fields
@@ -129,19 +129,20 @@ class TestPostToolUseHooks:
         assert data.get("continue") is True, f"Expected continue=true, got {data}"
 
     def test_quality_gates(self):
-        """Test quality-gates.sh returns valid JSON.
+        """Test quality-gates-v2.sh returns valid JSON.
 
-        NOTE: quality-gates.sh is a manual command hook, not an automatic PostToolUse hook.
-        It outputs human-readable progress messages and doesn't produce JSON output.
+        NOTE: quality-gates.sh was renamed to quality-gates-v2.sh in v2.46.
+        It's a manual command hook that outputs human-readable progress messages.
         Skipping this test as it's not applicable for automatic hook validation.
         """
-        hook = HOOKS_DIR / "quality-gates.sh"
+        # v2.69.1: quality-gates.sh renamed to quality-gates-v2.sh
+        hook = HOOKS_DIR / "quality-gates-v2.sh"
         if not hook.exists():
-            pytest.skip("quality-gates.sh not found")
+            pytest.skip("quality-gates-v2.sh not found")
 
-        # quality-gates.sh is a manual command hook, not an automatic PostToolUse hook
+        # quality-gates-v2.sh is a manual command hook, not an automatic PostToolUse hook
         # It outputs text progress messages, not JSON
-        pytest.skip("quality-gates.sh is a manual command hook, not an automatic PostToolUse hook")
+        pytest.skip("quality-gates-v2.sh is a manual command hook, not an automatic PostToolUse hook")
 
     def test_auto_save_context(self):
         """Test auto-save-context.sh returns valid JSON."""
@@ -209,30 +210,26 @@ class TestPostToolUseHooks:
     def test_sentry_check_status(self):
         """Test sentry-check-status.sh returns valid JSON.
 
-        NOTE: This hook outputs text messages, not JSON. It's a helper script
-        that depends on $TOOL_OUTPUT (Claude Code env var). Skipping as it's
-        not a standard Claude Code hook.
+        DEPRECATED v2.69.1: Archived to ~/.claude/hooks-archive/utilities/
+        Was a helper script that output text messages, not JSON.
         """
         hook = HOOKS_DIR / "sentry-check-status.sh"
         if not hook.exists():
-            pytest.skip("sentry-check-status.sh not found")
+            pytest.skip("v2.69.1: sentry-check-status.sh archived to ~/.claude/hooks-archive/utilities/")
 
-        # This hook is not a standard Claude Code hook - it outputs text and
-        # depends on $TOOL_OUTPUT environment variable
-        pytest.skip("sentry-check-status.sh is a helper script, not a standard Claude Code hook")
+        pytest.skip("v2.69.1: sentry-check-status.sh archived - was a helper script, not a standard hook")
 
     def test_sentry_correlation(self):
         """Test sentry-correlation.sh returns valid JSON.
 
-        NOTE: This hook outputs text messages, not JSON. Skipping as it's
-        not a standard Claude Code hook.
+        DEPRECATED v2.69.1: Archived to ~/.claude/hooks-archive/utilities/
+        Was a helper script that output text messages, not JSON.
         """
         hook = HOOKS_DIR / "sentry-correlation.sh"
         if not hook.exists():
-            pytest.skip("sentry-correlation.sh not found")
+            pytest.skip("v2.69.1: sentry-correlation.sh archived to ~/.claude/hooks-archive/utilities/")
 
-        # This hook outputs text, not JSON
-        pytest.skip("sentry-correlation.sh outputs text, not JSON - not a standard Claude Code hook")
+        pytest.skip("v2.69.1: sentry-correlation.sh archived - was a helper script, not a standard hook")
 
     def test_checkpoint_auto_save(self):
         """Test checkpoint-auto-save.sh returns valid JSON.
@@ -312,7 +309,10 @@ class TestPreToolUseHooks:
 
 
     def test_inject_session_context(self):
-        """Test inject-session-context.sh returns valid JSON for Task tool."""
+        """Test inject-session-context.sh returns valid JSON for Task tool.
+
+        CORRECTED: PreToolUse hooks return {"decision": "allow"} format.
+        """
         hook = HOOKS_DIR / "inject-session-context.sh"
         if not hook.exists():
             pytest.skip("inject-session-context.sh not found")
@@ -332,17 +332,20 @@ class TestPreToolUseHooks:
         except json.JSONDecodeError as e:
             pytest.fail(f"Invalid JSON: {e}. Output: {stdout}")
 
-        # PreToolUse hooks return {"continue": true} format (per SEC-039 / Claude Code official docs)
-        assert "continue" in data, f"Missing 'continue' field: {data}"
-        assert data["continue"] is True, f"Expected continue=True: {data}"
+        # PreToolUse hooks return {"decision": "allow"} format (CORRECTED)
+        assert "decision" in data, f"Missing 'decision' field: {data}"
+        assert data["decision"] == "allow", f"Expected decision=allow: {data}"
 
     def test_inject_session_context_non_task(self):
-        """Test inject-session-context.sh handles non-Task tools."""
+        """Test inject-session-context.sh handles non-Task tools.
+
+        CORRECTED: PreToolUse hooks return {"decision": "allow"} format.
+        """
         hook = HOOKS_DIR / "inject-session-context.sh"
         if not hook.exists():
             pytest.skip("inject-session-context.sh not found")
 
-        # Test with Bash tool (should return {"continue": true} and skip)
+        # Test with Bash tool (should return {"decision": "allow"} and skip)
         input_data = json.dumps({
             "tool_name": "Bash",
             "session_id": "test-session-456"
@@ -357,8 +360,9 @@ class TestPreToolUseHooks:
         except json.JSONDecodeError as e:
             pytest.fail(f"Invalid JSON: {e}. Output: {stdout}")
 
-        # PreToolUse hooks return {"continue": true} format (per SEC-039 / Claude Code official docs)
-        assert "continue" in data, f"Missing 'continue' field: {data}"
+        # PreToolUse hooks return {"decision": "allow"} format (CORRECTED)
+        assert "decision" in data, f"Missing 'decision' field: {data}"
+        assert data["decision"] == "allow", f"Expected decision=allow: {data}"
 
 
 class TestSessionStartHooks:
@@ -394,7 +398,10 @@ class TestPreCompactHooks:
     """Test PreCompact hooks for JSON compliance."""
 
     def test_pre_compact_handoff(self):
-        """Test pre-compact-handoff.sh returns valid JSON."""
+        """Test pre-compact-handoff.sh returns valid JSON.
+
+        CORRECT: PreCompact hooks use {"continue": true} format (same as PostToolUse).
+        """
         hook = HOOKS_DIR / "pre-compact-handoff.sh"
         if not hook.exists():
             pytest.skip("pre-compact-handoff.sh not found")
@@ -409,6 +416,8 @@ class TestPreCompactHooks:
 
         assert exit_code == 0, f"Hook failed: {stderr}"
         assert is_valid, f"Invalid JSON: {error}. Output: {stdout}"
+        # PreCompact uses "continue" field (same as PostToolUse)
+        assert data.get("continue") is True, f"Expected continue=true, got {data}"
 
 
 class TestUserPromptSubmitHooks:
@@ -455,8 +464,9 @@ class TestStopHooks:
 class TestHookVersions:
     """Verify all hooks have VERSION markers."""
 
+    # v2.69.1: Updated hook names (quality-gates.sh → quality-gates-v2.sh)
     HOOKS_TO_CHECK = [
-        "quality-gates.sh",
+        "quality-gates-v2.sh",  # Renamed from quality-gates.sh in v2.46
         "checkpoint-auto-save.sh",
         "plan-sync-post-step.sh",
         "auto-plan-state.sh",
@@ -490,8 +500,10 @@ class TestHookVersions:
 class TestHookExecutability:
     """Verify all hooks are executable."""
 
+    # v2.69.1: Updated hook list - removed archived hooks, renamed quality-gates
+    # Archived (removed): sentry-check-status.sh, sentry-correlation.sh, detect-environment.sh
     ALL_HOOKS = [
-        "quality-gates.sh",
+        "quality-gates-v2.sh",  # Renamed from quality-gates.sh in v2.46
         "progress-tracker.sh",
         "checkpoint-auto-save.sh",
         "plan-sync-post-step.sh",
@@ -504,10 +516,7 @@ class TestHookExecutability:
         "git-safety-guard.py",
         "session-start-ledger.sh",
         "pre-compact-handoff.sh",
-        "sentry-check-status.sh",
-        "sentry-correlation.sh",
         "auto-save-context.sh",
-        "detect-environment.sh",
         "inject-session-context.sh",
     ]
 
