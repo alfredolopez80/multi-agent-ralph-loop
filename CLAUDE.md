@@ -80,21 +80,44 @@ ralph context debug     # Debug mode (investigation)
 
 ---
 
-## Core Workflow (12 Steps) - v2.46
+## Core Workflow (12 Steps) - v2.69.0
 
 ```
 0. EVALUATE     -> 3-dimension classification (FAST_PATH vs STANDARD)
 1. CLARIFY      -> AskUserQuestion (MUST_HAVE + NICE_TO_HAVE)
+1b. GAP-ANALYST -> Pre-implementation gap analysis (v2.55 auto-learning)
+1c. PARALLEL_EXPLORE -> 5 concurrent searches (v2.46)
 2. CLASSIFY     -> Complexity 1-10 + Info Density + Context Req
+2b. WORKTREE    -> Ask user about isolated worktree (v2.46)
 3. PLAN         -> orchestrator-analysis.md -> Plan Mode
+3b. PERSIST     -> Write to .claude/orchestrator-analysis.md (v2.44)
+3c. PLAN-STATE  -> Initialize plan-state.json (v2.51 schema)
+3d. RECURSIVE_DECOMPOSE -> Spawn sub-orchestrators if needed (v2.46)
 4. PLAN MODE    -> EnterPlanMode (reads analysis)
-5. DELEGATE     -> Route to optimal model
+5. DELEGATE     -> Route to optimal model (GLM-4.7 PRIMARY for 1-4)
 6. EXECUTE-WITH-SYNC -> LSA-VERIFY -> IMPLEMENT -> PLAN-SYNC -> MICRO-GATE
+   6a. LSA-VERIFY  -> Lead Software Architect pre-check
+   6b. IMPLEMENT   -> Execute (parallel if independent)
+   6c. PLAN-SYNC   -> Detect drift, patch downstream (v2.51)
+   6d. MICRO-GATE  -> Per-step quality (3-Fix Rule)
 7. VALIDATE     -> CORRECTNESS (block) + QUALITY (block) + CONSISTENCY (advisory)
+   7a. CORRECTNESS -> Meets requirements? (BLOCKING)
+   7b. QUALITY     -> Security, performance, tests? (BLOCKING)
+   7c. CONSISTENCY -> Style, patterns? (ADVISORY - v2.46)
+   7d. ADVERSARIAL -> Dual model validation (if complexity >= 7)
 8. RETROSPECT   -> Analyze and improve
+9. CHECKPOINT   -> Optional state save (v2.51)
+10. HANDOFF     -> Optional agent transfer (v2.51)
 ```
 
 **Fast-Path** (complexity <= 3): DIRECT_EXECUTE -> MICRO_VALIDATE -> DONE (3 steps)
+
+**v2.69.0 Key Changes**:
+- GLM-4.7 is now PRIMARY for complexity 1-4 tasks
+- MiniMax fully DEPRECATED (optional fallback only)
+- Auto-learning triggers (v2.55): Repository learning when memory is empty
+- Task primitive integration (v2.62): Sync with Claude Code tasks
+- Dynamic contexts (v2.63): dev, review, research, debug modes
 
 ---
 
@@ -584,14 +607,22 @@ Stage 3: CONSISTENCY -> Linting (ADVISORY - not blocking)
 
 ---
 
-## Model Routing
+## Model Routing (v2.69.0)
 
 | Route | Primary | Secondary | Max Iter |
 |-------|---------|-----------|----------|
 | FAST_PATH | sonnet | - | 3 |
-| STANDARD (1-4) | GLM-4.7 | sonnet | 25 |
+| STANDARD (1-4) | **GLM-4.7** (PRIMARY) | sonnet | 25 |
 | STANDARD (5-6) | sonnet | opus | 25 |
 | STANDARD (7-10) | opus | sonnet | 25 |
+| PARALLEL_CHUNKS | sonnet (chunks) | opus (aggregate) | 15/chunk |
+| RECURSIVE | opus (root) | sonnet (sub) | 15/sub |
+
+**v2.69.0 Changes**:
+- ✅ GLM-4.7 is now **PRIMARY** for complexity 1-4 tasks (cost-effective, fast)
+- ❌ MiniMax fully **DEPRECATED** (optional fallback only, not recommended)
+- ✅ 14 GLM-4.7 MCP tools available for vision, web search, and analysis
+- ✅ Multi-model validation: GLM-4.7 + Codex for quality assurance
 
 ---
 
