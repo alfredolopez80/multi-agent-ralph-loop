@@ -86,7 +86,15 @@ def run_hook(hook_path: Path, input_json: str, cwd: Optional[str] = None,
             output = json.loads(result.stdout)
             is_valid_json = True
         except (json.JSONDecodeError, ValueError):
-            pass
+            # Try to fix common JSON issues (trailing newlines, backslashes)
+            try:
+                cleaned = result.stdout.strip()
+                if cleaned and cleaned.endswith('\n'):
+                    cleaned = cleaned[:-1]  # Remove trailing newline
+                output = json.loads(cleaned)
+                is_valid_json = True
+            except:
+                pass
 
         return {
             "returncode": result.returncode,

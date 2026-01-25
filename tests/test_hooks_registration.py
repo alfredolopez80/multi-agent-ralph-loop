@@ -82,9 +82,9 @@ HOOK_REGISTRY = {
         "cli_only": False,
     },
     "checkpoint-auto-save.sh": {
-        "event": "PostToolUse",
+        "event": "PreToolUse",  # Corrected in v2.66.6 - changed from PostToolUse
         "matchers": ["Edit", "Write"],
-        "version": "2.42",
+        "version": "2.69.0",  # Updated to actual version
         "cli_only": False,
     },
 

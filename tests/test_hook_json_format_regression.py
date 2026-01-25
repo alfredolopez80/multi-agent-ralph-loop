@@ -111,7 +111,8 @@ def get_hook_type(hook_name: str) -> str:
         'orchestrator-auto-learn', 'fast-path-check', 'inject-session-context',
         'smart-memory-search', 'procedural-inject', 'agent-memory-auto-init',
         'lsa-pre-step', 'checkpoint-smart-save', 'checkpoint-auto-save',
-        'smart-skill-reminder', 'task-orchestration-optimizer', 'claude-docs-helper'
+        'smart-skill-reminder', 'task-orchestration-optimizer', 'claude-docs-helper',
+        'auto-mode-setter'  # v2.70.0: AUTO-007 pattern - PreToolUse for Skill
     ]):
         return 'PreToolUse'
 
