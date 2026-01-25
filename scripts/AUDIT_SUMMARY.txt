@@ -1,0 +1,107 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                     SCRIPTS AUDIT SUMMARY (v2.69.0)                          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+TOTAL SCRIPTS: 11
+✓ Syntax Valid: 11/11
+✗ Critical Issues: 2
+⚠ High Severity (Obsolete): 2
+⚠ Medium Severity: 4
+✓ Low Severity: 3
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ CRITICAL ISSUES (FIX IMMEDIATELY)                                             │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+1. add-version-markers.sh [LINE 21]
+   ✗ Hardcoded path: /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop
+   → Will FAIL for any other user
+   → FIX: Use dynamic path resolution
+
+2. migrate-opencode-models.sh [LINES 6-8, 113-119]
+   ✗ Maps to DEPRECATED MiniMax models
+   → v2.69 uses GLM-4.7 as PRIMARY for complexity 1-4
+   → FIX: Remove MiniMax mappings, add GLM-4.7
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ HIGH SEVERITY (ARCHIVE IMMEDIATELY)                                           │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+3. v2-30-validation.sh
+   ✗ Validates v2.30 (we're at v2.69)
+   → Checks for removed skills: checkpoint-manager, fresh-context-explorer
+   → ARCHIVE to scripts/archive/
+
+4. v2-30-complete-audit.sh
+   ✗ Audits v2.30 implementation
+   → Missing strict mode (set -euo pipefail)
+   → ARCHIVE to scripts/archive/
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ MEDIUM SEVERITY (UPDATE FOR v2.69)                                            │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+5. validate-global-architecture.sh (v2.35)
+   ⚠ Missing -e flag in strict mode
+   ⚠ macOS-specific stat command (won't work on Linux)
+   → UPDATE to v2.69, fix cross-platform compatibility
+
+6. validate-integration.sh (v2.40)
+   ⚠ Checks for MiniMax (deprecated)
+   ⚠ Missing -e flag
+   → UPDATE validation for GLM-4.7
+
+7. backup-all-projects.sh (v2.40)
+   ⚠ Hardcoded ${HOME}/Documents/GitHub
+   ⚠ Hardcoded 21 project list
+   → Make GITHUB_DIR configurable
+
+8. cleanup-project-configs.sh (v2.43)
+   ⚠ Hardcoded ${HOME}/Documents/GitHub
+   → Make path configurable, update version
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ LOW SEVERITY (OK, MINOR UPDATES)                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+9. migrate-commands-to-skills.sh (v2.36)
+   → One-time migration script
+   → ARCHIVE after running once
+
+10. install-security-tools.sh (v2.48)
+    ✓ Functional, no issues
+
+11. install-git-hooks.sh (v2.57)
+    ✓ Functional, no issues
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STRICT MODE COMPLIANCE                                                        │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+FULL (set -euo pipefail):      6/11 ✓
+PARTIAL (set -uo pipefail):    3/11 ⚠
+MISSING:                       2/11 ✗
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ ACTION PLAN                                                                   │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+IMMEDIATE (Today):
+  □ FIX add-version-markers.sh (hardcoded path)
+  □ FIX migrate-opencode-models.sh (deprecated models)
+
+THIS WEEK:
+  □ ARCHIVE v2-30-*.sh scripts to scripts/archive/
+  □ UPDATE validate-*.sh scripts for v2.69
+  □ GENERALIZE paths in backup-all-projects.sh
+
+OPTIONAL:
+  □ RUN migrate-commands-to-skills.sh once, then archive
+  □ CREATE scripts/README.md with script documentation
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ DETAILED REPORT                                                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Full audit report: scripts/AUDIT_REPORT.md
+
