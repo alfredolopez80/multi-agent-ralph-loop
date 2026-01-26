@@ -1,10 +1,10 @@
-# Multi-Agent Ralph Wiggum - Agents Reference v2.69.1
+# Multi-Agent Ralph Wiggum - Agents Reference v2.72.1
 
 ## Overview
 
 Ralph orchestrates **33 specialized agents** across different domains with **multi-model support**: Claude (Opus/Sonnet), GLM-4.7 (PRIMARY economic), Codex GPT-5.2, and Gemini 2.5 Pro. MiniMax is deprecated.
 
-> **v2.69.1 Update**: SEC-112 fixes applied, 917 tests passing (0 failures). GLM-4.7 remains **PRIMARY** for complexity 1-4 tasks. MiniMax fully deprecated (optional fallback only).
+> **v2.72.1 Update**: Context simulation scripts added for statusline validation. Statusline now displays both percentage AND exact token count (e.g., `🤖 75% · 96K/128K`) for verification. GLM-4.7 remains **PRIMARY** for complexity 1-4 tasks.
 
 ## Model Support (v2.69) - UPDATED
 

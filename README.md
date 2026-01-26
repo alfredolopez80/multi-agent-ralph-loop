@@ -2,7 +2,7 @@
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-![Version](https://img.shields.io/badge/v2.70.1-blue) ![Tests](https://img.shields.io/badge/945_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange) ![GLM-4.7](https://img.shields.io/badge/GLM--4.7-PRIMARY-green)
+![Version](https://img.shields.io/badge/v2.72.1-blue) ![Tests](https://img.shields.io/badge/945_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange) ![GLM-4.7](https://img.shields.io/badge/GLM--4.7-PRIMARY-green)
 
 ---
 
@@ -56,6 +56,53 @@
 **Problem**: Unix-specific permission checks fail on Windows causing test failures.
 
 **Solution**: Added platform-specific test skips using `@pytest.mark.skipif(sys.platform == "win32")`.
+
+---
+
+## 🧪 Context Simulation Tools (v2.72.1) - NEW
+
+Test and validate the GLM context monitoring system with real-time statusline updates.
+
+### New Scripts
+
+| Script | Mode | Purpose |
+|--------|------|---------|
+| `simulate-context.sh` | Interactive | Step-by-step 10% increments with pauses |
+| `simulate-context-auto.sh` | Automatic | Continuous simulation with configurable delay |
+| `test-context-thresholds.sh` | Testing | Test specific warning thresholds (75%, 85%) |
+| `SIMULATION_README.md` | Documentation | Complete usage guide |
+
+### Statusline Enhancement
+
+**Before (v2.72.0)**: `🤖 75%` (percentage only)
+**After (v2.72.1)**: `🤖 75% · 96K/128K` (percentage + exact tokens)
+
+This allows validation that the context tracking is working correctly by comparing the percentage with the exact token count.
+
+### Usage
+
+```bash
+# Interactive simulation
+./simulate-context.sh
+
+# Automatic simulation (2s delay)
+./simulate-context-auto.sh 2
+
+# Test warning threshold
+./test-context-thresholds.sh 75
+
+# Test critical threshold
+./test-context-thresholds.sh 85
+```
+
+### Color Thresholds
+
+| Percentage | Range | Color | Status |
+|------------|-------|-------|--------|
+| 0-49% | Low | CYAN | ✅ Normal |
+| 50-74% | Normal | GREEN | ✅ Normal |
+| 75-84% | Warning | YELLOW | ⚠️ Warning |
+| 85-100% | Critical | RED | 🚨 Critical |
 
 ---
 

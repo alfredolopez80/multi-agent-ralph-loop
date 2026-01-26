@@ -1,10 +1,10 @@
-# Multi-Agent Ralph v2.69.1
+# Multi-Agent Ralph v2.72.1
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, **GLM-4.7 PRIMARY**, and **full CLI implementation**.
+**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, **GLM-4.7 PRIMARY**, **Context Simulation Tools**, and **full CLI implementation**.
 
-> **v2.69.1**: SEC-112 fixes applied, 917 tests passing (0 failures). GLM-4.7 remains **PRIMARY** for complexity 1-4 tasks. MiniMax fully **DEPRECATED** (optional fallback). Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) and [claude-code-docs](https://github.com/ericbuess/claude-code-docs).
+> **v2.72.1**: Context simulation scripts added for statusline validation. Statusline now displays both percentage AND exact token count (e.g., `🤖 75% · 96K/128K`) for verification. GLM-4.7 remains **PRIMARY** for complexity 1-4 tasks. Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) and [claude-code-docs](https://github.com/ericbuess/claude-code-docs).
 
 ---
 
@@ -188,6 +188,68 @@ Local mirror of official Claude Code documentation with auto-updates.
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ericbuess/claude-code-docs/main/install.sh | bash
 ```
+
+---
+
+## Context Simulation Tools (v2.72.1) - NEW
+
+Test and validate the GLM context monitoring system with real-time statusline updates.
+
+### Available Scripts
+
+| Script | Mode | Purpose |
+|--------|------|---------|
+| `simulate-context.sh` | Interactive | Step-by-step 10% increments with pauses |
+| `simulate-context-auto.sh` | Automatic | Continuous simulation with configurable delay |
+| `test-context-thresholds.sh` | Testing | Test specific warning thresholds (75%, 85%) |
+| `SIMULATION_README.md` | Documentation | Complete usage guide |
+
+### Usage
+
+```bash
+# Interactive simulation (press Enter between increments)
+./simulate-context.sh
+
+# Automatic simulation with 2 second delay
+./simulate-context-auto.sh 2
+
+# Fast automatic simulation (0.5s delay)
+./simulate-context-auto.sh 0.5
+
+# Test warning threshold (75%)
+./test-context-thresholds.sh 75
+
+# Test critical threshold (85%)
+./test-context-thresholds.sh 85
+```
+
+### What It Does
+
+1. **Progressive Simulation**: Increments context from 10% → 100% in 10% steps
+2. **Real-Time Validation**: Statusline updates live with new format: `🤖 75% · 96K/128K`
+3. **Color Thresholds**: Validates color changes (CYAN → GREEN → YELLOW → RED)
+4. **Auto-Backup**: Creates `.backup` file before simulation
+5. **Easy Restore**: `cp glm-context.json.backup glm-context.json`
+
+### Statusline Format (v2.72.1)
+
+**Before**: `🤖 75%` (percentage only)
+**After**: `🤖 75% · 96K/128K` (percentage + exact tokens)
+
+| Percentage | Display Format | Tokens | Color |
+|------------|----------------|--------|-------|
+| 1-49% | `🤖 X% · XK/128K` | 1K-63K | CYAN |
+| 50-74% | `🤖 X% · XK/128K` | 64K-94K | GREEN |
+| 75-84% | `🤖 X% · XK/128K` | 96K-107K | YELLOW |
+| 85-100% | `🤖 X% · XK/128K` | 108K-128K | RED |
+
+### Thresholds Validation
+
+| Threshold | Percentage | Hook Trigger | Expected Behavior |
+|-----------|------------|--------------|-------------------|
+| Warning | ≥75% | `context-warning.sh` | YELLOW display + warning message |
+| Critical | ≥85% | `context-warning.sh` | RED display + critical warning |
+| Auto-compact | ~90% | `PreCompact` | State saved before compaction |
 
 ---
 
