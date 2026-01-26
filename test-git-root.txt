@@ -1,0 +1,1 @@
+Test: verify git root stability
