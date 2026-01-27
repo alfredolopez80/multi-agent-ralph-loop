@@ -1,30 +1,36 @@
 #!/bin/bash
-# statusline-ralph.sh - Enhanced StatusLine with Git + Ralph Progress + GLM Usage
+# statusline-ralph.sh - Enhanced StatusLine with Git + Ralph Progress
 #
-# VERSION: 2.74.1
+# VERSION: 2.73.0
+# v2.73.0: NEW - Real context tracking using native Claude API (claude --print "/context")
+#          - Shows ✓ indicator when context is from native API (100% accurate)
+#          - Falls back to estimated context when native unavailable
+# v2.72.0: FIX-CRIT-007 - Project-specific context tracking using git root
+# v2.71.3: FIX-CRIT-006 - Always show GLM mode icon with percentage, even at 0%
+# v2.71.2: FIX-CRIT-006 - Use unified tracker for proper GLM context display in statusline
+# v2.71.1: FIX-CRIT-006 - Add session context display to statusline for real-time visibility
 #
 # Extends statusline-git.sh with orchestration progress tracking.
 # Reads plan-state.json to show current phase and step completion.
-# Shows GLM Coding Plan usage (5-hour + monthly MCP).
-# claude-hud handles its own context display [glm-4.7] ░░░░░░░░░░ 0%
 #
-# Format: ⎇ branch* │ ⏱️ 1% (~5h) │ 🔧 1% MCP (60/4000) │ 📊 3/7 42% │ [claude-hud]
+# Format: ⎇ branch* │ 🤖 0% │ ⚡ 8/11 72% │ [claude-hud output with icons]
 #
 # Usage: Called by settings.json statusLine.command
 #
-# Part of Multi-Agent Ralph v2.74.1
+# Part of Multi-Agent Ralph v2.71
 #
-# v2.74.1 changes:
-# - Removed duplicate context tracking (claude-hud handles [glm-4.7] display)
-# - Kept GLM Coding Plan usage (5-hour + monthly MCP)
-# - Cleaner output without redundant context information
-#
-# v2.74.0 changes:
-# - Added GLM-4.7 context tracking (percentage + tokens)
-# - Added GLM Coding Plan usage (5-hour + monthly MCP)
-# - Added native Claude context tracking with ✓ indicator
-# - Session context tracking for both Claude and GLM
+# v2.71.0 changes:
+# - Session context tracking (works for both Claude and GLM)
 # - Color-coded context percentage (cyan<50%, green<75%, yellow>=75%, red>=85%)
+# - Always show GLM mode indicator when active
+# - Prioritizes session context over GLM specific display
+# - Better integration with auto-compaction system
+#
+# v2.70.0 changes:
+# - GLM-4.7 context tracking support
+# - Environment detection (Claude CLI vs GLM-API)
+# - Shows GLM context percentage when in API mode
+# - Fallback mode with GLM context display
 #
 # v2.69.0 changes:
 # - Show phase_name instead of phase_id to avoid branch name duplication
@@ -111,30 +117,196 @@ get_git_info() {
     echo -e "$git_output"
 }
 
-# ============================================
-# GLM Usage Functions (v2.74.1)
-# ============================================
-
-# Get GLM Coding Plan usage (5-hour + monthly MCP)
-# Shows: ⏱️ X% (~5h) and 🔧 X% MCP (X/4000)
-get_glm_plan_usage() {
-    local cache_manager="${PROJECT_ROOT:-$(pwd)}/.claude/scripts/glm-usage-cache-manager.sh"
-    if [[ ! -f "$cache_manager" ]]; then
-        cache_manager="${HOME}/.ralph/scripts/glm-usage-cache-manager.sh"
-    fi
-
-    if [[ ! -f "$cache_manager" ]]; then
-        cache_manager="${HOME}/.ralph/scripts/glm-usage-cache-manager.sh"
-    fi
-
-    if [[ -f "$cache_manager" ]]; then
-        "$cache_manager" get-statusline 2>/dev/null || echo ""
+# Detect environment type (GLM-API vs Claude CLI)
+get_environment_type() {
+    # Check if detect-environment.sh exists
+    local detect_script="${HOME}/.claude/hooks/detect-environment.sh"
+    if [[ -f "$detect_script" ]]; then
+        local env_json=$("$detect_script" 2>/dev/null || echo '{}')
+        echo "$env_json" | jq -r '.type // "unknown"' 2>/dev/null || echo "unknown"
+    else
+        echo "unknown"
     fi
 }
 
-# ============================================
-# End GLM Usage Functions
-# ============================================
+# Get native Claude context percentage (REAL, not estimated)
+# Uses claude --print "/context" API when available
+get_native_context_percentage() {
+    # Try to get real context from Claude CLI
+    if command -v claude &>/dev/null; then
+        local native_pct
+        native_pct=$(claude --print "/context" 2>/dev/null || echo "")
+
+        # Claude returns just the percentage (e.g., "14%")
+        if [[ -n "$native_pct" ]] && [[ "$native_pct" =~ ^[0-9]+%$ ]]; then
+            # Extract just the number
+            local pct_num="${native_pct%\%}"
+            echo "${pct_num}"
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Get session context percentage (works for both Claude and GLM)
+# v2.73.0: NEW - Shows REAL context when available, with estimated for comparison
+# FIX-CRIT-007: Use project-specific state instead of global state
+# Context should be per-project, not shared across all projects
+get_session_context_percentage() {
+    local native_pct=""
+    local estimated_pct=""
+    local tokens_used="0"
+    local context_window="128000"
+
+    # Try to get REAL context from Claude CLI API (most accurate)
+    native_pct=$(get_native_context_percentage 2>/dev/null || echo "")
+
+    # For GLM-API mode, also get estimated context from tracker
+    local env_type=$(get_environment_type)
+    if [[ "$env_type" == "glm-api" ]]; then
+        local tracker="${HOME}/.claude/hooks/unified-context-tracker.sh"
+
+        # unified-context-tracker now uses project-specific state
+        if [[ -f "$tracker" ]]; then
+            local model
+            model=$("$tracker" get-model 2>/dev/null || echo "")
+
+            if [[ "$model" == "glm" ]]; then
+                estimated_pct=$("$tracker" get-percentage 2>/dev/null || echo "0")
+
+                # Get exact token count from glm-context.json
+                local project_state="${HOME}/.claude/hooks/project-state.sh"
+                local state_dir=$("$project_state" get-dir 2>/dev/null)
+                local context_file="${state_dir}/glm-context.json"
+
+                if [[ -f "$context_file" ]]; then
+                    tokens_used=$(jq -r '.total_tokens // 0' "$context_file" 2>/dev/null || echo "0")
+                    context_window=$(jq -r '.context_window // 128000' "$context_file" 2>/dev/null || echo "128000")
+                fi
+            fi
+        fi
+    fi
+
+    # Decide which percentage to use (prefer native/real)
+    local display_pct=""
+    local display_type=""
+
+    if [[ -n "$native_pct" ]]; then
+        # Native context is available - use it
+        display_pct="$native_pct"
+        display_type="real"
+    elif [[ -n "$estimated_pct" ]] && [[ "$estimated_pct" != "0" ]]; then
+        # Only estimated available
+        display_pct="$estimated_pct"
+        display_type="est"
+    else
+        # No context available
+        return 0
+    fi
+
+    # Format tokens in K notation
+    local tokens_display="${tokens_used}"
+    local window_display="${context_window}"
+
+    if [[ $tokens_used -ge 1000 ]]; then
+        tokens_display="$((tokens_used / 1000))K"
+    fi
+    if [[ $context_window -ge 1000 ]]; then
+        window_display="$((context_window / 1000))K"
+    fi
+
+    # Determine color based on percentage
+    local color="${CYAN}"
+    if [[ "$display_pct" -ge 85 ]]; then
+        color="${RED}"
+    elif [[ "$display_pct" -ge 75 ]]; then
+        color="${YELLOW}"
+    elif [[ "$display_pct" -ge 50 ]]; then
+        color="${GREEN}"
+    fi
+
+    # Format: 🤖 14% (real) · 18K/128K
+    # OR: 🤖 14% (est) · 18K/128K when only estimated available
+    local type_label=""
+    if [[ "$display_type" == "real" ]]; then
+        type_label="✓"  # Checkmark for verified real value
+    fi
+
+    echo "${color}🤖 ${display_pct}%${type_label} · ${tokens_display}/${window_display}${RESET}"
+    return 0
+}
+
+# Get GLM-4.7 context percentage (works for both Claude and GLM)
+# v2.72.1: SHOW-TOKENS - Display both percentage AND exact token count for validation
+# v2.72.0: FIX-CRIT-007 - Now uses project-specific state
+# v2.71.3: FIX-CRIT-006 - Always show GLM mode icon, even at 0%
+get_glm_context_percentage() {
+    local tracker="${HOME}/.claude/hooks/unified-context-tracker.sh"
+
+    if [[ -f "$tracker" ]]; then
+        # Check if we're in GLM mode first
+        local model
+        model=$("$tracker" get-model 2>/dev/null || echo "")
+
+        if [[ "$model" == "glm" ]]; then
+            # We're in GLM mode - get percentage, tokens, and window
+            # unified-context-tracker now uses project-specific state
+            local pct
+            pct=$("$tracker" get-percentage 2>/dev/null || echo "0")
+
+            # Get exact token count from glm-context.json
+            local project_state="${HOME}/.claude/hooks/project-state.sh"
+            local state_dir=$("$project_state" get-dir 2>/dev/null)
+            local context_file="${state_dir}/glm-context.json"
+
+            local tokens_used="0"
+            local context_window="128000"
+
+            if [[ -f "$context_file" ]]; then
+                tokens_used=$(jq -r '.total_tokens // 0' "$context_file" 2>/dev/null || echo "0")
+                context_window=$(jq -r '.context_window // 128000' "$context_file" 2>/dev/null || echo "128000")
+            fi
+
+            # Format tokens in K notation for readability
+            local tokens_display="${tokens_used}"
+            local window_display="${context_window}"
+
+            if [[ $tokens_used -ge 1000 ]]; then
+                tokens_display="$((tokens_used / 1000))K"
+            fi
+            if [[ $context_window -ge 1000 ]]; then
+                window_display="$((context_window / 1000))K"
+            fi
+
+            # Determine color based on percentage
+            local color="${CYAN}"
+            if [[ "$pct" -ge 85 ]]; then
+                color="${RED}"
+            elif [[ "$pct" -ge 75 ]]; then
+                color="${YELLOW}"
+            elif [[ "$pct" -ge 50 ]]; then
+                color="${GREEN}"
+            fi
+
+            # ALWAYS show GLM icon with percentage AND token count
+            # Format: 🤖 75% · 96K/128K
+            echo "${color}🤖 ${pct}% · ${tokens_display}/${window_display}${RESET}"
+            return 0
+        fi
+    fi
+
+    return 0
+}
+
+# Get GLM Coding Plan usage (5-hour + monthly MCP)
+# Shows Z.AI plan quota status
+get_glm_plan_usage() {
+    local cache_manager="${HOME}/.ralph/scripts/glm-usage-cache-manager.sh"
+
+    if [[ -f "$cache_manager" ]]; then
+        "$cache_manager" get-statusline
+    fi
+}
 
 # Get Ralph orchestration progress
 # VERSION: 2.68.14 - GAP-003 FIX: Use current-project.json to find active project's plan-state
@@ -383,14 +555,23 @@ cwd=$(echo "$stdin_data" | jq -r '.cwd // "."' 2>/dev/null || echo ".")
 # Get git info
 git_info=$(get_git_info "$cwd")
 
-# Get GLM Coding Plan usage (5-hour + monthly MCP)
-glm_plan_usage=$(get_glm_plan_usage)
-
 # Get ralph progress
 ralph_progress=$(get_ralph_progress "$cwd")
 
-# Find and run claude-hud (check both standard and zai locations)
-claude_hud_dir=$(ls -td ~/.claude-sneakpeek/zai/config/plugins/cache/claude-hud/claude-hud/*/ ~/.claude/plugins/cache/claude-hud/claude-hud/*/ 2>/dev/null | head -1)
+# Get session context percentage (works for both Claude and GLM)
+session_context=$(get_session_context_percentage)
+
+# Get GLM specific context (legacy, for display when available)
+glm_context=$(get_glm_context_percentage)
+
+# Get GLM Coding Plan usage (NEW - 5-hour + monthly MCP)
+glm_plan_usage=$(get_glm_plan_usage)
+
+# Detect environment type
+ENV_TYPE=$(get_environment_type)
+
+# Find and run claude-hud
+claude_hud_dir=$(ls -td ~/.claude/plugins/cache/claude-hud/claude-hud/*/ 2>/dev/null | head -1)
 
 if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
     # Run claude-hud and capture output
@@ -408,7 +589,25 @@ if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
         combined_segment="${git_info}"
     fi
 
-    # Add GLM Coding Plan usage (5-hour + monthly MCP) - v2.74.1
+    # Add session context FIRST (most important)
+    if [[ -n "$session_context" ]]; then
+        if [[ -n "$combined_segment" ]]; then
+            combined_segment="${combined_segment} │ ${session_context}"
+        else
+            combined_segment="${session_context}"
+        fi
+    fi
+
+    # Add GLM specific context if available
+    if [[ -n "$glm_context" ]] && [[ "$session_context" != "$glm_context" ]]; then
+        if [[ -n "$combined_segment" ]]; then
+            combined_segment="${combined_segment} │ ${glm_context}"
+        else
+            combined_segment="${glm_context}"
+        fi
+    fi
+
+    # Add GLM Coding Plan usage (5-hour + monthly MCP)
     if [[ -n "$glm_plan_usage" ]]; then
         if [[ -n "$combined_segment" ]]; then
             combined_segment="${combined_segment} │ ${glm_plan_usage}"
@@ -473,15 +672,15 @@ if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
         echo "$hud_output"
     fi
 else
-    # Fallback: just show git info, GLM usage, and progress - v2.74.1
-    if [[ -n "$git_info" ]] || [[ -n "$glm_plan_usage" ]] || [[ -n "$ralph_progress" ]]; then
-        fallback=""
+    # Fallback: just show git info, session context, and progress
+    if [[ -n "$git_info" ]] || [[ -n "$session_context" ]] || [[ -n "$ralph_progress" ]]; then
+        local fallback=""
         [[ -n "$git_info" ]] && fallback="$git_info"
 
-        # Add GLM Coding Plan usage
-        if [[ -n "$glm_plan_usage" ]]; then
+        # Add session context FIRST (most important)
+        if [[ -n "$session_context" ]]; then
             [[ -n "$fallback" ]] && fallback="${fallback} │ "
-            fallback="${fallback}${glm_plan_usage}"
+            fallback="${fallback}${session_context}"
         fi
 
         if [[ -n "$ralph_progress" ]]; then
@@ -490,6 +689,11 @@ else
         fi
         echo -e "$fallback"
     else
-        echo "[statusline] Initializing..."
+        # Show environment type in initialization
+        if [[ "$ENV_TYPE" == "glm-api" ]]; then
+            echo -e "${CYAN}[statusline] GLM-API mode${RESET}"
+        else
+            echo "[statusline] Initializing..."
+        fi
     fi
 fi
