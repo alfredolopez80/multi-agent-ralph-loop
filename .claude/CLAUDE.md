@@ -7,6 +7,5 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #16303 | 5:43 PM | 🔵 | CRITICAL: GLM context lock directories get stuck blocking all tracker updates | ~400 |
-| #16292 | 5:40 PM | 🔵 | Critical finding: ralph compact creates handoffs with unknown placeholder values | ~357 |
+| #16316 | 5:50 PM | 🔵 | GLM-4.7 context monitoring system validated as fully functional | ~468 |
 </claude-mem-context>
