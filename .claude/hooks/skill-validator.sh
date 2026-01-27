@@ -329,7 +329,7 @@ except:
         log_error "No skill name provided in hook input"
         # v2.69.0: Removed stderr output (causes hook error warnings in UI)
         trap - EXIT  # CRIT-004: Clear trap before explicit output
-        echo '{"decision": "allow"}'
+        echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
         exit 0  # Don't block if no skill specified
     fi
 
@@ -339,7 +339,7 @@ except:
     if [[ -z "$skill_name" ]]; then
         log_error "Skill name became empty after sanitization (contained only invalid characters)"
         trap - EXIT  # CRIT-004: Clear trap before explicit output
-        echo '{"decision": "allow"}'
+        echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
         exit 0
     fi
 
@@ -348,7 +348,7 @@ except:
     if timeout "$VALIDATION_TIMEOUT" bash -c "source '${BASH_SOURCE[0]}' && validate_skill '$skill_name'"; then
         log_success "Validation completed successfully for: $skill_name"
         trap - EXIT  # CRIT-004: Clear trap before explicit output
-        echo '{"decision": "allow"}'
+        echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
         exit 0
     else
         log_error "Validation failed or timed out for: $skill_name"

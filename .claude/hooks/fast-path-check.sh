@@ -15,7 +15,7 @@ set -euo pipefail
 
 # Guaranteed valid JSON on error
 output_json() {
-    echo '{"decision": "allow"}'
+    echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
 }
 trap 'output_json' ERR EXIT
 umask 077
@@ -28,7 +28,7 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 # Only process Task tool calls
 if [[ "$TOOL_NAME" != "Task" ]]; then
     trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-    echo '{"decision": "allow"}'
+    echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
     exit 0
 fi
 
@@ -39,7 +39,7 @@ TASK_PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty')
 # Skip if already in orchestrator context
 if [[ "$TASK_TYPE" == "orchestrator" ]]; then
     trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-    echo '{"decision": "allow"}'
+    echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
     exit 0
 fi
 
@@ -86,7 +86,7 @@ LOG_FILE="$LOG_DIR/fast-path-$(date +%Y%m%d).log"
 } >> "$LOG_FILE"
 
 # Return decision with classification hint (single-line JSON)
-# SEC-039: PreToolUse hooks MUST use {"decision": "allow"}, NOT {"continue": true}
+# v2.70.0: PreToolUse hooks use {"hookSpecificOutput": {"permissionDecision": "allow"}}, NOT {"continue": true}
 trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
 if [[ "$IS_TRIVIAL" == "true" ]]; then
     echo '{"decision": "allow", "additionalContext": "FAST_PATH_ELIGIBLE: This task appears trivial (complexity <= 3). Consider fast-path: DIRECT_EXECUTE -> MICRO_VALIDATE -> DONE."}'
