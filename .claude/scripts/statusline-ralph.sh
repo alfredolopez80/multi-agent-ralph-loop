@@ -1,23 +1,34 @@
 #!/bin/bash
-# statusline-ralph.sh - Enhanced StatusLine with Git + Ralph Progress
+# statusline-ralph.sh - Enhanced StatusLine with Git + Ralph Progress + GLM Usage
 #
 # VERSION: 2.74.2
 #
 # Extends statusline-git.sh with orchestration progress tracking.
 # Reads plan-state.json to show current phase and step completion.
-# claude-hud handles all context/usage display natively.
+# Shows GLM Coding Plan usage (5-hour + monthly MCP).
+# claude-hud handles its own context display [glm-4.7] ░░░░░░░░░░ 0%
 #
-# Format: ⎇ branch* │ 📊 3/7 42% │ [claude-hud output with icons]
+# Format: ⎇ branch* │ ⏱️ 1% (~5h) │ 🔧 1% MCP (60/4000) │ 📊 3/7 42% │ [claude-hud]
 #
 # Usage: Called by settings.json statusLine.command
 #
 # Part of Multi-Agent Ralph v2.74.2
 #
 # v2.74.2 changes:
-# - Removed GLM usage tracking (claude-hud handles natively)
-# - Removed duplicate context/usage display
-# - Clean integration with claude-hud's native display
-# - Only adds Ralph progress on top of claude-hud output
+# - FIXED: Disabled complex line combining that broke claude-hud multi-line output
+# - claude-hud output now passes through as-is (preserves token info rendering)
+#
+# v2.74.1 changes:
+# - Removed duplicate context tracking (claude-hud handles [glm-4.7] display)
+# - Kept GLM Coding Plan usage (5-hour + monthly MCP)
+# - Cleaner output without redundant context information
+#
+# v2.74.0 changes:
+# - Added GLM-4.7 context tracking (percentage + tokens)
+# - Added GLM Coding Plan usage (5-hour + monthly MCP)
+# - Added native Claude context tracking with ✓ indicator
+# - Session context tracking for both Claude and GLM
+# - Color-coded context percentage (cyan<50%, green<75%, yellow>=75%, red>=85%)
 #
 # v2.69.0 changes:
 # - Show phase_name instead of phase_id to avoid branch name duplication
@@ -103,6 +114,31 @@ get_git_info() {
 
     echo -e "$git_output"
 }
+
+# ============================================
+# GLM Usage Functions (v2.74.1)
+# ============================================
+
+# Get GLM Coding Plan usage (5-hour + monthly MCP)
+# Shows: ⏱️ X% (~5h) and 🔧 X% MCP (X/4000)
+get_glm_plan_usage() {
+    local cache_manager="${PROJECT_ROOT:-$(pwd)}/.claude/scripts/glm-usage-cache-manager.sh"
+    if [[ ! -f "$cache_manager" ]]; then
+        cache_manager="${HOME}/.ralph/scripts/glm-usage-cache-manager.sh"
+    fi
+
+    if [[ ! -f "$cache_manager" ]]; then
+        cache_manager="${HOME}/.ralph/scripts/glm-usage-cache-manager.sh"
+    fi
+
+    if [[ -f "$cache_manager" ]]; then
+        "$cache_manager" get-statusline 2>/dev/null || echo ""
+    fi
+}
+
+# ============================================
+# End GLM Usage Functions
+# ============================================
 
 # Get Ralph orchestration progress
 # VERSION: 2.68.14 - GAP-003 FIX: Use current-project.json to find active project's plan-state
@@ -351,6 +387,9 @@ cwd=$(echo "$stdin_data" | jq -r '.cwd // "."' 2>/dev/null || echo ".")
 # Get git info
 git_info=$(get_git_info "$cwd")
 
+# Get GLM Coding Plan usage (5-hour + monthly MCP)
+glm_plan_usage=$(get_glm_plan_usage)
+
 # Get ralph progress
 ralph_progress=$(get_ralph_progress "$cwd")
 
@@ -373,7 +412,15 @@ if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
         combined_segment="${git_info}"
     fi
 
-    # Add Ralph progress
+    # Add GLM Coding Plan usage (5-hour + monthly MCP) - v2.74.1
+    if [[ -n "$glm_plan_usage" ]]; then
+        if [[ -n "$combined_segment" ]]; then
+            combined_segment="${combined_segment} │ ${glm_plan_usage}"
+        else
+            combined_segment="${glm_plan_usage}"
+        fi
+    fi
+
     if [[ -n "$ralph_progress" ]]; then
         if [[ -n "$combined_segment" ]]; then
             combined_segment="${combined_segment} │ ${ralph_progress}"
@@ -387,37 +434,8 @@ if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
         first_line=$(echo "$hud_output" | head -1)
         rest=$(echo "$hud_output" | tail -n +2)
 
-        # v2.69.0: Combine git branch line with stats line
-        # Goal: "multi-agent-ralph-loop git:(main*) | 3 CLAUDE.md | 7 rules | 13 MCPs | 6 hooks"
-        if [[ -n "$rest" ]]; then
-            # Split rest into lines
-            line_count=$(echo "$rest" | wc -l | awk '{print $1}')
-
-            if [[ "$line_count" -ge 2 ]]; then
-                # Get first line (git branch) and second line (stats)
-                git_branch_line=$(echo "$rest" | head -1)
-                stats_line=$(echo "$rest" | head -2 | tail -1)
-                remaining_rest=$(echo "$rest" | tail -n +3)
-
-                # Check if stats_line contains "CLAUDE.md" pattern
-                if echo "$stats_line" | grep -q "CLAUDE.md"; then
-                    # Remove ANSI color codes for clean combination
-                    clean_git=$(echo "$git_branch_line" | sed 's/\x1b\[[0-9;]*m//g')
-                    clean_stats=$(echo "$stats_line" | sed 's/\x1b\[[0-9;]*m//g')
-
-                    # Combine with separator
-                    combined_line="${clean_git} | ${clean_stats}"
-
-                    # Reconstruct rest with combined line
-                    if [[ -n "$remaining_rest" ]]; then
-                        rest="${combined_line}"$'\n'"${remaining_rest}"
-                    else
-                        rest="${combined_line}"
-                    fi
-                fi
-            fi
-        fi
-
+        # v2.74.2: DISABLED - Complex line combining was breaking claude-hud output
+        # Pass claude-hud output as-is to preserve multi-line rendering
         # Use non-breaking spaces for proper display
         segment="${combined_segment} │ "
         segment="${segment// /$'\u00A0'}"  # Replace spaces with non-breaking spaces (U+00A0)
@@ -430,10 +448,16 @@ if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
         echo "$hud_output"
     fi
 else
-    # Fallback: just show git info and progress - v2.74.2
-    if [[ -n "$git_info" ]] || [[ -n "$ralph_progress" ]]; then
+    # Fallback: just show git info, GLM usage, and progress - v2.74.1
+    if [[ -n "$git_info" ]] || [[ -n "$glm_plan_usage" ]] || [[ -n "$ralph_progress" ]]; then
         fallback=""
         [[ -n "$git_info" ]] && fallback="$git_info"
+
+        # Add GLM Coding Plan usage
+        if [[ -n "$glm_plan_usage" ]]; then
+            [[ -n "$fallback" ]] && fallback="${fallback} │ "
+            fallback="${fallback}${glm_plan_usage}"
+        fi
 
         if [[ -n "$ralph_progress" ]]; then
             [[ -n "$fallback" ]] && fallback="${fallback} │ "
