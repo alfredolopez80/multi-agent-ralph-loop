@@ -16,4 +16,18 @@
 | #16886 | 2:04 AM | 🔵 | StatusLine Ralph Script Integration Architecture | ~436 |
 | #16856 | 2:02 AM | 🔵 | Context Measurement and Statusline Documentation Found | ~303 |
 | #16850 | " | 🔵 | Statusline Monitoring Scripts Discovered | ~255 |
+
+### Jan 28, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #17727 | 12:12 AM | 🟣 | Python Version of PreToolUse Hook Fix Script Created | ~376 |
+| #17725 | 12:11 AM | 🟣 | PreToolUse Hook Fix Script Created and Rewritten | ~370 |
+| #17722 | " | 🟣 | PreToolUse Hook Auto-Fix Script Created | ~337 |
+| #17714 | 12:09 AM | 🔴 | PreToolUse Hook JSON Schema Validation Error | ~390 |
+| #17711 | 12:08 AM | 🔴 | Fix Script Detection Patterns Updated | ~308 |
+| #17704 | 12:07 AM | 🟣 | Auto-Fix Script Created for Claude-Mem Hooks Issue | ~422 |
+| #17690 | 12:05 AM | 🔄 | Updated fix-claude-mem-hooks.sh to search both cache and marketplace directories | ~259 |
+| #17674 | 12:03 AM | 🔵 | Verified fix-claude-mem-hooks.sh script structure and grep patterns | ~248 |
+| #17671 | 12:02 AM | 🟣 | Created automated fix script for claude-mem hooks CLAUDE_PLUGIN_ROOT issue | ~353 |
 </claude-mem-context>

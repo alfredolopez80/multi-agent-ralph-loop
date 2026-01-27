@@ -119,7 +119,7 @@ detect_critical_operation() {
 # Output JSON and exit
 allow_and_exit() {
     trap - ERR EXIT  # Disable trap before explicit output
-    echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
+    echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
     exit 0
 }
 

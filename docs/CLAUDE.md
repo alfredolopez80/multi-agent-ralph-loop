@@ -19,4 +19,12 @@
 | #16977 | 2:11 AM | 🔵 | LLM provider usage tracking methods compared across Z.AI, Gemini, and OpenAI | ~507 |
 | #16934 | 2:07 AM | 🔵 | Comprehensive Context Management Documentation Archive Found | ~415 |
 | #16856 | 2:02 AM | 🔵 | Context Measurement and Statusline Documentation Found | ~303 |
+
+### Jan 28, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #17703 | 12:07 AM | 🔴 | Claude-Mem Hooks Path Resolution Fixed | ~374 |
+| #17701 | 12:06 AM | ✅ | Staged documentation files for commit | ~166 |
+| #17692 | 12:05 AM | 🔄 | Updated documentation to reflect both cache and marketplace locations need fixing | ~232 |
 </claude-mem-context>
