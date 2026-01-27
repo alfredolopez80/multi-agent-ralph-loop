@@ -193,7 +193,7 @@ El hook ya está configurado en `~/.claude/settings.json`:
 
 ### Test 1: API Query
 ```bash
-export ANTHROPIC_AUTH_TOKEN="11a8b6ba1bad43678970f47e34efd107.Ut6nSgG6SoZ4H9qK"
+export ANTHROPIC_AUTH_TOKEN="YOUR_API_KEY_HERE"
 export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
 node ~/.claude/plugins/cache/zai-coding-plugins/glm-plan-usage/0.0.1/skills/usage-query-skill/scripts/query-usage.mjs
 ```

@@ -115,8 +115,8 @@ def temp_file_with_secret():
     # Using obvious fake credentials for testing purposes
     content = '''
 # Configuration file - FAKE CREDENTIALS FOR TESTING
-API_KEY = "sk-1234567890abcdef1234567890abcdef1234567890abcdef"
-DATABASE_URL = "postgres://user:password123@localhost/db"
+API_KEY = "FAKE_TEST_API_KEY_PLACEHOLDER_DO_NOT_USE"
+DATABASE_URL = "postgres://user:FAKE_PASSWORD@localhost/db"
 '''
     path = create_temp_file(content, ".py")
     yield path

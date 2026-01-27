@@ -65,7 +65,7 @@ teardown() {
     # Mock the setup by writing config file like the script does
     cat > "$TEST_TMPDIR/test_config.json" << 'EOF'
 {
-  "apiKey": "test-api-key-12345",
+  "apiKey": "FAKE_TEST_API_KEY_PLACEHOLDER",
   "baseUrl": "https://api.minimax.io/anthropic"
 }
 EOF
