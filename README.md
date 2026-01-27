@@ -8,6 +8,22 @@
 
 ## 🐛 Recent Bug Fixes (v2.70.0 - v2.74.3)
 
+### PreToolUse Hook Format Compliance (BUG-007) ✅ FIXED - v2.70.1
+
+**Issue**: PreToolUse hooks missing `hookEventName` in JSON output, causing validation failures in Claude Code v2.70.0+.
+
+**Root Cause**: Hooks were using `{"hookSpecificOutput": {"permissionDecision": "allow"}}` instead of the required format with `hookEventName`.
+
+**Fix**: Updated all 13 PreToolUse hooks to include `hookEventName: "PreToolUse"` in `hookSpecificOutput`.
+
+**Example**:
+```
+Before: {"hookSpecificOutput": {"permissionDecision": "allow"}}
+After:  {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}
+```
+
+**Technical Details**: Created `fix-pretooluse-hooks.py` automation script for validation and fixing.
+
 ### Context Window Statusline Calculation (BUG-006) ✅ FIXED - v2.74.3
 
 **Issue**: `context_window.used_percentage` and `context_window.remaining_percentage` fields in Claude Code 2.1.19 show incorrect values (0% used / 100% remaining).
@@ -57,6 +73,26 @@ After:  ctx:67% (correct - 134K / 200K tokens used)
 ---
 
 ## 🚀 Improvements (v2.70.1)
+
+### Automated Hook Fix Scripts (MAINT-001) ✅ NEW
+
+**Problem**: Manual hook format updates were error-prone and time-consuming when Claude Code hook specifications changed.
+
+**Solution**: Created automated validation and fix scripts for hook format compliance:
+- `fix-pretooluse-hooks.py`: Python script to validate and fix PreToolUse hook format (v2.70.0+ compliance)
+- `fix-claude-mem-hooks.sh`: Bash script to detect and fix CLAUDE_PLUGIN_ROOT path resolution issues
+
+**Usage**:
+```bash
+# Check hooks without modifying
+python3 .claude/scripts/fix-pretooluse-hooks.py --check
+
+# Apply fixes automatically
+python3 .claude/scripts/fix-pretooluse-hooks.py
+
+# Fix claude-mem hooks
+./.claude/scripts/fix-claude-mem-hooks.sh
+```
 
 ### Dynamic Hook Classification (REFAC-001) ✅ NEW
 
@@ -380,7 +416,7 @@ multi-agent-ralph-loop/           # Repository root
 │   │   └── ... (28 more agents)
 │   ├── commands/                 # Slash commands (39 files)
 │   ├── hooks/                    # Project hooks (synced from global)
-│   ├── scripts/                  # Utility scripts (17 files)
+│   ├── scripts/                  # Utility scripts (35+ files, includes fix scripts)
 │   ├── skills/                   # Project skills (26 directories)
 │   ├── archive/                  # Archived documentation
 │   │   ├── v2.24/                # Security reviews v2.24
@@ -1497,7 +1533,7 @@ TaskUpdate:
 
 ## Claude Code Skills Ecosystem
 
-### Core Skills (8)
+### Core Skills (9)
 
 | Skill | Purpose |
 |-------|---------|
@@ -1509,6 +1545,7 @@ TaskUpdate:
 | compact | Manual context preservation |
 | orchestrator | Full workflow orchestration |
 | smart-fork | Session forking recommendations |
+| **crafting-effective-readmes** | **README writing with templates & guidance (NEW)** |
 
 **Note**: Additional skills may be available in the global skills directory (~/.claude/skills/).
 
@@ -1808,6 +1845,6 @@ This project is licensed under the BSL 1.1 License.
 
 ---
 
-**Version**: 2.69.1
-**Last Updated**: 2026-01-25
-**Next Review**: 2026-02-25
+**Version**: 2.72.1
+**Last Updated**: 2026-01-28
+**Next Review**: 2026-02-28
