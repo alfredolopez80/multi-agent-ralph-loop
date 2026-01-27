@@ -14,7 +14,8 @@
 # v2.62.3: P0 FIX - Use semantic-write-helper.sh for all semantic writes
 #          P1 FIX - Exclude JSON/YAML from pattern detection (config files only)
 #
-# VERSION: 2.69.0
+# VERSION: 2.69.1
+# v2.69.1: SEC-112 FIX - Clear trap before output to prevent duplicate JSON
 # SECURITY: SEC-003 (jq JSON), SEC-006 (error trap), SEC-009 (portable mkdir lock)
 
 # SEC-111: Read input from stdin with length limit (100KB max)
@@ -38,6 +39,7 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
 
 # Only process Edit and Write tools
 if [[ "$TOOL_NAME" != "Edit" ]] && [[ "$TOOL_NAME" != "Write" ]]; then
+    trap - ERR EXIT  # v2.69.1: SEC-112 FIX
     echo '{"continue": true}'
     exit 0
 fi
@@ -47,6 +49,7 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null |
 
 # Skip if no file path
 if [[ -z "$FILE_PATH" ]]; then
+    trap - ERR EXIT  # v2.69.1: SEC-112 FIX
     echo '{"continue": true}'
     exit 0
 fi
@@ -67,6 +70,7 @@ case "$FILE_EXT" in
         IS_CONFIG_FILE=true
         ;;
     *)
+        trap - ERR EXIT  # v2.69.1: SEC-112 FIX
         echo '{"continue": true}'
         exit 0
         ;;
@@ -77,6 +81,7 @@ CONFIG_FILE="${HOME}/.ralph/config/memory-config.json"
 if [[ -f "$CONFIG_FILE" ]]; then
     EXTRACT_ENABLED=$(jq -r '.episodic.extract_decisions // true' "$CONFIG_FILE" 2>/dev/null || echo "true")
     if [[ "$EXTRACT_ENABLED" != "true" ]]; then
+        trap - ERR EXIT  # v2.69.1: SEC-112 FIX
         echo '{"continue": true}'
         exit 0
     fi
@@ -104,6 +109,7 @@ fi
 
 # Skip if no content
 if [[ -z "$CONTENT" ]] || [[ ${#CONTENT} -lt 50 ]]; then
+    trap - ERR EXIT  # v2.69.1: SEC-112 FIX
     echo '{"continue": true}'
     exit 0
 fi
@@ -262,4 +268,6 @@ fi
 } >> "${LOG_DIR}/decision-extract-$(date +%Y%m%d).log" 2>&1 &
 
 # Continue tool execution
+# v2.69.1: SEC-112 FIX - Clear trap before final output
+trap - ERR EXIT
 echo '{"continue": true}'
