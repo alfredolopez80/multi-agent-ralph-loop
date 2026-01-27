@@ -7,6 +7,93 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.74.3] - 2026-01-27
+
+### Bug Fix: Context Window Calculation in Statusline
+
+**BUG-003: Claude Code 2.1.19 `context_window` Fields Unreliable**
+
+#### Problem
+
+The `context_window.used_percentage` and `context_window.remaining_percentage` fields in Claude Code 2.1.19's statusline JSON input show incorrect values (0% used / 100% remaining) even when the context window is partially filled.
+
+**Root Cause**: The `current_usage` object is not being populated correctly:
+```json
+{
+  "context_window": {
+    "total_input_tokens": 118396,
+    "total_output_tokens": 16370,
+    "context_window_size": 200000,
+    "current_usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0
+    },
+    "used_percentage": 0,
+    "remaining_percentage": 100
+  }
+}
+```
+
+**Real usage**: 134,766 tokens / 200,000 = 67.38% used
+**Displayed**: 0% used, 100% remaining
+
+#### Solution
+
+Calculate context usage from `total_input_tokens` + `total_output_tokens` instead of relying on pre-calculated percentages.
+
+**Implementation** (statusline-ralph.sh):
+```bash
+# Extract totals
+total_input=$(echo "$context_info" | jq -r '.total_input_tokens // 0')
+total_output=$(echo "$context_info" | jq -r '.total_output_tokens // 0')
+context_size=$(echo "$context_info" | jq -r '.context_window.context_window_size // 200000')
+
+# Calculate actual usage
+total_used=$((total_input + total_output))
+context_usage=$((total_used * 100 / context_size))
+
+# Color coding based on usage
+if [[ $context_usage -lt 50 ]]; then
+    context_color="$CYAN"
+elif [[ $context_usage -lt 75 ]]; then
+    context_color="$GREEN"
+elif [[ $context_usage -lt 85 ]]; then
+    context_color="$YELLOW"
+else
+    context_color="$RED"
+fi
+
+context_display="${context_color}ctx:${context_usage}%${RESET}"
+```
+
+#### Benefits
+
+- ✅ Calculates from reliable `total_*_tokens` fields
+- ✅ Adds color coding (CYAN < 50%, GREEN < 75%, YELLOW < 85%, RED >= 85%)
+- ✅ Graceful fallback if `context_window` is missing
+- ✅ Accurate percentage display
+
+#### Documentation
+
+- Technical documentation: `docs/context-window-bug-2026-01-27.md`
+- Investigation timeline and root cause analysis included
+- Workarounds documented for users of vanilla Claude Code
+
+#### References
+
+- [Claude Code Statusline Documentation](https://code.claude.com/docs/en/statusline)
+- [claude-sneakpeek v1.6.9](https://github.com/mikekelly/claude-sneakpeek)
+- [GitHub Issue #17959](https://github.com/anthropics/claude-code/issues/17959)
+
+#### Files Changed
+
+- `.claude/scripts/statusline-ralph.sh` (v2.74.3)
+- `docs/context-window-bug-2026-01-27.md` (new)
+
+---
+
 ## [2.70.1] - 2026-01-25
 
 ### Refactor: Dynamic Hook Classification and Platform Compatibility

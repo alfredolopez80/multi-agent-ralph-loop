@@ -1,18 +1,37 @@
 #!/bin/bash
 # statusline-ralph.sh - Enhanced StatusLine with Git + Ralph Progress + GLM Usage
 #
-# VERSION: 2.74.2
+# VERSION: 2.74.10
 #
 # Extends statusline-git.sh with orchestration progress tracking.
 # Reads plan-state.json to show current phase and step completion.
 # Shows GLM Coding Plan usage (5-hour + monthly MCP).
 # claude-hud handles its own context display [glm-4.7] ░░░░░░░░░░ 0%
 #
-# Format: ⎇ branch* │ ⏱️ 1% (~5h) │ 🔧 1% MCP (60/4000) │ 📊 3/7 42% │ [claude-hud]
+# Format: ⎇ branch* │ [glm-4.7] ████████░░ ctx:69% │ ⏱️ 1% (~5h) │ 🔧 1% MCP (60/4000) │ 📊 3/7 42% │ [claude-hud]
 #
 # Usage: Called by settings.json statusLine.command
 #
 # Part of Multi-Agent Ralph v2.74.2
+#
+# v2.74.10 changes:
+# - FIXED: Added ~/.claude-code-old/ to claude-hud search paths
+# - CHANGED: Always show our git_info format (⎇ branch*) at the beginning
+# - claude-hud git:(...) lines are now filtered out to use our consistent format
+#
+# v2.74.9 changes:
+# - FIXED: Removed DIM style from progress bar (now shows context_color instead of gray)
+# - FIXED: Removed leading │ from context_display to avoid double separators
+# - Colors now render correctly with proper styling
+#
+# v2.74.8 changes:
+# - FIXED: Color variables now use functions with command substitution for reliable ANSI code generation
+# - Simplified settings.json command: direct script execution instead of bash -c 'bash ...'
+# - Both changes ensure ANSI escape sequences work correctly through all shell levels
+#
+# v2.74.5 changes:
+# - REORDERED: Git info now appears at the BEGINNING of statusline
+# - Format: ⎇ branch* │ [glm-4.7] ████████░░ ctx:69% │ ⏱️ 1% (~5h) │ 🔧 1% MCP (60/4000) │ 📊 3/7 42%
 #
 # v2.74.2 changes:
 # - FIXED: Disabled complex line combining that broke claude-hud multi-line output
@@ -44,15 +63,26 @@ log() {
     fi
 }
 
-# Colors
-CYAN='\033[0;36m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-RED='\033[0;31m'
-MAGENTA='\033[0;35m'
-BLUE='\033[0;34m'
-DIM='\033[2m'
-RESET='\033[0m'
+# Colors - v2.74.8: Functions that generate ANSI codes for subshell compatibility
+# Using printf ensures escape sequences work correctly through bash -c
+ansi_cyan() { printf '\033[0;36m'; }
+ansi_green() { printf '\033[0;32m'; }
+ansi_yellow() { printf '\033[0;33m'; }
+ansi_red() { printf '\033[0;31m'; }
+ansi_magenta() { printf '\033[0;35m'; }
+ansi_blue() { printf '\033[0;34m'; }
+ansi_dim() { printf '\033[2m'; }
+ansi_reset() { printf '\033[0m'; }
+
+# Cache the codes as variables for convenience (using command substitution)
+CYAN=$(ansi_cyan)
+GREEN=$(ansi_green)
+YELLOW=$(ansi_yellow)
+RED=$(ansi_red)
+MAGENTA=$(ansi_magenta)
+BLUE=$(ansi_blue)
+DIM=$(ansi_dim)
+RESET=$(ansi_reset)
 
 # Plan state file location
 PLAN_STATE=".claude/plan-state.json"
@@ -112,7 +142,7 @@ get_git_info() {
         git_output="${git_output} ${DIM}${push_icon}${RESET}"
     fi
 
-    echo -e "$git_output"
+    printf '%b\n' "$git_output"
 }
 
 # ============================================
@@ -375,7 +405,7 @@ get_ralph_progress() {
         progress_output="${BLUE}${icon}${RESET} ${DIM}${completed_steps}/${total_steps}${RESET} ${CYAN}${percentage}%${RESET}${status_details}"
     fi
 
-    echo -e "$progress_output"
+    printf '%b\n' "$progress_output"
 }
 
 # Read stdin to pass to claude-hud
@@ -383,6 +413,51 @@ stdin_data=$(cat)
 
 # Extract cwd from stdin JSON
 cwd=$(echo "$stdin_data" | jq -r '.cwd // "."' 2>/dev/null || echo ".")
+
+# Extract context window usage - FIX v2.74.3: Calculate from total_*_tokens instead of used_percentage
+# The used_percentage field is unreliable (often shows 0% even when context is used)
+context_info=$(echo "$stdin_data" | jq -r '.context_window // "{}"' 2>/dev/null)
+if [[ -n "$context_info" ]] && [[ "$context_info" != "null" ]]; then
+    # Get values
+    total_input=$(echo "$context_info" | jq -r '.total_input_tokens // 0')
+    total_output=$(echo "$context_info" | jq -r '.total_output_tokens // 0')
+    context_size=$(echo "$context_info" | jq -r '.context_window_size // 200000')
+
+    # Calculate actual usage
+    if [[ "$context_size" -gt 0 ]]; then
+        total_used=$((total_input + total_output))
+        context_usage=$((total_used * 100 / context_size))
+
+        # Color coding based on usage
+        if [[ $context_usage -lt 50 ]]; then
+            context_color="$CYAN"
+        elif [[ $context_usage -lt 75 ]]; then
+            context_color="$GREEN"
+        elif [[ $context_usage -lt 85 ]]; then
+            context_color="$YELLOW"
+        else
+            context_color="$RED"
+        fi
+
+        # Generate visual progress bar (10 blocks) - v2.74.4 FIX: Use printf instead of for loop
+        # Each block = 10%, use █ for filled, ░ for empty
+        filled_blocks=$((context_usage / 10))
+        # Ensure filled_blocks is between 0-10
+        [[ $filled_blocks -gt 10 ]] && filled_blocks=10
+        [[ $filled_blocks -lt 0 ]] && filled_blocks=0
+
+        # Create bar using printf for better compatibility
+        progress_bar=$(printf '█%.0s' $(seq 1 $filled_blocks))$(printf '░%.0s' $(seq 1 $((10 - filled_blocks))))
+
+        # Format: [glm-4.7] ███████░░░ ctx:69% (no leading │, no DIM on bar)
+        model_name=$(echo "$stdin_data" | jq -r '.model.display_name // "model"')
+        context_display="[${model_name}] ${context_color}${progress_bar}${RESET} ${context_color}ctx:${context_usage}%${RESET}"
+    else
+        context_display=""
+    fi
+else
+    context_display=""
+fi
 
 # Get git info
 git_info=$(get_git_info "$cwd")
@@ -393,23 +468,40 @@ glm_plan_usage=$(get_glm_plan_usage)
 # Get ralph progress
 ralph_progress=$(get_ralph_progress "$cwd")
 
-# Find and run claude-hud (check both standard and zai locations)
-claude_hud_dir=$(ls -td ~/.claude-sneakpeek/zai/config/plugins/cache/claude-hud/claude-hud/*/ ~/.claude/plugins/cache/claude-hud/claude-hud/*/ 2>/dev/null | head -1)
+# Find and run claude-hud (check standard, zai, and claude-code-old locations)
+claude_hud_dir=$(ls -td ~/.claude-sneakpeek/zai/config/plugins/cache/claude-hud/claude-hud/*/ ~/.claude/plugins/cache/claude-hud/claude-hud/*/ ~/.claude-code-old/plugins/cache/claude-hud/claude-hud/*/ 2>/dev/null | head -1)
 
 if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
     # Run claude-hud and capture output
     hud_output=$(echo "$stdin_data" | node "${claude_hud_dir}dist/index.js" 2>/dev/null)
 
-    # v2.69.0 FIX: Detect if claude-hud already includes git info to avoid duplication
-    # claude-hud shows "git:(branch*)" in its output, so we skip our git_info
-    hud_has_git=$(echo "$hud_output" | grep -c "git:(" || echo "0")
+    # v2.74.4 FIX: Filter out claude-hud's [model] progress line to avoid duplication
+    # claude-hud produces multiple lines, we want to remove the one with [model] and progress bars
+    # Get model name - this will be used to filter claude-hud output
+    model_name=$(echo "$stdin_data" | jq -r '.model.display_name // "model"')
+    # Use grep -v to exclude lines containing [model.name] (grep handles brackets better than sed)
+    # Also filter out git:(...) lines from claude-hud to use our own format
+    hud_output=$(echo "$hud_output" | grep -vF "[${model_name}]" || echo "$hud_output")
+    hud_output=$(echo "$hud_output" | grep -v "git:(" || echo "$hud_output")
 
-    # Build combined segment
+    # v2.74.10 CHANGE: Always use our git_info format (⎇ branch*) at the beginning
+    # claude-hud git:(...) format is filtered out above
+
+    # Build combined segment - v2.74.10: git_info first, then context, GLM, ralph
     combined_segment=""
 
-    # Only add git_info if claude-hud doesn't already have it
-    if [[ "$hud_has_git" == "0" ]] && [[ -n "$git_info" ]]; then
+    # Add git_info FIRST (always, if available)
+    if [[ -n "$git_info" ]]; then
         combined_segment="${git_info}"
+    fi
+
+    # Add context usage second (│ [glm-4.7] ████████░░ ctx:88%)
+    if [[ -n "$context_display" ]]; then
+        if [[ -n "$combined_segment" ]]; then
+            combined_segment="${combined_segment} │ ${context_display}"
+        else
+            combined_segment="${context_display}"
+        fi
     fi
 
     # Add GLM Coding Plan usage (5-hour + monthly MCP) - v2.74.1
@@ -430,17 +522,18 @@ if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
     fi
 
     if [[ -n "$combined_segment" ]]; then
-        # Prepend to first line of hud output
+        # v2.74.4: Just output the combined segment, don't prepend to claude-hud
+        # claude-hud lines with [model] are already filtered out
+        # Use printf to interpret escape sequences for colors
+        printf '%b\n' "$combined_segment"
+
+        # Output remaining claude-hud lines (if any)
         first_line=$(echo "$hud_output" | head -1)
         rest=$(echo "$hud_output" | tail -n +2)
 
-        # v2.74.2: DISABLED - Complex line combining was breaking claude-hud output
-        # Pass claude-hud output as-is to preserve multi-line rendering
-        # Use non-breaking spaces for proper display
-        segment="${combined_segment} │ "
-        segment="${segment// /$'\u00A0'}"  # Replace spaces with non-breaking spaces (U+00A0)
-
-        echo -e "${segment}${first_line}"
+        if [[ -n "$first_line" ]]; then
+            echo "$first_line"
+        fi
         if [[ -n "$rest" ]]; then
             echo "$rest"
         fi
@@ -448,10 +541,16 @@ if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
         echo "$hud_output"
     fi
 else
-    # Fallback: just show git info, GLM usage, and progress - v2.74.1
-    if [[ -n "$git_info" ]] || [[ -n "$glm_plan_usage" ]] || [[ -n "$ralph_progress" ]]; then
+    # Fallback: just show git info, GLM usage, and progress - v2.74.5
+    if [[ -n "$git_info" ]] || [[ -n "$glm_plan_usage" ]] || [[ -n "$ralph_progress" ]] || [[ -n "$context_display" ]]; then
         fallback=""
         [[ -n "$git_info" ]] && fallback="$git_info"
+
+        # Add context usage
+        if [[ -n "$context_display" ]]; then
+            [[ -n "$fallback" ]] && fallback="${fallback} │ "
+            fallback="${fallback}${context_display}"
+        fi
 
         # Add GLM Coding Plan usage
         if [[ -n "$glm_plan_usage" ]]; then
@@ -463,7 +562,7 @@ else
             [[ -n "$fallback" ]] && fallback="${fallback} │ "
             fallback="${fallback}${ralph_progress}"
         fi
-        echo -e "$fallback"
+        printf '%b\n' "$fallback"
     else
         echo "[statusline] Initializing..."
     fi

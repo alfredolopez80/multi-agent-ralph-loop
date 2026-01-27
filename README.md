@@ -6,7 +6,23 @@
 
 ---
 
-## 🐛 Recent Bug Fixes (v2.70.0 - v2.70.1)
+## 🐛 Recent Bug Fixes (v2.70.0 - v2.74.3)
+
+### Context Window Statusline Calculation (BUG-006) ✅ FIXED - v2.74.3
+
+**Issue**: `context_window.used_percentage` and `context_window.remaining_percentage` fields in Claude Code 2.1.19 show incorrect values (0% used / 100% remaining).
+
+**Root Cause**: The `current_usage` object is not populated correctly in Claude Code 2.1.19, causing pre-calculated percentages to be wrong.
+
+**Fix**: Calculate context usage from `total_input_tokens` + `total_output_tokens` instead of relying on `used_percentage`/`remaining_percentage`.
+
+**Example**:
+```
+Before: ctx:100% (incorrect - always shows 100% remaining)
+After:  ctx:67% (correct - 134K / 200K tokens used)
+```
+
+**Technical Details**: See [docs/context-window-bug-2026-01-27.md](docs/context-window-bug-2026-01-27.md)
 
 ### Quality Gates AutoMode Detection (BUG-003) ✅ FIXED
 **Issue**: `/loop` and `/orchestrator` commands were blocked by quality gates even during automatic execution.
@@ -1553,6 +1569,45 @@ bash tests/test_v2_47_smart_memory.py
 # View coverage
 cat .coverage/index.html
 ```
+
+---
+
+## Code Examples
+
+Supabase Authentication Examples (v2.73.0) - NEW
+
+Complete examples for implementing email/password authentication with Supabase:
+
+| Example | Location | Description |
+|---------|----------|-------------|
+| Core Auth Functions | `docs/examples/supabase-auth/supabase-auth-example.ts` | Sign up, sign in, sign out, password reset |
+| React Hook | `docs/examples/supabase-auth/supabase-react-hook.tsx` | React Hook for auth state management |
+| Documentation | `docs/examples/supabase-auth/README.md` | Complete usage guide |
+
+**Quick Start**:
+
+```typescript
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+
+// Sign up
+const { data, error } = await supabase.auth.signUp({
+  email: 'user@example.com',
+  password: 'securePassword123',
+})
+
+// Sign in
+const { data, error } = await supabase.auth.signInWithPassword({
+  email: 'user@example.com',
+  password: 'securePassword123',
+})
+
+// Sign out
+await supabase.auth.signOut()
+```
+
+**Full Documentation**: [docs/examples/supabase-auth/README.md](docs/examples/supabase-auth/README.md)
 
 ---
 

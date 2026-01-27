@@ -128,9 +128,9 @@ get_context_percentage()
 
 ### Variables de Entorno Configuradas ✅
 ```bash
-ANTHROPIC_AUTH_TOKEN=11a8b6ba1bad43678970f47e34efd107.Ut6nSgG6SoZ4H9qK
+ANTHROPIC_AUTH_TOKEN=YOUR_API_KEY_HERE
 ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic
-Z_AI_API_KEY=11a8b6ba1bad43678970f47e34efd107.Ut6nSgG6SoZ4H9qK
+Z_AI_API_KEY=YOUR_API_KEY_HERE
 ANTHROPIC_MODEL=glm-4.7
 ```
 
