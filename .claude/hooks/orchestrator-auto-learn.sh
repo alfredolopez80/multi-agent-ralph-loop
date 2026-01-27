@@ -38,7 +38,7 @@ fi
 
 # SEC-034: Guaranteed JSON output on any error
 output_json() {
-    echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
+    echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
 }
 trap 'output_json' ERR EXIT
 
@@ -58,7 +58,7 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
 
 # Only process Task tool
 if [[ "$TOOL_NAME" != "Task" ]]; then
-    trap - EXIT; echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'; exit 0
+    trap - EXIT; echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'; exit 0
 fi
 
 # Check if this is an orchestrator-related task
@@ -69,7 +69,7 @@ PROMPT_LOWER=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]')
 # Check for orchestrator or planning context
 if [[ "$SUBAGENT_TYPE" != "orchestrator" ]] && [[ "$SUBAGENT_TYPE" != "Plan" ]]; then
     if ! echo "$PROMPT_LOWER" | grep -qE 'implement|build|create|develop|design'; then
-        trap - EXIT; echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'; exit 0
+        trap - EXIT; echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'; exit 0
     fi
 fi
 
@@ -240,7 +240,7 @@ fi
 
 # If sufficient knowledge, skip learning
 if [[ "$SHOULD_LEARN" != "true" ]]; then
-    trap - EXIT; echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'; exit 0
+    trap - EXIT; echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'; exit 0
 fi
 
 # Determine learning recommendation
@@ -456,4 +456,4 @@ fi
 
 # Fallback
 echo "[$(date -Iseconds)] Could not inject, recommendation in: $CONTEXT_FILE" >> "${LOG_DIR}/auto-learn-$(date +%Y%m%d).log" 2>&1
-trap - EXIT; echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'; exit 0
+trap - EXIT; echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'; exit 0

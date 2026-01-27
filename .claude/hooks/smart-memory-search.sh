@@ -47,19 +47,19 @@ validate_input_schema() {
     # Check if input is valid JSON
     # v2.70.0: PreToolUse hooks use {"hookSpecificOutput": {"permissionDecision": "allow"}}, NOT {"continue": true}
     if ! echo "$input" | jq empty 2>/dev/null; then
-        echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
+        echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
         exit 0
     fi
 
     # Check required field exists
     if ! echo "$input" | jq -e '.tool_name' >/dev/null 2>&1; then
-        echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
+        echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
         exit 0
     fi
 
     # Check tool_name is a string (jq type check)
     if [[ $(echo "$input" | jq -r '.tool_name | type' 2>/dev/null) != "string" ]]; then
-        echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
+        echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
         exit 0
     fi
 
@@ -75,7 +75,7 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 
 # Only trigger on Task tool (orchestration start)
 if [[ "$TOOL_NAME" != "Task" ]]; then
-    echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
+    echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
     exit 0
 fi
 
@@ -90,7 +90,7 @@ if [[ "$TASK_TYPE" != "orchestrator" ]] && \
    [[ "$TASK_TYPE" != "gap-analyst" ]] && \
    [[ "$TASK_TYPE" != "Explore" ]] && \
    [[ "$TASK_TYPE" != "general-purpose" ]]; then
-    echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
+    echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
     exit 0
 fi
 
@@ -102,8 +102,8 @@ CACHE_DURATION=1800  # 30 minutes
 if [[ -f "$MEMORY_CONTEXT" ]]; then
     CACHE_AGE=$(($(date +%s) - $(stat -f %m "$MEMORY_CONTEXT" 2>/dev/null || stat -c %Y "$MEMORY_CONTEXT" 2>/dev/null || echo 0)))
     if [[ $CACHE_AGE -lt $CACHE_DURATION ]]; then
-        # v2.70.0: Using new hookSpecificOutput format
-        echo '{"hookSpecificOutput": {"permissionDecision": "allow", "additionalContext": "SMART_MEMORY: Using cached results from .claude/memory-context.json ('"$CACHE_AGE"'s old)"}}'
+        # v2.70.0: Using new hookSpecificOutput format with hookEventName
+        jq -n --arg age "$CACHE_AGE" '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "additionalContext": ("SMART_MEMORY: Using cached results from .claude/memory-context.json (\($age)s old)")}}'
         exit 0
     fi
 fi
@@ -206,7 +206,7 @@ chmod 700 "$TEMP_DIR"  # Restrictive permissions - only owner can access
 cleanup_and_json() {
     rm -rf "$TEMP_DIR" 2>/dev/null || true
     # Output JSON only if we haven't already (script didn't reach end)
-    echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
+    echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
 }
 trap 'cleanup_and_json' EXIT ERR INT TERM
 
@@ -705,5 +705,5 @@ trap - EXIT ERR INT TERM
 rm -rf "$TEMP_DIR" 2>/dev/null || true  # Manual cleanup since we cleared trap
 
 # SEC-007: Use jq for safe JSON construction (avoid sed escaping vulnerabilities)
-# v2.70.0: PreToolUse hooks use {"hookSpecificOutput": {"permissionDecision": "allow"}}, NOT {"continue": true}
-jq -n {"hookSpecificOutput": {"permissionDecision": "allow", "additionalContext": $ctx}'
+# v2.70.0: PreToolUse hooks use {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}
+jq -n --arg ctx "$CONTEXT_MSG" '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "additionalContext": $ctx}}'

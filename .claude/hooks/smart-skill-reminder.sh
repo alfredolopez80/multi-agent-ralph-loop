@@ -38,7 +38,7 @@ mkdir -p "$MARKERS_DIR" "$(dirname "$LOG_FILE")" 2>/dev/null || true
 
 # Guaranteed JSON output on any error
 output_empty() {
-    echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
 }
 trap 'output_empty' ERR EXIT
 
@@ -209,7 +209,7 @@ main() {
     if [[ -z "$file_path" ]]; then
         log "No file path in input, skipping"
         trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-        echo '{"decision": "allow"}'
+        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
         exit 0
     fi
 
@@ -217,7 +217,7 @@ main() {
     if already_reminded_this_session; then
         log "Already reminded this session, skipping"
         trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-        echo '{"decision": "allow"}'
+        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
         exit 0
     fi
 
@@ -225,7 +225,7 @@ main() {
     if is_within_cooldown; then
         log "Within cooldown period, skipping"
         trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-        echo '{"decision": "allow"}'
+        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
         exit 0
     fi
 
@@ -233,7 +233,7 @@ main() {
     if skill_recently_invoked; then
         log "Skill recently invoked, skipping"
         trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-        echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
+        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
         exit 0
     fi
 
@@ -247,15 +247,15 @@ main() {
         log "Suggesting: $suggestion for $file_path"
 
         # Output suggestion
-        # v2.70.0: Using new hookSpecificOutput format
+        # v2.70.0: Using new hookSpecificOutput format with hookEventName
         trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
         jq -n --arg ctx "Consider using $suggestion" \
-            '{"hookSpecificOutput": {"permissionDecision": "allow", "additionalContext": $ctx}}'
+            '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "additionalContext": $ctx}}'
     else
         # No suggestion for this file type
         log "No specific skill suggestion for: $file_path"
         trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-        echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
+        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
     fi
 }
 

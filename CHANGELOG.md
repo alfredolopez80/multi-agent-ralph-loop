@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.70.1] - 2026-01-28
+
+### Fixed
+
+- **CRIT-008: PreToolUse hooks missing hookEventName** - All 13 PreToolUse hooks updated to include `hookEventName: "PreToolUse"` in `hookSpecificOutput` (required for v2.70.0+ validation)
+- **fix-pretooluse-hooks.py** - New automated validation script for PreToolUse hook format compliance
+- **jq syntax fixes** - Fixed incorrect jq syntax in `inject-session-context.sh` and `smart-memory-search.sh`
+
+### Scripts Added
+
+- `.claude/scripts/fix-pretooluse-hooks.py` - Python script to validate and fix PreToolUse hook format
+- `.claude/scripts/fix-claude-mem-hooks.sh` - Bash script to detect and fix CLAUDE_PLUGIN_ROOT path resolution issues
+
+---
+
 ## [2.70.0] - 2026-01-27
 
 ### Critical: PreToolUse Hook Format Migration

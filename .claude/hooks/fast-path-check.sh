@@ -15,7 +15,7 @@ set -euo pipefail
 
 # Guaranteed valid JSON on error
 output_json() {
-    echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
+    echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
 }
 trap 'output_json' ERR EXIT
 umask 077
@@ -28,7 +28,7 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 # Only process Task tool calls
 if [[ "$TOOL_NAME" != "Task" ]]; then
     trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-    echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
+    echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
     exit 0
 fi
 
@@ -39,7 +39,7 @@ TASK_PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty')
 # Skip if already in orchestrator context
 if [[ "$TASK_TYPE" == "orchestrator" ]]; then
     trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-    echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
+    echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
     exit 0
 fi
 
