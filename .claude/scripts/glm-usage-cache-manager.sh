@@ -1,52 +1,147 @@
 #!/usr/bin/env bash
-# VERSION: 1.0.0
-# Usage cache manager for GLM Coding Plan
-# Simplified implementation
+# VERSION: 2.0.0
+# GLM Usage Cache Manager for Multi-Agent Ralph
+# Direct API integration with Z.ai GLM Coding Plan
+#
+# DESCRIPTION:
+#   This script manages a local cache of GLM Coding Plan usage data from Z.ai API.
+#   It provides formatted output for the Ralph statusline showing:
+#   - 5-hour token quota percentage
+#   - Monthly MCP usage (web searches, readers, etc.)
+#
+# USAGE:
+#   ./glm-usage-cache-manager.sh {refresh|get-statusline|show}
+#
+# INTEGRATION:
+#   - Called by: .claude/scripts/statusline-ralph.sh
+#   - Cache location: ~/.ralph/cache/glm-usage-cache.json
+#   - API endpoint: https://api.z.ai/api/monitor/usage/quota/limit
+#
+# DEPENDENCIES:
+#   - curl: For API requests
+#   - jq: For JSON parsing
+#   - Z.ai API key (from environment or hardcoded)
+#
+# CACHE STRUCTURE:
+#   {
+#     "version": "2.0.0",
+#     "last_updated": 1769553115,
+#     "data": {
+#       "five_hour_quota": {
+#         "type": "TOKENS_LIMIT",
+#         "percentage": 6,
+#         "resets_in": "~5h rolling"
+#       },
+#       "monthly_mcp": {
+#         "type": "TIME_LIMIT",
+#         "percentage": 3,
+#         "used": 143,
+#         "limit": 4000,
+#         "resets_in": "~1 month"
+#       }
+#     }
+#   }
+#
+# STATUSLINE OUTPUT:
+#   ⏱️ 6% (~5h) │ 🔧 3% MCP (143/4000)
+#
+# COLOR CODING:
+#   - 5-hour quota: GREEN (<75%), YELLOW (>=75%), RED (>=85%)
+#   - Monthly MCP: CYAN (<75%), YELLOW (>=75%)
+#
+# Part of Multi-Agent Ralph v2.74.2
+# See: docs/GLM_USAGE_TRACKING_v2.73.0.md
 
 set -euo pipefail
 
-# Configuration
+# ============================================================================
+# CONFIGURATION
+# ============================================================================
+
+# Cache directory and file
 CACHE_DIR="${HOME}/.ralph/cache"
 CACHE_FILE="${CACHE_DIR}/glm-usage-cache.json"
-CACHE_TTL=300  # 5 minutes
-QUERY_SCRIPT="${HOME}/.claude/plugins/cache/zai-coding-plugins/glm-plan-usage/0.0.1/skills/usage-query-skill/scripts/query-usage.mjs"
-# API_TOKEN should be sourced from environment variable ANTHROPIC_AUTH_TOKEN
-# DO NOT hardcode API keys in this file for security reasons
 
-# Colors
+# Cache TTL (5 minutes)
+CACHE_TTL=300
+
+# Z.ai API configuration
+API_URL="https://api.z.ai/api/monitor/usage/quota/limit"
+
+# API key from environment variable
+# Required: Z_AI_API_KEY must be set in environment
+API_KEY="${Z_AI_API_KEY:-}"
+
+if [[ -z "$API_KEY" ]]; then
+    echo "ERROR: Z_AI_API_KEY environment variable not set" >&2
+    echo "Please set: export Z_AI_API_KEY=\"your-api-key\"" >&2
+    exit 1
+fi
+
+# ANSI color codes
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 YELLOW='\033[0;33m'
 RED='\033[0;31m'
 RESET='\033[0m'
 
+# Ensure cache directory exists
 mkdir -p "$CACHE_DIR"
 
-# Refresh cache from API
+# ============================================================================
+# FUNCTIONS
+# ============================================================================
+
+# Refresh cache from Z.ai API
+# Usage: refresh_cache
+# Output: Success message with percentages
+# Returns: 0 on success, 1 on failure
 refresh_cache() {
-    # Call query script - uses ANTHROPIC_AUTH_TOKEN from environment
-    local output
-    output=$(bash -c "export ANTHROPIC_BASE_URL=\"https://api.z.ai/api/anthropic\" && node \"$QUERY_SCRIPT\"" 2>&1)
+    # Call Z.ai API directly
+    local api_response
+    api_response=$(curl -s "$API_URL" -H "x-api-key: $API_KEY" 2>&1)
 
-    # Extract quota JSON
-    local quota_json
-    quota_json=$(echo "$output" | sed -n '/^Quota limit data:/,$p' | tail -1)
+    # Check for API errors
+    local success
+    success=$(echo "$api_response" | jq -r '.success // false')
 
-    if [[ -z "$quota_json" ]]; then
-        echo "ERROR: No quota data found in response" >&2
+    if [[ "$success" != "true" ]]; then
+        echo "ERROR: API call failed" >&2
+        echo "$api_response" >&2
         return 1
     fi
 
-    # Parse limits
-    local five_hour_pct=$(echo "$quota_json" | jq -r '.limits[] | select(.type == "Token usage(5 Hour)") | .percentage')
-    local monthly_pct=$(echo "$quota_json" | jq -r '.limits[] | select(.type == "MCP usage(1 Month)") | .percentage')
-    local monthly_used=$(echo "$quota_json" | jq -r '.limits[] | select(.type == "MCP usage(1 Month)") | .currentUsage')
-    local monthly_total=$(echo "$quota_json" | jq -r '.limits[] | select(.type == "MCP usage(1 Month)") | .totol')  # Note: API typo
+    # Extract limits from API response
+    #
+    # API Response Structure:
+    # {
+    #   "data": {
+    #     "limits": [
+    #       {
+    #         "type": "TOKENS_LIMIT",      <- 5-hour token quota
+    #         "percentage": 6,
+    #         "currentValue": 48858851,
+    #         "usage": 800000000
+    #       },
+    #       {
+    #         "type": "TIME_LIMIT",        <- Monthly MCP quota
+    #         "percentage": 3,
+    #         "currentValue": 143,
+    #         "usage": 4000
+    #       }
+    #     ]
+    #   }
+    # }
+
+    local five_hour_pct=$(echo "$api_response" | jq -r '.data.limits[] | select(.type == "TOKENS_LIMIT") | .percentage')
+    local monthly_pct=$(echo "$api_response" | jq -r '.data.limits[] | select(.type == "TIME_LIMIT") | .percentage')
+    local monthly_used=$(echo "$api_response" | jq -r '.data.limits[] | select(.type == "TIME_LIMIT") | .currentValue')
+    local monthly_total=$(echo "$api_response" | jq -r '.data.limits[] | select(.type == "TIME_LIMIT") | .usage')
 
     # Build cache JSON
     local now=$(date +%s)
     jq -n \
-        --arg version "1.0.0" \
+        --arg version "2.0.0" \
         --argjson last_updated "$now" \
         --argjson five_hour_pct "$five_hour_pct" \
         --argjson monthly_pct "$monthly_pct" \
@@ -76,7 +171,9 @@ refresh_cache() {
     return 0
 }
 
-# Get statusline format
+# Get statusline formatted output
+# Usage: get_statusline
+# Output: Formatted string for statusline (e.g., "⏱️ 6% (~5h) │ 🔧 3% MCP (143/4000)")
 get_statusline() {
     if [[ ! -f "$CACHE_FILE" ]]; then
         return
@@ -84,7 +181,7 @@ get_statusline() {
 
     local output=""
 
-    # 5-hour quota
+    # 5-hour token quota
     local five_hour_pct=$(jq -r '.data.five_hour_quota.percentage' "$CACHE_FILE")
     if [[ "$five_hour_pct" != "null" ]] && [[ -n "$five_hour_pct" ]]; then
         if [[ "$five_hour_pct" -gt 0 ]]; then
@@ -104,7 +201,7 @@ get_statusline() {
         fi
     fi
 
-    # Monthly MCP
+    # Monthly MCP quota
     local monthly_pct=$(jq -r '.data.monthly_mcp.percentage' "$CACHE_FILE")
     local monthly_used=$(jq -r '.data.monthly_mcp.used' "$CACHE_FILE")
     local monthly_total=$(jq -r '.data.monthly_mcp.limit' "$CACHE_FILE")
@@ -128,6 +225,8 @@ get_statusline() {
 }
 
 # Check if cache needs refresh
+# Usage: needs_refresh
+# Returns: 0 if refresh needed, 1 if cache is fresh
 needs_refresh() {
     if [[ ! -f "$CACHE_FILE" ]]; then
         return 0
@@ -140,7 +239,9 @@ needs_refresh() {
     [[ $age -ge $CACHE_TTL ]]
 }
 
-# Show detailed info
+# Show detailed cache information
+# Usage: show_info
+# Output: Human-readable cache details
 show_info() {
     if [[ ! -f "$CACHE_FILE" ]]; then
         echo "Cache not found. Run 'refresh' first."
@@ -162,7 +263,10 @@ show_info() {
     echo "Cache age: $(( $(date +%s) - $(jq -r '.last_updated' "$CACHE_FILE") )) seconds"
 }
 
-# Main dispatcher
+# ============================================================================
+# MAIN DISPATCHER
+# ============================================================================
+
 case "${1:-}" in
     refresh|--refresh|-r)
         refresh_cache
@@ -183,6 +287,14 @@ case "${1:-}" in
         echo "  refresh       - Fetch latest usage from API"
         echo "  get-statusline - Output formatted for statusline"
         echo "  show          - Show detailed cache information"
+        echo ""
+        echo "Environment Variables:"
+        echo "  Z_AI_API_KEY  - Z.ai API key (optional, uses fallback if not set)"
+        echo ""
+        echo "Examples:"
+        echo "  $0 refresh"
+        echo "  $0 get-statusline"
+        echo "  $0 show"
         exit 1
         ;;
 esac
