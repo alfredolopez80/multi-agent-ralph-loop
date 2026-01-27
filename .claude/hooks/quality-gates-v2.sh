@@ -2,7 +2,8 @@
 # Quality Gates v2.48 - Quality Over Consistency + Security Scanning
 # Hook: PostToolUse (Edit, Write)
 # Purpose: Validate code changes with quality-first approach
-# VERSION: 2.69.0
+# VERSION: 2.69.1
+# v2.69.1: FIX - PostToolUse hooks CANNOT block - changed continue:false to continue:true with warnings
 # v2.68.9: CRIT-002 FIX - Actually clear EXIT trap before explicit JSON output (was documented but not implemented)
 # v2.68.1: FIX CRIT-005 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 #
@@ -10,7 +11,7 @@
 # Install tools: ~/.claude/scripts/install-security-tools.sh
 #
 # Key Change: Consistency issues are ADVISORY (warnings only)
-# Quality issues (correctness, security, types) are BLOCKING
+# Quality issues (correctness, security, types) are WARNINGS (PostToolUse cannot block)
 
 # SEC-111: Read input from stdin with length limit (100KB max)
 # Prevents DoS from malicious input
@@ -59,9 +60,10 @@ fi
 PROJECT_ROOT=$(realpath "$(pwd)" 2>/dev/null || pwd)
 
 # Verify file is within project or allowed paths (home dir)
+# v2.69.1: PostToolUse hooks CANNOT block - changed from continue:false to continue:true with warning
 if [[ "$FILE_PATH_REAL" != "$PROJECT_ROOT"* ]] && [[ "$FILE_PATH_REAL" != "$HOME"* ]]; then
     trap - EXIT  # CRIT-005: Clear trap before explicit output
-    echo '{"continue": false, "reason": "Path traversal blocked: file outside allowed directories"}'
+    jq -n '{"continue": true, "warning": "Path traversal detected: file outside allowed directories (PostToolUse cannot block)"}'
     exit 0
 fi
 
@@ -398,14 +400,15 @@ log_check() {
 # CRIT-002 FIX: Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 trap - EXIT
 
+# v2.69.1: PostToolUse hooks CANNOT block - always return continue:true
 # Prepare response (PostToolUse schema: "continue" boolean, not "decision" string)
 if [[ -n "$BLOCKING_ERRORS" ]]; then
-    # Quality issues - BLOCK
+    # Quality issues detected - WARNING (PostToolUse cannot block)
     ERRORS_JSON=$(echo -e "$BLOCKING_ERRORS" | jq -R -s '.')
     WARNINGS_JSON=$(echo -e "$ADVISORY_WARNINGS" | jq -R -s '.')
     echo "{
-        \"continue\": false,
-        \"reason\": \"Quality gate failed: blocking errors found\",
+        \"continue\": true,
+        \"warning\": \"Quality gate failed: blocking errors found (PostToolUse cannot block)\",
         \"blocking_errors\": $ERRORS_JSON,
         \"advisory_warnings\": $WARNINGS_JSON,
         \"checks\": {\"passed\": $CHECKS_PASSED, \"total\": $CHECKS_RUN}

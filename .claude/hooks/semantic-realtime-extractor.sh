@@ -9,7 +9,8 @@
 # Fixes Issue #7: semantic memory populated in real-time, not just at session end
 # v2.57.4: Uses atomic write helper to prevent race conditions (GAP-003 fix)
 #
-# VERSION: 2.69.0
+# VERSION: 2.69.1
+# v2.69.1: SEC-112 FIX - Clear trap before output to prevent duplicate JSON
 # v2.66.8: HIGH-003 version sync, SEC-050 verified jq --arg escapes content properly
 # SECURITY: SEC-006 compliant
 
@@ -33,6 +34,7 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
 
 # Only process Edit and Write tools
 if [[ "$TOOL_NAME" != "Edit" ]] && [[ "$TOOL_NAME" != "Write" ]]; then
+    trap - ERR EXIT  # v2.69.1: SEC-112 FIX - Clear trap before output
     echo '{"continue": true}'
     exit 0
 fi
@@ -42,6 +44,7 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null |
 
 # Skip if no file path
 if [[ -z "$FILE_PATH" ]]; then
+    trap - ERR EXIT  # v2.69.1: SEC-112 FIX - Clear trap before output
     echo '{"continue": true}'
     exit 0
 fi
@@ -55,6 +58,7 @@ case "$FILE_EXT" in
     py|js|ts|tsx|jsx|go|rs|java|kt|rb|sh|bash)
         ;;
     *)
+        trap - ERR EXIT  # v2.69.1: SEC-112 FIX - Clear trap before output
         echo '{"continue": true}'
         exit 0
         ;;
@@ -65,6 +69,7 @@ CONFIG_FILE="${HOME}/.ralph/config/memory-config.json"
 if [[ -f "$CONFIG_FILE" ]]; then
     REALTIME_EXTRACT=$(jq -r '.semantic.realtime_extract // true' "$CONFIG_FILE" 2>/dev/null || echo "true")
     if [[ "$REALTIME_EXTRACT" != "true" ]]; then
+        trap - ERR EXIT  # v2.69.1: SEC-112 FIX - Clear trap before output
         echo '{"continue": true}'
         exit 0
     fi
@@ -91,6 +96,7 @@ fi
 
 # Skip if no meaningful content
 if [[ -z "$CONTENT" ]] || [[ ${#CONTENT} -lt 30 ]]; then
+    trap - ERR EXIT  # v2.69.1: SEC-112 FIX - Clear trap before output
     echo '{"continue": true}'
     exit 0
 fi
@@ -271,4 +277,6 @@ fi
 } >> "${LOG_DIR}/semantic-realtime-$(date +%Y%m%d).log" 2>&1 &
 
 # Continue tool execution
+# v2.69.1: SEC-112 FIX - Clear trap before final output to prevent duplicate JSON
+trap - ERR EXIT
 echo '{"continue": true}'
