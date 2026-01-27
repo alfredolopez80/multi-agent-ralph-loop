@@ -1,0 +1,15 @@
+# Git-filter-repo rules para eliminar archivos con API keys del historial
+# Elimina archivos específicos que contenían API keys
+
+.claude/backup-before-cleanup-20260127-170141/settings.json
+.claude/glm47-context-monitoring-FIXED.md
+.claude/tmp/zai-settings-current.json
+
+# También eliminar cualquier settings.json en .claude/ o subdirectorios
+.claude/**/settings.json
+
+# Eliminar directorio temporal tmp
+.claude/tmp/
+
+# Eliminar directorios backup-before-cleanup
+.claude/backup-before-cleanup*/
