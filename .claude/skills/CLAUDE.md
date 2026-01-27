@@ -8,7 +8,6 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #5371 | 4:44 PM | 🟣 | Complete v2.16 Upgrade: AskUserQuestion Integration and Auto-Plan Mode | ~597 |
-| #5069 | 11:28 AM | 🔵 | Multi-Agent System Architecture Discovered | ~81 |
 </claude-mem-context>
 
 # Skills Directory - Multi-Agent Ralph Loop
@@ -53,6 +52,7 @@ This directory contains skills for the Multi-Agent Ralph Loop orchestration syst
 | **worktree-pr** | `/worktree-pr` | Worktree-based PR workflow |
 | **task-visualizer** | `/visualize` | Task state visualization |
 | **deep-clarification** | `/clarify` | Intensive AskUserQuestion |
+| **crafting-effective-readmes** | `/readme` | README writing with templates & guidance |
 | **vercel-react-best-practices** | - | Vercel/React patterns |
 
 ---
