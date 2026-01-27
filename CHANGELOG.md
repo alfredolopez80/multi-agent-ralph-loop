@@ -7,6 +7,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.70.0] - 2026-01-27
+
+### Critical: PreToolUse Hook Format Migration
+
+**CRIT-007: PreToolUse Hook JSON Format Discrepancy**
+
+#### Problem
+
+Discovered critical discrepancy between implemented hook format and official Claude Code documentation:
+- **Implemented**: `{"decision": "allow"}`
+- **Official**: `{"hookSpecificOutput": {"permissionDecision": "allow"}}`
+
+#### Investigation
+
+Based on GitHub issues #4362 and #13339:
+- Issue #4362 (closed 2025-07-25): `{"approve": false}` format never worked for blocking
+- Issue #13339 (2025-12-07): Confirms `hookSpecificOutput.permissionDecision` works in CLI
+- Old format may have been backward-compatible but not officially supported
+
+#### Solution
+
+Migrated all 13 PreToolUse hooks to new format:
+
+**Migrated Hooks**:
+1. `lsa-pre-step.sh`
+2. `repo-boundary-guard.sh`
+3. `fast-path-check.sh`
+4. `smart-memory-search.sh`
+5. `skill-validator.sh`
+6. `procedural-inject.sh`
+7. `checkpoint-smart-save.sh`
+8. `checkpoint-auto-save.sh`
+9. `git-safety-guard.py`
+10. `smart-skill-reminder.sh`
+11. `orchestrator-auto-learn.sh`
+12. `task-orchestration-optimizer.sh`
+13. `inject-session-context.sh`
+
+**Format Changes**:
+```bash
+# Old format
+echo '{"decision": "allow"}'
+echo '{"decision": "allow", "additionalContext": "..."}'
+
+# New format
+echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
+echo '{"hookSpecificOutput": {"permissionDecision": "allow", "additionalContext": "..."}}'
+```
+
+#### Documentation
+
+- Created `.claude/audits/CRITICAL_HOOK_FORMAT_ANALYSIS_v2.70.0.md`
+- Created `.claude/retrospectives/2026-01-27-hook-format-analysis-v2.70.0.md`
+- Created `.claude/scripts/validate-hook-formats.sh` - validation script
+- Created `.claude/scripts/migrate-hook-formats.sh` - migration script
+
+#### Backup
+
+All hooks backed up to:
+`.claude/archive/pre-migration-v2.70.0-20260127-231849/`
+
+#### Testing
+
+```bash
+# Validate migration
+bash .claude/scripts/validate-hook-formats.sh
+
+# Expected: All PreToolUse hooks using new format
+```
+
+#### References
+
+- [Claude Code Hooks Documentation](https://docs.anthropic.com/claude-code/hooks)
+- [Issue #4362: PreToolUse hooks cannot block](https://github.com/anthropics/claude-code/issues/4362)
+- [Issue #13339: VS Code ignores permissionDecision](https://github.com/anthropics/claude-code/issues/13339)
+
+---
+
 ## [2.74.3] - 2026-01-27
 
 ### Bug Fix: Context Window Calculation in Statusline

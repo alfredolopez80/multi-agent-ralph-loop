@@ -22,7 +22,7 @@ set -euo pipefail
 
 # SEC-033: Guaranteed JSON output on any error
 output_json() {
-    echo '{"decision": "allow"}'
+    echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
 }
 trap 'output_json' ERR EXIT
 
@@ -43,7 +43,7 @@ INPUT=$(head -c 100000)
 if ! echo "$INPUT" | jq empty 2>/dev/null; then
     log "Invalid JSON input, skipping hook"
     trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-    echo '{"decision": "allow"}'
+    echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
     exit 0
 fi
 
@@ -53,7 +53,7 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null || echo "")
 # Only process Task tool
 if [[ "$TOOL_NAME" != "Task" ]]; then
     trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-    echo '{"decision": "allow"}'
+    echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
     exit 0
 fi
 
@@ -68,7 +68,7 @@ PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // ""' 2>/dev/null || echo ""
 if [[ ! -f "$PLAN_STATE" ]]; then
     log "No plan-state.json, allowing Task without optimization"
     trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-    echo '{"decision": "allow"}'
+    echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
     exit 0
 fi
 
@@ -171,5 +171,5 @@ if [[ "$OPTIMIZATION_APPLIED" == "true" ]]; then
     echo "{\"decision\": \"allow\", \"systemMessage\": $ESCAPED_SUGGESTIONS}"
 else
     log "No optimization opportunities found"
-    echo '{"decision": "allow"}'
+    echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
 fi

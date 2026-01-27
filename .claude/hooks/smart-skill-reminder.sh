@@ -38,7 +38,7 @@ mkdir -p "$MARKERS_DIR" "$(dirname "$LOG_FILE")" 2>/dev/null || true
 
 # Guaranteed JSON output on any error
 output_empty() {
-    echo '{"decision": "allow"}'
+    echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
 }
 trap 'output_empty' ERR EXIT
 
@@ -233,7 +233,7 @@ main() {
     if skill_recently_invoked; then
         log "Skill recently invoked, skipping"
         trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-        echo '{"decision": "allow"}'
+        echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
         exit 0
     fi
 
@@ -247,15 +247,15 @@ main() {
         log "Suggesting: $suggestion for $file_path"
 
         # Output suggestion
-        # CRIT-012: PreToolUse MUST use {"decision": "allow"}, NOT hookSpecificOutput
+        # v2.70.0: Using new hookSpecificOutput format
         trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
         jq -n --arg ctx "Consider using $suggestion" \
-            '{"decision": "allow", "additionalContext": $ctx}'
+            '{"hookSpecificOutput": {"permissionDecision": "allow", "additionalContext": $ctx}}'
     else
         # No suggestion for this file type
         log "No specific skill suggestion for: $file_path"
         trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-        echo '{"decision": "allow"}'
+        echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
     fi
 }
 

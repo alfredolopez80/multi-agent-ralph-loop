@@ -212,7 +212,7 @@ def check_blocked_pattern(command: str) -> tuple[bool, str]:
 
 def allow_and_exit():
     """CRIT-002 FIX: Always output JSON for PreToolUse compliance."""
-    print('{"decision": "allow"}')
+    print('{"permissionDecision": "allow"}')
     sys.exit(0)
 
 

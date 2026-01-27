@@ -55,9 +55,9 @@ output_json() {
     # SEC-043 FIXED: Use jq --arg to safely escape message content
     if [[ -n "$message" ]]; then
         # Use jq for safe JSON construction (prevents JSON injection)
-        jq -n --arg ctx "$message" '{"decision": "allow", "additionalContext": $ctx}'
+        jq -n {"hookSpecificOutput": {"permissionDecision": "allow", "additionalContext": $ctx}'
     else
-        echo '{"decision": "allow"}'
+        echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
     fi
 }
 
@@ -86,7 +86,7 @@ log "INFO" "PreToolUse hook triggered - tool: $TOOL_NAME, session: $SESSION_ID"
 if [[ "$TOOL_NAME" != "Task" ]]; then
     log "DEBUG" "Skipping non-Task tool: $TOOL_NAME"
     trap - EXIT  # CRIT-002: Clear trap before explicit output
-    echo '{"decision": "allow"}'
+    echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
     exit 0
 fi
 
@@ -94,7 +94,7 @@ fi
 if ! check_feature_enabled "RALPH_INJECT_CONTEXT" "true"; then
     log "INFO" "Context injection disabled via features.json"
     trap - EXIT  # CRIT-002: Clear trap before explicit output
-    echo '{"decision": "allow"}'
+    echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
     exit 0
 fi
 
@@ -109,5 +109,5 @@ fi
 
 log "INFO" "PreToolUse hook allowing Task tool"
 trap - EXIT  # CRIT-002: Clear trap before explicit output
-echo '{"decision": "allow"}'
+echo '{"hookSpecificOutput": {"permissionDecision": "allow"}}'
 exit 0
