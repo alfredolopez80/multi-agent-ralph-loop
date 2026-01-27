@@ -929,6 +929,40 @@ done
 
 ### Known Limitations (v2.57.0)
 
+#### 0. CLAUDE_PLUGIN_ROOT Path Resolution in Bun (v2.72.2) - CRITICAL FIX
+
+**Issue**: The claude-mem plugin's hooks fail because Bun cannot resolve `${CLAUDE_PLUGIN_ROOT}` correctly when used as part of a path argument.
+
+**Error**:
+```bash
+bun "${CLAUDE_PLUGIN_ROOT}/scripts/worker-service.cjs" start
+# Error: Module not found "/scripts/worker-service.cjs"
+```
+
+**Solution** (Applied):
+```bash
+(cd "${CLAUDE_PLUGIN_ROOT}" && bun scripts/worker-service.cjs start)
+```
+
+**Affected Files** (BOTH must be updated):
+1. `~/.claude-sneakpeek/zai/config/plugins/cache/thedotmack/claude-mem/9.0.10/hooks/hooks.json`
+2. `~/.claude-sneakpeek/zai/config/plugins/marketplaces/thedotmack/plugin/hooks/hooks.json`
+
+> **Why both?** Marketplace is source for updates. If only cache is fixed, updates overwrite the fix.
+
+**Auto-Detection for Claude Code/z.ai**:
+```bash
+# Detect incorrect patterns
+find ~/.claude-sneakpeek/zai/config/plugins -name "hooks.json" -path "*/claude-mem/*" -exec grep -l 'bun "\${CLAUDE_PLUGIN_ROOT}/scripts/worker-service' {} \;
+
+# Auto-fix using provided script
+./.claude/scripts/fix-claude-mem-hooks.sh
+```
+
+**Documentation**: See `docs/CLAUDE_MEM_HOOKS_FIX.md` for complete details.
+
+**Note**: Both files are now fixed. Future claude-mem updates should preserve the marketplace fix.
+
 #### 1. TodoWrite Does NOT Trigger Hooks (By Design)
 
 **This is intentional, not a bug.** Claude Code categorizes tools into two types:
@@ -1054,6 +1088,7 @@ Options:
 | Complete Architecture | `ARCHITECTURE_DIAGRAM_v2.52.0.md` |
 | Version History | `CHANGELOG.md` |
 | Hook Testing | `tests/HOOK_TESTING_PATTERNS.md` |
+| **Claude-Mem Hooks Fix** | `docs/CLAUDE_MEM_HOOKS_FIX.md` ⚠️ |
 | Full README | `README.md` |
 | Installation | `install.sh` |
 | Plan State v2 Schema | `.claude/schemas/plan-state-v2.schema.json` |
