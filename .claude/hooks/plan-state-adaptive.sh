@@ -173,12 +173,15 @@ create_plan_state() {
     # Ensure .claude directory exists
     mkdir -p "$(dirname "$PLAN_STATE")" 2>/dev/null || true
 
+    # Prepare task_summary as JSON string (escape special characters)
+    task_summary_json=$(echo "$task_summary" | head -c 200 | jq -Rs '.')
+
     # Create plan-state JSON
     cat > "$PLAN_STATE" << PLANEOF
 {
   "\$schema": "plan-state-v2",
   "plan_id": "$plan_id",
-  "task": $(echo "$task_summary" | jq -Rs '.[:200]'),
+  "task": $task_summary_json,
   "classification": {
     "complexity": $complexity,
     "model_routing": "$model",
