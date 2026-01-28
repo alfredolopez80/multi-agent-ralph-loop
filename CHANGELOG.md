@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.78.10] - 2026-01-28
 
+### Fixed
+
+- **Context Display Validation**: Fixed statusline showing 100% when actual usage was ~55%
+  - Validate `used_percentage` (ignore 0% and 100% from Zai wrapper)
+  - Read cache file before cumulative fallback
+  - Use 75% estimate when cumulative tokens maxed out (> 90% of context window)
+  - Removed non-working `context-from-cli.sh` hook
+  - See [docs/context-monitoring/STATUSLINE_V2.78.10_FIX.md](docs/context-monitoring/STATUSLINE_V2.78.10_FIX.md)
+
 ### Context Monitoring: Dual Context Display with Project-Specific Cache
 
 **FEAT-003: Statusline v2.78 Implementation - Complete Context Monitoring System**
