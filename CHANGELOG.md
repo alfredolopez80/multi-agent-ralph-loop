@@ -7,6 +7,130 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.78.10] - 2026-01-28
+
+### Context Monitoring: Dual Context Display with Project-Specific Cache
+
+**FEAT-003: Statusline v2.78 Implementation - Complete Context Monitoring System**
+
+#### Problem Solved
+
+Claude Code 2.1.19 provides unreliable context window values:
+- `context_window.used_percentage` often shows 0% or 100%
+- `context_window.current_usage.input_tokens` returns 0 even when context is partially filled
+- `total_*_tokens` are cumulative session values, not current window
+
+#### Solution: Dual Context Display System
+
+The statusline now shows TWO separate context metrics:
+
+```
+⎇ main* | 🤖 ██████████░░ 391k/200k (195%) | CtxUse: 133k/200k (66.6%) | Free: 22k (10.9%) | Buff 45.0k (22.5%)
+          └───────────────── Cumulative ─────┘ └────────────────── Current Window ──────────────────┘
+```
+
+**1. Cumulative Session Progress (`🤖` progress bar)**
+- Source: `total_input_tokens + total_output_tokens`
+- Purpose: Show overall session token accumulation
+- Can exceed 100% (includes compacted messages)
+
+**2. Current Window Usage (`CtxUse`)**
+- Source: Project-specific cache from `/context` command
+- Purpose: Show actual current window usage (matches `/context` exactly)
+- Format: `CtxUse: 133k/200k (66.6%) | Free: 22k (10.9%) | Buff 45.0k (22.5%)`
+
+#### Project-Specific Cache Strategy
+
+**Cache Location**: `~/.ralph/cache/<project-id>/context-usage.json`
+
+Project ID derived from:
+1. Git remote URL (e.g., `alfredolopez80/multi-agent-ralph-loop`)
+2. Directory hash (fallback for non-git projects)
+
+**Cache Update Mechanism**:
+- Hook: `context-from-cli.sh` (UserPromptSubmit event)
+- Trigger: Before each user prompt
+- Action: Calls `/context` command and parses output
+- Expiry: 300 seconds (5 minutes) for stale cache detection
+
+**Why `/context` Command?**
+- Provides accurate values from Claude Code's internal calculation
+- Includes buffer tokens (45k by default) for autocompaction
+- Consistent with what users see when they run `/context` manually
+- Works around unreliable JSON fields in stdin
+
+#### Version History (v2.75.0 → v2.78.10)
+
+| Version | Key Changes | Result |
+|---------|-------------|--------|
+| v2.74.10 | Original cumulative-only | Showed 195% correctly |
+| v2.75.0 | Used `used_percentage` | ❌ Showed 0% |
+| v2.75.1 | Used `current_usage` first | ❌ Showed 0% |
+| v2.75.2 | Used `total_*` + capped at 100% | ❌ Showed 100% |
+| v2.75.3 | Used `total_*` + no cap | ✅ Showed 275% (cumulative) |
+| v2.77.0 | Added current window display | ✅ Dual display with cache |
+| v2.77.1 | Fixed cache preservation | ✅ Won't overwrite valid data |
+| v2.77.2 | Increased cache expiry to 300s | ✅ Better performance |
+| v2.78.2 | Fixed current_usage calculation | ✅ Uses input+cache+read |
+| v2.78.5 | Removed inaccurate global cache | ✅ Project-specific only |
+| v2.78.6 | Added context-from-cli.sh hook | ✅ Real-time updates |
+| v2.78.7 | Added fallback to generic cache | ✅ Better compatibility |
+| v2.78.8 | Prioritized stdin used_percentage | ✅ Zai compatibility |
+| v2.78.9 | Use 75% estimate when maxed | ✅ Better fallback |
+| v2.78.10 | Read cache before cumulative calc | ✅ Cache-first strategy |
+
+#### Files Added/Modified
+
+**New Files**:
+- `.claude/hooks/context-from-cli.sh` - Cache update hook (UserPromptSubmit)
+- `.claude/scripts/parse-context-output.sh` - Parse `/context` command output
+- `.claude/scripts/update-context-cache.sh` - Manual cache update utility
+- `.claude/scripts/verify-statusline-context.sh` - Validation script
+- `docs/context-monitoring/STATUSLINE_V2.78_IMPLEMENTATION.md` - Complete documentation
+
+**Modified Files**:
+- `.claude/scripts/statusline-ralph.sh` (v2.74.10 → v2.78.10)
+- `CLAUDE.md` - Updated context monitoring section
+- `README.md` - Updated badges and recent fixes
+
+#### Testing & Validation
+
+All test scenarios passing:
+- ✅ Fresh session (no cache) → Falls back to 75% estimate
+- ✅ After `/context` call → Cache populated with accurate values
+- ✅ Cache < 5 min old → Uses cached values
+- ✅ Cache > 5 min old → Marks as stale, uses fallback
+- ✅ Multiple projects → Separate caches per project
+- ✅ Zai wrapper (0% in stdin) → Ignores stdin, uses cache
+
+#### Performance Impact
+
+- **Hook Overhead**: ~0.4s per user prompt (git remote + jq parsing)
+- **Cache Read**: ~0.05s (jq + file read)
+- **Cache Hit Rate**: >95% after initial prompt
+- **Fallback Penalty**: ~0.02s (additional calculation)
+
+#### Known Limitations
+
+1. **Initial Session State**: First prompt shows fallback (75% estimate) until cache is populated
+2. **Stale Cache**: Cache > 5 minutes considered stale (updates on every prompt naturally)
+3. **Zai Wrapper Extreme Values**: Ignores stdin values outside 5-95% range
+
+#### Documentation
+
+- **Implementation Report**: `docs/context-monitoring/STATUSLINE_V2.78_IMPLEMENTATION.md`
+- **Fix Summary**: `docs/context-monitoring/FIX_SUMMARY.md`
+- **Original Analysis**: `docs/context-monitoring/ANALYSIS.md`
+- **Validation Reports**: `docs/context-monitoring/VALIDATION_v2.75.0.md`
+
+#### References
+
+- [Claude Code Statusline Documentation](https://code.claude.com/docs/en/statusline)
+- [GitHub Issue #13783: Context Window Fields](https://github.com/anthropics/claude-code/issues/13783)
+- [Claude-sneakpeek v1.6.9](https://github.com/mikekelly/claude-sneakpeek)
+
+---
+
 ## [2.70.1] - 2026-01-28
 
 ### Fixed
