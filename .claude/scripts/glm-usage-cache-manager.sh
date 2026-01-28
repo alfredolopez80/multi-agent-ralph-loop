@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
-# VERSION: 2.0.0
+# VERSION: 2.1.0
 # GLM Usage Cache Manager for Multi-Agent Ralph
 # Direct API integration with Z.ai GLM Coding Plan
+#
+# CHANGELOG v2.1.0:
+# - OPTIMIZATION: Single jq call to read cache (was 4 separate calls)
+# - Simplified color logic with short-circuit evaluation
+# - Better performance for statusline rendering
 #
 # DESCRIPTION:
 #   This script manages a local cache of GLM Coding Plan usage data from Z.ai API.
@@ -179,46 +184,42 @@ get_statusline() {
         return
     fi
 
-    local output=""
+    # Read cache JSON once - OPTIMIZATION: Single jq call instead of 4
+    local cache_data
+    cache_data=$(jq -r '
+        .data.five_hour_quota.percentage as $fh_pct |
+        .data.monthly_mcp.percentage as $mcp_pct |
+        .data.monthly_mcp.used as $mcp_used |
+        .data.monthly_mcp.limit as $mcp_total |
+        "\($fh_pct)|\($mcp_pct)|\($mcp_used)|\($mcp_total)"
+    ' "$CACHE_FILE" 2>/dev/null)
 
-    # 5-hour token quota
-    local five_hour_pct=$(jq -r '.data.five_hour_quota.percentage' "$CACHE_FILE")
-    if [[ "$five_hour_pct" != "null" ]] && [[ -n "$five_hour_pct" ]]; then
-        if [[ "$five_hour_pct" -gt 0 ]]; then
-            local color="$GREEN"
-            if [[ "$five_hour_pct" -ge 75 ]]; then
-                color="$YELLOW"
-            fi
-            if [[ "$five_hour_pct" -ge 85 ]]; then
-                color="$RED"
-            fi
+    # Parse the pipe-delimited values
+    IFS='|' read -r five_hour_pct monthly_pct monthly_used monthly_total <<< "$cache_data"
 
-            if [[ -n "$output" ]]; then
-                output="${output} │ "
-            fi
-
-            output="${output}${color}⏱️ ${five_hour_pct}% (~5h)${RESET}"
-        fi
+    # Skip if data is invalid
+    if [[ "$five_hour_pct" == "null" ]] || [[ -z "$five_hour_pct" ]]; then
+        return
     fi
 
-    # Monthly MCP quota
-    local monthly_pct=$(jq -r '.data.monthly_mcp.percentage' "$CACHE_FILE")
-    local monthly_used=$(jq -r '.data.monthly_mcp.used' "$CACHE_FILE")
-    local monthly_total=$(jq -r '.data.monthly_mcp.limit' "$CACHE_FILE")
+    local output=""
 
-    if [[ "$monthly_pct" != "null" ]] && [[ -n "$monthly_pct" ]]; then
-        if [[ "$monthly_pct" -gt 0 ]]; then
-            local color="$CYAN"
-            if [[ "$monthly_pct" -ge 75 ]]; then
-                color="$YELLOW"
-            fi
+    # 5-hour token quota (only show if > 0%)
+    if [[ "$five_hour_pct" -gt 0 ]]; then
+        # Determine color based on threshold
+        local color="$GREEN"
+        [[ "$five_hour_pct" -ge 75 ]] && color="$YELLOW"
+        [[ "$five_hour_pct" -ge 85 ]] && color="$RED"
+        output="${output}${color}⏱️ ${five_hour_pct}% (~5h)${RESET}"
+    fi
 
-            if [[ -n "$output" ]]; then
-                output="${output} │ "
-            fi
+    # Monthly MCP quota (only show if > 0%)
+    if [[ "$monthly_pct" != "null" ]] && [[ -n "$monthly_pct" ]] && [[ "$monthly_pct" -gt 0 ]]; then
+        local color="$CYAN"
+        [[ "$monthly_pct" -ge 75 ]] && color="$YELLOW"
 
-            output="${output}${color}🔧 ${monthly_pct}% MCP (${monthly_used}/${monthly_total})${RESET}"
-        fi
+        [[ -n "$output" ]] && output="${output} │ "
+        output="${output}${color}🔧 ${monthly_pct}% MCP (${monthly_used}/${monthly_total})${RESET}"
     fi
 
     echo -e "$output"
