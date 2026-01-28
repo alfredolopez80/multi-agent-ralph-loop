@@ -8,7 +8,6 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #11513 | 10:05 PM | ✅ | Ralph v2.47 Message Count Path Standardization Fix | ~953 |
-| #11512 | 10:04 PM | ✅ | Context Warning Hook Synchronized to Global Directory | ~281 |
 
 ### Jan 19, 2026
 
@@ -74,6 +73,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #18053 | 2:35 PM | 🔴 | Context monitoring fix committed - v2.75.3 restores total_*_tokens approach with overflow indication | ~183 |
 | #17922 | 1:01 PM | ⚖️ | Root cause identified: statusline uses cumulative tokens instead of current_usage | ~544 |
 | #17915 | 1:00 PM | 🔵 | Pre-compact hook auto-saves state before context compaction | ~314 |
 | #17911 | 12:59 PM | 🔵 | Context warning hook uses same estimation heuristics as other trackers | ~371 |

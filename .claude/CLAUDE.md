@@ -1,3 +1,88 @@
+# Multi-Agent Ralph Loop - Project Instructions
+
+> **Documentation Standards**: All development documentation is in English and stored in the `docs/` directory.
+
+## Documentation Organization
+
+### Structure
+
+All project documentation follows a professional folder structure under `docs/`:
+
+```
+docs/
+├── context-monitoring/      # Context tracking analysis and fixes
+├── architecture/            # Architecture diagrams and design docs
+├── security/                # Security-related documentation
+├── retrospective/           # Project retrospectives
+├── examples/                # Code examples and tutorials
+└── CLAUDE.md                # General documentation guidelines
+```
+
+### Creating New Documentation
+
+When creating documentation for a new subject:
+
+1. **Create a new folder** under `docs/` named after the subject
+   - Example: `docs/feature-name/`
+   - Use lowercase with hyphens for multi-word subjects
+
+2. **Use descriptive filenames**
+   - `ANALYSIS.md` - Analysis and investigation documents
+   - `FIX_SUMMARY.md` - Complete fix summaries
+   - `VALIDATION_vX.Y.Z.md` - Validation reports with version numbers
+   - `IMPLEMENTATION.md` - Implementation guides
+
+3. **Write in English**
+   - All documentation must be in English
+   - Follow standard markdown formatting
+   - Include date, version, and status at the top
+
+4. **Link related documents**
+   - Add references to related documentation
+   - Use relative paths for links within `docs/`
+
+### Example Documentation Template
+
+```markdown
+# [Title]
+
+**Date**: YYYY-MM-DD
+**Version**: vX.Y.Z
+**Status**: [ANALYSIS COMPLETE | FIX REQUIRED | RESOLVED]
+
+## Summary
+[Brief description of the document purpose]
+
+## Details
+[Main content]
+
+## References
+- [Related documentation](../other-folder/file.md)
+```
+
+## Language Policy
+
+| Content Type | Language | Notes |
+|--------------|----------|-------|
+| **Code** | English | Variables, functions, classes, comments |
+| **Documentation** | English | All files in `docs/` |
+| **Commit Messages** | English | Conventional commits format |
+| **Code Comments** | English | Inline documentation |
+
+## Recent Documentation Reorganization
+
+**Date**: 2026-01-28
+
+The following documentation files were reorganized from `.claude/` to `docs/context-monitoring/`:
+
+- `ANALYSIS.md` - Context monitoring analysis (was `ANALYSIS_CONTEXT_MONITORING.md`)
+- `FIX_SUMMARY.md` - Complete fix summary (was `CONTEXT_MONITORING_FIX_SUMMARY.md`)
+- `VALIDATION_v2.75.0.md` - Validation report (was `VALIDATION_REPORT_v2.75.0.md`)
+- `FIX_CORRECTION_v2.75.1.md` - Fix correction analysis (was `FIX_CORRECTION_v2.75.1.md`)
+
+This follows the project standard of storing all development documentation in the `docs/` repository with appropriate folder organization.
+
+
 <claude-mem-context>
 # Recent Activity
 
@@ -32,25 +117,25 @@
 | #16954 | " | 🔵 | Settings.local.json Purpose Documented | ~286 |
 | #16952 | " | 🔵 | Project-Specific Settings Configuration Found | ~137 |
 | #16947 | 2:08 AM | 🔵 | Native Context API Implementation With Timeout Protection | ~420 |
-| #16938 | " | 🔵 | Pre-Compact-Handoff Hook Extensively Documented and Validated | ~458 |
-| #16937 | " | 🔵 | README Documents Complete Real Context Tracking System v2.73.0 | ~494 |
-| #16934 | 2:07 AM | 🔵 | Comprehensive Context Management Documentation Archive Found | ~415 |
-| #16933 | " | 🔵 | Context tracking references Claude Code documentation paths | ~179 |
-| #16930 | " | 🔵 | Local settings contains minimal configuration | ~158 |
-| #16924 | " | 🔵 | Ralph Context Command Provides Context Status and Management | ~400 |
-| #16922 | " | 🔵 | Context System Validation Confirms All Components Functional | ~506 |
-| #16913 | 2:06 AM | 🔵 | Real context tracking implemented using Claude Code native API | ~363 |
-| #16901 | 2:05 AM | 🔵 | Complete v2.73.0 Real Context Tracking Documentation | ~950 |
-| #16896 | 2:04 AM | 🔵 | Native Claude Code context measurement via claude --print command | ~383 |
-| #16893 | " | 🔵 | Real Context Tracking System Uses Claude CLI Native API | ~465 |
-| #16872 | 2:03 AM | 🔵 | Context-Related Documentation Files Located | ~247 |
-| #16856 | 2:02 AM | 🔵 | Context Measurement and Statusline Documentation Found | ~303 |
-| #16853 | " | 🔵 | Context Tracking Infrastructure and /context Command Found | ~324 |
 
 ### Jan 28, 2026
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #18072 | 2:40 PM | ✅ | Documentation reorganization moved context monitoring files from .claude/ to docs/context-monitoring/ | ~271 |
+| #18071 | 2:39 PM | ✅ | CLAUDE.md updated with new project content from temp file | ~163 |
+| #18069 | " | 🔵 | CLAUDE.md read operation returns empty content despite 65 lines existing | ~152 |
+| #18068 | 2:38 PM | 🔵 | Current CLAUDE.md file is 64 lines long, being read for policy update | ~122 |
+| #18067 | " | 🔵 | Read CLAUDE.md to understand current documentation structure | ~125 |
+| #18066 | " | 🔵 | Project CLAUDE.md file is empty (65 lines) | ~95 |
+| #18064 | " | 🔄 | Context monitoring documentation reorganized into docs/context-monitoring directory | ~260 |
+| #18060 | 2:37 PM | ✅ | Comprehensive fix summary document created explaining context tracking journey | ~334 |
+| #18059 | " | ✅ | Validation report v2.75.0 documents complete testing suite results | ~257 |
+| #18058 | " | 🔵 | Analysis document confirms total_* tokens are cumulative session accumulators | ~282 |
+| #18057 | " | 🔵 | Fix correction document explains v2.75.1 rationale and lessons learned | ~222 |
+| #18056 | " | 🔵 | CLAUDE.md file contains 65 lines but content was not displayed in output | ~125 |
+| #18053 | 2:35 PM | 🔴 | Context monitoring fix committed - v2.75.3 restores total_*_tokens approach with overflow indication | ~183 |
+| #18051 | 2:34 PM | ✅ | Context monitoring fix documentation and scripts staged for git commit | ~302 |
 | #17975 | 1:51 PM | ✅ | Progress.md updated with complete validation summary for v2.75.0 | ~305 |
 | #17974 | 1:50 PM | ✅ | Validation tests completed and documented in progress log | ~250 |
 | #17973 | " | 🔵 | Progress.md file contains 426 total lines with recent fix operations | ~123 |
