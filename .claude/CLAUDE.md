@@ -103,14 +103,14 @@ This follows the project standard of storing all development documentation in th
 | #17137 | " | 🔵 | Investigation revealed why 6.1 GB session growth went undetected by monitoring system | ~255 |
 | #17133 | 2:41 AM | 🔵 | Context tracking v2.73.0 documentation reveals three-tier fallback system with native API primary method | ~260 |
 | #17109 | 2:39 AM | 🔵 | Previous GLM Context Monitoring Fixes from 2026-01-26 | ~368 |
-| #16984 | 2:12 AM | 🔵 | Comprehensive Context Measurement Guide Created | ~434 |
-| #16982 | 2:11 AM | 🔵 | Task Investigation Reveals /context Command Limitations | ~408 |
 
 ### Jan 28, 2026
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #18135 | 2:49 PM | ✅ | Comprehensive documentation reorganization staged - 35 files moved to docs/ directory structure | ~341 |
+| #18139 | 2:50 PM | ✅ | Staged 40 documentation files for commit with reorganization from .claude/ to docs/ structure | ~343 |
+| #18137 | 2:49 PM | ✅ | Documentation reorganization completed - 49 files moved to 8 categorized directories under docs/ | ~394 |
+| #18135 | " | ✅ | Comprehensive documentation reorganization staged - 35 files moved to docs/ directory structure | ~341 |
 | #18114 | 2:44 PM | ✅ | Git cleanup removed 26 deleted .md files from .claude/ directory and updated CLAUDE.md files | ~173 |
 | #18103 | 2:43 PM | 🔄 | Documentation reorganization staged for git commit | ~311 |
 | #18102 | " | 🔵 | CLAUDE.md documents documentation standards and recent reorganization of context monitoring docs | ~175 |
