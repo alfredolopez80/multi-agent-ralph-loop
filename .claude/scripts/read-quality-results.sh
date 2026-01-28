@@ -23,8 +23,8 @@ is_check_complete() {
     local check_name="$1"
     local run_id="$2"
 
-    # Check for .done marker file
-    if [[ -f "${RESULTS_DIR}/${check_name}_${run_id}.done" ]]; then
+    # Check for .done marker file (format: ${check_name}_${run_id}.json.done)
+    if [[ -f "${RESULTS_DIR}/${check_name}_${run_id}.json.done" ]]; then
         # Check if result file exists
         if [[ -f "${RESULTS_DIR}/${check_name}_${run_id}.json" ]]; then
             return 0  # Complete

@@ -238,6 +238,56 @@ EXTERNAL RALPH LOOP (max 25)
 
 **CRITICAL: model: "sonnet" for all subagents**
 
+### Step 6b.5: QUALITY-PARALLEL (NEW v2.80)
+
+**Trigger**: `complexity >= 5` OR security-related code
+
+**Launch parallel quality checks**:
+```bash
+# Launch 4 quality subagents in parallel
+QUALITY_RESULT=$(./.claude/scripts/quality-coordinator.sh "$TARGET_FILE" "$COMPLEXITY")
+
+# Parse result and extract run_id
+RUN_ID=$(echo "$QUALITY_RESULT" | jq -r '.run_id')
+
+# Store run_id for step 7
+echo "$RUN_ID" > .claude/quality-results/current_run_id.txt
+```
+
+**Quality Agents Launched** (parallel, non-blocking):
+1. **Security** (27 patterns, P0/P1/P2)
+2. **Code Review** (4 agents, confidence ≥80)
+3. **Deslop** (AI code cleanup)
+4. **Stop-Slop** (AI prose cleanup)
+
+**Store RUN_ID** for retrieval in step 7a.
+
+### Step 7: VALIDATE (Quality-First v2.46)
+
+### Step 7a: READ QUALITY RESULTS (NEW v2.80)
+
+**Check if quality checks completed**:
+```bash
+# Read current run_id
+if [[ -f .claude/quality-results/current_run_id.txt ]]; then
+    CURRENT_RUN_ID=$(cat .claude/quality-results/current_run_id.txt)
+
+    # Read aggregated results
+    QUALITY_RESULTS=$(./.claude/scripts/read-quality-results.sh "$CURRENT_RUN_ID")
+
+    # Parse results
+    CRITICAL_COUNT=$(echo "$QUALITY_RESULTS" | jq -r '.summary.critical_findings // 0')
+    TOTAL_FINDINGS=$(echo "$QUALITY_RESULTS" | jq -r '.summary.total_findings // 0')
+
+    echo "Quality Results: $TOTAL_FINDINGS findings ($CRITICAL_COUNT critical)"
+fi
+```
+
+**Decision Logic**:
+- `CRITICAL_COUNT > 0`: BLOCK and require fixes
+- `TOTAL_FINDINGS == 0`: Proceed to validation
+- `TOTAL_FINDINGS > 0` but `CRITICAL_COUNT == 0`: Proceed with warnings
+
 ### Step 7: VALIDATE (Quality-First v2.46)
 
 **Stage 1: CORRECTNESS (BLOCKING)**

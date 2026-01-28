@@ -50,9 +50,9 @@ readonly RUN_ID="${TIMESTAMP}_$$"
 
 # Results files
 readonly SECURITY_RESULT="${RESULTS_DIR}/sec-context_${RUN_ID}.json"
-const REVIEW_RESULT="${RESULTS_DIR}/code-review_${RUN_ID}.json"
-const DESLOP_RESULT="${RESULTS_DIR}/deslop_${RUN_ID}.json"
-const STOPSLOP_RESULT="${RESULTS_DIR}/stop-slop_${RUN_ID}.json"
+readonly REVIEW_RESULT="${RESULTS_DIR}/code-review_${RUN_ID}.json"
+readonly DESLOP_RESULT="${RESULTS_DIR}/deslop_${RUN_ID}.json"
+readonly STOPSLOP_RESULT="${RESULTS_DIR}/stop-slop_${RUN_ID}.json"
 
 # Function to run quality check using ACTUAL scripts
 run_quality_check() {
@@ -67,21 +67,42 @@ run_quality_check() {
     if OUTPUT=$(bash "$script_path" < <(echo "$input_json") 2>&1); then
         # Parse output for findings (grep for issue keywords)
         local findings=0
-        if echo "$OUTPUT" | grep -qi "CRITICAL\|HIGH\|MEDIUM"; then
-            findings=$(echo "$OUTPUT" | grep -c "CRITICAL\|HIGH\|MEDIUM" || echo "0")
+
+        # Check for standard severity keywords
+        if echo "$OUTPUT" | grep -qiE "CRITICAL|HIGH|MEDIUM"; then
+            findings=$(echo "$OUTPUT" | grep -cEi "CRITICAL|HIGH|MEDIUM" || echo "0")
+        # Check for security audit findings
+        elif echo "$OUTPUT" | grep -qiE "Found.*potential security issues|Security Audit: Found"; then
+            findings=$(echo "$OUTPUT" | grep -oEi "Found [0-9]+.*issues" | grep -oEi "[0-9]+" || echo "0")
+        # Check for any "Found X findings/patterns" pattern
+        elif echo "$OUTPUT" | grep -qiE "Found [0-9]+.*findings|Found [0-9]+.*patterns"; then
+            findings=$(echo "$OUTPUT" | grep -oEi "Found [0-9]+" | grep -oEi "[0-9]+" || echo "0")
         fi
+
+        # Get timestamp
+        local timestamp=$(date -Iseconds)
 
         # Write structured result
         jq -n \
             --arg status "complete" \
             --arg findings "$findings" \
             --arg output "$OUTPUT" \
-            '{status: $status, findings: $findings, timestamp: "$(date -Iseconds)", run_id: "'"$RUN_ID"'"', check: "'"$check_name"'"}' > "$result_file"
+            --arg timestamp "$timestamp" \
+            --arg run_id "$RUN_ID" \
+            --arg check "$check_name" \
+            '{status: $status, findings: ($findings | tonumber), output: $output, timestamp: $timestamp, run_id: $run_id, check: $check}' > "$result_file"
 
         log "✅ ${check_name}: Complete ($findings findings)"
     else
         log "❌ ${check_name}: Failed (exit code $?)"
-        echo '{\"status\": \"failed\", \"error\": \"Script returned non-zero\", \"timestamp\": \"'$(date -Iseconds)'\", \"run_id\": \"'"$RUN_ID"'\"'}' > "$result_file"
+        local timestamp=$(date -Iseconds)
+        jq -n \
+            --arg status "failed" \
+            --arg error "Script returned non-zero" \
+            --arg timestamp "$timestamp" \
+            --arg run_id "$RUN_ID" \
+            --arg check "$check_name" \
+            '{status: $status, error: $error, timestamp: $timestamp, run_id: $run_id, check: $check}' > "$result_file"
     fi
 
     # Mark as done
@@ -92,13 +113,13 @@ run_quality_check() {
 # Create input JSON for scripts
 INPUT_JSON=$(jq -n \
     --arg tool_name "$TOOL_NAME" \
-    --arg tool_input "{\"file_path\": \"$FILE_PATH\"}" \
-    '{tool_name: $tool_name, tool_input: $tool_input}' <<< "$INPUT")
+    --arg file_path "$FILE_PATH" \
+    '{tool_name: $tool_name, tool_input: {file_path: $file_path}}')
 
 # Launch all 4 quality checks in parallel using EXISTING validated scripts
 run_quality_check "Security (27 patterns)" ".claude/hooks/sec-context-validate.sh" "$SECURITY_RESULT" "$INPUT_JSON" &
 run_quality_check "Code Quality" ".claude/hooks/quality-gates-v2.sh" "$REVIEW_RESULT" "$INPUT_JSON" &
-run_quality_check "Security Full Audit" ".claude/hooks/security-full-audit.sh" "$DESLOP_RESULT" "$INPUT_JSON" &
+run_quality_check "Security Full Audit" ".claude/hooks/security-real-audit.sh" "$DESLOP_RESULT" "$INPUT_JSON" &
 run_quality_check "Stop-Slop Check" ".claude/hooks/stop-slop-hook.sh" "$STOPSLOP_RESULT" "$INPUT_JSON" &
 
 # Wait for all background processes to complete
