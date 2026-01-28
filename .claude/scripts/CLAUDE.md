@@ -21,6 +21,8 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #18053 | 2:35 PM | 🔴 | Context monitoring fix committed - v2.75.3 restores total_*_tokens approach with overflow indication | ~183 |
+| #18051 | 2:34 PM | ✅ | Context monitoring fix documentation and scripts staged for git commit | ~302 |
 | #18046 | 2:33 PM | 🔴 | Statusline context tracking v2.75.3 removes artificial 100% cap to show real token usage | ~349 |
 | #18044 | 2:32 PM | ✅ | Version bumped to v2.75.3 after revert with validation change | ~165 |
 | #18043 | " | 🔴 | Statusline reverted to total_*_tokens calculation due to unreliable fields | ~319 |
