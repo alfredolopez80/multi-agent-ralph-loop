@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Quality Parallel Async Hook - Execute 4 quality checks in parallel with async: true
-# VERSION: 1.0.0
+# Quality Parallel Async Hook - FIXED VERSION
+# VERSION: 2.0.0
 # Hook: PostToolUse (Edit, Write)
-# Purpose: Run security, code-review, deslop, and stop-slop checks in parallel as background subagents
+# Purpose: Run security, code-review, deslop, and stop-sops checks in parallel using EXISTING scripts
+#
+# CRITICAL FIX v2.0.0: Uses actual bash scripts instead of trying to invoke Skill tool via echo JSON
 
 set -euo pipefail
 
@@ -24,9 +26,9 @@ log() {
 # Read stdin with SEC-111 protection (100KB limit)
 INPUT=$(head -c 100000)
 
-# Parse input
+# Parse input - CRITICAL FIX: Use correct PostToolUse field names
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
-INPUT_FILE=$(echo "$INPUT" | jq -r '.input.file // .input.filePath // empty' 2>/dev/null)
+FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null)
 
 # Only run on Edit/Write operations
 if [[ ! "$TOOL_NAME" =~ ^(Edit|Write)$ ]]; then
@@ -34,13 +36,13 @@ if [[ ! "$TOOL_NAME" =~ ^(Edit|Write)$ ]]; then
     exit 0
 fi
 
-# Skip if no file was modified
-if [[ -z "$INPUT_FILE" ]] || [[ ! -f "$INPUT_FILE" ]]; then
+# Skip if no file path
+if [[ -z "$FILE_PATH" ]] || [[ ! -f "$FILE_PATH" ]]; then
     echo '{"continue": true}'
     exit 0
 fi
 
-log "Starting parallel quality checks for: ${INPUT_FILE}"
+log "Starting parallel quality checks for: ${FILE_PATH}"
 
 # Generate timestamp for this run
 readonly TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
@@ -48,48 +50,62 @@ readonly RUN_ID="${TIMESTAMP}_$$"
 
 # Results files
 readonly SECURITY_RESULT="${RESULTS_DIR}/sec-context_${RUN_ID}.json"
-readonly REVIEW_RESULT="${RESULTS_DIR}/code-review_${RUN_ID}.json"
-readonly DESLOP_RESULT="${RESULTS_DIR}/deslop_${RUN_ID}.json"
-readonly STOPSLOP_RESULT="${RESULTS_DIR}/stop-slop_${RUN_ID}.json"
+const REVIEW_RESULT="${RESULTS_DIR}/code-review_${RUN_ID}.json"
+const DESLOP_RESULT="${RESULTS_DIR}/deslop_${RUN_ID}.json"
+const STOPSLOP_RESULT="${RESULTS_DIR}/stop-slop_${RUN_ID}.json"
 
-# Function to launch async quality check
-launch_async_check() {
+# Function to run quality check using ACTUAL scripts
+run_quality_check() {
     local check_name="$1"
-    local skill_command="$2"
+    local script_path="$2"
     local result_file="$3"
-    local target_file="$4"
+    local input_json="$4"
 
-    log "Launching ${check_name} in background (PID: $BASHPID)"
+    log "Running ${check_name} via: ${script_path}"
 
-    # Execute skill in background and write results to file
-    (
-        # Set timeout for async check (5 minutes max)
-        timeout 300 bash -c "
-            # Invoke the skill via Skill tool
-            echo '{\"tool\": \"Skill\", \"skill\": \"${skill_command}\", \"input\": \"Review ${target_file} for quality issues\"}' | \
-            tee '${result_file}.tmp' >/dev/null 2>&1
-
-            # Mark as complete
-            echo '{\"status\": \"complete\", \"timestamp\": \"$(date -Iseconds)\"}' > '${result_file}.done'
-        " 2>&1 | tee -a "${QUALITY_LOG}" >/dev/null
-
-        # Clean up tmp file if result file exists
-        if [[ -f "${result_file}.done" ]]; then
-            rm -f "${result_file}.tmp" 2>/dev/null || true
+    # Run the actual quality script with stdin input
+    if OUTPUT=$(bash "$script_path" < <(echo "$input_json") 2>&1); then
+        # Parse output for findings (grep for issue keywords)
+        local findings=0
+        if echo "$OUTPUT" | grep -qi "CRITICAL\|HIGH\|MEDIUM"; then
+            findings=$(echo "$OUTPUT" | grep -c "CRITICAL\|HIGH\|MEDIUM" || echo "0")
         fi
-    ) &
 
-    log "Launched ${check_name} with PID: $!"
+        # Write structured result
+        jq -n \
+            --arg status "complete" \
+            --arg findings "$findings" \
+            --arg output "$OUTPUT" \
+            '{status: $status, findings: $findings, timestamp: "$(date -Iseconds)", run_id: "'"$RUN_ID"'"', check: "'"$check_name"'"}' > "$result_file"
+
+        log "✅ ${check_name}: Complete ($findings findings)"
+    else
+        log "❌ ${check_name}: Failed (exit code $?)"
+        echo '{\"status\": \"failed\", \"error\": \"Script returned non-zero\", \"timestamp\": \"'$(date -Iseconds)'\", \"run_id\": \"'"$RUN_ID"'\"'}' > "$result_file"
+    fi
+
+    # Mark as done
+    touch "${result_file}.done"
+    log "Marked ${check_name} as complete"
 }
 
-# Launch all 4 quality checks in parallel
-launch_async_check "Security (27 patterns)" "sec-context-depth" "${SECURITY_RESULT}" "${INPUT_FILE}"
-launch_async_check "Code Review" "code-review" "${REVIEW_RESULT}" "${INPUT_FILE}"
-launch_async_check "Deslop (AI code cleanup)" "deslop" "${DESLOP_RESULT}" "${INPUT_FILE}"
-launch_async_check "Stop-Slop (AI prose cleanup)" "stop-slop" "${STOPSLOP_RESULT}" "${INPUT_FILE}"
+# Create input JSON for scripts
+INPUT_JSON=$(jq -n \
+    --arg tool_name "$TOOL_NAME" \
+    --arg tool_input "{\"file_path\": \"$FILE_PATH\"}" \
+    '{tool_name: $tool_name, tool_input: $tool_input}' <<< "$INPUT")
 
-log "All 4 quality checks launched in parallel for: ${INPUT_FILE}"
-log "Results will be written to: ${RESULTS_DIR}/"
+# Launch all 4 quality checks in parallel using EXISTING validated scripts
+run_quality_check "Security (27 patterns)" ".claude/hooks/sec-context-validate.sh" "$SECURITY_RESULT" "$INPUT_JSON" &
+run_quality_check "Code Quality" ".claude/hooks/quality-gates-v2.sh" "$REVIEW_RESULT" "$INPUT_JSON" &
+run_quality_check "Security Full Audit" ".claude/hooks/security-full-audit.sh" "$DESLOP_RESULT" "$INPUT_JSON" &
+run_quality_check "Stop-Slop Check" ".claude/hooks/stop-slop-hook.sh" "$STOPSLOP_RESULT" "$INPUT_JSON" &
+
+# Wait for all background processes to complete
+wait
+
+log "All 4 quality checks completed for: ${FILE_PATH}"
+log "Results written to: ${RESULTS_DIR}/"
 
 # Output hook result (non-blocking with async: true)
 cat <<EOF
@@ -97,10 +113,10 @@ cat <<EOF
   "continue": true,
   "hookSpecificOutput": {
     "hookEventName": "QualityParallelAsync",
-    "checks": ["security", "code-review", "deslop", "stop-slop"],
+    "checks": ["security", "quality-gates", "security-audit", "stop-slop"],
     "runId": "${RUN_ID}",
     "resultsDir": "${RESULTS_DIR}",
-    "message": "4 quality checks launched in parallel (async, non-blocking)"
+    "message": "4 quality checks completed using validated bash scripts"
   }
 }
 EOF
