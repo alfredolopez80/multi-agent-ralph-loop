@@ -105,15 +105,15 @@ This follows the project standard of storing all development documentation in th
 | #17109 | 2:39 AM | 🔵 | Previous GLM Context Monitoring Fixes from 2026-01-26 | ~368 |
 | #16984 | 2:12 AM | 🔵 | Comprehensive Context Measurement Guide Created | ~434 |
 | #16982 | 2:11 AM | 🔵 | Task Investigation Reveals /context Command Limitations | ~408 |
-| #16980 | " | 🔵 | GLM-4.7 Context Monitoring Implementation Complete | ~437 |
-| #16978 | " | 🔵 | Task Execution Reveals Pre-Compact-Handoff Hook Path Mismatch | ~436 |
-| #16975 | " | 🔵 | Comprehensive Documentation Confirms Native Context API Usage | ~429 |
-| #16971 | 2:10 AM | 🔵 | Real Context Tracking Only Documented Not Implemented | ~369 |
 
 ### Jan 28, 2026
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #18135 | 2:49 PM | ✅ | Comprehensive documentation reorganization staged - 35 files moved to docs/ directory structure | ~341 |
+| #18114 | 2:44 PM | ✅ | Git cleanup removed 26 deleted .md files from .claude/ directory and updated CLAUDE.md files | ~173 |
+| #18103 | 2:43 PM | 🔄 | Documentation reorganization staged for git commit | ~311 |
+| #18102 | " | 🔵 | CLAUDE.md documents documentation standards and recent reorganization of context monitoring docs | ~175 |
 | #18099 | 2:42 PM | 🔵 | Memory entries reveal extensive context monitoring history from previous sessions | ~297 |
 | #18098 | " | ✅ | Project CLAUDE.md file is now empty (0 lines) | ~157 |
 | #18092 | " | ✅ | Documentation reorganization completed - moved context monitoring docs to docs/context-monitoring/ | ~195 |
