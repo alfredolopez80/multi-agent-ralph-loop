@@ -1,16 +1,15 @@
 #!/bin/bash
 # context-from-cli.sh - Extract context usage from /context command
-# VERSION: 1.0.0
+# VERSION: 1.1.0
 # Hook: UserPromptSubmit (runs before each prompt)
-# Purpose: Parse /context output and update project-specific cache
+# Purpose: Parse /context output and update cache
 #
-# This hook works around the Zai wrapper not providing context_window fields
-# by calling /context directly and parsing its output
+# CHANGELOG v1.1.0:
+# - Removed background execution (causes stuck processes)
+# - Write to generic context-usage.json (simpler, works with statusline v2.78.7)
+# - Only update if cache is older than 30 seconds
 #
 # Output: {"continue": true} (UserPromptSubmit JSON format)
-
-# SEC-111: Read input from stdin with length limit (100KB max)
-INPUT=$(head -c 100000)
 
 set -euo pipefail
 
@@ -18,55 +17,19 @@ set -euo pipefail
 trap 'echo "{\"continue\": true}"' ERR EXIT
 
 # Configuration
-CACHE_DIR="${HOME}/.ralph/cache"
-PROJECT_CACHE_FILE="${CACHE_DIR}/context-$PROJECT_ID.json"
+CACHE_FILE="${HOME}/.ralph/cache/context-usage.json"
+LOCK_FILE="${HOME}/.ralph/cache/context-update.lock"
 
 # Create cache directory
-mkdir -p "$CACHE_DIR" 2>/dev/null
+mkdir -p "$(dirname "$CACHE_FILE")" 2>/dev/null
 
-# Get project ID from git remote or path
-get_project_id() {
-    local cwd="$1"
-
-    # Try git remote first
-    if git -C "$cwd" rev-parse --is-inside-work-tree &>/dev/null; then
-        local remote
-        remote=$(git -C "$cwd" remote get-url origin 2>/dev/null || echo "")
-        if [[ -n "$remote" ]]; then
-            # Extract owner/repo from git@github.com:owner/repo.git or https://github.com/owner/repo.git
-            if [[ "$remote" =~ github\.com[\/:]([^\/]+)\/([^\/\.]+) ]]; then
-                echo "${BASH_REMATCH[1]}-${BASH_REMATCH[2]}"
-                return 0
-            fi
-        fi
-
-        # Fallback to git directory hash
-        local git_dir
-        git_dir=$(git -C "$cwd" rev-parse --git-dir 2>/dev/null)
-        if [[ -n "$git_dir" ]]; then
-            echo "git-$(echo "$git_dir" | md5sum | cut -d' ' -f1)"
-            return 0
-        fi
-    fi
-
-    # Fallback to directory hash
-    echo "dir-$(echo "$cwd" | md5sum | cut -d' ' -f1)"
-}
-
-# Get current directory
-CWD=$(echo "$INPUT" | jq -r '.cwd // "."' 2>/dev/null || echo ".")
-
-# Generate project ID
-PROJECT_ID=$(get_project_id "$CWD")
-PROJECT_CACHE_FILE="${CACHE_DIR}/context-$PROJECT_ID.json"
-
-# Only update if cache is older than 30 seconds
+# Check if update is needed (every 30 seconds)
 update_cache_if_needed() {
     local now=$(date +%s)
     local cache_age=9999999
 
-    if [[ -f "$PROJECT_CACHE_FILE" ]]; then
-        local cache_time=$(jq -r '.timestamp // 0' "$PROJECT_CACHE_FILE" 2>/dev/null || echo "0")
+    if [[ -f "$CACHE_FILE" ]]; then
+        local cache_time=$(jq -r '.timestamp // 0' "$CACHE_FILE" 2>/dev/null || echo "0")
         cache_age=$((now - cache_time))
     fi
 
@@ -75,64 +38,76 @@ update_cache_if_needed() {
         return 0
     fi
 
-    # Call /context and parse output
-    # This assumes /context is available in the PATH
-    local context_output
-    if context_output=$(claude context 2>/dev/null); then
-        # Extract the usage line from /context output
-        # Format: "glm-4.7 · Xk/200k tokens (Y%)"
-        local usage_line=$(echo "$context_output" | grep -o "glm-4\.7 · [0-9k]*/[0-9k]* tokens ([0-9]%*)" | head -1)
-
-        if [[ -n "$usage_line" ]]; then
-            # Parse the values using regex
-            local used_display=$(echo "$usage_line" | grep -o "[0-9k]*/[0-9k]*" | cut -d'/' -f1)
-            local size_display=$(echo "$usage_line" | grep -o "[0-9k]*/[0-9k]*" | cut -d'/' -f2)
-            local used_pct=$(echo "$usage_line" | grep -o "([0-9]%)" | grep -o "[0-9]*")
-
-            # Convert k suffix to actual numbers
-            local used_tokens=0
-            local size_tokens=200000
-
-            if [[ "$used_display" =~ ([0-9]+)k ]]; then
-                used_tokens=${BASH_REMATCH[1]}000
-            else
-                used_tokens=${used_display:-0}
-            fi
-
-            if [[ "$size_display" =~ ([0-9]+)k ]]; then
-                size_tokens=${BASH_REMATCH[1]}000
-            else
-                size_tokens=${size_display:-200000}
-            fi
-
-            # Calculate remaining
-            local remaining_tokens=$((size_tokens - used_tokens))
-            local remaining_pct=$((100 - ${used_pct:-0}))
-
-            # Create cache JSON
-            local cache_json=$(jq -n \
-                --argjson timestamp "$(date +%s)" \
-                --argjson context_size "$size_tokens" \
-                --argjson used_tokens "$used_tokens" \
-                --argjson free_tokens "$remaining_tokens" \
-                --argjson used_percentage "${used_pct:-0}" \
-                --argjson remaining_percentage "$remaining_pct" \
-                '{
-                    timestamp: $timestamp,
-                    context_size: $context_size,
-                    used_tokens: $used_tokens,
-                    free_tokens: $free_tokens,
-                    used_percentage: $used_percentage,
-                    remaining_percentage: $remaining_percentage
-                }')
-
-            echo "$cache_json" > "$PROJECT_CACHE_FILE"
+    # Prevent concurrent updates
+    if [[ -f "$LOCK_FILE" ]]; then
+        local lock_time=$(stat -f "%m" "$LOCK_FILE" 2>/dev/null || stat -c "%Y" "$LOCK_FILE" 2>/dev/null || echo "0")
+        local lock_age=$((now - lock_time))
+        # Remove stale lock (> 60 seconds)
+        if [[ $lock_age -gt 60 ]]; then
+            rm -f "$LOCK_FILE" 2>/dev/null || true
+        else
+            return 0
         fi
     fi
+
+    # Create lock file
+    touch "$LOCK_FILE"
+
+    # Call /context and parse output
+    local context_output
+    if context_output=$(claude context 2>/dev/null); then
+        # Parse Free space line (shows CORRECT values even when first line is buggy)
+        local free_line=$(echo "$context_output" | grep -o "Free space: [0-9k]* ([0-9.]*)" | head -1)
+
+        local used_tokens=0
+        local used_pct=0
+        local size_tokens=200000
+
+        if [[ -n "$free_line" ]]; then
+            # Parse free space values
+            local free_display=$(echo "$free_line" | grep -o "[0-9.]*" | sed 's/k//')
+            local free_pct=$(echo "$free_line" | grep -o "([0-9.]*)" | sed 's/%//')
+
+            # Calculate used tokens from free space
+            local free_tokens=$((free_display * 1000))
+            used_tokens=$((size_tokens - free_tokens))
+            used_pct=$((used_tokens * 100 / size_tokens))
+
+            # Clamp to valid range
+            if [[ $used_tokens -lt 0 ]]; then used_tokens=0; fi
+            if [[ $used_tokens -gt $size_tokens ]]; then used_tokens=$size_tokens; fi
+            if [[ $used_pct -lt 0 ]]; then used_pct=0; fi
+            if [[ $used_pct -gt 100 ]]; then used_pct=100; fi
+        fi
+
+        # Calculate remaining
+        local remaining_tokens=$((size_tokens - used_tokens))
+        local remaining_pct=$((100 - used_pct))
+
+        # Create cache JSON
+        jq -n \
+            --argjson timestamp "$(date +%s)" \
+            --argjson context_size "$size_tokens" \
+            --argjson used_tokens "$used_tokens" \
+            --argjson free_tokens "$remaining_tokens" \
+            --argjson used_percentage "$used_pct" \
+            --argjson remaining_percentage "$remaining_pct" \
+            '{
+                timestamp: $timestamp,
+                context_size: $context_size,
+                used_tokens: $used_tokens,
+                free_tokens: $free_tokens,
+                used_percentage: $used_percentage,
+                remaining_percentage: $remaining_percentage
+            }' > "$CACHE_FILE"
+    fi
+
+    # Remove lock file
+    rm -f "$LOCK_FILE" 2>/dev/null || true
 }
 
-# Update cache in background (don't block)
-update_cache_if_needed &
+# Update cache (synchronously, no background)
+update_cache_if_needed
 
 # Clear trap and output success
 trap - ERR EXIT
