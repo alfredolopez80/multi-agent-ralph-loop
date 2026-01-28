@@ -1,7 +1,15 @@
 #!/bin/bash
 # statusline-ralph.sh - Enhanced StatusLine with Git + Ralph Progress + GLM Usage + Context Info
 #
-# VERSION: 2.78.10
+# VERSION: 2.79.0
+#
+# CHANGELOG v2.79.0:
+# - SIMPLIFICATION: Unified context display by removing duplicate information
+# - Progress bar (🤖) now shows only visual indicator without numbers
+# - Current context display (CtxUse) shows exact values: "CtxUse: 167k/200k tokens (83%)"
+# - Removed "Free: Xk (X%)" - redundant with CtxUse
+# - Removed "Buff X.Xk tokens (X%)" - rarely needed, saves space
+# - Result: Cleaner, more concise statusline
 #
 # CHANGELOG v2.78.7:
 # - FIX: Statusline now falls back to generic context-usage.json if project-specific cache not found
@@ -131,8 +139,8 @@ get_context_usage_cumulative() {
     [[ $filled_blocks -lt 0 ]] && filled_blocks=0
     local progress_bar=$(printf '█%.0s' $(seq 1 $filled_blocks))$(printf '░%.0s' $(seq 1 $((10 - filled_blocks))))
 
-    # Format: 🤖 ██████████░░ 391k/200k (195%)
-    printf '%b' "${color}🤖 ${progress_bar}${RESET} ${color}${used_display}/${size_display} (${used_pct}%)${RESET}"
+    # Format: 🤖 ██████████░░ (bar only, numbers shown in CtxUse)
+    printf '%b' "${color}🤖 ${progress_bar}${RESET}"
 }
 
 # Get current context usage matching /context format exactly
@@ -249,10 +257,8 @@ get_context_usage_current() {
         color="$GREEN"
     fi
 
-    # Format: | CtxUse: 133k/200k tokens (66.6%) | Free: 22k (10.9%) | Buff 45.0k tokens (22.5%) |
+    # Format: | CtxUse: 133k/200k tokens (66.6%) (simplified, removed Free/Buff)
     printf '%b' "CtxUse:${RESET} ${ctx_display}/${size_display} tokens (${color}${used_pct}%${RESET})"
-    printf ' | %bFree:%b %s' "$DIM" "$RESET" "${free_display} (${remaining_pct}%)"
-    printf ' | %bBuff%b %s tokens (22.5%%)' "$DIM" "$RESET" "${buffer_display}"
 }
 get_git_info() {
     local cwd="${1:-.}"
@@ -584,13 +590,9 @@ if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
         fi
     fi
 
-    # Add current context display (/context style)
+    # Add current context display (/context style) - NO separator before CtxUse (unified with progress bar)
     if [[ -n "$context_current_display" ]]; then
-        if [[ -n "$combined_segment" ]]; then
-            combined_segment="${combined_segment} │ ${context_current_display}"
-        else
-            combined_segment="${context_current_display}"
-        fi
+        combined_segment="${combined_segment} ${context_current_display}"
     fi
 
     if [[ -n "$glm_plan_usage" ]]; then
@@ -637,8 +639,8 @@ else
         fi
 
         if [[ -n "$context_current_display" ]]; then
-            [[ -n "$fallback" ]] && fallback="${fallback} │ "
-            fallback="${fallback}${context_current_display}"
+            # NO separator before CtxUse (unified with progress bar)
+            fallback="${fallback} ${context_current_display}"
         fi
 
         if [[ -n "$glm_plan_usage" ]]; then

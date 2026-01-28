@@ -2,11 +2,37 @@
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-![Version](https://img.shields.io/badge/v2.78.10-blue) ![Tests](https://img.shields.io/badge/945_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange) ![GLM-4.7](https://img.shields.io/badge/GLM--4.7-PRIMARY-green)
+![Version](https://img.shields.io/badge/v2.79.0-blue) ![Tests](https://img.shields.io/badge/945_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange) ![GLM-4.7](https://img.shields.io/badge/GLM--4.7-PRIMARY-green)
 
 ---
 
-## 🐛 Recent Bug Fixes (v2.70.0 - v2.78.10)
+## 🐛 Recent Bug Fixes (v2.70.0 - v2.79.0)
+
+### Statusline Simplification (v2.79.0) ✅ LATEST
+
+**Overview**: Unified context display by removing redundant information for a cleaner, more concise statusline.
+
+#### Changes
+
+| Before | After |
+|--------|-------|
+| `🤖 ████████░░ 167k/200k (83%) │ CtxUse: 167k/200k tokens (83%) │ Free: 32k (17%) │ Buff 45.0k tokens (22.5%)` | `🤖 ████████░░ CtxUse: 167k/200k tokens (83%)` |
+
+#### Key Improvements
+
+1. **Progress bar visual-only**: No duplicate numbers after the emoji
+2. **Removed "Free" display**: Redundant with CtxUse percentage
+3. **Removed "Buff" display**: Rarely needed, saves valuable space
+4. **Unified display**: No separator between progress bar and CtxUse
+
+#### Final Format
+
+```
+⎇ main* │ 🤖 ████████░░ CtxUse: 167k/200k tokens (83%) │ ⏱️ 8% (~5h) │ 🔧 4% MCP
+          └─ Visual Bar ─┘ └───────── Exact Values ─────────┘
+```
+
+### Context Monitoring Status (v2.78.10)
 
 ### Context Monitoring Status (v2.78.10) ✅ LATEST
 
@@ -1917,6 +1943,6 @@ This project is licensed under the BSL 1.1 License.
 
 ---
 
-**Version**: 2.78.10
+**Version**: 2.79.0
 **Last Updated**: 2026-01-28
 **Next Review**: 2026-02-28

@@ -7,54 +7,54 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #18250 | 4:34 PM | 🔵 | Discovered statusline configuration uses script from hooks directory, not directly from repository | ~336 |
-| #18249 | " | 🔴 | Statusline showing stale cached values instead of current context | ~137 |
-| #18247 | 4:28 PM | ✅ | Multiple .claude scripts created and force-added to git: context-usage-cache.sh, force-statusline-refresh.sh, parse-context-output.sh, update-context-cache.sh, and modified statusline-ralph.sh | ~385 |
-| #18244 | 4:27 PM | ✅ | Statusline updated to v2.77.2 with cache synchronization fixes | ~359 |
-| #18243 | " | 🔵 | Multiple context-related scripts created during development: cache managers, parsers, debug tools | ~341 |
-| #18241 | 4:23 PM | 🟣 | Created force-statusline-refresh.sh tool for manual cache updates and statusline reload triggering | ~285 |
-| #18240 | 4:22 PM | 🟣 | Statusline cache validation successful - showing 71% usage (142k tokens) with valid data age of 121 seconds | ~157 |
-| #18239 | " | 🟣 | Statusline updated to v2.77.2 with cache priority system and improved fallback logic | ~360 |
-| #18238 | " | 🔴 | Statusline v2.77.2 - Fixed cache expiry and priority logic for context usage display | ~516 |
-| #18237 | 4:21 PM | 🔴 | Statusline v2.77.1 fixed cache preservation logic to prevent overwriting valid data with zeros | ~407 |
-| #18236 | " | 🔄 | Statusline v2.77.1 increases cache expiration from 60 to 300 seconds (5 minutes) for context usage data | ~344 |
-| #18235 | " | 🟣 | Statusline v2.77.1 complete with dual context displays, cache validation, and manual update utility | ~187 |
-| #18231 | 4:20 PM | 🔴 | Statusline showing incorrect context values (0% usage vs actual 29% free space) | ~499 |
-| #18230 | 4:18 PM | 🔵 | update-context-cache.sh successfully retrieves cached context values: 89% used, 11% free | ~253 |
-| #18229 | 4:17 PM | 🟣 | Created update-context-cache.sh utility script for manual context cache management | ~350 |
-| #18228 | " | 🟣 | Statusline updated to v2.77.1 with cache-aware context display and improved cache management | ~154 |
-| #18227 | 4:16 PM | 🔵 | Statusline file shows 667 total lines (increased from 551) indicating modifications were applied | ~344 |
-| #18226 | " | 🟣 | Enhanced cache validation to preserve existing cache when no valid data available | ~417 |
-| #18225 | " | 🟣 | Created context-usage-cache.sh script to update cache from session file with remaining_percentage inversion | ~407 |
-| #18224 | " | 🔄 | context-usage-cache.sh cache expiration increased from 60 seconds to 300 seconds (5 minutes) | ~246 |
-| #18223 | " | 🔴 | Fixed cache update logic to preserve existing cache when session file contains zero usage data | ~295 |
-| #18222 | 4:15 PM | ✅ | Statusline cache refresh interval increased from 60s to 300s (5 minutes) | ~262 |
-| #18221 | " | 🟣 | Added automatic context cache update mechanism to statusline v2.77.0 | ~343 |
-| #18219 | " | 🟣 | Statusline v2.77.0 complete implementation with dual context displays, caching, and locale-aware formatting | ~381 |
-| #18218 | " | 🟣 | Added update_context_cache_if_needed() function to populate cache from session files | ~221 |
-| #18217 | 4:14 PM | 🔵 | Background task started to test statusline with updated cache by sourcing functions | ~354 |
-| #18216 | " | 🔵 | update_context_cache_if_needed() function found at lines 472 and 539 in statusline-ralph.sh | ~238 |
-| #18214 | " | ✅ | Statusline v2.77.0 implementation reading from line 355 showing Ralph progress function workflow and icon selection logic | ~293 |
-| #18209 | 4:12 PM | 🟣 | parse-context-output.sh script parses /context command output and creates cache JSON | ~278 |
-| #18208 | " | 🟣 | Created parse-context-output.sh script to extract real-time usage data from /context command output | ~359 |
-| #18207 | " | 🟣 | Created parse-context-output.sh to parse /context command output in real-time | ~181 |
-| #18206 | 4:11 PM | 🟣 | User wants CtxUse calculated by summing /context categories (133k) plus overhead (45k) = 178k total (89%) | ~390 |
-| #18203 | 3:58 PM | 🟣 | Statusline v2.77.0 implements context caching system with background auto-update from session files | ~378 |
-| #18202 | 3:56 PM | 🟣 | Statusline v2.77.0 enhanced with cached context usage from session files to match /context breakdown exactly | ~366 |
-| #18199 | 3:55 PM | 🔄 | get_context_usage_current() rewritten to use cached context values from external cache file | ~228 |
-| #18198 | " | 🟣 | get_context_usage_current() function implements current window context display using current_usage fields | ~252 |
-| #18197 | " | 🔵 | get_context_usage_current() function confirmed in statusline-ralph.sh at line 111 and called at line 448 | ~310 |
-| #18196 | 3:54 PM | 🔵 | format_tokens() function located at line 56 in statusline-ralph.sh | ~245 |
-| #18195 | 3:53 PM | ✅ | Created context-usage-cache.sh script and made it executable | ~230 |
-| #18194 | " | 🟣 | User requests CtxUse field show actual session usage (178k/89%) instead of current window (0k/0%) | ~387 |
-| #18193 | 3:49 PM | 🔵 | User requests total sum calculation for context usage breakdown | ~285 |
-| #18191 | 3:46 PM | 🟣 | Added LC_NUMERIC=C locale to awk decimal formatting for consistent dot separator | ~308 |
-| #18190 | " | 🟣 | Statusline v2.77.0 implements dual context display with decimal buffer formatting | ~343 |
-| #18189 | " | 🔴 | Fixed format_tokens() function to properly handle decimal formatting for buffer display | ~283 |
-| #18188 | " | 🟣 | Added decimal precision to buffer display using format_tokens() second parameter | ~363 |
-| #18187 | 3:45 PM | 🟣 | format_tokens() function enhanced to display decimal values for buffer tokens matching /context format | ~276 |
-| #18185 | 3:44 PM | 🔵 | Confirmed Edit operation successfully applied - CtxUse formatting updated | ~317 |
-| #18184 | " | 🔵 | Statusline implements fixed 22.5% autocompact buffer display hardcoded in printf statement | ~312 |
-| #18183 | " | ✅ | Statusline v2.77.0 successfully deployed with dual context display functionality | ~281 |
-| #18182 | " | 🔄 | Statusline v2.77.0 split into dual display: cumulative (claude-hud style) and current (context style) | ~441 |
+| #18460 | 6:51 PM | 🔵 | Statusline v2.78.10 Multi-Source Context Display System | ~276 |
+| #18446 | 6:43 PM | 🔴 | Statusline shows stale context values after session compaction | ~307 |
+| #18445 | " | 🔵 | Statusline context display validated after session compaction | ~212 |
+| #18440 | 6:38 PM | ✅ | Pushed v2.78.8 changes to remote repository | ~231 |
+| #18439 | 6:31 PM | 🟣 | Statusline implements multi-source context usage fallback strategy | ~140 |
+| #18438 | 6:30 PM | 🟣 | Statusline component displays context usage and Ralph progress | ~331 |
+| #18435 | " | 🔴 | Statusline context monitoring now working with correct values | ~203 |
+| #18433 | 6:17 PM | 🔴 | Statusline v2.78.10 fixes incorrect 100% usage display with validation and fallback strategy | ~330 |
+| #18431 | 6:15 PM | 🔴 | Statusline v2.78.10 - Fixed incorrect context display by ignoring extreme values and using conservative estimates | ~250 |
+| #18417 | 6:11 PM | 🟣 | Statusline dual context monitoring implemented | ~543 |
+| #18416 | 6:09 PM | 🔴 | Statusline v2.78.10 adds cache reading and 75% estimation logic | ~291 |
+| #18415 | " | 🔴 | Updated statusline v2.78.9 to use 75% estimate when cumulative tokens exceed context window | ~318 |
+| #18412 | 6:07 PM | 🔄 | Statusline v2.78.8 - Prioritize used_percentage with Zai-specific validation | ~358 |
+| #18409 | 6:05 PM | ✅ | Copied updated statusline-ralph.sh to global hooks directory | ~178 |
+| #18408 | 6:04 PM | 🔴 | Statusline v2.78.8 prioritizes used_percentage from stdin JSON for Zai wrapper | ~280 |
+| #18403 | 6:02 PM | 🟣 | Statusline v2.78.8 copied to ~/.claude/hooks/statusline-ralph.sh for global availability | ~227 |
+| #18402 | " | ✅ | Updated statusline-ralph.sh to version 2.78.8 | ~167 |
+| #18399 | 6:01 PM | 🔄 | Statusline v2.78.8 prioritizes used_percentage from stdin JSON | ~183 |
+| #18398 | " | 🔵 | Located get_context_usage_current function at line 143 | ~179 |
+| #18396 | 6:00 PM | 🔴 | Refactored context usage priority in get_context_usage_current() | ~280 |
+| #18394 | 5:59 PM | 🔵 | Discovered statusline-ralph.sh script with enhanced context monitoring | ~316 |
+| #18388 | 5:57 PM | 🔵 | Context window monitoring system uses project-specific caching | ~317 |
+| #18383 | 5:56 PM | 🔵 | Multi-Agent Ralph Loop StatusLine Script Analyzed | ~204 |
+| #18381 | 5:55 PM | 🔴 | Updated statusline to v2.78.7 with fallback cache compatibility | ~141 |
+| #18376 | 5:54 PM | 🔴 | Statusline v2.78.6 adds fallback cache support | ~191 |
+| #18370 | 5:53 PM | 🔵 | Statusline script has get_context_usage_current() function | ~226 |
+| #18340 | 5:39 PM | 🟣 | Statusline v2.78.6 adds project-specific cache via /context command hook | ~157 |
+| #18334 | 5:36 PM | 🔵 | Official Claude Code statusline documentation confirms current_usage object structure | ~426 |
+| #18331 | 5:32 PM | 🔵 | Statusline test reveals fallback logic using 100% when cache unavailable and current_usage is null | ~285 |
+| #18330 | " | 🔵 | Statusline fallback to used_percentage when current_usage is null | ~272 |
+| #18329 | 5:31 PM | 🔄 | Statusline v2.78.5 - Removed cache and file size estimation, both displays now use cumulative tokens | ~623 |
+| #18328 | " | 🔴 | Statusline v2.78.4 - Fixed global cache sharing bug across projects | ~523 |
+| #18326 | 5:30 PM | 🔴 | Statusline v2.78.4 removes progress bar and context sections | ~292 |
+| #18322 | 5:29 PM | 🔴 | Statusline v2.78.4 fixes global cache sharing bug | ~211 |
+| #18317 | 5:28 PM | 🔄 | Statusline v2.78.4 - Replace global cache with project-specific session file estimation | ~450 |
+| #18315 | 5:24 PM | 🔴 | Statusline v2.78.3 implements cache-first approach to fix 0% display issue | ~327 |
+| #18313 | 5:23 PM | 🔴 | Statusline v2.78.3 - Changed get_context_usage_current() to use cache file as primary data source | ~175 |
+| #18312 | " | 🔄 | Refactored get_context_usage_current() to v2.78.3 with cache-first approach | ~178 |
+| #18307 | 5:19 PM | 🔴 | Statusline shows 0% after Claude Code restart despite /context showing correct values | ~249 |
+| #18304 | 5:18 PM | 🔴 | Statusline v2.78.2 fixes context usage calculation using current_usage object | ~309 |
+| #18305 | " | 🔵 | Claude Code caches statusline script in memory at startup | ~253 |
+| #18303 | 5:11 PM | 🔴 | Statusline still showing 0% usage after v2.77.2 deployment | ~440 |
+| #18302 | 5:10 PM | 🔵 | statusline-ralph.sh last modified at 2026-01-28 17:07:14 during v2.78.0 fix implementation | ~317 |
+| #18300 | 5:09 PM | 🔴 | Statusline changes not applied to filesystem | ~146 |
+| #18297 | 5:06 PM | 🔵 | Example stdin JSON structure shows used_percentage and remaining_percentage as root-level context_window fields | ~292 |
+| #18294 | 5:02 PM | 🔵 | Detected version mismatch between local and deployed statusline scripts | ~493 |
+| #18293 | " | 🔵 | statusline-ralph.sh contains 575 lines in current v2.78.0 version | ~268 |
+| #18292 | " | 🔵 | Current statusline script shows multiple sections beyond context display | ~340 |
+| #18288 | 4:58 PM | 🔵 | Found 15 scripts containing context-related code including statusline implementations and debug tools | ~355 |
+| #18287 | " | 🔄 | Simplified Ralph statusline to show only context information | ~316 |
 </claude-mem-context>
