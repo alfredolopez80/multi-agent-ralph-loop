@@ -1,15 +1,19 @@
 #!/bin/bash
 # statusline-ralph.sh - Enhanced StatusLine with Git + Ralph Progress + GLM Usage + Context Info
 #
-# VERSION: 2.78.1
+# VERSION: 2.78.2
+#
+# CHANGELOG v2.78.2:
+# - FIX: get_context_usage_current() now uses current_usage object for REAL window usage
+# - This matches /context command by calculating: input_tokens + cache_creation + cache_read
+# - Falls back to used_percentage if current_usage is not available
+# - Both displays serve different purposes:
+#   - 🤖 progress bar: Shows total session tokens (cumulative input + output)
+#   - CtxUse/Free/Buff: Shows current window usage (matches /context command)
 #
 # CHANGELOG v2.78.1:
 # - ROLLBACK: get_context_usage_cumulative() now uses total_input_tokens + total_output_tokens again
 # - This restores the progress bar showing session-accumulated tokens (e.g., 🤖 391k/200k)
-# - get_context_usage_current() continues to use used_percentage to match /context output
-# - Both displays serve different purposes:
-#   - 🤖 progress bar: Shows total session tokens (input + output)
-#   - CtxUse/Free/Buff: Shows current window usage (matches /context command)
 #
 # CHANGELOG v2.77.1:
 # - FIXED: Cache preservation - won't overwrite valid data with zeros
@@ -123,17 +127,36 @@ get_context_usage_cumulative() {
 
 # Get current context usage matching /context format exactly
 # Shows: | CtxUse: 133k/200k tokens (66.6%) | Free: 22k (10.9%) | Buff 45.0k tokens (22.5%) |
-# v2.78.0: Use native used_percentage from stdin JSON (same source as /context command)
-# See: docs/context-monitoring/ANALYSIS.md - "Statusline cumulative tokens bug"
+# v2.78.1: Use current_usage object for REAL window usage (matches /context command)
+# This calculates the actual current window tokens, not cumulative session totals
 get_context_usage_current() {
     local context_json="$1"
 
     local context_size=$(echo "$context_json" | jq -r '.context_window_size // 200000')
+    local used_pct=0
+    local used_tokens=0
 
-    # v2.78.0: Read native used_percentage from stdin JSON (same as /context command)
-    # This is the REAL percentage from the active session, not cumulative tokens
-    # See: https://github.com/anthropics/claude-code/issues/13783
-    local used_pct=$(echo "$context_json" | jq -r '.used_percentage // 0')
+    # v2.78.1: Try current_usage object first (REAL current window tokens)
+    # current_usage.input_tokens + cache_creation + cache_read = actual tokens in current window
+    local current_usage=$(echo "$context_json" | jq -r '.current_usage // "null"')
+
+    if [[ "$current_usage" != "null" ]] && [[ -n "$current_usage" ]]; then
+        # Calculate REAL current window usage from current_usage object
+        # This matches /context command behavior
+        used_tokens=$(echo "$current_usage" | jq -r '
+            (.input_tokens // 0) +
+            (.cache_creation_input_tokens // 0) +
+            (.cache_read_input_tokens // 0)
+        ')
+
+        if [[ $used_tokens -gt 0 ]]; then
+            used_pct=$((used_tokens * 100 / context_size))
+        fi
+    else
+        # Fallback: use used_percentage (may be 0 if current_usage not available)
+        used_pct=$(echo "$context_json" | jq -r '.used_percentage // 0')
+        used_tokens=$((context_size * used_pct / 100))
+    fi
 
     # Validate percentage is within bounds (0-100)
     if [[ $used_pct -lt 0 ]]; then used_pct=0; fi
@@ -141,7 +164,6 @@ get_context_usage_current() {
 
     # Calculate remaining and token counts
     local remaining_pct=$((100 - used_pct))
-    local used_tokens=$((context_size * used_pct / 100))
     local free_space=$((context_size - used_tokens))
 
     # Autocompact buffer (22.5% of context window)
