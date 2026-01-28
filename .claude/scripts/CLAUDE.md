@@ -21,6 +21,36 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #18046 | 2:33 PM | 🔴 | Statusline context tracking v2.75.3 removes artificial 100% cap to show real token usage | ~349 |
+| #18044 | 2:32 PM | ✅ | Version bumped to v2.75.3 after revert with validation change | ~165 |
+| #18043 | " | 🔴 | Statusline reverted to total_*_tokens calculation due to unreliable fields | ~319 |
+| #18042 | " | 🔵 | Statusline validation and color coding logic confirmed in v2.75.1 | ~186 |
+| #18032 | 2:29 PM | 🔴 | v2.75.2 reverts to original approach using total_*_tokens as only reliable values | ~328 |
+| #18030 | 2:28 PM | ✅ | REVERTED fix - statusline-ralph.sh returned to using total_*_tokens | ~279 |
+| #18025 | 2:27 PM | 🔵 | Debug script path uses relative path to statusline-ralph.sh | ~201 |
+| #18022 | " | 🔴 | Verified complete context calculation and display logic in statusline-ralph.sh | ~229 |
+| #18021 | " | 🔵 | Confirmed v2.75.1 fix implementation in statusline-ralph.sh | ~231 |
+| #18017 | 2:21 PM | 🔵 | Debug script confirms it saves JSON and passes through to statusline | ~199 |
+| #18015 | " | 🔵 | Debug script created to inspect all keys in statusline JSON input | ~204 |
+| #17993 | 1:56 PM | 🔴 | v2.75.1 implements three-tier fallback with current_usage as primary method | ~324 |
+| #17986 | 1:54 PM | 🔴 | Refactored context tracking approach - prioritizes current_usage over used_percentage | ~339 |
+| #17984 | " | 🔵 | Statusline code modified to prioritize current_usage over used_percentage | ~248 |
+| #17982 | 1:53 PM | 🔄 | Statusline context tracking strategy revised to prioritize current_usage over used_percentage | ~260 |
+| #17978 | " | 🔴 | Final code review confirms fix properly integrated with color coding and progress bar | ~108 |
+| #17969 | 1:49 PM | 🔵 | Statusline fix structure shows proper if/else nesting | ~297 |
+| #17964 | " | 🔴 | Fixed duplicate else/fi block causing syntax error in statusline-ralph.sh | ~157 |
+| #17963 | 1:48 PM | 🔵 | Double else/fi structure detected causing syntax error | ~183 |
+| #17960 | " | 🔴 | Fixed syntax error in statusline-ralph.sh by correcting indentation | ~209 |
+| #17957 | " | 🔵 | Verified fixed code in statusline-ralph.sh lines 415-484 | ~318 |
+| #17956 | " | 🔵 | Syntax error caused by missing opening if statement for color coding block | ~270 |
+| #17945 | 1:45 PM | 🔴 | Fixed context tracking bug in statusline-ralph.sh v2.75.0 | ~389 |
+| #17944 | " | ✅ | Updated statusline-ralph.sh version to v2.75.0 | ~150 |
+| #17943 | " | 🔴 | Applied fix for GitHub Issue #13783 in statusline-ralph.sh | ~384 |
+| #17942 | 1:44 PM | 🔵 | Found buggy context calculation code at lines 420-429 in statusline-ralph.sh | ~299 |
+| #17940 | 1:43 PM | 🔵 | Context calculation code not found in lines 460-500 of statusline | ~229 |
+| #17922 | 1:01 PM | ⚖️ | Root cause identified: statusline uses cumulative tokens instead of current_usage | ~544 |
+| #17905 | 12:58 PM | 🔵 | Statusline script uses cumulative tokens instead of active context | ~450 |
+| #17904 | " | 🔵 | Claude Code context monitoring reveals critical tracking issues | ~416 |
 | #17727 | 12:12 AM | 🟣 | Python Version of PreToolUse Hook Fix Script Created | ~376 |
 | #17725 | 12:11 AM | 🟣 | PreToolUse Hook Fix Script Created and Rewritten | ~370 |
 | #17722 | " | 🟣 | PreToolUse Hook Auto-Fix Script Created | ~337 |
