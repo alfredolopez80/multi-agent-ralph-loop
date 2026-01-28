@@ -2,11 +2,56 @@
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-![Version](https://img.shields.io/badge/v2.72.1-blue) ![Tests](https://img.shields.io/badge/945_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange) ![GLM-4.7](https://img.shields.io/badge/GLM--4.7-PRIMARY-green)
+![Version](https://img.shields.io/badge/v2.78.10-blue) ![Tests](https://img.shields.io/badge/945_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange) ![GLM-4.7](https://img.shields.io/badge/GLM--4.7-PRIMARY-green)
 
 ---
 
-## 🐛 Recent Bug Fixes (v2.70.0 - v2.74.3)
+## 🐛 Recent Bug Fixes (v2.70.0 - v2.78.10)
+
+### Statusline Context Display Fix (v2.78.10) ✅ LATEST
+
+**Issue**: Statusline showing 100% usage when `/context` showed ~55% (Free space: 44k).
+
+**Root Cause**:
+- Zai wrapper sends incorrect `used_percentage` (0% or 100%)
+- Cumulative tokens (1011k) clamped to context window (200k = 100%)
+- Hook approach failed because `/context` is REPL-only, not CLI
+
+**Solution**: Implemented validation and fallback strategy:
+1. Validate `used_percentage` (only trust if 5-95%)
+2. Read cache file (`~/.ralph/cache/context-usage.json`) before cumulative
+3. Use 75% estimate when cumulative tokens > 90% of context window
+4. Removed non-working `context-from-cli.sh` hook
+
+**Example**:
+```
+Before: CtxUse: 200k/200k (100%) | Free: 0k (0%)
+After:  CtxUse: 111k/200k (55%)  | Free: 44k (22%)
+```
+
+**Technical Details**: See [docs/context-monitoring/STATUSLINE_V2.78.10_FIX.md](docs/context-monitoring/STATUSLINE_V2.78.10_FIX.md)
+
+### Statusline Dual Context Display (FEAT-003) ✅ IMPLEMENTED - v2.78.0 - v2.78.9
+
+**Issue**: Claude Code 2.1.19 provides unreliable context window values (`used_percentage` often 0% or 100%, `current_usage.input_tokens` returns 0).
+
+**Solution**: Implemented dual context display system:
+1. **Cumulative Session Progress** (`🤖` progress bar): Shows overall session tokens (can exceed 100%)
+2. **Current Window Usage** (`CtxUse`): Shows actual current window usage matching `/context` command
+
+**Example**:
+```
+⎇ main* | 🤖 391k/200k (195%) | CtxUse: 133k/200k (66.6%) | Free: 22k (10.9%) | Buff 45.0k (22.5%)
+          └─ Cumulative ──┘     └────────── Current Window ──────────┘
+```
+
+**Key Features**:
+- Project-specific cache per repository (`~/.ralph/cache/<project-id>/context-usage.json`)
+- Real-time updates via `context-from-cli.sh` hook (UserPromptSubmit event)
+- Fallback strategy when cache unavailable (75% estimate)
+- Zai Cloud wrapper compatibility
+
+**Technical Details**: See [docs/context-monitoring/STATUSLINE_V2.78_IMPLEMENTATION.md](docs/context-monitoring/STATUSLINE_V2.78_IMPLEMENTATION.md)
 
 ### PreToolUse Hook Format Compliance (BUG-007) ✅ FIXED - v2.70.1
 
@@ -23,22 +68,6 @@ After:  {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecisi
 ```
 
 **Technical Details**: Created `fix-pretooluse-hooks.py` automation script for validation and fixing.
-
-### Context Window Statusline Calculation (BUG-006) ✅ FIXED - v2.74.3
-
-**Issue**: `context_window.used_percentage` and `context_window.remaining_percentage` fields in Claude Code 2.1.19 show incorrect values (0% used / 100% remaining).
-
-**Root Cause**: The `current_usage` object is not populated correctly in Claude Code 2.1.19, causing pre-calculated percentages to be wrong.
-
-**Fix**: Calculate context usage from `total_input_tokens` + `total_output_tokens` instead of relying on `used_percentage`/`remaining_percentage`.
-
-**Example**:
-```
-Before: ctx:100% (incorrect - always shows 100% remaining)
-After:  ctx:67% (correct - 134K / 200K tokens used)
-```
-
-**Technical Details**: See [docs/context-window-bug-2026-01-27.md](docs/context-window-bug-2026-01-27.md)
 
 ### Quality Gates AutoMode Detection (BUG-003) ✅ FIXED
 **Issue**: `/loop` and `/orchestrator` commands were blocked by quality gates even during automatic execution.
