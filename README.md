@@ -2,13 +2,45 @@
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-![Version](https://img.shields.io/badge/v2.79.0-blue) ![Tests](https://img.shields.io/badge/945_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange) ![GLM-4.7](https://img.shields.io/badge/GLM--4.7-PRIMARY-green)
+![Version](https://img.shields.io/badge/v2.80.0-blue) ![Tests](https://img.shields.io/badge/945_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange) ![GLM-4.7](https://img.shields.io/badge/GLM--4.7-PRIMARY-green)
 
 ---
 
-## 🐛 Recent Bug Fixes (v2.70.0 - v2.79.0)
+## 🐛 Recent Bug Fixes (v2.70.0 - v2.80.0)
 
-### Statusline Simplification (v2.79.0) ✅ LATEST
+### GLM Usage Cache Optimization (v2.80.0) ✅ LATEST
+
+**Overview**: Optimized GLM usage tracking with single-pass JSON parsing and improved performance.
+
+#### Changes
+
+| Metric | Before | After |
+|--------|--------|-------|
+| **jq calls** | 4 separate reads | 1 single pass |
+| **Disk I/O** | 4 file reads | 1 file read |
+| **Execution time** | ~15ms | ~5ms |
+
+#### Key Improvements
+
+1. **Single jq call**: Read all cache data in one pass using pipe-delimited output
+2. **Simplified color logic**: Short-circuit evaluation for color thresholds
+3. **Better performance**: 3x faster statusline rendering
+
+#### Statusline Format
+
+```
+⎇ main* │ ⏱️ 11% (~5h) │ 🔧 4% MCP (182/4000)
+          └─ Token Quota ─┘ └──── MCP Usage ──────┘
+```
+
+#### GLM Usage Metrics
+
+| Metric | Display | Color Thresholds |
+|--------|---------|------------------|
+| **Tokens (5h)** | `⏱️ 11% (~5h)` | 🟢<75%, 🟡≥75%, 🔴≥85% |
+| **MCP (monthly)** | `🔧 4% MCP (182/4000)` | 🔵<75%, 🟡≥75% |
+
+### Statusline Simplification (v2.79.0)
 
 **Overview**: Unified context display by removing redundant information for a cleaner, more concise statusline.
 
@@ -167,6 +199,54 @@ After:  {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecisi
 **Root Cause**: `get_hook_type()` in test had explicit PreToolUse list missing `auto-mode-setter`.
 
 **Fix**: Added `'auto-mode-setter'` to PreToolUse hooks list.
+
+---
+
+## 🚀 Improvements (v2.80.0)
+
+### Z.ai Coding Plugins Integration (v2.80.0) ✅ NEW
+
+**Overview**: Integrated Z.ai Coding Plugins marketplace for GLM Coding Plan usage tracking and feedback.
+
+#### Installed Plugins
+
+| Plugin | Version | Purpose |
+|--------|---------|---------|
+| **glm-plan-usage** | 0.0.1 | Query quota and usage statistics |
+| **glm-plan-bug** | 0.0.1 | Submit bug reports and feedback |
+
+#### Installation
+
+```bash
+# Add marketplace
+claude plugin marketplace add zai-org/zai-coding-plugins
+
+# Install plugins
+claude plugin install glm-plan-usage@zai-coding-plugins
+claude plugin install glm-plan-bug@zai-coding-plugins
+```
+
+#### Usage
+
+```bash
+# Query GLM usage statistics
+~/.claude-sneakpeek/zai/skills/glm-plan-usage-query
+
+# Submit bug feedback
+~/.claude-sneakpeek/zai/skills/glm-plan-bug-feedback --feedback "Issue description"
+```
+
+#### Integration with Statusline
+
+The statusline automatically uses `glm-usage-cache-manager.sh` which:
+- Caches GLM usage data for 5 minutes
+- Displays token quota (5-hour) and MCP usage (monthly)
+- Optimized JSON parsing with single jq call
+
+**Display**:
+```
+⏱️ 11% (~5h) │ 🔧 4% MCP (182/4000)
+```
 
 ---
 
