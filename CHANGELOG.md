@@ -1,5 +1,43 @@
 # Changelog
 
+---
+
+## [2.78.5-ROLLBACK] - 2026-01-28
+
+### Reverted
+
+- **Context Monitoring Rollback**: Reverted from v2.79.0 to v2.78.5 due to architectural issues
+  - Removed `context-from-cli.sh` hook (cannot work - `/context` is REPL-only, not a CLI command)
+  - Removed `statusline-context-cache-update.sh` hook
+  - Removed `context-cache-updater.sh` hook
+  - Removed `docs/context-monitoring/CONTEXT_FROM_CLI_FIX.md` documentation
+  - Restored `statusline-ralph.sh` to v2.78.5 (cumulative tokens approach)
+  
+### Reason for Rollback
+
+The `context-from-cli.sh` approach was fundamentally flawed:
+1. `/context` is an **internal Claude Code CLI command** that cannot be executed from bash
+2. The system was not using `context-project-id` correctly for project differentiation
+3. Context information must be read from **stdin JSON**, not from external command execution
+
+### Current State (v2.78.5)
+
+- **Progress bar**: Shows cumulative session tokens (can exceed 100%)
+- **Current context**: Uses cumulative tokens as best available approximation
+- **Display format**: `🤖 ██████████░░ 391k/200k (195%)`
+- **Limitation**: Shows SESSION ACCUMULATED tokens, not CURRENT WINDOW usage
+
+### Documentation
+
+- See [docs/context-monitoring/ROLLBACK_v2.79.0_TO_v2.78.5.md](docs/context-monitoring/ROLLBACK_v2.79.0_TO_v2.78.5.md) for complete details
+
+### Future Strategy
+
+1. Extract context information from stdin JSON provided by Claude Code CLI
+2. Implement proper project-specific tracking using `context-project-id`
+3. Validate available fields in stdin JSON for reliable context usage data
+
+
 All notable changes to Multi-Agent Ralph Wiggum are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
