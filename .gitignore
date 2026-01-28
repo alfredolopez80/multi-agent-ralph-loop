@@ -204,13 +204,16 @@ tests/*.result
 # EXCEPTIONS - Track these files (scripts, configs, docs)
 !.claude/CLAUDE.md
 !.claude/*.md
+!.claude/agents/
 !.claude/backup/
+!.claude/commands/
 !.claude/contexts/
 !.claude/docs/
 !.claude/hooks/
 !.claude/pins/
 !.claude/schemas/
 !.claude/scripts/
+!.claude/skills/
 !.claude/tasks/
 !.claude/evals/
 
