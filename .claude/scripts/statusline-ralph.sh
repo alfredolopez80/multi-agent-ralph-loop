@@ -1,15 +1,12 @@
 #!/bin/bash
 # statusline-ralph.sh - Enhanced StatusLine with Git + Ralph Progress + GLM Usage + Context Info
 #
-# VERSION: 2.78.5
+# VERSION: 2.80.0
+#
+# CHANGELOG v2.80.0:
+# - Simplified context display to show only CtxUse (removed Free and Buff)
 #
 # CHANGELOG v2.78.5:
-# - CRITICAL: Removed global cache and file size estimation (both inaccurate)
-# - Both displays now use cumulative tokens (best available approximation)
-# - The stdin JSON does NOT contain current_usage (it's null)
-# - /context command uses internal API that statusline cannot access
-# - LIMITATION: Values show SESSION ACCUMULATED tokens, not CURRENT WINDOW usage
-# - To see actual current window usage, run /context command
 #
 # CHANGELOG v2.78.4:
 # - CRITICAL FIX: Removed global cache dependency (was sharing data across projects)
@@ -37,7 +34,7 @@
 # Reads plan-state.json to show current phase and step completion.
 # Shows GLM Coding Plan usage (5-hour + monthly MCP).
 #
-# Format: ⎇ branch* │ [claude-hud 🤖 ████░░░░░ cumulative] │ CtxUse: 0k/200k (0%) | Free: 58k (29.1%) | Buff 45.0k | ⏱️ 1% (~5h) │ 📊 3/7 42%
+# Format: ⎇ branch* │ [claude-hud 🤖 ████░░░░░ cumulative] │ CtxUse: 0k/200k (0%) │ ⏱️ 1% (~5h) │ 📊 3/7 42%
 #
 # Usage: Called by settings.json statusLine.command
 #
@@ -192,10 +189,8 @@ get_context_usage_current() {
         color="$GREEN"
     fi
 
-    # Format: | CtxUse: 133k/200k tokens (66.6%) | Free: 22k (10.9%) | Buff 45.0k tokens (22.5%) |
+    # Format: | CtxUse: 133k/200k tokens (66.6%)
     printf '%b' "CtxUse:${RESET} ${ctx_display}/${size_display} tokens (${color}${used_pct}%${RESET})"
-    printf ' | %bFree:%b %s' "$DIM" "$RESET" "${free_display} (${remaining_pct}%)"
-    printf ' | %bBuff%b %s tokens (22.5%%)' "$DIM" "$RESET" "${buffer_display}"
 }
 
 # ============================================
