@@ -1,15 +1,22 @@
 #!/bin/bash
 # statusline-ralph.sh - Enhanced StatusLine with Git + Ralph Progress + GLM Usage + Context Info
 #
-# VERSION: 2.78.2
+# VERSION: 2.78.5
+#
+# CHANGELOG v2.78.5:
+# - CRITICAL: Removed global cache and file size estimation (both inaccurate)
+# - Both displays now use cumulative tokens (best available approximation)
+# - The stdin JSON does NOT contain current_usage (it's null)
+# - /context command uses internal API that statusline cannot access
+# - LIMITATION: Values show SESSION ACCUMULATED tokens, not CURRENT WINDOW usage
+# - To see actual current window usage, run /context command
+#
+# CHANGELOG v2.78.4:
+# - CRITICAL FIX: Removed global cache dependency (was sharing data across projects)
 #
 # CHANGELOG v2.78.2:
 # - FIX: get_context_usage_current() now uses current_usage object for REAL window usage
 # - This matches /context command by calculating: input_tokens + cache_creation + cache_read
-# - Falls back to used_percentage if current_usage is not available
-# - Both displays serve different purposes:
-#   - 🤖 progress bar: Shows total session tokens (cumulative input + output)
-#   - CtxUse/Free/Buff: Shows current window usage (matches /context command)
 #
 # CHANGELOG v2.78.1:
 # - ROLLBACK: get_context_usage_cumulative() now uses total_input_tokens + total_output_tokens again
@@ -127,8 +134,9 @@ get_context_usage_cumulative() {
 
 # Get current context usage matching /context format exactly
 # Shows: | CtxUse: 133k/200k tokens (66.6%) | Free: 22k (10.9%) | Buff 45.0k tokens (22.5%) |
-# v2.78.1: Use current_usage object for REAL window usage (matches /context command)
-# This calculates the actual current window tokens, not cumulative session totals
+# v2.78.5: Use cumulative tokens but clamped to context window (best available approximation)
+# The stdin JSON does NOT contain current_usage, and /context is internal API only
+# We use total_input_tokens + total_output_tokens as the best available proxy
 get_context_usage_current() {
     local context_json="$1"
 
@@ -136,24 +144,24 @@ get_context_usage_current() {
     local used_pct=0
     local used_tokens=0
 
-    # v2.78.1: Try current_usage object first (REAL current window tokens)
-    # current_usage.input_tokens + cache_creation + cache_read = actual tokens in current window
-    local current_usage=$(echo "$context_json" | jq -r '.current_usage // "null"')
+    # v2.78.5: Use cumulative tokens as proxy (best available approximation)
+    # The stdin JSON does not contain current_usage (it's null or missing)
+    # /context uses internal API that statusline cannot access
+    local total_input=$(echo "$context_json" | jq -r '.total_input_tokens // 0')
+    local total_output=$(echo "$context_json" | jq -r '.total_output_tokens // 0')
+    local cumulative_tokens=$((total_input + total_output))
 
-    if [[ "$current_usage" != "null" ]] && [[ -n "$current_usage" ]]; then
-        # Calculate REAL current window usage from current_usage object
-        # This matches /context command behavior
-        used_tokens=$(echo "$current_usage" | jq -r '
-            (.input_tokens // 0) +
-            (.cache_creation_input_tokens // 0) +
-            (.cache_read_input_tokens // 0)
-        ')
+    # Clamp to context window (we can't exceed the window)
+    if [[ $cumulative_tokens -gt $context_size ]]; then
+        used_tokens=$context_size
+        used_pct=100
+    elif [[ $cumulative_tokens -gt 0 ]]; then
+        used_tokens=$cumulative_tokens
+        used_pct=$((used_tokens * 100 / context_size))
+    fi
 
-        if [[ $used_tokens -gt 0 ]]; then
-            used_pct=$((used_tokens * 100 / context_size))
-        fi
-    else
-        # Fallback: use used_percentage (may be 0 if current_usage not available)
+    # Fallback: try used_percentage if available
+    if [[ $used_tokens -eq 0 ]]; then
         used_pct=$(echo "$context_json" | jq -r '.used_percentage // 0')
         used_tokens=$((context_size * used_pct / 100))
     fi
