@@ -10,8 +10,11 @@ All project documentation follows a professional folder structure under `docs/`:
 
 ```
 docs/
-├── context-monitoring/      # Context tracking analysis and fixes
+├── analysis/                # Analysis reports (adversarial, validation, consolidation)
 ├── architecture/            # Architecture diagrams and design docs
+├── context-monitoring/      # Context tracking analysis and fixes
+├── context-management/      # Context management coordination
+├── quality-gates/           # Quality gates and hooks audits
 ├── security/                # Security-related documentation
 ├── retrospective/           # Project retrospectives
 ├── examples/                # Code examples and tutorials
