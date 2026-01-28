@@ -6,7 +6,7 @@ This directory contains documentation related to the context monitoring system f
 
 The context monitoring system tracks token usage in Claude Code sessions and displays real-time context percentage in the statusline. This documentation covers the analysis, fixes, and validation of the context tracking implementation.
 
-## Documents
+## Recent Fixes (2026-01-28)
 
 | File | Description | Date |
 |------|-------------|------|
@@ -14,6 +14,16 @@ The context monitoring system tracks token usage in Claude Code sessions and dis
 | [VALIDATION_v2.75.0.md](VALIDATION_v2.75.0.md) | Validation report for initial fix using `used_percentage` field | 2026-01-28 |
 | [FIX_CORRECTION_v2.75.1.md](FIX_CORRECTION_v2.75.1.md) | Analysis of why initial fix failed and lessons learned | 2026-01-28 |
 | [FIX_SUMMARY.md](FIX_SUMMARY.md) | Complete summary of the context monitoring fix journey through v2.75.3 | 2026-01-28 |
+
+## Historical GLM Context Monitoring
+
+| File | Description | Date |
+|------|-------------|------|
+| [SYSTEM_FINDINGS.md](SYSTEM_FINDINGS.md) | Context system findings and issues (2026-01-26) | 2026-01-26 |
+| [STATUS_VALIDATION.md](STATUS_VALIDATION.md) | Context status validation results | 2026-01-26 |
+| [GLM_FIX_PLAN.md](GLM_FIX_PLAN.md) | GLM context monitoring fix implementation plan | 2026-01-26 |
+| [GLM_FIX_SUMMARY.md](GLM_FIX_SUMMARY.md) | GLM-4.7 context monitoring fix implementation summary | 2026-01-26 |
+| [GLM47_FIXED.md](GLM47_FIXED.md) | GLM-4.7 context monitoring fix confirmation | 2026-01-26 |
 
 ## Key Findings
 
