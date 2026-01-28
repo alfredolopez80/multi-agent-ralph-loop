@@ -1,0 +1,210 @@
+#!/bin/bash
+# pre-compact-handoff.sh - PreCompact Hook for Ralph v2.68.8
+# Hook: PreCompact
+# Auto-saves state BEFORE context compaction to prevent information loss
+#
+# v2.44 IMPROVEMENTS:
+#   - Uses context-extractor.py for rich context extraction
+#   - Includes git status, progress tracking, and transcript analysis
+#   - Environment detection for CLI vs VSCode/Cursor fallbacks
+#
+# Input (JSON via stdin):
+#   - hook_event_name: "PreCompact"
+#   - session_id: Current session identifier
+#   - transcript_path: Path to current transcript
+#
+# Output (JSON):
+#   - {"continue": true} (PreCompact uses same format as PostToolUse)
+#
+# NOTE: PreCompact hooks CANNOT prevent compaction - they only receive
+# notification that it's about to happen. Use this to save state.
+#
+# Part of Ralph v2.44 Context Engineering - GitHub #15021 Workaround
+
+# SEC-111: Read input from stdin with length limit (100KB max)
+# Prevents DoS from malicious input
+INPUT=$(head -c 100000)
+
+# VERSION: 2.69.0
+# v2.68.25: FIX CRIT-001 - Removed duplicate stdin read (SEC-111 already reads at top)
+# v2.68.8: SEC-054 - Fixed PreCompact JSON format (continue:true, not decision:allow)
+set -euo pipefail
+
+# Error trap: Always output valid JSON for PreCompact (SEC-054 fix)
+trap 'echo "{\"continue\": true}"' ERR EXIT
+
+# Configuration
+LEDGER_DIR="${HOME}/.ralph/ledgers"
+HANDOFF_DIR="${HOME}/.ralph/handoffs"
+SCRIPTS_DIR="${HOME}/.claude/scripts"
+HOOKS_DIR="${HOME}/.claude/hooks"
+FEATURES_FILE="${HOME}/.ralph/config/features.json"
+LOG_FILE="${HOME}/.ralph/logs/pre-compact.log"
+TEMP_CONTEXT_DIR="${HOME}/.ralph/temp"
+
+# Ensure directories exist
+mkdir -p "$LEDGER_DIR" "$HANDOFF_DIR" "${HOME}/.ralph/logs" "$TEMP_CONTEXT_DIR"
+
+# Source environment detection (v2.44)
+if [[ -f "${HOOKS_DIR}/detect-environment.sh" ]]; then
+    # shellcheck source=/dev/null
+    source "${HOOKS_DIR}/detect-environment.sh"
+    detect_environment > /dev/null 2>&1 || true
+fi
+
+# Logging function
+log() {
+    local level="$1"
+    shift
+    echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] [$level] $*" >> "$LOG_FILE" 2>/dev/null || true
+}
+
+# Check feature flags
+check_feature_enabled() {
+    local feature="$1"
+    local default="$2"
+
+    if [[ -f "$FEATURES_FILE" ]]; then
+        local value
+        value=$(jq -r ".$feature // \"$default\"" "$FEATURES_FILE" 2>/dev/null || echo "$default")
+        [[ "$value" == "true" ]]
+    else
+        [[ "$default" == "true" ]]
+    fi
+}
+
+# CRIT-001 FIX: Removed duplicate `INPUT=$(cat)` - stdin already consumed by SEC-111 read above
+# Parse input JSON (using INPUT from SEC-111 read at top)
+SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"' 2>/dev/null || echo "unknown")
+# SEC-029: Sanitize session_id to prevent path traversal
+SESSION_ID=$(echo "$SESSION_ID" | tr -cd 'a-zA-Z0-9_-' | head -c 64)
+[[ -z "$SESSION_ID" ]] && SESSION_ID="unknown"
+TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path // ""' 2>/dev/null || echo "")
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+
+log "INFO" "PreCompact hook triggered - session: $SESSION_ID, transcript: $TRANSCRIPT_PATH"
+
+# Check if handoff feature is enabled (default: true)
+if ! check_feature_enabled "RALPH_ENABLE_HANDOFF" "true"; then
+    log "INFO" "Handoff feature disabled via features.json"
+    trap - ERR EXIT
+    echo '{"continue": true}'
+    exit 0
+fi
+
+# Create session-specific handoff directory
+SESSION_HANDOFF_DIR="${HANDOFF_DIR}/${SESSION_ID}"
+mkdir -p "$SESSION_HANDOFF_DIR"
+
+# Determine current working directory (project context)
+# Try to get it from the transcript or use HOME
+PROJECT_DIR="${HOME}"
+if [[ -n "$TRANSCRIPT_PATH" ]] && [[ -f "$TRANSCRIPT_PATH" ]]; then
+    # Try to extract working directory from transcript
+    EXTRACTED_DIR=$(jq -r 'select(.cwd != null) | .cwd' "$TRANSCRIPT_PATH" 2>/dev/null | tail -1 || true)
+    if [[ -n "$EXTRACTED_DIR" ]] && [[ -d "$EXTRACTED_DIR" ]]; then
+        PROJECT_DIR="$EXTRACTED_DIR"
+    fi
+fi
+
+# Generate ledger using ledger-manager.py with rich context (v2.44)
+if check_feature_enabled "RALPH_ENABLE_LEDGER" "true"; then
+    LEDGER_SCRIPT="${SCRIPTS_DIR}/ledger-manager.py"
+    CONTEXT_EXTRACTOR="${SCRIPTS_DIR}/context-extractor.py"
+    CONTEXT_JSON="${TEMP_CONTEXT_DIR}/context-${SESSION_ID}.json"
+
+    if [[ -x "$LEDGER_SCRIPT" ]]; then
+        log "INFO" "Generating ledger for session: $SESSION_ID"
+
+        # v2.44: Use context-extractor for rich context if enabled
+        if check_feature_enabled "RALPH_ENABLE_CONTEXT_EXTRACTOR" "true" && [[ -x "$CONTEXT_EXTRACTOR" ]]; then
+            log "INFO" "Extracting rich context from project: $PROJECT_DIR"
+
+            # Extract context to JSON file
+            if python3 "$CONTEXT_EXTRACTOR" \
+                --project "$PROJECT_DIR" \
+                --transcript "$TRANSCRIPT_PATH" \
+                --goal "Session state before compaction (auto-saved)" \
+                --output "$CONTEXT_JSON" 2>> "$LOG_FILE"; then
+
+                log "INFO" "Context extracted to: $CONTEXT_JSON"
+
+                # Generate ledger with rich context
+                python3 "$LEDGER_SCRIPT" save \
+                    --session "$SESSION_ID" \
+                    --json "$CONTEXT_JSON" \
+                    --output "${LEDGER_DIR}/CONTINUITY_RALPH-${SESSION_ID}.md" \
+                    >> "$LOG_FILE" 2>&1 || {
+                        log "ERROR" "Failed to generate ledger with rich context"
+                    }
+
+                # Cleanup temp file
+                rm -f "$CONTEXT_JSON" 2>/dev/null || true
+            else
+                log "WARN" "Context extraction failed, falling back to basic ledger"
+                # Fallback to basic ledger
+                python3 "$LEDGER_SCRIPT" save \
+                    --session "$SESSION_ID" \
+                    --goal "Session state before compaction (auto-saved)" \
+                    --output "${LEDGER_DIR}/CONTINUITY_RALPH-${SESSION_ID}.md" \
+                    >> "$LOG_FILE" 2>&1 || {
+                        log "ERROR" "Failed to generate basic ledger"
+                    }
+            fi
+        else
+            # Basic ledger without context extraction
+            python3 "$LEDGER_SCRIPT" save \
+                --session "$SESSION_ID" \
+                --goal "Session state before compaction (auto-saved)" \
+                --output "${LEDGER_DIR}/CONTINUITY_RALPH-${SESSION_ID}.md" \
+                >> "$LOG_FILE" 2>&1 || {
+                    log "ERROR" "Failed to generate ledger"
+                }
+        fi
+
+        log "INFO" "Ledger saved to: ${LEDGER_DIR}/CONTINUITY_RALPH-${SESSION_ID}.md"
+    else
+        log "WARN" "Ledger manager script not found or not executable: $LEDGER_SCRIPT"
+    fi
+fi
+
+# Generate handoff using handoff-generator.py
+HANDOFF_SCRIPT="${SCRIPTS_DIR}/handoff-generator.py"
+if [[ -x "$HANDOFF_SCRIPT" ]]; then
+    log "INFO" "Generating handoff for session: $SESSION_ID"
+
+    python3 "$HANDOFF_SCRIPT" create \
+        --session "$SESSION_ID" \
+        --trigger "PreCompact (auto)" \
+        --project "$PROJECT_DIR" \
+        --output "${SESSION_HANDOFF_DIR}/handoff-${TIMESTAMP}.md" \
+        >> "$LOG_FILE" 2>&1 || {
+            log "ERROR" "Failed to generate handoff"
+        }
+
+    log "INFO" "Handoff saved to: ${SESSION_HANDOFF_DIR}/handoff-${TIMESTAMP}.md"
+else
+    log "WARN" "Handoff generator script not found or not executable: $HANDOFF_SCRIPT"
+fi
+
+# Index in Memvid if available and enabled
+if command -v ralph &>/dev/null; then
+    # Check if memvid feature exists in ralph
+    if ralph memvid status >> "$LOG_FILE" 2>&1; then
+        log "INFO" "Indexing checkpoint in Memvid"
+        ralph memvid save "Pre-compact checkpoint: ${SESSION_ID} at ${TIMESTAMP}" >> "$LOG_FILE" 2>&1 || {
+            log "WARN" "Memvid indexing failed (non-critical)"
+        }
+    fi
+fi
+
+# Clean up old handoffs (keep last 20 per session, older than 7 days)
+python3 "$HANDOFF_SCRIPT" cleanup --days 7 --keep-min 20 >> "$LOG_FILE" 2>&1 || {
+    log "WARN" "Handoff cleanup failed (non-critical)"
+}
+
+log "INFO" "PreCompact hook completed successfully"
+
+# Return success (PreCompact cannot block) - SEC-054: correct JSON format
+trap - ERR EXIT
+echo '{"continue": true}'

@@ -1,0 +1,201 @@
+{
+  "version": "2.68.26",
+  "timestamp": "2026-01-28T13:37:03Z",
+  "session_id": "d39df9fd-8e46-4453-bd4f-206673e726f9",
+  "search_keywords": "analysis changefiles claude context docs documentation execute files folder include markdown move moved need needs plan professional reflect reorganization reports ",
+  "total_results": 22,
+  "sources": {
+    "claude_mem": {
+      "results": [],
+      "source": "claude-mem"
+    },
+    "memvid": {
+      "results": [],
+      "source": "memvid"
+    },
+    "handoffs": {
+      "results": [
+        {
+          "session": "a4dbfbe5-6788-4d35-89e8-374300017839",
+          "timestamp": "20260112-205958",
+          "content": "# RALPH HANDOFF Session: a4dbfbe5-6788-4d35-89e8-374300017839 Timestamp: 2026-01-12T19:59:58.369378+00:00 Trigger: PreCompact (auto)  ## RECENT CHANGES | File | Type | |------|------| | .env.example | MODIFIED | | .eslintrc.json | MODIFIED | | .github/dependabot.yml | ADDED | | .prettierignore | MODIFIED | | AGENTS.md | MODIFIED | | CLAUDE.md | MODIFIED | | README.md | MODIFIED | | docs/api/email-verification-api.md | ADDED | | docs/database/report_generations.sql | ADDED | | docs/development/AGENTS.md | DELETED | | docs/development/CLAUDE.md | DELETED | | ...H - Portfolio - Jan 7, 2021 to Jun 26, 2025.pdf | DELETED | | ... - Strategy B - Jan 7, 2021 to Jun 26, 2025.pdf | DELETED | | ... - Strategy K - Jan 7, 2021 to Jun 26, 2025.pdf | DELETED | | ...trategy M L_S - Jan 7, 2021 to Jun 26, 2025.pdf | DELETED | | ... - Strategy T - Jan 7, 2021 to Jun 26, 2025.pdf | DELETED | | ...s/backtesting/pdf-examples/HODL Strategies.xlsx | DELETED | | ...set Strategy - Jan 2, 2021 to Oct 19, 2025 .pdf | DELETED | | ...sset Strategy - Jan 2, 2021 to Oct 19, 2025.pdf | DELETED | | docs/files/backtesting/pdf-examples/README.md | DELETED |  ## RESTORE COMMAND ```bash ralph ledger load a4dbfbe5-6788-4d35-89e8-374300017839 ``` "
+        },
+        {
+          "session": "a6b851d5-657d-4164-b59d-57ec897e201b",
+          "timestamp": "20260123-222721",
+          "content": "# RALPH HANDOFF Session: a6b851d5-657d-4164-b59d-57ec897e201b Timestamp: 2026-01-23T21:27:22.528837+00:00 Trigger: PreCompact (auto)  ## RECENT CHANGES | File | Type | |------|------| | .claude/ADVERSARIAL_IMPROVEMENT_PLAN_ECC.md | ADDED | | .claude/hooks/repo-boundary-guard.sh | ADDED | | AGENTS.md | MODIFIED | | CHANGELOG.md | MODIFIED | | CLAUDE.md | MODIFIED | | README.md | MODIFIED |  ## RESTORE COMMAND ```bash ralph ledger load a6b851d5-657d-4164-b59d-57ec897e201b ``` "
+        },
+        {
+          "session": "a6b851d5-657d-4164-b59d-57ec897e201b",
+          "timestamp": "20260123-220328",
+          "content": "# RALPH HANDOFF Session: a6b851d5-657d-4164-b59d-57ec897e201b Timestamp: 2026-01-23T21:03:28.753970+00:00 Trigger: PreCompact (auto)  ## RECENT CHANGES | File | Type | |------|------| | .claude/ADVERSARIAL_IMPROVEMENT_PLAN_ECC.md | ADDED | | .claude/hooks/repo-boundary-guard.sh | ADDED | | AGENTS.md | MODIFIED | | CHANGELOG.md | MODIFIED | | CLAUDE.md | MODIFIED | | README.md | MODIFIED |  ## RESTORE COMMAND ```bash ralph ledger load a6b851d5-657d-4164-b59d-57ec897e201b ``` "
+        },
+        {
+          "session": "a6b851d5-657d-4164-b59d-57ec897e201b",
+          "timestamp": "20260123-224242",
+          "content": "# RALPH HANDOFF Session: a6b851d5-657d-4164-b59d-57ec897e201b Timestamp: 2026-01-23T21:42:43.080195+00:00 Trigger: PreCompact (auto)  ## RECENT CHANGES | File | Type | |------|------| | .claude/ADVERSARIAL_IMPROVEMENT_PLAN_ECC.md | ADDED | | .claude/hooks/repo-boundary-guard.sh | ADDED | | CHANGELOG.md | MODIFIED | | CLAUDE.md | MODIFIED | | README.md | MODIFIED |  ## RESTORE COMMAND ```bash ralph ledger load a6b851d5-657d-4164-b59d-57ec897e201b ``` "
+        },
+        {
+          "session": "a6b851d5-657d-4164-b59d-57ec897e201b",
+          "timestamp": "20260123-230742",
+          "content": "# RALPH HANDOFF Session: a6b851d5-657d-4164-b59d-57ec897e201b Timestamp: 2026-01-23T22:07:42.677327+00:00 Trigger: PreCompact (auto)  ## RECENT CHANGES | File | Type | |------|------| | .claude/ADVERSARIAL_IMPROVEMENT_PLAN_ECC.md | ADDED | | .claude/progress.md | MODIFIED | | .claude/rules/repo-isolation.md | DELETED | | CHANGELOG.md | MODIFIED | | CLAUDE.md | MODIFIED | | README.md | MODIFIED |  ## RESTORE COMMAND ```bash ralph ledger load a6b851d5-657d-4164-b59d-57ec897e201b ``` "
+        },
+        {
+          "session": "a6b851d5-657d-4164-b59d-57ec897e201b",
+          "timestamp": "20260123-221516",
+          "content": "# RALPH HANDOFF Session: a6b851d5-657d-4164-b59d-57ec897e201b Timestamp: 2026-01-23T21:15:17.271977+00:00 Trigger: PreCompact (auto)  ## RECENT CHANGES | File | Type | |------|------| | .claude/ADVERSARIAL_IMPROVEMENT_PLAN_ECC.md | ADDED | | .claude/hooks/repo-boundary-guard.sh | ADDED | | AGENTS.md | MODIFIED | | CHANGELOG.md | MODIFIED | | CLAUDE.md | MODIFIED | | README.md | MODIFIED |  ## RESTORE COMMAND ```bash ralph ledger load a6b851d5-657d-4164-b59d-57ec897e201b ``` "
+        },
+        {
+          "session": "a6b851d5-657d-4164-b59d-57ec897e201b",
+          "timestamp": "20260123-214219",
+          "content": "# RALPH HANDOFF Session: a6b851d5-657d-4164-b59d-57ec897e201b Timestamp: 2026-01-23T20:42:20.159174+00:00 Trigger: PreCompact (auto)  ## RECENT CHANGES | File | Type | |------|------| | .claude/ADVERSARIAL_IMPROVEMENT_PLAN_ECC.md | ADDED | | .claude/hooks/repo-boundary-guard.sh | ADDED | | AGENTS.md | MODIFIED | | CHANGELOG.md | MODIFIED | | CLAUDE.md | MODIFIED | | README.md | MODIFIED |  ## RESTORE COMMAND ```bash ralph ledger load a6b851d5-657d-4164-b59d-57ec897e201b ``` "
+        },
+        {
+          "session": "a6b851d5-657d-4164-b59d-57ec897e201b",
+          "timestamp": "20260123-224825",
+          "content": "# RALPH HANDOFF Session: a6b851d5-657d-4164-b59d-57ec897e201b Timestamp: 2026-01-23T21:48:26.182829+00:00 Trigger: PreCompact (auto)  ## RECENT CHANGES | File | Type | |------|------| | .claude/ADVERSARIAL_IMPROVEMENT_PLAN_ECC.md | ADDED | | .claude/hooks/repo-boundary-guard.sh | ADDED | | CHANGELOG.md | MODIFIED | | CLAUDE.md | MODIFIED | | README.md | MODIFIED |  ## RESTORE COMMAND ```bash ralph ledger load a6b851d5-657d-4164-b59d-57ec897e201b ``` "
+        },
+        {
+          "session": "a6b851d5-657d-4164-b59d-57ec897e201b",
+          "timestamp": "20260123-215319",
+          "content": "# RALPH HANDOFF Session: a6b851d5-657d-4164-b59d-57ec897e201b Timestamp: 2026-01-23T20:53:20.030358+00:00 Trigger: PreCompact (auto)  ## RECENT CHANGES | File | Type | |------|------| | .claude/ADVERSARIAL_IMPROVEMENT_PLAN_ECC.md | ADDED | | .claude/hooks/repo-boundary-guard.sh | ADDED | | AGENTS.md | MODIFIED | | CHANGELOG.md | MODIFIED | | CLAUDE.md | MODIFIED | | README.md | MODIFIED |  ## RESTORE COMMAND ```bash ralph ledger load a6b851d5-657d-4164-b59d-57ec897e201b ``` "
+        },
+        {
+          "session": "3fc9c451-43ca-4630-b64c-ae672c7e8d0a",
+          "timestamp": "20260120-154748",
+          "content": "# RALPH HANDOFF Session: 3fc9c451-43ca-4630-b64c-ae672c7e8d0a Timestamp: 2026-01-20T14:47:49.398507+00:00 Trigger: PreCompact (auto)  ## RECENT CHANGES | File | Type | |------|------| | __tests__/integration/hypersig-templates.test.ts | MODIFIED | | ...pplications/services/hlWebSocketService.test.ts | MODIFIED | | scripts/seedHyperSigTemplates.js | MODIFIED | | src/applications/services/hlNotificationService.ts | MODIFIED | | src/applications/services/hlWebSocketService.ts | MODIFIED | | src/applications/services/slackService.ts | MODIFIED | | ...lications/services/unifiedNotificationSender.ts | MODIFIED | | src/core/models/OnChain/HLAssetMovement.ts | MODIFIED | | src/infrastructure/websocket/hlWsTypes.ts | MODIFIED | | src/server.ts | MODIFIED |  ## RESTORE COMMAND ```bash ralph ledger load 3fc9c451-43ca-4630-b64c-ae672c7e8d0a ``` "
+        }
+      ],
+      "source": "handoffs"
+    },
+    "ledgers": {
+      "results": [
+        {
+          "session": "05619b8b-5c5a-487f-9534-4ebacd430d0d",
+          "content": "# CONTINUITY_RALPH: 05619b8b-5c5a-487f-9534-4ebacd430d0d Generated: 2026-01-24T18:23:50.873523+00:00 Last Updated: 2026-01-24T18:23:50.873523+00:00  ## CURRENT GOAL Session state before compaction (auto-saved)  ## COMPLETED WORK - [x] claude/progress.md - Staged (modified)  ## PENDING WORK - [ ] .ralph/usage.jsonl - Modified (unchanged) - [ ] scripts/CLAUDE.md - Modified (unchanged) - [ ] tests/**/CLAUDE.md - Modified (unchanged)  ## Git Status Branch: main  Recent commits:   - e7dbfd3 fix(v2.68.23): Adversarial audit Phase 8 - SEC-111/SEC-104/SEC-117 + deprecated hooks cleanup   - 3816014 feat(v2.68.22): Complete technical debt closure - 6 CLI commands + SEC-116   - 5992cdd fix(v2.68.20): SEC-029 session ID path traversal + adversarial audit fixes  ## Environment Type: cli | Capabilities: full Project: /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop "
+        },
+        {
+          "session": "7b6ac9ca-f9d0-4188-a5d0-a2b77058c760",
+          "content": "# CONTINUITY_RALPH: 7b6ac9ca-f9d0-4188-a5d0-a2b77058c760 Generated: 2026-01-19T15:00:26.783952+00:00 Last Updated: 2026-01-19T15:00:26.783952+00:00  ## CURRENT GOAL Session state before compaction (auto-saved)  ## COMPLETED WORK - [x] .gitignore - Staged (modified) - [x] src/config/features.ts - Staged (modified)  ## PENDING WORK - [ ] next.config.mjs - Modified (unchanged) - [ ] src/app/providers.tsx - Modified (unchanged) - [ ] src/components/TradeBox/index.tsx - Modified (unchanged) - [ ] src/components/TradeBox/velvet-trade-box/components/ConnectWallet.tsx - Modified (unchanged) - [ ] src/components/common/CustomConnectButton/index.tsx - Modified (unchanged) - [ ] src/hooks/useDynamicAuth.ts - Modified (unchanged) - [ ] src/hooks/useSmartChainSwitch.ts - Modified (unchanged) - [ ] src/lib/wallet.ts - Modified (unchanged) - [ ] src/services/BanditProvider.tsx - Modified (unchanged)  ## Git Status Branch: feat/add_sdk_dynamic  Recent commits:   - f0f75158 Merge branch 'main' into feat/add_sdk_dynamic   - 2ec6ee25 Merge pull request #160 from HODLprotocol/revert-159-hotfix/fix_footer   - abc4c548 Revert \\\"fix(pdf): remove HODL prefix from OSS footer label\\\"  ## Environment Type: cli | Capabilities: full Project: /Users/alfredolopez/Documents/GitHub/HodlProtocol/Hodlprotocol-web "
+        },
+        {
+          "session": "273c13e9-7e01-4324-9d87-6519302251d2",
+          "content": "# CONTINUITY_RALPH: 273c13e9-7e01-4324-9d87-6519302251d2 Generated: 2026-01-16T18:00:14.702377+00:00 Last Updated: 2026-01-16T18:00:14.702377+00:00  ## CURRENT GOAL Session state before compaction (auto-saved)  ## COMPLETED WORK - [x] ext.config.mjs - Staged (modified)  ## Git Status Branch: feat/add_sdk_dynamic  Recent commits:   - 72b9ff84 fix(deps): downgrade Dynamic Labs to 4.47.0 for wagmi v2 compatibility   - 622d82a9 chore(lint): remove unused logger imports and format E2E tests   - 85f887c5 feat(docs): update  ## Environment Type: vscode | Capabilities: limited Project: /Users/alfredolopez/Documents/GitHub/HodlProtocol/Hodlprotocol-web "
+        },
+        {
+          "session": "6b4bcc30-b531-4590-8624-50051bbcca1c",
+          "content": "# CONTINUITY_RALPH: 6b4bcc30-b531-4590-8624-50051bbcca1c Generated: 2026-01-19T13:44:37.285128+00:00 Last Updated: 2026-01-19T13:44:37.285128+00:00  ## CURRENT GOAL Session state before compaction (auto-saved)  ## COMPLETED WORK - [x] claude/docs/CLAUDE.md - Staged (modified)  ## PENDING WORK - [ ] .claude/progress.md - Modified (unchanged) - [ ] tests/test_hooks_functional.py - Modified (unchanged) - [ ] tests/test_hooks_v2454.py - Modified (unchanged)  ## Git Status Branch: main  Recent commits:   - 5d9f29b feat(v2.50.0): Add Repository Learner + git-guard.py protection   - c59a223 docs: Add automatic feedback loop diagram to architecture section   - da7c938 docs: Add English-only policy and Spanish README translation  ## Environment Type: cli | Capabilities: full Project: /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop "
+        },
+        {
+          "session": "1a76f370-b319-487f-8290-6b3bd91773e3",
+          "content": "# CONTINUITY_RALPH: 1a76f370-b319-487f-8290-6b3bd91773e3 Generated: 2026-01-17T19:48:17.716169+00:00 Last Updated: 2026-01-17T19:48:17.716169+00:00  ## CURRENT GOAL Session state before compaction (auto-saved)  ## Environment Type: cli | Capabilities: full Project: /Users/alfredolopez/Documents/GitHub/Claude-docker "
+        },
+        {
+          "session": "c127e30d-3a35-4d64-bab9-7ba3dd44eec7",
+          "content": "# CONTINUITY_RALPH: c127e30d-3a35-4d64-bab9-7ba3dd44eec7 Generated: 2026-01-27T21:56:01Z Last Updated: 2026-01-27T21:56:01Z  ## CURRENT GOAL No plan-state found  ## COMPLETED WORK - No plan-state found  ## PENDING WORK - No plan-state found  ## Git Status Branch: main  Recent commits:   - 4eda173 docs: add comprehensive claude-sneakpeek and claude-hud integration guide   - d6f4ab6 fix: statusline v2.74.10 - colors, git info format, and claude-hud integration   - 4e46012 chore: move Claude HUD MCP fix docs to repo docs folder  ## Environment Type: cli | Capabilities: full Project: /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop "
+        },
+        {
+          "session": "f7dd1c19-7fd7-4a4e-8a43-8f06164bfb73",
+          "content": "# CONTINUITY_RALPH: f7dd1c19-7fd7-4a4e-8a43-8f06164bfb73 Generated: 2026-01-27T05:26:01Z Last Updated: 2026-01-27T05:26:01Z  ## CURRENT GOAL No goal set  ## COMPLETED WORK - [x] null - [x] null - [x] null - [x] null - [x] null - [x] null - [x] null - [x] null  ## PENDING WORK - [ ] null - [ ] null - [ ] null - [ ] null - [ ] null  ## Git Status Branch: main  Recent commits:   - d32d93f feat(v2.73.0): add GLM Coding Plan usage tracking to statusline   - ff037b5 docs(v2.72.1): update documentation for context simulation tools   - 2be93a3 feat(v2.72.1): add context simulation scripts for statusline validation  ## Environment Type: cli | Capabilities: full Project: /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop "
+        },
+        {
+          "session": "claude-docker-20260117-222215",
+          "content": "# CONTINUITY_RALPH: claude-docker-20260117-222215 Generated: 2026-01-17T21:22:15.314494+00:00 Last Updated: 2026-01-17T21:22:15.314494+00:00  ## CURRENT GOAL Session state before compaction (auto-saved)  ## Environment Type: cli | Capabilities: full Project: /Users/alfredolopez "
+        },
+        {
+          "session": "manual-20260126-174508",
+          "content": "# CONTINUITY_RALPH: manual-20260126-174508 Generated: 2026-01-26T16:45:09.007210+00:00 Last Updated: 2026-01-26T16:45:09.007210+00:00  ## CURRENT GOAL Manual context save "
+        },
+        {
+          "session": "b05f16e4-f387-48ff-92e7-a80df8344f40",
+          "content": "# CONTINUITY_RALPH: b05f16e4-f387-48ff-92e7-a80df8344f40 Generated: 2026-01-23T13:27:08.618826+00:00 Last Updated: 2026-01-23T13:27:08.618826+00:00  ## CURRENT GOAL Session state before compaction (auto-saved)  ## Git Status Branch: hotfix/metrics_huanzi  Recent commits:   - 126b16a3 Merge branch 'feature/product-detail' into hotfix/metrics_huanzi   - ae56786a feat(docs): README   - ee1c2e73 fix(metrics): enable metrics for Velvet strategies 12, 46, and 47  ## Environment Type: cli | Capabilities: full Project: /Users/alfredolopez/Documents/GitHub/HodlProtocol/Hodlprotocol-web "
+        }
+      ],
+      "source": "ledgers"
+    },
+    "web_search": {
+      "results": [
+        {
+          "content": "# Best Practices for Claude Context, Documentation & File Management (2026)\n"
+        }
+      ],
+      "source": "web_search",
+      "provider": "minimax"
+    },
+    "docs_search": {
+      "results": [
+        {
+          "content": "1.  **Analyze the User's Request:**\n    *   **Input:** \"Find documentation for: analysis changefiles claude context docs documentation execute files folder include markdown move moved need needs plan professional reflect reorganization reports documentation API reference tutorial\"\n    *   **Interpretation:** This looks like a keyword salad or a stream of consciousness query. The user is asking for documentation related to a mix of concepts:\n        *   *File/Project Management:* analysis, changefiles, execute, files, folder, move, moved, reorganization, reports.\n        *   *Documentation/Writing:* context, docs, documentation, include, markdown, professional, reflect.\n        *   *Tooling/Process:* claude (referring to me or the platform), plan, needs, need.\n        *   *Desired Output Type:* API reference, tutorial.\n    *   **Core Intent:** The user likely wants to understand how to programmatically (or via a specific tool) manage files, reorganize documentation, and perhaps generate reports or analyze changes within a codebase, specifically targeting \"Claude\" (Anthropic's models or platform).\n    *   **Problem:** There isn't a single specific API endpoint named \"analysis changefiles\" or \"reorganization reports\". This suggests the user might be looking for:\n        1.  File manipulation APIs (OS, Python `pathlib`, Node `fs`).\n        2.  Anthropic's API for code analysis or context management.\n        3.  Documentation tools (static site generators like Sphinx, MkDocs).\n        4.  Or, most likely, they are asking *me* to generate a plan/tutorial on how to use an API (likely Anthropic's) to perform a specific task: \"Analyze files, plan a reorganization, and move markdown documentation.\"\n\n2.  **Formulate a Strategy:**\n    *   Since I am a \"documentation expert,\" I need to structure the response to provide the most relevant technical references based on the keywords.\n    *   *Keywords Mapping:*\n        *   \"Claude\", \"Context\", \"Docs\", \"API reference\": **Anthropic API** (Messages API, Tools, Artifacts).\n        *   \"Files\", \"Folder\", \"Move\", \"Reorganization\", \"Markdown\": **File System APIs** (Python `pathlib`/`shutil`, Node.js `fs`).\n       \n"
+        }
+      ],
+      "source": "docs_search"
+    }
+  },
+  "insights": {
+    "past_successes": [
+      {
+        "session": "05619b8b-5c5a-487f-9534-4ebacd430d0d",
+        "pattern": "# CONTINUITY_RALPH: 05619b8b-5c5a-487f-9534-4ebacd430d0d Generated: 2026-01-24T18:23:50.873523+00:00 Last Updated: 2026-01-24T18:23:50.873523+00:00  ## CURRENT GOAL Session state before"
+      },
+      {
+        "session": "7b6ac9ca-f9d0-4188-a5d0-a2b77058c760",
+        "pattern": "# CONTINUITY_RALPH: 7b6ac9ca-f9d0-4188-a5d0-a2b77058c760 Generated: 2026-01-19T15:00:26.783952+00:00 Last Updated: 2026-01-19T15:00:26.783952+00:00  ## CURRENT GOAL Session state before"
+      },
+      {
+        "session": "273c13e9-7e01-4324-9d87-6519302251d2",
+        "pattern": "# CONTINUITY_RALPH: 273c13e9-7e01-4324-9d87-6519302251d2 Generated: 2026-01-16T18:00:14.702377+00:00 Last Updated: 2026-01-16T18:00:14.702377+00:00  ## CURRENT GOAL Session state before"
+      },
+      {
+        "session": "6b4bcc30-b531-4590-8624-50051bbcca1c",
+        "pattern": "# CONTINUITY_RALPH: 6b4bcc30-b531-4590-8624-50051bbcca1c Generated: 2026-01-19T13:44:37.285128+00:00 Last Updated: 2026-01-19T13:44:37.285128+00:00  ## CURRENT GOAL Session state before"
+      },
+      {
+        "session": "c127e30d-3a35-4d64-bab9-7ba3dd44eec7",
+        "pattern": "# CONTINUITY_RALPH: c127e30d-3a35-4d64-bab9-7ba3dd44eec7 Generated: 2026-01-27T21:56:01Z Last Updated: 2026-01-27T21:56:01Z  ## CURRENT GOAL No plan-state found"
+      }
+    ],
+    "past_errors": [
+      {
+        "session": "05619b8b-5c5a-487f-9534-4ebacd430d0d",
+        "error": "# CONTINUITY_RALPH: 05619b8b-5c5a-487f-9534-4ebacd430d0d Generated: 2026-01-24T18:23:50.873523+00:00 Last Updated: 2026-01-24T18:23:50.873523+00:00  ##"
+      },
+      {
+        "session": "7b6ac9ca-f9d0-4188-a5d0-a2b77058c760",
+        "error": "# CONTINUITY_RALPH: 7b6ac9ca-f9d0-4188-a5d0-a2b77058c760 Generated: 2026-01-19T15:00:26.783952+00:00 Last Updated: 2026-01-19T15:00:26.783952+00:00  ##"
+      },
+      {
+        "session": "273c13e9-7e01-4324-9d87-6519302251d2",
+        "error": "# CONTINUITY_RALPH: 273c13e9-7e01-4324-9d87-6519302251d2 Generated: 2026-01-16T18:00:14.702377+00:00 Last Updated: 2026-01-16T18:00:14.702377+00:00  ##"
+      }
+    ],
+    "recommended_patterns": []
+  },
+  "fork_suggestions": [
+    {
+      "session": "a4dbfbe5-6788-4d35-89e8-374300017839",
+      "timestamp": "20260112-205958",
+      "relevance": "high"
+    },
+    {
+      "session": "a6b851d5-657d-4164-b59d-57ec897e201b",
+      "timestamp": "20260123-222721",
+      "relevance": "high"
+    },
+    {
+      "session": "a6b851d5-657d-4164-b59d-57ec897e201b",
+      "timestamp": "20260123-220328",
+      "relevance": "high"
+    },
+    {
+      "session": "a6b851d5-657d-4164-b59d-57ec897e201b",
+      "timestamp": "20260123-224242",
+      "relevance": "high"
+    },
+    {
+      "session": "a6b851d5-657d-4164-b59d-57ec897e201b",
+      "timestamp": "20260123-230742",
+      "relevance": "high"
+    }
+  ],
+  "note": "Smart Memory Search v2.68.26 - 6 parallel sources (4 local + 2 GLM-4.7)"
+}

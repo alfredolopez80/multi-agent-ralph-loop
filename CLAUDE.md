@@ -1,10 +1,10 @@
-# Multi-Agent Ralph v2.72.1
+# Multi-Agent Ralph v2.78.10
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, **GLM-4.7 PRIMARY**, **Context Simulation Tools**, and **full CLI implementation**.
+**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, **GLM-4.7 PRIMARY**, **Dual Context Display System**, and **full CLI implementation**.
 
-> **v2.72.1**: Context simulation scripts added for statusline validation. Statusline now displays both percentage AND exact token count (e.g., `🤖 75% · 96K/128K`) for verification. GLM-4.7 remains **PRIMARY** for complexity 1-4 tasks. Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) and [claude-code-docs](https://github.com/ericbuess/claude-code-docs).
+> **v2.78.10**: Statusline now implements dual context display showing both cumulative session progress AND current window usage with project-specific caching. GLM-4.7 remains **PRIMARY** for complexity 1-4 tasks. Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) and [claude-code-docs](https://github.com/ericbuess/claude-code-docs).
 
 ---
 
@@ -227,6 +227,73 @@ Local mirror of official Claude Code documentation with auto-updates.
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ericbuess/claude-code-docs/main/install.sh | bash
 ```
+
+---
+
+## Dual Context Display System (v2.78.10) - NEW
+
+Comprehensive context monitoring with dual metric display addressing unreliable Claude Code 2.1.19 context window fields.
+
+### Display Format
+
+```
+⎇ main* | 🤖 ██████████░░ 391k/200k (195%) | CtxUse: 133k/200k (66.6%) | Free: 22k (10.9%) | Buff 45.0k (22.5%)
+          └───────────────── Cumulative ─────┘ └────────────────── Current Window ──────────────────┘
+```
+
+### Two Context Metrics
+
+**1. Cumulative Session Progress (`🤖` progress bar)**
+- **Source**: `total_input_tokens + total_output_tokens`
+- **Purpose**: Show overall session token accumulation
+- **Format**: `🤖 391k/200k (195%)`
+- **Note**: Can exceed 100% because it includes messages compacted out of current window
+
+**2. Current Window Usage (`CtxUse`)**
+- **Source**: Project-specific cache from `/context` command
+- **Purpose**: Show actual current window usage (matches `/context` exactly)
+- **Format**: `CtxUse: 133k/200k (66.6%) | Free: 22k (10.9%) | Buff 45.0k (22.5%)`
+- **Accuracy**: Matches `/context` command output exactly
+
+### Project-Specific Cache
+
+**Cache Location**: `~/.ralph/cache/<project-id>/context-usage.json`
+
+Project ID derived from:
+1. Git remote URL (e.g., `alfredolopez80/multi-agent-ralph-loop`)
+2. Directory hash (fallback for non-git projects)
+
+**Cache Update Mechanism**:
+- **Hook**: `context-from-cli.sh` (UserPromptSubmit)
+- **Trigger**: Before each user prompt
+- **Action**: Calls `/context` command and parses output
+- **Expiry**: 300 seconds (5 minutes) for stale cache detection
+
+**Why `/context` Command?**
+- Provides accurate values from Claude Code's internal calculation
+- Includes buffer tokens (45k by default) for autocompaction
+- Consistent with what users see when they run `/context` manually
+- Works around unreliable JSON fields in stdin
+
+### Utility Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `parse-context-output.sh` | Parse `/context` command output |
+| `update-context-cache.sh` | Manual cache update |
+| `verify-statusline-context.sh` | Validation script |
+
+### Fallback Strategy
+
+When cache is unavailable or stale:
+1. Try stdin JSON `used_percentage` (if 5-95% range, for Zai compatibility)
+2. Use cumulative tokens with 75% estimate when maxed out
+
+### Documentation
+
+- **Implementation Report**: `docs/context-monitoring/STATUSLINE_V2.78_IMPLEMENTATION.md`
+- **Fix Summary**: `docs/context-monitoring/FIX_SUMMARY.md`
+- **Original Analysis**: `docs/context-monitoring/ANALYSIS.md`
 
 ---
 

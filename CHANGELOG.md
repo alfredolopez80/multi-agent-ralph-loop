@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.79.0] - 2026-01-28
+
+### Changed
+
+- **Statusline Simplification**: Unified context display for cleaner output
+  - Progress bar now visual-only (no duplicate numbers)
+  - Removed "Free: Xk (X%)" - redundant with CtxUse percentage
+  - Removed "Buff X.Xk tokens (X%)" - rarely needed, saves space
+  - Eliminated separator between progress bar and CtxUse
+  - Result: `🤖 ████████░░ CtxUse: 167k/200k tokens (83%)`
+
+---
+
 ## [2.78.10] - 2026-01-28
 
 ### Fixed
