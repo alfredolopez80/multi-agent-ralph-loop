@@ -8,25 +8,68 @@
 
 ## 🐛 Recent Bug Fixes (v2.70.0 - v2.78.10)
 
-### Statusline Context Display Fix (v2.78.10) ✅ LATEST
+### Context Monitoring Status (v2.78.10) ✅ LATEST
 
-**Issue**: Statusline showing 100% usage when `/context` showed ~55% (Free space: 44k).
+**Current Status**: The dual context display system is **working correctly** with the following implementation details:
 
-**Root Cause**:
-- Zai wrapper sends incorrect `used_percentage` (0% or 100%)
-- Cumulative tokens (1011k) clamped to context window (200k = 100%)
-- Hook approach failed because `/context` is REPL-only, not CLI
+#### How It Works
 
-**Solution**: Implemented validation and fallback strategy:
-1. Validate `used_percentage` (only trust if 5-95%)
-2. Read cache file (`~/.ralph/cache/context-usage.json`) before cumulative
-3. Use 75% estimate when cumulative tokens > 90% of context window
-4. Removed non-working `context-from-cli.sh` hook
+The statusline implements a **multi-source fallback strategy** to display context usage:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              CONTEXT DISPLAY PRIORITY (v2.78.10)                │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  1. PRIMARY:    Cache file (~/.ralph/cache/context-usage.json)  │
+│                ✓ Project-specific values                        │
+│                ✓ Updated every 30 seconds                        │
+│                ✓ Matches /context command output                 │
+│                                                                  │
+│  2. FALLBACK 1: stdin JSON used_percentage (Zai wrapper)       │
+│                ✗ Only if 5-95% (validates extreme values)       │
+│                ✗ Often unreliable (0% or 100%)                  │
+│                                                                  │
+│  3. FALLBACK 2: Cumulative tokens with 75% estimate            │
+│                ✓ Conservative estimate when unavailable         │
+│                ✓ Prevents misleading 100% display               │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Current Limitations
+
+| Limitation | Impact | Workaround |
+|-----------|--------|-----------|
+| **Zai wrapper doesn't send `context_window`** | Statusline can't read native context data | Uses cache file instead |
+| **`/context` is REPL-only** | Hook can't execute command automatically | Manual cache updates or rely on cumulative estimate |
+| **Cache staleness** | Values may be outdated after 30 seconds | Statusline validates cache age |
+
+#### Cache File Location
+
+```
+~/.ralph/cache/context-usage.json
+{
+  "timestamp": 1769623086,
+  "context_size": 200000,
+  "used_tokens": 111000,
+  "free_tokens": 89000,
+  "used_percentage": 55,
+  "remaining_percentage": 45
+}
+```
+
+#### Display Format
+
+```
+⎇ main* | 🤖 ██████████░░ 391k/200k (195%) │ CtxUse: 111k/200k (55%) │ Free: 44k (22%) │ Buff 45.0k
+          └─ Cumulative Session ─────┘ └───── Current Window (from cache) ─────┘
+```
 
 **Example**:
 ```
-Before: CtxUse: 200k/200k (100%) | Free: 0k (0%)
-After:  CtxUse: 111k/200k (55%)  | Free: 44k (22%)
+Before (v2.78.9): CtxUse: 200k/200k (100%) | Free: 0k (0%)
+After (v2.78.10): CtxUse: 111k/200k (55%)  | Free: 44k (22%)
 ```
 
 **Technical Details**: See [docs/context-monitoring/STATUSLINE_V2.78.10_FIX.md](docs/context-monitoring/STATUSLINE_V2.78.10_FIX.md)
@@ -1874,6 +1917,6 @@ This project is licensed under the BSL 1.1 License.
 
 ---
 
-**Version**: 2.72.1
+**Version**: 2.78.10
 **Last Updated**: 2026-01-28
 **Next Review**: 2026-02-28
