@@ -1,12 +1,14 @@
 #!/bin/bash
 # statusline-ralph.sh - Enhanced StatusLine with Git + Ralph Progress + GLM Usage + Context Info
 #
-# VERSION: 2.77.2
+# VERSION: 2.78.0
 #
-# CHANGELOG v2.77.2:
-# - FIXED: Cache expiry synchronization - get_context_usage_current now uses 300s
-# - FIXED: Cache priority - cached values now override session JSON when valid
-# - FIXED: Zero-value fallback check - only uses fallback when BOTH used_pct AND used_tokens are 0
+# CHANGELOG v2.78.0:
+# - CRITICAL FIX: Use native used_percentage from stdin JSON (same source as /context command)
+# - REMOVED: Manual cache system - no longer needed, was using wrong data source
+# - FIXED: Now shows REAL session context percentage, not cumulative session tokens
+# - See: docs/context-monitoring/ANALYSIS.md - "Statusline cumulative tokens bug"
+# - See: https://github.com/anthropics/claude-code/issues/13783
 #
 # CHANGELOG v2.77.1:
 # - FIXED: Cache preservation - won't overwrite valid data with zeros
@@ -118,51 +120,26 @@ get_context_usage_cumulative() {
 
 # Get current context usage matching /context format exactly
 # Shows: | CtxUse: 133k/200k tokens (66.6%) | Free: 22k (10.9%) | Buff 45.0k tokens (22.5%) |
+# v2.78.0: Use native used_percentage from stdin JSON (same source as /context command)
+# See: docs/context-monitoring/ANALYSIS.md - "Statusline cumulative tokens bug"
 get_context_usage_current() {
     local context_json="$1"
 
     local context_size=$(echo "$context_json" | jq -r '.context_window_size // 200000')
 
-    # Try to get cached real usage from /context
-    local cache_file="${HOME}/.ralph/cache/context-usage.json"
-    local used_pct=0
-    local remaining_pct=100
-    local free_space=0
-    local used_tokens=0
+    # v2.78.0: Read native used_percentage from stdin JSON (same as /context command)
+    # This is the REAL percentage from the active session, not cumulative tokens
+    # See: https://github.com/anthropics/claude-code/issues/13783
+    local used_pct=$(echo "$context_json" | jq -r '.used_percentage // 0')
 
-    if [[ -f "$cache_file" ]]; then
-        # Check if cache is recent (less than 300 seconds old = 5 minutes)
-        local now=$(date +%s)
-        local cache_time=$(jq -r '.timestamp // 0' "$cache_file" 2>/dev/null)
-        local cache_age=$((now - cache_time))
+    # Validate percentage is within bounds (0-100)
+    if [[ $used_pct -lt 0 ]]; then used_pct=0; fi
+    if [[ $used_pct -gt 100 ]]; then used_pct=100; fi
 
-        if [[ $cache_age -lt 300 ]]; then
-            # Use cached values - they are fresh and valid
-            used_pct=$(jq -r '.used_percentage // 0' "$cache_file" 2>/dev/null)
-            remaining_pct=$(jq -r '.remaining_percentage // 100' "$cache_file" 2>/dev/null)
-            free_space=$(jq -r '.free_tokens // 0' "$cache_file" 2>/dev/null)
-            used_tokens=$(jq -r '.used_tokens // 0' "$cache_file" 2>/dev/null)
-        fi
-    fi
-
-    # Fallback: only use if cache values are 0 (not set)
-    # This allows cache with valid data to override session JSON
-    if [[ $used_pct -eq 0 ]] && [[ $used_tokens -eq 0 ]]; then
-        local native_remaining=$(echo "$context_json" | jq -r '.remaining_percentage // ""')
-
-        if [[ -n "$native_remaining" ]] && [[ "$native_remaining" != "null" ]] && [[ "$native_remaining" != "100" ]] && [[ "$native_remaining" != "0" ]]; then
-            remaining_pct=${native_remaining%.*}
-            used_pct=$((100 - remaining_pct))
-            free_space=$((context_size * remaining_pct / 100))
-            used_tokens=$((context_size - free_space))
-        else
-            # Final fallback: show as 0% when no data available
-            used_pct=0
-            remaining_pct=100
-            free_space=$context_size
-            used_tokens=0
-        fi
-    fi
+    # Calculate remaining and token counts
+    local remaining_pct=$((100 - used_pct))
+    local used_tokens=$((context_size * used_pct / 100))
+    local free_space=$((context_size - used_tokens))
 
     # Autocompact buffer (22.5% of context window)
     local autocompact_buffer=$((context_size * 225 / 1000))
@@ -470,94 +447,12 @@ stdin_data=$(cat)
 cwd=$(echo "$stdin_data" | jq -r '.cwd // "."' 2>/dev/null || echo ".")
 
 # ============================================
-# Auto-update context cache (v2.77.0)
+# v2.78.0: Extract context window directly from stdin JSON
 # ============================================
-# Update cache from session file if stale (>300s = 5 minutes)
-CACHE_DIR="${HOME}/.ralph/cache"
-CACHE_FILE="${CACHE_DIR}/context-usage.json"
-CACHE_MAX_AGE=300  # 5 minutes - preserve valid context data longer
+# No cache needed - used_percentage comes directly from Claude Code's native tracking
+# This is the SAME data source as /context command
+# See: docs/context-monitoring/ANALYSIS.md
 
-mkdir -p "$CACHE_DIR" 2>/dev/null
-
-# Check if cache needs update
-update_context_cache_if_needed() {
-    # Try to get real usage from the current session
-    local session_file
-    session_file=$(ls -t ~/.claude-sneakpeek/zai/config/projects/-Users-alfredolopez-Documents-GitHub-multi-agent-ralph-loop/*.jsonl 2>/dev/null | head -1)
-
-    if [[ ! -f "$session_file" ]]; then
-        return 1
-    fi
-
-    # Check if cache exists and is recent
-    if [[ -f "$CACHE_FILE" ]]; then
-        local now=$(date +%s)
-        local cache_time=$(jq -r '.timestamp // 0' "$CACHE_FILE" 2>/dev/null)
-        local cache_age=$((now - cache_time))
-
-        if [[ $cache_age -le $CACHE_MAX_AGE ]]; then
-            # Cache is fresh, no update needed
-            return 0
-        fi
-    fi
-
-    # Update cache from session file
-    local context_data
-    context_data=$(tail -1 "$session_file" 2>/dev/null | jq -r '.context_window // {}')
-
-    if [[ -z "$context_data" ]] || [[ "$context_data" == "null" ]] || [[ "$context_data" == "{}" ]]; then
-        # No data available - don't overwrite existing cache with zeros
-        return 1
-    fi
-
-    local context_size
-    context_size=$(echo "$context_data" | jq -r '.context_window_size // 200000')
-    local remaining_pct
-    remaining_pct=$(echo "$context_data" | jq -r '.remaining_percentage // "100"')
-
-    # Calculate used percentage
-    local used_pct=0
-    if [[ -n "$remaining_pct" ]] && [[ "$remaining_pct" != "null" ]] && [[ "$remaining_pct" != "100" ]] && [[ "$remaining_pct" != "0" ]]; then
-        # Use inverse of remaining_percentage
-        used_pct=$((100 - ${remaining_pct%.*}))
-    fi
-
-    # Only update cache if we have valid non-zero usage data
-    # This prevents overwriting good cache data with zeros when session file is empty
-    if [[ $used_pct -eq 0 ]]; then
-        # No valid usage data - preserve existing cache
-        return 1
-    fi
-
-    # Calculate tokens
-    local used_tokens=$((context_size * used_pct / 100))
-    local free_tokens=$((context_size - used_tokens))
-
-    # Create cache JSON
-    local cache_json=$(jq -n \
-        --argjson timestamp "$(date +%s)" \
-        --argjson context_size "$context_size" \
-        --argjson used_tokens "$used_tokens" \
-        --argjson free_tokens "$free_tokens" \
-        --argjson used_percentage "$used_pct" \
-        --argjson remaining_percentage "$((100 - used_pct))" \
-        '{
-            timestamp: $timestamp,
-            context_size: $context_size,
-            used_tokens: $used_tokens,
-            free_tokens: $free_tokens,
-            used_percentage: $used_percentage,
-            remaining_percentage: (100 - $used_percentage)
-        }')
-
-    echo "$cache_json" > "$CACHE_FILE"
-    return 0
-}
-
-# Update cache in background (don't block statusline)
-update_context_cache_if_needed &
-
-# Extract context window and build displays
 context_info=$(echo "$stdin_data" | jq -r '.context_window // "{}"' 2>/dev/null)
 context_cumulative_display=""
 context_current_display=""
