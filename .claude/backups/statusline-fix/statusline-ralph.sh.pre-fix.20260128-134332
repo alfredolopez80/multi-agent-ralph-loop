@@ -1,7 +1,7 @@
 #!/bin/bash
 # statusline-ralph.sh - Enhanced StatusLine with Git + Ralph Progress + GLM Usage
 #
-# VERSION: 2.75.3
+# VERSION: 2.74.10
 #
 # Extends statusline-git.sh with orchestration progress tracking.
 # Reads plan-state.json to show current phase and step completion.
@@ -414,59 +414,47 @@ stdin_data=$(cat)
 # Extract cwd from stdin JSON
 cwd=$(echo "$stdin_data" | jq -r '.cwd // "."' 2>/dev/null || echo ".")
 
-# Extract context window usage - v2.75.2 FIX: Use total_*_tokens (ONLY RELIABLE VALUES)
-# IMPORTANT: current_usage and used_percentage often come as 0/100 even when context is in use
-# This is a KNOWN BUG in Claude Code - these fields are unreliable
-# SOLUTION: Use total_*_tokens which represent the current session's actual token usage
-# Note: After /clear, these reset to 0, so they represent "since last /clear"
+# Extract context window usage - FIX v2.74.3: Calculate from total_*_tokens instead of used_percentage
+# The used_percentage field is unreliable (often shows 0% even when context is used)
 context_info=$(echo "$stdin_data" | jq -r '.context_window // "{}"' 2>/dev/null)
 if [[ -n "$context_info" ]] && [[ "$context_info" != "null" ]]; then
-    # Get the ONLY reliable values from Claude Code
+    # Get values
     total_input=$(echo "$context_info" | jq -r '.total_input_tokens // 0')
     total_output=$(echo "$context_info" | jq -r '.total_output_tokens // 0')
     context_size=$(echo "$context_info" | jq -r '.context_window_size // 200000')
 
-    # Calculate percentage from actual session tokens
+    # Calculate actual usage
     if [[ "$context_size" -gt 0 ]]; then
         total_used=$((total_input + total_output))
         context_usage=$((total_used * 100 / context_size))
+
+        # Color coding based on usage
+        if [[ $context_usage -lt 50 ]]; then
+            context_color="$CYAN"
+        elif [[ $context_usage -lt 75 ]]; then
+            context_color="$GREEN"
+        elif [[ $context_usage -lt 85 ]]; then
+            context_color="$YELLOW"
+        else
+            context_color="$RED"
+        fi
+
+        # Generate visual progress bar (10 blocks) - v2.74.4 FIX: Use printf instead of for loop
+        # Each block = 10%, use █ for filled, ░ for empty
+        filled_blocks=$((context_usage / 10))
+        # Ensure filled_blocks is between 0-10
+        [[ $filled_blocks -gt 10 ]] && filled_blocks=10
+        [[ $filled_blocks -lt 0 ]] && filled_blocks=0
+
+        # Create bar using printf for better compatibility
+        progress_bar=$(printf '█%.0s' $(seq 1 $filled_blocks))$(printf '░%.0s' $(seq 1 $((10 - filled_blocks))))
+
+        # Format: [glm-4.7] ███████░░░ ctx:69% (no leading │, no DIM on bar)
+        model_name=$(echo "$stdin_data" | jq -r '.model.display_name // "model"')
+        context_display="[${model_name}] ${context_color}${progress_bar}${RESET} ${context_color}ctx:${context_usage}%${RESET}"
     else
-        context_usage=0
+        context_display=""
     fi
-
-    # Remove decimal if present (keep integer)
-    context_usage=${context_usage%.*}
-
-    # Only validate lower bound (allow >100% to show context overflow)
-    [[ $context_usage -lt 0 ]] && context_usage=0
-
-    # If we still don't have a valid percentage, default to 0
-    [[ -z "$context_usage" ]] && context_usage=0
-
-    # Color coding based on usage
-    if [[ $context_usage -lt 50 ]]; then
-        context_color="$CYAN"
-    elif [[ $context_usage -lt 75 ]]; then
-        context_color="$GREEN"
-    elif [[ $context_usage -lt 85 ]]; then
-        context_color="$YELLOW"
-    else
-        context_color="$RED"
-    fi
-
-    # Generate visual progress bar (10 blocks) - v2.74.4 FIX: Use printf instead of for loop
-    # Each block = 10%, use █ for filled, ░ for empty
-    filled_blocks=$((context_usage / 10))
-    # Ensure filled_blocks is between 0-10
-    [[ $filled_blocks -gt 10 ]] && filled_blocks=10
-    [[ $filled_blocks -lt 0 ]] && filled_blocks=0
-
-    # Create bar using printf for better compatibility
-    progress_bar=$(printf '█%.0s' $(seq 1 $filled_blocks))$(printf '░%.0s' $(seq 1 $((10 - filled_blocks))))
-
-    # Format: [glm-4.7] ███████░░░ ctx:69% (no leading │, no DIM on bar)
-    model_name=$(echo "$stdin_data" | jq -r '.model.display_name // "model"')
-    context_display="[${model_name}] ${context_color}${progress_bar}${RESET} ${context_color}ctx:${context_usage}%${RESET}"
 else
     context_display=""
 fi
