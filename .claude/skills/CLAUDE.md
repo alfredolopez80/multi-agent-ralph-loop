@@ -36,7 +36,7 @@ This directory contains skills for the Multi-Agent Ralph Loop orchestration syst
 
 | Skill | Command | Description |
 |-------|---------|-------------|
-| **adversarial-code-analyzer** | `/adversarial-analyze` | Multi-agent adversarial code analysis |
+| **adversarial** | `/adversarial` | Multi-agent adversarial code analysis |
 | **tap-explorer** | `/tap-explore` | Tree of Attacks with Pruning exploration |
 | **defense-profiler** | `/defense-profile` | Codebase defense profiling |
 | **attack-mutator** | `/mutate` | Test case mutation and variation |
@@ -79,8 +79,8 @@ Multi-agent adversarial analysis system with specialized agents:
 **Phases**: reconnaissance -> profiling -> soft_probe -> escalation -> exploitation -> persistence
 
 ```bash
-/adversarial-analyze src/auth/
-/adversarial-analyze --depth 5 --branches 4 src/
+/adversarial src/auth/
+/adversarial --depth 5 --branches 4 src/
 ```
 
 ### TAP Explorer

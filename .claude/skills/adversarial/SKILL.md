@@ -1,46 +1,302 @@
----
-name: adversarial
-description: Adversarial validation system using dual-model cross-validation for critical implementations. Use when: validating complex code changes, cross-reviewing security-sensitive implementations, adversarial testing of edge cases, or when maximum code quality assurance is needed. Triggers: 'adversarial review', 'validate with adversarial', 'cross-validation', 'adversarial testing'.
----
+# Adversarial Code Analyzer - v1.0.0
 
-# Adversarial Skill
+**Multi-Agent Adversarial Analysis System** inspired by ZeroLeaks architecture.
 
-Adversarial validation system that uses dual-model cross-validation to ensure code quality and correctness.
+Applies security scanner patterns to code analysis: specialized agents work together systematically to find vulnerabilities, weaknesses, and quality issues.
 
-## When to Use
+## Architecture
 
-- **Security Reviews**: Validating authentication, authorization, and data handling
-- **Critical Implementations**: Payment processing, crypto operations, core infrastructure
-- **Complex Refactoring**: Large-scale code changes where correctness is paramount
-- **Edge Case Testing**: Finding and validating edge cases that might be missed
-- **Code Quality Gates**: Pre-commit validation for high-risk changes
+Based on ZeroLeaks multi-agent system adapted for code analysis:
 
-## How It Works
+```
+             ORCHESTRATOR (Engine)
+                    |
+    +---------------+---------------+
+    |               |               |
+STRATEGIST      ATTACKER        EVALUATOR
+    |               |               |
+    +-------+-------+-------+-------+
+                    |
+                MUTATOR
+```
 
-1. **Dual Model Analysis**: Two different AI models analyze the code independently
-2. **Cross-Validation**: Models compare findings and challenge each other's assessments
-3. **Adversarial Testing**: Models attempt to find flaws in each other's analysis
-4. **Consensus Building**: Final report only includes findings both models agree on
+### Agent Roles
+
+| Agent | Role | Focus |
+|-------|------|-------|
+| **Engine** | Orchestrates the analysis, manages exploration tree | Coordination |
+| **Strategist** | Selects analysis strategies based on codebase profile | Strategy |
+| **Attacker** | Generates attack vectors / test cases | Offense |
+| **Evaluator** | Analyzes responses for vulnerabilities | Assessment |
+| **Mutator** | Creates variations of test cases | Variation |
 
 ## Usage
 
 ```bash
-/adversarial "Review this authentication code"
-/adversarial "Validate this payment processing implementation"
-/adversarial "Find edge cases in this error handling"
+/adversarial src/auth/
+/adversarial --target security src/api/
+/adversarial --depth 5 --branches 4 src/
 ```
 
-## Output
+## Analysis Phases
 
-The adversarial skill produces:
-- **Consensus Findings**: Issues both models agree on
-- **Confidence Levels**: How certain the models are about each finding
-- **Recommendations**: Specific actions to address identified issues
-- **Validation Status**: Whether the implementation passes quality gates
+Follows ZeroLeaks phased methodology:
 
-## Integration
+```
+1. RECONNAISSANCE   -> Understand codebase structure, dependencies
+2. PROFILING        -> Build defense profile (patterns, safeguards)
+3. SOFT_PROBE       -> Gentle analysis attempts
+4. ESCALATION       -> Increase analysis intensity
+5. EXPLOITATION     -> Active vulnerability search
+6. PERSISTENCE      -> Verify findings persist across scenarios
+```
 
-Works with:
-- `/orchestrator` - For full workflow validation
-- `/code-reviewer` - For standard code reviews
-- `/security-auditor` - For security-specific reviews
+## Analysis Categories
+
+| Category | Description | Examples |
+|----------|-------------|----------|
+| `direct` | Straightforward vulnerability checks | SQL injection, XSS |
+| `encoding` | Encoding/decoding issues | Base64, Unicode, escaping |
+| `persona` | Identity/permission bypasses | Privilege escalation |
+| `social` | Trust boundary violations | SSRF, CSRF |
+| `technical` | Technical implementation issues | Race conditions, memory |
+| `crescendo` | Multi-step escalation paths | Chained vulnerabilities |
+| `many_shot` | Pattern-based detection | Repeated anti-patterns |
+| `cot_hijack` | Logic flow manipulation | Business logic flaws |
+| `policy_puppetry` | Configuration exploitation | Misconfigurations |
+| `context_overflow` | Resource exhaustion | DoS, memory leaks |
+| `reasoning_exploit` | Algorithm weaknesses | Cryptographic issues |
+
+## Configuration
+
+```yaml
+adversarial_config:
+  max_turns: 25           # Maximum analysis iterations
+  max_tree_depth: 5       # How deep to explore each vector
+  branching_factor: 4     # Parallel exploration paths
+  pruning_threshold: 0.3  # Score below which to abandon path
+
+  enable_crescendo: true  # Multi-turn escalation
+  enable_many_shot: true  # Pattern-based detection
+  enable_best_of_n: true  # Generate variations
+  best_of_n_count: 5      # Variations per test
+```
+
+## Strategies
+
+### 1. Behavioral Reconnaissance (Priority: 100)
+```yaml
+id: recon_behavioral
+applicable_when:
+  turn_range: [1, 3]
+  leak_status: ["none"]
+attack_sequence:
+  - category: direct
+    weight: 0.4
+    techniques: ["structure_probe", "dependency_scan"]
+  - category: technical
+    weight: 0.3
+    techniques: ["config_analysis", "boundary_test"]
+```
+
+### 2. Credential/Secret Scanning (Priority: 95)
+```yaml
+id: credential_hunt
+applicable_when:
+  defense_level: ["none", "weak"]
+attack_sequence:
+  - category: direct
+    weight: 0.5
+    techniques: ["secret_scan", "env_probe"]
+  - category: encoding
+    weight: 0.3
+    techniques: ["base64_secrets", "obfuscated_creds"]
+```
+
+### 3. Trust Boundary Analysis (Priority: 90)
+```yaml
+id: trust_boundary
+applicable_when:
+  defense_level: ["weak", "moderate"]
+attack_sequence:
+  - category: crescendo
+    weight: 0.4
+    techniques: ["privilege_escalation", "trust_chain"]
+  - category: persona
+    weight: 0.3
+    techniques: ["identity_bypass", "role_confusion"]
+```
+
+### 4. Input Validation Bypass (Priority: 85)
+```yaml
+id: input_bypass
+applicable_when:
+  defense_level: ["moderate", "strong"]
+  failed_categories: ["direct"]
+attack_sequence:
+  - category: encoding
+    weight: 0.4
+    techniques: ["unicode_bypass", "encoding_chain"]
+  - category: technical
+    weight: 0.3
+    techniques: ["format_injection", "boundary_overflow"]
+```
+
+### 5. Advanced Composite (Priority: 80)
+```yaml
+id: advanced_composite
+applicable_when:
+  defense_level: ["strong", "hardened"]
+  failed_categories: ["direct", "encoding", "persona"]
+attack_sequence:
+  - category: cot_hijack
+    weight: 0.25
+    techniques: ["logic_flow_manipulation"]
+  - category: crescendo
+    weight: 0.25
+    techniques: ["multi_step_chain"]
+  - category: reasoning_exploit
+    weight: 0.25
+    techniques: ["algorithm_weakness"]
+```
+
+## Defense Profile Output
+
+```typescript
+interface DefenseProfile {
+  level: "none" | "weak" | "moderate" | "strong" | "hardened";
+  confidence: number;
+  observedBehaviors: string[];
+  guardrails: {
+    type: string;
+    strength: number;
+    bypassed: boolean;
+    bypassMethod?: string;
+  }[];
+  weaknesses: {
+    category: AttackCategory;
+    description: string;
+    exploitability: number;
+  }[];
+  safePatterns: string[];
+  responsePatterns: {
+    pattern: string;
+    frequency: number;
+    defenseIndicator: boolean;
+  }[];
+}
+```
+
+## Finding Classification
+
+### Severity Levels
+
+| Status | Severity | Description |
+|--------|----------|-------------|
+| `complete` | CRITICAL | Full vulnerability exposed |
+| `substantial` | CRITICAL | Major security issue |
+| `fragment` | HIGH | Partial vulnerability |
+| `hint` | MEDIUM | Potential issue indicated |
+| `none` | LOW | No vulnerability found |
+
+### Finding Output
+
+```typescript
+interface Finding {
+  id: string;
+  turn: number;
+  timestamp: number;
+  extractedContent: string;
+  contentType: "vulnerability" | "weakness" | "smell" | "risk" | "unknown";
+  technique: string;
+  category: AttackCategory;
+  confidence: "high" | "medium" | "low";
+  evidence: string;
+  severity: "critical" | "high" | "medium" | "low";
+  verified: boolean;
+  recommendation: string;
+}
+```
+
+## Integration with Ralph Loop
+
+```yaml
+# Adversarial analysis as part of validation
+Step 7: VALIDATE
+  └── 7a. QUALITY-AUDITOR    (standard)
+  └── 7b. GATES              (standard)
+  └── 7c. ADVERSARIAL-CODE   (this skill)  <- Invoke for complexity >= 7
+  └── 7d. ADVERSARIAL-PLAN   (standard)
+```
+
+### Invocation
+
+```yaml
+Task:
+  subagent_type: "adversarial-code-analyzer"
+  model: "opus"
+  prompt: |
+    TARGET_PATH: src/auth/
+    ANALYSIS_TYPE: security
+    CONFIG:
+      max_turns: 25
+      enable_crescendo: true
+      enable_best_of_n: true
+
+    Perform adversarial analysis on the target codebase.
+```
+
+## Output Format
+
+```json
+{
+  "scan_result": {
+    "overall_vulnerability": "medium",
+    "overall_score": 65,
+    "leak_status": "fragment",
+    "findings": [...],
+    "defense_profile": {...},
+    "recommendations": [...],
+    "summary": "Analysis identified 3 potential vulnerabilities..."
+  },
+  "analysis_tree": {
+    "nodes_explored": 47,
+    "max_depth_reached": 4,
+    "successful_paths": 3
+  },
+  "strategies_used": [
+    "recon_behavioral",
+    "credential_hunt",
+    "trust_boundary"
+  ]
+}
+```
+
+## CLI Commands
+
+```bash
+# Full adversarial analysis
+ralph adversarial-code src/
+
+# Targeted analysis
+ralph adversarial-code --category security src/auth/
+ralph adversarial-code --category quality src/utils/
+
+# With specific configuration
+ralph adversarial-code --depth 6 --branches 5 --turns 30 src/
+
+# Output to file
+ralph adversarial-code src/ --output adversarial-report.json
+```
+
+## Best Practices
+
+1. **Start with Reconnaissance**: Always profile before attacking
+2. **Adapt to Defenses**: Each response teaches about the codebase
+3. **Layer Techniques**: Combine multiple vectors for hardened code
+4. **Verify Findings**: Always validate discoveries before reporting
+5. **Document Patterns**: Track successful techniques for future use
+
+## Attribution
+
+Strategy patterns adapted from [ZeroLeaks](https://github.com/ZeroLeaks/zeroleaks) AI security scanner architecture (FSL-1.1-Apache-2.0).
