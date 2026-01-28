@@ -1,59 +1,33 @@
 #!/bin/bash
-# statusline-ralph.sh - Enhanced StatusLine with Git + Ralph Progress + GLM Usage
+# statusline-ralph.sh - Enhanced StatusLine with Git + Ralph Progress + GLM Usage + Context Info
 #
-# VERSION: 2.75.3
+# VERSION: 2.77.2
+#
+# CHANGELOG v2.77.2:
+# - FIXED: Cache expiry synchronization - get_context_usage_current now uses 300s
+# - FIXED: Cache priority - cached values now override session JSON when valid
+# - FIXED: Zero-value fallback check - only uses fallback when BOTH used_pct AND used_tokens are 0
+#
+# CHANGELOG v2.77.1:
+# - FIXED: Cache preservation - won't overwrite valid data with zeros
+# - INCREASED: Cache expiry from 60s to 300s (5 minutes)
+# - Cache now preserves last known valid context values when session file is empty
+#
+# CHANGELOG v2.77.0:
+# - ADDED: Context display matching /context format exactly
+# - Shows: | CtxUse: 178k/200k tokens (89%) | Free: 22k (11%) | Buff 45.0k tokens (22.5%) |
+# - Uses cached real values from /context command output
+# - Preserves claude-hud's 🤖 progress bar based on cumulative tokens
 #
 # Extends statusline-git.sh with orchestration progress tracking.
 # Reads plan-state.json to show current phase and step completion.
 # Shows GLM Coding Plan usage (5-hour + monthly MCP).
-# claude-hud handles its own context display [glm-4.7] ░░░░░░░░░░ 0%
 #
-# Format: ⎇ branch* │ [glm-4.7] ████████░░ ctx:69% │ ⏱️ 1% (~5h) │ 🔧 1% MCP (60/4000) │ 📊 3/7 42% │ [claude-hud]
+# Format: ⎇ branch* │ [claude-hud 🤖 ████░░░░░ cumulative] │ CtxUse: 0k/200k (0%) | Free: 58k (29.1%) | Buff 45.0k | ⏱️ 1% (~5h) │ 📊 3/7 42%
 #
 # Usage: Called by settings.json statusLine.command
 #
-# Part of Multi-Agent Ralph v2.74.2
-#
-# v2.74.10 changes:
-# - FIXED: Added ~/.claude-code-old/ to claude-hud search paths
-# - CHANGED: Always show our git_info format (⎇ branch*) at the beginning
-# - claude-hud git:(...) lines are now filtered out to use our consistent format
-#
-# v2.74.9 changes:
-# - FIXED: Removed DIM style from progress bar (now shows context_color instead of gray)
-# - FIXED: Removed leading │ from context_display to avoid double separators
-# - Colors now render correctly with proper styling
-#
-# v2.74.8 changes:
-# - FIXED: Color variables now use functions with command substitution for reliable ANSI code generation
-# - Simplified settings.json command: direct script execution instead of bash -c 'bash ...'
-# - Both changes ensure ANSI escape sequences work correctly through all shell levels
-#
-# v2.74.5 changes:
-# - REORDERED: Git info now appears at the BEGINNING of statusline
-# - Format: ⎇ branch* │ [glm-4.7] ████████░░ ctx:69% │ ⏱️ 1% (~5h) │ 🔧 1% MCP (60/4000) │ 📊 3/7 42%
-#
-# v2.74.2 changes:
-# - FIXED: Disabled complex line combining that broke claude-hud multi-line output
-# - claude-hud output now passes through as-is (preserves token info rendering)
-#
-# v2.74.1 changes:
-# - Removed duplicate context tracking (claude-hud handles [glm-4.7] display)
-# - Kept GLM Coding Plan usage (5-hour + monthly MCP)
-# - Cleaner output without redundant context information
-#
-# v2.74.0 changes:
-# - Added GLM-4.7 context tracking (percentage + tokens)
-# - Added GLM Coding Plan usage (5-hour + monthly MCP)
-# - Added native Claude context tracking with ✓ indicator
-# - Session context tracking for both Claude and GLM
-# - Color-coded context percentage (cyan<50%, green<75%, yellow>=75%, red>=85%)
-#
-# v2.69.0 changes:
-# - Show phase_name instead of phase_id to avoid branch name duplication
-# - Add git info duplication detection (avoid claude-hud git:(...) overlap)
-# - Format stats line with icons: 📄 3 files | 📋 7 rules | 🔌 13 MCPs | ⚙️ 6 hooks
-# - macOS-compatible: use sed '$d' instead of head -n -1
+# Part of Multi-Agent Ralph v2.77.2
 
 # BUG-002 FIX: Define log function (was calling macOS system log command)
 # StatusLine should be silent - log to file only if DEBUG is set
@@ -63,8 +37,7 @@ log() {
     fi
 }
 
-# Colors - v2.74.8: Functions that generate ANSI codes for subshell compatibility
-# Using printf ensures escape sequences work correctly through bash -c
+# Colors - Functions that generate ANSI codes for subshell compatibility
 ansi_cyan() { printf '\033[0;36m'; }
 ansi_green() { printf '\033[0;32m'; }
 ansi_yellow() { printf '\033[0;33m'; }
@@ -74,7 +47,7 @@ ansi_blue() { printf '\033[0;34m'; }
 ansi_dim() { printf '\033[2m'; }
 ansi_reset() { printf '\033[0m'; }
 
-# Cache the codes as variables for convenience (using command substitution)
+# Cache the codes as variables for convenience
 CYAN=$(ansi_cyan)
 GREEN=$(ansi_green)
 YELLOW=$(ansi_yellow)
@@ -84,14 +57,144 @@ BLUE=$(ansi_blue)
 DIM=$(ansi_dim)
 RESET=$(ansi_reset)
 
-# Plan state file location
-PLAN_STATE=".claude/plan-state.json"
+# ============================================
+# Context Display Functions (v2.77.0)
+# ============================================
 
-# Get git branch/worktree info (from statusline-git.sh)
+# Helper function: format tokens with K suffix
+# For buffer, use decimals (e.g., 45.0k) to match /context format
+format_tokens() {
+    local val=$1
+    local is_buffer="${2:-false}"
+    if [[ $val -ge 1000 ]]; then
+        if [[ "$is_buffer" == "true" ]]; then
+            # Buffer shows decimals (e.g., 45.0k) - force LC_NUMERIC=C for dot separator
+            local k_val=$(LC_NUMERIC=C awk "BEGIN {printf \"%.1f\", $val/1000}")
+            echo "${k_val}k"
+        else
+            echo "$((val / 1000))k"
+        fi
+    elif [[ $val -eq 0 ]]; then
+        echo "0k"
+    else
+        echo "${val}"
+    fi
+}
+
+# Get cumulative context usage (for claude-hud style progress bar)
+# Shows: 🤖 ██████████░░ 391k/200k (195%)
+get_context_usage_cumulative() {
+    local context_json="$1"
+
+    local context_size=$(echo "$context_json" | jq -r '.context_window_size // 200000')
+    local total_input=$(echo "$context_json" | jq -r '.total_input_tokens // 0')
+    local total_output=$(echo "$context_json" | jq -r '.total_output_tokens // 0')
+
+    local total_used=$((total_input + total_output))
+    local used_pct=$((total_used * 100 / context_size))
+
+    local used_display=$(format_tokens "$total_used")
+    local size_display=$(format_tokens "$context_size")
+
+    # Color coding
+    local color="$CYAN"
+    if [[ $used_pct -ge 85 ]]; then
+        color="$RED"
+    elif [[ $used_pct -ge 75 ]]; then
+        color="$YELLOW"
+    elif [[ $used_pct -ge 50 ]]; then
+        color="$GREEN"
+    fi
+
+    # Build progress bar (10 blocks)
+    local filled_blocks=$((used_pct / 10))
+    [[ $filled_blocks -gt 10 ]] && filled_blocks=10
+    [[ $filled_blocks -lt 0 ]] && filled_blocks=0
+    local progress_bar=$(printf '█%.0s' $(seq 1 $filled_blocks))$(printf '░%.0s' $(seq 1 $((10 - filled_blocks))))
+
+    # Format: 🤖 ██████████░░ 391k/200k (195%)
+    printf '%b' "${color}🤖 ${progress_bar}${RESET} ${color}${used_display}/${size_display} (${used_pct}%)${RESET}"
+}
+
+# Get current context usage matching /context format exactly
+# Shows: | CtxUse: 133k/200k tokens (66.6%) | Free: 22k (10.9%) | Buff 45.0k tokens (22.5%) |
+get_context_usage_current() {
+    local context_json="$1"
+
+    local context_size=$(echo "$context_json" | jq -r '.context_window_size // 200000')
+
+    # Try to get cached real usage from /context
+    local cache_file="${HOME}/.ralph/cache/context-usage.json"
+    local used_pct=0
+    local remaining_pct=100
+    local free_space=0
+    local used_tokens=0
+
+    if [[ -f "$cache_file" ]]; then
+        # Check if cache is recent (less than 300 seconds old = 5 minutes)
+        local now=$(date +%s)
+        local cache_time=$(jq -r '.timestamp // 0' "$cache_file" 2>/dev/null)
+        local cache_age=$((now - cache_time))
+
+        if [[ $cache_age -lt 300 ]]; then
+            # Use cached values - they are fresh and valid
+            used_pct=$(jq -r '.used_percentage // 0' "$cache_file" 2>/dev/null)
+            remaining_pct=$(jq -r '.remaining_percentage // 100' "$cache_file" 2>/dev/null)
+            free_space=$(jq -r '.free_tokens // 0' "$cache_file" 2>/dev/null)
+            used_tokens=$(jq -r '.used_tokens // 0' "$cache_file" 2>/dev/null)
+        fi
+    fi
+
+    # Fallback: only use if cache values are 0 (not set)
+    # This allows cache with valid data to override session JSON
+    if [[ $used_pct -eq 0 ]] && [[ $used_tokens -eq 0 ]]; then
+        local native_remaining=$(echo "$context_json" | jq -r '.remaining_percentage // ""')
+
+        if [[ -n "$native_remaining" ]] && [[ "$native_remaining" != "null" ]] && [[ "$native_remaining" != "100" ]] && [[ "$native_remaining" != "0" ]]; then
+            remaining_pct=${native_remaining%.*}
+            used_pct=$((100 - remaining_pct))
+            free_space=$((context_size * remaining_pct / 100))
+            used_tokens=$((context_size - free_space))
+        else
+            # Final fallback: show as 0% when no data available
+            used_pct=0
+            remaining_pct=100
+            free_space=$context_size
+            used_tokens=0
+        fi
+    fi
+
+    # Autocompact buffer (22.5% of context window)
+    local autocompact_buffer=$((context_size * 225 / 1000))
+
+    local ctx_display=$(format_tokens "$used_tokens")
+    local size_display=$(format_tokens "$context_size")
+    local free_display=$(format_tokens "$free_space")
+    local buffer_display=$(format_tokens "$autocompact_buffer" true)
+
+    # Color coding
+    local color="$CYAN"
+    if [[ $used_pct -ge 85 ]]; then
+        color="$RED"
+    elif [[ $used_pct -ge 75 ]]; then
+        color="$YELLOW"
+    elif [[ $used_pct -ge 50 ]]; then
+        color="$GREEN"
+    fi
+
+    # Format: | CtxUse: 133k/200k tokens (66.6%) | Free: 22k (10.9%) | Buff 45.0k tokens (22.5%) |
+    printf '%b' "CtxUse:${RESET} ${ctx_display}/${size_display} tokens (${color}${used_pct}%${RESET})"
+    printf ' | %bFree:%b %s' "$DIM" "$RESET" "${free_display} (${remaining_pct}%)"
+    printf ' | %bBuff%b %s tokens (22.5%%)' "$DIM" "$RESET" "${buffer_display}"
+}
+
+# ============================================
+# Git Info Function
+# ============================================
+
 get_git_info() {
     local cwd="${1:-.}"
 
-    # Check if in a git repository
     if ! git -C "$cwd" rev-parse --is-inside-work-tree &>/dev/null; then
         return
     fi
@@ -100,37 +203,30 @@ get_git_info() {
     local worktree_info=""
     local is_worktree=false
 
-    # Get current branch name
     branch=$(git -C "$cwd" symbolic-ref --short HEAD 2>/dev/null)
     if [[ -z "$branch" ]]; then
-        # Detached HEAD - show short commit hash
         branch=$(git -C "$cwd" rev-parse --short HEAD 2>/dev/null)
         branch="($branch)"
     fi
 
-    # Check if this is a worktree (not the main repo)
     local git_dir=$(git -C "$cwd" rev-parse --git-dir 2>/dev/null)
     if [[ "$git_dir" == *".git/worktrees/"* ]]; then
         is_worktree=true
-        # Extract worktree name from path
         local wt_name=$(basename "$(dirname "$git_dir")" 2>/dev/null)
         worktree_info=" 🌳${wt_name}"
     fi
 
-    # Check for uncommitted changes
     local status_icon=""
     if ! git -C "$cwd" diff --quiet HEAD &>/dev/null; then
         status_icon="*"
     fi
 
-    # Check for unpushed commits
     local ahead=$(git -C "$cwd" rev-list --count @{upstream}..HEAD 2>/dev/null || echo "0")
     local push_icon=""
     if [[ "$ahead" -gt 0 ]]; then
         push_icon="↑${ahead}"
     fi
 
-    # Build output
     local git_output=""
     if [[ "$is_worktree" == true ]]; then
         git_output="${MAGENTA}⎇ ${branch}${status_icon}${worktree_info}${RESET}"
@@ -146,17 +242,11 @@ get_git_info() {
 }
 
 # ============================================
-# GLM Usage Functions (v2.74.1)
+# GLM Usage Functions
 # ============================================
 
-# Get GLM Coding Plan usage (5-hour + monthly MCP)
-# Shows: ⏱️ X% (~5h) and 🔧 X% MCP (X/4000)
 get_glm_plan_usage() {
     local cache_manager="${PROJECT_ROOT:-$(pwd)}/.claude/scripts/glm-usage-cache-manager.sh"
-    if [[ ! -f "$cache_manager" ]]; then
-        cache_manager="${HOME}/.ralph/scripts/glm-usage-cache-manager.sh"
-    fi
-
     if [[ ! -f "$cache_manager" ]]; then
         cache_manager="${HOME}/.ralph/scripts/glm-usage-cache-manager.sh"
     fi
@@ -167,54 +257,38 @@ get_glm_plan_usage() {
 }
 
 # ============================================
-# End GLM Usage Functions
+# Ralph Progress Function
 # ============================================
 
-# Get Ralph orchestration progress
-# VERSION: 2.68.14 - GAP-003 FIX: Use current-project.json to find active project's plan-state
 get_ralph_progress() {
     local cwd="${1:-.}"
     local plan_state_file=""
 
-    # Step 1: Check local plan-state (highest priority)
     if [[ -f "${cwd}/.claude/plan-state.json" ]]; then
         plan_state_file="${cwd}/.claude/plan-state.json"
-        log "Found local plan-state at: $plan_state_file"
     fi
 
-    # Step 2: If not found, check current-project.json for active project path
-    # GAP-003 FIX: current-project.json contains project metadata, NOT plan-state
-    # We need to extract the project path and look for plan-state there
     if [[ -z "$plan_state_file" ]] && [[ -f "${HOME}/.ralph/metadata/current-project.json" ]]; then
         local active_project_path
         active_project_path=$(jq -r '.project.path // ""' "${HOME}/.ralph/metadata/current-project.json" 2>/dev/null || echo "")
 
-        # SEC-002 FIX: Validate path to prevent path traversal attacks
         if [[ -n "$active_project_path" ]]; then
-            # Reject paths with .. (traversal) or non-absolute paths
             if [[ "$active_project_path" =~ \.\. ]] || [[ "$active_project_path" != /* ]]; then
-                log "SEC-002: Rejected invalid project path: $active_project_path"
                 active_project_path=""
             else
-                # Resolve symlinks to prevent symlink attacks
                 active_project_path=$(realpath "$active_project_path" 2>/dev/null || echo "")
             fi
         fi
 
         if [[ -n "$active_project_path" ]] && [[ -f "${active_project_path}/.claude/plan-state.json" ]]; then
             plan_state_file="${active_project_path}/.claude/plan-state.json"
-            log "Found plan-state via current-project.json at: $plan_state_file"
         fi
     fi
 
-    # Step 3: Check active-plan with PROJECT_ID or derived from git
     if [[ -z "$plan_state_file" ]]; then
-        # First try PROJECT_ID if set
         if [[ -n "${PROJECT_ID:-}" ]] && [[ -f "${HOME}/.ralph/active-plan/${PROJECT_ID}.json" ]]; then
             plan_state_file="${HOME}/.ralph/active-plan/${PROJECT_ID}.json"
-            log "Found active-plan for PROJECT_ID: $PROJECT_ID"
         else
-            # Try to derive project ID from git
             if git -C "$cwd" rev-parse --is-inside-work-tree &>/dev/null; then
                 local repo_remote
                 repo_remote=$(git -C "$cwd" remote get-url origin 2>/dev/null || echo "")
@@ -223,19 +297,16 @@ get_ralph_progress() {
                     project_id=$(basename "$repo_remote" .git 2>/dev/null | sed 's|.*/||')
                     if [[ -f "${HOME}/.ralph/active-plan/${project_id}.json" ]]; then
                         plan_state_file="${HOME}/.ralph/active-plan/${project_id}.json"
-                        log "Found global plan-state for: $project_id"
                     fi
                 fi
             fi
         fi
     fi
 
-    # If still not found, return empty
     if [[ -z "$plan_state_file" ]] || [[ ! -f "$plan_state_file" ]]; then
         return
     fi
 
-    # Read plan state
     local plan_state
     plan_state=$(cat "$plan_state_file" 2>/dev/null)
 
@@ -243,7 +314,6 @@ get_ralph_progress() {
         return
     fi
 
-    # Check version (must be 2.46+)
     local version
     version=$(echo "$plan_state" | jq -r '.version // "1.0"' 2>/dev/null)
 
@@ -251,7 +321,6 @@ get_ralph_progress() {
         return
     fi
 
-    # Count total steps (handles both array and object formats)
     local total_steps
     total_steps=$(echo "$plan_state" | jq -r '
         if .steps then
@@ -265,13 +334,10 @@ get_ralph_progress() {
         end
     ' 2>/dev/null)
 
-    # Skip if no meaningful progress
     if [[ "$total_steps" == "0" || -z "$total_steps" ]]; then
         return
     fi
 
-    # Count completed steps (status == "completed" or "verified")
-    # Handles both array format (.steps[].status) and object format (.steps | to_entries[])
     local completed_steps
     completed_steps=$(echo "$plan_state" | jq -r '
         if .steps then
@@ -285,8 +351,6 @@ get_ralph_progress() {
         end
     ' 2>/dev/null)
 
-    # Count in_progress steps to determine status
-    # Handles both array and object formats
     local in_progress_steps
     in_progress_steps=$(echo "$plan_state" | jq -r '
         if .steps then
@@ -300,24 +364,19 @@ get_ralph_progress() {
         end
     ' 2>/dev/null)
 
-    # Check workflow type and adaptive mode (v2.57.0)
-    # Schema v2.54 uses workflow_route, older versions use route or workflow_type
     local workflow_type adaptive_mode
     workflow_type=$(echo "$plan_state" | jq -r '.classification.workflow_route // .classification.route // .workflow_type // "STANDARD"' 2>/dev/null)
     adaptive_mode=$(echo "$plan_state" | jq -r '.classification.adaptive_mode // ""' 2>/dev/null)
 
-    # Override workflow_type with adaptive_mode if present
     if [[ -n "$adaptive_mode" ]] && [[ "$adaptive_mode" != "null" ]]; then
         workflow_type="$adaptive_mode"
     fi
 
-    # Calculate percentage based on completed steps
     local percentage=0
     if [[ "$total_steps" -gt 0 ]]; then
         percentage=$((completed_steps * 100 / total_steps))
     fi
 
-    # Determine status based on step counts
     local status
     if [[ "$completed_steps" -eq "$total_steps" ]]; then
         status="completed"
@@ -327,7 +386,6 @@ get_ralph_progress() {
         status="pending"
     fi
 
-    # Determine icon based on status
     local icon="📊"
     case "$status" in
         "in_progress"|"executing")
@@ -344,7 +402,6 @@ get_ralph_progress() {
             ;;
     esac
 
-    # Special icon based on workflow/adaptive mode (v2.57.0)
     case "$workflow_type" in
         "FAST_PATH")
             icon="⚡"
@@ -360,14 +417,11 @@ get_ralph_progress() {
             ;;
     esac
 
-    # Extract additional plan state fields (v2.54.0)
-    local current_phase phase_name active_agent barriers status_details
+    local current_phase phase_name active_agent
     current_phase=$(echo "$plan_state" | jq -r '.current_phase // .loop_state.current_phase // empty' 2>/dev/null)
 
-    # Get phase_name instead of phase_id for better display (v2.69.0 fix)
     if [[ -n "$current_phase" ]] && [[ "$current_phase" != "null" ]]; then
         phase_name=$(echo "$plan_state" | jq -r --arg phase "$current_phase" '.phases[] | select(.phase_id == $phase) | .phase_name // empty' 2>/dev/null)
-        # Fallback to phase_id if phase_name not found
         if [[ -z "$phase_name" ]] || [[ "$phase_name" == "null" ]]; then
             phase_name="$current_phase"
         fi
@@ -375,8 +429,7 @@ get_ralph_progress() {
 
     active_agent=$(echo "$plan_state" | jq -r '.active_agent // .loop_state.active_agent // empty' 2>/dev/null)
 
-    # Build status details with phase, agent, and barriers
-    status_details=""
+    local status_details=""
     if [[ -n "$phase_name" ]] && [[ "$phase_name" != "null" ]]; then
         status_details="${status_details} ${DIM}${phase_name}${RESET}"
     fi
@@ -384,7 +437,6 @@ get_ralph_progress() {
         status_details="${status_details} ${MAGENTA}${active_agent}${RESET}"
     fi
 
-    # Check for any unsatisfied barriers (v2.54.0 WAIT-ALL pattern)
     local unsatisfied_barriers
     unsatisfied_barriers=$(echo "$plan_state" | jq -r '
         if .barriers then
@@ -397,7 +449,6 @@ get_ralph_progress() {
         status_details="${status_details} ${YELLOW}!${unsatisfied_barriers}${RESET}"
     fi
 
-    # Build progress string
     local progress_output
     if [[ "$percentage" -ge 100 ]]; then
         progress_output="${BLUE}${icon}${RESET} ${GREEN}done${RESET}${status_details}"
@@ -408,115 +459,160 @@ get_ralph_progress() {
     printf '%b\n' "$progress_output"
 }
 
-# Read stdin to pass to claude-hud
+# ============================================
+# Main Execution
+# ============================================
+
+# Read stdin
 stdin_data=$(cat)
 
 # Extract cwd from stdin JSON
 cwd=$(echo "$stdin_data" | jq -r '.cwd // "."' 2>/dev/null || echo ".")
 
-# Extract context window usage - v2.75.2 FIX: Use total_*_tokens (ONLY RELIABLE VALUES)
-# IMPORTANT: current_usage and used_percentage often come as 0/100 even when context is in use
-# This is a KNOWN BUG in Claude Code - these fields are unreliable
-# SOLUTION: Use total_*_tokens which represent the current session's actual token usage
-# Note: After /clear, these reset to 0, so they represent "since last /clear"
+# ============================================
+# Auto-update context cache (v2.77.0)
+# ============================================
+# Update cache from session file if stale (>300s = 5 minutes)
+CACHE_DIR="${HOME}/.ralph/cache"
+CACHE_FILE="${CACHE_DIR}/context-usage.json"
+CACHE_MAX_AGE=300  # 5 minutes - preserve valid context data longer
+
+mkdir -p "$CACHE_DIR" 2>/dev/null
+
+# Check if cache needs update
+update_context_cache_if_needed() {
+    # Try to get real usage from the current session
+    local session_file
+    session_file=$(ls -t ~/.claude-sneakpeek/zai/config/projects/-Users-alfredolopez-Documents-GitHub-multi-agent-ralph-loop/*.jsonl 2>/dev/null | head -1)
+
+    if [[ ! -f "$session_file" ]]; then
+        return 1
+    fi
+
+    # Check if cache exists and is recent
+    if [[ -f "$CACHE_FILE" ]]; then
+        local now=$(date +%s)
+        local cache_time=$(jq -r '.timestamp // 0' "$CACHE_FILE" 2>/dev/null)
+        local cache_age=$((now - cache_time))
+
+        if [[ $cache_age -le $CACHE_MAX_AGE ]]; then
+            # Cache is fresh, no update needed
+            return 0
+        fi
+    fi
+
+    # Update cache from session file
+    local context_data
+    context_data=$(tail -1 "$session_file" 2>/dev/null | jq -r '.context_window // {}')
+
+    if [[ -z "$context_data" ]] || [[ "$context_data" == "null" ]] || [[ "$context_data" == "{}" ]]; then
+        # No data available - don't overwrite existing cache with zeros
+        return 1
+    fi
+
+    local context_size
+    context_size=$(echo "$context_data" | jq -r '.context_window_size // 200000')
+    local remaining_pct
+    remaining_pct=$(echo "$context_data" | jq -r '.remaining_percentage // "100"')
+
+    # Calculate used percentage
+    local used_pct=0
+    if [[ -n "$remaining_pct" ]] && [[ "$remaining_pct" != "null" ]] && [[ "$remaining_pct" != "100" ]] && [[ "$remaining_pct" != "0" ]]; then
+        # Use inverse of remaining_percentage
+        used_pct=$((100 - ${remaining_pct%.*}))
+    fi
+
+    # Only update cache if we have valid non-zero usage data
+    # This prevents overwriting good cache data with zeros when session file is empty
+    if [[ $used_pct -eq 0 ]]; then
+        # No valid usage data - preserve existing cache
+        return 1
+    fi
+
+    # Calculate tokens
+    local used_tokens=$((context_size * used_pct / 100))
+    local free_tokens=$((context_size - used_tokens))
+
+    # Create cache JSON
+    local cache_json=$(jq -n \
+        --argjson timestamp "$(date +%s)" \
+        --argjson context_size "$context_size" \
+        --argjson used_tokens "$used_tokens" \
+        --argjson free_tokens "$free_tokens" \
+        --argjson used_percentage "$used_pct" \
+        --argjson remaining_percentage "$((100 - used_pct))" \
+        '{
+            timestamp: $timestamp,
+            context_size: $context_size,
+            used_tokens: $used_tokens,
+            free_tokens: $free_tokens,
+            used_percentage: $used_percentage,
+            remaining_percentage: (100 - $used_percentage)
+        }')
+
+    echo "$cache_json" > "$CACHE_FILE"
+    return 0
+}
+
+# Update cache in background (don't block statusline)
+update_context_cache_if_needed &
+
+# Extract context window and build displays
 context_info=$(echo "$stdin_data" | jq -r '.context_window // "{}"' 2>/dev/null)
-if [[ -n "$context_info" ]] && [[ "$context_info" != "null" ]]; then
-    # Get the ONLY reliable values from Claude Code
-    total_input=$(echo "$context_info" | jq -r '.total_input_tokens // 0')
-    total_output=$(echo "$context_info" | jq -r '.total_output_tokens // 0')
-    context_size=$(echo "$context_info" | jq -r '.context_window_size // 200000')
+context_cumulative_display=""
+context_current_display=""
 
-    # Calculate percentage from actual session tokens
-    if [[ "$context_size" -gt 0 ]]; then
-        total_used=$((total_input + total_output))
-        context_usage=$((total_used * 100 / context_size))
-    else
-        context_usage=0
-    fi
-
-    # Remove decimal if present (keep integer)
-    context_usage=${context_usage%.*}
-
-    # Only validate lower bound (allow >100% to show context overflow)
-    [[ $context_usage -lt 0 ]] && context_usage=0
-
-    # If we still don't have a valid percentage, default to 0
-    [[ -z "$context_usage" ]] && context_usage=0
-
-    # Color coding based on usage
-    if [[ $context_usage -lt 50 ]]; then
-        context_color="$CYAN"
-    elif [[ $context_usage -lt 75 ]]; then
-        context_color="$GREEN"
-    elif [[ $context_usage -lt 85 ]]; then
-        context_color="$YELLOW"
-    else
-        context_color="$RED"
-    fi
-
-    # Generate visual progress bar (10 blocks) - v2.74.4 FIX: Use printf instead of for loop
-    # Each block = 10%, use █ for filled, ░ for empty
-    filled_blocks=$((context_usage / 10))
-    # Ensure filled_blocks is between 0-10
-    [[ $filled_blocks -gt 10 ]] && filled_blocks=10
-    [[ $filled_blocks -lt 0 ]] && filled_blocks=0
-
-    # Create bar using printf for better compatibility
-    progress_bar=$(printf '█%.0s' $(seq 1 $filled_blocks))$(printf '░%.0s' $(seq 1 $((10 - filled_blocks))))
-
-    # Format: [glm-4.7] ███████░░░ ctx:69% (no leading │, no DIM on bar)
-    model_name=$(echo "$stdin_data" | jq -r '.model.display_name // "model"')
-    context_display="[${model_name}] ${context_color}${progress_bar}${RESET} ${context_color}ctx:${context_usage}%${RESET}"
-else
-    context_display=""
+if [[ -n "$context_info" ]] && [[ "$context_info" != "null" ]] && [[ "$context_info" != "{}" ]]; then
+    context_cumulative_display=$(get_context_usage_cumulative "$context_info")
+    context_current_display=$(get_context_usage_current "$context_info")
 fi
 
 # Get git info
 git_info=$(get_git_info "$cwd")
 
-# Get GLM Coding Plan usage (5-hour + monthly MCP)
+# Get GLM Coding Plan usage
 glm_plan_usage=$(get_glm_plan_usage)
 
 # Get ralph progress
 ralph_progress=$(get_ralph_progress "$cwd")
 
-# Find and run claude-hud (check standard, zai, and claude-code-old locations)
+# Find and run claude-hud
 claude_hud_dir=$(ls -td ~/.claude-sneakpeek/zai/config/plugins/cache/claude-hud/claude-hud/*/ ~/.claude/plugins/cache/claude-hud/claude-hud/*/ ~/.claude-code-old/plugins/cache/claude-hud/claude-hud/*/ 2>/dev/null | head -1)
 
 if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
     # Run claude-hud and capture output
     hud_output=$(echo "$stdin_data" | node "${claude_hud_dir}dist/index.js" 2>/dev/null)
 
-    # v2.74.4 FIX: Filter out claude-hud's [model] progress line to avoid duplication
-    # claude-hud produces multiple lines, we want to remove the one with [model] and progress bars
-    # Get model name - this will be used to filter claude-hud output
+    # Filter out claude-hud's [model] progress line and git:(...) lines
     model_name=$(echo "$stdin_data" | jq -r '.model.display_name // "model"')
-    # Use grep -v to exclude lines containing [model.name] (grep handles brackets better than sed)
-    # Also filter out git:(...) lines from claude-hud to use our own format
     hud_output=$(echo "$hud_output" | grep -vF "[${model_name}]" || echo "$hud_output")
     hud_output=$(echo "$hud_output" | grep -v "git:(" || echo "$hud_output")
 
-    # v2.74.10 CHANGE: Always use our git_info format (⎇ branch*) at the beginning
-    # claude-hud git:(...) format is filtered out above
-
-    # Build combined segment - v2.74.10: git_info first, then context, GLM, ralph
+    # Build combined segment
     combined_segment=""
 
-    # Add git_info FIRST (always, if available)
     if [[ -n "$git_info" ]]; then
         combined_segment="${git_info}"
     fi
 
-    # Add context usage second (│ [glm-4.7] ████████░░ ctx:88%)
-    if [[ -n "$context_display" ]]; then
+    # Add cumulative context display (claude-hud style)
+    if [[ -n "$context_cumulative_display" ]]; then
         if [[ -n "$combined_segment" ]]; then
-            combined_segment="${combined_segment} │ ${context_display}"
+            combined_segment="${combined_segment} │ ${context_cumulative_display}"
         else
-            combined_segment="${context_display}"
+            combined_segment="${context_cumulative_display}"
         fi
     fi
 
-    # Add GLM Coding Plan usage (5-hour + monthly MCP) - v2.74.1
+    # Add current context display (/context style)
+    if [[ -n "$context_current_display" ]]; then
+        if [[ -n "$combined_segment" ]]; then
+            combined_segment="${combined_segment} │ ${context_current_display}"
+        else
+            combined_segment="${context_current_display}"
+        fi
+    fi
+
     if [[ -n "$glm_plan_usage" ]]; then
         if [[ -n "$combined_segment" ]]; then
             combined_segment="${combined_segment} │ ${glm_plan_usage}"
@@ -534,12 +630,9 @@ if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
     fi
 
     if [[ -n "$combined_segment" ]]; then
-        # v2.74.4: Just output the combined segment, don't prepend to claude-hud
-        # claude-hud lines with [model] are already filtered out
-        # Use printf to interpret escape sequences for colors
         printf '%b\n' "$combined_segment"
 
-        # Output remaining claude-hud lines (if any)
+        # Output remaining claude-hud lines
         first_line=$(echo "$hud_output" | head -1)
         rest=$(echo "$hud_output" | tail -n +2)
 
@@ -553,18 +646,21 @@ if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
         echo "$hud_output"
     fi
 else
-    # Fallback: just show git info, GLM usage, and progress - v2.74.5
-    if [[ -n "$git_info" ]] || [[ -n "$glm_plan_usage" ]] || [[ -n "$ralph_progress" ]] || [[ -n "$context_display" ]]; then
+    # Fallback: show git info, context, GLM usage, and progress
+    if [[ -n "$git_info" ]] || [[ -n "$context_cumulative_display" ]] || [[ -n "$context_current_display" ]] || [[ -n "$glm_plan_usage" ]] || [[ -n "$ralph_progress" ]]; then
         fallback=""
         [[ -n "$git_info" ]] && fallback="$git_info"
 
-        # Add context usage
-        if [[ -n "$context_display" ]]; then
+        if [[ -n "$context_cumulative_display" ]]; then
             [[ -n "$fallback" ]] && fallback="${fallback} │ "
-            fallback="${fallback}${context_display}"
+            fallback="${fallback}${context_cumulative_display}"
         fi
 
-        # Add GLM Coding Plan usage
+        if [[ -n "$context_current_display" ]]; then
+            [[ -n "$fallback" ]] && fallback="${fallback} │ "
+            fallback="${fallback}${context_current_display}"
+        fi
+
         if [[ -n "$glm_plan_usage" ]]; then
             [[ -n "$fallback" ]] && fallback="${fallback} │ "
             fallback="${fallback}${glm_plan_usage}"
