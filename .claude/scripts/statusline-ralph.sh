@@ -1,14 +1,15 @@
 #!/bin/bash
 # statusline-ralph.sh - Enhanced StatusLine with Git + Ralph Progress + GLM Usage + Context Info
 #
-# VERSION: 2.78.0
+# VERSION: 2.78.1
 #
-# CHANGELOG v2.78.0:
-# - CRITICAL FIX: Use native used_percentage from stdin JSON (same source as /context command)
-# - REMOVED: Manual cache system - no longer needed, was using wrong data source
-# - FIXED: Now shows REAL session context percentage, not cumulative session tokens
-# - See: docs/context-monitoring/ANALYSIS.md - "Statusline cumulative tokens bug"
-# - See: https://github.com/anthropics/claude-code/issues/13783
+# CHANGELOG v2.78.1:
+# - ROLLBACK: get_context_usage_cumulative() now uses total_input_tokens + total_output_tokens again
+# - This restores the progress bar showing session-accumulated tokens (e.g., 🤖 391k/200k)
+# - get_context_usage_current() continues to use used_percentage to match /context output
+# - Both displays serve different purposes:
+#   - 🤖 progress bar: Shows total session tokens (input + output)
+#   - CtxUse/Free/Buff: Shows current window usage (matches /context command)
 #
 # CHANGELOG v2.77.1:
 # - FIXED: Cache preservation - won't overwrite valid data with zeros
@@ -85,6 +86,8 @@ format_tokens() {
 
 # Get cumulative context usage (for claude-hud style progress bar)
 # Shows: 🤖 ██████████░░ 391k/200k (195%)
+# Uses total_input_tokens + total_output_tokens to show SESSION ACCUMULATED usage
+# This shows total tokens used in the session, NOT current window percentage
 get_context_usage_cumulative() {
     local context_json="$1"
 
