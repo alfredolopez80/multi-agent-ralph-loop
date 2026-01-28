@@ -1,18 +1,17 @@
 #!/bin/bash
 # statusline-ralph.sh - Enhanced StatusLine with Git + Ralph Progress + GLM Usage + Context Info
 #
-# VERSION: 2.78.5
+# VERSION: 2.78.6
+#
+# CHANGELOG v2.78.6:
+# - WORKAROUND for Zai wrapper: Use project-specific cache from /context command
+# - Added hook context-from-cli.sh that calls /context and parses output
+# - Cache is project-specific (based on git remote or directory hash)
+# - Falls back to cumulative tokens if cache unavailable or stale (>60s)
+# - This provides values that match /context for each project
 #
 # CHANGELOG v2.78.5:
 # - CRITICAL: Removed global cache and file size estimation (both inaccurate)
-# - Both displays now use cumulative tokens (best available approximation)
-# - The stdin JSON does NOT contain current_usage (it's null)
-# - /context command uses internal API that statusline cannot access
-# - LIMITATION: Values show SESSION ACCUMULATED tokens, not CURRENT WINDOW usage
-# - To see actual current window usage, run /context command
-#
-# CHANGELOG v2.78.4:
-# - CRITICAL FIX: Removed global cache dependency (was sharing data across projects)
 #
 # CHANGELOG v2.78.2:
 # - FIX: get_context_usage_current() now uses current_usage object for REAL window usage
@@ -134,33 +133,83 @@ get_context_usage_cumulative() {
 
 # Get current context usage matching /context format exactly
 # Shows: | CtxUse: 133k/200k tokens (66.6%) | Free: 22k (10.9%) | Buff 45.0k tokens (22.5%) |
-# v2.78.5: Use cumulative tokens but clamped to context window (best available approximation)
-# The stdin JSON does NOT contain current_usage, and /context is internal API only
-# We use total_input_tokens + total_output_tokens as the best available proxy
+# v2.78.6: Use project-specific cache from /context command (via context-from-cli.sh hook)
+# This works around Zai wrapper not providing context_window fields
+# Falls back to cumulative tokens if cache unavailable
 get_context_usage_current() {
     local context_json="$1"
 
     local context_size=$(echo "$context_json" | jq -r '.context_window_size // 200000')
+    local cwd=$(echo "$context_json" | jq -r '.cwd // "."')
     local used_pct=0
     local used_tokens=0
 
-    # v2.78.5: Use cumulative tokens as proxy (best available approximation)
-    # The stdin JSON does not contain current_usage (it's null or missing)
-    # /context uses internal API that statusline cannot access
-    local total_input=$(echo "$context_json" | jq -r '.total_input_tokens // 0')
-    local total_output=$(echo "$context_json" | jq -r '.total_output_tokens // 0')
-    local cumulative_tokens=$((total_input + total_output))
+    # v2.78.6: Try current_usage object from stdin JSON first (if available)
+    local current_usage=$(echo "$context_json" | jq -r '.current_usage // "null"')
 
-    # Clamp to context window (we can't exceed the window)
-    if [[ $cumulative_tokens -gt $context_size ]]; then
-        used_tokens=$context_size
-        used_pct=100
-    elif [[ $cumulative_tokens -gt 0 ]]; then
-        used_tokens=$cumulative_tokens
-        used_pct=$((used_tokens * 100 / context_size))
+    if [[ "$current_usage" != "null" ]] && [[ -n "$current_usage" ]] && [[ "$current_usage" != "{}" ]]; then
+        # Calculate from current_usage object (REAL values from API)
+        used_tokens=$(echo "$current_usage" | jq -r '
+            (.input_tokens // 0) +
+            (.cache_creation_input_tokens // 0) +
+            (.cache_read_input_tokens // 0)
+        ')
+
+        if [[ $used_tokens -gt 0 ]]; then
+            used_pct=$((used_tokens * 100 / context_size))
+        fi
+    else
+        # v2.78.6: Try project-specific cache from /context command
+        # The hook context-from-cli.sh updates this cache by calling /context
+        local project_id=""
+
+        # Generate project ID (same logic as the hook)
+        if git -C "$cwd" rev-parse --is-inside-work-tree &>/dev/null; then
+            local remote
+            remote=$(git -C "$cwd" remote get-url origin 2>/dev/null || echo "")
+            if [[ -n "$remote" ]] && [[ "$remote" =~ github\.com[\/:]([^\/]+)\/([^\/\.]+) ]]; then
+                project_id="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}"
+            else
+                local git_dir
+                git_dir=$(git -C "$cwd" rev-parse --git-dir 2>/dev/null)
+                project_id="git-$(echo "$git_dir" | md5sum | cut -d' ' -f1)"
+            fi
+        else
+            project_id="dir-$(echo "$cwd" | md5sum | cut -d' ' -f1)"
+        fi
+
+        local cache_file="${HOME}/.ralph/cache/context-$project_id.json"
+
+        # Try to read from cache if it exists and is recent (< 60 seconds)
+        if [[ -f "$cache_file" ]]; then
+            local now=$(date +%s)
+            local cache_time=$(jq -r '.timestamp // 0' "$cache_file" 2>/dev/null)
+            local cache_age=$((now - cache_time))
+
+            if [[ $cache_age -lt 60 ]]; then
+                used_pct=$(jq -r '.used_percentage // 0' "$cache_file" 2>/dev/null)
+                used_tokens=$(jq -r '.used_tokens // 0' "$cache_file" 2>/dev/null)
+            fi
+        fi
+
+        # Fallback: use cumulative tokens if cache unavailable
+        if [[ $used_tokens -eq 0 ]]; then
+            local total_input=$(echo "$context_json" | jq -r '.total_input_tokens // 0')
+            local total_output=$(echo "$context_json" | jq -r '.total_output_tokens // 0')
+            local cumulative_tokens=$((total_input + total_output))
+
+            # Clamp to context window
+            if [[ $cumulative_tokens -gt $context_size ]]; then
+                used_tokens=$context_size
+                used_pct=100
+            elif [[ $cumulative_tokens -gt 0 ]]; then
+                used_tokens=$cumulative_tokens
+                used_pct=$((used_tokens * 100 / context_size))
+            fi
+        fi
     fi
 
-    # Fallback: try used_percentage if available
+    # Final fallback: try used_percentage from stdin JSON
     if [[ $used_tokens -eq 0 ]]; then
         used_pct=$(echo "$context_json" | jq -r '.used_percentage // 0')
         used_tokens=$((context_size * used_pct / 100))
