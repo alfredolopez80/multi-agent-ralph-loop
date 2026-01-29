@@ -1,10 +1,10 @@
 ---
-# VERSION: 2.43.0
+# VERSION: 2.81.0
 name: loop
 prefix: "@loop"
 category: orchestration
 color: purple
-description: "Ralph Loop pattern for iterative execution until VERIFIED_DONE"
+description: "Ralph Loop pattern with swarm mode: iterative execution until VERIFIED_DONE with multi-agent coordination"
 argument-hint: "<task> [--mmc]"
 ---
 
@@ -134,18 +134,21 @@ ls ~/.ralph/logs/loop-*.log
 tail -f ~/.ralph/logs/loop-latest.log
 ```
 
-## Task Tool Invocation
+## Task Tool Invocation (v2.81 - SWARM MODE)
 
-When using the Task tool directly (for advanced users):
+When using the Task tool directly (for advanced users) with **swarm mode enabled**:
 
 ```yaml
-# Claude mode (Sonnet manages execution)
+# GLM-4.7 mode with swarm (Sonnet manages GLM-4.7 call)
 Task:
   subagent_type: "general-purpose"
-  model: "sonnet"  # MANDATORY - Haiku causes infinite retries
+  model: "sonnet"  # GLM-4.7 is PRIMARY, sonnet manages it
   run_in_background: true
-  max_iterations: 15  # Claude limit
-  description: "Primary task execution with loop"
+  max_iterations: 15  # GLM-4.7 limit
+  description: "Primary task execution with loop and swarm"
+  team_name: "loop-execution-team"     # Creates team for multi-agent coordination
+  name: "loop-lead"                    # Agent name in team
+  mode: "delegate"                     # Enables delegation to teammates
   prompt: |
     Execute the following task iteratively until VERIFIED_DONE:
 
@@ -160,7 +163,7 @@ Task:
 
     Output: Final implementation + quality report
 
-# MiniMax mode (Sonnet manages MiniMax call)
+# MiniMax mode (Sonnet manages MiniMax call) - DEPRECATED
 Task:
   subagent_type: "minimax-executor"
   model: "sonnet"  # Sonnet MANAGES the mmc call

@@ -2,6 +2,105 @@
 
 ---
 
+## [2.81.0] - 2026-01-29
+
+### Added
+
+- **Native Swarm Mode Integration**: Full integration with Claude Code 2.1.22+ native multi-agent features
+  - Added agent environment variables to settings.json (CLAUDE_CODE_AGENT_ID, CLAUDE_CODE_AGENT_NAME, CLAUDE_CODE_TEAM_NAME)
+  - Added CLAUDE_CODE_PLAN_MODE_REQUIRED=false for auto-approving teammate plans
+  - Updated `/orchestrator` command with swarm parameters (team_name, mode: delegate, launchSwarm, teammateCount)
+  - Updated `/loop` command with swarm parameters (team_name, mode: delegate)
+  - Created swarm mode validation script (`.claude/scripts/validate-swarm-mode.sh`)
+
+### Changed
+
+- **GLM-4.7 as PRIMARY Model**: GLM-4.7 is now PRIMARY for ALL complexity levels (not just 1-4)
+  - Previous: GLM-4.7 for complexity 1-4, Sonnet/Opus for 5-10
+  - New: GLM-4.7 for complexity 1-10
+  - Rationale: Cost-effective with high quality across all task types
+
+- **Model Routing Update**: Simplified routing with GLM-4.7 as universal PRIMARY
+  - Complexity 1-4: GLM-4.7 (was already PRIMARY)
+  - Complexity 5-6: GLM-4.7 (was Sonnet)
+  - Complexity 7-10: GLM-4.7 (was Opus)
+  - Parallel chunks: GLM-4.7 (was Sonnet)
+  - Recursive: GLM-4.7 (was Opus)
+
+### Deprecated
+
+- **MiniMax Fully Deprecated**: MiniMax M2.1 is now fully deprecated
+  - Previous: Optional fallback with 30-60 iteration limits
+  - New: Optional fallback only, not recommended
+  - Rationale: GLM-4.7 provides better quality at similar cost
+
+### Fixed
+
+- **Swarm Mode Configuration**: Validated that all required components are in place
+  - Verified Claude Code 2.1.22 meets requirement (≥2.1.16)
+  - Verified swarm gate is patched (tengu_brass_pebble not found)
+  - Verified TeammateTool is available (6 references in cli.js)
+  - Verified defaultMode is set to "delegate" (required for swarm)
+
+### Documentation
+
+- Added `docs/architecture/SWARM_MODE_INTEGRATION_ANALYSIS_v2.81.0.md` - Complete analysis of swarm mode integration
+- Added `docs/architecture/SWARM_MODE_VALIDATION_v2.81.0.md` - Validation report with all tests passing
+- Updated `.claude/commands/orchestrator.md` - Added swarm mode parameters and GLM-4.7 as PRIMARY
+- Updated `.claude/commands/loop.md` - Added swarm mode parameters and GLM-4.7 as PRIMARY
+
+### Technical Details
+
+**Swarm Mode Features Now Available**:
+1. Team Creation via `TeammateTool.spawnTeam`
+2. Teammate Spawning via `ExitPlanMode` with `launchSwarm: true`
+3. Inter-Agent Messaging via teammate mailbox
+4. Plan Approval/Rejection flow
+5. Graceful Shutdown coordination
+
+**Configuration Changes**:
+```json
+{
+  "env": {
+    "CLAUDE_CODE_AGENT_ID": "claude-orchestrator",
+    "CLAUDE_CODE_AGENT_NAME": "Orchestrator",
+    "CLAUDE_CODE_TEAM_NAME": "multi-agent-ralph-loop",
+    "CLAUDE_CODE_PLAN_MODE_REQUIRED": "false"
+  },
+  "permissions": {
+    "defaultMode": "delegate"
+  },
+  "model": "glm-4.7"
+}
+```
+
+**Task Tool Pattern for Swarm**:
+```yaml
+Task:
+  subagent_type: "orchestrator"
+  model: "sonnet"                      # GLM-4.7 is PRIMARY
+  team_name: "orchestration-team"      # Creates team
+  name: "orchestrator-lead"            # Agent name in team
+  mode: "delegate"                     # Enables delegation
+
+ExitPlanMode:
+  launchSwarm: true                    # Spawn teammates
+  teammateCount: 3                     # Number of teammates
+```
+
+### Migration Notes
+
+No breaking changes. Existing workflows continue to work, with swarm mode automatically enabled for:
+- `/orchestrator` - Spawns 3 teammates (code-reviewer, test-architect, security-auditor)
+- `/loop` - Creates team for potential delegation
+
+### References
+
+- [Native Multi-Agent Gates Documentation](https://github.com/mikekelly/claude-sneakpeek/blob/main/docs/research/native-multiagent-gates.md)
+- [Swarm Mode Demo Video](https://x.com/NicerInPerson/status/2014989679796347375)
+
+---
+
 ## [2.78.5-ROLLBACK] - 2026-01-28
 
 ### Reverted

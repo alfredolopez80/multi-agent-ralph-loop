@@ -1,10 +1,10 @@
 ---
-# VERSION: 2.44.0
+# VERSION: 2.81.0
 name: orchestrator
 prefix: "@orch"
 category: orchestration
 color: purple
-description: "Full orchestration: evaluate → clarify → classify → persist → plan mode → execute → validate → retrospective"
+description: "Full orchestration with swarm mode: evaluate → clarify → classify → persist → plan mode → spawn teammates → execute → validate → retrospective"
 argument-hint: "<task description>"
 ---
 
@@ -12,7 +12,19 @@ argument-hint: "<task description>"
 
 Full orchestration with mandatory 10-step flow and Plan Mode integration (v2.44).
 
-## v2.44 Key Change
+## v2.81 Key Change (SWARM MODE)
+
+**Swarm mode is now ENABLED by default** using native Claude Code multi-agent features:
+
+1. **Team Creation**: Orchestrator creates team "orchestration-team" with identity
+2. **Teammate Spawning**: ExitPlanMode spawns 3 teammates (code-reviewer, test-architect, security-auditor)
+3. **Shared Task List**: All teammates see same tasks via TeammateTool
+4. **Inter-Agent Messaging**: Teammates can communicate via mailbox
+5. **Plan Approval**: Leader can approve/reject teammate plans
+
+**GLM-4.7 as PRIMARY**: All complexity levels now use GLM-4.7 (not just 1-4).
+
+## v2.44 Key Change (RETAINED)
 
 The orchestrator's exhaustive analysis now **feeds INTO** Claude Code's native Plan Mode:
 
@@ -51,13 +63,23 @@ Steps 5-8: Execute, Validate, Retrospect
 
 ## Execution
 
-Use Task tool to invoke the orchestrator agent:
+Use Task tool to invoke the orchestrator agent with **swarm mode enabled** (v2.81):
 ```yaml
 Task:
   subagent_type: "orchestrator"
-  description: "Full orchestration"
+  description: "Full orchestration with swarm"
   prompt: "$ARGUMENTS"
-  model: "opus"
+  model: "sonnet"                      # GLM-4.7 is PRIMARY, sonnet manages it
+  team_name: "orchestration-team"      # Creates team for multi-agent coordination
+  name: "orchestrator-lead"            # Agent name in team
+  mode: "delegate"                     # Enables delegation to teammates
+```
+
+**ExitPlanMode with swarm launch:**
+```yaml
+ExitPlanMode:
+  launchSwarm: true                    # Spawn teammates for parallel execution
+  teammateCount: 3                     # Number of teammates (1-5)
 ```
 
 Or via CLI: `ralph orch "$ARGUMENTS"`
