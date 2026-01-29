@@ -111,42 +111,14 @@ mmc --query "Analyze this code"
 
 | Agent | Model | Purpose |
 |-------|-------|---------|
-| `@orchestrator (GLM-4.7) PRIMARY | Main coordinator - 12-step workflow |
-| `@lead-software-architect` | opus | Architecture guardian - LSA verification |
-| `@plan-sync` | sonnet | Drift detection & downstream patching |
-| `@gap-analyst` | opus | Pre-implementation gap analysis |
-| `@quality-auditor` | opus | 6-phase pragmatic code audit |
-| `@adversarial-plan-validator` | opus | Dual-model plan validation (Claude + Codex) |
-| `@repository-learner` | sonnet | Learn best practices from GitHub repositories |
-| `@repo-curator` | sonnet | Curate quality repositories for learning |
-
-## Review & Security Agents
 
 | Agent | Model | Purpose |
 |-------|-------|---------|
-| `@security-auditor` | sonnet→codex | Security vulnerabilities & OWASP compliance |
-| `@code-reviewer` | sonnet→codex | Code quality, patterns, best practices |
-| `@blockchain-security-auditor` | opus | Smart contract & DeFi security |
-| `@ai-output-code-review-super-auditor` | opus | AI-generated code verification |
-
-## Implementation Agents
-
-| Agent | Model | Purpose |
-|-------|-------|---------|
-| `@test-architect` | sonnet | Test generation & coverage |
+| `@test-architect` | glm-4.7 | Test generation & coverage |
 | `@debugger (GLM-4.7) PRIMARY | Bug detection & root cause analysis |
-| `@refactorer` | sonnet→codex | Code refactoring & modernization |
-| `@docs-writer` | sonnet→gemini | Documentation generation |
+| `@refactorer` | glm-4.7 | Code refactoring & modernization |
+| `@docs-writer` | glm-4.7 | Documentation generation |
 
-## Language-Specific Reviewers
-
-| Agent | Model | Purpose |
-|-------|-------|---------|
-| `@kieran-python-reviewer` | sonnet | Python type hints, patterns, testability |
-| `@kieran-typescript-reviewer` | sonnet | TypeScript type safety, modern patterns |
-| `@frontend-reviewer` | opus | React/Next.js, UI/UX, accessibility |
-
-## Auxiliary Review Agents (v2.35)
 
 | Agent | Trigger | Purpose |
 |-------|---------|---------|
@@ -159,23 +131,13 @@ mmc --query "Analyze this code"
 | Agent | Model | Cost | Purpose |
 |-------|-------|------|---------|
 | `@glm-reviewer` | GLM-4.7 | 15% | Second opinion, web search, vision (PRIMARY) |
-| `@minimax-reviewer` | MiniMax M2.1 | 8% | DEPRECATED - fallback only |
-| `@blender-3d-creator` | opus | Variable | 3D asset creation via Blender MCP |
+| `@minimax-reviewer (DEPRECATED - Use GLM-4.7) - fallback only |
+| `@blender-3d-creator | glm-4.7 | 15% | 3D asset creation via Blender MCP |
 
-## Blockchain & DeFi Agents
-
-| Agent | Model | Purpose |
-|-------|-------|---------|
-| `@Hyperliquid-DeFi-Protocol-Specialist` | opus | Hyperliquid protocol integration |
-| `@liquid-staking-specialist` | opus | Liquid staking protocols |
-| `@defi-protocol-economist` | opus | Token economics & DeFi modeling |
-| `@chain-infra-specialist-blockchain` | opus | Chain infrastructure & RPC |
-
-## Memory & Learning Agents (v2.50) - NEW
 
 | Agent | Model | Purpose |
 |-------|-------|---------|
-| `@repository-learner` | sonnet | Learn best practices from GitHub repositories |
+| `@repository-learner | glm-4.7 | Learn best practices from GitHub repositories |
 
 ## Memory System Architecture (v2.57.5) - NEW
 
@@ -527,7 +489,7 @@ Create a new agent in `.claude/agents/`:
 ---
 name: my-agent
 description: When to use this agent
-model: sonnet
+model: glm-4.7
 allowed-tools: Read,Grep,Glob,Bash,Task
 hooks:
   preToolUse: my-hook.sh
