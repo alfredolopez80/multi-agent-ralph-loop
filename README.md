@@ -271,12 +271,65 @@ See [CHANGELOG.md](CHANGELOG.md) for version history
 | Episodic | Decisions, patterns | 30 days |
 | Procedural | Best practices, rules | Forever |
 
-### Learning
+### Learning (v2.81.2) 🎓
 
-Ralph learns from repositories you point it at:
-- Extracts patterns via AST analysis
-- Scores and curates repos by quality
-- Stores 300+ procedural rules with confidence scores
+**Automatic Learning System** - Ralph learns quality patterns from GitHub repositories and applies them during development.
+
+#### Components
+
+1. **Repo Curator** (v2.0.0)
+   - **Discovery**: GitHub API search for quality repositories
+   - **Scoring**: Quality metrics + context relevance scoring
+   - **Ranking**: Top N repos with max-per-org limits
+   - **15 critical bugs fixed** in v2.0.0
+
+2. **Repository Learner**
+   - Extracts patterns via AST analysis
+   - Classifies by domain (backend, frontend, security, etc.)
+   - Generates procedural rules with confidence scores
+   - Stores 1003+ learned rules
+
+3. **Auto-Learning Integration** (v2.81.2) 🆕
+   - **learning-gate.sh**: Auto-executes /curator when memory is empty
+   - **rule-verification.sh**: Validates rules were applied in code
+   - **Automatic execution**: No manual intervention needed
+   - **Quality metrics**: Utilization rate tracking
+
+#### Usage
+
+```bash
+# Full learning pipeline
+/curator full --type backend --lang typescript
+
+# Discover repositories
+/curator discovery --query "microservice" --max-results 50
+
+# Score with context relevance
+/curator scoring --context "error handling,retry,resilience"
+
+# Rank results
+/curator rank --top-n 20 --max-per-org 3
+
+# Learn from approved repos
+/curator learn --all
+```
+
+#### Pricing Tiers
+
+| Tier | Cost | Features |
+|------|------|----------|
+| `free` | $0.00 | GitHub API + local scoring |
+| `economic` | ~$0.30 | + OpenSSF + GLM-4.7 (DEFAULT) |
+| `full` | ~$0.95 | + Claude + Codex adversarial |
+
+#### Current Statistics
+
+- **Total Rules**: 1003
+- **With Domain**: 148 (14.7%)
+- **Applied Count**: Tracking active
+- **Utilization Rate**: Measured automatically
+
+**Documentation**: [Learning System Guide](docs/implementation/FASE_2_COMPLETADA_v2.81.2.md) | [Curator Fixes](docs/implementation/FASE_1_COMPLETADA_v2.81.1.md)
 
 ### Security
 
