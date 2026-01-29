@@ -119,6 +119,109 @@ ralph context debug     # Debug mode (investigation)
 
 ---
 
+## Repository Structure - v2.81.0
+
+> **Important**: This project follows specific organizational patterns for tests and documentation.
+
+### Directory Layout
+
+```
+multi-agent-ralph-loop/
+├── docs/                    # All development documentation (English only)
+│   ├── analysis/            # Analysis reports
+│   ├── architecture/        # Architecture diagrams and design docs
+│   ├── context-monitoring/  # Context tracking analysis
+│   ├── quality-gates/       # Quality gates and audits
+│   └── security/            # Security-related documentation
+├── tests/                   # Test suites at PROJECT ROOT (not .claude/tests/)
+│   ├── quality-parallel/    # Quality gate validation tests
+│   ├── swarm-mode/          # Swarm mode integration tests
+│   └── unit/                # Unit tests (Python, JS, etc.)
+├── .claude/                 # Claude Code workspace (session data)
+│   ├── agents/              # Agent configurations
+│   ├── commands/            # Custom commands (/orchestrator, /loop, etc.)
+│   ├── hooks/               # Hook scripts (80+ registrations)
+│   └── tasks/               # Task primitive storage
+└── frontend/                # Frontend application (if applicable)
+```
+
+### Test Organization Pattern
+
+**DO**:
+- Place tests in `tests/` at project root
+- Use descriptive test names: `test-quality-parallel-v3-robust.sh`
+- Document test purpose in header comments
+
+**DON'T**:
+- Place tests in `.claude/tests/` (legacy location, deprecated)
+- Mix test types without clear categorization
+
+**Rationale**: Tests at project root are:
+- More discoverable by contributors
+- Following standard conventions
+- Easier to run independently of Claude Code workspace
+
+### Documentation Creation Pattern
+
+When creating new documentation:
+
+1. **Create folder** under `docs/` named after subject
+   - Example: `docs/swarm-mode/`
+   - Use lowercase with hyphens for multi-word subjects
+
+2. **Use descriptive filenames**
+   - `ANALYSIS.md` - Investigation and analysis
+   - `FIX_SUMMARY.md` - Complete fix summaries
+   - `VALIDATION_vX.Y.Z.md` - Validation reports with version numbers
+   - `IMPLEMENTATION.md` - Implementation guides
+
+3. **Include metadata header**
+   ```markdown
+   **Date**: YYYY-MM-DD
+   **Version**: vX.Y.Z
+   **Status**: [ANALYSIS COMPLETE | FIX REQUIRED | RESOLVED]
+   ```
+
+4. **Link related documents** using relative paths
+
+### Swarm Mode Configuration (v2.81.0)
+
+Swarm mode requires specific configuration in **claude-sneakpeek/zai** variant:
+
+**Configuration Location**:
+- **Settings**: `~/.claude-sneakpeek/zai/config/settings.json` ← USE THIS
+- **NOT**: `~/.claude/settings.json` (legacy, unused in zai variant)
+
+**Required Settings**:
+```json
+{
+  "defaultMode": "delegate",
+  "defaultModel": "claude-opus-4-5-20251101",
+  "teammateCount": 3,
+  "swarmTimeoutMinutes": 30
+}
+```
+
+**Swarm Mode Demo**: See [@NicerInPerson's demo](https://x.com/NicerInPerson/status/2014989679796347375) for live swarm mode execution example.
+
+### External Resources & Inspirations
+
+This project builds upon excellent work from the community:
+
+| Resource | Purpose | Link |
+|----------|---------|------|
+| **claude-sneakpeek** | Zai variant inspiration, swarm mode implementation | [github.com/mikekelly/claude-sneakpeek](https://github.com/mikekelly/claude-sneakpeek/tree/main) |
+| **cc-mirror** | Claude Code documentation mirror patterns | [github.com/numman-ali/cc-mirror](https://github.com/numman-ali/cc-mirror) |
+| **everything-claude-code** | Claude Code patterns and examples | [github.com/affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code) |
+| **claude-code-docs** | Official documentation mirror | [github.com/ericbuess/claude-code-docs](https://github.com/ericbuess/claude-code-docs) |
+
+**Special Thanks**:
+- **@mikekelly** for claude-sneakpeek (zai variant) and swarm mode implementation
+- **@numman-ali** for cc-mirror documentation patterns
+- **@NicerInPerson** for the swarm mode demo showing real-world usage
+
+---
+
 ## Core Workflow (12 Steps) - v2.69.0
 
 ```
@@ -1148,7 +1251,9 @@ Options:
 
 ---
 
-## References
+## References & Community Resources
+
+### Internal Documentation
 
 | Topic | Documentation |
 |-------|---------------|
@@ -1163,6 +1268,23 @@ Options:
 | v2.55 Auto-Learning | `~/.claude/hooks/orchestrator-auto-learn.sh` |
 | v2.62 Task Primitive | `.claude/hooks/verification-subagent.sh` |
 | Claude Code Docs | `~/.claude-code-docs/` |
+
+### External Resources & Inspirations
+
+| Resource | Purpose | Maintainer |
+|----------|---------|------------|
+| **claude-sneakpeek** | Zai variant, swarm mode, GLM-4.7 integration | [@mikekelly](https://github.com/mikekelly) |
+| **cc-mirror** | Claude Code documentation mirror patterns | [@numman-ali](https://github.com/numman-ali) |
+| **everything-claude-code** | Claude Code patterns and examples | [@affaan-m](https://github.com/affaan-m) |
+| **claude-code-docs** | Official Claude Code documentation | [@ericbuess](https://github.com/ericbuess) |
+
+### Key Links
+
+- **claude-sneakpeek**: [github.com/mikekelly/claude-sneakpeek](https://github.com/mikekelly/claude-sneakpeek/tree/main)
+- **cc-mirror**: [github.com/numman-ali/cc-mirror](https://github.com/numman-ali/cc-mirror)
+- **Swarm Mode Demo**: [x.com/NicerInPerson/status/2014989679796347375](https://x.com/NicerInPerson/status/2014989679796347375)
+
+**Acknowledgments**: This project stands on the shoulders of giants. Special thanks to @mikekelly for the zai variant and swarm mode implementation, @numman-ali for documentation patterns, and the entire Claude Code community for the invaluable patterns and examples.
 
 ---
 
