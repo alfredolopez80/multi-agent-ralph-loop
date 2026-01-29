@@ -1,38 +1,36 @@
-# Multi-Agent Ralph Wiggum - Agents Reference v2.80.9
+# Multi-Agent Ralph Wiggum - Agents Reference v2.80.9 - Simplified
 
 ## Overview
 
-Ralph orchestrates **33 specialized agents** across different domains with **multi-model support**: Claude (Opus/Sonnet), GLM-4.7 (PRIMARY economic), Codex GPT-5.2, and Gemini 2.5 Pro. MiniMax is deprecated.
+Ralph orchestrates **10 specialized agents** across different domains with **simplified multi-model support**: GLM-4.7 (PRIMARY for all tasks) + Codex GPT-5.2 (SPECIALIZED for security/performance).
 
-> **v2.80.9 Update**: Context simulation scripts added for statusline validation. Statusline now displays both percentage AND exact token count (e.g., `🤖 75% · 96K/128K`) for verification. GLM-4.7 remains **PRIMARY** for complexity 1-4 tasks.
+> **v2.80.9 - Simplified Architecture**: Removed Opus/Sonnet completely. GLM-4.7 is now the PRIMARY model for all tasks. Codex GPT-5.2 is SPECIALIZED for security, performance, and high-level review.
 
-## Model Support (v2.69) - UPDATED
+## Model Support (v2.80.9) - SIMPLIFIED
 
-Ralph now supports **multiple AI models** for optimal cost/performance trade-offs:
+Ralph now uses a **simplified 2-model architecture** for maximum cost efficiency:
 
 | Model | Provider | Cost | Use Case | Status |
 |-------|----------|------|----------|--------|
-| **Claude Opus** | Anthropic | 15x | Complex reasoning, security, architecture | PRIMARY |
-| **Claude Sonnet** | Anthropic | 5x | Standard tasks, implementation, review | PRIMARY |
-| **GLM-4.7** | Z.AI | **~0.15x** | Complexity 1-4, web search, vision | **PRIMARY** |
-| **Codex GPT-5.2** | OpenAI | Variable | Code generation, deep analysis | PRIMARY |
-| **Gemini 2.5 Pro** | Google | Variable | Cross-validation, 1M context | SECONDARY |
-| **MiniMax M2.1** | MiniMax | 0.08x | Optional fallback only | **DEPRECATED** |
+| **GLM-4.7** | Z.AI | **~0.15x** | All tasks (PRIMARY) | **PRIMARY** |
+| **Codex GPT-5.2** | OpenAI | Variable | Security, performance, high-level review | **SPECIALIZED** |
+| **Gemini 2.5 Pro** | Google | Variable | Cross-validation, 1M context | OPTIONAL |
 
-### GLM-4.7 Integration (v2.69.0) - PRIMARY
+### GLM-4.7 - PRIMARY Model (v2.80.9)
 
-**Purpose**: Cost-effective PRIMARY model for complexity 1-4 tasks.
+**Purpose**: PRIMARY model for ALL tasks (orchestration, debugging, refactoring, testing, documentation).
 
 **Features**:
-- ~85% cost reduction vs Claude Sonnet
+- ~85% cost reduction vs Claude models
 - 14 tools: vision, web search, documentation
 - Reasoning model with `reasoning_content` support
 - Extended loops (50 iterations)
-- 4th planner in Adversarial Council
+- JUDGE in Adversarial Council
+- Web search validation
 
 **Usage**:
 ```bash
-# Direct query
+# Direct query (DEFAULT for all tasks)
 /glm-4.7 "Review this authentication code"
 
 # Web search
@@ -42,12 +40,16 @@ Ralph now supports **multiple AI models** for optimal cost/performance trade-off
 mmc --query "Analyze this code"
 ```
 
-### MiniMax M2.1 - DEPRECATED (v2.69.0)
+### Codex GPT-5.2 - SPECIALIZED Model (v2.80.9)
 
-> ⚠️ MiniMax is deprecated. GLM-4.7 is now PRIMARY for economic tasks.
+**Purpose**: SPECIALIZED model for security audits, performance analysis, and high-level code review.
 
-**Migration Table**:
-| Old | New |
+**Features**:
+- Deep code analysis capabilities
+- Security vulnerability detection
+- Performance optimization recommendations
+- Used as FIRST option for security-critical tasks
+- Fallback to GLM-4.7 if unavailable
 |-----|-----|
 | `mmc --query` | `mmc --query` (auto-routes to GLM) |
 | `@minimax-reviewer` | `@glm-reviewer` |

@@ -395,13 +395,14 @@ The core idea: **execute → validate → iterate** until the code passes.
 
 ### What It Does
 
-- **Multi-model orchestration** — Claude, GLM-4.7, Codex, Gemini working together
-- **4-Model Adversarial Council** — Codex + Claude + Gemini + **GLM-4.7** for review
-- **GLM-4.7 PRIMARY** — Economic model (~15% cost) for complexity 1-4 tasks
+- **Multi-model orchestration** — GLM-4.7 (PRIMARY) + Codex (SPECIALIZED for security/performance)
+- **3-Model Adversarial Council** — Codex + GLM-4.7 + Gemini for review
+- **GLM-4.7 PRIMARY** — Economic model (~15% cost) for all tasks
+- **Codex SPECIALIZED** — Security, performance, high-level review
 - **Quality gates** — 9 languages supported (TS, Python, Go, Rust, Solidity, etc.)
 - **Memory system** — Semantic, episodic, procedural memory with 30-day TTL
-- **67 hooks** (66 bash + 1 python) — 80 event registrations
-- **8 core skills** — 39 command shortcuts
+- **74 hooks** (73 bash + 1 python) — 80 event registrations
+- **40 core skills** — Command shortcuts
 - **Dynamic contexts** — dev, review, research, debug modes
 - **Statusline Ralph** — Real-time tracking with claude-hud v0.0.6
 - **GLM Web Search** — Real-time search via `/glm-web-search`
@@ -678,15 +679,13 @@ multi-agent-ralph-loop/           # Repository root
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│                    MODEL ROUTING v2.69.1                        │
+│                    MODEL ROUTING v2.80.9                        │
 ├────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  Complexity 1-2  ──►  GLM-4.7 (lightning)  ──►  3 iterations   │
-│  Complexity 3-4  ──►  GLM-4.7              ──►  25 iterations  │
-│  Complexity 5-6  ──►  Sonnet → Codex       ──►  25 iterations  │
-│  Complexity 7-10 ──►  Opus → Sonnet        ──►  25 iterations  │
+│  All Tasks         ──►  GLM-4.7 (PRIMARY)     ──►  50 iterations │
+│  Security/Perf     ──►  Codex (SPECIALIZED)   ──►  25 iterations │
 │                                                                 │
-│  FALLBACK: MiniMax (if GLM unavailable)                        │
+│  FALLBACK: Codex → GLM-4.7 (if specialized unavailable)         │
 │                                                                 │
 └────────────────────────────────────────────────────────────────┘
 ```
@@ -694,9 +693,10 @@ multi-agent-ralph-loop/           # Repository root
 | Density | Context | Complexity | Route | Model | Max Iter |
 |---------|---------|------------|-------|-------|----------|
 | CONSTANT | FITS | 1-3 | **FAST_PATH** | GLM-4.7 | 3 |
-| CONSTANT | FITS | 4-10 | STANDARD | GLM-4.7 → sonnet | 25 |
-| LINEAR | CHUNKED | ANY | PARALLEL_CHUNKS | sonnet | 15/chunk |
-| QUADRATIC | ANY | ANY | RECURSIVE_DECOMPOSE | opus | 15/sub |
+| CONSTANT | FITS | 4-10 | STANDARD | GLM-4.7 | 50 |
+| SECURITY/PERF | ANY | ANY | SPECIALIZED | Codex → GLM-4.7 | 25 |
+| LINEAR | CHUNKED | ANY | PARALLEL_CHUNKS | GLM-4.7 | 15/chunk |
+| QUADRATIC | ANY | ANY | RECURSIVE_DECOMPOSE | GLM-4.7 | 15/sub |
 
 ---
 
@@ -989,20 +989,19 @@ Claude Code hooks execute at specific lifecycle events:
 
 ## Agent System
 
-### Default Agents (12) - v2.80.9
+### Default Agents (10) - v2.80.9
 
 | Agent | Model | Purpose | Status |
 |-------|-------|---------|--------|
 | `@orchestrator` | **glm-4.7** | Coordinator, planning, classification, delegation | PRIMARY |
-| `@security-auditor` | **glm-4.7** | Security, vulnerability scan, code review | PRIMARY |
+| `@security-auditor` | **codex** | Security, vulnerability scan (high-level) | SPECIALIZED |
 | `@debugger` | **glm-4.7** | Debugging, error analysis, fix generation | PRIMARY |
-| `@code-reviewer` | sonnet | Code review, pattern analysis, quality check | SECONDARY |
-| `@test-architect` | sonnet | Testing, test generation, coverage analysis | SECONDARY |
-| `@refactorer` | sonnet | Refactoring, pattern application | SECONDARY |
-| `@frontend-reviewer` | sonnet | Frontend, UI review, accessibility | SECONDARY |
-| `@claude-reviewer` | opus | Complex analysis, architecture review | FALLBACK |
+| `@code-reviewer` | **codex** | Code review, pattern analysis (high-level) | SPECIALIZED |
+| `@performance-reviewer` | **codex** | Performance analysis, optimization | SPECIALIZED |
+| `@test-architect` | **glm-4.7** | Testing, test generation, coverage analysis | PRIMARY |
+| `@refactorer` | **glm-4.7** | Refactoring, pattern application | PRIMARY |
+| `@frontend-reviewer` | **glm-4.7** | Frontend, UI review, accessibility | PRIMARY |
 | `@docs-writer` | **glm-4.7** | Documentation, README, API docs | PRIMARY |
-| `@minimax-reviewer` | minimax | Legacy fallback only | DEPRECATED |
 | `@repository-learner` | **glm-4.7** | Learning, pattern extraction, rule generation | PRIMARY |
 | `@repo-curator` | **glm-4.7** | Curation, scoring, discovery | PRIMARY |
 
@@ -1057,12 +1056,9 @@ Ralph supports **multiple AI models** for optimal cost/performance trade-offs. E
 
 | Model | Provider | Relative Cost | Use Case | Status |
 |-------|----------|---------------|----------|--------|
-| **Claude Opus** | Anthropic | 15x | Fallback for complex reasoning | SECONDARY |
-| **Claude Sonnet** | Anthropic | 5x | Standard tasks, implementation, review | PRIMARY |
-| **GLM-4.7** | Z.AI | **~0.15x** | Complexity 1-4, web search, vision | **PRIMARY** |
-| **Codex GPT-5.2** | OpenAI | Variable | Code generation, deep analysis | PRIMARY |
-| **Gemini 2.5 Pro** | Google | Variable | Cross-validation, 1M context | SECONDARY |
-| **MiniMax M2.1** | MiniMax | 0.08x | Optional fallback | **DEPRECATED** |
+| **GLM-4.7** | Z.AI | **~0.15x** | All tasks (PRIMARY model) | **PRIMARY** |
+| **Codex GPT-5.2** | OpenAI | Variable | Security, performance, high-level review (SPECIALIZED) | SECONDARY |
+| **Gemini 2.5 Pro** | Google | Variable | Cross-validation, 1M context | OPTIONAL |
 
 ### GLM-4.7 - PRIMARY Economic Model (v2.69.0)
 
@@ -1125,19 +1121,19 @@ For critical changes (complexity ≥ 7), Ralph runs **four-model validation**:
 ┌─────────────────────────────────────────────────────────────────┐
 │            ADVERSARIAL VALIDATION COUNCIL v2.80.9                │
 ├─────────────────────────────────────────────────────────────────┤
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
-│  │  CODEX   │ │  SONNET  │ │  GEMINI  │ │  CLAUDE  │           │
-│  │ GPT-5.2  │ │          │ │ 2.5 Pro  │ │   Opus   │           │
-│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘           │
-│       └────────────┴────────────┴────────────┘                  │
-│                         ↓                                        │
-│                ┌───────────────┐                                 │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐                           │
+│  │  CODEX   │ │  GLM-4.7 │ │  GEMINI  │                           │
+│  │ GPT-5.2  │ │  Coding   │ │ 2.5 Pro  │                           │
+│  └────┬─────┘ └────┬─────┘ └────┬─────┘                           │
+│       └────────────┴────────────┘                              │
+│                         ↓                                      │
+│                ┌───────────────┐                               │
 │                │     JUDGE     │  (GLM-4.7 Coding)              │
 │                │  Anonymized   │  + Web Search Validation       │
-│                └───────┬───────┘                                 │
-│                        ↓                                         │
-│               CONSENSUS REQUIRED                                 │
-│        All planners evaluated, best plan synthesized             │
+│                └───────┬───────┘                               │
+│                        ↓                                       │
+│               CONSENSUS REQUIRED                               │
+│        All planners evaluated, best plan synthesized           │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
