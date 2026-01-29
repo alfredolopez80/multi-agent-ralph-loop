@@ -989,22 +989,22 @@ Claude Code hooks execute at specific lifecycle events:
 
 ## Agent System
 
-### Default Agents (12) - v2.69.0
+### Default Agents (12) - v2.80.9
 
 | Agent | Model | Purpose | Status |
 |-------|-------|---------|--------|
-| `@orchestrator` | opus | Coordinator, planning, classification, delegation | PRIMARY |
-| `@security-auditor` | opus | Security, vulnerability scan, code review | PRIMARY |
-| `@debugger` | opus | Debugging, error analysis, fix generation | PRIMARY |
-| `@code-reviewer` | sonnet | Code review, pattern analysis, quality check | PRIMARY |
-| `@test-architect` | sonnet | Testing, test generation, coverage analysis | PRIMARY |
-| `@refactorer` | sonnet | Refactoring, pattern application | PRIMARY |
-| `@frontend-reviewer` | sonnet | Frontend, UI review, accessibility | PRIMARY |
-| `@glm-reviewer` | **glm-4.7** | Economic validation, web search, vision | **NEW v2.69** |
-| `@docs-writer` | glm-4.7 | Documentation, README, API docs | Updated |
+| `@orchestrator` | **glm-4.7** | Coordinator, planning, classification, delegation | PRIMARY |
+| `@security-auditor` | **glm-4.7** | Security, vulnerability scan, code review | PRIMARY |
+| `@debugger` | **glm-4.7** | Debugging, error analysis, fix generation | PRIMARY |
+| `@code-reviewer` | sonnet | Code review, pattern analysis, quality check | SECONDARY |
+| `@test-architect` | sonnet | Testing, test generation, coverage analysis | SECONDARY |
+| `@refactorer` | sonnet | Refactoring, pattern application | SECONDARY |
+| `@frontend-reviewer` | sonnet | Frontend, UI review, accessibility | SECONDARY |
+| `@claude-reviewer` | opus | Complex analysis, architecture review | FALLBACK |
+| `@docs-writer` | **glm-4.7** | Documentation, README, API docs | PRIMARY |
 | `@minimax-reviewer` | minimax | Legacy fallback only | DEPRECATED |
-| `@repository-learner` | sonnet | Learning, pattern extraction, rule generation | PRIMARY |
-| `@repo-curator` | sonnet | Curation, scoring, discovery | PRIMARY |
+| `@repository-learner` | **glm-4.7** | Learning, pattern extraction, rule generation | PRIMARY |
+| `@repo-curator` | **glm-4.7** | Curation, scoring, discovery | PRIMARY |
 
 ### Agent Handoffs (v2.51)
 
@@ -1057,7 +1057,7 @@ Ralph supports **multiple AI models** for optimal cost/performance trade-offs. E
 
 | Model | Provider | Relative Cost | Use Case | Status |
 |-------|----------|---------------|----------|--------|
-| **Claude Opus** | Anthropic | 15x | Complex reasoning, security, architecture | PRIMARY |
+| **Claude Opus** | Anthropic | 15x | Fallback for complex reasoning | SECONDARY |
 | **Claude Sonnet** | Anthropic | 5x | Standard tasks, implementation, review | PRIMARY |
 | **GLM-4.7** | Z.AI | **~0.15x** | Complexity 1-4, web search, vision | **PRIMARY** |
 | **Codex GPT-5.2** | OpenAI | Variable | Code generation, deep analysis | PRIMARY |
@@ -1123,17 +1123,17 @@ For critical changes (complexity ≥ 7), Ralph runs **four-model validation**:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│            ADVERSARIAL VALIDATION COUNCIL v2.69                  │
+│            ADVERSARIAL VALIDATION COUNCIL v2.80.9                │
 ├─────────────────────────────────────────────────────────────────┤
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
-│  │  CODEX   │ │  CLAUDE  │ │  GEMINI  │ │  GLM-4.7 │  ← NEW    │
-│  │ GPT-5.2  │ │   Opus   │ │ 2.5 Pro  │ │ Coding   │           │
+│  │  CODEX   │ │  SONNET  │ │  GEMINI  │ │  CLAUDE  │           │
+│  │ GPT-5.2  │ │          │ │ 2.5 Pro  │ │   Opus   │           │
 │  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘           │
 │       └────────────┴────────────┴────────────┘                  │
 │                         ↓                                        │
 │                ┌───────────────┐                                 │
-│                │     JUDGE     │  (Claude Opus)                  │
-│                │  Anonymized   │                                 │
+│                │     JUDGE     │  (GLM-4.7 Coding)              │
+│                │  Anonymized   │  + Web Search Validation       │
 │                └───────┬───────┘                                 │
 │                        ↓                                         │
 │               CONSENSUS REQUIRED                                 │

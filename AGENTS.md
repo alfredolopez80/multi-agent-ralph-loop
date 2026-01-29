@@ -101,7 +101,7 @@ mmc --query "Analyze this code"
 
 | Agent | Model | Purpose |
 |-------|-------|---------|
-| `@orchestrator` | opus | Main coordinator - 12-step workflow |
+| `@orchestrator (GLM-4.7) PRIMARY | Main coordinator - 12-step workflow |
 | `@lead-software-architect` | opus | Architecture guardian - LSA verification |
 | `@plan-sync` | sonnet | Drift detection & downstream patching |
 | `@gap-analyst` | opus | Pre-implementation gap analysis |
@@ -124,7 +124,7 @@ mmc --query "Analyze this code"
 | Agent | Model | Purpose |
 |-------|-------|---------|
 | `@test-architect` | sonnet | Test generation & coverage |
-| `@debugger` | opus | Bug detection & root cause analysis |
+| `@debugger (GLM-4.7) PRIMARY | Bug detection & root cause analysis |
 | `@refactorer` | sonnet→codex | Code refactoring & modernization |
 | `@docs-writer` | sonnet→gemini | Documentation generation |
 
