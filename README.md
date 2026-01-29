@@ -2,13 +2,137 @@
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-![Version](https://img.shields.io/badge/v2.80.9-blue) ![Tests](https://img.shields.io/badge/945_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange) ![GLM-4.7](https://img.shields.io/badge/GLM--4.7-PRIMARY-green)
+![Version](https://img.shields.io/badge/v2.81.0-blue) ![Tests](https://img.shields.io/badge/945_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange) ![GLM-4.7](https://img.shields.io/badge/GLM--4.7-PRIMARY-green) ![Swarm](https://img.shields.io/badge/Swarm_Mode-Enabled-success)
+
+---
+
+## 🚀 Latest Release: v2.81.0 - Native Swarm Mode
+
+**New**: Multi-Agent Ralph Loop now supports **native swarm mode** with multi-agent coordination using Claude Code's built-in TeammateTool.
+
+### What's New in v2.81.0
+
+- **Swarm Mode**: Native multi-agent orchestration with TeammateTool
+- **Teammate Spawning**: Automatic spawning of specialized teammates
+- **Inter-Agent Messaging**: Direct communication between agents
+- **Shared Task List**: Collaborative task management
+- **Plan Approval**: Leader can approve/reject teammate plans
+- **GLM-4.7 PRIMARY**: Economic model for all tasks
+
+### Quick Start with Swarm Mode
+
+```bash
+# Full orchestration with automatic teammate spawning
+/orchestrator "Implement OAuth2 authentication with JWT tokens"
+# → Spawns 3 teammates: code-reviewer, test-architect, security-auditor
+
+# Manual teammate spawning
+Task:
+  subagent_type: "orchestrator"
+  team_name: "my-team"
+  name: "team-lead"
+  mode: "delegate"
+
+ExitPlanMode:
+  launchSwarm: true
+  teammateCount: 3
+```
+
+**Documentation**: [Swarm Mode Guide](tests/swarm-mode/COMO_USAR_SWARM_MODE_CLAUDE_ZAI.md) | [Architecture](docs/architecture/SWARM_MODE_INTEGRATION_ANALYSIS_v2.81.0.md)
+
+---
+
+## 🐛 Recent Bug Fixes (v2.70.0 - v2.81.0)
+
+### Swarm Mode Integration (v2.81.0) ✅ NEW
+
+**Overview**: Complete integration of Claude Code's native swarm mode with multi-agent coordination.
+
+#### Key Features
+
+1. **TeammateTool Integration**
+   - spawnTeam: Create teams and spawn teammates
+   - approveJoin: Approve teammate join requests
+   - requestJoin: Request to join a team
+   - cleanup: Clean up team resources
+
+2. **Agent Environment Variables**
+   - CLAUDE_CODE_AGENT_ID: Unique agent identifier
+   - CLAUDE_CODE_AGENT_NAME: Human-readable agent name
+   - CLAUDE_CODE_TEAM_NAME: Team coordination
+   - CLAUDE_CODE_PLAN_MODE_REQUIRED: Plan approval mode
+
+3. **Multi-Agent Commands**
+   - `/orchestrator` - Full orchestration with swarm (v2.81.0)
+   - `/loop` - Iterative execution with team (v2.81.0)
+
+4. **Configuration**
+   - Automated setup script
+   - 44 unit tests for validation
+   - Environment-specific configurations
+
+#### Swarm Mode Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    SWARM MODE EXECUTION FLOW                     │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  1. User Request → /orchestrator "Implement feature X"          │
+│         ↓                                                         │
+│  2. Orchestrator creates team "multi-agent-ralph-loop"          │
+│         ↓                                                         │
+│  3. ExitPlanMode with launchSwarm: true                         │
+│         ↓                                                         │
+│  4. Spawns 3 teammates:                                         │
+│     - code-reviewer                                              │
+│     - test-architect                                             │
+│     - security-auditor                                           │
+│         ↓                                                         │
+│  5. Teammates coordinate via shared task list                    │
+│         ↓                                                         │
+│  6. Inter-agent messaging for collaboration                     │
+│         ↓                                                         │
+│  7. Quality gates validate all changes                          │
+│         ↓                                                         │
+│  8. Plan approval/rejection by leader                           │
+│         ↓                                                         │
+│  9. Cleanup team resources                                      │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Verification
+
+```bash
+# Verify swarm mode is enabled
+bash tests/swarm-mode/test-swarm-mode-config.sh
+# Expected: ALL TESTS PASSED (44/44)
+
+# Check settings
+cat ~/.claude-sneakpeek/zai/config/settings.json | jq '{
+  agent_id: .env.CLAUDE_CODE_AGENT_ID,
+  agent_name: .env.CLADE_CODE_AGENT_NAME,
+  team_name: .env.CLADE_CODE_TEAM_NAME,
+  default_mode: .permissions.defaultMode
+}'
+```
+
+#### Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [COMO_USAR_SWARM_MODE_CLAUDE_ZAI.md](tests/swarm-mode/COMO_USAR_SWARM_MODE_CLAUDE_ZAI.md) | Spanish guide for using swarm mode |
+| [SWARM_MODE_INTEGRATION_ANALYSIS_v2.81.0.md](docs/architecture/SWARM_MODE_INTEGRATION_ANALYSIS_v2.81.0.md) | Technical analysis |
+| [SWARM_MODE_VALIDATION_v2.81.0.md](docs/architecture/SWARM_MODE_VALIDATION_v2.81.0.md) | Validation report |
+| [SETTINGS_CONFIGURATION_GUIDE.md](tests/swarm-mode/SETTINGS_CONFIGURATION_GUIDE.md) | Configuration guide |
+| [REPRODUCTION_GUIDE.md](tests/swarm-mode/REPRODUCTION_GUIDE.md) | Reproduction steps |
 
 ---
 
 ## 🐛 Recent Bug Fixes (v2.70.0 - v2.80.9)
 
-### GLM Usage Cache Optimization (v2.80.9) ✅ LATEST
+### GLM Usage Cache Optimization (v2.80.9)
 
 **Overview**: Optimized GLM usage tracking with single-pass JSON parsing and improved performance.
 
@@ -40,300 +164,6 @@
 | **Tokens (5h)** | `⏱️ 11% (~5h)` | 🟢<75%, 🟡≥75%, 🔴≥85% |
 | **MCP (monthly)** | `🔧 4% MCP (182/4000)` | 🔵<75%, 🟡≥75% |
 
-### Statusline Simplification (v2.80.9)
-
-**Overview**: Unified context display by removing redundant information for a cleaner, more concise statusline.
-
-#### Changes
-
-| Before | After |
-|--------|-------|
-| `🤖 ████████░░ 167k/200k (83%) │ CtxUse: 167k/200k tokens (83%) │ Free: 32k (17%) │ Buff 45.0k tokens (22.5%)` | `🤖 ████████░░ CtxUse: 167k/200k tokens (83%)` |
-
-#### Key Improvements
-
-1. **Progress bar visual-only**: No duplicate numbers after the emoji
-2. **Removed "Free" display**: Redundant with CtxUse percentage
-3. **Removed "Buff" display**: Rarely needed, saves valuable space
-4. **Unified display**: No separator between progress bar and CtxUse
-
-#### Final Format
-
-```
-⎇ main* │ 🤖 ████████░░ CtxUse: 167k/200k tokens (83%) │ ⏱️ 8% (~5h) │ 🔧 4% MCP
-          └─ Visual Bar ─┘ └───────── Exact Values ─────────┘
-```
-
-### Context Monitoring Status (v2.78.10)
-
-### Context Monitoring Status (v2.78.10) ✅ LATEST
-
-**Current Status**: The dual context display system is **working correctly** with the following implementation details:
-
-#### How It Works
-
-The statusline implements a **multi-source fallback strategy** to display context usage:
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│              CONTEXT DISPLAY PRIORITY (v2.78.10)                │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  1. PRIMARY:    Cache file (~/.ralph/cache/context-usage.json)  │
-│                ✓ Project-specific values                        │
-│                ✓ Updated every 30 seconds                        │
-│                ✓ Matches /context command output                 │
-│                                                                  │
-│  2. FALLBACK 1: stdin JSON used_percentage (Zai wrapper)       │
-│                ✗ Only if 5-95% (validates extreme values)       │
-│                ✗ Often unreliable (0% or 100%)                  │
-│                                                                  │
-│  3. FALLBACK 2: Cumulative tokens with 75% estimate            │
-│                ✓ Conservative estimate when unavailable         │
-│                ✓ Prevents misleading 100% display               │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-#### Current Limitations
-
-| Limitation | Impact | Workaround |
-|-----------|--------|-----------|
-| **Zai wrapper doesn't send `context_window`** | Statusline can't read native context data | Uses cache file instead |
-| **`/context` is REPL-only** | Hook can't execute command automatically | Manual cache updates or rely on cumulative estimate |
-| **Cache staleness** | Values may be outdated after 30 seconds | Statusline validates cache age |
-
-#### Cache File Location
-
-```
-~/.ralph/cache/context-usage.json
-{
-  "timestamp": 1769623086,
-  "context_size": 200000,
-  "used_tokens": 111000,
-  "free_tokens": 89000,
-  "used_percentage": 55,
-  "remaining_percentage": 45
-}
-```
-
-#### Display Format
-
-```
-⎇ main* | 🤖 ██████████░░ 391k/200k (195%) │ CtxUse: 111k/200k (55%) │ Free: 44k (22%) │ Buff 45.0k
-          └─ Cumulative Session ─────┘ └───── Current Window (from cache) ─────┘
-```
-
-**Example**:
-```
-Before (v2.78.9): CtxUse: 200k/200k (100%) | Free: 0k (0%)
-After (v2.78.10): CtxUse: 111k/200k (55%)  | Free: 44k (22%)
-```
-
-**Technical Details**: See [docs/context-monitoring/STATUSLINE_V2.78.10_FIX.md](docs/context-monitoring/STATUSLINE_V2.78.10_FIX.md)
-
-### Statusline Dual Context Display (FEAT-003) ✅ IMPLEMENTED - v2.78.0 - v2.78.9
-
-**Issue**: Claude Code 2.1.19 provides unreliable context window values (`used_percentage` often 0% or 100%, `current_usage.input_tokens` returns 0).
-
-**Solution**: Implemented dual context display system:
-1. **Cumulative Session Progress** (`🤖` progress bar): Shows overall session tokens (can exceed 100%)
-2. **Current Window Usage** (`CtxUse`): Shows actual current window usage matching `/context` command
-
-**Example**:
-```
-⎇ main* | 🤖 391k/200k (195%) | CtxUse: 133k/200k (66.6%) | Free: 22k (10.9%) | Buff 45.0k (22.5%)
-          └─ Cumulative ──┘     └────────── Current Window ──────────┘
-```
-
-**Key Features**:
-- Project-specific cache per repository (`~/.ralph/cache/<project-id>/context-usage.json`)
-- Real-time updates via `context-from-cli.sh` hook (UserPromptSubmit event)
-- Fallback strategy when cache unavailable (75% estimate)
-- Zai Cloud wrapper compatibility
-
-**Technical Details**: See [docs/context-monitoring/STATUSLINE_V2.78_IMPLEMENTATION.md](docs/context-monitoring/STATUSLINE_V2.78_IMPLEMENTATION.md)
-
-### PreToolUse Hook Format Compliance (BUG-007) ✅ FIXED - v2.70.1
-
-**Issue**: PreToolUse hooks missing `hookEventName` in JSON output, causing validation failures in Claude Code v2.70.0+.
-
-**Root Cause**: Hooks were using `{"hookSpecificOutput": {"permissionDecision": "allow"}}` instead of the required format with `hookEventName`.
-
-**Fix**: Updated all 13 PreToolUse hooks to include `hookEventName: "PreToolUse"` in `hookSpecificOutput`.
-
-**Example**:
-```
-Before: {"hookSpecificOutput": {"permissionDecision": "allow"}}
-After:  {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}
-```
-
-**Technical Details**: Created `fix-pretooluse-hooks.py` automation script for validation and fixing.
-
-### Quality Gates AutoMode Detection (BUG-003) ✅ FIXED
-**Issue**: `/loop` and `/orchestrator` commands were blocked by quality gates even during automatic execution.
-
-**Symptoms**: PostToolUse hooks returning `{"continue": false}` and stopping execution with "Execution stopped by PostToolUse hook".
-
-**Root Cause**: `quality-gates-v2.sh` only checked `RALPH_AUTO_MODE` environment variable which was never set by `auto-mode-setter.sh`.
-
-**Fix**: Enhanced `is_auto_mode()` function to detect automatic mode via:
-1. `CLAUDE_CONTEXT=loop|orchestrator` (primary detection)
-2. `plan-state.json` with `loop_state.max_iterations > 0` (secondary)
-3. `RALPH_AUTO_MODE=true` (fallback)
-
-### JSON Output Contamination (BUG-004) ✅ FIXED
-**Issue**: `global-task-sync.sh` PostToolUse hook producing invalid JSON output.
-
-**Symptoms**: Tests failing with "Invalid JSON output" when hook executed.
-
-**Root Cause**: `acquire_lock()` function echoing "locked" to stdout before JSON output.
-
-**Fix**: Removed `echo "locked"` statement, making lock acquisition silent.
-
-### Hook Classification Test Bug (BUG-005) ✅ FIXED
-**Issue**: Test `test_posttooluse_hooks_use_continue` incorrectly flagging `auto-mode-setter.sh`.
-
-**Symptoms**: Test reporting "PostToolUse hook uses 'decision: allow'" for a PreToolUse hook.
-
-**Root Cause**: `get_hook_type()` in test had explicit PreToolUse list missing `auto-mode-setter`.
-
-**Fix**: Added `'auto-mode-setter'` to PreToolUse hooks list.
-
----
-
-## 🚀 Improvements (v2.80.9)
-
-### Z.ai Coding Plugins Integration (v2.80.9) ✅ NEW
-
-**Overview**: Integrated Z.ai Coding Plugins marketplace for GLM Coding Plan usage tracking and feedback.
-
-#### Installed Plugins
-
-| Plugin | Version | Purpose |
-|--------|---------|---------|
-| **glm-plan-usage** | 0.0.1 | Query quota and usage statistics |
-| **glm-plan-bug** | 0.0.1 | Submit bug reports and feedback |
-
-#### Installation
-
-```bash
-# Add marketplace
-claude plugin marketplace add zai-org/zai-coding-plugins
-
-# Install plugins
-claude plugin install glm-plan-usage@zai-coding-plugins
-claude plugin install glm-plan-bug@zai-coding-plugins
-```
-
-#### Usage
-
-```bash
-# Query GLM usage statistics
-~/.claude-sneakpeek/zai/skills/glm-plan-usage-query
-
-# Submit bug feedback
-~/.claude-sneakpeek/zai/skills/glm-plan-bug-feedback --feedback "Issue description"
-```
-
-#### Integration with Statusline
-
-The statusline automatically uses `glm-usage-cache-manager.sh` which:
-- Caches GLM usage data for 5 minutes
-- Displays token quota (5-hour) and MCP usage (monthly)
-- Optimized JSON parsing with single jq call
-
-**Display**:
-```
-⏱️ 11% (~5h) │ 🔧 4% MCP (182/4000)
-```
-
----
-
-## 🚀 Improvements (v2.70.1)
-
-### Automated Hook Fix Scripts (MAINT-001) ✅ NEW
-
-**Problem**: Manual hook format updates were error-prone and time-consuming when Claude Code hook specifications changed.
-
-**Solution**: Created automated validation and fix scripts for hook format compliance:
-- `fix-pretooluse-hooks.py`: Python script to validate and fix PreToolUse hook format (v2.70.0+ compliance)
-- `fix-claude-mem-hooks.sh`: Bash script to detect and fix CLAUDE_PLUGIN_ROOT path resolution issues
-
-**Usage**:
-```bash
-# Check hooks without modifying
-python3 .claude/scripts/fix-pretooluse-hooks.py --check
-
-# Apply fixes automatically
-python3 .claude/scripts/fix-pretooluse-hooks.py
-
-# Fix claude-mem hooks
-./.claude/scripts/fix-claude-mem-hooks.sh
-```
-
-### Dynamic Hook Classification (REFAC-001) ✅ NEW
-
-**Problem**: Manual list of PreToolUse hooks in `get_hook_type()` required constant updates when new hooks were added.
-
-**Solution**: Refactored `get_hook_type()` to read hook registrations dynamically from `settings.json`:
-- Searches all event types for hook name automatically
-- Falls back to static classification for offline testing
-- Eliminates maintenance burden
-
-### Cross-Platform Compatibility (PLATFORM-001) ✅ NEW
-
-**Problem**: Unix-specific permission checks fail on Windows causing test failures.
-
-**Solution**: Added platform-specific test skips using `@pytest.mark.skipif(sys.platform == "win32")`.
-
----
-
-## 🧪 Context Simulation Tools (v2.72.1) - NEW
-
-Test and validate the GLM context monitoring system with real-time statusline updates.
-
-### New Scripts
-
-| Script | Mode | Purpose |
-|--------|------|---------|
-| `simulate-context.sh` | Interactive | Step-by-step 10% increments with pauses |
-| `simulate-context-auto.sh` | Automatic | Continuous simulation with configurable delay |
-| `test-context-thresholds.sh` | Testing | Test specific warning thresholds (75%, 85%) |
-| `SIMULATION_README.md` | Documentation | Complete usage guide |
-
-### Statusline Enhancement
-
-**Before (v2.72.0)**: `🤖 75%` (percentage only)
-**After (v2.72.1)**: `🤖 75% · 96K/128K` (percentage + exact tokens)
-
-This allows validation that the context tracking is working correctly by comparing the percentage with the exact token count.
-
-### Usage
-
-```bash
-# Interactive simulation
-./simulate-context.sh
-
-# Automatic simulation (2s delay)
-./simulate-context-auto.sh 2
-
-# Test warning threshold
-./test-context-thresholds.sh 75
-
-# Test critical threshold
-./test-context-thresholds.sh 85
-```
-
-### Color Thresholds
-
-| Percentage | Range | Color | Status |
-|------------|-------|-------|--------|
-| 0-49% | Low | CYAN | ✅ Normal |
-| 50-74% | Normal | GREEN | ✅ Normal |
-| 75-84% | Warning | YELLOW | ⚠️ Warning |
-| 85-100% | Critical | RED | 🚨 Critical |
-
 ---
 
 ## Table of Contents
@@ -347,58 +177,61 @@ This allows validation that the context tracking is working correctly by compari
 7. [Memory Architecture](#memory-architecture)
 8. [Hooks System](#hooks-system)
 9. [Agent System](#agent-system)
-10. [Multi-Model Support (v2.69)](#multi-model-support--v2-69)
-11. [Dynamic Contexts System (v2.63)](#dynamic-contexts-system--v2-63)
-12. [Eval-Driven Development (v2.64)](#eval-driven-development--v2-64)
-13. [Input](#input)
-14. [Expected Behavior](#expected-behavior)
-15. [Plan Lifecycle Management (v2.65)](#plan-lifecycle-management--v2-65)
-16. [Commands Reference](#commands-reference)
-17. [Ralph Loop Pattern](#ralph-loop-pattern)
-18. [Quality-First Validation](#quality-first-validation)
-19. [Claude Code Task Primitive Integration](#claude-code-task-primitive-integration)
-20. [Claude Code Skills Ecosystem](#claude-code-skills-ecosystem)
-21. [Testing](#testing)
-22. [Deployment](#deployment)
-23. [Troubleshooting](#troubleshooting)
-24. [Contributing](#contributing)
-25. [License](#license)
+10. [Swarm Mode (v2.81.0)](#swarm-mode--v2810)
+11. [Multi-Model Support (v2.69)](#multi-model-support--v2-69)
+12. [Dynamic Contexts System (v2.63)](#dynamic-contexts-system--v2-63)
+13. [Eval-Driven Development (v2.64)](#eval-driven-development--v2-64)
+14. [Input](#input)
+15. [Expected Behavior](#expected-behavior)
+16. [Plan Lifecycle Management (v2.65)](#plan-lifecycle-management--v2-65)
+17. [Commands Reference](#commands-reference)
+18. [Ralph Loop Pattern](#ralph-loop-pattern)
+19. [Quality-First Validation](#quality-first-validation)
+20. [Claude Code Task Primitive Integration](#claude-code-task-primitive-integration)
+21. [Claude Code Skills Ecosystem](#claude-code-skills-ecosystem)
+22. [Testing](#testing)
+23. [Deployment](#deployment)
+24. [Troubleshooting](#troubleshooting)
+25. [Contributing](#contributing)
+26. [License](#license)
 
 ---
 
 ## Overview
 
-Ralph coordinates **multiple AI models** to produce validated code. Rather than trust one model's output, it runs them in parallel with quality gates.
+Ralph coordinates **multiple AI models** and **multiple AI agents** to produce validated code. Rather than trust one model's output, it runs them in parallel with quality gates and swarm coordination.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     MULTI-MODEL HIERARCHY                       │
+│                  MULTI-AGENT SWARM MODE v2.81.0                 │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│   PRIMARY (v2.69.1)                                             │
-│   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
-│   │  Claude     │  │   GLM-4.7   │  │   Codex     │            │
-│   │  Opus/Son   │  │   PRIMARY   │  │   GPT-5.2   │            │
-│   │  Complex    │  │   Economic  │  │   Analysis  │            │
-│   └─────────────┘  └─────────────┘  └─────────────┘            │
+│   ORCHESTRATOR (LEAD)                                           │
+│   ┌─────────────┐                                              │
+│   │  GLM-4.7    │                                              │
+│   │  PRIMARY    │                                              │
+│   │  Coordinator│                                              │
+│   └──────┬──────┘                                              │
+│          │                                                     │
+│          ├─────────────┬─────────────┬─────────────┐            │
+│          ↓             ↓             ↓             ↓            │
+│   ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐       │
+│   │code-     │  │test-     │  │security- │  │debugger  │       │
+│   │reviewer  │  │architect │  │auditor   │  │          │       │
+│   └──────────┘  └──────────┘  └──────────┘  └──────────┘       │
 │                                                                 │
-│   FALLBACK (Optional)                                           │
-│   ┌─────────────┐  ┌─────────────┐                              │
-│   │  MiniMax    │  │   Gemini    │                              │
-│   │  DEPRECATED │  │   2.5 Pro   │                              │
-│   └─────────────┘  └─────────────┘                              │
+│   INTER-AGENT MESSAGING + SHARED TASK LIST                      │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-The core idea: **execute → validate → iterate** until the code passes.
+The core idea: **spawn → coordinate → validate → iterate** until the code passes.
 
 ### What It Does
 
-- **Multi-model orchestration** — GLM-4.7 (PRIMARY) + Codex (SPECIALIZED for security/performance)
+- **Swarm orchestration** — Native multi-agent coordination with TeammateTool
+- **Multi-model routing** — GLM-4.7 (PRIMARY) + Codex (SPECIALIZED)
 - **3-Model Adversarial Council** — Codex + GLM-4.7 + Gemini for review
-- **GLM-4.7 PRIMARY** — Economic model (~15% cost) for all tasks
-- **Codex SPECIALIZED** — Security, performance, high-level review
 - **Quality gates** — 9 languages supported (TS, Python, Go, Rust, Solidity, etc.)
 - **Memory system** — Semantic, episodic, procedural memory with 30-day TTL
 - **74 hooks** (73 bash + 1 python) — 80 event registrations
@@ -412,6 +245,15 @@ See [CHANGELOG.md](CHANGELOG.md) for version history
 ---
 
 ## Key Features
+
+### Swarm Mode (v2.81.0) 🆕
+
+- **Native multi-agent coordination** — Built-in TeammateTool for spawning and managing teammates
+- **Inter-agent messaging** — Direct communication between agents
+- **Shared task list** — All teammates see and work on the same tasks
+- **Plan approval workflow** — Leader can approve/reject teammate plans
+- **Automated spawning** — Automatic teammate creation with ExitPlanMode
+- **Team cleanup** — Automatic resource cleanup after completion
 
 ### Orchestration
 
@@ -448,13 +290,13 @@ Based on [sec-context](https://github.com/Arcanum-Sec/sec-context):
 ## Tech Stack
 
 - **Claude Code CLI** — Base orchestration
-- **GLM-4.7 PRIMARY** — Economic model for complexity 1-4, web search, vision
+- **Swarm Mode** — Native multi-agent coordination (v2.81.0)
+- **GLM-4.7 PRIMARY** — Economic model for all tasks
 - **Multi-Model AI** — Claude Opus/Sonnet, Codex GPT-5.2, Gemini 2.5 Pro
-- **MiniMax** — DEPRECATED (optional fallback only)
-- **Bash/zsh** — 66 bash hooks + 1 Python hook
+- **Bash/zsh** — 74 hooks (73 bash + 1 python)
 - **Python 3.11+** — Utility scripts
 - **JSON** — Configuration, memory storage
-- **26 MCP servers** — GLM-4.7 (4), Context7, Playwright, etc.
+- **26 MCP servers** — GLM-4.7, Context7, Playwright, etc.
 
 ---
 
@@ -509,7 +351,7 @@ git --version  # Any recent version
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/multi-agent-ralph-loop.git
+git clone https://github.com/alfredolopez80/multi-agent-ralph-loop.git
 cd multi-agent-ralph-loop
 
 # Run the global installer
@@ -521,6 +363,12 @@ cd multi-agent-ralph-loop
 # 3. Copy hooks, agents, commands, skills to ~/.claude/
 # 4. Register hooks in ~/.claude/settings.json
 # 5. Initialize Ralph memory system in ~/.ralph/
+
+# Configure Swarm Mode (v2.81.0)
+bash tests/swarm-mode/configure-swarm-mode.sh
+
+# Verify Swarm Mode
+bash tests/swarm-mode/test-swarm-mode-config.sh
 
 # Restart Claude Code to load new configuration
 ```
@@ -540,18 +388,23 @@ ralph health
 
 # Check hooks registration
 ls ~/.claude/hooks/*.sh | wc -l
-# Should output: 67 (v2.69.0 - 67 files, 80 registrations)
+# Should output: 74 (v2.81.0 - 74 files, 80 registrations)
 
 # Test quality gates
 /gates
 # Should show: Quality gates ready
+
+# Verify Swarm Mode
+bash tests/swarm-mode/test-swarm-mode-config.sh
+# Should output: ALL TESTS PASSED (44/44)
 ```
 
 ### Quick Start Commands
 
 ```bash
-# 1. Full orchestration with classification
+# 1. Full orchestration with swarm mode
 /orchestrator "Implement OAuth2 authentication with JWT tokens"
+# → Spawns 3 teammates automatically
 
 # 2. Quality validation
 /gates          # Quality gates
@@ -589,46 +442,53 @@ multi-agent-ralph-loop/           # Repository root
 │   │   ├── security-auditor.md   # Security-focused agent
 │   │   ├── debugger.md           # Bug detection/fix agent
 │   │   ├── code-reviewer.md      # Code review agent
-│   │   ├── glm-reviewer.md       # GLM-4.7 validation (NEW v2.69)
+│   │   ├── glm-reviewer.md       # GLM-4.7 validation
 │   │   ├── repository-learner.md # AST pattern extraction
 │   │   ├── repo-curator.md       # Repository curation
 │   │   └── ... (28 more agents)
-│   ├── commands/                 # Slash commands (39 files)
+│   ├── commands/                 # Slash commands (40 files)
+│   │   ├── orchestrator.md       # v2.81.0 with swarm parameters
+│   │   └── loop.md               # v2.81.0 with swarm parameters
 │   ├── hooks/                    # Project hooks (synced from global)
-│   ├── scripts/                  # Utility scripts (35+ files, includes fix scripts)
+│   ├── scripts/                  # Utility scripts (35+ files)
 │   ├── skills/                   # Project skills (26 directories)
-│   ├── archive/                  # Archived documentation
-│   │   ├── v2.24/                # Security reviews v2.24
-│   │   ├── v2.33/                # Optimizations v2.33
-│   │   └── v2.45/                # Audits v2.45
 │   └── plan-state.json           # Current orchestration state
-├── config/                       # Configuration files
-│   ├── models.json               # Model routing config (v2.69.0)
-│   └── ralph_rules.json          # Procedural rules
+├── tests/
+│   └── swarm-mode/               # Swarm mode test suite (v2.81.0)
+│       ├── test-swarm-mode-config.sh      # 44 unit tests
+│       ├── configure-swarm-mode.sh        # Automated setup
+│       ├── SETTINGS_CONFIGURATION_GUIDE.md # Settings guide
+│       ├── REPRODUCTION_GUIDE.md          # Reproduction steps
+│       ├── COMO_USAR_SWARM_MODE_CLAUDE_ZAI.md # Spanish guide
+│       └── README.md                        # Test suite docs
 ├── docs/                         # Documentation
 │   ├── architecture/             # Architecture diagrams
+│   │   ├── SWARM_MODE_INTEGRATION_ANALYSIS_v2.81.0.md
+│   │   └── SWARM_MODE_VALIDATION_v2.81.0.md
 │   └── security/                 # Security documentation
 ├── scripts/                      # Main CLI scripts
-│   ├── ralph                     # Main CLI (v2.69.0)
-│   └── mmc                       # Multi-Model CLI (GLM-4.7 PRIMARY)
-├── tests/                        # Test suite (917 tests)
+│   ├── ralph                     # Main CLI (v2.81.0)
+│   └── mmc                       # Multi-Model CLI
+├── config/                       # Configuration files
+│   ├── models.json               # Model routing config
+│   └── ralph_rules.json          # Procedural rules
 ├── install.sh                    # Global installer
 ├── uninstall.sh                  # Uninstaller
 ├── CLAUDE.md                     # Project instructions
 ├── AGENTS.md                     # Agent documentation
 ├── README.md                     # This file
 ├── CHANGELOG.md                  # Version history
-├── CONTRIBUTING.md               # Contribution guide
-├── TESTING.md                    # Testing documentation
 └── LICENSE                       # BSL 1.1 License
 
+~/.claude-sneakpeek/zai/config/   # Zai variant configuration
+└── settings.json                 # Swarm mode configuration
+
 ~/.claude/                        # Global Claude Code config
-├── hooks/                        # Global hooks (67 files, 80 registrations)
-├── agents/                       # Global agents (34 files)
+├── hooks/                        # Global hooks (74 files, 80 registrations)
+├── agents/                       # Global agents (35 files)
 ├── commands/                     # Global commands
 ├── skills/                       # Global skills ecosystem
 ├── contexts/                     # Dynamic contexts (dev, review, research, debug)
-├── rules/                        # Global rules (6 files)
 └── settings.json                 # Hook registrations
 
 ~/.ralph/                         # Ralph runtime data
@@ -640,63 +500,37 @@ multi-agent-ralph-loop/           # Repository root
 ├── ledgers/                      # Session ledgers
 ├── handoffs/                     # Agent handoff records
 ├── logs/                         # Hook and system logs
-└── scripts/                      # Ralph CLI scripts
+└── tasks/                        # Swarm mode task lists
 ```
 
-### Core Workflow (12 Steps) - v2.46
+### Core Workflow (12 Steps) - v2.81.0
 
 ```
-  0. EVALUATE     -> 3-dimension classification 
-  1. CLARIFY      -> AskUserQuestion (MUST_HAVE + NICE_TO_HAVE) 
-  1b. GAP-ANALYST -> Pre-implementation gap analysis 
+  0. EVALUATE     -> 3-dimension classification
+  1. CLARIFY      -> AskUserQuestion (MUST_HAVE + NICE_TO_HAVE)
+  1b. GAP-ANALYST -> Pre-implementation gap analysis
   1c. PARALLEL_EXPLORE -> 5 concurrent searches
-  2. CLASSIFY     -> Complexity 1-10 + Info Density + Context Req 
-  2b. WORKTREE    -> Isolated worktree option 
-  3. PLAN         -> orchestrator-analysis.md -> Plan Mode  
+  2. CLASSIFY     -> Complexity 1-10 + Info Density + Context Req
+  2b. WORKTREE    -> Isolated worktree option
+  3. PLAN         -> orchestrator-analysis.md -> Plan Mode
   3b. PERSIST     -> Write analysis file
   3c. PLAN-STATE  -> Initialize plan-state.json
-  3d. RECURSIVE_DECOMPOSE -> Sub-orchestrators if needed 
-  4. PLAN MODE    -> EnterPlanMode (reads analysis) 
-  5. DELEGATE     -> Route to GLM-4.7 (PRIMARY for 1-4)
-  6. EXECUTE-WITH-SYNC -> LSA-VERIFY -> IMPLEMENT -> PLAN-SYNC -> MICRO-GATE 
+  3d. RECURSIVE_DECOMPOSE -> Sub-orchestrators if needed
+  4. PLAN MODE    -> EnterPlanMode (reads analysis)
+  5. DELEGATE     -> Route to GLM-4.7 (PRIMARY)
+  6. SPAWN TEAM   -> Create team + spawn teammates (SWARM MODE)
+  6a. LSA-VERIFY  -> Lead Software Architect pre-check
+  6b. IMPLEMENT   -> Execute (parallel if independent)
+  6c. PLAN-SYNC   -> Detect drift, patch downstream
+  6d. MICRO-GATE  -> Per-step quality (3-Fix Rule)
   7. VALIDATE     -> CORRECTNESS + QUALITY + CONSISTENCY + ADVERSARIAL
-  8. RETROSPECT   -> Analyze and improve  
-  9. CHECKPOINT   -> Optional state save 
+  8. RETROSPECT   -> Analyze and improve
+  9. CHECKPOINT   -> Optional state save
   10. HANDOFF     -> Optional agent transfer
+  11. CLEANUP     -> Clean up team resources (SWARM MODE)
 ```
 
 **Fast-Path** (complexity ≤ 3): DIRECT_EXECUTE → MICRO_VALIDATE → DONE (3 steps)
-
-### 3-Dimension Classification (RLM)
-
-| Dimension | Values | Purpose |
-|-----------|--------|---------|
-| **Complexity** | 1-10 | Scope, risk, ambiguity |
-| **Information Density** | CONSTANT / LINEAR / QUADRATIC | How answer scales with input |
-| **Context Requirement** | FITS / CHUNKED / RECURSIVE | Whether decomposition needed |
-
-#### Workflow Routing (v2.69.0)
-
-```
-┌────────────────────────────────────────────────────────────────┐
-│                    MODEL ROUTING v2.80.9                        │
-├────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  All Tasks         ──►  GLM-4.7 (PRIMARY)     ──►  50 iterations │
-│  Security/Perf     ──►  Codex (SPECIALIZED)   ──►  25 iterations │
-│                                                                 │
-│  FALLBACK: Codex → GLM-4.7 (if specialized unavailable)         │
-│                                                                 │
-└────────────────────────────────────────────────────────────────┘
-```
-
-| Density | Context | Complexity | Route | Model | Max Iter |
-|---------|---------|------------|-------|-------|----------|
-| CONSTANT | FITS | 1-3 | **FAST_PATH** | GLM-4.7 | 3 |
-| CONSTANT | FITS | 4-10 | STANDARD | GLM-4.7 | 50 |
-| SECURITY/PERF | ANY | ANY | SPECIALIZED | Codex → GLM-4.7 | 25 |
-| LINEAR | CHUNKED | ANY | PARALLEL_CHUNKS | GLM-4.7 | 15/chunk |
-| QUADRATIC | ANY | ANY | RECURSIVE_DECOMPOSE | GLM-4.7 | 15/sub |
 
 ---
 
@@ -737,172 +571,6 @@ Extracts best practices from GitHub repositories using AST-based pattern analysi
 /repo-learn https://github.com/fastapi/fastapi --category error_handling
 ```
 
-**Process**:
-1. Acquire repository via git clone or GitHub API
-2. Analyze code using AST-based pattern extraction
-3. Classify patterns (error_handling, async_patterns, type_safety, architecture, testing, security)
-4. Generate procedural rules with confidence scores
-5. Enrich `~/.ralph/procedural/rules.json` with deduplication
-
-### Repo Curator (v2.55)
-
-Discovers, scores, and curates quality repositories for learning.
-
-```bash
-# Full pipeline (economic tier, default)
-/curator full --type backend --lang typescript
-
-# Discovery with options
-/curator discovery --query "microservice" --max-results 200 --tier free
-
-# Scoring with context relevance (v2.55)
-/curator scoring --context "error handling,retry,resilience"
-
-# Custom ranking
-/curator rank --top-n 15 --max-per-org 3
-
-# Approve/reject repos
-/curator approve nestjs/nest
-/curator approve --all
-/curator reject some/repo --reason "Low test coverage"
-
-# Execute learning
-/curator learn --type backend --lang typescript
-```
-
-#### Pricing Tiers
-
-| Tier | Cost | Features |
-|------|------|----------|
-| `--tier free` | $0.00 | GitHub API + local scoring |
-| `--tier economic` | ~$0.30 | + OpenSSF + MiniMax (DEFAULT) |
-| `--tier full` | ~$0.95 | + Claude + Codex adversarial |
-
-### Learning System v2.59
-
-The Learning System automatically extracts and stores behavioral patterns for continuous improvement.
-
-```bash
-# Check learning system health
-ralph health
-
-# View procedural rules count
-ralph memory-index --rules
-
-# Feedback loop
-ralph-feedback record --rule-id err-001 --used-in task-123
-ralph-feedback complete --rule-id err-001 --success true
-ralph-feedback calibrate     # Run confidence calibration
-
-# Auto-cleanup old rules
-memory-auto-cleanup.py run
-
-# Convert high-confidence rules to native behavior
-convert-high-confidence-rules.py list
-convert-high-confidence-rules.py convert --all
-```
-
-#### Procedural Rules Structure
-
-```json
-{
-  "version": "2.59.0",
-  "rules": [
-    {
-      "rule_id": "hook-json-format-sec039",
-      "trigger": "Writing or modifying Claude Code hooks",
-      "behavior": "CRITICAL: Use correct JSON format per hook type...",
-      "confidence": 1.0,
-      "source_repo": "claude-code-official-docs",
-      "tags": ["security", "hooks", "json-format"],
-      "usage_count": 42,
-      "success_count": 40,
-      "success_rate": 0.95
-    }
-  ]
-}
-```
-
-**Statistics (v2.59.0)**:
-- Total rules: 319
-- High confidence (≥0.9): 47
-- Average confidence: 0.78
-- Success rate: 95%
-
-### Hook System Audit (v2.60)
-
-Comprehensive audit and cleanup of the hooks system with adversarial validation.
-
-**Results**:
-- Scripts before audit: 64
-- Registered hooks: 52
-- Deleted (deprecated): 8
-- Archived (utilities): 5
-- Kept (libraries): 3
-
-#### Smart Skill Reminder v2.0
-
-Context-aware skill suggestions that fire **before** writing code (PreToolUse).
-
-```bash
-# Replaced skill-reminder.sh (v1.0) with smart-skill-reminder.sh (v2.0)
-# Key improvements:
-# 1. Fires on PreToolUse (BEFORE code is written, not after)
-# 2. Session gating: only reminds once per session
-# 3. Context-aware: suggests specific skills based on file type/path
-# 4. Rate limiting: respects 30-minute cooldown period
-# 5. Skill invocation detection: skips if skill was recently used
-```
-
-**Priority Order for Suggestions**:
-1. **Test files** (`*test*`, `*spec*`) → `/test-driven-development`
-2. **Security files** (`*auth*`, `*token*`, `*payment*`) → `/security-loop`
-3. **Language-specific** (`.py`, `.ts`, `.sh`, `.sol`) → Language skill
-4. **Architecture files** (`Dockerfile`, `.tf`, `k8s`) → Infrastructure skill
-5. **Directory patterns** (`api/`, `components/`) → Domain skill
-
-#### Deleted Scripts (8)
-
-| Script | Reason |
-|--------|--------|
-| `skill-reminder.sh` | Replaced by `smart-skill-reminder.sh` v2.0 |
-| `quality-gates.sh` | Replaced by `quality-gates-v2.sh` |
-| `curator-trigger.sh` | Replaced by `curator-suggestion.sh` |
-| `test-sec-context-hook.sh` | Test suite, not production |
-| `orchestrator-helper.sh` | Obsolete |
-| `state-sync.sh` | Obsolete |
-| `post-commit-command-verify.sh` | Never configured |
-| `pre-commit-command-validation.sh` | Never configured |
-
-#### Archived Scripts (5)
-
-Moved to `~/.claude/hooks-archive/utilities/`:
-- `cleanup-secrets-db.js` - Database cleanup utility
-- `sanitize-secrets.js` - Secrets sanitization
-- `procedural-forget.sh` - Memory cleanup
-- `sentry-check-status.sh` - Sentry integration
-- `sentry-correlation.sh` - Sentry correlation
-
-#### Library Scripts (3)
-
-Kept as dependencies for other hooks:
-- `detect-environment.sh` - Used by context-warning.sh, pre-compact-handoff.sh
-- `plan-state-init.sh` - Used by auto-plan-state.sh
-- `semantic-write-helper.sh` - Used by semantic-realtime-extractor.sh
-
-#### Skill Pre-Warm (Fixed)
-
-The `skill-pre-warm.sh` hook now correctly finds all skills:
-
-```bash
-# Before fix: 9/10 skills pre-warmed (repository-learner failed)
-# After fix: 10/10 skills pre-warmed
-
-# Fix applied (GAP-SKILL-002):
-mkdir -p ~/.claude/skills/repository-learner
-mv ~/.claude/skills/repository-learner.md ~/.claude/skills/repository-learner/SKILL.md
-```
-
 ---
 
 ## Hooks System
@@ -920,80 +588,19 @@ Claude Code hooks execute at specific lifecycle events:
 | **PreCompact** | Before context compaction | State saving, ledger creation |
 | **Stop** | Response completes | Session reports, cleanup |
 
-### Registered Hooks (67 files, 80 registrations) - v2.69.0
+### Registered Hooks (74 files, 80 registrations) - v2.81.0
 
-#### PreToolUse Hooks
-
-| Hook | Matcher | Purpose |
-|------|---------|---------|
-| `git-safety-guard.py` | Bash | Validate git commands before execution |
-| `skill-validator.sh` | Skill | Validate skill usage |
-| `orchestrator-auto-learn.sh` | Task | Detect knowledge gaps, recommend learning |
-| `fast-path-check.sh` | Task | Detect trivial tasks → FAST_PATH |
-| `inject-session-context.sh` | Task | Restore session context from ledger |
-| `smart-memory-search.sh` | Task | Parallel search across memory sources |
-| `procedural-inject.sh` | Task | Inject relevant procedural rules |
-| `agent-memory-auto-init.sh` | Task | Auto-initialize agent memory buffers |
-| `task-orchestration-optimizer.sh` | Task | Detect parallelization and context-hiding opportunities |
-| `lsa-pre-step.sh` | Edit/Write | Pre-step LSA verification |
-| `repo-boundary-guard.sh` | Edit/Write/Bash | Prevent accidental work in external repositories |
-| `checkpoint-smart-save.sh` | Edit/Write | Smart checkpoints on risky edits |
-| `smart-skill-reminder.sh` | Edit/Write | Context-aware skill suggestions (v2.0) |
-
-#### PostToolUse Hooks
-
-| Hook | Matcher | Purpose |
-|------|---------|---------|
-| `quality-gates-v2.sh` | Edit/Write | Quality-first validation (BLOCKING) |
-| `sec-context-validate.sh` | Edit/Write | Security context validation (BLOCKING) |
-| `checkpoint-auto-save.sh` | Edit/Write | Auto-save checkpoints |
-| `plan-sync-post-step.sh` | Edit/Write | Sync plan state after edits |
-| `progress-tracker.sh` | Edit/Write | Track progress (every 5 ops) |
-| `decision-extractor.sh` | Edit/Write | Extract architectural decisions |
-| `status-auto-check.sh` | Edit/Write | Show status every 5 ops |
-| `semantic-realtime-extractor.sh` | Edit/Write | Extract semantic facts in real-time |
-| `episodic-auto-convert.sh` | Edit/Write | Convert experiences to episodic memory |
-| `global-task-sync.sh` | TaskUpdate/TaskCreate | Unidirectional sync: plan-state → global storage |
-| `verification-subagent.sh` | TaskUpdate | Spawn verification subagent after step completion |
-
-### Hook Output Format
-
-#### PreToolUse Output
-
-```json
-{
-  "continue": true,
-  "additionalContext": "Injected context for the tool execution"
-}
-```
-
-**Blocking**:
-```json
-{
-  "continue": false,
-  "reason": "Why the tool is blocked"
-}
-```
-
-#### PostToolUse Output
-
-```json
-{
-  "hookSpecificOutput": {
-    "additionalContext": "Additional context for Claude"
-  }
-}
-```
+See [CLAUDE.md](CLAUDE.md) for complete hook documentation.
 
 ---
 
 ## Agent System
 
-### Default Agents (10) - v2.80.9
+### Default Agents (11) - v2.81.0
 
 | Agent | Model | Purpose | Status |
 |-------|-------|---------|--------|
-| `@orchestrator` | **glm-4.7** | Coordinator, planning, classification, delegation | PRIMARY |
+| `@orchestrator` | **glm-4.7** | Coordinator, planning, classification, delegation, swarm lead | PRIMARY |
 | `@security-auditor` | **codex** | Security, vulnerability scan (high-level) | SPECIALIZED |
 | `@debugger` | **glm-4.7** | Debugging, error analysis, fix generation | PRIMARY |
 | `@code-reviewer` | **glm-4.7** | Code review, pattern analysis | PRIMARY → Codex SECONDARY |
@@ -1004,6 +611,8 @@ Claude Code hooks execute at specific lifecycle events:
 | `@docs-writer` | **glm-4.7** | Documentation, README, API docs | PRIMARY |
 | `@repository-learner` | **glm-4.7** | Learning, pattern extraction, rule generation | PRIMARY |
 | `@repo-curator` | **glm-4.7** | Curation, scoring, discovery | PRIMARY |
+
+**Complete Agent Documentation**: See [AGENTS.md](AGENTS.md)
 
 ### Agent Handoffs (v2.51)
 
@@ -1023,24 +632,82 @@ ralph handoff validate debugger
 ralph handoff history
 ```
 
-### Agent-Scoped Memory (v2.51)
+---
 
-LlamaIndex AgentWorkflow-style isolated memory buffers per agent.
+## Swarm Mode (v2.81.0)
+
+### Overview
+
+Swarm Mode enables **native multi-agent coordination** using Claude Code's built-in TeammateTool. It allows spawning specialized teammates that collaborate through a shared task list and inter-agent messaging.
+
+### Key Components
+
+1. **TeammateTool** - Native tool for multi-agent coordination
+2. **Agent Environment Variables** - Identity and team configuration
+3. **ExitPlanMode Parameters** - Swarm spawning control
+4. **Inter-Agent Messaging** - Direct communication
+5. **Shared Task List** - Collaborative task management
+
+### Configuration
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_AGENT_ID": "claude-orchestrator",
+    "CLAUDE_CODE_AGENT_NAME": "Orchestrator",
+    "CLAUDE_CODE_TEAM_NAME": "multi-agent-ralph-loop",
+    "CLAUDE_CODE_PLAN_MODE_REQUIRED": "false"
+  },
+  "permissions": {
+    "defaultMode": "delegate"
+  },
+  "model": "glm-4.7"
+}
+```
+
+### Usage
 
 ```bash
-# Initialize memory for an agent
-ralph agent-memory init security-auditor
+# Method 1: /orchestrator command (Recommended)
+/orchestrator "Implement OAuth2 authentication"
+# → Spawns 3 teammates automatically
 
-# Write to agent's memory
-ralph agent-memory write security-auditor semantic "Found SQL injection in auth.py:42"
-ralph agent-memory write security-auditor working "Currently analyzing user input validation"
+# Method 2: /loop command
+/loop "Fix all type errors"
+# → Can spawn teammates if needed
 
-# Read agent's memory
-ralph agent-memory read security-auditor
+# Method 3: Manual Task tool
+Task:
+  subagent_type: "orchestrator"
+  team_name: "my-team"
+  name: "team-lead"
+  mode: "delegate"
 
-# Transfer memory during handoff
-ralph agent-memory transfer security-auditor code-reviewer relevant
+ExitPlanMode:
+  launchSwarm: true
+  teammateCount: 3
 ```
+
+### Verification
+
+```bash
+# Run automated tests
+bash tests/swarm-mode/test-swarm-mode-config.sh
+
+# Expected output:
+# ✓ ALL TESTS PASSED (44/44)
+# Swarm mode v2.81.0 is properly configured
+```
+
+### Documentation
+
+| Document | Language | Purpose |
+|----------|----------|---------|
+| [COMO_USAR_SWARM_MODE_CLAUDE_ZAI.md](tests/swarm-mode/COMO_USAR_SWARM_MODE_CLAUDE_ZAI.md) | Spanish | Complete usage guide |
+| [SETTINGS_CONFIGURATION_GUIDE.md](tests/swarm-mode/SETTINGS_CONFIGURATION_GUIDE.md) | English | Configuration details |
+| [REPRODUCTION_GUIDE.md](tests/swarm-mode/REPRODUCTION_GUIDE.md) | English | Reproduction steps |
+| [SWARM_MODE_INTEGRATION_ANALYSIS_v2.81.0.md](docs/architecture/SWARM_MODE_INTEGRATION_ANALYSIS_v2.81.0.md) | English | Technical analysis |
+| [SWARM_MODE_VALIDATION_v2.81.0.md](docs/architecture/SWARM_MODE_VALIDATION_v2.81.0.md) | English | Validation report |
 
 ---
 
@@ -1049,8 +716,6 @@ ralph agent-memory transfer security-auditor code-reviewer relevant
 ### Overview
 
 Ralph supports **multiple AI models** for optimal cost/performance trade-offs. Each model is selected based on task complexity, cost constraints, and specific capabilities required.
-
-> **v2.69 Update**: GLM-4.7 now integrated as 4th planner in Adversarial Council via Coding API. New standalone skills `/glm-4.7` and `/glm-web-search` for direct model access.
 
 ### Supported Models
 
@@ -1081,7 +746,7 @@ Ralph supports **multiple AI models** for optimal cost/performance trade-offs. E
 ```
 
 **Use Cases**:
-- Complexity 1-4 tasks (economic primary)
+- All tasks (PRIMARY model)
 - Adversarial Council (4th planner)
 - Web search validation
 - Vision/OCR analysis
@@ -1100,26 +765,13 @@ mmc --query "Analyze this code"
 mmc --web-search "Latest security patterns"
 ```
 
-### MiniMax M2.1 - DEPRECATED (v2.69.0)
-
-> ⚠️ **DEPRECATED**: MiniMax is now optional fallback only. GLM-4.7 is PRIMARY.
-
-**Migration**:
-| Old Command | New Command |
-|-------------|-------------|
-| `mmc --query` | `/glm-4.7` or `mmc --query` (auto-routes) |
-| `@minimax-reviewer` | `@glm-reviewer` |
-| `/minimax-review` | `/glm-4.7` |
-
-MiniMax remains available as fallback when GLM-4.7 is unavailable, but may be removed in future versions.
-
 ### Multi-Model Adversarial Validation (4 Planners)
 
 For critical changes (complexity ≥ 7), Ralph runs **four-model validation**:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│            ADVERSARIAL VALIDATION COUNCIL v2.80.9                │
+│            ADVERSARIAL VALIDATION COUNCIL v2.81.0                │
 ├─────────────────────────────────────────────────────────────────┤
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐                           │
 │  │  CODEX   │ │  GLM-4.7 │ │  GEMINI  │                           │
@@ -1136,30 +788,6 @@ For critical changes (complexity ≥ 7), Ralph runs **four-model validation**:
 │        All planners evaluated, best plan synthesized           │
 └─────────────────────────────────────────────────────────────────┘
 ```
-
-**Planners in adversarial_council.py v2.68.26**:
-```python
-DEFAULT_PLANNERS = [
-    AgentConfig(name="codex", kind="codex", model="gpt-5.2-codex"),
-    AgentConfig(name="claude-opus", kind="claude", model="opus"),
-    AgentConfig(name="gemini", kind="gemini", model="gemini-2.5-pro"),
-    AgentConfig(name="glm-4.7", kind="glm", model="glm-4.7"),  # NEW
-]
-```
-
-**Exit Criteria**: Judge synthesizes best plan from all four planners.
-
-### Cost Optimization Strategy (v2.69.0)
-
-| Task Complexity | Primary Model | Secondary | Max Iterations |
-|-----------------|---------------|-----------|----------------|
-| Simple (1-2) | GLM-4.7 lightning | - | 3 |
-| Standard (3-4) | **GLM-4.7** | Sonnet | 50 |
-| Medium (5-6) | Sonnet | Codex | 25 |
-| Complex (7-10) | Opus | Sonnet | 25 |
-| Vision/Web | GLM-4.7 | - | 25 |
-
-> **v2.69.0**: GLM-4.7 replaces MiniMax M2.1 as PRIMARY for complexity 1-4 tasks.
 
 ---
 
@@ -1187,34 +815,9 @@ ralph context dev
 # Switch to review mode
 ralph context review
 
-# Switch to research mode
-ralph context research
-
-# Switch to debug mode
-ralph context debug
-
 # Show active context
 ralph context show
-
-# List all contexts
-ralph context list
 ```
-
-### Context Files
-
-Contexts are defined in `~/.claude/contexts/`:
-
-```
-~/.claude/contexts/
-├── dev.md       # Development context definition
-├── review.md    # Code review context definition
-├── research.md  # Research context definition
-└── debug.md     # Debugging context definition
-```
-
-### Hook Integration
-
-The `context-injector.sh` hook automatically injects the active context at session start.
 
 ---
 
@@ -1222,7 +825,7 @@ The `context-injector.sh` hook automatically injects the active context at sessi
 
 ### Overview
 
-Eval-Driven Development (EDD) treats AI code quality evals as "unit tests for AI development". Inspired by the concept that evals should be first-class citizens in AI-assisted programming.
+Eval-Driven Development (EDD) treats AI code quality evals as "unit tests for AI development".
 
 ### Key Metrics
 
@@ -1241,51 +844,9 @@ edd list
 # Run a specific eval
 edd run <eval-name>
 
-# Run all evals in a category
-edd run-category testing
-
 # Show eval results
 edd results
-
-# Create new eval
-edd create <eval-name>
 ```
-
-### Eval Definition Format
-
-Evals are defined in `~/.claude/evals/`:
-
-```yaml
----
-name: error-handling-basic
-category: error_handling
-difficulty: easy
-pass_criteria: |
-  - Must use try/catch
-  - Must log errors
-  - Must return meaningful error messages
----
-
-# Error Handling Eval
-
-Given a function that makes an API call, add proper error handling.
-
-## Input
-```python
-def fetch_user(user_id):
-    response = requests.get(f"/api/users/{user_id}")
-    return response.json()
-```
-
-## Expected Behavior
-- Handle network errors
-- Handle JSON parsing errors
-- Return structured error response
-```
-
-### EDD Skill
-
-The `eval-harness.md` skill provides guidance for implementing EDD in your workflow.
 
 ---
 
@@ -1309,62 +870,9 @@ ralph plan reset
 
 # Show archived plans history
 ralph plan history
-ralph plan history 5    # Last 5 plans
 
 # Restore from archive
 ralph plan restore <archive-id>
-ralph plan restore plan-20260123-
-```
-
-### Lifecycle Flow
-
-```
-┌──────────┐    ┌──────────┐    ┌──────────┐
-│  START   │───▶│ EXECUTE  │───▶│ COMPLETE │
-│  (new)   │    │(progress)│    │(all done)│
-└──────────┘    └──────────┘    └────┬─────┘
-                                     │
-                                     ▼
-                            ┌──────────────┐
-                            │   ARCHIVE    │
-                            │ (save + tag) │
-                            └──────┬───────┘
-                                   │
-            ┌──────────────────────┼──────────────────┐
-            │                      │                  │
-            ▼                      ▼                  │
-     ┌──────────┐          ┌──────────┐              │
-     │  RESET   │          │ RESTORE  │◀─────────────┘
-     │(fresh)   │          │(rollback)│
-     └──────────┘          └──────────┘
-```
-
-### Archive Storage
-
-Plans are archived to `~/.ralph/archive/plans/` with metadata:
-
-```json
-{
-  "_archive_metadata": {
-    "archived_at": "2026-01-23T15:46:20Z",
-    "description": "User provided description",
-    "source": ".claude/plan-state.json"
-  }
-}
-```
-
-### Task Primitive Sync (v2.65.1)
-
-The `task-primitive-sync.sh` hook automatically syncs Claude's TaskCreate/TaskUpdate/TaskList operations with `plan-state.json`:
-
-- **Auto-detection**: Detects v1 (array) vs v2 (object) format automatically
-- **Unidirectional sync**: Claude Tasks → plan-state.json (plan-state is source of truth)
-- **Progress tracking**: Enables statusline to show correct progress
-
-```
-Claude TaskCreate → Hook → plan-state.json → StatusLine
-                                ↑
-Claude TaskUpdate → Hook ───────┘
 ```
 
 ---
@@ -1404,11 +912,6 @@ ralph health                 # Full health report
 ralph health --compact       # One-line summary
 ralph health --json          # JSON output
 ralph health --fix           # Auto-fix critical issues
-
-# Learning system (v2.59)
-ralph-feedback record --rule-id err-001 --used-in task-123
-ralph-feedback complete --rule-id err-001 --success true
-ralph-feedback calibrate     # Run confidence calibration
 ```
 
 ### Repository Learning Commands
@@ -1416,7 +919,6 @@ ralph-feedback calibrate     # Run confidence calibration
 ```bash
 # Learn from GitHub repo
 repo-learn https://github.com/python/cpython
-repo-learn https://github.com/fastapi/fastapi --category error_handling
 
 # Curator pipeline
 ralph curator full --type backend --lang typescript
@@ -1428,81 +930,18 @@ ralph curator approve nestjs/nest
 ralph curator learn --all
 ```
 
-### Checkpoint Commands (v2.51)
+### Swarm Mode Commands (v2.81.0)
 
 ```bash
-# Save state before risky operation
-ralph checkpoint save "before-auth-refactor" "Pre-auth changes"
+# Configure swarm mode
+bash tests/swarm-mode/configure-swarm-mode.sh
 
-# List all checkpoints
-ralph checkpoint list
+# Verify swarm mode
+bash tests/swarm-mode/test-swarm-mode-config.sh
 
-# Restore if something goes wrong
-ralph checkpoint restore "before-auth-refactor"
-
-# Compare checkpoint vs current
-ralph checkpoint diff "before-auth-refactor"
-```
-
-### Event-Driven Engine Commands (v2.51)
-
-```bash
-# Emit an event
-ralph events emit step.complete '{"step_id": "step1"}'
-
-# Subscribe to events
-ralph events subscribe phase.complete /path/to/handler.sh
-
-# Check barrier status (WAIT-ALL)
-ralph events barrier check phase-1
-ralph events barrier wait phase-1 300
-
-# Advance to next phase
-ralph events advance phase-2
-
-# View event history
-ralph events history 20
-```
-
-### Observability Commands (v2.52)
-
-```bash
-# Full orchestration status
-ralph status
-ralph status --compact       # One-line summary
-ralph status --steps         # Detailed breakdown
-ralph status --json          # JSON for scripts
-
-# Traceability
-ralph trace show 30          # Recent events
-ralph trace search "handoff" # Search events
-ralph trace timeline         # Visual timeline
-ralph trace export csv ./report.csv
-ralph trace summary          # Session summary
-```
-
-### Schema Migration Commands (v2.51)
-
-```bash
-# Check if migration needed
-ralph migrate check
-
-# Execute migration
-ralph migrate run
-
-# Preview migration
-ralph migrate dry-run
-```
-
-### Security Commands
-
-```bash
-# Security audit
-ralph security src/          # Full audit
-ralph security-loop src/     # Iterative audit
-
-# Security tools installation
-install-security-tools.sh    # Install semgrep, gitleaks
+# Use swarm mode
+/orchestrator "task"  # Spawns teammates automatically
+/loop "task"          # Can spawn teammates if needed
 ```
 
 ---
@@ -1512,21 +951,20 @@ install-security-tools.sh    # Install semgrep, gitleaks
 ```
 EXECUTE → VALIDATE → Quality Passed?
                           ↓ NO
-                      ITERATE (max 25)
+                      ITERATE (max 50)
                           ↓
                     Back to EXECUTE
 ```
 
 `VERIFIED_DONE` = plan approved + MUST_HAVE answered + classified + implemented + gates passed + retrospective done
 
-### Iteration Limits (v2.69.0)
+### Iteration Limits (v2.81.0)
 
 | Model | Max Iterations | Use Case | Status |
 |-------|----------------|----------|--------|
-| Claude (Sonnet/Opus) | **25** | Complex reasoning (7-10) | PRIMARY |
-| Codex GPT-5.2 | **25** | Code analysis, deep review | PRIMARY |
-| **GLM-4.7** | **50** | Economic tasks (1-4) | **PRIMARY** |
-| MiniMax M2.1 | 30 | Legacy fallback only | DEPRECATED |
+| **GLM-4.7** | **50** | All tasks (PRIMARY) | **PRIMARY** |
+| Codex GPT-5.2 | **25** | Security, performance | SPECIALIZED |
+| Gemini 2.5 Pro | **25** | Cross-validation | OPTIONAL |
 
 ---
 
@@ -1558,9 +996,9 @@ Stage 3: CONSISTENCY → Linting (ADVISORY - not blocking)
 
 ### Overview (v2.62)
 
-Multi-Agent Ralph Loop fully integrates with Claude Code's **Task Primitive** architecture, migrating from the deprecated `TodoWrite` tool to the modern `TaskCreate`, `TaskUpdate`, and `TaskList` tools. This enables:
+Multi-Agent Ralph Loop fully integrates with Claude Code's **Task Primitive** architecture, enabling:
 
-- **Unidirectional Sync**: Local `plan-state.json` (source of truth) syncs to Claude Code's global task storage
+- **Unidirectional Sync**: Local `plan-state.json` syncs to Claude Code's global task storage
 - **Parallelization Detection**: Auto-detect independent tasks that can run concurrently
 - **Verification Subagents**: Automatic verification spawning after step completion
 - **Context Hiding**: Reduce context pollution with background execution
@@ -1569,139 +1007,9 @@ Multi-Agent Ralph Loop fully integrates with Claude Code's **Task Primitive** ar
 
 | Hook | Trigger | Purpose |
 |------|---------|---------|
-| `global-task-sync.sh` | PostToolUse (TaskUpdate, TaskCreate) | Unidirectional sync: plan-state → `~/.claude/tasks/<session>/` |
+| `global-task-sync.sh` | PostToolUse (TaskUpdate, TaskCreate) | Unidirectional sync: plan-state → global storage |
 | `task-orchestration-optimizer.sh` | PreToolUse (Task) | Detect parallelization and context-hiding opportunities |
 | `verification-subagent.sh` | PostToolUse (TaskUpdate) | Spawn verification subagent after step completion |
-
-### Unidirectional Task Sync (v2.66.0+)
-
-The `global-task-sync.sh` hook implements **unidirectional** synchronization where `plan-state.json` is the single source of truth:
-
-```
-Local Plan-State                    Global Task Storage
-┌────────────────────┐              ┌────────────────────┐
-│ .claude/           │   ──────→   │ ~/.claude/tasks/   │
-│   plan-state.json  │    SYNC      │   <session>/       │
-│  (Source of Truth) │              │     1.json, 2.json │
-└────────────────────┘              └────────────────────┘
-```
-
-**Features**:
-- Session ID detection from `INPUT.session_id` (canonical), `$CLAUDE_SESSION_ID`, plan_id, or fallback
-- Atomic writes with `mkdir`-based portable locking (HIGH-002 fix)
-- Individual task files (`1.json`, `2.json`) instead of monolithic `tasks.json`
-- Status mapping: `completed`/`verified` → `completed`, `in_progress` → `in_progress`, else → `pending`
-
-**Task Format Conversion**:
-```json
-{
-  "session_id": "ralph-20260123-12345",
-  "task": "Implement OAuth2 authentication",
-  "tasks": [
-    {
-      "id": "step1",
-      "subject": "Setup JWT middleware",
-      "status": "completed",
-      "agent": "@security-auditor",
-      "verification": { "status": "passed" }
-    }
-  ],
-  "source": "ralph-v2.62"
-}
-```
-
-### Parallelization Detection
-
-The `task-orchestration-optimizer.sh` hook detects opportunities for parallel execution:
-
-**Detection Criteria**:
-1. **Parallel Phase**: Current phase has `execution_mode: "parallel"`
-2. **Multiple Pending**: 2+ pending tasks in the same phase
-3. **No Dependencies**: Tasks are independent
-
-**Optimization Suggestions**:
-```
-⚡ Parallelization Opportunity Detected
-3 independent tasks can run in parallel:
-- Setup JWT middleware, Configure OAuth providers, Add refresh tokens
-
-Consider launching multiple Task tools in a single message.
-```
-
-**Additional Optimizations**:
-- **Context-Hiding**: Suggests `run_in_background: true` for prompts > 2000 chars
-- **Model Optimization**: Suggests sonnet for complexity < 5 when opus is used
-- **Pending Verifications**: Warns about unverified steps before proceeding
-
-### Verification Subagent Pattern
-
-The `verification-subagent.sh` hook implements Claude Code's verification pattern:
-
-```
-Step Completed → Check Verification Required → Spawn Subagent
-       ↓                    ↓                        ↓
-   TaskUpdate       Complexity ≥ 7?           Task tool with:
-   status:           OR explicit              - subagent_type: reviewer
-   completed         OR security-related      - run_in_background: true
-                                              - model: sonnet
-```
-
-**Auto-Verification Triggers**:
-| Trigger | Verification Agent |
-|---------|-------------------|
-| Complexity ≥ 7 | `code-reviewer` |
-| Security keywords (auth, token, encrypt) | `security-auditor` |
-| Test keywords (test, spec, coverage) | `test-architect` |
-| Explicit `verification.required: true` | Configured agent |
-
-**Verification Prompt Template**:
-```
-Verify the implementation of step '<step-name>'. Check for:
-1. Correctness - Does it meet requirements?
-2. Quality - Is the code clean and maintainable?
-3. Security - Are there any vulnerabilities?
-4. Edge cases - Are edge cases handled?
-
-Report findings concisely.
-```
-
-### Migration from TodoWrite
-
-The Task Primitive replaces the deprecated `TodoWrite` tool:
-
-| Old (TodoWrite) | New (Task Primitive) | Benefit |
-|-----------------|---------------------|---------|
-| Single-session scope | Global session storage | Persistence across restarts |
-| No sync | Unidirectional sync (plan-state → global) | Multi-agent awareness |
-| Manual verification | Auto-verification hooks | Quality assurance |
-| Sequential only | Parallel detection | Performance optimization |
-| No background | Context-hiding support | Reduced context pollution |
-
-**Usage Example**:
-
-```bash
-# Old way (deprecated)
-# TodoWrite with internal task list
-
-# New way (Task Primitive)
-TaskCreate:
-  subject: "Implement authentication"
-  description: "Add JWT-based auth with refresh tokens"
-  activeForm: "Implementing authentication"
-
-TaskUpdate:
-  taskId: "task-123"
-  status: "completed"
-  # → Triggers verification-subagent.sh automatically
-```
-
-### Best Practices
-
-1. **Use TaskCreate for new steps**: Creates proper tracking and enables sync
-2. **Update status via TaskUpdate**: Triggers verification hooks
-3. **Check TaskList before new work**: See global task state
-4. **Enable run_in_background for heavy tasks**: Reduces context pollution
-5. **Let hooks handle verification**: Don't manually verify after each step
 
 ---
 
@@ -1719,26 +1027,9 @@ TaskUpdate:
 | compact | Manual context preservation |
 | orchestrator | Full workflow orchestration |
 | smart-fork | Session forking recommendations |
-| **crafting-effective-readmes** | **README writing with templates & guidance (NEW)** |
+| crafting-effective-readmes | README writing with templates |
 
 **Note**: Additional skills may be available in the global skills directory (~/.claude/skills/).
-
-### Skill Usage
-
-```bash
-# Skills are auto-invoked based on task context
-# Manual invocation:
-Skill: marketing-ideas
-Topic: Social media campaign for product launch
-
-# Smart skill reminder (v2.0) suggests relevant skills
-# based on file context before writing code:
-#
-# Example suggestions:
-# - test_auth.py → "/test-driven-development for test files"
-# - src/auth/login.ts → "/security-loop for security-sensitive code"
-# - components/Button.tsx → "/frontend-mobile-development:frontend-developer for UI components"
-```
 
 ---
 
@@ -1754,10 +1045,14 @@ Topic: Social media campaign for product launch
 ./tests/run_tests.sh hooks          # Hook tests
 ./tests/run_tests.sh memory         # Memory tests
 ./tests/run_tests.sh security       # Security tests
+./tests/run_tests.sh quality        # Quality gate tests
 
-# Run individual test
-python -m pytest tests/test_learning_system.py -v
-bash tests/test_v2_47_smart_memory.py
+# Run swarm mode tests (v2.81.0)
+bash tests/swarm-mode/test-swarm-mode-config.sh
+
+# Run skills validation (v2.81.0)
+bash .claude/scripts/validate-global-skills.sh
+bash .claude/scripts/validate-all-orchestrator-skills.sh
 ```
 
 ### Test Categories
@@ -1769,56 +1064,268 @@ bash tests/test_v2_47_smart_memory.py
 | Security Tests | `tests/test_security_*.py` | 8+ | Security validation, scanning |
 | Integration Tests | `tests/test_v2_*.py` | 20+ | Full workflow integration |
 | Quality Tests | `tests/test_quality_*.py` | 12+ | Linting, type checking |
+| Swarm Mode Tests | `tests/swarm-mode/` | 44 | v2.81.0 swarm mode validation |
+| Skills Validation | `.claude/scripts/validate-*.sh` | 33+ | v2.81.0 skills validation |
 | Learning System | `tests/test_learning_system.py` | 39 | v2.59 learning system |
 
-### Test Coverage
+### Skills Validation System (v2.81.0) ✅ NEW
+
+Multi-Agent Ralph Loop includes a comprehensive validation system for all 33 project skills, ensuring they work correctly across different repositories.
+
+#### Skills Validation Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    SKILLS VALIDATION SYSTEM                    │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Repository (.claude/skills/)                                    │
+│  ├─ adversarial/                                                 │
+│  ├─ codex-cli/                                                   │
+│  ├─ gemini-cli/                                                  │
+│  ├─ orchestrator/                                                │
+│  ├─ loop/                                                        │
+│  └─ ... (29 more skills)                                         │
+│         ↓                                                         │
+│  Symlink Synchronization                                         │
+│  ~/.claude-sneakpeek/zai/config/skills/{skill} → repo           │
+│         ↓                                                         │
+│  Validation Scripts                                             │
+│  ├─ validate-global-skills.sh (3 core skills)                   │
+│  └─ validate-all-orchestrator-skills.sh (all 33 skills)         │
+│         ↓                                                         │
+│  Test Coverage                                                   │
+│  ✓ Versioned in repository (33/33)                              │
+│  ✓ Available globally (33/33)                                   │
+│  ✓ Accessible from any directory (33/33)                        │
+│  ✓ Following naming conventions (33/33)                         │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Skills Validation Tests
+
+**Test 1: Repository Versioning**
+- Validates all skills are versioned in `.claude/skills/`
+- Checks for `skill.md` files
+- Ensures no broken symlinks in repo
+
+**Test 2: Global Installation**
+- Verifies symlinks in `~/.claude-sneakpeek/zai/config/skills/`
+- Validates symlink targets point to repository
+- Checks for accessibility
+
+**Test 3: Core Orchestrator Skills**
+- Tests 10 core skills used by `/orchestrator`
+- Ensures proper configuration
+- Validates documentation exists
+
+**Test 4: Cross-Repository Accessibility**
+- Creates temporary directory
+- Tests skills are accessible from outside repo
+- Simulates usage in different projects
+
+**Test 5: Configuration Inconsistencies**
+- Detects skills versioned but not globally available
+- Finds skills globally available but not versioned
+- Reports synchronization issues
+
+**Test 6: Naming Conventions**
+- Validates `skill.md` naming (not `SKILL.md` or `skill.yaml`)
+- Ensures consistency across all skills
+
+#### Running Skills Validation
 
 ```bash
-# Generate coverage report
-./tests/run_tests.sh --coverage
+# Quick validation (3 core skills: adversarial, codex-cli, gemini-cli)
+bash .claude/scripts/validate-global-skills.sh
 
-# View coverage
-cat .coverage/index.html
+# Complete validation (all 33 skills)
+bash .claude/scripts/validate-all-orchestrator-skills.sh
 ```
 
----
+#### Expected Output
 
-## Code Examples
+```
+=========================================
+🔍 Multi-Agent Ralph Loop Skills Validator
+=========================================
 
-Supabase Authentication Examples (v2.73.0) - NEW
+📊 Repository Skills: 33 total
+🎯 Core Orchestrator Skills: 10
 
-Complete examples for implementing email/password authentication with Supabase:
+=========================================
+📋 Test 1: Skills Versioned in Repository
+=========================================
 
-| Example | Location | Description |
-|---------|----------|-------------|
-| Core Auth Functions | `docs/examples/supabase-auth/supabase-auth-example.ts` | Sign up, sign in, sign out, password reset |
-| React Hook | `docs/examples/supabase-auth/supabase-react-hook.tsx` | React Hook for auth state management |
-| Documentation | `docs/examples/supabase-auth/README.md` | Complete usage guide |
+  ✓ adversarial (versioned)
+  ✓ codex-cli (versioned)
+  ✓ gemini-cli (versioned)
+  ✓ orchestrator (versioned)
+  ... (29 more)
 
-**Quick Start**:
+Summary: 33/33 skills properly versioned
 
-```typescript
-import { createClient } from '@supabase/supabase-js'
+=========================================
+📋 Test 2: Skills Installed Globally
+=========================================
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+  ✓ adversarial (symlink → repo)
+  ✓ codex-cli (symlink → repo)
+  ✓ gemini-cli (symlink → repo)
+  ... (30 more)
 
-// Sign up
-const { data, error } = await supabase.auth.signUp({
-  email: 'user@example.com',
-  password: 'securePassword123',
-})
+Summary: 33/33 skills available globally
 
-// Sign in
-const { data, error } = await supabase.auth.signInWithPassword({
-  email: 'user@example.com',
-  password: 'securePassword123',
-})
+=========================================
+📊 Final Summary
+=========================================
 
-// Sign out
-await supabase.auth.signOut()
+Repository:
+  Total skills: 33
+  Versioned: 33
+  With skill.md: 33
+
+Global Installation:
+  Available globally: 33
+  Symlinked to repo: 33
+
+Core Orchestrator Skills:
+  Total: 10
+  Configured: 10
+  Issues: 0
+
+✅ ALL TESTS PASSED!
 ```
 
-**Full Documentation**: [docs/examples/supabase-auth/README.md](docs/examples/supabase-auth/README.md)
+#### Validated Skills
+
+**Core Orchestrator Skills (10/33)**
+- ✅ `orchestrator` - Main orchestration workflow
+- ✅ `task-classifier` - 3-dimension task classification
+- ✅ `adversarial` - Multi-agent adversarial analysis
+- ✅ `codex-cli` - OpenAI Codex CLI integration
+- ✅ `gemini-cli` - Google Gemini CLI integration
+- ✅ `loop` - Iterative execution until VERIFIED_DONE
+- ✅ `parallel` - Parallel task execution
+- ✅ `gates` - Quality gates validation
+- ✅ `clarify` - Intensive AskUserQuestion workflow
+- ✅ `retrospective` - Post-task analysis
+
+**Additional Skills (23/33)**
+- ✅ `ask-questions-if-underspecified`
+- ✅ `attack-mutator`
+- ✅ `audit`
+- ✅ `bugs`
+- ✅ `code-reviewer`
+- ✅ `compact`
+- ✅ `context7-usage`
+- ✅ `crafting-effective-readmes`
+- ✅ `defense-profiler`
+- ✅ `edd`
+- ✅ `glm-mcp`
+- ✅ `kaizen`
+- ✅ `minimax`
+- ✅ `minimax-mcp-usage`
+- ✅ `openai-docs`
+- ✅ `quality-gates-parallel`
+- ✅ `security`
+- ✅ `smart-fork`
+- ✅ `tap-explorer`
+- ✅ `task-visualizer`
+- ✅ `testing-anti-patterns`
+- ✅ `vercel-react-best-practices`
+- ✅ `worktree-pr`
+
+#### Skills Pattern
+
+All skills follow this synchronization pattern:
+
+```
+┌──────────────────────────────────────────────┐
+│  Repository (.claude/skills/{skill}/)        │
+│  ├─ skill.md (documentation)                │
+│  ├─ references/ (optional docs)              │
+│  └─ *.sh (optional scripts)                  │
+└──────────────────┬───────────────────────────┘
+                   │ Symlink
+                   ▼
+┌──────────────────────────────────────────────┐
+│  Global (~/.claude-sneakpeek/.../skills/)    │
+│  └─ {skill} → repository                    │
+└──────────────────────────────────────────────┘
+```
+
+**Benefits**:
+- Skills work in **any repository**
+- Changes in repo automatically reflected globally
+- Version controlled documentation
+- Consistent across all projects
+
+#### Testing Skills in Other Repositories
+
+After validation, test skills in a different repository:
+
+```bash
+cd ~/GitHub/other-project
+
+# All skills should work:
+/adversarial src/
+/codex-cli "Review this code"
+/gemini-cli "Search latest docs"
+/orchestrator "Implement feature X"
+```
+
+#### Troubleshooting Skills
+
+**Skill not found in other repo:**
+
+```bash
+# Check global symlink
+ls -la ~/.claude-sneakpeek/zai/config/skills/{skill}
+
+# Verify target exists
+readlink ~/.claude-sneakpeek/zai/config/skills/{skill}
+
+# Re-run validation
+bash .claude/scripts/validate-all-orchestrator-skills.sh
+```
+
+**Skill documentation missing:**
+
+```bash
+# Check skill.md exists
+cat .claude/skills/{skill}/skill.md
+
+# If missing, create from template
+cp .claude/skills/adversarial/skill.md .claude/skills/{skill}/
+```
+
+#### CI/CD Integration
+
+Add skills validation to your CI/CD pipeline:
+
+```yaml
+# .github/workflows/skills-validation.yml
+name: Skills Validation
+
+on: [push, pull_request]
+
+jobs:
+  validate-skills:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Validate All Skills
+        run: |
+          bash .claude/scripts/validate-all-orchestrator-skills.sh
+```
+
+#### Documentation
+
+- [Skills CLAUDE.md](.claude/skills/CLAUDE.md) - Skills directory documentation
+- [Validation Script](.claude/scripts/validate-all-orchestrator-skills.sh) - Complete validator
+- [Skills Pattern](CLAUDE.md#repository-structure-v2810) - Architecture documentation
 
 ---
 
@@ -1826,31 +1333,21 @@ await supabase.auth.signOut()
 
 ### Global Installation
 
-The system is designed for **global installation** via Claude Code:
-
 ```bash
 # 1. Clone repository
-git clone https://github.com/your-org/multi-agent-ralph-loop.git
+git clone https://github.com/alfredolopez80/multi-agent-ralph-loop.git
 cd multi-agent-ralph-loop
 
-# 2. Run installer (one-time)
+# 2. Run installer
 ./install.sh
 
-# 3. Restart Claude Code
-# New hooks, agents, and commands are now available
-```
+# 3. Configure Swarm Mode (v2.81.0)
+bash tests/swarm-mode/configure-swarm-mode.sh
 
-### Updating
+# 4. Verify Swarm Mode
+bash tests/swarm-mode/test-swarm-mode-config.sh
 
-```bash
-# Pull latest changes
-git pull origin main
-
-# Re-run installer (preserves settings)
-./install.sh
-
-# Or update specific components
-ralph sync global  # Sync global configuration
+# 5. Restart Claude Code
 ```
 
 ### Configuration Locations
@@ -1858,7 +1355,8 @@ ralph sync global  # Sync global configuration
 | Component | Location |
 |-----------|----------|
 | Global Settings | `~/.claude/settings.json` |
-| Global Hooks | `~/.claude/hooks/*.sh` (67 bash + 1 python) |
+| Zai Settings | `~/.claude-sneakpeek/zai/config/settings.json` |
+| Global Hooks | `~/.claude/hooks/*.sh` (74 files) |
 | Global Agents | `~/.claude/agents/*.md` (35 files) |
 | Global Skills | `~/.claude/skills/*/` |
 | Ralph Config | `~/.ralph/` |
@@ -1868,22 +1366,36 @@ ralph sync global  # Sync global configuration
 
 ## Troubleshooting
 
+### Swarm Mode Not Working
+
+**Error**: Teammates not spawning
+
+**Solution**:
+```bash
+# Verify configuration
+bash tests/swarm-mode/test-swarm-mode-config.sh
+
+# Check agent environment variables
+cat ~/.claude-sneakpeek/zai/config/settings.json | jq '.env'
+
+# Reconfigure if needed
+bash tests/swarm-mode/configure-swarm-mode.sh
+```
+
 ### Hooks Not Firing
 
 **Error**: Hooks not executing on expected events
 
 **Solution**:
-1. Check hook is registered in `~/.claude/settings.json`
-2. Verify matcher pattern matches the tool name
-3. Check hook has execute permissions: `chmod +x ~/.claude/hooks/*.sh`
-4. Review hook logs: `tail -50 ~/.ralph/logs/*.log`
-
 ```bash
 # Verify hook registration
 cat ~/.claude/settings.json | jq '.hooks.PostToolUse[].hooks[].command'
 
 # Check hook permissions
 ls -la ~/.claude/hooks/quality-gates-v2.sh
+
+# Review hook logs
+tail -50 ~/.ralph/logs/*.log
 ```
 
 ### Quality Gates Failing
@@ -1891,68 +1403,12 @@ ls -la ~/.claude/hooks/quality-gates-v2.sh
 **Error**: Quality gates blocking valid code
 
 **Solution**:
-1. Check which stage is failing: CORRECTNESS, QUALITY, or CONSISTENCY
-2. Review specific error message
-3. Some stages are ADVISORY (CONSISTENCY) and don't block
-
 ```bash
 # Run gates with verbose output
 /gates --verbose
 
-# Skip consistency check (not recommended for production)
+# Skip consistency check (not recommended)
 /gates --no-consistency
-```
-
-### Memory Search Not Returning Results
-
-**Error**: Smart memory search returns empty context
-
-**Solution**:
-1. Verify claude-mem MCP is configured
-2. Check memory files exist
-3. Review search logs
-
-```bash
-# Check memory files
-ls -la ~/.ralph/memory/
-ls -la ~/.ralph/episodes/
-
-# Test memory search manually
-ralph memory-search "test query"
-
-# Check claude-mem MCP
-claude-mem search "test query"
-```
-
-### Context Preservation Issues
-
-**Error**: Session context lost after compaction
-
-**Solution**:
-1. Verify ledger was created: `ls ~/.ralph/ledgers/`
-2. Check SessionStart hook is registered
-3. Review ledger content
-
-```bash
-# List recent ledgers
-ls -la ~/.ralph/ledgers/ | tail -10
-
-# View ledger content
-cat ~/.ralph/ledgers/CONTINUITY_RALPH-*.md | head -50
-```
-
-### Installation Failures
-
-**Error**: install.sh fails with missing dependencies
-
-**Solution**:
-```bash
-# Install required dependencies
-brew install jq curl git
-
-# Retry installation
-./install.sh --dry-run  # Preview first
-./install.sh
 ```
 
 ---
@@ -1963,32 +1419,25 @@ brew install jq curl git
 
 ```bash
 # Fork the repository
-# Clone your fork
 git clone https://github.com/YOUR-USER/multi-agent-ralph-loop.git
 cd multi-agent-ralph-loop
 
 # Create feature branch
-git checkout -b feature/new-hook
+git checkout -b feature/swarm-mode-improvement
 
 # Make changes
 # ...
 
 # Test changes
 ./tests/run_tests.sh
+bash tests/swarm-mode/test-swarm-mode-config.sh
 
 # Commit (use conventional commits)
-git commit -m "feat(hooks): add new security hook"
+git commit -m "feat(swarm): add new swarm coordination feature"
 
 # Push and create PR
-git push origin feature/new-hook
+git push origin feature/swarm-mode-improvement
 ```
-
-### Adding New Hooks
-
-1. Create hook script in `~/.claude/hooks/`
-2. Add to `~/.claude/settings.json` under appropriate event type
-3. Add tests in `tests/test_hooks_*.py`
-4. Document in CLAUDE.md and AGENTS.md
 
 ### Code Style
 
@@ -2013,12 +1462,12 @@ This project is licensed under the BSL 1.1 License.
 | CLAUDE.md | [Project Instructions](CLAUDE.md) |
 | AGENTS.md | [Agent Documentation](AGENTS.md) |
 | CHANGELOG.md | [Version History](CHANGELOG.md) |
-| Architecture | [docs/ARCHITECTURE_DIAGRAM_v2.52.0.md](docs/ARCHITECTURE_DIAGRAM_v2.52.0.md) |
-| Security | [docs/SECURITY-SUMMARY.md](docs/SECURITY-SUMMARY.md) |
-| Archived Audits | [.claude/archive/](`.claude/archive/`) |
+| Swarm Mode Guide | [Spanish Guide](tests/swarm-mode/COMO_USAR_SWARM_MODE_CLAUDE_ZAI.md) |
+| Architecture | [docs/architecture/](docs/architecture/) |
+| Security | [docs/security/](docs/security/) |
 
 ---
 
-**Version**: 2.79.0
-**Last Updated**: 2026-01-28
-**Next Review**: 2026-02-28
+**Version**: 2.81.0
+**Last Updated**: 2026-01-29
+**Next Review**: 2026-02-29
