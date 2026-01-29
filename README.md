@@ -2,13 +2,13 @@
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-![Version](https://img.shields.io/badge/v2.80.0-blue) ![Tests](https://img.shields.io/badge/945_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange) ![GLM-4.7](https://img.shields.io/badge/GLM--4.7-PRIMARY-green)
+![Version](https://img.shields.io/badge/v2.80.9-blue) ![Tests](https://img.shields.io/badge/945_tests-passing-brightgreen) ![License](https://img.shields.io/badge/BSL_1.1-orange) ![GLM-4.7](https://img.shields.io/badge/GLM--4.7-PRIMARY-green)
 
 ---
 
-## 🐛 Recent Bug Fixes (v2.70.0 - v2.80.0)
+## 🐛 Recent Bug Fixes (v2.70.0 - v2.80.9)
 
-### GLM Usage Cache Optimization (v2.80.0) ✅ LATEST
+### GLM Usage Cache Optimization (v2.80.9) ✅ LATEST
 
 **Overview**: Optimized GLM usage tracking with single-pass JSON parsing and improved performance.
 
@@ -40,7 +40,7 @@
 | **Tokens (5h)** | `⏱️ 11% (~5h)` | 🟢<75%, 🟡≥75%, 🔴≥85% |
 | **MCP (monthly)** | `🔧 4% MCP (182/4000)` | 🔵<75%, 🟡≥75% |
 
-### Statusline Simplification (v2.79.0)
+### Statusline Simplification (v2.80.9)
 
 **Overview**: Unified context display by removing redundant information for a cleaner, more concise statusline.
 
@@ -202,9 +202,9 @@ After:  {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecisi
 
 ---
 
-## 🚀 Improvements (v2.80.0)
+## 🚀 Improvements (v2.80.9)
 
-### Z.ai Coding Plugins Integration (v2.80.0) ✅ NEW
+### Z.ai Coding Plugins Integration (v2.80.9) ✅ NEW
 
 **Overview**: Integrated Z.ai Coding Plugins marketplace for GLM Coding Plan usage tracking and feedback.
 

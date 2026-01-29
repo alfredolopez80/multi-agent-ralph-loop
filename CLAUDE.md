@@ -1,10 +1,10 @@
-# Multi-Agent Ralph v2.78.10
+# Multi-Agent Ralph v2.80.9
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
 **Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, **GLM-4.7 PRIMARY**, **Dual Context Display System**, and **full CLI implementation**.
 
-> **v2.78.10**: Statusline now implements dual context display showing both cumulative session progress AND current window usage with project-specific caching. GLM-4.7 remains **PRIMARY** for complexity 1-4 tasks. Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) and [claude-code-docs](https://github.com/ericbuess/claude-code-docs).
+> **v2.80.9**: Statusline now implements dual context display showing both cumulative session progress AND current window usage with project-specific caching. GLM-4.7 remains **PRIMARY** for complexity 1-4 tasks. Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) and [claude-code-docs](https://github.com/ericbuess/claude-code-docs).
 
 ---
 
@@ -230,7 +230,7 @@ curl -fsSL https://raw.githubusercontent.com/ericbuess/claude-code-docs/main/ins
 
 ---
 
-## Dual Context Display System (v2.78.10) - NEW
+## Dual Context Display System (v2.80.9) - NEW
 
 Comprehensive context monitoring with dual metric display addressing unreliable Claude Code 2.1.19 context window fields.
 
