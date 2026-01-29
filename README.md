@@ -996,7 +996,7 @@ Claude Code hooks execute at specific lifecycle events:
 | `@orchestrator` | **glm-4.7** | Coordinator, planning, classification, delegation | PRIMARY |
 | `@security-auditor` | **codex** | Security, vulnerability scan (high-level) | SPECIALIZED |
 | `@debugger` | **glm-4.7** | Debugging, error analysis, fix generation | PRIMARY |
-| `@code-reviewer` | **codex** | Code review, pattern analysis (high-level) | SPECIALIZED |
+| `@code-reviewer` | **glm-4.7** | Code review, pattern analysis | PRIMARY → Codex SECONDARY |
 | `@performance-reviewer` | **codex** | Performance analysis, optimization | SPECIALIZED |
 | `@test-architect` | **glm-4.7** | Testing, test generation, coverage analysis | PRIMARY |
 | `@refactorer` | **glm-4.7** | Refactoring, pattern application | PRIMARY |

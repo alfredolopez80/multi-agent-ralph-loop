@@ -99,7 +99,15 @@ mmc --query "Analyze this code"
 - **Web search**: Can verify against current documentation
 - **Independent perspective**: Chinese LLM provides diverse viewpoint
 
-## Core Orchestration Agents (v2.50)
+## Core Orchestration Agents (v2.80.9)
+
+| Agent | Model | Purpose | Priority |
+|-------|-------|---------|----------|
+| `@orchestrator` | glm-4.7 | Main orchestration workflow | PRIMARY |
+| `@security-auditor` | codex | Security-focused review | SPECIALIZED |
+| `@debugger` | glm-4.7 | Bug detection and fixes | PRIMARY |
+| `@code-reviewer` | glm-4.7 → codex | Code quality, patterns, best practices | PRIMARY → SECONDARY |
+| `@performance-reviewer` | codex | Performance optimization | SPECIALIZED |
 
 | Agent | Model | Purpose |
 |-------|-------|---------|
