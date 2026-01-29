@@ -1,4 +1,8 @@
 #!/bin/bash
+# NOTE: Ralph memory system deprecated - using claude-mem MCP only
+# This hook is temporarily disabled pending migration to claude-mem
+echo "{"decision": "approve", "suppressOutput": true}"
+exit 0
 # smart-memory-search.sh - v2.68.26 Smart Memory-Driven Orchestration (GLM-4.7 Enhanced)
 # Hook: PreToolUse (Task - before orchestration)
 # Purpose: PARALLEL search across all memory sources for relevant context

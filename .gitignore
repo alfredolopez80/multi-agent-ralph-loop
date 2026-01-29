@@ -209,6 +209,8 @@ tmp-review/
 # Playwright screenshots and artifacts
 .playwright/
 .playwright-mcp/
+.claude/quality-results
+.claude/progress.md
 
 # External project directories
 apps/

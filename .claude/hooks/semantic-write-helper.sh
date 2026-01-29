@@ -1,4 +1,8 @@
 #!/bin/bash
+# NOTE: Ralph memory system deprecated - using claude-mem MCP only
+# This hook is temporarily disabled pending migration to claude-mem
+echo "{"decision": "approve", "suppressOutput": true}"
+exit 0
 # Semantic Memory Write Helper (v2.57.4)
 # Hook: Shared library for atomic writes to semantic.json
 # Purpose: Prevent race conditions when multiple hooks write to semantic.json

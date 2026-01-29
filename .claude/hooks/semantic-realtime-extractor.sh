@@ -1,4 +1,8 @@
 #!/bin/bash
+# NOTE: Ralph memory system deprecated - using claude-mem MCP only
+# This hook is temporarily disabled pending migration to claude-mem
+echo "{"decision": "approve", "suppressOutput": true}"
+exit 0
 # Semantic Realtime Extractor (v2.57.4)
 # Hook: PostToolUse (Edit|Write)
 # Purpose: Extract semantic facts in real-time after code changes

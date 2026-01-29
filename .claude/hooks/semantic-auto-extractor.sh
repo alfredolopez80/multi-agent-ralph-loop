@@ -1,4 +1,8 @@
 #!/bin/bash
+# NOTE: Ralph memory system deprecated - using claude-mem MCP only
+# This hook is temporarily disabled pending migration to claude-mem
+echo "{"decision": "approve", "suppressOutput": true}"
+exit 0
 # Semantic Auto-Extractor (v2.55.0)
 # Hook: Stop
 # Purpose: Extract semantic facts from session's code changes

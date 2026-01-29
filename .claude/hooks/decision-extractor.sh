@@ -1,4 +1,8 @@
 #!/bin/bash
+# NOTE: Ralph memory system deprecated - using claude-mem MCP only
+# This hook is temporarily disabled pending migration to claude-mem
+echo "{"decision": "approve", "suppressOutput": true}"
+exit 0
 # Decision Extractor Hook (v2.62.3)
 # Hook: PostToolUse (Edit|Write)
 # Purpose: Extract architectural decisions from code changes
