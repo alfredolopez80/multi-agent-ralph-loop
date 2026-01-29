@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 # Security Real Audit Hook - Actual security analysis
-# VERSION: 1.0.0
+# VERSION: 1.0.1
 # Purpose: Perform real security pattern matching on files
+#
+# FIX v1.0.1: LOW-003 - Added consistent error handling with JSON output
 
 set -euo pipefail
+
+# LOW-003 FIX: Error trap ensures valid JSON output on failure
+trap 'echo "{\"continue\": true}"' ERR EXIT
 
 readonly VERSION="1.0.0"
 
@@ -77,4 +82,6 @@ else
     echo "✅ Security Audit: No obvious security issues found"
 fi
 
+# LOW-003 FIX: Clear trap before normal exit to prevent duplicate JSON
+trap - ERR EXIT
 echo '{"continue": true}'

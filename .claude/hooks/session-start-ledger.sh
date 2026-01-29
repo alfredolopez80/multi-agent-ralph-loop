@@ -60,7 +60,8 @@ get_claude_mem_hints() {
     # Check if claude-mem cache exists and is recent (< 1 hour)
     if [[ -f "$CLAUDE_MEM_CACHE" ]]; then
         local cache_age
-        cache_age=$(($(date +%s) - $(stat -f %m "$CLAUDE_MEM_CACHE" 2>/dev/null || echo 0)))
+        # MEDIUM-001 FIX: Portable stat (macOS/BSD: -f %m, Linux: -c %Y)
+        cache_age=$(($(date +%s) - $(stat -f %m "$CLAUDE_MEM_CACHE" 2>/dev/null || stat -c %Y "$CLAUDE_MEM_CACHE" 2>/dev/null || echo 0)))
         if [[ $cache_age -lt 3600 ]]; then
             hints=$(cat "$CLAUDE_MEM_CACHE" 2>/dev/null || true)
         fi

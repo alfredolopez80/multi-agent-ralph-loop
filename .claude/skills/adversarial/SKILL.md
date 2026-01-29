@@ -231,9 +231,11 @@ Step 7: VALIDATE
 
 ### Invocation
 
+**IMPORTANT**: Use available security agents instead of non-existent `adversarial-code-analyzer`.
+
 ```yaml
 Task:
-  subagent_type: "adversarial-code-analyzer"
+  subagent_type: "security-auditor"
   model: "opus"
   prompt: |
     TARGET_PATH: src/auth/
@@ -243,7 +245,16 @@ Task:
       enable_crescendo: true
       enable_best_of_n: true
 
-    Perform adversarial analysis on the target codebase.
+    Perform comprehensive security audit on the target codebase.
+```
+
+**Alternative for Cross-Validation**:
+```yaml
+# Use codex-cli for second opinion
+/codex-cli analyze security --target src/auth/
+
+# Or use gemini-cli for alternative analysis
+/gemini-cli search security vulnerabilities in src/auth/
 ```
 
 ## Output Format
@@ -274,19 +285,22 @@ Task:
 
 ## CLI Commands
 
+**IMPORTANT**: Use available skills and tools for adversarial analysis:
+
 ```bash
-# Full adversarial analysis
-ralph adversarial-code src/
+# Use security-auditor agent (available)
+Task subagent_type=security-auditor model=opus "Perform comprehensive security audit of src/auth/"
 
-# Targeted analysis
-ralph adversarial-code --category security src/auth/
-ralph adversarial-code --category quality src/utils/
+# Use codex-cli for cross-validation (available)
+/codex-cli analyze security --target src/auth/
 
-# With specific configuration
-ralph adversarial-code --depth 6 --branches 5 --turns 30 src/
+# Use gemini-cli for alternative analysis (available)
+/gemini-cli search "security vulnerabilities SQL injection XSS" --count 10
 
-# Output to file
-ralph adversarial-code src/ --output adversarial-report.json
+# Manual grep-based security scanning
+grep -r "eval\|exec\|system\|innerHTML" src/
+grep -r "SELECT.*WHERE.*\+" src/  # SQL injection patterns
+grep -r "md5\|sha1" src/           # Weak hashing
 ```
 
 ## Best Practices

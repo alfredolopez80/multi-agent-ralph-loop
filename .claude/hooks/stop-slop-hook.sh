@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 # Stop-Slop Hook - Detects AI writing patterns
-# VERSION: 1.0.0
+# VERSION: 1.0.2
 # Purpose: Detect filler phrases and AI writing patterns in prose
+#
+# FIX v1.0.2: LOW-003 - Added consistent error handling with JSON output
+# FIX v1.0.1: HIGH-001 - Fixed ReDoS vulnerability using -F flag for fixed string matching
 
 set -euo pipefail
+
+# LOW-003 FIX: Error trap ensures valid JSON output on failure
+trap 'echo "{\"continue\": true}"' ERR EXIT
 
 readonly VERSION="1.0.0"
 
@@ -33,15 +39,21 @@ if [[ -f "$FILE_PATH" ]]; then
 
     FINDINGS=0
     for phrase in "${FILLER_PHRASES[@]}"; do
-        if grep -qi "$phrase" "$FILE_PATH"; then
+        # HIGH-001 FIX: Use -F for fixed string matching (prevents ReDoS via regex injection)
+        if grep -qiF -- "$phrase" "$FILE_PATH"; then
             FINDINGS=$((FINDINGS + 1))
         fi
     done
 
     if [[ $FINDINGS -gt 0 ]]; then
         echo "⚠️  Stop-Slop: Found $FINDINGS filler phrases"
+        # LOW-003 FIX: Clear trap before normal exit to prevent duplicate JSON
+        trap - ERR EXIT
+        echo '{"continue": true}'
         exit 0
     fi
 fi
 
+# LOW-003 FIX: Clear trap and output success
+trap - ERR EXIT
 echo '{"continue": true}'

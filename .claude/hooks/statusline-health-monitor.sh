@@ -89,7 +89,8 @@ if [[ -f "$PLAN_STATE" ]]; then
 
         # Check 3: Stuck detection
         # Get last update time from file modification
-        PLAN_MTIME=$(stat -f %m "$PLAN_STATE" 2>/dev/null || echo "0")
+        # MEDIUM-001 FIX: Portable stat (macOS/BSD: -f %m, Linux: -c %Y)
+        PLAN_MTIME=$(stat -f %m "$PLAN_STATE" 2>/dev/null || stat -c %Y "$PLAN_STATE" 2>/dev/null || echo "0")
         PLAN_AGE_MINUTES=$(( (NOW - PLAN_MTIME) / 60 ))
 
         # Check if any step is in_progress
