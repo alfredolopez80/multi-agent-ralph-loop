@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
 # Quality Parallel System - End-to-End Test v3 (ROBUST)
-# VERSION: 3.0.0
+# VERSION: 3.0.1 - Fixed JSON input handling
 set -euo pipefail
 
-readonly PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo '.')"
-readonly RESULTS_DIR="${PROJECT_ROOT}/.claude/quality-results"
-readonly TEST_DIR="${PROJECT_ROOT}/.claude/tests/quality-parallel"
+PR=$(git rev-parse --show-toplevel)
+RESULTS_DIR="$PR/.claude/quality-results"
+TEST_DIR="$PR/tests/quality-parallel"
 
 mkdir -p "$TEST_DIR" "$RESULTS_DIR"
+
+# FIX: Clean results directory before starting
+rm -rf "$RESULTS_DIR"/*
 
 echo "🧪 Quality Parallel System - End-to-End Test v3 (ROBUST)"
 echo "================================================================"
 
-# Test 1: Clean File
+# === TEST 1: Clean File ===
 echo ""
 echo "Test 1: Clean File (No Vulnerabilities)"
 echo "-----------------------------------------"
@@ -22,62 +25,75 @@ function add(a, b) { return a + b; }
 module.exports = { add };
 EOF
 
-INPUT_JSON='{"tool_name":"Write","tool_input":{"file_path":"'"$TEST_DIR"'/clean-test.js"}}'
-echo "$INPUT_JSON" | bash "${PROJECT_ROOT}/.claude/hooks/quality-parallel-async.sh > /dev/null 2>&1
+cat > /tmp/test1.json <<EOF
+{"tool_name":"Write","tool_input":{"file_path":"$TEST_DIR/clean-test.js"}}
+EOF
 
-# Get most recent run_id
-LATEST_DONE=$(ls -t "${RESULTS_DIR}"/*.done 2>/dev/null | head -1)
-if [[ -n "$LATEST_DONE" ]]; then
-    RUN_ID=$(basename "$LATEST_DONE" | sed 's/.*_\([0-9]\{8\}_[0-9]\+_[0-9]\+\).*/\1/')
-    RESULTS=$("${PROJECT_ROOT}/.claude/scripts/read-quality-results.sh" "$RUN_ID" 2>&1)
-    FINDINGS=$(echo "$RESULTS" | jq -r '.summary.total_findings // 0' 2>/dev/null || echo "0")
+bash "$PR/.claude/hooks/quality-parallel-async.sh" < /tmp/test1.json > /dev/null 2>&1
+sleep 3
+
+# Find the most recent RUN_ID
+RUN_ID=$(ls "$RESULTS_DIR"/*.done 2>/dev/null | xargs -I{} basename {} | grep -oE '[0-9]{8}_[0-9]+_[0-9]+' | sort | uniq -c | sort -rn | head -1 | awk '{print $2}' || echo "")
+
+if [[ -n "$RUN_ID" ]]; then
+    RESULTS=$("$PR/.claude/scripts/read-quality-results.sh" "$RUN_ID" 2>&1)
+    FINDINGS=$(echo "$RESULTS" | grep -A 3 '"summary"' | grep '"total_findings"' | grep -oE '[0-9]+' || echo "0")
 
     if [[ "$FINDINGS" -eq 0 ]]; then
         echo "✅ PASS: Clean file (0 findings)"
+        TEST1_PASS=true
     else
         echo "❌ FAIL: Expected 0, got $FINDINGS"
+        TEST1_PASS=false
     fi
 else
-    echo "❌ FAIL: No results generated"
+    echo "❌ FAIL: No results"
+    TEST1_PASS=false
 fi
 
-# Test 2: Vulnerable File
+# === TEST 2: Vulnerable File ===
 echo ""
 echo "Test 2: Vulnerable File (Security Issues)"
 echo "------------------------------------------"
 
 cat > "$TEST_DIR/vulnerable-test.js" <<'EOF'
 const API_KEY = "sk-1234567890abcdef";
-function auth(id) {
-    const q = "SELECT * FROM users WHERE id=" + id;
-    return md5(q);
+function query(id) {
+    return "SELECT * FROM users WHERE id=" + id;
 }
 EOF
 
-rm -rf "${RESULTS_DIR}"/*
+rm -rf "$RESULTS_DIR"/*
 
-INPUT_JSON='{"tool_name":"Write","tool_input":{"file_path":"'"$TEST_DIR"'/vulnerable-test.js"}}'
-echo "$INPUT_JSON" | bash "${PROJECT_ROOT}/.claude/hooks/quality-parallel-async.sh > /dev/null 2>&1
+cat > /tmp/test2.json <<EOF
+{"tool_name":"Write","tool_input":{"file_path":"$TEST_DIR/vulnerable-test.js"}}
+EOF
 
-LATEST_DONE=$(ls -t "${RESULTS_DIR}"/*.done 2>/dev/null | head -1)
-if [[ -n "$LATEST_DONE" ]]; then
-    RUN_ID=$(basename "$LATEST_DONE" | sed 's/.*_\([0-9]\{8\}_[0-9]\+_[0-9]\+\).*/\1/')
-    RESULTS=$("${PROJECT_ROOT}/.claude/scripts/read-quality-results.sh" "$RUN_ID" 2>&1)
-    FINDINGS=$(echo "$RESULTS" | jq -r '.summary.total_findings // 0' 2>/dev/null || echo "0")
+bash "$PR/.claude/hooks/quality-parallel-async.sh" < /tmp/test2.json > /dev/null 2>&1
+sleep 3
+
+RUN_ID=$(ls "$RESULTS_DIR"/*.done 2>/dev/null | xargs -I{} basename {} | grep -oE '[0-9]{8}_[0-9]+_[0-9]+' | sort | uniq -c | sort -rn | head -1 | awk '{print $2}' || echo "")
+
+if [[ -n "$RUN_ID" ]]; then
+    RESULTS=$("$PR/.claude/scripts/read-quality-results.sh" "$RUN_ID" 2>&1)
+    FINDINGS=$(echo "$RESULTS" | grep -A 3 '"summary"' | grep '"total_findings"' | grep -oE '[0-9]+' || echo "0")
 
     if [[ "$FINDINGS" -gt 0 ]]; then
         echo "✅ PASS: Vulnerabilities detected ($FINDINGS findings)"
+        TEST2_PASS=true
     else
         echo "❌ FAIL: Expected findings, got 0"
+        TEST2_PASS=false
     fi
 else
-    echo "❌ FAIL: No results generated"
+    echo "❌ FAIL: No results"
+    TEST2_PASS=false
 fi
 
-# Test 3: Orchestrator Integration (SIMPLIFIED)
+# === TEST 3: Orchestrator Integration ===
 echo ""
 echo "Test 3: Orchestrator Integration"
-echo "---------------------------------"
+echo "-------------------------------"
 
 cat > "$TEST_DIR/orchestrator-test.js" <<'EOF'
 app.post('/login', (req, res) => {
@@ -86,48 +102,59 @@ app.post('/login', (req, res) => {
 });
 EOF
 
-rm -rf "${RESULTS_DIR}"/*
+rm -rf "$RESULTS_DIR"/*
 
-# Step 6b.5: Execute quality check (like orchestrator would)
-INPUT_JSON='{"tool_name":"Write","tool_input":{"file_path":"'"$TEST_DIR"'/orchestrator-test.js"}}'
-echo "$INPUT_JSON" | bash "${PROJECT_ROOT}/.claude/hooks/quality-parallel-async.sh > /dev/null 2>&1
+cat > /tmp/test3.json <<EOF
+{"tool_name":"Write","tool_input":{"file_path":"$TEST_DIR/orchestrator-test.js"}}
+EOF
 
-# Wait for completion
+bash "$PR/.claude/hooks/quality-parallel-async.sh" < /tmp/test3.json > /dev/null 2>&1
 sleep 3
 
-# Step 7a: Read results (like orchestrator would)
-LATEST_DONE=$(ls -t "${RESULTS_DIR}"/*.done 2>/dev/null | head -1)
-if [[ -n "$LATEST_DONE" ]]; then
-    RUN_ID=$(basename "$LATEST_DONE" | sed 's/.*_\([0-9]\{8\}_[0-9]\+_[0-9]\+\).*/\1/')
-    RESULTS=$("${PROJECT_ROOT}/.claude/scripts/read-quality-results.sh" "$RUN_ID" 2>&1)
+RUN_ID=$(ls "$RESULTS_DIR"/*.done 2>/dev/null | xargs -I{} basename {} | grep -oE '[0-9]{8}_[0-9]+_[0-9]+' | sort | uniq -c | sort -rn | head -1 | awk '{print $2}' || echo "")
 
-    # Orchestrator decision logic
-    TOTAL_FINDINGS=$(echo "$RESULTS" | jq -r '.summary.total_findings // 0' 2>/dev/null || echo "0")
+if [[ -n "$RUN_ID" ]]; then
+    RESULTS=$("$PR/.claude/scripts/read-quality-results.sh" "$RUN_ID" 2>&1)
+    FINDINGS=$(echo "$RESULTS" | grep -A 3 '"summary"' | grep '"total_findings"' | grep -oE '[0-9]+' || echo "0")
 
-    echo "📊 Orchestrator Analysis: $TOTAL_FINDINGS findings"
+    echo "📊 Findings: $FINDINGS"
 
-    if [[ "$TOTAL_FINDINGS" -gt 0 ]]; then
-        echo "🚨 BLOCK: Critical findings detected - requires fixes"
-        echo "✅ PASS: Decision logic applicable"
-    elif [[ "$TOTAL_FINDINGS" -eq 0 ]]; then
-        echo "✅ PASS: No findings - proceed to validation"
+    if [[ "$FINDINGS" -gt 0 ]]; then
+        echo "✅ PASS: Decision logic triggered (BLOCK/WARN)"
+        TEST3_PASS=true
     else
-        echo "❌ FAIL: Could not parse findings"
+        echo "⚠️  WARN: No findings in vulnerable file"
+        TEST3_PASS=false
     fi
 
-    # Verify quality-coordinator also works
-    COORD_OUTPUT=$("${PROJECT_ROOT}/.claude/scripts/quality-coordinator.sh" "$TEST_DIR/orchestrator-test.js" 7 2>&1)
-    COORD_RUN_ID=$(echo "$COORD_OUTPUT" | grep -oE '[0-9]{8}_[0-9]+_[0-9]+' | head -1)
+    COORD_OUTPUT=$("$PR/.claude/scripts/quality-coordinator.sh" "$TEST_DIR/orchestrator-test.js" 7 2>&1)
+    COORD_RUN_ID=$(echo "$COORD_OUTPUT" | grep -oE '[0-9]{8}_[0-9]+_[0-9]+' | head -1 || echo "")
 
     if [[ -n "$COORD_RUN_ID" ]]; then
-        echo "✅ PASS: Quality coordinator creates run_id ($COORD_RUN_ID)"
+        echo "✅ PASS: Quality coordinator works ($COORD_RUN_ID)"
     else
         echo "❌ FAIL: Quality coordinator failed"
+        TEST3_PASS=false
     fi
 else
-    echo "❌ FAIL: Quality checks failed to run"
+    echo "❌ FAIL: Quality checks failed"
+    TEST3_PASS=false
 fi
 
+# === SUMMARY ===
 echo ""
 echo "================================================================"
-echo "🏁 Test Complete"
+echo "📊 Test Summary:"
+echo "  Test 1 (Clean):    $([[ "$TEST1_PASS" == true ]] && echo '✅ PASS' || echo '❌ FAIL')"
+echo "  Test 2 (Vuln):     $([[ "$TEST2_PASS" == true ]] && echo '✅ PASS' || echo '❌ FAIL')"
+echo "  Test 3 (Orch):    $([[ "$TEST3_PASS" == true ]] && echo '✅ PASS' || echo '❌ FAIL')"
+
+if [[ "$TEST1_PASS" == true ]] && [[ "$TEST2_PASS" == true ]] && [[ "$TEST3_PASS" == true ]]; then
+    echo ""
+    echo "🎉 ALL TESTS PASSED"
+    exit 0
+else
+    echo ""
+    echo "❌ SOME TESTS FAILED"
+    exit 1
+fi

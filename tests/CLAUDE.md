@@ -60,4 +60,19 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #13459 | 1:50 PM | ✅ | **Test Suite Validation Resolved** - All Command Sync Tests Now Passing | ~226 |
+
+### Jan 26, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #16625 | 8:30 PM | 🔵 | Test suite validates orchestrator workflow with 12 defined steps | ~209 |
+
+### Jan 27, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #17161 | 2:44 AM | 🔵 | Existing session cleanup infrastructure identified | ~416 |
+| #16938 | 2:08 AM | 🔵 | Pre-Compact-Handoff Hook Extensively Documented and Validated | ~458 |
+| #16924 | 2:07 AM | 🔵 | Ralph Context Command Provides Context Status and Management | ~400 |
+| #16810 | 12:56 AM | 🔵 | Hook format reference defines JSON structures for six Claude Code hook types | ~373 |
 </claude-mem-context>
