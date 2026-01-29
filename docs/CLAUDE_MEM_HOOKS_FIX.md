@@ -100,6 +100,88 @@ Wrap the command in a subshell that changes to the plugin directory first:
 
 **Total**: 9 commands across 4 hook events
 
+## Marketplace Plugin Directory Structure
+
+For the claude-mem plugin to work correctly with zai's plugin system, the marketplace directory structure must be properly set up with symlinks pointing to the cached plugin files.
+
+### Required Directory Structure
+
+```
+~/.claude/plugins/marketplaces/thedotmack/
+└── package.json -> ~/.claude-sneakpeek/zai/config/plugins/cache/thedotmack/claude-mem/9.0.10/package.json
+```
+
+### Setup Commands
+
+```bash
+# Create the marketplace directory structure
+mkdir -p "/Users/alfredolopez/.claude/plugins/marketplaces/thedotmack"
+
+# Create symlink from cache to marketplace for package.json
+ln -s "/Users/alfredolopez/.claude-sneakpeek/zai/config/plugins/cache/thedotmack/claude-mem/9.0.10/package.json" \
+      "/Users/alfredolopez/.claude/plugins/marketplaces/thedotmack/package.json"
+```
+
+### CLAUDE_PLUGIN_ROOT Environment Variable
+
+The `CLAUDE_PLUGIN_ROOT` environment variable is automatically set by zai's plugin system and points to the root directory of the currently executing plugin.
+
+```bash
+# Verify the variable is set correctly
+echo $CLAUDE_PLUGIN_ROOT
+# Expected output: /Users/alfredolopez/.claude-sneakpeek/zai/config/plugins/cache/thedotmack/claude-mem/9.0.10
+```
+
+**Usage in Hooks**:
+- The `${CLAUDE_PLUGIN_ROOT}` variable expands to the plugin's installation directory
+- All plugin-relative paths should be referenced from this root
+- **Critical**: Use the subshell pattern `(cd "${CLAUDE_PLUGIN_ROOT}" && ...)` for reliable path resolution
+
+**Why This Matters**:
+- zai automatically sets this variable when executing plugin hooks
+- Different plugin versions have different `CLAUDE_PLUGIN_ROOT` values
+- Hooks must use this variable rather than hardcoding paths
+
+### Why This Structure Is Needed
+
+1. **Plugin Discovery**: zai's plugin system looks for `package.json` in the marketplace directory to discover available plugins
+2. **Version Management**: The symlink allows the marketplace to reference the specific version cached in the plugins directory
+3. **Update Safety**: When claude-mem updates to a new version (e.g., 9.0.11), only the symlink target needs to be updated
+4. **Environment Variable**: The correct `CLAUDE_PLUGIN_ROOT` is automatically set based on the symlinked version
+
+### Verification
+
+```bash
+# Verify the symlink exists and points to the correct location
+ls -la "/Users/alfredolopez/.claude/plugins/marketplaces/thedotmack/package.json"
+# Expected output: package.json -> /Users/alfredolopez/.claude-sneakpeek/zai/config/plugins/cache/thedotmack/claude-mem/9.0.10/package.json
+
+# Verify the target file exists
+cat "/Users/alfredolopez/.claude-sneakpeek/zai/config/plugins/cache/thedotmack/claude-mem/9.0.10/package.json" | jq '.name'
+# Expected output: "claude-mem"
+
+# Verify CLAUDE_PLUGIN_ROOT is set correctly
+echo $CLAUDE_PLUGIN_ROOT
+# Expected output: /Users/alfredolopez/.claude-sneakpeek/zai/config/plugins/cache/thedotmack/claude-mem/9.0.10
+```
+
+### Generic Setup Pattern
+
+For different usernames, adjust the paths accordingly:
+
+```bash
+# Variables
+USERNAME="your-username"
+CACHE_DIR="/Users/${USERNAME}/.claude-sneakpeek/zai/config/plugins/cache/thedotmack/claude-mem/9.0.10"
+MARKETPLACE_DIR="/Users/${USERNAME}/.claude/plugins/marketplaces/thedotmack"
+
+# Create directory
+mkdir -p "${MARKETPLACE_DIR}"
+
+# Create symlink
+ln -s "${CACHE_DIR}/package.json" "${MARKETPLACE_DIR}/package.json"
+```
+
 ## Verification
 
 ### Test Command
