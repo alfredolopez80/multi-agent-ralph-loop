@@ -1,10 +1,10 @@
-# Multi-Agent Ralph v2.80.9
+# Multi-Agent Ralph v2.81.1
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, **GLM-4.7 PRIMARY**, **Dual Context Display System**, and **full CLI implementation**.
+**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, **GLM-4.7 PRIMARY**, **Dual Context Display System**, **full CLI implementation**, and **Automatic Context Compaction**.
 
-> **v2.80.9**: Statusline now implements dual context display showing both cumulative session progress AND current window usage with project-specific caching. GLM-4.7 remains **PRIMARY** for complexity 1-4 tasks. Based on [everything-claude-code](https://github.com/affaan-m/everything-claude-code) and [claude-code-docs](https://github.com/ericbuess/claude-code-docs).
+> **v2.81.1**: Fixed critical compaction hooks issue - `PostCompact` does NOT exist in Claude Code. Use `PreCompact` for saving state and `SessionStart` for restoring. See [docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md](docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md) for critical information.
 
 ---
 
@@ -1038,18 +1038,43 @@ ralph handoff create      # Create handoff
 
 ---
 
-## Hooks (67 files, 80 registrations) - v2.69.0
+## Hooks (67 files, 80 registrations) - v2.81.1
+
+> **⚠️ CRITICAL v2.81.1**: `PostCompact` does NOT exist in Claude Code. Use `PreCompact` for saving state and `SessionStart` for restoring. See [docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md](docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md).
 
 > **v2.69.0**: GLM-4.7 now PRIMARY for complexity 1-4 tasks. MiniMax deprecated. `mmc` and `ralph` CLI updated. 14 GLM tools. 26 MCP servers total.
 
 | Event Type | Purpose |
 |------------|---------|
-| SessionStart | Context preservation at startup, **auto-migrate plan-state** (v2.51) |
-| PreCompact | Save state before compaction |
+| SessionStart | Context preservation at startup, **auto-migrate plan-state** (v2.51), **restore context after compaction** (v2.81.1) |
+| PreCompact | Save state before compaction (ONLY compaction event) |
 | PostToolUse | Quality gates after Edit/Write/Bash, **verification subagent** (v2.62) |
 | PreToolUse | Safety guards before Bash/Skill/Task, **task optimization** (v2.62), **docs auto-update** (v2.66.8) |
 | UserPromptSubmit | Context warnings, reminders |
 | Stop | Session reports |
+| **PostCompact** | ❌ **DOES NOT EXIST** - Feature request #14258 |
+
+### ⚠️ CRITICAL: PostCompact Does NOT Exist (v2.81.1)
+
+**Discovery**: During compaction hooks fix, we discovered that `PostCompact` is **NOT a valid hook event** in Claude Code as of January 2026.
+
+**What This Means**:
+- ❌ There is NO `PostCompact` event that fires after compaction
+- ✅ Only `PreCompact` exists (fires BEFORE compaction)
+- ✅ Use `SessionStart` for post-compaction context restoration
+
+**Correct Pattern**:
+```
+PreCompact Event → Save state before compaction
+    ↓
+Compaction Happens → Old messages removed
+    ↓
+SessionStart Event → Restore state in new session ✅
+```
+
+**Documentation**: See [docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md](docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md) for complete details.
+
+**Feature Request**: [GitHub #14258](https://github.com/anthropics/claude-code/issues/14258) - PostCompact Hook Event
 
 ### Error Trap Coverage (v2.62.3) - NEW
 

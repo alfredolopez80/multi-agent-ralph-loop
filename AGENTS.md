@@ -1,10 +1,10 @@
-# Multi-Agent Ralph Wiggum - Agents Reference v2.80.9 - Simplified
+# Multi-Agent Ralph Wiggum - Agents Reference v2.81.1 - Simplified
 
 ## Overview
 
 Ralph orchestrates **10 specialized agents** across different domains with **simplified multi-model support**: GLM-4.7 (PRIMARY for all tasks) + Codex GPT-5.2 (SPECIALIZED for security/performance).
 
-> **v2.80.9 - Simplified Architecture**: Removed Opus/Sonnet completely. GLM-4.7 is now the PRIMARY model for all tasks. Codex GPT-5.2 is SPECIALIZED for security, performance, and high-level review.
+> **v2.81.1 - Critical Hooks Fix**: Fixed SessionStart hook errors and corrected compaction hooks. **IMPORTANT**: `PostCompact` does NOT exist in Claude Code. See [docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md](docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md).
 
 ## Model Support (v2.80.9) - SIMPLIFIED
 
@@ -307,7 +307,26 @@ The orchestrator routes tasks based on **3 dimensions** (RLM-inspired):
 2. **File Type**: `.py` → `@kieran-python-reviewer`, `.ts` → `@kieran-typescript-reviewer`
 3. **Domain**: DeFi → Blockchain agents, Frontend → `@frontend-reviewer`
 
-## Hooks Integration (v2.56.2)
+## Hooks Integration (v2.81.1)
+
+> **⚠️ CRITICAL v2.81.1**: `PostCompact` does NOT exist in Claude Code. Compaction hooks have been fixed. See [docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md](docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md).
+
+**Key Changes**:
+- ✅ Fixed `auto-sync-global.sh` glob pattern bug (caused SessionStart failures)
+- ✅ Added `session-start-restore-context.sh` for post-compaction restoration
+- ✅ Clarified that `PostCompact` is NOT a valid event (only `PreCompact` exists)
+- ✅ Both `pre-compact-handoff.sh` and `post-compact-restore.sh` run in `PreCompact` event
+
+**Correct Compaction Pattern**:
+```
+PreCompact Event → pre-compact-handoff.sh saves state
+    ↓
+Compaction Happens → Old messages removed
+    ↓
+SessionStart Event → session-start-restore-context.sh restores state ✅
+```
+
+### v2.46 RLM-Inspired Hooks (NEW)
 
 ### v2.46 RLM-Inspired Hooks (NEW)
 
