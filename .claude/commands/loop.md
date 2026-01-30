@@ -134,27 +134,29 @@ ls ~/.ralph/logs/loop-*.log
 tail -f ~/.ralph/logs/loop-latest.log
 ```
 
-## Task Tool Invocation (v2.81 - SWARM MODE)
+## Task Tool Invocation (v2.81.1 - SWARM MODE COMPLETE)
 
-When using the Task tool directly (for advanced users) with **swarm mode enabled**:
+**IMPORTANT**: /loop now uses swarm mode by default with full multi-agent coordination.
+
+### Default Swarm Mode Configuration
 
 ```yaml
-# GLM-4.7 mode with swarm (Sonnet manages GLM-4.7 call)
+# Default invocation (recommended)
 Task:
   subagent_type: "general-purpose"
-  model: "sonnet"  # GLM-4.7 is PRIMARY, sonnet manages it
-  run_in_background: true
-  max_iterations: 15  # GLM-4.7 limit
-  description: "Primary task execution with loop and swarm"
-  team_name: "loop-execution-team"     # Creates team for multi-agent coordination
-  name: "loop-lead"                    # Agent name in team
+  model: "sonnet"                      # GLM-4.7 is PRIMARY, sonnet manages it
+  run_in_background: true            # Always run in background
+  max_iterations: 15                 # Claude iteration limit
+  description: "Loop execution with swarm mode"
+  team_name: "loop-execution-team"     # UNIQUE team name
+  name: "loop-lead"                  # Agent name in team
   mode: "delegate"                     # Enables delegation to teammates
   prompt: |
     Execute the following task iteratively until VERIFIED_DONE:
 
-    Task: [TASK_DESCRIPTION]
+    Task: $ARGUMENTS
 
-    Loop pattern:
+    Ralph Loop pattern:
     1. EXECUTE - Implement the task
     2. VALIDATE - Run quality gates (tsc, eslint, tests)
     3. CHECK - Did all gates pass?
@@ -162,22 +164,72 @@ Task:
        - NO → ITERATE (max 15)
 
     Output: Final implementation + quality report
+```
 
-# MiniMax mode (Sonnet manages MiniMax call) - DEPRECATED
-Task:
-  subagent_type: "minimax-executor"
-  model: "sonnet"  # Sonnet MANAGES the mmc call
-  run_in_background: true
-  max_iterations: 30  # MiniMax limit
-  description: "MiniMax loop execution"
-  prompt: |
-    Execute via MiniMax CLI with extended iterations:
+### Team Composition (Auto-Spawned)
 
-    mmc --loop 30 "Task: [TASK_DESCRIPTION]
+When /loop is invoked, it automatically spawns:
 
-    Apply Ralph Loop pattern with 30 iteration limit.
-    Run quality gates after each iteration.
-    Stop at VERIFIED_DONE or max iterations."
+| Role | Purpose | Spawns |
+|------|---------|---------|
+| **Leader** | Loop coordinator | 1 |
+| **Teammate 1** | Implementation specialist | 1 |
+| **Teammate 2** | Quality validation specialist | 1 |
+| **Teammate 3** | Test verification specialist | 1 |
+
+**Total**: 4 agents working in parallel (1 leader + 3 teammates)
+
+### How Swarm Mode Works in /loop
+
+```
+User invokes: /loop "implement OAuth2"
+
+1. Team "loop-execution-team" created automatically
+2. Leader (loop-lead) coordinates work
+3. 3 Teammates spawned with different specializations
+4. Tasks created via TaskCreate
+5. Tasks assigned to teammates via TaskUpdate
+6. Teammates work in parallel (background execution)
+7. Leader monitors progress and gathers results
+8. When all teammates complete → Leader synthesizes final result
+9. VERIFIED_DONE signal returned
+```
+
+### Manual Override Options
+
+```bash
+# Disable swarm mode (single agent mode)
+/loop "task" --no-swarm
+
+# Custom teammate count
+/loop "task" --teammates 5
+
+# Extended iterations
+/loop "task" --max-iter 30
+```
+
+### Communication Between Teammates
+
+Teammates can communicate using the built-in mailbox system:
+
+```yaml
+# Teammate sends message to leader
+SendMessage:
+  type: "message"
+  recipient: "loop-lead"
+  content: "Implementation complete, found edge case"
+```
+
+### Task List Coordination
+
+All teammates share a unified task list:
+
+```bash
+# Location: ~/.claude/tasks/loop-execution-team/tasks.json
+# All teammates can:
+# - View tasks: TaskList
+# - Claim tasks: TaskUpdate with owner
+# - Complete tasks: TaskUpdate with status
 ```
 
 ## Quality Gates Integration
