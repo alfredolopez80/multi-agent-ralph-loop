@@ -14,11 +14,27 @@ Multi-Agent Ralph Loop is an **AI-powered development assistant** that:
 
 ## 🚀 Key Features
 
-### Swarm Mode (v2.81.0) 🆕
+### Swarm Mode (v2.81.1) ✅
 - **Native multi-agent coordination** using Claude Code's TeammateTool
 - **Automatic teammate spawning** with shared task lists
 - **Inter-agent messaging** for collaboration
 - **Plan approval workflow** for leader validation
+- **27/27 tests passing (100%)** - Production ready
+
+### Intelligent Command Router (v2.82.0) 🆕
+- **9 command patterns** detected automatically
+- **Multilingual support** (English + Spanish)
+- **Confidence-based filtering** (≥ 80% threshold)
+- **Non-intrusive suggestions** via `additionalContext`
+- **Coordinates with Promptify** for vague prompts
+
+### Promptify Integration (v2.82.0) 🆕
+- **Automatic prompt optimization** for vague user prompts
+- **Clarity scoring algorithm** (0-100% based on 7 factors)
+- **Ralph context injection** (active context + procedural memory)
+- **Quality gates validation** through Ralph's system
+- **Security hardening** (credential redaction, consent, timeout, audit)
+- **40/40 tests passing (100%)** - Production ready
 
 ### Multi-Model Architecture
 - **GLM-4.7 PRIMARY** - Economic model for all tasks (~15% cost)
@@ -34,7 +50,7 @@ Multi-Agent Ralph Loop is an **AI-powered development assistant** that:
 ### Memory & Learning
 - **Semantic memory** - Facts and preferences (persistent)
 - **Episodic memory** - Decisions and patterns (30-day TTL)
-- **Procedural memory** - 300+ learned rules with confidence scores
+- **Procedural memory** - 1000+ learned rules with confidence scores
 - **Repository learning** - Extract best practices from GitHub repos
 
 ## 📊 Statistics
@@ -42,12 +58,12 @@ Multi-Agent Ralph Loop is an **AI-powered development assistant** that:
 | Metric | Value |
 |--------|-------|
 | **Agents** | 11 specialized agents |
-| **Hooks** | 74 hooks (73 bash + 1 python) |
-| **Skills** | 40 core skills |
+| **Hooks** | 81 hooks (80 bash + 1 python) |
+| **Skills** | 40+ core skills |
 | **MCP Servers** | 26 servers |
-| **Tests** | 945 tests passing |
+| **Tests** | 985+ tests passing |
 | **Languages** | 9 supported |
-| **Version** | 2.81.0 |
+| **Version** | 2.82.0 |
 
 ## 🎓 Use Cases
 
@@ -108,7 +124,10 @@ Multi-Agent Ralph Loop is an **AI-powered development assistant** that:
 | [README.md](../README.md) | Complete project documentation |
 | [AGENTS.md](../AGENTS.md) | Agent reference guide |
 | [CHANGELOG.md](../CHANGELOG.md) | Version history |
+| [Promptify Integration](../docs/promptify-integration/) | Promptify integration guide |
+| [Security Audit](../docs/security/PROMPTIFY_SECURITY_AUDIT_v1.0.0.md) | Security audit report |
 | [Swarm Mode Guide](../tests/swarm-mode/COMO_USAR_SWARM_MODE_CLAUDE_ZAI.md) | Spanish guide for swarm mode |
+| [Command Router](../docs/command-router/) | Intelligent command router documentation |
 | [Architecture](../docs/architecture/) | Technical architecture documentation |
 
 ## 🛠️ Technology Stack
@@ -153,5 +172,5 @@ This project is licensed under the BSL 1.1 License - see [LICENSE](../LICENSE) f
 
 ---
 
-**Version**: 2.81.0
-**Last Updated**: 2026-01-29
+**Version**: 2.82.0
+**Last Updated**: 2026-01-30
