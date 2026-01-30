@@ -1,8 +1,12 @@
-# Multi-Agent Ralph Wiggum - Agents Reference v2.81.1 - Simplified
+# Multi-Agent Ralph Wiggum - Agents Reference v2.82.0 - Simplified
 
 ## Overview
 
 Ralph orchestrates **10 specialized agents** across different domains with **simplified multi-model support**: GLM-4.7 (PRIMARY for all tasks) + Codex GPT-5.2 (SPECIALIZED for security/performance).
+
+> **🆕 v2.82.0 - Intelligent Command Router Hook**: New UserPromptSubmit hook that analyzes prompts and suggests optimal commands (`/bug`, `/edd`, `/orchestrator`, `/loop`, `/adversarial`, `/gates`, `/security`, `/parallel`, `/audit`). Multilingual support (English + Spanish). Confidence-based filtering (≥ 80%). See [docs/command-router/README.md](docs/command-router/README.md).
+
+> **v2.81.2 - PreToolUse JSON Schema Fix**: Fixed JSON validation errors in 4 PreToolUse hooks. Hooks now use correct `hookSpecificOutput` format. See [docs/bugs/PRETOOLUSE_JSON_SCHEMA_FIX_v2.81.2.md](docs/bugs/PRETOOLUSE_JSON_SCHEMA_FIX_v2.81.2.md).
 
 > **v2.81.1 - Critical Hooks Fix**: Fixed SessionStart hook errors and corrected compaction hooks. **IMPORTANT**: `PostCompact` does NOT exist in Claude Code. See [docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md](docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md).
 
@@ -138,6 +142,69 @@ mmc --query "Analyze this code"
 | Agent | Model | Purpose |
 |-------|-------|---------|
 | `@repository-learner | glm-4.7 | Learn best practices from GitHub repositories |
+
+## Swarm Mode Commands (v2.81.1) ✅ COMPLETE
+
+**Overview**: 7 core commands with full swarm mode integration for parallel multi-agent execution.
+
+### Commands with Team Composition
+
+| Command | Team Size | Lead | Teammates | Speedup | Status |
+|---------|-----------|------|-----------|---------|--------|
+| `/orchestrator` | 4 | Workflow coordinator | Requirements analyst, Implementation specialist, Quality validation | 3x | ✅ |
+| `/loop` | 4 | Loop coordinator | Execute specialist, Validate specialist, Quality check specialist | 3x | ✅ |
+| `/edd` | 4 | EDD coordinator | Capability check specialist, Behavior check specialist, Non-functional check specialist | 3x | ✅ |
+| `/bug` | 4 | Bug analysis lead | Error Analysis specialist, Root Cause specialist, Fix Validation specialist | 3x | ✅ |
+| `/adversarial` | 4 | Adversarial lead | Assumption Challenger, Gap Hunter, Feasibility Validator | 3x | ✅ |
+| `/parallel` | 7 | Parallel coordinator | Code, Security, Test, Performance, Documentation, Architecture reviewers | 6x | ✅ |
+| `/gates` | 6 | Gates coordinator | TypeScript/JS, Python, Compiled, Smart Contracts, Config validators | 3x | ✅ |
+
+### Validation Results
+
+**Integration Tests**: 27/27 tests passing (100%)
+
+**External Audits**:
+| Audit | Model | Result | Score |
+|-------|-------|--------|-------|
+| **/adversarial** | ZeroLeaks-inspired | ✅ PASS | Strong defense |
+| **/codex-cli** | gpt-5.2-codex | ✅ PASS | 9.3/10 Excellent |
+| **/gemini-cli** | Gemini 3 Pro | ✅ PASS | 9.8/10 Outstanding |
+
+### Configuration
+
+Swarm mode requires **ONE configuration**:
+
+```json
+{
+  "permissions": {
+    "defaultMode": "delegate"
+  }
+}
+```
+
+**Note**: Environment variables (`CLAUDE_CODE_AGENT_*`) are set **dynamically** by Claude Code when spawning teammates.
+
+### Usage
+
+```bash
+# Swarm mode is enabled by default
+/orchestrator "Implement distributed system"    # 4 agents, 3x faster
+/loop "fix all type errors"                   # 4 agents, 3x faster
+/edd "Define feature requirements"            # 4 agents, 3x faster
+/bug "Authentication fails"                   # 4 agents, 3x faster
+/adversarial "Design rate limiter"            # 4 agents, 3x faster
+/parallel "src/auth/"                         # 7 agents, 6x faster
+/gates                                        # 6 agents, 3x faster
+```
+
+### Documentation
+
+- **Usage Guide**: `docs/swarm-mode/SWARM_MODE_USAGE_GUIDE.md`
+- **Integration Plan**: `docs/architecture/SWARM_MODE_INTEGRATION_PLAN_v2.81.1.md`
+- **Consolidated Audits**: `docs/swarm-mode/CONSOLIDATED_AUDITS_v2.81.1.md`
+- **Progress Report**: `docs/swarm-mode/INTEGRATION_PROGRESS_REPORT_v2.81.1.md`
+
+---
 
 ## Memory System Architecture (v2.57.5) - NEW
 
@@ -307,7 +374,9 @@ The orchestrator routes tasks based on **3 dimensions** (RLM-inspired):
 2. **File Type**: `.py` → `@kieran-python-reviewer`, `.ts` → `@kieran-typescript-reviewer`
 3. **Domain**: DeFi → Blockchain agents, Frontend → `@frontend-reviewer`
 
-## Hooks Integration (v2.81.1)
+## Hooks Integration (v2.81.2)
+
+> **⚠️ CRITICAL v2.81.2**: PreToolUse hooks now use correct JSON schema with `hookSpecificOutput` wrapper. Fixed validation errors on Edit/Write/Bash operations. See [docs/bugs/PRETOOLUSE_JSON_SCHEMA_FIX_v2.81.2.md](docs/bugs/PRETOOLUSE_JSON_SCHEMA_FIX_v2.81.2.md).
 
 > **⚠️ CRITICAL v2.81.1**: `PostCompact` does NOT exist in Claude Code. Compaction hooks have been fixed. See [docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md](docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md).
 

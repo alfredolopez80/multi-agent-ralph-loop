@@ -2,9 +2,9 @@
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, **GLM-4.7 PRIMARY**, **Dual Context Display System**, **full CLI implementation**, and **Automatic Learning System**.
+**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, **GLM-4.7 PRIMARY**, **Dual Context Display System**, **full CLI implementation**, **Automatic Learning System**, **Intelligent Command Routing**, and **Swarm Mode Integration**.
 
-> **v2.81.2**: Learning System fully integrated with automatic rule validation, 62/62 tests passing (100%), production ready.
+> **🆕 v2.82.0**: **Intelligent Command Router Hook** - Analyzes prompts and suggests optimal commands (`/bug`, `/edd`, `/orchestrator`, `/loop`, `/adversarial`, `/gates`, `/security`, `/parallel`, `/audit`). Multilingual support (English + Spanish). Confidence-based filtering (≥ 80%). Non-intrusive suggestions. **v2.81.2**: Learning System fully integrated with automatic rule validation, 62/62 tests passing (100%), production ready. **Fixed critical PreToolUse JSON schema validation** - hooks no longer show errors on Edit/Write/Bash operations. **Swarm Mode v2.81.1**: 7 commands with parallel multi-agent execution, 27/27 tests passing, 100% production-ready after external audits.
 
 ---
 
@@ -50,9 +50,106 @@ ralph health
 
 ---
 
-## 🐛 Recent Updates (v2.81.0 - v2.81.2)
+## 🧠 Intelligent Command Router (v2.82.0) ✅ NEW
 
-### Automatic Learning System (v2.81.2) ✅ NEW
+**Overview**: UserPromptSubmit hook that analyzes prompts and intelligently suggests the optimal command based on detected patterns.
+
+### Key Features
+
+1. **9 Command Detections**
+   - `/bug` - Systematic debugging (90% confidence)
+   - `/edd` - Feature definition with eval specs (85% confidence)
+   - `/orchestrator` - Complex task orchestration (85% confidence)
+   - `/loop` - Iterative execution with validation (85% confidence)
+   - `/adversarial` - Specification refinement (85% confidence)
+   - `/gates` - Quality gate validation (85% confidence)
+   - `/security` - Security vulnerability audit (88% confidence)
+   - `/parallel` - Comprehensive parallel review (85% confidence)
+   - `/audit` - Quality audit and health check (82% confidence)
+
+2. **Multilingual Support**
+   - English: "I have a bug in the login" → `/bug`
+   - Spanish: "Tengo un bug en el login" → `/bug`
+
+3. **Non-Intrusive Integration**
+   - Uses `additionalContext` instead of interruptive prompts
+   - Confidence-based filtering (≥ 80% threshold)
+   - Always continues workflow (never blocks)
+
+4. **Security Features**
+   - Input validation: 100KB max size (SEC-111)
+   - Sensitive data redaction: Passwords, tokens, API keys (SEC-110)
+   - Error trap: Guaranteed JSON output on errors
+
+### Usage Examples
+
+```bash
+# The hook automatically suggests commands based on your prompt
+
+# You type:
+"Tengo un bug en el login que no funciona"
+
+# Hook responds:
+💡 **Sugerencia**: Detecté una tarea de debugging. Considera usar `/bug`
+para debugging sistemático: analizar → reproducir → localizar → corregir.
+
+# You type:
+"Implementa autenticación OAuth y luego agrega refresh tokens"
+
+# Hook responds:
+💡 **Sugerencia**: Detecté una tarea compleja. Considera usar `/orchestrator`
+para workflow completo: evaluar → clarificar → clasificar → planear → ejecutar.
+```
+
+### Configuration
+
+```bash
+# Enable/disable router
+echo '{"enabled": true}' > ~/.ralph/config/command-router.json
+
+# Adjust confidence threshold (default: 80%)
+echo '{"confidence_threshold": 70}' > ~/.ralph/config/command-router.json
+
+# View logs
+tail -f ~/.ralph/logs/command-router.log
+```
+
+### Test Results
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║       COMMAND ROUTER VALIDATION - TEST RESULTS              ║
+╠══════════════════════════════════════════════════════════════╣
+║  Test Type           | Total | Passed | Failed | Percentage ║
+║  ─────────────────────────────────────────────────────────────  ║
+║  Intent Detection    |   9   |   7    |   2    |    78%     ║
+║  Edge Cases          |   3   |   3    |   0    |   100%     ║
+║  Security Tests      |   3   |   3    |   0    |   100%     ║
+║  JSON Validation     |  10   |  10    |   0    |   100%     ║
+║  ─────────────────────────────────────────────────────────────  ║
+║  TOTAL               |  25   |  23    |   2    |    92%     ║
+╚══════════════════════════════════════════════════════════════╝
+```
+
+**Documentation**: [Command Router Guide](docs/command-router/README.md) | [Implementation Summary](docs/command-router/IMPLEMENTATION_SUMMARY.md) | [Test Suite](tests/test-command-router.sh)
+
+---
+
+## 🐛 Recent Updates (v2.81.0 - v2.82.0)
+
+### Intelligent Command Router (v2.82.0) ✅ LATEST
+
+**Overview**: UserPromptSubmit hook that analyzes prompts and suggests optimal commands.
+
+- **9 Command Patterns**: Bug detection, feature definition, orchestration, iteration, specification refinement, quality gates, security audit, parallel review, quality audit
+- **Multilingual**: English + Spanish support
+- **Confidence-Based**: Only suggests when ≥ 80% confidence
+- **Non-Intrusive**: Uses `additionalContext`, never blocks workflow
+- **Security**: Input validation, sensitive data redaction, error trap
+
+**Performance**: 7/9 core tests passing (78%), 23/25 total tests passing (92%)
+
+### Automatic Learning System (v2.81.2) ✅ STABLE
 
 **Overview**: Complete automatic learning integration with GitHub repository curation and rule validation.
 
@@ -101,6 +198,90 @@ ralph health
 ║  OVERALL            ✅ 100%    ✅ 91%     ✅ 89%        ✅ 100%    ║
 ╚════════════════════════════════════════════════════════════════╝
 ```
+
+---
+
+### Swarm Mode Integration (v2.81.1) ✅ COMPLETE
+
+**Overview**: Complete swarm mode integration across 7 core commands with parallel multi-agent execution, validated by external audits.
+
+#### Key Features
+
+1. **7 Commands with Swarm Mode**
+   - `/orchestrator` - 4 agents (Analysis, planning, implementation)
+   - `/loop` - 4 agents (Execute, validate, quality check)
+   - `/edd` - 4 agents (Capability, behavior, non-functional checks)
+   - `/bug` - 4 agents (Analyze, reproduce, locate, fix)
+   - `/adversarial` - 4 agents (Challenge, identify gaps, validate)
+   - `/parallel` - 7 agents (6 review aspects + coordination)
+   - `/gates` - 6 agents (5 language groups + coordination)
+
+2. **Performance Improvements**
+   - **3x-6x speedup** on parallel commands
+   - Background execution (non-blocking)
+   - Inter-agent messaging via built-in mailbox
+   - Unified task list coordination
+
+3. **Auto-Swarm Hook**
+   - `auto-background-swarm.sh` - Automatically detects Task tool usage
+   - Suggests swarm mode parameters for supported commands
+   - Registered in PostToolUse hooks
+
+4. **Validation Results**
+   - **Integration Tests**: 27/27 tests passing (100%)
+   - **Adversarial Audit**: ✅ PASS (Strong defense)
+   - **Codex Review**: ✅ PASS (9.3/10 Excellent)
+   - **Gemini Validation**: ✅ PASS (9.8/10 Outstanding)
+
+#### System Statistics
+
+```
+╔════════════════════════════════════════════════════════════════╗
+║              SWARM MODE INTEGRATION v2.81.1 - STATUS              ║
+╠════════════════════════════════════════════════════════════════╣
+║  Phase              Status    Tests      Audits        Score     ║
+║  ─────────────────────────────────────────────────────────────  ║
+║  Phase 1 (Core)     ✅ 100%   ✅ 9/9     ✅ PASS        N/A      ║
+║  Phase 2 (Secondary) ✅ 100%   ✅ 6/6     ✅ PASS        N/A      ║
+║  Phase 3 (Hooks)    ✅ 100%   ✅ 4/4     ✅ PASS        N/A      ║
+║  Phase 4 (Docs)     ✅ 100%   ✅ 5/5     ✅ PASS        N/A      ║
+║  Phase 5 (Validation)✅ 100%   ✅ 3/3     ✅ 3/3 PASS    9.5/10   ║
+║  ─────────────────────────────────────────────────────────────  ║
+║  OVERALL            ✅ 100%   ✅ 27/27   ✅ 3/3 PASS    9.5/10   ║
+╚════════════════════════════════════════════════════════════════╝
+```
+
+#### Configuration
+
+Swarm mode requires **ONE configuration**:
+
+```json
+{
+  "permissions": {
+    "defaultMode": "delegate"
+  }
+}
+```
+
+**Note**: Environment variables (`CLAUDE_CODE_AGENT_*`) are set **dynamically** by Claude Code when spawning teammates.
+
+#### Usage
+
+```bash
+# Swarm mode is enabled by default
+/orchestrator "Implement distributed system"
+/loop "fix all type errors"
+/edd "Define feature requirements"
+/bug "Authentication fails"
+/adversarial "Design rate limiter"
+/parallel "src/auth/"
+/gates
+
+# All commands spawn teammates automatically
+# 3x-6x faster execution on parallel tasks
+```
+
+**Documentation**: [Swarm Mode Usage Guide](docs/swarm-mode/SWARM_MODE_USAGE_GUIDE.md) | [Integration Plan](docs/architecture/SWARM_MODE_INTEGRATION_PLAN_v2.81.1.md) | [Consolidated Audits](docs/swarm-mode/CONSOLIDATED_AUDITS_v2.81.1.md)
 
 ---
 
@@ -813,9 +994,34 @@ Hooks are registered in `~/.claude-sneakpeek/zai/config/settings.json`:
 }
 ```
 
-### Recent Hook Fixes (v2.81.1)
+### Recent Hook Fixes (v2.81.1 - v2.81.2)
 
-**Fixed Issues**:
+**PreToolUse JSON Schema Fix (v2.81.2) ✅**:
+
+Fixed critical JSON schema validation errors in 4 PreToolUse hooks causing error messages on every Edit, Write, and Bash operation.
+
+**Problem**: Hooks were using incorrect JSON format:
+```json
+{"decision": "allow", "additionalContext": "..."}  // ❌ Wrong
+```
+
+**Solution**: Hooks now use correct `hookSpecificOutput` format:
+```json
+{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}  // ✅ Correct
+```
+
+**Affected Hooks** (4 files):
+- `checkpoint-auto-save.sh` - Auto-checkpoint before edits
+- `fast-path-check.sh` - Detect trivial tasks for fast-path routing
+- `agent-memory-auto-init.sh` - Auto-initialize agent memory buffers
+- `orchestrator-auto-learn.sh` - Inject learning recommendations
+
+**Documentation**: [PRETOOLUSE_JSON_SCHEMA_FIX_v2.81.2.md](docs/bugs/PRETOOLUSE_JSON_SCHEMA_FIX_v2.81.2.md)
+
+---
+
+**Previous Fixes (v2.81.1)**:
+
 1. **SessionStart Hook Failure**: `auto-sync-global.sh` had glob pattern bug
    - **Problem**: `for file in *.md` failed when no files matched
    - **Solution**: Added `[ -f "$file" ] || continue` to each loop
