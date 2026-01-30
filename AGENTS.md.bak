@@ -441,25 +441,69 @@ SessionStart Event → session-start-restore-context.sh restores state ✅
 @debugger           → ~/.ralph/logs/debug.log
 ```
 
-### v2.82 Comprehensive Hooks Reference
+### v2.57-v2.58 Comprehensive Hooks (NEW)
 
-| Evento | Cantidad | Hooks Principales |
-|--------|----------|-------------------|
-| UserPromptSubmit | 8 | command-router, context-warning, prompt-analyzer, skill-pre-warm, statusline-health-monitor |
-| PreToolUse | 25+ | smart-memory-search, agent-memory-auto-init, lsa-pre-step, checkpoint-smart-save, fast-path-check, skill-validator, inject-session-context |
-| PostToolUse | 35+ | plan-sync-post-step, decision-extractor, semantic-realtime-extractor, status-auto-check, todo-plan-sync, quality-gates-v2, checkpoint-auto-save |
-| PreCompact | 3 | pre-compact-handoff, post-compact-restore |
-| SessionStart | 8 | session-start-ledger, session-start-restore-context, session-start-tldr, session-start-welcome |
-| Stop | 5 | sentry-report, reflection-engine, stop-verification, semantic-auto-extractor |
-| Interval | 4 | periodic-reminder, state-sync, sentry-check-status |
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| **Memory Management** |
+| `agent-memory-auto-init.sh` | PreToolUse | Auto-initialize agent memory buffers |
+| `semantic-realtime-extractor.sh` | PostToolUse (Edit/Write) | Real-time semantic extraction from code changes |
+| `semantic-auto-extractor.sh` | Stop | Extract semantic facts from session |
+| `episodic-auto-convert.sh` | Stop | Auto-convert episodic to procedural memory |
+| `decision-extractor.sh` | PostToolUse | Detect and extract architectural decisions |
+| `todo-plan-sync.sh` | PostToolUse (TodoWrite) | Sync todos with plan-state progress |
+| `smart-memory-search.sh` | CLI | Parallel search across all memory sources |
+| **Auto-Learning** |
+| `orchestrator-auto-learn.sh` | PreToolUse | Detect knowledge gaps, recommend curator |
+| `curator-suggestion.sh` | UserPromptSubmit | Suggest curator when memory is empty |
+| `curator-trigger.sh` | Manual | Trigger curator for quality repos |
+| **Plan State** |
+| `auto-migrate-plan-state.sh` | SessionStart | Auto-migrate plan-state schemas |
+| `plan-state-adaptive.sh` | PostToolUse | Adaptive plan-state updates |
+| `plan-state-lifecycle.sh` | Multiple | Manage plan-state lifecycle |
+| `plan-analysis-cleanup.sh` | PostToolUse (Task) | Cleanup after plan analysis |
+| **Context & Session** |
+| `context-warning.sh` | UserPromptSubmit | Monitor context usage (75%/85% thresholds) |
+| `auto-save-context.sh` | Interval | Auto-save session context |
+| `auto-sync-global.sh` | PostToolUse | Sync project state with global |
+| `pre-compact-handoff.sh` | PreCompact | Save state before compaction |
+| `post-compact-restore.sh` | SessionStart | Restore state after compaction |
+| `session-start-ledger.sh` | SessionStart | Auto-load ledger on startup |
+| `session-start-tldr.sh` | SessionStart | Generate session TLDR summary |
+| `session-start-welcome.sh` | SessionStart | Show welcome message |
+| **Orchestration** |
+| `orchestrator-init.sh` | CLI | Initialize orchestrator session |
+| `orchestrator-report.sh` | Stop | Generate orchestrator report |
+| `orchestrator-helper.sh` | Multiple | Helper functions for orchestrator |
+| `inject-session-context.sh` | PreToolUse | Inject session context into prompts |
+| `memory-write-trigger.sh` | PostToolUse | Trigger memory writes on edits |
+| `progress-tracker.sh` | PostToolUse | Track implementation progress |
+| **Checkpointing** |
+| `checkpoint-auto-save.sh` | PostToolUse | Auto-save checkpoint on edits |
+| **Security (v2.58)** |
+| `sec-context-validate.sh` | PostToolUse (Edit/Write) | Security context validation |
+| `pre-commit-command-validation.sh` | PreToolUse (Bash) | Validate commands pre-commit |
+| `post-commit-command-verify.sh` | PostToolUse (Bash) | Verify commands post-commit |
+| `detect-environment.sh` | Multiple | Environment detection (CLI/VSCode/Cursor) |
+| **Sentry/Observability** |
+| `sentry-report.sh` | Stop | Send session report to Sentry |
+| `sentry-correlation.sh` | Multiple | Maintain Sentry correlation context |
+| `sentry-check-status.sh` | Interval | Check Sentry status |
+| **Skills** |
+| `skill-pre-warm.sh` | SessionStart | Pre-warm skill cache |
+| `skill-validator.sh` | PreToolUse | Validate skill inputs |
+| **Other** |
+| `periodic-reminder.sh` | Interval | Periodic task reminders |
+| `prompt-analyzer.sh` | UserPromptSubmit | Analyze user prompts |
+| `state-sync.sh` | Interval | Sync state across components |
+| `stop-verification.sh` | Stop | Verify session state on stop |
+| `reflection-engine.sh` | Stop | Generate reflection summary |
+| `test-sec-context-hook.sh` | Test | Test sec-context-validate.sh |
 
-> **🆕 v2.82.0 - Intelligent Command Router Hook**: New UserPromptSubmit hook that analyzes prompts and suggests optimal commands (`/bug`, `/edd`, `/orchestrator`, `/loop`, `/adversarial`, `/gates`, `/security`, `/parallel`, `/audit`). Multilingual support (English + Spanish). Confidence-based filtering (≥ 80%).
-
-**Hook Count Summary (v2.82):**
-- Total scripts: ~100
+**Hook Count Summary (v2.58)**:
+- Total scripts: 58
 - Registered in settings.json: 52
-- Utility scripts (sourced): 6
-- Backup/archived: ~40
+- Utility scripts (sourced): 6 (detect-environment, orchestrator-helper, etc.)
 
 ## v2.46 Workflow Routes
 

@@ -1,34 +1,34 @@
 {
-  "version": "2.69.0",
-  "primary_economic_model": "glm-4.7",
+  "version": "2.82.0",
+  "primary_economic_model": "kimi-k2.5",
   "deprecated": ["minimax"],
   "model_by_task": {
     "exploration": {
-      "model": "glm-4.7",
-      "description": "Research, web search, vision - large context, low cost",
-      "cli": "mmc --query",
-      "context_window": "Large",
+      "model": "kimi-k2.5",
+      "description": "Research, web search, vision - large context, high quality",
+      "cli": "kimi-cli --query",
+      "context_window": "256K tokens",
       "status": "PRIMARY"
     },
     "implementation": {
-      "model": "sonnet",
+      "model": "kimi-k2.5",
       "description": "Features, refactors, tests - balanced quality/speed",
-      "cli": "claude --print -m sonnet",
-      "context_window": "200K tokens",
+      "cli": "kimi-cli --query",
+      "context_window": "256K tokens",
       "status": "PRIMARY"
     },
     "review": {
-      "model": "opus",
-      "description": "Pre-merge critical review - surgical precision",
-      "cli": "claude --print -m opus",
-      "context_window": "200K tokens",
+      "model": "kimi-k2.5",
+      "description": "Pre-merge critical review - high quality",
+      "cli": "kimi-cli --query",
+      "context_window": "256K tokens",
       "status": "PRIMARY"
     },
     "validation": {
-      "model": "glm-4.7",
+      "model": "kimi-k2.5",
       "description": "Second opinion, web search, vision analysis",
-      "cli": "mmc --query",
-      "context_window": "Large",
+      "cli": "kimi-cli --query",
+      "context_window": "256K tokens",
       "status": "PRIMARY"
     }
   },
@@ -36,47 +36,50 @@
     "claude_sonnet": 25,
     "claude_opus": 25,
     "glm_4_7": 50,
+    "kimi_k2_5": 50,
     "minimax_m21": 30,
     "minimax_lightning": 50
   },
   "model_routing": {
-    "complexity_1_2": "glm_4_7_lightning",
-    "complexity_3_4": "glm_4_7",
-    "complexity_5_6": "sonnet_with_codex_gemini",
-    "complexity_7_8": "opus_with_sonnet_clis",
-    "complexity_9_10": "opus_thinking"
+    "complexity_1_2": "kimi_k2_5_lightning",
+    "complexity_3_4": "kimi_k2_5",
+    "complexity_5_6": "kimi_k2_5",
+    "complexity_7_8": "kimi_k2_5",
+    "complexity_9_10": "kimi_k2_5"
   },
   "subagent_models": {
-    "orchestrator": "opus",
-    "security-auditor": "opus",
-    "code-reviewer": "sonnet",
-    "test-architect": "sonnet",
-    "debugger": "opus",
-    "refactorer": "sonnet",
-    "docs-writer": "sonnet",
-    "frontend-reviewer": "sonnet",
+    "orchestrator": "kimi-k2.5",
+    "security-auditor": "kimi-k2.5",
+    "code-reviewer": "kimi-k2.5",
+    "test-architect": "kimi-k2.5",
+    "debugger": "kimi-k2.5",
+    "refactorer": "kimi-k2.5",
+    "docs-writer": "kimi-k2.5",
+    "frontend-reviewer": "kimi-k2.5",
     "glm-reviewer": "glm-4.7",
-    "minimax-reviewer": "minimax (deprecated)"
+    "minimax-reviewer": "minimax (deprecated)",
+    "kimi-reviewer": "kimi-k2.5"
   },
   "cost_comparison": {
     "claude_opus": {"input": 5.00, "output": 25.00, "relative": "100%"},
     "claude_sonnet": {"input": 3.00, "output": 15.00, "relative": "60%"},
     "glm_4_7": {"input": 0.75, "output": 3.75, "relative": "15%"},
+    "kimi_k2_5": {"input": 2.00, "output": 8.00, "relative": "30%"},
     "minimax_m21": {"input": 0.30, "output": 1.20, "relative": "8% (deprecated)"}
   },
   "adversarial": {
     "mode": "4-planner-council",
     "consensus_required": 4,
-    "models": ["codex", "claude-opus", "gemini", "glm-4.7"]
+    "models": ["codex", "claude-opus", "gemini", "kimi-k2.5"]
   },
-  "glm_4_7_tools": {
-    "vision": ["ui_to_artifact", "extract_text_from_screenshot", "diagnose_error_screenshot", "understand_technical_diagram", "analyze_data_visualization", "ui_diff_check", "analyze_image", "analyze_video"],
-    "search": ["webSearchPrime", "webReader"],
+  "kimi_k2_5_tools": {
+    "vision": ["analyze_image", "analyze_video", "ui_to_artifact"],
+    "search": ["web_search", "web_reader"],
     "docs": ["search_doc", "read_file", "get_repo_structure"]
   },
-  "migration_v2_69": {
-    "mmc_query": "routes to GLM-4.7 with MiniMax fallback",
-    "minimax_reviewer": "deprecated, use glm-reviewer",
-    "minimax_validation": "deprecated, use glm-4.7"
+  "migration_v2_82": {
+    "primary_model": "kimi-k2.5",
+    "fallback": "glm-4.7",
+    "note": "Kimi K2.5 now primary for all tasks"
   }
 }

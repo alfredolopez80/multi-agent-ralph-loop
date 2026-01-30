@@ -15,7 +15,8 @@ INPUT=$(head -c 100000)
 set -euo pipefail
 umask 077
 
-# VERSION: 2.69.0
+# VERSION: 2.81.2
+# v2.81.2: FIX JSON schema - use hookSpecificOutput for PreToolUse
 # v2.66.6: SEC-049 - Fixed registration (was PostToolUse, now PreToolUse)
 
 # Error trap: Always output valid JSON for PreToolUse
@@ -154,10 +155,10 @@ main() {
         cp_file=$(create_checkpoint "$trigger" "Auto-save before $trigger operation") || true
 
         if [ -n "$cp_file" ] && [ -f "$cp_file" ]; then
-            # v2.69.0: Use additionalContext instead of stderr (fixes hook error warnings)
+            # v2.81.2: FIX JSON schema - use hookSpecificOutput for PreToolUse
             log_auto "INFO" "Checkpoint saved: $cp_file"
             trap - ERR EXIT
-            echo "{\"decision\": \"allow\", \"additionalContext\": \"💾 Auto-checkpoint saved before $trigger operation\"}"
+            echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
             exit 0
         fi
     fi

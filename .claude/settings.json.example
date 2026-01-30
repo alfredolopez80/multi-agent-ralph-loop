@@ -1,0 +1,98 @@
+{
+  "version": "2.82.0",
+  "permissions": {
+    "defaultMode": "delegate",
+    "allow": {
+      "edit": true,
+      "bash": true,
+      "write": true,
+      "read": true
+    }
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/command-router.sh" },
+          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/context-warning.sh" }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/smart-memory-search.sh" },
+          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/agent-memory-auto-init.sh" }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/lsa-pre-step.sh" },
+          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/checkpoint-smart-save.sh" }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/pre-commit-command-validation.sh" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/plan-sync-post-step.sh" },
+          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/decision-extractor.sh" },
+          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/semantic-realtime-extractor.sh" },
+          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/status-auto-check.sh" }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/post-commit-command-verify.sh" }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/pre-compact-handoff.sh" }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/session-start-ledger.sh" },
+          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/session-start-restore-context.sh" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/sentry-report.sh" },
+          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/reflection-engine.sh" }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "CLAUDE_CODE_AGENT_ID": "ralph-primary",
+    "CLAUDE_CODE_AGENT_NAME": "RalphWiggum",
+    "CLAUDE_CODE_TEAM_NAME": "multi-agent-ralph",
+    "CLAUDE_CODE_PLAN_MODE_REQUIRED": "false",
+    "CLAUDE_CODE_MAX_AGENT_ITERATIONS": "50",
+    "RALPH_VERSION": "2.82.0",
+    "RALPH_MODEL_PRIMARY": "glm-4.7",
+    "RALPH_MODEL_FALLBACK": "claude-sonnet"
+  }
+}

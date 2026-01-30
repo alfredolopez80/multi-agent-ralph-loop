@@ -2,6 +2,74 @@
 
 ---
 
+## [2.83.0] - 2026-01-30
+
+### Added
+
+- **Ralph Doctor**: Sistema de health check completo (`ralph doctor`)
+  - Verificación de dependencias (requeridas y opcionales)
+  - Verificación de skills (sin symlinks rotos)
+  - Verificación de hooks (permisos + sintaxis)
+  - Verificación de configuración (~/.ralph estructura)
+  - Tests de integración
+  - Modo --quick para checks rápidos
+  - Modo --fix para auto-correcciones
+  - Modo --report para generar reportes JSON/Markdown
+  - Archivo: `scripts/ralph-doctor.sh` (346 líneas, 10.4KB)
+
+- **Settings.json Template**: Configuración de ejemplo para Claude Code
+  - Archivo: `.claude/settings.json.example`
+  - Documentación: `docs/guides/SETTINGS_CONFIGURATION.md`
+  - Incluye todos los hooks principales organizados por evento
+  - Variables de entorno para swarm mode
+
+- **Complete Hooks Reference**: Documentación exhaustiva de ~100 hooks
+  - Archivo: `docs/hooks/COMPLETE_HOOKS_REFERENCE.md`
+  - 10 categorías de hooks documentadas
+  - Tablas con trigger, propósito y archivo
+  - ~74 hooks documentados en detalle
+
+### Changed
+
+- **Consolidación CLI**: MMC integrado en Ralph
+  - `mmc` ahora es symlink a `ralph`
+  - Nuevo comando: `ralph mmc` con subcomandos:
+    - `ralph mmc --setup`: Configurar GLM-4.7
+    - `ralph mmc --query`: Query a GLM-4.7
+    - `ralph mmc --web-search`: Búsqueda web
+    - `ralph mmc --loop N`: Loop iterativo
+    - `ralph mmc --status`: Estado de configuración
+  - Funcionalidad GLM-4.7 + MiniMax ahora accesible desde ralph
+  - Backup de mmc original: `scripts/mmc.legacy`
+
+- **AGENTS.md Actualizado**: Documentación de hooks corregida
+  - 58 hooks → ~100 hooks documentados
+  - Sección v2.82 Comprehensive Hooks Reference
+  - Nota sobre Command Router Hook v2.82.0
+
+### Fixed
+
+- **Skills Externos Consolidados**: Eliminados symlinks externos
+  - `deslop` → directorio físico
+  - `sec-context-depth` → directorio físico
+  - `stop-slop` → directorio físico
+  - `.gitignore` actualizado para ignorar backups
+
+### Files Added/Modified
+
+| File | Lines | Description |
+|------|-------|-------------|
+| `scripts/ralph-doctor.sh` | 346 | Health check system |
+| `.claude/settings.json.example` | 3031 bytes | Config template |
+| `docs/guides/SETTINGS_CONFIGURATION.md` | 4956 bytes | Config docs |
+| `docs/hooks/COMPLETE_HOOKS_REFERENCE.md` | 10733 bytes | Hooks reference |
+| `AGENTS.md` | - | Updated hook count |
+| `CHANGELOG.md` | - | This release |
+| `scripts/mmc` | - | Now symlink to ralph |
+| `scripts/mmc.legacy` | - | Backup of original |
+
+---
+
 ## [2.82.0] - 2026-01-30
 
 ### Added

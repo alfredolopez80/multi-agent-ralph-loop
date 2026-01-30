@@ -15,7 +15,8 @@
 # v2.59.2: FIXED - Single JSON output
 # v2.57.0: Fixed to actually inject context
 #
-# VERSION: 2.69.0
+# VERSION: 2.81.2
+# v2.81.2: FIX JSON schema - use hookSpecificOutput.updatedInput for PreToolUse
 # v2.68.25: FIX CRIT-001 - Removed duplicate stdin read (SEC-111 already reads at top)
 # v2.68.11: Version sync with SEC-111 fixes
 # v2.68.10: SEC-110 FIX - Redact sensitive data before logging (API keys, tokens)
@@ -448,8 +449,8 @@ if [[ -n "$ORIGINAL_PROMPT" ]]; then
 
     if [[ -n "$NEW_TOOL_INPUT" ]] && [[ "$NEW_TOOL_INPUT" != "null" ]]; then
         echo "[$(date -Iseconds)] Injecting learning recommendation into Task prompt" >> "${LOG_DIR}/auto-learn-$(date +%Y%m%d).log" 2>&1
-        # v2.70.0: PreToolUse hooks use {"hookSpecificOutput": {"permissionDecision": "allow"}}, NOT {"continue": true}
-        jq -n --argjson tool_input "$NEW_TOOL_INPUT" '{"decision": "allow", "tool_input": $tool_input}'
+        # v2.81.2: FIX JSON schema - use hookSpecificOutput.updatedInput for PreToolUse
+        jq -n --argjson tool_input "$NEW_TOOL_INPUT" '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "updatedInput": $tool_input}}'
         trap - EXIT; exit 0
     fi
 fi

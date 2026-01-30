@@ -6,7 +6,8 @@
 # When a Task tool spawns an agent, this hook checks if the agent
 # has a memory buffer. If not, it initializes one automatically.
 #
-# VERSION: 2.69.0
+# VERSION: 2.81.2
+# v2.81.2: FIX JSON schema - use hookSpecificOutput for PreToolUse
 # v2.68.9: SEC-101 FIX - Validate SUBAGENT_TYPE to prevent sed command injection
 # v2.66.7: CRIT-001 fix - explicit JSON output on success path
 # v2.57.2: Fixed JSON output (SEC-034) - must output JSON, not silent exit
@@ -97,6 +98,6 @@ MEMORYJSON
 
 } >> "${LOG_DIR}/agent-memory-init-$(date +%Y%m%d).log" 2>&1 || true
 
-# Allow the Task to proceed - CRIT-001 fix: explicit JSON output
+# Allow the Task to proceed - v2.81.2: FIX JSON schema - use hookSpecificOutput for PreToolUse
 trap - EXIT
-echo '{"decision": "allow"}'
+echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'

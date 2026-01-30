@@ -2,7 +2,8 @@
 # Fast-Path Check Hook v2.46
 # Hook: PreToolUse (Task)
 # Purpose: Detect trivial tasks and route to fast-path
-# VERSION: 2.69.0
+# VERSION: 2.81.2
+# v2.81.2: FIX JSON schema - use hookSpecificOutput.permissionDecisionReason
 # v2.69.0: FIX CRIT-003 - Added EXIT to trap for guaranteed JSON output
 # v2.68.25: FIX CRIT-001 - Removed duplicate stdin read (SEC-111 already reads at top)
 # v2.57.3: Fixed JSON output to single line format
@@ -86,10 +87,10 @@ LOG_FILE="$LOG_DIR/fast-path-$(date +%Y%m%d).log"
 } >> "$LOG_FILE"
 
 # Return decision with classification hint (single-line JSON)
-# v2.70.0: PreToolUse hooks use {"hookSpecificOutput": {"permissionDecision": "allow"}}, NOT {"continue": true}
+# v2.81.2: FIX JSON schema - use hookSpecificOutput for PreToolUse
 trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
 if [[ "$IS_TRIVIAL" == "true" ]]; then
-    echo '{"decision": "allow", "additionalContext": "FAST_PATH_ELIGIBLE: This task appears trivial (complexity <= 3). Consider fast-path: DIRECT_EXECUTE -> MICRO_VALIDATE -> DONE."}'
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "permissionDecisionReason": "FAST_PATH_ELIGIBLE: This task appears trivial (complexity <= 3). Consider fast-path: DIRECT_EXECUTE -> MICRO_VALIDATE -> DONE."}}'
 else
-    echo '{"decision": "allow", "additionalContext": "STANDARD_PATH: This task requires full orchestration workflow."}'
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
 fi

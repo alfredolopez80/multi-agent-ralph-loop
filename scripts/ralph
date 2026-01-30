@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ralph - Multi-Agent Orchestrator CLI
-# Version 2.69.0
+# Version 2.83.0
 # v2.47: Smart Memory-Driven Orchestration (based on @PerceptualPeak Smart Forking)
 #        - Parallel memory search across claude-mem, memvid, handoffs, ledgers
 #        - Smart fork suggestions (top 5 relevant sessions)
@@ -50,7 +50,7 @@ set -euo pipefail
 # SECURITY: Ensure all created files are user-only by default (VULN-008)
 umask 077
 
-VERSION="2.69.0"
+VERSION="2.83.0"
 RALPH_REPO_PATH=""  # Auto-detected if in ralph repo
 RALPH_DIR="${HOME}/.ralph"
 
@@ -646,6 +646,12 @@ SPECIALIZED:
   ralph refactor <path>      Refactoring (Codex)
   ralph research "query"     Web research (Gemini)
   ralph glm "query"          Second opinion (GLM-4.7 PRIMARY, MiniMax fallback)
+  ralph mmc                    Launch Claude Code with GLM-4.7 backend (MiniMax MCP)
+                               --setup: Configure GLM-4.7 API key
+                               --query: Single query to GLM-4.7
+                               --web-search: Web search via GLM-4.7
+                               --loop N: Loop up to N iterations
+                               --status: Check GLM-4.7 configuration
 
 MEMORY (v2.31):
   ralph memvid init          Initialize Memvid memory system
@@ -7938,6 +7944,208 @@ cmd_process_status() {
     ps aux | grep -E "(codex|gemini|mmc|ralph)" | grep -v grep || echo "  None"
 }
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# MMC INTEGRATION - GLM-4.7 + MiniMax Fallback (v2.83.0)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+MMC_CONFIG_FILE="${RALPH_DIR}/config/glm.json"
+MINIMAX_CONFIG_FILE="${RALPH_DIR}/config/minimax.json"
+
+# Helper: secure curl (no API key exposure in argv)
+_cmd_mmc_secure_curl() {
+    local URL="$1"
+    local API_KEY="$2"
+    local DATA="$3"
+    local MAX_TIME="${4:-300}"
+    
+    local HEADER_FILE
+    HEADER_FILE=$(mktemp "${TMPDIR:-/tmp}/ralph_mmc_headers.XXXXXXXXXX")
+    chmod 600 "$HEADER_FILE"
+    
+    cat > "$HEADER_FILE" <<EOF
+Authorization: Bearer $API_KEY
+Content-Type: application/json
+EOF
+    
+    local RESPONSE
+    RESPONSE=$(curl -s --max-time "$MAX_TIME" "$URL" \
+        -H @"$HEADER_FILE" \
+        -d "$DATA" 2>&1)
+    
+    rm -f "$HEADER_FILE"
+    echo "$RESPONSE"
+}
+
+# Helper: Get GLM API key
+_cmd_mmc_get_glm_api_key() {
+    if [ -n "${Z_AI_API_KEY:-}" ]; then
+        echo "$Z_AI_API_KEY"
+    elif [ -f "$MMC_CONFIG_FILE" ]; then
+        jq -r '.apiKey // empty' "$MMC_CONFIG_FILE"
+    else
+        echo ""
+    fi
+}
+
+# Helper: Check MMC config
+_cmd_mmc_check_config() {
+    if [ -f "$MMC_CONFIG_FILE" ]; then
+        return 0
+    elif [ -n "${_cmd_mmc_get_glm_api_key}" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Query GLM-4.7
+_cmd_mmc_query() {
+    local PROMPT="$1"
+    local MODEL="${2:-glm-4.7}"
+    local TEMP="${3:-0.5}"
+    local WEB_SEARCH="${4:-false}"
+    
+    local API_KEY
+    API_KEY=$(_cmd_mmc_get_glm_api_key)
+    
+    if [ -z "$API_KEY" ]; then
+        log_error "No GLM-4.7 API key configured. Run: ralph mmc --setup"
+        return 1
+    fi
+    
+    local BASE_URL="https://api.z.ai/api/coding/paas/v4"
+    local SAFE_PROMPT
+    SAFE_PROMPT=$(printf '%s' "$PROMPT" | jq -Rs '.')
+    
+    local DATA
+    if [ "$WEB_SEARCH" = "true" ]; then
+        DATA="{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":$SAFE_PROMPT}],\"temperature\":$TEMP,\"web_search\":{\"enable\":true}}"
+    else
+        DATA="{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":$SAFE_PROMPT}],\"temperature\":$TEMP}"
+    fi
+    
+    local RESPONSE
+    RESPONSE=$(_cmd_mmc_secure_curl "$BASE_URL/chat/completions" "$API_KEY" "$DATA")
+    
+    # Extract content
+    echo "$RESPONSE" | jq -r '.choices[0].message.content // empty' 2>/dev/null || echo "$RESPONSE"
+}
+
+# Web search via GLM-4.7
+_cmd_mmc_web_search() {
+    local QUERY="$1"
+    log_info "Web search via GLM-4.7..."
+    _cmd_mmc_query "$QUERY" "glm-4.7" "0.3" "true"
+}
+
+# Loop with VERIFIED_DONE
+_cmd_mmc_loop() {
+    local MAX_ITER="${1:-50}"
+    shift
+    local TASK="$*"
+    
+    local ITER=0
+    while [ $ITER -lt "$MAX_ITER" ]; do
+        ((ITER++))
+        echo -e "${YELLOW}[Iteration $ITER/$MAX_ITER]${NC}"
+        
+        local RESULT
+        RESULT=$(_cmd_mmc_query "$TASK. If complete, respond with VERIFIED_DONE on its own line.")
+        echo "$RESULT"
+        
+        if echo "$RESULT" | grep -q "VERIFIED_DONE"; then
+            log_success "Task completed at iteration $ITER"
+            return 0
+        fi
+    done
+    
+    log_warn "Max iterations ($MAX_ITER) reached without VERIFIED_DONE"
+    return 1
+}
+
+# Setup MMC configuration
+_cmd_mmc_setup() {
+    log_section "MMC Setup - GLM-4.7 Configuration"
+    
+    mkdir -p "${RALPH_DIR}/config"
+    
+    echo "Enter your Z.AI (GLM-4.7) API key:"
+    read -r GLM_API_KEY
+    
+    if [ -z "$GLM_API_KEY" ]; then
+        log_error "API key cannot be empty"
+        return 1
+    fi
+    
+    jq -n \
+        --arg key "$GLM_API_KEY" \
+        '{apiKey: $key, baseUrl: "https://api.z.ai/api/coding/paas/v4", defaultModel: "glm-4.7"}' \
+        > "$MMC_CONFIG_FILE"
+    
+    chmod 600 "$MMC_CONFIG_FILE"
+    log_success "GLM-4.7 configuration saved to $MMC_CONFIG_FILE"
+    
+    echo ""
+    echo "Add to your ~/.zshrc or ~/.bashrc:"
+    echo '  export Z_AI_API_KEY="your-api-key"'
+}
+
+# Main MMC command handler
+cmd_mmc() {
+    case "${1:-}" in
+        --setup)
+            _cmd_mmc_setup
+            ;;
+        --query|-q)
+            shift
+            _cmd_mmc_query "$*"
+            ;;
+        --web-search|-w)
+            shift
+            _cmd_mmc_web_search "$*"
+            ;;
+        --loop|-l)
+            shift
+            local MAX_ITER="${1:-50}"
+            shift
+            _cmd_mmc_loop "$MAX_ITER" "$*"
+            ;;
+        --status)
+            if _cmd_mmc_check_config; then
+                log_success "GLM-4.7 is configured"
+            else
+                log_error "GLM-4.7 is NOT configured. Run: ralph mmc --setup"
+            fi
+            ;;
+        --help|-h)
+            cat << 'EOF'
+ralph mmc - GLM-4.7 Integration Commands
+
+USAGE:
+  ralph mmc --setup              Configure GLM-4.7 API key
+  ralph mmc --query "prompt"     Query GLM-4.7
+  ralph mmc --web-search "q"     Web search via GLM-4.7
+  ralph mmc --loop N "task"      Loop up to N iterations
+  ralph mmc --status             Check configuration status
+  ralph mmc --help               Show this help
+
+EXAMPLES:
+  ralph mmc --query "Review this code"
+  ralph mmc --web-search "React 19 features"
+  ralph mmc --loop 30 "Fix all bugs"
+EOF
+            ;;
+        *)
+            if [ -z "${1:-}" ]; then
+                cmd_mmc --help
+            else
+                # Default: treat as query
+                _cmd_mmc_query "$*"
+            fi
+            ;;
+    esac
+}
+
 cmd_version() {
     echo "ralph v$VERSION"
 }
@@ -8051,6 +8259,14 @@ main() {
             ;;
         glm|minimax|mm)
             cmd_minimax "$@"
+            ;;
+        mmc)
+            shift
+            cmd_mmc "$@"
+            ;;
+        doctor|dr)
+            shift
+            exec "${SCRIPT_DIR}/ralph-doctor.sh" "$@"
             ;;
 
         # Validation

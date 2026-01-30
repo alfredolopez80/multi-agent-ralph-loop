@@ -1,0 +1,55 @@
+# Shellcheck configuration for Multi-Agent Ralph
+# https://github.com/koalaman/shellcheck/wiki
+
+# Specify shell
+shell=bash
+
+# Disable specific checks that don't apply to this project
+
+# SC1090: Can't follow non-constant source
+# We source files dynamically, this is expected
+disable=SC1090
+
+# SC1091: Not following sourced file
+# External files like .bashrc, hooks/*
+disable=SC1091
+
+# SC2001: See if you can use ${var//search/replace} instead
+# Sometimes sed is clearer for complex replacements
+disable=SC2001
+
+# SC2002: Useless cat
+# Sometimes 'cat file | cmd' is more readable than 'cmd < file'
+disable=SC2002
+
+# SC2004: $/${} is unnecessary on arithmetic variables
+# We prefer explicit ${} for consistency
+disable=SC2004
+
+# SC2015: Note that A && B || C is not if-then-else
+# We know this pattern and use it intentionally
+disable=SC2015
+
+# SC2029: Note that, unescaped, this expands on the client side
+# SSH commands sometimes need expansion
+disable=SC2029
+
+# SC2034: Variable appears unused
+# Used for documentation or sourcing
+disable=SC2034
+
+# SC2120: Function references arguments that are never passed
+# Functions may use $@ internally
+disable=SC2120
+
+# SC2155: Declare and assign separately to avoid masking return values
+# We often combine for simplicity
+disable=SC2155
+
+# SC2207: Prefer mapfile or read -a to split command output
+# Sometimes we want word splitting
+disable=SC2207
+
+# External sources (for following includes)
+# source-path=scripts
+# source-path=.claude/hooks
