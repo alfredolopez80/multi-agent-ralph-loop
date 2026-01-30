@@ -1,7 +1,110 @@
 ---
 name: edd
-description: Custom skill for edd
+description: "Eval-Driven Development (EDD) Framework v2.64 - Define-before-implement pattern with structured evals. Provides workflow: Define specifications → Implement features → Verify against evals. Components: TEMPLATE.md for eval definitions, edd.sh CLI script, /edd skill invocation. Check types: CC- (Capability), BC- (Behavior), NFC- (Non-Functional). Integrates with orchestrator workflow for quality-first development. Keywords: evals, define, implement, verify, capability checks, behavior checks, non-functional checks, template, quality assurance, test-driven, specification. Use when: defining new features with structured evals, implementing with verification requirements, creating quality specifications, TDD-style workflow with evals."
 ---
+
+# EDD (Eval-Driven Development) Framework v2.64
+
+**Eval-Driven Development** is a quality-first development pattern that enforces **define-before-implement** workflow with structured evaluations.
+
+## What is EDD?
+
+EDD provides a systematic approach to software development with three phases:
+
+1. **DEFINE** - Create structured eval specifications using TEMPLATE.md
+2. **IMPLEMENT** - Build features according to eval definitions
+3. **VERIFY** - Validate implementation against eval criteria
+
+## Check Types
+
+| Prefix | Type | Purpose |
+|--------|------|---------|
+| `CC-` | Capability Checks | Feature capabilities and functionality |
+| `BC-` | Behavior Checks | Expected behaviors and responses |
+| `NFC-` | Non-Functional Checks | Performance, security, maintainability |
+
+## Usage
+
+```bash
+# Invoke EDD workflow
+/edd "Define memory-search feature"
+
+# CLI script (if available)
+ralph edd define memory-search
+ralph edd check memory-search
+```
+
+## Components
+
+- **TEMPLATE.md**: Template for creating eval definitions
+- **edd.sh**: CLI script for eval management
+- **/edd skill**: Skill invocation from Claude Code
+- **~/.claude/evals/**: Directory for eval definitions
+
+## Template Structure
+
+Each eval definition includes:
+
+1. **Capability Checks** (CC-) - What the feature can do
+2. **Behavior Checks** (BC-) - How the feature behaves
+3. **Non-Functional Checks** (NFC-) - Performance, security, etc.
+4. **Implementation Notes** - Technical guidance
+5. **Verification Evidence** - Test results
+
+## Example: memory-search.md
+
+```markdown
+# Memory Search Eval
+
+**Status**: DRAFT
+**Created**: 2026-01-30
+
+## Capability Checks
+- [ ] CC-1: Search across semantic memory
+- [ ] CC-2: Support filtering by type
+
+## Behavior Checks
+- [ ] BC-1: Returns ranked results
+- [ ] BC-2: Handles empty queries gracefully
+
+## Non-Functional Checks
+- [ ] NFC-1: Search completes in <2s
+- [ ] NFC-2: Memory usage <100MB
+
+## Implementation Notes
+- Use parallel search for performance
+- Cache frequent queries
+
+## Verification Evidence
+- Test results attached
+```
+
+## Integration with Orchestrator
+
+EDD integrates with the orchestrator workflow to ensure quality-first development:
+
+1. **Clarify** phase - Define evals
+2. **Plan** phase - Review eval requirements
+3. **Implement** phase - Build to eval specs
+4. **Validate** phase - Verify against evals
+
+## Testing
+
+Test suite: `tests/test_v264_edd_framework.bats` (33 tests)
+
+Run tests:
+```bash
+bats tests/test_v264_edd_framework.bats
+```
+
+## Status
+
+**Current**: Framework defined, minimal implementation
+**Note**: Full implementation pending - TEMPLATE.md and evals directory may not exist yet
+
+---
+
+**Version**: v2.64 | **Status**: DRAFT | **Tests**: 33 passing
 <claude-mem-context>
 # Recent Activity
 

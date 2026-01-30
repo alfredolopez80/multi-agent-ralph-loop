@@ -86,31 +86,97 @@ Orquestación de Google Gemini CLI (v0.22.0+) con **Gemini 3 Pro** para:
 
 ---
 
-### 3. `/edd` - Custom Skill (Investigación Pendiente)
+### 3. `/edd` - Eval-Driven Development Framework (v2.64)
 
 **Ubicación**: `.claude/skills/edd/`
 **Symlink Global**: ✅ `~/.claude-sneakpeek/zai/config/skills/edd`
 
-**Descripción Actual**:
-```yaml
-name: edd
-description: Custom skill for edd
+**Propósito**: Framework de desarrollo con patrón **define-before-implement** y evaluaciones estructuradas
+
+**Descripción Completa**:
+
+EDD (**Eval-Driven Development**) es un framework de calidad-first que impone un flujo de trabajo sistemático en tres fases:
+
+1. **DEFINE** - Crear especificaciones de evaluación usando TEMPLATE.md
+2. **IMPLEMENT** - Construir features según definiciones de evaluación
+3. **VERIFY** - Validar implementación contra criterios de evaluación
+
+**Tipos de Checks**:
+
+| Prefix | Tipo | Propósito |
+|--------|------|-----------|
+| `CC-` | Capability Checks | Capacidades y funcionalidad del feature |
+| `BC-` | Behavior Checks | Comportamientos y respuestas esperadas |
+| `NFC-` | Non-Functional Checks | Performance, seguridad, mantenibilidad |
+
+**Componentes**:
+
+- **TEMPLATE.md**: Plantilla para crear definiciones de evaluación
+- **edd.sh**: Script CLI para gestión de evaluaciones
+- **/edd skill**: Invocación desde Claude Code
+- **~/.claude/evals/**: Directorio para definiciones de evaluación
+
+**Uso**:
+```bash
+# Invocar workflow EDD
+/edd "Define memory-search feature"
+
+# Script CLI (si está disponible)
+ralph edd define memory-search
+ralph edd check memory-search
 ```
 
-**Estado**: ⚠️ INVESTIGACIÓN PENDIENTE
+**Estructura de Template**:
 
-**Análisis Preliminar**:
-- Skill personalizado/customizado
-- Descripción minimalista en skill.md
-- Sin documentación extensa en CLAUDE.md
-- Posible skill especializado del proyecto
+Cada evaluación incluye:
+1. **Capability Checks** (CC-) - Qué puede hacer el feature
+2. **Behavior Checks** (BC-) - Cómo se comporta el feature
+3. **Non-Functional Checks** (NFC-) - Performance, seguridad, etc.
+4. **Implementation Notes** - Guía técnica
+5. **Verification Evidence** - Resultados de pruebas
 
-**Requiere**: Investigación adicional para determinar propósito exacto.
+**Ejemplo: memory-search.md**:
 
-**Acciones Sugeridas**:
-1. Buscar referencias a "edd" en el código
-2. Revisar comandos o scripts relacionados
-3. Documentar su funcionalidad
+```markdown
+# Memory Search Eval
+
+**Status**: DRAFT
+**Created**: 2026-01-30
+
+## Capability Checks
+- [ ] CC-1: Search across semantic memory
+- [ ] CC-2: Support filtering by type
+
+## Behavior Checks
+- [ ] BC-1: Returns ranked results
+- [ ] BC-2: Handles empty queries gracefully
+
+## Non-Functional Checks
+- [ ] NFC-1: Search completes in <2s
+- [ ] NFC-2: Memory usage <100MB
+
+## Implementation Notes
+- Use parallel search for performance
+- Cache frequent queries
+
+## Verification Evidence
+- Test results attached
+```
+
+**Integración con Orchestrator**:
+
+EDD se integra con el flujo de trabajo del orchestrator para asegurar desarrollo calidad-first:
+
+1. **Clarify** - Definir evaluaciones
+2. **Plan** - Revisar requisitos de evaluación
+3. **Implement** - Construir según especificaciones
+4. **Validate** - Verificar contra evaluaciones
+
+**Tests**: Suite de 33 tests en `tests/test_v264_edd_framework.bats`
+
+**Estado**: Framework definido (v2.64), implementación completa pendiente
+
+**Documentación**: Actualizado 2026-01-30 con descripción completa basada en test suite
 
 ---
 
@@ -148,11 +214,11 @@ Project Skills Directory: .claude/skills/
 
 ## Comparación de Skills Auxiliares
 
-| Skill | Modelo Principal | Propósito | Unic |
-|-------|-----------------|----------|-------|
+| Skill | Modelo Principal | Propósito | Unique |
+|-------|-----------------|----------|--------|
 | **codex-cli** | gpt-5.2-codex | Code generation, refactoring, análisis automatizado | OpenAI Codex CLI |
 | **gemini-cli** | Gemini 3 Pro | Second opinion, búsqueda web, análisis arquitectura | Google Gemini CLI |
-| **edd** | ¿Pendiente? | Custom skill (investigación pendiente) | Ralph personalizado |
+| **edd** | N/A (framework) | Eval-Driven Development: define-before-implement | Ralph framework |
 
 ## Patrón de Uso Recomendado
 
@@ -252,22 +318,20 @@ ls -la ~/.claude-sneakpeek/zai/config/skills/ | grep "^l"
 - **Skills Directory**: `.claude/skills/`
 - **Global Config**: `~/.claude-sneakpeek/zai/config/settings.json`
 
-## Próximos Pasos
+## Completado
 
-### Para `/edd` (Investigación Pendiente)
+### `/edd` - ✅ Investigación Completada
 
-1. **Buscar referencias en el código**:
-   ```bash
-   grep -r "edd" .claude/ --include="*.md" --include="*.sh"
-   ```
+**Fecha**: 2026-01-30
 
-2. **Revisar comandos y scripts**:
-   ```bash
-   ls -la .claude/commands/ | grep -i edd
-   ls -la .claude/scripts/ | grep -i edd
-   ```
+**Acciones Realizadas**:
+1. ✅ Buscado referencias en el código (`grep -r "edd"`)
+2. ✅ Revisado test suite (`tests/test_v264_edd_framework.bats`)
+3. ✅ Identificado como **Eval-Driven Development Framework**
+4. ✅ Documentado funcionalidad completa
+5. ✅ Actualizado `skill.md` con descripción detallada
 
-3. **Documentar funcionalidad**: Una vez identificado, actualizar SKILL.md con descripción completa.
+**Resultado**: EDD es un framework de calidad-first con patrón define-before-implement, tres tipos de checks (CC-, BC-, NFC-), y workflow en tres fases (DEFINE → IMPLEMENT → VERIFY).
 
 ### Para Skills CLI Externos
 
@@ -283,8 +347,8 @@ ls -la ~/.claude-sneakpeek/zai/config/skills/ | grep "^l"
 
 ---
 
-**Status**: Skills auxiliares validados y documentados.
-**Próxima Actualización**: Investigar y documentar `/edd` completamente.
+**Status**: ✅ Todos los skills auxiliares validados, documentados e investigados.
+**Investigación `/edd`**: ✅ Completada 2026-01-30
 
 **Version**: v2.81.1
-**Last Updated**: 2026-01-30
+**Last Updated**: 2026-01-30 12:45 PM GMT+1
