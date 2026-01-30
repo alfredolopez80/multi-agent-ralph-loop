@@ -1,0 +1,99 @@
+# Swarm Mode Integration Plan - Implementation State v2.81.1
+
+**Date**: 2026-01-30
+**Status**: IN PROGRESS
+**Phase**: Fase 1 - Core Commands
+
+## Plan State
+
+```json
+{
+  "version": "2.81.1",
+  "task": "Integrar swarm mode completo en Multi-Agent Ralph Loop",
+  "phases": [
+    {
+      "phase_id": "phase-1",
+      "name": "Core Commands Integration",
+      "steps": [
+        {"id": "1", "task": "Update /loop with swarm mode", "status": "completed", "file": ".claude/commands/loop.md"},
+        {"id": "2", "task": "Integrate /edd with swarm mode", "status": "in_progress", "file": ".claude/skills/edd/skill.md"},
+        {"id": "3", "task": "Create /bug command with swarm mode", "status": "pending", "file": ".claude/commands/bug.md"},
+        {"id": "4", "task": "Validate phase 1 integration", "status": "pending"}
+      ],
+      "execution_mode": "sequential"
+    },
+    {
+      "phase_id": "phase-2",
+      "name": "Secondary Commands Integration",
+      "steps": [
+        {"id": "5", "task": "Update /adversarial with swarm mode", "status": "pending", "file": ".claude/commands/adversarial.md"},
+        {"id": "6", "task": "Update /parallel with swarm mode", "status": "pending", "file": ".claude/commands/parallel.md"},
+        {"id": "7", "task": "Update /gates with swarm mode", "status": "pending", "file": ".claude/commands/gates.md"}
+      ],
+      "execution_mode": "sequential"
+    },
+    {
+      "phase_id": "phase-3",
+      "name": "Global Hooks Integration",
+      "steps": [
+        {"id": "8", "task": "Create auto-background-swarm.sh hook", "status": "pending", "file": ".claude/hooks/auto-background-swarm.sh"},
+        {"id": "9", "task": "Register hook in PostToolUse", "status": "pending"}
+      ],
+      "execution_mode": "sequential"
+    },
+    {
+      "phase_id": "phase-4",
+      "name": "Documentation Updates",
+      "steps": [
+        {"id": "10", "task": "Update CLAUDE.md with swarm mode info", "status": "pending", "file": "CLAUDE.md"},
+        {"id": "11", "task": "Create swarm mode usage guide", "status": "pending", "file": "docs/SWARM_MODE_USAGE_GUIDE.md"}
+      ],
+      "execution_mode": "sequential"
+    },
+    {
+      "phase_id": "phase-5",
+      "name": "Testing and Validation",
+      "steps": [
+        {"id": "12", "task": "Create integration tests for all commands", "status": "pending"},
+        {"id": "13", "task": "Test real swarm execution", "status": "pending"},
+        {"id": "14", "task": "Run adversarial audit", "status": "pending"},
+        {"id": "15", "task": "Run codex-cli review", "status": "pending"},
+        {"id": "16", "task": "Run gemini-cli review", "status": "pending"},
+        {"id": "17", "task": "Fix all identified issues", "status": "pending"}
+      ],
+      "execution_mode": "sequential"
+    }
+  ],
+  "barriers": {
+    "phase-1": false,
+    "phase-2": false,
+    "phase-3": false,
+    "phase-4": false,
+    "phase-5": false
+  }
+}
+```
+
+## Progress Tracking
+
+- **Total Steps**: 17
+- **Completed**: 1
+- **In Progress**: 1
+- **Pending**: 15
+
+## Current Phase
+
+**Fase 1**: Core Commands Integration
+- Step 1 ✅ COMPLETED: /loop updated with swarm mode (commit 40791cc)
+- Step 2 🔄 IN PROGRESS: Integrating /edd with swarm mode
+- Objetivo: Actualizar /loop, /edd, crear /bug
+- Estimado: 2 horas
+- Riesgo: Medio (modifica comandos existentes)
+
+## Next Action
+
+Starting Step 2: Integrate /edd with swarm mode
+
+---
+
+**Last Updated**: 2026-01-30 1:25 PM GMT+1
