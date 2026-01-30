@@ -718,16 +718,44 @@ Utilization Rate: Measured automatically
 
 ## Hooks System
 
+> **⚠️ CRITICAL v2.81.1**: `PostCompact` does NOT exist in Claude Code. Use `PreCompact` for saving state and `SessionStart` for restoring. See [docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md](docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md).
+
 ### Hook Events
 
 | Event | Purpose | Example Hooks |
 |-------|---------|---------------|
-| **SessionStart** | Initialize session | session-ledger, auto-migrate-plan-state |
+| **SessionStart** | Initialize session, restore context after compaction | session-ledger, auto-migrate-plan-state, session-start-restore-context |
 | **UserPromptSubmit** | Before user prompt | context-warning, periodic-reminder |
 | **PreToolUse** | Before tool execution | lsa-pre-step, procedural-inject, learning-gate |
 | **PostToolUse** | After tool execution | quality-gates-v2, rule-verification |
-| **PreCompact** | Before context compaction | pre-compact-handoff |
+| **PreCompact** | Before context compaction (ONLY compaction event) | pre-compact-handoff, post-compact-restore (both run here) |
 | **Stop** | Session end | reflection-engine, orchestrator-report |
+| **PostCompact** | ❌ **DOES NOT EXIST** - Feature request #14258 |
+
+### ⚠️ PostCompact Does NOT Exist (v2.81.1)
+
+**Discovery**: `PostCompact` is NOT a valid hook event in Claude Code as of January 2026.
+
+**What This Means**:
+- ❌ There is NO `PostCompact` event that fires after compaction
+- ✅ Only `PreCompact` exists (fires BEFORE compaction)
+- ✅ Use `SessionStart` for post-compaction context restoration
+
+**Correct Compaction Pattern**:
+```
+PreCompact Event → Save state (ledger, handoff, plan-state)
+    ↓
+Compaction Happens → Old messages removed
+    ↓
+SessionStart Event → Restore state in new session ✅
+```
+
+**Implementation**:
+- `pre-compact-handoff.sh` → Saves state in `PreCompact`
+- `session-start-restore-context.sh` → Restores state in `SessionStart`
+- Both hooks use global paths: `~/.claude-sneakpeek/zai/config/hooks/`
+
+**Documentation**: See [docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md](docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md) for complete details.
 
 ### Hook Registration
 
@@ -736,11 +764,19 @@ Hooks are registered in `~/.claude-sneakpeek/zai/config/settings.json`:
 ```json
 {
   "hooks": {
-    "PreToolUse": [
+    "PreCompact": [
       {
-        "matcher": "Task",
+        "matcher": "*",
         "hooks": [
-          { "command": "/path/to/learning-gate.sh" }
+          { "command": "/path/to/pre-compact-handoff.sh" }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "command": "/path/to/session-start-restore-context.sh" }
         ]
       }
     ]
@@ -776,6 +812,19 @@ Hooks are registered in `~/.claude-sneakpeek/zai/config/settings.json`:
   }
 }
 ```
+
+### Recent Hook Fixes (v2.81.1)
+
+**Fixed Issues**:
+1. **SessionStart Hook Failure**: `auto-sync-global.sh` had glob pattern bug
+   - **Problem**: `for file in *.md` failed when no files matched
+   - **Solution**: Added `[ -f "$file" ] || continue` to each loop
+   - **Result**: SessionStart hooks now exit successfully
+
+2. **PostCompact Misinformation**: Incorrect documentation mentioned `PostCompact` as valid
+   - **Problem**: Orchestrator created docs mentioning non-existent event
+   - **Solution**: Created comprehensive docs clarifying `PostCompact` doesn't exist
+   - **Result**: Correct pattern documented (PreCompact + SessionStart)
 
 ---
 
