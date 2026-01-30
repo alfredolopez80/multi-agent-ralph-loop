@@ -164,25 +164,62 @@ get_audit_stats() {
 }
 
 # Rotate audit log if too large
+# Uses atomic lock to prevent TOCTOU race conditions
 rotate_audit_log() {
     local max_size_mb=10
+    local LOCK_FILE="${AUDIT_LOG}.lock"
 
     if [[ ! -f "$AUDIT_LOG" ]]; then
         return 0
     fi
 
-    # Get file size in MB
-    local size_mb=$(du -m "$AUDIT_LOG" | cut -f1)
+    # Acquire exclusive lock using atomic mkdir (POSIX-compliant)
+    local timeout=5
+    while [[ $timeout -gt 0 ]]; do
+        if mkdir "$LOCK_FILE" 2>/dev/null; then
+            break
+        fi
+        sleep 1
+        ((timeout--))
+    done
 
-    if [[ $size_mb -gt $max_size_mb ]]; then
-        local timestamp=$(date +%Y%m%d_%H%M%S)
+    # Could not acquire lock, skip rotation to avoid race
+    if [[ $timeout -eq 0 ]]; then
+        return 1
+    fi
+
+    # Ensure lock is released on exit
+    trap 'rmdir "$LOCK_FILE" 2>/dev/null || true' EXIT
+
+    # Re-check file still exists and get size (might have changed while waiting)
+    if [[ ! -f "$AUDIT_LOG" ]]; then
+        rmdir "$LOCK_FILE" 2>/dev/null || true
+        trap - EXIT
+        return 0
+    fi
+
+    local size_mb=$(du -m "$AUDIT_LOG" 2>/dev/null | cut -f1)
+
+    if [[ ${size_mb:-0} -gt $max_size_mb ]]; then
+        local timestamp=$(date +%Y%m%d_%H%M%S)_$$
         local backup_file="${AUDIT_LOG}.${timestamp}.bak"
 
-        mv "$AUDIT_LOG" "$backup_file"
-        touch "$AUDIT_LOG"
+        # Atomic rotation with unique timestamp (includes PID $$)
+        mv "$AUDIT_LOG" "$backup_file" 2>/dev/null && touch "$AUDIT_LOG" && chmod 600 "$AUDIT_LOG"
+
+        # Cleanup: keep only last 5 rotated logs (background to not block)
+        (
+            ls -t "${AUDIT_LOG}".*.bak 2>/dev/null | tail -n +6 | while read -r old_log; do
+                rm -f "$old_log" 2>/dev/null
+            done
+        ) &
 
         echo "Rotated audit log: $backup_file"
     fi
+
+    # Release lock
+    rmdir "$LOCK_FILE" 2>/dev/null || true
+    trap - EXIT
 }
 
 # =============================================================================

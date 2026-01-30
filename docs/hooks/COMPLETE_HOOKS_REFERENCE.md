@@ -184,11 +184,87 @@
 
 ---
 
+## 11. Hooks Adicionales sin Documentar (~47 hooks)
+
+Esta sección lista hooks existentes que requieren documentación detallada.
+
+### Quality Gates & Validation
+
+| Hook | Trigger | Propósito | Estado |
+|------|---------|-----------|--------|
+| quality-gates-v2.sh | PostToolUse (Edit/Write) | Quality-first validation con consistency advisory | ✅ Activo |
+| quality-parallel-async.sh | PostToolUse | Quality gates en paralelo asíncrono | ✅ Activo |
+| verification-subagent.sh | PostToolUse | Subagente de verificación post-implementación | ✅ Activo |
+| typescript-quick-check.sh | PreToolUse | Check rápido de TypeScript antes de edición | ✅ Activo |
+| code-review-auto.sh | PostToolUse | Auto-revisión de código post-cambio | ✅ Activo |
+
+### Ralph Integration Hooks (v2.82)
+
+| Hook | Trigger | Propósito | Estado |
+|------|---------|-----------|--------|
+| ralph-integration.sh | Multiple | Integración principal con sistema Ralph | ✅ Activo |
+| ralph-context-injector.sh | PreToolUse | Inyección de contexto Ralph en prompts | ✅ Activo |
+| ralph-memory-integration.sh | PreToolUse | Integración con memoria de Ralph | ✅ Activo |
+| ralph-quality-gates.sh | PostToolUse | Quality gates específicos de Ralph | ✅ Activo |
+| stop-slop-hook.sh | Stop | Limpieza de slop al finalizar sesión | ✅ Activo |
+
+### Promptify & Security Analysis
+
+| Hook | Trigger | Propósito | Estado |
+|------|---------|-----------|--------|
+| promptify-auto-detect.sh | UserPromptSubmit | Auto-detección de intenciones Promptify | ✅ Activo |
+| promptify-security.sh | PostToolUse | Análisis de seguridad Promptify | ✅ Activo |
+| repo-boundary-guard.sh | PreToolUse | Protección de límites del repositorio | ✅ Activo |
+| ai-code-audit.sh | PostToolUse | Auditoría automática de código AI | ✅ Activo |
+
+### Background & Swarm Execution
+
+| Hook | Trigger | Propósito | Estado |
+|------|---------|-----------|--------|
+| auto-background-swarm.sh | PostToolUse | Auto-activación de modo swarm | ✅ Activo |
+
+### Project State & Metadata
+
+| Hook | Trigger | Propósito | Estado |
+|------|---------|-----------|--------|
+| project-state.sh | PostToolUse | Gestión de estado de proyecto | ✅ Activo |
+| project-backup-metadata.sh | PostToolUse | Backup de metadatos de proyecto | ✅ Activo |
+| usage-consolidate.sh | Stop | Consolidación de uso al finalizar | ✅ Activo |
+
+### Plan State Commands (CLI)
+
+| Hook | Trigger | Propósito | Estado |
+|------|---------|-----------|--------|
+| plan-state-init.sh | CLI | Inicialización interactiva de plan-state | ✅ Activo |
+
+### Auto-Formatting
+
+| Hook | Trigger | Propósito | Estado |
+|------|---------|-----------|--------|
+| auto-format-prettier.sh | PostToolUse | Auto-formateo con Prettier | ✅ Activo |
+
+### Security Validation (Extended)
+
+| Hook | Trigger | Propósito | Estado |
+|------|---------|-----------|--------|
+| pre-commit-command-validation.sh | PreToolUse (Bash) | Validación de comandos pre-ejecución | ✅ Activo |
+| post-commit-command-verify.sh | PostToolUse (Bash) | Verificación post-ejecución de comandos | ✅ Activo |
+
+### Session End Hooks
+
+| Hook | Trigger | Propósito | Estado |
+|------|---------|-----------|--------|
+| stop-verification.sh | Stop | Verificación de estado al terminar sesión | ✅ Activo |
+| smart-skill-reminder.sh | Stop | Recordatorio de skills al finalizar | ✅ Activo |
+
+---
+
 ## Hooks v2.82.0 - Nuevos
 
 | Hook | Evento | Descripción |
 |------|--------|-------------|
 | **command-router.sh** | UserPromptSubmit | 🆕 Routing inteligente de comandos basado en intención del usuario. Soporta 9 comandos con detección multilenguaje (ES/EN). Confidence ≥ 80%. |
+| **todo-plan-sync.sh** | PostToolUse (TodoWrite) | 🆕 Sincroniza todos con progreso de plan-state. Actualiza completed_steps/total_steps automáticamente. |
 
 ---
 

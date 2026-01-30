@@ -1,11 +1,35 @@
+#!/bin/bash
 #!/usr/bin/env bash
 # Security Real Audit Hook - Actual security analysis
-# VERSION: 1.0.1
+# Set secure permissionsnumask 077
+# VERSION: 2.83.1
+# Timestamp: 2026-01-30
 # Purpose: Perform real security pattern matching on files
 #
+# v2.83.1: PERF-004 - Added structured JSON logging
+# FIX v1.0.2: CRITICAL - Removed plain text output before JSON
 # FIX v1.0.1: LOW-003 - Added consistent error handling with JSON output
 
 set -euo pipefail
+
+# Log file for security audit messages
+LOG_FILE="${RALPH_LOGS:-$HOME/.ralph/logs}/security-audit.log"
+LOG_FILE_JSON="${LOG_FILE}.jsonl"
+mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
+
+# PERF-004: JSON structured logging function
+log_json() {
+    local level="$1"
+    local message="$2"
+    local hook_name="${0##*/}"
+    jq -n \
+        --arg ts "$(date -Iseconds)" \
+        --arg lvl "$level" \
+        --arg hook "$hook_name" \
+        --arg msg "$message" \
+        '{timestamp: $ts, level: $lvl, hook: $hook, message: $msg}' \
+        >> "$LOG_FILE_JSON" 2>/dev/null || true
+}
 
 # LOW-003 FIX: Error trap ensures valid JSON output on failure
 trap 'echo "{\"continue\": true}"' ERR EXIT
@@ -72,14 +96,27 @@ for pattern in "${PATTERNS[@]}"; do
     fi
 done
 
-# Output findings
+# Output findings to log file (not stdout - must be valid JSON only)
+{
+    echo "[$(date -Iseconds)] Security Audit: $FILE_PATH"
+    if [[ $FINDINGS -gt 0 ]]; then
+        echo "  Found $FINDINGS potential security issues:"
+        for pattern in "${MATCHING_PATTERNS[@]}"; do
+            echo "    - Pattern: $pattern"
+        done
+    else
+        echo "  No obvious security issues found"
+    fi
+} >> "$LOG_FILE" 2>/dev/null || true
+
+# PERF-004: Structured JSON logging
 if [[ $FINDINGS -gt 0 ]]; then
-    echo "🔒 Security Audit: Found $FINDINGS potential security issues"
+    log_json "WARN" "Security audit found $FINDINGS issues in $FILE_PATH"
     for pattern in "${MATCHING_PATTERNS[@]}"; do
-        echo "  - Pattern: $pattern"
+        log_json "WARN" "Security pattern match: $pattern"
     done
 else
-    echo "✅ Security Audit: No obvious security issues found"
+    log_json "INFO" "Security audit passed for $FILE_PATH"
 fi
 
 # LOW-003 FIX: Clear trap before normal exit to prevent duplicate JSON

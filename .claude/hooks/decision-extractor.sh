@@ -118,6 +118,26 @@ if [[ -z "$CONTENT" ]] || [[ ${#CONTENT} -lt 50 ]]; then
     exit 0
 fi
 
+# FASE 2: Mejorar locking con cleanup de trap
+local LOCK_DIR="${HOME}/.ralph/locks/decision-extractor"
+local LOCK_ACQUIRED=false
+
+acquire_lock() {
+    if mkdir "$LOCK_DIR" 2>/dev/null; then
+        LOCK_ACQUIRED=true
+        return 0
+    fi
+    return 1
+}
+
+release_lock() {
+    if [[ "$LOCK_ACQUIRED" == true ]]; then
+        rmdir "$LOCK_DIR" 2>/dev/null || true
+    fi
+}
+
+trap release_lock EXIT
+
 # Run extraction in background (non-blocking)
 {
     echo "[$(date -Iseconds)] Decision extraction for: $FILE_PATH"
@@ -206,9 +226,14 @@ fi
             echo '{}' > "$INDEX_FILE"
         fi
 
+        # FASE 2: Usar funciones de lock mejoradas con trap
+        # Override lock directory for index updates
+        LOCK_DIR="$INDEX_LOCK_DIR"
+        LOCK_ACQUIRED=false
+
         # Acquire lock using mkdir (atomic on all platforms)
         LOCK_ATTEMPTS=0
-        while ! mkdir "$INDEX_LOCK_DIR" 2>/dev/null; do
+        while ! acquire_lock 2>/dev/null; do
             LOCK_ATTEMPTS=$((LOCK_ATTEMPTS + 1))
             if [[ $LOCK_ATTEMPTS -gt 50 ]]; then
                 echo "[$(date -Iseconds)] ERROR: Could not acquire index lock after 5s" >> "${LOG_DIR}/decision-extract-$(date +%Y%m%d).log"
@@ -218,13 +243,13 @@ fi
         done
 
         # Update index if lock acquired
-        if [[ -d "$INDEX_LOCK_DIR" ]]; then
+        if [[ "$LOCK_ACQUIRED" == true ]]; then
             jq --arg id "$EPISODE_ID" \
                --arg ts "$TIMESTAMP" \
                --arg file "$FILE_PATH" \
                '. + {($id): {"timestamp": $ts, "file": $file, "type": "decision"}}' \
                "$INDEX_FILE" > "${INDEX_FILE}.tmp" && mv "${INDEX_FILE}.tmp" "$INDEX_FILE"
-            rmdir "$INDEX_LOCK_DIR" 2>/dev/null || true
+            release_lock
         fi
 
         echo "[$(date -Iseconds)] Created episode: $EPISODE_ID with $TOTAL_DECISIONS decisions"

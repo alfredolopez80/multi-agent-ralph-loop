@@ -1,5 +1,5 @@
 #!/bin/bash
-# Orchestrator Auto-Learn Hook (v2.60.0)
+# Orchestrator Auto-Learn Hook (v2.83.1)
 # Hook: PreToolUse (Task)
 # Purpose: Proactively trigger learning when orchestrator faces complex tasks
 #
@@ -10,12 +10,14 @@
 # 3. INJECTS learning recommendation into Task prompt
 # 4. AUTO-EXECUTES learning if CRITICAL gap detected (v2.60.0)
 #
+# v2.83.1: PERF-003 - Added structured JSON logging
 # v2.60.1: FIXED - Search by domain FIRST, then category/trigger as fallback (GAP-C02 related)
 # v2.60.0: ENHANCED - Auto-execute learning for CRITICAL gaps + event emission
 # v2.59.2: FIXED - Single JSON output
 # v2.57.0: Fixed to actually inject context
 #
-# VERSION: 2.81.2
+# VERSION: 2.83.1
+# Timestamp: 2026-01-30
 # v2.81.2: FIX JSON schema - use hookSpecificOutput.updatedInput for PreToolUse
 # v2.68.25: FIX CRIT-001 - Removed duplicate stdin read (SEC-111 already reads at top)
 # v2.68.11: Version sync with SEC-111 fixes
@@ -76,12 +78,47 @@ fi
 
 # Paths
 PLAN_STATE="${HOME}/.ralph/plan-state/plan-state.json"
+PLAN_STATE_LOCK="${PLAN_STATE}.lock"
 RULES_FILE="${HOME}/.ralph/procedural/rules.json"
+
+# LOCK-001: File locking functions for atomic plan-state operations
+acquire_plan_state_lock() {
+    local timeout=10
+    while [ $timeout -gt 0 ]; do
+        if mkdir "$PLAN_STATE_LOCK" 2>/dev/null; then
+            return 0
+        fi
+        sleep 1
+        ((timeout--))
+    done
+    echo "[$(date -Iseconds)] WARN: Could not acquire plan-state lock after 10s, proceeding without lock" >> "${LOG_DIR}/auto-learn-$(date +%Y%m%d).log" 2>&1
+    return 1
+}
+
+release_plan_state_lock() {
+    rmdir "$PLAN_STATE_LOCK" 2>/dev/null || true
+}
 CONTEXT_FILE="${HOME}/.ralph/state/auto-learn-context.md"
 LOG_DIR="${HOME}/.ralph/logs"
 CONFIG_DIR="${HOME}/.ralph/config"
 
 mkdir -p "$LOG_DIR" "${HOME}/.ralph/state" "$(dirname "$PLAN_STATE")" "$CONFIG_DIR"
+
+# PERF-003: JSON structured logging setup
+LOG_FILE_JSON="${LOG_DIR}/auto-learn-$(date +%Y%m%d).jsonl"
+
+log_json() {
+    local level="$1"
+    local message="$2"
+    local hook_name="${0##*/}"
+    jq -n \
+        --arg ts "$(date -Iseconds)" \
+        --arg lvl "$level" \
+        --arg hook "$hook_name" \
+        --arg msg "$message" \
+        '{timestamp: $ts, level: $lvl, hook: $hook, message: $msg}' \
+        >> "$LOG_FILE_JSON" 2>/dev/null || true
+}
 
 # v2.60.0: Create default memory-config.json if not exists
 CONFIG_FILE="${CONFIG_DIR}/memory-config.json"
@@ -110,10 +147,12 @@ CONFIGEOF
     echo "[$(date -Iseconds)] Created default memory-config.json with auto_learn settings" >> "${LOG_DIR}/auto-learn-$(date +%Y%m%d).log" 2>&1
 fi
 
-# Check plan-state for complexity
+# Check plan-state for complexity (with lock)
 COMPLEXITY=0
 if [[ -f "$PLAN_STATE" ]]; then
+    acquire_plan_state_lock || true
     COMPLEXITY=$(jq -r '.classification.complexity // 0' "$PLAN_STATE" 2>/dev/null || echo "0")
+    release_plan_state_lock
 fi
 
 # Info-Density Detection
@@ -269,8 +308,10 @@ AUTO_LEARN_ENABLED=false
 AUTO_LEARN_BLOCKING=true
 
 if [[ -f "$CONFIG_FILE" ]]; then
+    acquire_plan_state_lock || true
     AUTO_LEARN_ENABLED=$(jq -r '.auto_learn.enabled // false' "$CONFIG_FILE" 2>/dev/null || echo "false")
     AUTO_LEARN_BLOCKING=$(jq -r '.auto_learn.blocking // true' "$CONFIG_FILE" 2>/dev/null || echo "true")
+    release_plan_state_lock
 fi
 
 # Event emission function
@@ -280,6 +321,15 @@ emit_learning_event() {
     local event_file="${HOME}/.ralph/events/event-log.jsonl"
     mkdir -p "$(dirname "$event_file")"
     echo "{\"timestamp\":\"$(date -Iseconds)\",\"type\":\"$event_type\",\"payload\":$payload}" >> "$event_file" 2>/dev/null || true
+}
+
+# Logging helper function
+log() {
+    local level="$1"
+    local message="$2"
+    echo "[$(date -Iseconds)] $level: $message" >> "${LOG_DIR}/auto-learn-$(date +%Y%m%d).log" 2>&1
+    # Also log to JSON
+    log_json "$level" "$message"
 }
 
 # Auto-execute learning for CRITICAL gaps
@@ -312,11 +362,24 @@ if [[ "$IS_CRITICAL" == "true" ]] && [[ "$AUTO_LEARN_ENABLED" == "true" ]]; then
 
     # Execute learning using array (safe from injection)
     if [[ "$AUTO_LEARN_BLOCKING" == "true" ]]; then
-        LEARNING_OUTPUT=$("${HOME}/.ralph/curator/curator.sh" full --type "$DOMAIN" --lang "$LANG" --tier economic 2>&1) || true
+        # Ejecutar curator con timeout de 5 minutos
+        CURATOR_TIMEOUT=300
+        LEARNING_OUTPUT=$(timeout $CURATOR_TIMEOUT "${HOME}/.ralph/curator/curator.sh" full --type "$DOMAIN" --lang "$LANG" --tier economic 2>&1)
+        CURATOR_EXIT=$?
         LEARNING_EXECUTED=true
+
+        # Manejar timeout o errores
+        if [ $CURATOR_EXIT -eq 124 ]; then
+            log "WARN" "Curator timed out after ${CURATOR_TIMEOUT}s"
+            LEARNING_OUTPUT="TIMEOUT: Curator exceeded ${CURATOR_TIMEOUT} seconds"
+        elif [ $CURATOR_EXIT -ne 0 ]; then
+            log "WARN" "Curator failed with exit code $CURATOR_EXIT"
+            LEARNING_OUTPUT="ERROR: Curator exit code $CURATOR_EXIT"
+        fi
+
         # SEC-110: Redact sensitive data before logging
         SAFE_OUTPUT=$(redact_sensitive "${LEARNING_OUTPUT:0:500}")
-        echo "[$(date -Iseconds)] Learning output: ${SAFE_OUTPUT}" >> "${LOG_DIR}/auto-learn-$(date +%Y%m%d).log" 2>&1
+        log "INFO" "Learning output: ${SAFE_OUTPUT}"
 
         # SEC-110: Also redact event payload output
         SAFE_EVENT_OUTPUT=$(redact_sensitive "${LEARNING_OUTPUT:0:1000}")
@@ -395,9 +458,11 @@ EOF
 
 echo "[$(date -Iseconds)] Learning context written to: $CONTEXT_FILE" >> "${LOG_DIR}/auto-learn-$(date +%Y%m%d).log" 2>&1
 
-# Update plan-state.json
+# Update plan-state.json (with atomic locking)
 PLAN_STATE_TEMP="${PLAN_STATE}.tmp.$$"
 if [[ -f "$PLAN_STATE" ]]; then
+    acquire_plan_state_lock || true
+    trap release_plan_state_lock EXIT
     if jq --argjson recommended true \
        --arg reason "$LEARN_REASON" \
        --arg domain "$DOMAIN" \
@@ -420,6 +485,8 @@ if [[ -f "$PLAN_STATE" ]]; then
         mv "$PLAN_STATE_TEMP" "$PLAN_STATE"
         echo "[$(date -Iseconds)] Updated learning_state in plan-state.json" >> "${LOG_DIR}/auto-learn-$(date +%Y%m%d).log" 2>&1
     fi
+    release_plan_state_lock
+    trap - EXIT
 fi
 
 # Build learning recommendation

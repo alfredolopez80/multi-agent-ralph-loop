@@ -2,7 +2,9 @@
 # Fast-Path Check Hook v2.46
 # Hook: PreToolUse (Task)
 # Purpose: Detect trivial tasks and route to fast-path
-# VERSION: 2.81.2
+# VERSION: 2.83.1
+# Timestamp: 2026-01-30
+# v2.83.1: Added support for modern file extensions (vue, svelte, php, rb, c, cpp, h, css, scss)
 # v2.81.2: FIX JSON schema - use hookSpecificOutput.permissionDecisionReason
 # v2.69.0: FIX CRIT-003 - Added EXIT to trap for guaranteed JSON output
 # v2.68.25: FIX CRIT-001 - Removed duplicate stdin read (SEC-111 already reads at top)
@@ -16,7 +18,7 @@ set -euo pipefail
 
 # Guaranteed valid JSON on error
 output_json() {
-    echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
 }
 trap 'output_json' ERR EXIT
 umask 077
@@ -29,7 +31,7 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 # Only process Task tool calls
 if [[ "$TOOL_NAME" != "Task" ]]; then
     trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-    echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
     exit 0
 fi
 
@@ -40,17 +42,19 @@ TASK_PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty')
 # Skip if already in orchestrator context
 if [[ "$TASK_TYPE" == "orchestrator" ]]; then
     trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-    echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
     exit 0
 fi
 
 # Fast-path detection keywords
 TRIVIAL_KEYWORDS="fix typo|fix typos|simple fix|quick fix|minor change|add comment|remove comment|rename|update version|bump version|single line|one line"
+# FASE 2: Soporte multilingüe - Keywords en español
+TRIVIAL_KEYWORDS_ES="arreglar|corregir|cambio simple|cambio menor|renombrar|actualizar versión|typo simple|error tipográfico"
 COMPLEX_KEYWORDS="implement|design|migrate|refactor|architecture|security|auth|payment|integrate|multi-file|cross-module"
 
 # Check for trivial task indicators
 IS_TRIVIAL=false
-if echo "$TASK_PROMPT" | grep -qiE "$TRIVIAL_KEYWORDS"; then
+if echo "$TASK_PROMPT" | grep -qiE "$TRIVIAL_KEYWORDS|$TRIVIAL_KEYWORDS_ES"; then
     IS_TRIVIAL=true
 fi
 
@@ -61,7 +65,7 @@ fi
 
 # Count files mentioned (heuristic)
 # Note: grep -o exits 1 when no matches, handle gracefully
-FILE_MATCHES=$(echo "$TASK_PROMPT" | grep -oE '\b[A-Za-z0-9_/-]+\.(ts|js|py|go|rs|java|tsx|jsx|md|json|yaml|yml)\b' 2>/dev/null || true)
+FILE_MATCHES=$(echo "$TASK_PROMPT" | grep -oE '\b[A-Za-z0-9_/-]+\.(ts|js|py|go|rs|java|tsx|jsx|md|json|yaml|yml|vue|svelte|php|rb|c|cpp|h|css|scss|sass)\b' 2>/dev/null || true)
 if [[ -n "$FILE_MATCHES" ]]; then
     FILE_COUNT=$(echo "$FILE_MATCHES" | wc -l | tr -d '[:space:]')
 else

@@ -1,3 +1,4 @@
+#!/bin/bash
 #!/usr/bin/env bash
 # auto-background-swarm.sh
 # PostToolUse hook - Automatically suggests/sets swarm mode for Task tool calls

@@ -1,3 +1,4 @@
+#!/bin/bash
 #!/usr/bin/env bash
 # Quality Parallel Async Hook - FIXED VERSION
 # VERSION: 2.1.0

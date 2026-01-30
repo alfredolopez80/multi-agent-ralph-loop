@@ -418,7 +418,13 @@ PID4=$!
     }
     
     # Check for Z_AI_API_KEY (required for GLM endpoints)
-    # API key must be set via environment variable only
+    # Try environment first, then fall back to .zshrc
+    if [[ -z "${Z_AI_API_KEY:-}" ]]; then
+        if [[ -f "$HOME/.zshrc" ]]; then
+            Z_AI_API_KEY=$(grep "^export Z_AI_API_KEY=" "$HOME/.zshrc" 2>/dev/null | head -1 | sed "s/export Z_AI_API_KEY=//; s/['\"]//g")
+        fi
+    fi
+
     if [[ -z "${Z_AI_API_KEY:-}" ]]; then
         echo "  [5/5] webSearchPrime: No Z_AI_API_KEY, skipping" >> "$LOG_FILE"
         exit 0
@@ -494,10 +500,11 @@ PID5=$!
     # Apply rate limiting before second API call
     rate_limit
     
-    # Check for Z_AI_API_KEY (environment only)
+    # Check for Z_AI_API_KEY
     if [[ -z "${Z_AI_API_KEY:-}" ]]; then
-        log "WARN" "Z_AI_API_KEY not set, skipping docs search"
-        exit 0
+        if [[ -f "$HOME/.zshrc" ]]; then
+            Z_AI_API_KEY=$(grep "^export Z_AI_API_KEY=" "$HOME/.zshrc" 2>/dev/null | head -1 | sed "s/export Z_AI_API_KEY=//; s/['\"]//g")
+        fi
     fi
 
     if [[ -z "${Z_AI_API_KEY:-}" ]]; then

@@ -1,3 +1,4 @@
+#!/bin/bash
 #!/usr/bin/env bash
 # Hook: Stop (sentry-report)
 # Generates Sentry summary report at orchestrator completion

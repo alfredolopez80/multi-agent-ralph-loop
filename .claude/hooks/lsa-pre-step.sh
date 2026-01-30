@@ -1,3 +1,4 @@
+#!/bin/bash
 #!/usr/bin/env bash
 # VERSION: 2.69.0
 # LSA Pre-Step Verification

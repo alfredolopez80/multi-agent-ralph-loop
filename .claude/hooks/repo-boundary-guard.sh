@@ -1,3 +1,4 @@
+#!/bin/bash
 #!/usr/bin/env bash
 # repo-boundary-guard.sh - Repository Isolation Enforcement
 # Hook: PreToolUse (Edit|Write|Bash)
@@ -133,7 +134,7 @@ main() {
     if [[ -z "$input" ]]; then
         log "DEBUG: Empty input, allowing"
         trap - ERR EXIT
-        echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
         exit 0
     fi
 
@@ -143,7 +144,7 @@ main() {
     if [[ -z "$CURRENT_REPO" ]]; then
         log "DEBUG: Not in a git repo, allowing"
         trap - ERR EXIT
-        echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
         exit 0
     fi
 
@@ -158,7 +159,7 @@ main() {
         *)
             log "DEBUG: Tool $tool_name not checked, allowing"
             trap - ERR EXIT
-            echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+            echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
             exit 0
             ;;
     esac
@@ -177,7 +178,7 @@ main() {
         if is_readonly_command "$command"; then
             log "ALLOWED: Read-only command (safe for cross-repo): $command"
             trap - ERR EXIT
-            echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+            echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
             exit 0
         fi
 
@@ -218,7 +219,7 @@ EOF
 
     log "ALLOWED: All paths within boundary"
     trap - ERR EXIT
-    echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
 }
 
 main "$@"

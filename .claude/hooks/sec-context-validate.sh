@@ -1,5 +1,6 @@
 #!/bin/bash
 # VERSION: 2.69.0
+# Set secure permissionsnumask 077
 #===============================================================================
 # SEC-CONTEXT VALIDATE HOOK v2.68.0
 # Hook: PostToolUse (Edit|Write)

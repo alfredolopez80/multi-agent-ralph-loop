@@ -47,7 +47,26 @@ fi
 # Setup
 PROJECT_DIR=$(pwd)
 PLAN_STATE_FILE="$PROJECT_DIR/.claude/plan-state.json"
+PLAN_STATE_LOCK="${PLAN_STATE_FILE}.lock"
 LOG_DIR="$HOME/.ralph/logs"
+
+# LOCK-001: File locking functions for atomic plan-state operations
+acquire_plan_state_lock() {
+    local timeout=10
+    while [ $timeout -gt 0 ]; do
+        if mkdir "$PLAN_STATE_LOCK" 2>/dev/null; then
+            return 0
+        fi
+        sleep 1
+        ((timeout--))
+    done
+    echo "[$(date -Iseconds)] WARN: Could not acquire plan-state lock after 10s, proceeding without lock" >> "$LOG_FILE" 2>&1
+    return 1
+}
+
+release_plan_state_lock() {
+    rmdir "$PLAN_STATE_LOCK" 2>/dev/null || true
+}
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/recursive-decompose-$(date +%Y%m%d).log"
 
@@ -57,8 +76,9 @@ LOG_FILE="$LOG_DIR/recursive-decompose-$(date +%Y%m%d).log"
     echo "  Session: $SESSION_ID"
     echo "  Project: $PROJECT_DIR"
 
-    # Read current plan state if exists
+    # Read current plan state if exists (with lock)
     if [[ -f "$PLAN_STATE_FILE" ]]; then
+        acquire_plan_state_lock || true
         WORKFLOW_ROUTE=$(jq -r '.classification.workflow_route // "STANDARD"' "$PLAN_STATE_FILE")
         COMPLEXITY=$(jq -r '.classification.complexity // 5' "$PLAN_STATE_FILE")
         INFO_DENSITY=$(jq -r '.classification.information_density // "LINEAR"' "$PLAN_STATE_FILE")
@@ -66,6 +86,7 @@ LOG_FILE="$LOG_DIR/recursive-decompose-$(date +%Y%m%d).log"
         CURRENT_DEPTH=$(jq -r '.recursion.depth // 0' "$PLAN_STATE_FILE")
         MAX_DEPTH=$(jq -r '.recursion.max_depth // 3' "$PLAN_STATE_FILE")
         MAX_CHILDREN=${MAX_CHILDREN:-5}  # Default: max 5 sub-orchestrators per level
+        release_plan_state_lock
 
         echo "  Classification:"
         echo "    Workflow: $WORKFLOW_ROUTE"
@@ -113,16 +134,19 @@ LOG_FILE="$LOG_DIR/recursive-decompose-$(date +%Y%m%d).log"
 # Generate response with decomposition guidance (PostToolUse schema: "continue" not "decision")
 # v2.57.0 FIX: Use jq for proper JSON encoding to avoid invalid newlines
 if [[ "$NEEDS_DECOMPOSITION" == "true" ]]; then
-    # Update plan-state with recursion info (using --arg for safe escaping)
+    # Update plan-state with recursion info (using --arg for safe escaping, with lock)
     if [[ -f "$PLAN_STATE_FILE" ]]; then
         TMP_FILE=$(mktemp)
-        trap 'rm -f "$TMP_FILE"' ERR EXIT
+        acquire_plan_state_lock || true
+        trap 'release_plan_state_lock; rm -f "$TMP_FILE"' ERR EXIT
         jq --arg reason "$DECOMPOSITION_REASON" \
             '.recursion.needs_decomposition = true |
             .recursion.decomposition_triggered = true |
             .recursion.triggered_at = now |
             .recursion.reason = $reason' \
             "$PLAN_STATE_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$PLAN_STATE_FILE"
+        release_plan_state_lock
+        trap 'rm -f "$TMP_FILE"' ERR EXIT
     fi
 
     # Build additionalContext with proper newline escaping

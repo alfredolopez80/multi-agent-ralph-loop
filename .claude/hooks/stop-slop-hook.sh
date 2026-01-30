@@ -1,3 +1,4 @@
+#!/bin/bash
 #!/usr/bin/env bash
 # Stop-Slop Hook - Detects AI writing patterns
 # VERSION: 1.0.2

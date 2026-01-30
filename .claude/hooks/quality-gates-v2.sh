@@ -2,7 +2,9 @@
 # Quality Gates v2.48 - Quality Over Consistency + Security Scanning
 # Hook: PostToolUse (Edit, Write)
 # Purpose: Validate code changes with quality-first approach
-# VERSION: 2.69.1
+# VERSION: 2.83.1
+# Timestamp: 2026-01-30
+# v2.83.1: PERF-001 - Added result caching for tsc to avoid redundant executions
 # v2.69.1: FIX - PostToolUse hooks CANNOT block - changed continue:false to continue:true with warnings
 # v2.68.9: CRIT-002 FIX - Actually clear EXIT trap before explicit JSON output (was documented but not implemented)
 # v2.68.1: FIX CRIT-005 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
@@ -74,6 +76,56 @@ FILE_PATH="$FILE_PATH_REAL"
 LOG_DIR="$HOME/.ralph/logs"
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/quality-gates-$(date +%Y%m%d).log"
+LOG_FILE_JSON="${LOG_FILE}.jsonl"
+
+# PERF-001: Cache setup for TypeScript results
+CACHE_DIR="${HOME}/.ralph/cache/quality-gates"
+mkdir -p "$CACHE_DIR"
+
+# JSON structured logging function
+log_json() {
+    local level="$1"
+    local message="$2"
+    local hook_name="${0##*/}"
+    jq -n \
+        --arg ts "$(date -Iseconds)" \
+        --arg lvl "$level" \
+        --arg hook "$hook_name" \
+        --arg msg "$message" \
+        '{timestamp: $ts, level: $lvl, hook: $hook, message: $msg}' \
+        >> "$LOG_FILE_JSON" 2>/dev/null || true
+}
+
+# PERF-001: Cache functions for TypeScript compilation results
+get_cache_key() {
+    local file="$1"
+    # Hash del contenido + mtime (cross-platform)
+    local mtime hash
+    mtime=$(stat -f %m "$file" 2>/dev/null || stat -c %Y "$file" 2>/dev/null || echo "0")
+    hash=$(md5 -q "$file" 2>/dev/null || md5sum "$file" 2>/dev/null | cut -d' ' -f1 || echo "")
+    echo "${mtime}_${hash}"
+}
+
+check_cached() {
+    local file="$1"
+    local cache_key=$(get_cache_key "$file")
+    local cache_file="${CACHE_DIR}/${cache_key}"
+    
+    if [[ -f "$cache_file" ]]; then
+        cat "$cache_file"
+        return 0
+    fi
+    return 1
+}
+
+save_cache() {
+    local file="$1"
+    local result="$2"
+    local cache_key=$(get_cache_key "$file")
+    echo "$result" > "${CACHE_DIR}/${cache_key}"
+    # Limit cache size (keep only last 1000 entries)
+    ls -t "${CACHE_DIR}"/* 2>/dev/null | tail -n +1001 | xargs rm -f 2>/dev/null || true
+}
 
 # Get file extension
 EXT="${FILE_PATH##*.}"
@@ -115,12 +167,14 @@ log_check() {
         ts|tsx)
             CHECKS_RUN=$((CHECKS_RUN + 1))
             if command -v npx &>/dev/null; then
-                if npx tsc --noEmit --skipLibCheck "$FILE_PATH" 2>&1 | head -5; then
+                # FASE 2: Optimización - Ejecutar tsc una sola vez y reusar resultado
+                TS_OUTPUT=$(npx tsc --noEmit --skipLibCheck "$FILE_PATH" 2>&1 || true)
+                if [[ -z "$TS_OUTPUT" ]]; then
+                    # No errors
                     log_check "TypeScript" "PASS" "No type errors"
                     CHECKS_PASSED=$((CHECKS_PASSED + 1))
                 else
                     # Check if it's a real error or just warnings
-                    TS_OUTPUT=$(npx tsc --noEmit --skipLibCheck "$FILE_PATH" 2>&1 || true)
                     if echo "$TS_OUTPUT" | grep -q "error TS"; then
                         log_check "TypeScript" "FAIL" "Type errors found"
                         BLOCKING_ERRORS+="TypeScript errors in $FILE_PATH\n"
