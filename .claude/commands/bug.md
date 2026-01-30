@@ -86,9 +86,9 @@ Task:
 | Role | Purpose | Specialization |
 |------|---------|----------------|
 | **Coordinator** | Debug workflow orchestration | Manages bug lifecycle, synthesizes findings |
-| **Teammate 1** | Error Analysis specialist | Stack traces, error messages, log patterns |
-| **Teammate 2** | Code Archaeologist | Root cause location, code path tracing |
-| **Teammate 3** | Fix Validator | Patch validation, regression prevention |
+| **Teammate 1** | Error Analysis specialist | Stack traces, error messages, log patterns specialist |
+| **Teammate 2** | Code Archaeologist specialist | Root cause location, code path tracing specialist |
+| **Teammate 3** | Fix Validator specialist | Patch validation, regression prevention specialist |
 
 ### Swarm Mode Workflow
 

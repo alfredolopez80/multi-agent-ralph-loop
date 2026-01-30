@@ -16,7 +16,9 @@
       "name": "Core Commands Integration",
       "steps": [
         {"id": "1", "task": "Update /loop with swarm mode", "status": "completed", "file": ".claude/commands/loop.md"},
-        {"id": "2", "task": "Integrate /edd with swarm mode", "status": "in_progress", "file": ".claude/skills/edd/skill.md"},
+        {"id": "2", "task": "Integrate /edd with swarm mode", "status": "completed", "file": ".claude/skills/edd/SKILL.md"},
+        {"id": "3", "task": "Create /bug command with swarm mode", "status": "completed", "file": ".claude/commands/bug.md"},
+        {"id": "4", "task": "Validate phase 1 integration", "status": "in_progress"},
         {"id": "3", "task": "Create /bug command with swarm mode", "status": "pending", "file": ".claude/commands/bug.md"},
         {"id": "4", "task": "Validate phase 1 integration", "status": "pending"}
       ],
@@ -77,22 +79,24 @@
 ## Progress Tracking
 
 - **Total Steps**: 17
-- **Completed**: 1
+- **Completed**: 3
 - **In Progress**: 1
-- **Pending**: 15
+- **Pending**: 13
 
 ## Current Phase
 
 **Fase 1**: Core Commands Integration
-- Step 1 ✅ COMPLETED: /loop updated with swarm mode (commit 40791cc)
-- Step 2 🔄 IN PROGRESS: Integrating /edd with swarm mode
+- Step 1 ✅ COMPLETED: /loop updated (commit 40791cc)
+- Step 2 ✅ COMPLETED: /edd integrated (commit 3ec8339)
+- Step 3 ✅ COMPLETED: /bug created (commit 462f4d7)
+- Step 4 🔄 IN PROGRESS: Validating phase 1 integration
 - Objetivo: Actualizar /loop, /edd, crear /bug
 - Estimado: 2 horas
 - Riesgo: Medio (modifica comandos existentes)
 
 ## Next Action
 
-Starting Step 2: Integrate /edd with swarm mode
+Validating Phase 1: Verify all core commands have swarm mode
 
 ---
 
