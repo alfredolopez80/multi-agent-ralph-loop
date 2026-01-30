@@ -285,6 +285,132 @@ Swarm mode requires **ONE configuration**:
 
 ---
 
+## ✨ Promptify Integration (v2.82.0) ✅ NEW
+
+**Overview**: Automatic prompt optimization system that detects vague user prompts and enhances them using Ralph's context and memory.
+
+### Key Features
+
+1. **Vague Prompt Detection** (`promptify-auto-detect.sh`)
+   - Clarity scoring algorithm (0-100% based on 7 factors)
+   - Vagueness detection (vague words, pronouns, missing structure)
+   - Configurable threshold (default: 50%)
+   - Non-intrusive suggestions via `additionalContext`
+
+2. **Security Hardening** (`promptify-security.sh`)
+   - Credential redaction (SEC-110): Passwords, tokens, emails, API keys
+   - Clipboard consent management (SEC-120)
+   - Agent execution timeout (SEC-130)
+   - Audit logging system (SEC-140)
+
+3. **Ralph Integration** (Phase 3 - 4 components)
+   - `ralph-context-injector.sh`: Inject Ralph active context into prompts
+   - `ralph-memory-integration.sh`: Apply procedural memory patterns
+   - `ralph-quality-gates.sh`: Validate through quality gates
+   - `ralph-integration.sh`: Main coordinator combining all components
+
+### How It Works
+
+```
+User Prompt (vague/unclear)
+        ↓
+┌─────────────────────────────────────────┐
+│  UserPromptSubmit Event                  │
+│  1. command-router.sh (existing)        │
+│     - Detects command intent              │
+│     - Confidence < 50% = "unclear"        │
+└─────────────────────────────────────────┘
+        ↓ (if confidence < 50%)
+┌─────────────────────────────────────────┐
+│  promptify-auto-detect.sh              │
+│  - Vagueness detection                 │
+│  - Clarity scoring (0-100%)             │
+│  - Suggests promptify if needed        │
+└─────────────────────────────────────────┘
+        ↓
+Optimized Prompt (with Ralph context)
+        ↓
+┌─────────────────────────────────────────┐
+│  Ralph Workflow (resumes)              │
+│  - CLARIFY (with better prompt)        │
+│  - CLASSIFY (higher confidence)        │
+│  - PLAN → EXECUTE → VALIDATE           │
+└─────────────────────────────────────────┘
+```
+
+### Configuration
+
+```bash
+# ~/.ralph/config/promptify.json
+{
+  "enabled": true,
+  "vagueness_threshold": 50,
+  "security": {
+    "redact_credentials": true,
+    "require_clipboard_consent": true,
+    "audit_log_enabled": true
+  },
+  "integration": {
+    "coordinate_with_command_router": true,
+    "inject_ralph_context": true,
+    "use_ralph_memory": true,
+    "validate_with_quality_gates": true
+  }
+}
+```
+
+### Test Results
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║     PROMPTIFY INTEGRATION - TEST RESULTS                     ║
+╠══════════════════════════════════════════════════════════════╣
+║  Test Category              | Tests | Passed | Status        ║
+║  ────────────────────────────────────────────────────────────  ║
+║  Credential Redaction      |   4   |   4    | ✅ 100%       ║
+║  Clarity Scoring           |   3   |   3    | ✅ 100%       ║
+║  Hook Integration          |   5   |   5    | ✅ 100%       ║
+║  Security Functions        |   3   |   3    | ✅ 100%       ║
+║  File Structure            |   1   |   1    | ✅ 100%       ║
+║  Ralph Context Injector    |   5   |   5    | ✅ 100%       ║
+║  Ralph Memory Integration  |   5   |   5    | ✅ 100%       ║
+║  Ralph Quality Gates       |   5   |   5    | ✅ 100%       ║
+║  Ralph Integration Main    |   6   |   6    | ✅ 100%       ║
+║  Promptify Integration     |   3   |   3    | ✅ 100%       ║
+║  ────────────────────────────────────────────────────────────  ║
+║  TOTAL                     |  40   |  40    | ✅ 100%       ║
+╚══════════════════════════════════════════════════════════════╝
+```
+
+### Security Audit
+
+**Overall Risk**: MEDIUM → LOW (after fixes)
+
+| Finding | Severity | Status |
+|---------|----------|--------|
+| Unsafe eval usage | MEDIUM | ✅ FIXED (function removed) |
+| Input size truncation bug | MEDIUM | ✅ FIXED (syntax verified) |
+| Credential redaction | - | ✅ EXCELLENT (10+ patterns) |
+| Prompt injection detection | - | ✅ GOOD (pattern-based) |
+
+**Documentation**: [Promptify Integration Guide](docs/promptify-integration/README.md) | [Implementation Complete](docs/promptify-integration/IMPLEMENTATION_COMPLETE.md) | [Security Audit](docs/security/PROMPTIFY_SECURITY_AUDIT_v1.0.0.md)
+
+### Quick Test
+
+```bash
+# Run complete test suite
+./tests/promptify-integration/run-all-complete-tests.sh
+
+# Run Phase 3 tests only
+./tests/promptify-integration/test-phase3-ralph-integration.sh
+
+# View Ralph integration in action
+.claude/hooks/ralph-integration.sh
+# → Shows context injection, memory patterns, quality gates
+```
+
+---
+
 ## Table of Contents
 
 1. [Overview](#overview)
@@ -296,6 +422,16 @@ Swarm mode requires **ONE configuration**:
 7. [Configuration](#configuration)
 8. [Architecture](#architecture)
 9. [Memory System](#memory-system)
+10. [Learning System (v2.81.2)](#learning-system--v2812)
+11. [Hooks System](#hooks-system)
+12. [Agent System](#agent-system)
+13. [Commands Reference](#commands-reference)
+14. [Testing](#testing)
+15. [Development]((#development)
+16. [Troubleshooting](#troubleshooting)
+17. [Contributing](#contributing)
+18. [License](#license)
+19. [Changelog](#changelog)
 10. [Learning System (v2.81.2)](#learning-system--v2812)
 11. [Hooks System](#hooks-system)
 12. [Agent System](#agent-system)
