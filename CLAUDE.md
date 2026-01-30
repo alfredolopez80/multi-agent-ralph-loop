@@ -119,6 +119,123 @@ ralph context debug     # Debug mode (investigation)
 
 ---
 
+## Swarm Mode (v2.81.1)
+
+**Swarm mode** enables parallel multi-agent execution for faster, more comprehensive task completion. When enabled, commands spawn specialized teammates that work simultaneously on different aspects of a task.
+
+### How Swarm Mode Works
+
+```
+User invokes command
+       ↓
+┌──────────────────────────────────────┐
+│  1. Create Team (spawnTeam)           │
+│  2. Spawn N Teammates (Task)          │
+│  3. Create Tasks (TaskCreate)         │
+│  4. Assign Tasks (TaskUpdate)          │
+│  5. Coordinate via TeammateTool       │
+└──────────────────────────────────────┘
+       ↓
+   Parallel Execution (background)
+       ↓
+  Results Consolidated
+```
+
+### Commands with Swarm Mode
+
+| Command | Team Size | Specialization | Speedup |
+|---------|-----------|----------------|---------|
+| `/orchestrator` | 4 agents | Analysis, planning, implementation | 3x |
+| `/loop` | 4 agents | Execute, validate, quality check | 3x |
+| `/edd` | 4 agents | Capability, behavior, non-functional checks | 3x |
+| `/bug` | 4 agents | Analyze, reproduce, locate, fix | 3x |
+| `/adversarial` | 4 agents | Challenge, identify gaps, validate | 3x |
+| `/parallel` | 7 agents | 6 review aspects + coordination | 6x |
+| `/gates` | 6 agents | 5 language groups + coordination | 3x |
+
+### Enabling Swarm Mode
+
+Swarm mode is **enabled by default** for all supported commands. To use:
+
+```bash
+# Automatic swarm mode (default)
+/orchestrator "Implement feature X"
+
+# Manual override - disable swarm mode
+/orchestrator "Simple task" --no-swarm
+
+# Custom teammate count
+/parallel "Complex task" --teammates 10
+```
+
+### Configuration
+
+Swarm mode requires:
+
+```json
+{
+  "permissions": {
+    "defaultMode": "delegate"
+  }
+}
+```
+
+**Note**: Environment variables (`CLAUDE_CODE_AGENT_*`) are set **dynamically** by Claude Code when spawning teammates. No manual configuration needed.
+
+### Team Composition Example
+
+Each command spawns specialized teammates:
+
+```yaml
+/orchestrator "Implement feature"
+├── Lead: Workflow coordinator
+├── Teammate 1: Requirements analyst
+├── Teammate 2: Implementation specialist
+└── Teammate 3: Quality validation specialist
+```
+
+### Communication
+
+Teammates communicate via built-in mailbox system:
+
+```yaml
+SendMessage:
+  type: "message"
+  recipient: "team-lead"
+  content: "Implementation complete, found edge case"
+```
+
+### Task Coordination
+
+All teammates share a unified task list:
+
+```bash
+~/.claude/tasks/<team-name>/tasks.json
+```
+
+### Background Execution
+
+All swarm mode commands run in background:
+
+```yaml
+Task:
+  run_in_background: true  # Always enabled for swarm mode
+  team_name: "command-team"
+  mode: "delegate"
+```
+
+### Hook Integration
+
+The `auto-background-swarm.sh` hook automatically detects Task tool usage and suggests swarm mode when applicable.
+
+### Documentation
+
+- **Integration Plan**: `docs/architecture/SWARM_MODE_INTEGRATION_PLAN_v2.81.1.md`
+- **Environment Investigation**: `docs/architecture/SWARM_MODE_ENV_INVESTIGATION_v2.81.1.md`
+- **Test Validation**: `tests/swarm-mode/test-phase-1-validation.sh`
+
+---
+
 ## Repository Structure - v2.81.0
 
 > **Important**: This project follows specific organizational patterns for tests and documentation.
