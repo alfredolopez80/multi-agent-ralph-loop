@@ -2,6 +2,135 @@
 
 ---
 
+## [2.82.0] - 2026-01-30
+
+### Added
+
+- **Intelligent Command Router Hook**: New UserPromptSubmit hook that analyzes prompts and suggests optimal commands
+  - Supports 9 commands: `/bug`, `/edd`, `/orchestrator`, `/loop`, `/adversarial`, `/gates`, `/security`, `/parallel`, `/audit`
+  - Multilingual support (English + Spanish)
+  - Confidence-based filtering (≥ 80%)
+  - Non-intrusive suggestions via `additionalContext`
+  - Security features: input validation (100KB limit), sensitive data redaction, error trap
+  - Configuration file: `~/.ralph/config/command-router.json`
+  - Logging: `~/.ralph/logs/command-router.log`
+
+### Command Detection Matrix
+
+| Command | Trigger | Confidence |
+|---------|---------|------------|
+| `/bug` | bug, error, fallo, excepción | 90% |
+| `/edd` | define, specification, capability | 85% |
+| `/orchestrator` | implement, create, build + multi-step | 85% |
+| `/loop` | iterate, loop, until, iterar, hasta | 85% |
+| `/adversarial` | spec, refine, edge cases, gaps | 85% |
+| `/gates` | quality gates, lint, validation | 85% |
+| `/security` | security, vulnerability, OWASP | 88% |
+| `/parallel` | comprehensive review, multiple aspects | 85% |
+| `/audit` | audit, health check, auditoría | 82% |
+
+### Files
+
+- `.claude/hooks/command-router.sh` - Main hook script (195 lines)
+- `~/.ralph/config/command-router.json` - User configuration
+- `tests/test-command-router.sh` - Validation test suite (200+ lines)
+- `docs/command-router/README.md` - Complete documentation
+
+### Integration
+
+Hook registered in `~/.claude-sneakpeek/zai/config/settings.json`:
+```json
+{
+    "hooks": {
+        "UserPromptSubmit": [
+            {
+                "matcher": "*",
+                "hooks": [
+                    {"type": "command", "command": ".../command-router.sh"}
+                ]
+            }
+        ]
+    }
+}
+```
+
+### Example Usage
+
+```bash
+# User prompt
+"Tengo un bug en el login"
+
+# Hook response
+💡 **Sugerencia**: Detecté una tarea de debugging. Considera usar `/bug` para debugging sistemático.
+```
+
+### Documentation
+
+- Added `docs/command-router/README.md` - Complete feature documentation
+- Updated `CLAUDE.md` - Added Command Router section
+- Updated `README.md` - Added feature announcement
+- Updated `AGENTS.md` - Added command routing integration
+
+### Testing
+
+Run validation tests:
+```bash
+./tests/test-command-router.sh
+```
+
+Test coverage:
+- 9 intent classification tests
+- 3 edge case tests
+- Security tests (input size, redaction, error trap)
+- JSON output validation
+
+---
+
+## [2.81.2] - 2026-01-30
+
+### Fixed
+
+- **PreToolUse JSON Schema Validation**: Fixed critical JSON schema errors in 4 PreToolUse hooks
+  - `checkpoint-auto-save.sh` - Now uses `hookSpecificOutput` wrapper
+  - `fast-path-check.sh` - Now uses `permissionDecisionReason` for messages
+  - `agent-memory-auto-init.sh` - Now uses `hookSpecificOutput` format
+  - `orchestrator-auto-learn.sh` - Now uses `hookSpecificOutput.updatedInput`
+- **Error Messages Eliminated**: No more JSON validation errors on Edit/Write/Bash operations
+
+### Technical Details
+
+**Problem**: Hooks were using incorrect JSON format for PreToolUse event:
+```json
+{"decision": "allow", "additionalContext": "..."}  // ❌ Wrong format
+```
+
+**Solution**: Hooks now use correct `hookSpecificOutput` wrapper:
+```json
+{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}  // ✅ Correct
+```
+
+**Schema Reference**:
+| Field | Event Type | Required | Optional |
+|-------|------------|----------|----------|
+| `hookSpecificOutput.hookEventName` | PreToolUse | ✅ | - |
+| `hookSpecificOutput.permissionDecision` | PreToolUse | ✅ | - |
+| `hookSpecificOutput.permissionDecisionReason` | PreToolUse | - | ✅ |
+| `hookSpecificOutput.updatedInput` | PreToolUse | - | ✅ |
+
+### Documentation
+
+- Added `docs/bugs/PRETOOLUSE_JSON_SCHEMA_FIX_v2.81.2.md` - Complete fix documentation with before/after examples
+- Updated `README.md` - Added PreToolUse fix to "Recent Hook Fixes" section
+- Updated `CLAUDE.md` - Updated Hooks section to v2.81.2
+- Updated `AGENTS.md` - Updated Hooks Integration section to v2.81.2
+
+### Impact
+
+**Before**: Every Edit, Write, or Bash operation showed JSON validation error
+**After**: Clean hook execution with no validation errors
+
+---
+
 ## [2.81.0] - 2026-01-29
 
 ### Added

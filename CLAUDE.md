@@ -1,8 +1,10 @@
-# Multi-Agent Ralph v2.81.1
+# Multi-Agent Ralph v2.82.0
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, **GLM-4.7 PRIMARY**, **Dual Context Display System**, **full CLI implementation**, and **Automatic Context Compaction**.
+**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, **GLM-4.7 PRIMARY**, **Dual Context Display System**, **full CLI implementation**, **Automatic Context Compaction**, and **Intelligent Command Routing**.
+
+> **🆕 v2.82.0**: **Intelligent Command Router Hook** - Analyzes prompts and suggests optimal commands (`/bug`, `/edd`, `/orchestrator`, `/loop`, `/adversarial`, `/gates`, `/security`, `/parallel`, `/audit`). Multilingual support (English + Spanish). Confidence-based filtering (≥ 80%). Non-intrusive suggestions. See [docs/command-router/README.md](docs/command-router/README.md) for details.
 
 > **v2.81.1**: Fixed critical compaction hooks issue - `PostCompact` does NOT exist in Claude Code. Use `PreCompact` for saving state and `SessionStart` for restoring. See [docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md](docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md) for critical information.
 
@@ -233,6 +235,22 @@ The `auto-background-swarm.sh` hook automatically detects Task tool usage and su
 - **Integration Plan**: `docs/architecture/SWARM_MODE_INTEGRATION_PLAN_v2.81.1.md`
 - **Environment Investigation**: `docs/architecture/SWARM_MODE_ENV_INVESTIGATION_v2.81.1.md`
 - **Test Validation**: `tests/swarm-mode/test-phase-1-validation.sh`
+- **Usage Guide**: `docs/swarm-mode/SWARM_MODE_USAGE_GUIDE.md`
+- **Consolidated Audits**: `docs/swarm-mode/CONSOLIDATED_AUDITS_v2.81.1.md`
+- **Progress Report**: `docs/swarm-mode/INTEGRATION_PROGRESS_REPORT_v2.81.1.md`
+
+### Validation Summary (v2.81.1)
+
+**Integration Tests**: 27/27 tests passing (100%)
+
+**External Audits**:
+| Audit | Model | Result | Score |
+|-------|-------|--------|-------|
+| **Adversarial** | ZeroLeaks-inspired | ✅ PASS | Strong defense |
+| **Codex CLI** | gpt-5.2-codex | ✅ PASS | 9.3/10 Excellent |
+| **Gemini CLI** | Gemini 3 Pro | ✅ PASS | 9.8/10 Outstanding |
+
+**Production Readiness**: ✅ YES (All 7 commands validated, no critical vulnerabilities, comprehensive documentation)
 
 ---
 
@@ -1155,9 +1173,13 @@ ralph handoff create      # Create handoff
 
 ---
 
-## Hooks (67 files, 80 registrations) - v2.81.1
+## Hooks (68 files, 81 registrations) - v2.82.0
 
-> **⚠️ CRITICAL v2.81.1**: `PostCompact` does NOT exist in Claude Code. Use `PreCompact` for saving state and `SessionStart` for restoring. See [docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md](docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md).
+> **🆕 NEW v2.82.0**: **Intelligent Command Router Hook** - Analyzes prompts and suggests optimal commands (`/bug`, `/edd`, `/orchestrator`, `/loop`, `/adversarial`, `/gates`, `/security`, `/parallel`, `/audit`). Multilingual support (English + Spanish). Confidence-based filtering (≥ 80%). See [docs/command-router/README.md](docs/command-router/README.md) for details.
+
+> **⚠️ CRITICAL v2.81.2**: PreToolUse hooks now use correct JSON schema with `hookSpecificOutput` wrapper. Fixed validation errors on Edit/Write/Bash operations. See [docs/bugs/PRETOOLUSE_JSON_SCHEMA_FIX_v2.81.2.md](docs/bugs/PRETOOLUSE_JSON_SCHEMA_FIX_v2.81.2.md) for details.
+
+> **⚠️ CRITICAL v2.81.1**: `PostCompact` does NOT exist in Claude Code. Use `PreCompact` for saving state and `SessionStart` for restoring. See [docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md](docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md) for critical information.
 
 > **v2.69.0**: GLM-4.7 now PRIMARY for complexity 1-4 tasks. MiniMax deprecated. `mmc` and `ralph` CLI updated. 14 GLM tools. 26 MCP servers total.
 
@@ -1167,9 +1189,47 @@ ralph handoff create      # Create handoff
 | PreCompact | Save state before compaction (ONLY compaction event) |
 | PostToolUse | Quality gates after Edit/Write/Bash, **verification subagent** (v2.62) |
 | PreToolUse | Safety guards before Bash/Skill/Task, **task optimization** (v2.62), **docs auto-update** (v2.66.8) |
-| UserPromptSubmit | Context warnings, reminders |
+| UserPromptSubmit | Context warnings, **command suggestions** (v2.82.0), reminders |
 | Stop | Session reports |
 | **PostCompact** | ❌ **DOES NOT EXIST** - Feature request #14258 |
+
+### Intelligent Command Router (v2.82.0) - NEW
+
+**Hook**: `command-router.sh` (UserPromptSubmit event)
+
+**Purpose**: Analyze user prompts and intelligently suggest the optimal command based on detected patterns.
+
+**Supported Commands**:
+| Command | Use Case | Trigger Patterns | Confidence |
+|---------|----------|------------------|------------|
+| `/bug` | Systematic debugging | bug, error, fallo, excepción | 90% |
+| `/edd` | Feature definition | define, specification, capability | 85% |
+| `/orchestrator` | Complex tasks | implement, create, build + multi-step | 85% |
+| `/loop` | Iterative tasks | iterate, loop, until, iterar, hasta | 85% |
+| `/adversarial` | Spec refinement | spec, refine, edge cases, gaps | 85% |
+| `/gates` | Quality validation | quality gates, lint, validation | 85% |
+| `/security` | Security audit | security, vulnerability, OWASP | 88% |
+| `/parallel` | Comprehensive review | comprehensive review, multiple aspects | 85% |
+| `/audit` | Quality audit | audit, health check, auditoría | 82% |
+
+**Features**:
+- **Multilingual**: English + Spanish support
+- **Confidence-based**: Only suggests when confidence >= 80%
+- **Non-intrusive**: Uses `additionalContext` instead of `action: "ask_user"`
+- **Security**: Input validation (100KB limit), sensitive data redaction, error trap
+- **Configurable**: `~/.ralph/config/command-router.json`
+- **Logging**: `~/.ralph/logs/command-router.log`
+
+**Example**:
+```bash
+# User prompt
+"Tengo un bug en el login"
+
+# Hook response
+💡 **Sugerencia**: Detecté una tarea de debugging. Considera usar `/bug` para debugging sistemático.
+```
+
+**Documentation**: See [docs/command-router/README.md](docs/command-router/README.md) for complete documentation.
 
 ### ⚠️ CRITICAL: PostCompact Does NOT Exist (v2.81.1)
 
