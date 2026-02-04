@@ -6,6 +6,8 @@
 
 > **🆕 v2.83.1**: **Hook System 5-Phase Audit Complete** - 100% validation achieved. Eliminated 4 race conditions with atomic file locking, fixed 3 JSON malformations, added TypeScript caching (80-95% speedup), multilingual support (EN/ES), 5 new critical hooks (`orchestrator-auto-learn.sh`, `promptify-security.sh`, `parallel-explore.sh`, `recursive-decompose.sh`, `todo-plan-sync.sh`). All 83 hooks production-ready.
 
+> **🔒 CRITICAL v2.83.1 SECURITY FIX**: Registered 11 missing hooks including **git-safety-guard.py** (blocks `rm -rf`, `git reset --hard`). See [docs/bugs/HOOK_REGISTRATION_FIX_v2.83.1.md](docs/bugs/HOOK_REGISTRATION_FIX_v2.83.1.md) for complete details. **Validation script**: `./scripts/validate-hooks-registration.sh`
+
 > **v2.82.0**: **Intelligent Command Router Hook** - Analyzes prompts and suggests optimal commands. Multilingual support (English + Spanish). Confidence-based filtering (≥ 80%). See [docs/command-router/README.md](docs/command-router/README.md) for details.
 
 > **v2.81.1**: Fixed critical compaction hooks issue - `PostCompact` does NOT exist in Claude Code. Use `PreCompact` for saving state and `SessionStart` for restoring. See [docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md](docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md) for critical information.
@@ -170,6 +172,7 @@ ralph context debug     # Debug mode (investigation)
 #### 1. Race Condition Elimination
 
 **Atomic File Locking Pattern**:
+
 ```bash
 # Using mkdir for atomic lock acquisition
 acquire_lock() {
@@ -187,6 +190,7 @@ acquire_lock() {
 ```
 
 Applied to:
+
 - `promptify-security.sh` - Log rotation
 - `orchestrator-auto-learn.sh` - plan-state.json updates
 - `checkpoint-smart-save.sh` - Checkpoint operations
@@ -195,6 +199,7 @@ Applied to:
 #### 2. TypeScript Compilation Cache
 
 **Cache Implementation**:
+
 ```bash
 get_cache_key() {
     local file="$1"
@@ -211,6 +216,7 @@ get_cache_key() {
 #### 3. Multilingual Support
 
 **Spanish Keywords Added** to `fast-path-check.sh`:
+
 - `arreglar`, `corregir` - fix
 - `cambio simple`, `cambio menor` - simple/minor change
 - `renombrar` - rename
@@ -218,6 +224,7 @@ get_cache_key() {
 - `limpiar` - cleanup
 
 **Supported File Extensions** (20 total):
+
 - TypeScript/JavaScript: `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`
 - Vue/Svelte: `.vue`, `.svelte`
 - Python: `.py`
@@ -379,6 +386,7 @@ The `auto-background-swarm.sh` hook automatically detects Task tool usage and su
 **Integration Tests**: 27/27 tests passing (100%)
 
 **External Audits**:
+
 | Audit | Model | Result | Score |
 |-------|-------|--------|-------|
 | **Adversarial** | ZeroLeaks-inspired | ✅ PASS | Strong defense |
@@ -418,15 +426,18 @@ multi-agent-ralph-loop/
 ### Test Organization Pattern
 
 **DO**:
+
 - Place tests in `tests/` at project root
 - Use descriptive test names: `test-quality-parallel-v3-robust.sh`
 - Document test purpose in header comments
 
 **DON'T**:
+
 - Place tests in `.claude/tests/` (legacy location, deprecated)
 - Mix test types without clear categorization
 
 **Rationale**: Tests at project root are:
+
 - More discoverable by contributors
 - Following standard conventions
 - Easier to run independently of Claude Code workspace
@@ -446,6 +457,7 @@ When creating new documentation:
    - `IMPLEMENTATION.md` - Implementation guides
 
 3. **Include metadata header**
+
    ```markdown
    **Date**: YYYY-MM-DD
    **Version**: vX.Y.Z
@@ -459,10 +471,12 @@ When creating new documentation:
 Swarm mode requires specific configuration in **claude-sneakpeek/zai** variant:
 
 **Configuration Location**:
+
 - **Settings**: `~/.claude-sneakpeek/zai/config/settings.json` ← USE THIS
 - **NOT**: `~/.claude/settings.json` (legacy, unused in zai variant)
 
 **Required Settings**:
+
 ```json
 {
   "defaultMode": "delegate",
@@ -486,6 +500,7 @@ This project builds upon excellent work from the community:
 | **claude-code-docs** | Official documentation mirror | [github.com/ericbuess/claude-code-docs](https://github.com/ericbuess/claude-code-docs) |
 
 **Special Thanks**:
+
 - **@mikekelly** for claude-sneakpeek (zai variant) and swarm mode implementation
 - **@numman-ali** for cc-mirror documentation patterns
 - **@NicerInPerson** for the swarm mode demo showing real-world usage
@@ -525,6 +540,7 @@ This project builds upon excellent work from the community:
 **Fast-Path** (complexity <= 3): DIRECT_EXECUTE -> MICRO_VALIDATE -> DONE (3 steps)
 
 **v2.69.0 Key Changes**:
+
 - GLM-4.7 is now PRIMARY for complexity 1-4 tasks
 - MiniMax fully DEPRECATED (optional fallback only)
 - Auto-learning triggers (v2.55): Repository learning when memory is empty
@@ -617,12 +633,14 @@ Comprehensive context monitoring with dual metric display addressing unreliable 
 ### Two Context Metrics
 
 **1. Cumulative Session Progress (`🤖` progress bar)**
+
 - **Source**: `total_input_tokens + total_output_tokens`
 - **Purpose**: Show overall session token accumulation
 - **Format**: `🤖 391k/200k (195%)`
 - **Note**: Can exceed 100% because it includes messages compacted out of current window
 
 **2. Current Window Usage (`CtxUse`)**
+
 - **Source**: Project-specific cache from `/context` command
 - **Purpose**: Show actual current window usage (matches `/context` exactly)
 - **Format**: `CtxUse: 133k/200k (66.6%) | Free: 22k (10.9%) | Buff 45.0k (22.5%)`
@@ -633,16 +651,19 @@ Comprehensive context monitoring with dual metric display addressing unreliable 
 **Cache Location**: `~/.ralph/cache/<project-id>/context-usage.json`
 
 Project ID derived from:
+
 1. Git remote URL (e.g., `alfredolopez80/multi-agent-ralph-loop`)
 2. Directory hash (fallback for non-git projects)
 
 **Cache Update Mechanism**:
+
 - **Hook**: `context-from-cli.sh` (UserPromptSubmit)
 - **Trigger**: Before each user prompt
 - **Action**: Calls `/context` command and parses output
 - **Expiry**: 300 seconds (5 minutes) for stale cache detection
 
 **Why `/context` Command?**
+
 - Provides accurate values from Claude Code's internal calculation
 - Includes buffer tokens (45k by default) for autocompaction
 - Consistent with what users see when they run `/context` manually
@@ -659,6 +680,7 @@ Project ID derived from:
 ### Fallback Strategy
 
 When cache is unavailable or stale:
+
 1. Try stdin JSON `used_percentage` (if 5-95% range, for Zai compatibility)
 2. Use cumulative tokens with 75% estimate when maxed out
 
@@ -746,6 +768,7 @@ SMART MEMORY SEARCH (PARALLEL)
 ```
 
 **Three Memory Types**:
+
 | Type | Purpose | Storage |
 |------|---------|---------|
 | **Semantic** | Facts, preferences | `~/.ralph/memory/semantic.json` |
@@ -759,6 +782,7 @@ SMART MEMORY SEARCH (PARALLEL)
 ```
 
 **What it does**:
+
 1. Acquire repository via git clone or GitHub API
 2. Analyze code using AST-based pattern extraction
 3. Classify patterns into categories (error_handling, async_patterns, type_safety, architecture, testing, security)
@@ -774,6 +798,7 @@ SMART MEMORY SEARCH (PARALLEL)
 ```
 
 **What it does**:
+
 1. **DISCOVERY** -> GitHub API search for candidate repositories
 2. **SCORING** -> Quality metrics + Context Relevance (v2.55)
 3. **RANKING** -> Top N repos (configurable, max per org)
@@ -781,6 +806,7 @@ SMART MEMORY SEARCH (PARALLEL)
 5. **LEARN** -> Extract patterns from approved repos via repository-learner
 
 **Pricing Tiers**:
+
 | Tier | Cost | Features |
 |------|------|----------|
 | `--tier free` | $0.00 | GitHub API + local scoring |
@@ -788,6 +814,7 @@ SMART MEMORY SEARCH (PARALLEL)
 | `--tier full` | ~$0.95 | + Claude + Codex adversarial (with fallback) |
 
 **All Scripts (v2.55)**:
+
 | Script | Key Options |
 |--------|-------------|
 | `curator-discovery.sh` | `--type`, `--lang`, `--query`, `--tier`, `--max-results`, `--output` |
@@ -800,6 +827,7 @@ SMART MEMORY SEARCH (PARALLEL)
 | `curator-queue.sh` | `--type`, `--lang` |
 
 **Usage**:
+
 ```bash
 # Full pipeline (economic tier, default)
 /curator full --type backend --lang typescript
@@ -836,18 +864,21 @@ SMART MEMORY SEARCH (PARALLEL)
 ```
 
 **What it does**:
+
 1. **CLARIFY** -> AskUser questions (MUST_HAVE + NICE_TO_HAVE)
 2. **EXECUTE** -> Codex 5.2 with `xhigh` reasoning
 3. **SAVE** -> Plan saved to `http://codex-plan.md`
 
 **Integration with Orchestrator**:
 Use `--use-codex` or `--codex` flag to invoke Codex planning:
+
 ```bash
 /orchestrator "Implement distributed system" --use-codex
 /orchestrator "Design microservices architecture" --codex
 ```
 
 **Requirements**:
+
 - Codex CLI: `npm install -g @openai/codex`
 - Access to `gpt-5.2-codex` model
 
@@ -870,6 +901,7 @@ ralph checkpoint diff "before-auth-refactor"
 ```
 
 **What it saves**:
+
 | File | Purpose |
 |------|---------|
 | `plan-state.json` | Current orchestration state |
@@ -901,6 +933,7 @@ ralph handoff history
 ```
 
 **Default Agents (11)**:
+
 | Agent | Model | Capabilities |
 |-------|-------|--------------|
 | `orchestrator` | opus | planning, classification, delegation, validation |
@@ -964,6 +997,7 @@ ralph agent-memory gc
 ```
 
 **Memory Types**:
+
 | Type | Purpose | TTL |
 |------|---------|-----|
 | `semantic` | Persistent facts and knowledge | Never expires |
@@ -971,6 +1005,7 @@ ralph agent-memory gc
 | `working` | Current task context | Session-based |
 
 **Transfer Filters**:
+
 - `all`: Transfer all memory
 - `relevant`: Semantic + recent working (default for handoffs)
 - `working`: Only working memory
@@ -1011,6 +1046,7 @@ ralph events history 20
 ```
 
 **Event Types**:
+
 | Event | Trigger |
 |-------|---------|
 | `barrier.complete` | Phase barrier satisfied (all steps done) |
@@ -1045,6 +1081,7 @@ ralph status --json | jq '.plan.status'
 
 **StatusLine Integration**:
 Progress is shown in the statusline automatically:
+
 ```
 main* | 3/7 42% | [claude-hud metrics]
 ```
@@ -1057,6 +1094,7 @@ main* | 3/7 42% | [claude-hud metrics]
 | `✅` | Completed |
 
 **Traceability**:
+
 ```bash
 # Show recent events
 ralph trace show 30
@@ -1091,12 +1129,14 @@ ralph health --fix              # Auto-fix critical issues
 **Health Checks**: Semantic, Procedural, Episodic, Agent-Memory, Curator, Events, Ledgers, Handoffs, Checkpoints
 
 **Auto-Learning Triggers**:
+
 | Condition | Severity | Action |
 |-----------|----------|--------|
 | ZERO relevant rules (any complexity) | CRITICAL | Learning REQUIRED before implementation |
 | <3 rules AND complexity >=7 | HIGH | Learning RECOMMENDED for better quality |
 
 **New Hooks (v2.55)**:
+
 | Hook | Trigger | Purpose |
 |------|---------|---------|
 | `orchestrator-auto-learn.sh` | PreToolUse (Task) | Detects knowledge gaps, recommends `/curator` |
@@ -1106,6 +1146,7 @@ ralph health --fix              # Auto-fix critical issues
 | `curator-suggestion.sh` | UserPromptSubmit | Suggests `/curator` when memory is empty |
 
 **Automatic Extraction**:
+
 - **Semantic**: New functions, classes, dependencies from git diff
 - **Decisions**: Design patterns (Singleton, Repository, Factory...), architectural choices (async/await, caching, logging)
 - **Source tracking**: `"source": "auto-extract"` with deduplication
@@ -1115,6 +1156,7 @@ ralph health --fix              # Auto-fix critical issues
 100% automatic monitoring via hooks - no manual commands needed.
 
 **Automation Hooks (v2.56)**:
+
 | Hook | Trigger | Purpose |
 |------|---------|---------|
 | `status-auto-check.sh` | PostToolUse (Edit/Write/Bash) | Auto-shows status every 5 operations |
@@ -1122,6 +1164,7 @@ ralph health --fix              # Auto-fix critical issues
 | `statusline-health-monitor.sh` | UserPromptSubmit | Health checks every 5 minutes |
 
 **Smart Checkpoint Triggers**:
+
 | Trigger | Condition |
 |---------|-----------|
 | `high_complexity` | Plan complexity >= 7 |
@@ -1130,6 +1173,7 @@ ralph health --fix              # Auto-fix critical issues
 | `security_file` | Files with auth/secret/credential in name |
 
 **Health Checks**:
+
 - Script existence and permissions
 - Plan-state JSON validity
 - Stuck detection (in_progress > 30 min)
@@ -1160,6 +1204,7 @@ Stage 3: CONSISTENCY -> Linting (ADVISORY - not blocking)
 | RECURSIVE | opus (root) | sonnet (sub) | 15/sub |
 
 **v2.69.0 Changes**:
+
 - ✅ GLM-4.7 is now **PRIMARY** for complexity 1-4 tasks (cost-effective, fast)
 - ❌ MiniMax fully **DEPRECATED** (optional fallback only, not recommended)
 - ✅ 14 GLM-4.7 MCP tools available for vision, web search, and analysis
@@ -1316,6 +1361,76 @@ ralph handoff create      # Create handoff
 
 > **⚠️ CRITICAL v2.81.1**: `PostCompact` does NOT exist in Claude Code. Use `PreCompact` for saving state and `SessionStart` for restoring. See [docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md](docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md) for critical information.
 
+### 🔒 CRITICAL HOOKS - Must Always Be Registered
+
+**⚠️ SECURITY ALERT**: These hooks MUST be registered in `~/.claude-sneakpeek/zai/config/settings.json` at all times.
+
+| Hook | Event | Matcher | Purpose | Validation |
+|------|-------|---------|---------|------------|
+| `git-safety-guard.py` | PreToolUse | Bash | **Blocks `rm -rf`, `git reset --hard`** | `./scripts/validate-hooks-registration.sh` |
+| `repo-boundary-guard.sh` | PreToolUse | Bash | Prevents work in external repos | `./scripts/validate-hooks-registration.sh` |
+| `status-auto-check.sh` | PostToolUse | Edit\|Write\|Bash | Shows status every 5 ops | `./scripts/validate-hooks-registration.sh` |
+| `console-log-detector.sh` | PostToolUse | Edit\|Write\|Bash | Detects console.log in JS/TS | `./scripts/validate-hooks-registration.sh` |
+| `adversarial-auto-trigger.sh` | PostToolUse | Task | Auto-invoke /adversarial | `./scripts/validate-hooks-registration.sh` |
+
+**How to Validate**:
+
+```bash
+./scripts/validate-hooks-registration.sh
+```
+
+**Expected Output**:
+
+```
+✓ git-safety-guard.py
+✓ repo-boundary-guard.sh
+✓ status-auto-check.sh
+✓ console-log-detector.sh
+✓ adversarial-auto-trigger.sh
+```
+
+**If Validation Fails**: See [docs/bugs/HOOK_REGISTRATION_FIX_v2.83.1.md](docs/bugs/HOOK_REGISTRATION_FIX_v2.83.1.md)
+
+**Registration Template** (add to `~/.claude-sneakpeek/zai/config/settings.json`):
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {"type": "command", "command": "$(pwd)/.claude/hooks/git-safety-guard.py"},
+          {"type": "command", "command": "$(pwd)/.claude/hooks/repo-boundary-guard.sh"}
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|Bash",
+        "hooks": [
+          {"type": "command", "command": "$(pwd)/.claude/hooks/status-auto-check.sh"},
+          {"type": "command", "command": "$(pwd)/.claude/hooks/console-log-detector.sh"}
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {"type": "command", "command": "$(pwd)/.claude/hooks/adversarial-auto-trigger.sh"}
+        ]
+      }
+    ]
+  }
+}
+```
+
+> **Note**: `$(pwd)` evaluates to your project root. Alternatively use absolute paths if preferred.
+
+```
+
+**Current Coverage**: 49 of 84 hooks registered (58%)
+**Critical Coverage**: 5 of 5 critical hooks (100%) ✅
+
 > **v2.69.0**: GLM-4.7 now PRIMARY for complexity 1-4 tasks. MiniMax deprecated. `mmc` and `ralph` CLI updated. 14 GLM tools. 26 MCP servers total.
 
 | Event Type | Purpose |
@@ -1371,11 +1486,13 @@ ralph handoff create      # Create handoff
 **Discovery**: During compaction hooks fix, we discovered that `PostCompact` is **NOT a valid hook event** in Claude Code as of January 2026.
 
 **What This Means**:
+
 - ❌ There is NO `PostCompact` event that fires after compaction
 - ✅ Only `PreCompact` exists (fires BEFORE compaction)
 - ✅ Use `SessionStart` for post-compaction context restoration
 
 **Correct Pattern**:
+
 ```
 PreCompact Event → Save state before compaction
     ↓
@@ -1411,6 +1528,7 @@ Claude Code's evolved Task primitive patterns integrated via 3 new hooks:
 | `task-orchestration-optimizer.sh` | PreToolUse (Task) | Detect parallelization + context-hiding opportunities |
 
 **Key Patterns**:
+
 - **Verification via Subagent**: Auto-suggest review for high-complexity or security-related steps
 - **Parallelization Detection**: Identify independent tasks that can run concurrently
 - **Context-Hiding**: Suggest `run_in_background: true` for large prompts (>2000 chars)
@@ -1421,6 +1539,7 @@ Claude Code's evolved Task primitive patterns integrated via 3 new hooks:
 > **IMPORTANT**: When updating hook versions, ALL hooks must be validated.
 
 **Review Checklist**:
+
 1. Verify JSON output format matches event type (see Known Limitations)
 2. Test hook execution with manual invocation
 3. Check hook logs for errors: `~/.ralph/logs/`
@@ -1428,6 +1547,7 @@ Claude Code's evolved Task primitive patterns integrated via 3 new hooks:
 5. Run `/gates` to ensure no regressions
 
 **Version Bump Command**:
+
 ```bash
 cd ~/.claude/hooks && for f in *.sh; do
   sed -i '' "s/VERSION: [0-9]*\.[0-9]*\.[0-9]*/VERSION: X.Y.Z/g" "$f"
@@ -1441,23 +1561,27 @@ done
 **Issue**: The claude-mem plugin's hooks fail because Bun cannot resolve `${CLAUDE_PLUGIN_ROOT}` correctly when used as part of a path argument.
 
 **Error**:
+
 ```bash
 bun "${CLAUDE_PLUGIN_ROOT}/scripts/worker-service.cjs" start
 # Error: Module not found "/scripts/worker-service.cjs"
 ```
 
 **Solution** (Applied):
+
 ```bash
 (cd "${CLAUDE_PLUGIN_ROOT}" && bun scripts/worker-service.cjs start)
 ```
 
 **Affected Files** (BOTH must be updated):
+
 1. `~/.claude-sneakpeek/zai/config/plugins/cache/thedotmack/claude-mem/9.0.10/hooks/hooks.json`
 2. `~/.claude-sneakpeek/zai/config/plugins/marketplaces/thedotmack/plugin/hooks/hooks.json`
 
 > **Why both?** Marketplace is source for updates. If only cache is fixed, updates overwrite the fix.
 
 **Auto-Detection for Claude Code/z.ai**:
+
 ```bash
 # Detect incorrect patterns
 find ~/.claude-sneakpeek/zai/config/plugins -name "hooks.json" -path "*/claude-mem/*" -exec grep -l 'bun "\${CLAUDE_PLUGIN_ROOT}/scripts/worker-service' {} \;
@@ -1480,6 +1604,7 @@ find ~/.claude-sneakpeek/zai/config/plugins -name "hooks.json" -path "*/claude-m
 | **Declarative** (organize/plan) | `TodoWrite` | No hooks |
 
 **Rationale** (from Claude.ai):
+
 - **Executive tools** need PostToolUse hooks to validate effects (file created? command succeeded?)
 - **TodoWrite** is purely declarative - it just updates an internal task list with no filesystem effects
 - PostToolUse hooks are for validating side effects; TodoWrite has none
@@ -1569,6 +1694,7 @@ EXECUTE -> VALIDATE -> Quality Passed?
 ### Detection
 
 The `repo-boundary-guard.sh` hook automatically blocks:
+
 - File operations outside current repo
 - Bash commands targeting `~/Documents/GitHub/<other-repo>/`
 - Git commands referencing external repositories

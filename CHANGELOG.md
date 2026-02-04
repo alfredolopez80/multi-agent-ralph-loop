@@ -2,6 +2,55 @@
 
 ---
 
+## [2.83.1] - 2026-02-04
+
+### Security
+
+- **CRITICAL FIX**: Registered 11 missing hooks in `settings.json`
+  - **git-safety-guard.py**: Now blocks `rm -rf`, `git reset --hard`, `git clean -f`
+  - **repo-boundary-guard.sh**: Prevents work in external repositories (Bash)
+  - **status-auto-check.sh**: Shows orchestration status every 5 operations
+  - **console-log-detector.sh**: Detects `console.log` in JS/TS edits
+  - **adversarial-auto-trigger.sh**: Auto-invoke /adversarial for complex tasks
+  - Total registered hooks: 38 → 49 (+29% increase)
+  - Coverage: 45% → 58%
+
+### Added
+
+- **plan-state-lifecycle.sh**: Auto-archives stale plans (>30 min) on new tasks
+- **orchestrator-init.sh**: Initializes orchestrator state on session start
+- **project-backup-metadata.sh**: Multi-project metadata backup (SessionStart+Stop)
+- **ai-code-audit.sh**: Detects AI anti-patterns (dead code, over-engineering)
+- **code-review-auto.sh**: Automatic code review after each Task step
+- **inject-session-context.sh**: Injects context before Task execution
+
+### Changed
+
+- **Settings.json**: Added 11 new hook registrations across 6 event types
+  - PreToolUse: New "Bash" matcher (was completely missing)
+  - PostToolUse: +4 hooks (Edit|Write|Bash, Task)
+  - SessionStart: +2 hooks
+  - Stop: +1 hook
+  - UserPromptSubmit: +1 hook
+
+### Fixed
+
+- **rm -rf bypass**: Commands now properly blocked by git-safety-guard.py
+  - Only `/tmp/`, `/var/tmp/`, `$TMPDIR/` allowed for recursive deletion
+  - Relative paths with `../` blocked
+  - Current directory deletion blocked
+
+### Documentation
+
+- **HOOK_REGISTRATION_FIX_v2.83.1.md**: Complete incident report
+  - Root cause analysis
+  - Impact assessment
+  - Verification steps
+  - Prevention measures
+  - Location: `docs/bugs/HOOK_REGISTRATION_FIX_v2.83.1.md`
+
+---
+
 ## [2.83.0] - 2026-01-30
 
 ### Added
