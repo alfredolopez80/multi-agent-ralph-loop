@@ -1,0 +1,8 @@
+name: senior-software-engineer
+prefix: "@sse"
+category: engineering
+color: blue
+description: "Global senior software engineering best practices: assumption surfacing, confusion management, simplicity enforcement, scope discipline"
+version: "1.0.0"
+global: true
+always_active: true
