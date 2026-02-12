@@ -6,7 +6,7 @@
 # When a Task tool spawns an agent, this hook checks if the agent
 # has a memory buffer. If not, it initializes one automatically.
 #
-# VERSION: 2.81.2
+# VERSION: 2.84.2
 # v2.81.2: FIX JSON schema - use hookSpecificOutput for PreToolUse
 # v2.68.9: SEC-101 FIX - Validate SUBAGENT_TYPE to prevent sed command injection
 # v2.66.7: CRIT-001 fix - explicit JSON output on success path
@@ -23,7 +23,7 @@ umask 077
 
 # SEC-034: Guaranteed JSON output on any error or exit
 output_json() {
-    echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
 }
 trap 'output_json' ERR EXIT
 
@@ -33,7 +33,7 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
 
 # Only process Task tool
 if [[ "$TOOL_NAME" != "Task" ]]; then
-    trap - EXIT; echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'; exit 0
+    trap - EXIT; echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'; exit 0
 fi
 
 # Extract subagent type
@@ -41,13 +41,13 @@ SUBAGENT_TYPE=$(echo "$INPUT" | jq -r '.tool_input.subagent_type // empty' 2>/de
 
 # Skip if no subagent type
 if [[ -z "$SUBAGENT_TYPE" ]]; then
-    trap - EXIT; echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'; exit 0
+    trap - EXIT; echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'; exit 0
 fi
 
 # SEC-101 FIX: Validate SUBAGENT_TYPE to prevent command injection
 # Only allow alphanumeric, underscore, dash, and colon (for namespaced agents like "plugin:name")
 if [[ ! "$SUBAGENT_TYPE" =~ ^[a-zA-Z0-9_:-]+$ ]]; then
-    trap - EXIT; echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'; exit 0
+    trap - EXIT; echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'; exit 0
 fi
 
 # Agent memory directory
@@ -56,7 +56,7 @@ AGENT_DIR="${AGENT_MEM_DIR}/${SUBAGENT_TYPE}"
 
 # Skip if already initialized
 if [[ -d "$AGENT_DIR" ]] && [[ -f "${AGENT_DIR}/memory.json" ]]; then
-    trap - EXIT; echo \'{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'; exit 0
+    trap - EXIT; echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'; exit 0
 fi
 
 # Log directory

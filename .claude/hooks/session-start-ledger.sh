@@ -12,7 +12,7 @@
 #
 # Part of Ralph v2.43 Context Engineering with Claude-Mem Integration
 #
-# VERSION: 2.69.0
+# VERSION: 2.84.2
 
 # SEC-111: Read input from stdin with length limit (100KB max)
 # Prevents DoS from malicious input
@@ -51,6 +51,21 @@ check_feature_enabled() {
     else
         [[ "$default" == "true" ]]
     fi
+}
+
+# v2.84.2: Get most recent file matching pattern (avoids pipefail+head SIGPIPE)
+get_most_recent_file() {
+    local dir="$1"
+    local pattern="$2"
+    local recent=""
+
+    while IFS= read -r -d '' file; do
+        if [[ -z "$recent" ]] || [[ "$file" -nt "$recent" ]]; then
+            recent="$file"
+        fi
+    done < <(find "$dir" -maxdepth 1 -name "$pattern" -type f -print0 2>/dev/null)
+
+    echo "$recent"
 }
 
 # v2.43: Get claude-mem integration hints (3-layer workflow)
@@ -95,17 +110,21 @@ if ! check_feature_enabled "RALPH_ENABLE_LEDGER" "true"; then
     exit 0
 fi
 
-# Find the most recent ledger
+# Find the most recent ledger (v2.84.2: use get_most_recent_file to avoid SIGPIPE)
 LEDGER=""
 if [[ -d "$LEDGER_DIR" ]]; then
-    LEDGER=$(ls -t "$LEDGER_DIR"/CONTINUITY_RALPH-*.md 2>/dev/null | head -1 || true)
+    LEDGER=$(get_most_recent_file "$LEDGER_DIR" "CONTINUITY_RALPH-*.md")
 fi
 
-# Find the most recent handoff
+# Find the most recent handoff (v2.84.2: use get_most_recent_file for subdirs)
 HANDOFF=""
 if [[ -d "$HANDOFF_DIR" ]]; then
-    HANDOFF=$(find "$HANDOFF_DIR" -name "handoff-*.md" -type f 2>/dev/null | \
-              xargs ls -t 2>/dev/null | head -1 || true)
+    # Search all subdirectories for handoffs
+    while IFS= read -r -d '' file; do
+        if [[ -z "$HANDOFF" ]] || [[ "$file" -nt "$HANDOFF" ]]; then
+            HANDOFF="$file"
+        fi
+    done < <(find "$HANDOFF_DIR" -name "handoff-*.md" -type f -print0 2>/dev/null)
 fi
 
 # Build context to inject

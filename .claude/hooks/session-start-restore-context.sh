@@ -1,5 +1,5 @@
 #!/bin/bash
-# session-start-restore-context.sh - SessionStart Hook for Ralph v2.81.0
+# session-start-restore-context.sh - SessionStart Hook for Ralph v2.84.2
 # Hook: SessionStart
 # Restores context and plan state when a new session starts
 #
@@ -17,7 +17,7 @@
 # 3. Restoring plan state if exists
 # 4. Injecting context into the new session
 
-# VERSION: 2.81.0
+# VERSION: 2.84.2
 set -euo pipefail
 
 # Configuration
@@ -27,6 +27,7 @@ HANDOFF_DIR="${HOME}/.ralph/handoffs"
 PLAN_STATE_FILE=".claude/plan-state.json"
 FEATURES_FILE="${HOME}/.ralph/config/features.json"
 MAX_SUMMARY_LINES=50
+MAX_CONTEXT_SIZE=8000  # Limit context size to avoid jq issues
 
 # Ensure directories exist
 mkdir -p "${HOME}/.ralph/logs" "$HANDOFF_DIR"
@@ -48,6 +49,36 @@ check_feature_enabled() {
     else
         [[ "$default" == "true" ]]
     fi
+}
+
+# Truncate context if too large
+truncate_context() {
+    local ctx="$1"
+    local max_size="${2:-$MAX_CONTEXT_SIZE}"
+    local len=${#ctx}
+
+    if [[ $len -gt $max_size ]]; then
+        echo "${ctx:0:$max_size}... [truncated]"
+        log "INFO" "Context truncated from $len to $max_size bytes"
+    else
+        echo "$ctx"
+    fi
+}
+
+# Get most recent file matching pattern (avoids pipefail issues with head)
+get_most_recent_file() {
+    local dir="$1"
+    local pattern="$2"
+    local recent=""
+
+    # Use a while loop to avoid SIGPIPE issues with head
+    while IFS= read -r -d '' file; do
+        if [[ -z "$recent" ]] || [[ "$file" -nt "$recent" ]]; then
+            recent="$file"
+        fi
+    done < <(find "$dir" -maxdepth 1 -name "$pattern" -type f -print0 2>/dev/null)
+
+    echo "$recent"
 }
 
 # Read input from stdin
@@ -116,8 +147,8 @@ if [[ -f "${PROJECT_DIR}/${PLAN_STATE_FILE}" ]]; then
 fi
 
 # 2. Look for recent ledger for this project
-LEDGER_PATTERN="${LEDGER_DIR}/CONTINUITY_RALPH-*.md"
-MOST_RECENT_LEDGER=$(ls -t $LEDGER_PATTERN 2>/dev/null | head -1)
+# FIXED v2.84.2: Use custom function to avoid pipefail+head SIGPIPE issue
+MOST_RECENT_LEDGER=$(get_most_recent_file "$LEDGER_DIR" "CONTINUITY_RALPH-*.md")
 
 if [[ -n "$MOST_RECENT_LEDGER" && -f "$MOST_RECENT_LEDGER" ]]; then
     log "INFO" "Found recent ledger: $MOST_RECENT_LEDGER"
@@ -143,7 +174,8 @@ fi
 # 3. Look for recent handoff
 SESSION_HANDOFF_DIR="${HANDOFF_DIR}/${SESSION_ID}"
 if [[ -d "$SESSION_HANDOFF_DIR" ]]; then
-    MOST_RECENT_HANDOFF=$(ls -t "${SESSION_HANDOFF_DIR}"/handoff-*.md 2>/dev/null | head -1)
+    # FIXED v2.84.2: Use custom function to avoid pipefail+head SIGPIPE issue
+    MOST_RECENT_HANDOFF=$(get_most_recent_file "$SESSION_HANDOFF_DIR" "handoff-*.md")
 
     if [[ -n "$MOST_RECENT_HANDOFF" && -f "$MOST_RECENT_HANDOFF" ]]; then
         log "INFO" "Found recent handoff: $MOST_RECENT_HANDOFF"
@@ -163,8 +195,9 @@ if [[ "$FOUND_CONTEXT" == "true" ]]; then
     CONTEXT+="### Next Steps\n\n"
     CONTEXT+="1. Review the context above to understand what was being worked on\n"
     CONTEXT+="2. Continue with the current task or plan\n"
-    CONTEXT+="3. Use `/plan show` to see the current plan status\n"
-    CONTEXT+="4. Use `/context` to check current context usage\n\n"
+    # FIXED v2.84.0: Escape backticks to prevent command substitution
+    CONTEXT+="3. Use \`/plan show\` to see the current plan status\n"
+    CONTEXT+="4. Use \`/context\` to check current context usage\n\n"
     CONTEXT+="**Note**: Your work progress has been preserved. Focus on completing the current task.\n"
 
     log "INFO" "Context restoration complete - context injected"
@@ -172,11 +205,15 @@ else
     CONTEXT+="### New Session\n\n"
     CONTEXT+="No previous context found for this project. Starting fresh.\n\n"
     CONTEXT+="To get started:\n"
-    CONTEXT+="- Use `/orchestrator` for complex tasks\n"
-    CONTEXT+="- Use `/help` to see available commands\n"
+    # FIXED v2.84.0: Escape backticks to prevent command substitution
+    CONTEXT+="- Use \`/orchestrator\` for complex tasks\n"
+    CONTEXT+="- Use \`/help\` to see available commands\n"
 
     log "INFO" "No previous context found - starting fresh"
 fi
+
+# Truncate context if too large (avoids jq argument limit)
+CONTEXT=$(truncate_context "$CONTEXT")
 
 # Output context for injection
 # SessionStart hooks can use hookSpecificOutput to inject context

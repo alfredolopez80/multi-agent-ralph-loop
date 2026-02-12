@@ -11,7 +11,7 @@
 #   - ui_diff_check: Compare before/after screenshots
 #   - analyze_image: General visual analysis
 #
-# VERSION: 2.69.0
+# VERSION: 2.84.2
 # v2.68.26: Initial implementation for GLM-4.7 integration
 
 # SEC-111: Read input from stdin with length limit (100KB max)
@@ -51,12 +51,12 @@ if ! echo "$FILE_PATH" | grep -qE "$FRONTEND_PATTERN"; then
 fi
 
 # Check for Z_AI_API_KEY (required for GLM endpoints)
-# Try environment first, then fall back to .zshrc
+# SECURITY v2.84.2: Only use environment variable, do NOT read from shell config files
+# This prevents potential injection attacks from malicious config files
 if [[ -z "${Z_AI_API_KEY:-}" ]]; then
-    # Source from .zshrc if available
-    if [[ -f "$HOME/.zshrc" ]]; then
-        Z_AI_API_KEY=$(grep "^export Z_AI_API_KEY=" "$HOME/.zshrc" 2>/dev/null | head -1 | sed "s/export Z_AI_API_KEY=//; s/['\"]//g")
-    fi
+    trap - ERR EXIT
+    echo '{"continue": true, "systemMessage": "GLM visual validation: Skipped (Z_AI_API_KEY not set in environment)"}'
+    exit 0
 fi
 
 if [[ -z "${Z_AI_API_KEY:-}" ]]; then

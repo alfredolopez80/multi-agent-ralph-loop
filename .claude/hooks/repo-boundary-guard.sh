@@ -3,7 +3,7 @@
 # repo-boundary-guard.sh - Repository Isolation Enforcement
 # Hook: PreToolUse (Edit|Write|Bash)
 # Purpose: Prevent accidental work in external repositories
-# VERSION: 2.69.0
+# VERSION: 2.84.2
 # v2.66.8: SEC-051 - Use realpath for proper path canonicalization
 
 # SEC-111: Read input from stdin with length limit (100KB max)
@@ -14,7 +14,7 @@ INPUT=$(head -c 100000)
 set -euo pipefail
 
 # Error trap: Always output valid JSON for PreToolUse
-trap 'echo "{\"decision\": \"allow\"}"' ERR EXIT
+trap 'echo "{\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"allow\"}}"' ERR EXIT
 
 # Configuration
 LOG_FILE="${HOME}/.ralph/logs/repo-boundary.log"
@@ -193,8 +193,11 @@ main() {
                 trap - ERR EXIT
                 cat << EOF
 {
-  "decision": "block",
-  "reason": "⚠️ REPO BOUNDARY: Command references external repository ($mentioned_path). Use /repo-learn to learn from it instead, or explicitly switch repos."
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "block",
+    "permissionDecisionReason": "REPO BOUNDARY: Command references external repository ($mentioned_path). Use /repo-learn to learn from it instead, or explicitly switch repos."
+  }
 }
 EOF
                 exit 0
@@ -209,8 +212,11 @@ EOF
             trap - ERR EXIT
             cat << EOF
 {
-  "decision": "block",
-  "reason": "⚠️ REPO BOUNDARY: Path $path is outside current repo ($CURRENT_REPO). Use /repo-learn to learn from external repos, or explicitly switch."
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "block",
+    "permissionDecisionReason": "REPO BOUNDARY: Path $path is outside current repo ($CURRENT_REPO). Use /repo-learn to learn from external repos, or explicitly switch."
+  }
 }
 EOF
             exit 0
