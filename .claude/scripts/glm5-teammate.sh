@@ -1,7 +1,7 @@
 #!/bin/bash
 # .claude/scripts/glm5-teammate.sh
 # GLM-5 Teammate Execution Script with project-scoped file-based status
-# Version: 2.84.0
+# Version: 2.84.1
 
 set -e
 
@@ -120,7 +120,8 @@ log "API call complete (tokens: ${TOTAL_TOKENS})"
 if [ -n "$REASONING" ]; then
     REASONING_FILE="${REASONING_DIR}/${TASK_ID}.txt"
     echo "$REASONING" > "$REASONING_FILE"
-    log "Reasoning saved to ${REASONING_FILE} ($(${#REASONING}) chars)"
+    REASONING_LEN=${#REASONING}
+    log "Reasoning saved to ${REASONING_FILE} (${REASONING_LEN} chars)"
 else
     REASONING_FILE=""
     log "No reasoning content captured"

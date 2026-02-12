@@ -1,7 +1,7 @@
 #!/bin/bash
 # .claude/scripts/glm5-team-coordinator.sh
 # Coordinates GLM-5 teammates via project-scoped file-based status
-# Version: 2.84.0
+# Version: 2.84.1
 
 set -e
 

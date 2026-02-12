@@ -1,7 +1,7 @@
 #!/bin/bash
 # .claude/scripts/glm5-init-team.sh
 # Initialize team status for GLM-5 agent teams (project-scoped)
-# Version: 2.84.0
+# Version: 2.84.1
 
 set -e
 

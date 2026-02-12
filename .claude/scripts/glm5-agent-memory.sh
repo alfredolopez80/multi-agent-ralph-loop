@@ -1,7 +1,7 @@
 #!/bin/bash
 # .claude/scripts/glm5-agent-memory.sh
 # Manages agent-scoped memory for GLM-5 teammates (project-scoped)
-# Version: 2.84.0
+# Version: 2.84.1
 
 set -e
 

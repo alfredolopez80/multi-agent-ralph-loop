@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install Multi-Agent Ralph Skills Globally
-# VERSION: 2.0.0
+# VERSION: 2.1.0
 #
 # This script installs all skills from the repository to the global Claude Code skills directory.
 # Skills are converted to the correct format (SKILL.md with proper YAML frontmatter).
@@ -18,7 +18,9 @@
 #   - Frontmatter: name, description (NO allowed-tools, NO model restrictions)
 #   - Purpose: Universal skills that work with any tool and any model
 #
-# Part of Multi-Agent Ralph v2.74.2
+# Part of Multi-Agent Ralph v2.83.1
+# CHANGELOG:
+#   v2.1.0 - Fixed skills discovery bug with proper directory validation
 
 set -euo pipefail
 
@@ -67,8 +69,8 @@ log() {
 print_header() {
     echo ""
     echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${RESET}"
-    echo -e "${BLUE}║${RESET}   Global Skills Installation Script v2.0.0            ${BLUE}║${RESET}"
-    echo -e "${BLUE}║${RESET}   Multi-Agent Ralph v2.74.2                          ${BLUE}║${RESET}"
+    echo -e "${BLUE}║${RESET}   Global Skills Installation Script v2.1.0            ${BLUE}║${RESET}"
+    echo -e "${BLUE}║${RESET}   Multi-Agent Ralph v2.83.1                          ${BLUE}║${RESET}"
     echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${RESET}"
     echo ""
 }
@@ -78,16 +80,38 @@ print_step() {
     echo -e "${CYAN}▶ $1${RESET}"
 }
 
-# Get all skill directories
+# Get all skill directories (v2.1.0 - Fixed with validation)
 get_skills() {
-    find "$SOURCE_SKILLS_DIR" -mindepth 1 -maxdepth 1 -type d | while read -r dir; do
-        basename "$dir"
-    done | sort
+    # Validate source directory exists
+    if [[ ! -d "$SOURCE_SKILLS_DIR" ]]; then
+        log ERROR "Skills directory not found: $SOURCE_SKILLS_DIR"
+        return 1
+    fi
+
+    # Find directories, excluding hidden directories and special directories
+    local skills=()
+    while IFS= read -r -d '' dir; do
+        local name
+        name=$(basename "$dir")
+        # Skip hidden directories and special directories
+        if [[ ! "$name" =~ ^\. ]] && [[ "$name" != "~" ]] && [[ "$name" != "__pycache__" ]]; then
+            skills+=("$name")
+        fi
+    done < <(find "$SOURCE_SKILLS_DIR" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+
+    # Sort and output
+    printf '%s\n' "${skills[@]}" | sort
 }
 
 # Find skill definition file
 find_skill_definition() {
     local skill_dir="$1"
+
+    # Validate directory exists
+    if [[ ! -d "$skill_dir" ]]; then
+        echo "none"
+        return 1
+    fi
 
     # Priority: SKILL.md > skill.md > CLAUDE.md > scripts/CLAUDE.md
     if [[ -f "${skill_dir}/SKILL.md" ]]; then
@@ -101,6 +125,7 @@ find_skill_definition() {
         return 0
     elif [[ -f "${skill_dir}/scripts/CLAUDE.md" ]]; then
         echo "scripts/CLAUDE.md"
+        return 0
     fi
 
     echo "none"
@@ -134,7 +159,7 @@ extract_skill_description() {
 
     # Try to get description from frontmatter
     local description
-    description=$(grep -m1 "^description:" "$skill_file" 2>/dev/null | sed 's/description: *//' | tr -d '"'"'" | tr -d '"')
+    description=$(grep -m1 "^description:" "$skill_file" 2>/dev/null | sed 's/description: *//' | tr -d '"'"'" | tr -d '"' | head -c 100)
 
     # Fallback to generic description
     if [[ -z "$description" ]]; then
@@ -150,7 +175,8 @@ extract_skill_description() {
 # Convert any skill definition to proper SKILL.md format
 convert_to_skill_format() {
     local skill_dir="$1"
-    local skill_name="$(basename "$skill_dir")"
+    local skill_name
+    skill_name=$(basename "$skill_dir")
     local output_file="${skill_dir}/SKILL.md"
 
     local def_file
@@ -220,10 +246,10 @@ install_skill() {
     fi
 
     # Remove existing symlink if force is enabled
-    if [[ -L "$target_link" ]]; then
+    if [[ -L "$target_link" ]] || [[ -e "$target_link" ]]; then
         if [[ "$FORCE_INSTALL" == true ]]; then
-            rm "$target_link"
-            log INFO "Removed existing symlink: ${skill_name}"
+            rm -rf "$target_link"
+            log INFO "Removed existing: ${skill_name}"
         else
             log INFO "Skill already installed: ${skill_name}"
             return 0
@@ -235,7 +261,7 @@ install_skill() {
     ln -s "$source_dir" "$target_link"
 
     if [[ -L "$target_link" ]]; then
-        log SUCCESS "✓ ${skill_name}"
+        log SUCCESS "OK ${skill_name}"
         return 0
     else
         log ERROR "Failed to create symlink for: ${skill_name}"
@@ -247,22 +273,34 @@ install_skill() {
 list_skills() {
     print_step "Available Skills"
 
+    # Validate source directory
+    if [[ ! -d "$SOURCE_SKILLS_DIR" ]]; then
+        log ERROR "Skills directory not found: $SOURCE_SKILLS_DIR"
+        return 1
+    fi
+
     echo ""
     printf "%-35s %-15s %s\n" "Skill Name" "Definition" "Status"
     printf "%-35s %-15s %s\n" "-----------" "-----------" "------"
 
-    get_skills | while read -r skill_name; do
+    local count=0
+    while read -r skill_name; do
+        [[ -z "$skill_name" ]] && continue
         local source_dir="${SOURCE_SKILLS_DIR}/${skill_name}"
         local def_file
         def_file=$(find_skill_definition "$source_dir")
 
-        local status="✓ Valid"
+        local status="OK Valid"
         if [[ "$def_file" == "none" ]]; then
-            status="⚠ No definition"
+            status="!! No definition"
         fi
 
         printf "%-35s %-15s %s\n" "$skill_name" "$def_file" "$status"
-    done
+        count=$((count + 1))
+    done < <(get_skills)
+
+    echo ""
+    echo "Total: $count skills found in $SOURCE_SKILLS_DIR"
 }
 
 # ============================================================================
@@ -314,6 +352,12 @@ fi
 
 print_step "Installing skills from repository to global directory"
 
+# Validate source directory
+if [[ ! -d "$SOURCE_SKILLS_DIR" ]]; then
+    log ERROR "Skills source directory not found: $SOURCE_SKILLS_DIR"
+    exit 1
+fi
+
 # Create target directory if it doesn't exist
 mkdir -p "$TARGET_SKILLS_DIR"
 
@@ -325,7 +369,8 @@ total=0
 installed=0
 failed=0
 
-get_skills | while read -r skill_name; do
+while read -r skill_name; do
+    [[ -z "$skill_name" ]] && continue
     total=$((total + 1))
 
     if install_skill "$skill_name"; then
@@ -333,13 +378,18 @@ get_skills | while read -r skill_name; do
     else
         failed=$((failed + 1))
     fi
-done
+done < <(get_skills)
 
 # Summary
 echo ""
-echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${RESET}"
-echo -e "${GREEN}║${RESET}   Skills Installation Complete!                          ${GREEN}║${RESET}"
-echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${RESET}"
+echo -e "${GREEN}+==============================================================+${RESET}"
+echo -e "${GREEN}|${RESET}   Skills Installation Complete!                             ${GREEN}|${RESET}"
+echo -e "${GREEN}+==============================================================+${RESET}"
+echo ""
+echo "Statistics:"
+echo "  Total:     $total"
+echo "  Installed: $installed"
+echo "  Failed:    $failed"
 echo ""
 echo "Global skills location: ${TARGET_SKILLS_DIR}"
 echo ""

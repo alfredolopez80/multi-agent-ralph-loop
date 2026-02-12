@@ -1,0 +1,89 @@
+{
+  "$schema": "https://claude.ai/schema/settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(ralph:*)",
+      "Bash(mmc:*)",
+      "Bash(git:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh api:*)",
+      "Bash(sentry-cli:*)",
+      "Edit",
+      "Read",
+      "Write"
+    ]
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {"type": "command", "command": "$(pwd)/.claude/hooks/context-warning.sh"},
+          {"type": "command", "command": "$(pwd)/.claude/hooks/command-router.sh"}
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {"type": "command", "command": "$(pwd)/.claude/hooks/session-start-ledger.sh"},
+          {"type": "command", "command": "$(pwd)/.claude/hooks/auto-migrate-plan-state.sh"}
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {"type": "command", "command": "$(pwd)/.claude/hooks/pre-compact-handoff.sh"}
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {"type": "command", "command": "$(pwd)/.claude/hooks/git-safety-guard.py"},
+          {"type": "command", "command": "$(pwd)/.claude/hooks/repo-boundary-guard.sh"}
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {"type": "command", "command": "$(pwd)/.claude/hooks/checkpoint-auto-save.sh"}
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {"type": "command", "command": "$(pwd)/.claude/hooks/fast-path-check.sh"},
+          {"type": "command", "command": "$(pwd)/.claude/hooks/smart-memory-search.sh"}
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|Bash",
+        "hooks": [
+          {"type": "command", "command": "$(pwd)/.claude/hooks/quality-gates-v2.sh"},
+          {"type": "command", "command": "$(pwd)/.claude/hooks/status-auto-check.sh"}
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {"type": "command", "command": "$(pwd)/.claude/hooks/auto-background-swarm.sh"}
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {"type": "command", "command": "$(pwd)/.claude/hooks/reflection-engine.sh"}
+        ]
+      }
+    ]
+  }
+}
