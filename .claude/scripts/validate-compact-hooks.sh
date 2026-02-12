@@ -1,6 +1,6 @@
 #!/bin/bash
 # validate-compact-hooks.sh - Validate compact hooks configuration
-# v2.81.1
+# v2.84.3
 
 set -euo pipefail
 
@@ -79,8 +79,8 @@ echo ""
 echo "3. Hook Files Existence"
 echo "-----------------------"
 
-PRE_COMPACT_HOOK="/Users/alfredolopez/.claude-sneakpeek/zai/config/hooks/pre-compact-handoff.sh"
-POST_COMPACT_HOOK="/Users/alfredolopez/.claude-sneakpeek/zai/config/hooks/post-compact-restore.sh"
+PRE_COMPACT_HOOK="$HOME/.claude-sneakpeek/zai/config/hooks/pre-compact-handoff.sh"
+POST_COMPACT_HOOK="$HOME/.claude-sneakpeek/zai/config/hooks/post-compact-restore.sh"
 
 if [ -f "$PRE_COMPACT_HOOK" ]; then
     pass "pre-compact-handoff.sh exists at $PRE_COMPACT_HOOK"
