@@ -1,16 +1,31 @@
 ---
-# VERSION: 2.81.0
+# VERSION: 2.84.1
 name: orchestrator
 prefix: "@orch"
 category: orchestration
 color: purple
 description: "Full orchestration with swarm mode: evaluate → clarify → classify → persist → plan mode → spawn teammates → execute → validate → retrospective"
-argument-hint: "<task description>"
+argument-hint: "<task description> [--with-glm5]"
 ---
 
 # /orchestrator
 
 Full orchestration with mandatory 10-step flow and Plan Mode integration (v2.44).
+
+## v2.84.1 Key Change (GLM-5 TEAMS)
+
+**`--with-glm5` flag** enables GLM-5 teammates with thinking mode:
+
+```
+/orchestrator Implement OAuth2 --with-glm5
+/orchestrator Fix auth bugs --with-glm5
+```
+
+When `--with-glm5` is set:
+- Spawns `glm5-coder`, `glm5-reviewer`, `glm5-tester` teammates
+- Each teammate uses GLM-5 API with thinking mode enabled
+- Reasoning captured to `.ralph/reasoning/{task_id}.txt`
+- Status tracked in `.ralph/teammates/{task_id}/status.json`
 
 ## v2.81 Key Change (SWARM MODE)
 
@@ -94,3 +109,46 @@ The orchestrator writes its analysis to `.claude/orchestrator-analysis.md` befor
 4. Maintains the orchestrator's structure and conclusions
 
 This ensures **ONE unified plan** instead of conflicting orchestrator + Claude Code plans.
+
+## GLM-5 Teams Integration (v2.84.1)
+
+When `$ARGUMENTS` contains `--with-glm5`:
+
+**Step 1: Parse Arguments**
+```
+TASK=<everything before --with-glm5>
+USE_GLM5=true
+```
+
+**Step 2: Spawn GLM-5 Teammates**
+Instead of default teammates, spawn:
+```bash
+# GLM-5 Coder
+.claude/scripts/glm5-teammate.sh "glm5-coder" "$CODER_TASK" "$TASK_ID-coder"
+
+# GLM-5 Reviewer
+.claude/scripts/glm5-teammate.sh "glm5-reviewer" "$REVIEW_TASK" "$TASK_ID-reviewer"
+
+# GLM-5 Tester
+.claude/scripts/glm5-teammate.sh "glm5-tester" "$TEST_TASK" "$TASK_ID-tester"
+```
+
+**Step 3: Wait for Completion**
+```bash
+# Check status files
+cat .ralph/teammates/$TASK_ID-*/status.json
+```
+
+**Step 4: Aggregate Results**
+- Collect outputs from `.ralph/reasoning/`
+- Show thinking process for transparency
+- Apply quality gates
+
+## Quick Reference
+
+| Command | Description |
+|---------|-------------|
+| `/orchestrator "task"` | Standard orchestration |
+| `/orchestrator "task" --with-glm5` | GLM-5 teammates with thinking |
+| `ralph orch "task"` | CLI equivalent |
+| `/glm5 coder "task"` | Single GLM-5 teammate |
