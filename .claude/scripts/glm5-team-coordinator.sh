@@ -8,7 +8,20 @@ set -e
 # === Configuration ===
 TEAM_NAME="${1:-ralph-team-$(date +%Y%m%d-%H%M%S)}"
 TASK_FILE="${2:-}"
-MAX_TEAMMATES="${3:-4}"
+COMMAND="${3:-init}"
+
+# Validate MAX_TEAMMATES is a number (default to 4)
+if [[ "$COMMAND" =~ ^[0-9]+$ ]]; then
+    MAX_TEAMMATES="$COMMAND"
+    COMMAND="init"
+else
+    MAX_TEAMMATES="${4:-4}"
+fi
+
+# Ensure MAX_TEAMMATES is a valid number
+if ! [[ "$MAX_TEAMMATES" =~ ^[0-9]+$ ]]; then
+    MAX_TEAMMATES=4
+fi
 
 # === Get Project Root ===
 PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo ".")}"
@@ -158,7 +171,7 @@ main() {
 }
 
 # Handle subcommands
-case "${1:-}" in
+case "${COMMAND:-}" in
     "add-task")
         add_task "$2" "$3" "$4"
         ;;
@@ -166,6 +179,10 @@ case "${1:-}" in
         spawn_teammate "$2" "$3" "$4"
         ;;
     "status")
+        check_status
+        ;;
+    "init")
+        init_team
         check_status
         ;;
     *)
