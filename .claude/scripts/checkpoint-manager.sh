@@ -21,7 +21,7 @@ set -uo pipefail
 umask 077
 
 # Configuration
-VERSION="2.54.0"
+VERSION="2.84.3"
 CHECKPOINTS_DIR="${HOME}/.ralph/checkpoints"
 PLAN_STATE_FILE=".claude/plan-state.json"
 ANALYSIS_FILE=".claude/orchestrator-analysis.md"
@@ -77,6 +77,14 @@ cmd_save() {
     local checkpoint_id
     checkpoint_id=$(get_checkpoint_id "$name")
     local checkpoint_dir="${CHECKPOINTS_DIR}/${checkpoint_id}"
+
+    # v2.84.3: FIX TOCTOU - Use atomic lock directory to prevent race conditions
+    local lock_dir="${checkpoint_dir}.lock.$$"
+    if ! mkdir "$lock_dir" 2>/dev/null; then
+        log_error "Checkpoint '$name' is being created by another process"
+        exit 1
+    fi
+    trap 'rmdir "$lock_dir" 2>/dev/null || true' EXIT
 
     # Check if checkpoint already exists
     if [[ -d "$checkpoint_dir" ]]; then
