@@ -1,16 +1,30 @@
 ---
-# VERSION: 2.43.0
+# VERSION: 2.84.1
 name: parallel
 prefix: "@par"
 category: review
 color: red
 description: "Run all 6 subagents in parallel (async)"
-argument-hint: "<path>"
+argument-hint: "<path> [--with-glm5]"
 ---
 
-# /parallel - Parallel Multi-Agent Review (v2.81.1)
+# /parallel - Parallel Multi-Agent Review (v2.84.1)
 
 Execute 6 specialized review agents in parallel with swarm mode coordination.
+
+## v2.84.1 Key Change (GLM-5 INTEGRATION)
+
+**`--with-glm5` flag** enables GLM-5 teammates for parallel review:
+
+```
+/parallel src/auth/ --with-glm5
+```
+
+When `--with-glm5` is set:
+- Uses `glm5-reviewer` for code and security review
+- Uses `glm5-tester` for coverage analysis
+- Captures reasoning for each review aspect
+- Runs in parallel with thinking mode
 
 ## Overview
 
@@ -352,3 +366,29 @@ tail -f ~/.ralph/logs/parallel-latest.log
 ---
 
 **Version**: 2.81.1 | **Status**: SWARM MODE ENABLED | **Team Size**: 7 agents (1 lead + 6 specialists)
+
+## GLM-5 Integration (v2.84.1)
+
+When `$ARGUMENTS` contains `--with-glm5`:
+
+**Parse Arguments:**
+```
+TARGET=<path before --with-glm5>
+USE_GLM5=true
+```
+
+**Execution Pattern:**
+```bash
+# Spawn GLM-5 teammate with thinking mode
+.claude/scripts/glm5-teammate.sh "glm5-reviewer" "$TASK" "${TASK_ID}"
+
+# View reasoning
+cat .ralph/reasoning/${TASK_ID}.txt
+
+# Check status
+cat .ralph/teammates/${TASK_ID}/status.json
+```
+
+**Output Files:**
+- `.ralph/teammates/{task_id}/status.json` - Review status
+- `.ralph/reasoning/{task_id}.txt` - GLM-5 thinking process

@@ -1,16 +1,30 @@
 ---
-# VERSION: 2.81.0
+# VERSION: 2.84.1
 name: loop
 prefix: "@loop"
 category: orchestration
 color: purple
 description: "Ralph Loop pattern with swarm mode: iterative execution until VERIFIED_DONE with multi-agent coordination"
-argument-hint: "<task> [--mmc]"
+argument-hint: "<task> [--with-glm5]"
 ---
 
-# /loop - Ralph Loop Pattern (v2.25)
+# /loop - Ralph Loop Pattern (v2.84.1)
 
 Execute tasks iteratively with automatic quality validation until VERIFIED_DONE signal.
+
+## v2.84.1 Key Change (GLM-5 INTEGRATION)
+
+**`--with-glm5` flag** enables GLM-5 teammates for iterative execution:
+
+```
+/loop "Fix all TypeScript errors" --with-glm5
+/loop "Implement authentication" --with-glm5
+```
+
+When `--with-glm5` is set:
+- Each iteration uses GLM-5 with thinking mode
+- Reasoning captured for debugging failed iterations
+- Faster iterations for complexity 1-4 tasks
 
 ## Overview
 
@@ -597,3 +611,37 @@ Output:
 - Iteration 3-4: Add input validation
 - Iteration 5-6: Security tests pass
 - VERIFIED_DONE at iteration 6/15
+
+### Example 4: GLM-5 Iterative Fix (NEW)
+
+```bash
+/loop "Fix all TypeScript errors" --with-glm5
+```
+
+Output:
+- Spawns glm5-coder teammate for each iteration
+- Captures reasoning to `.ralph/reasoning/{task_id}.txt`
+- Uses GLM-5 thinking mode for complex analysis
+- Faster iterations for complexity 1-4 tasks
+
+## GLM-5 Integration (v2.84.1)
+
+When `$ARGUMENTS` contains `--with-glm5`:
+
+**Parse Arguments:**
+```
+TASK=<everything before --with-glm5>
+USE_GLM5=true
+```
+
+**Execution Pattern:**
+```bash
+# Per iteration, spawn GLM-5 teammate
+.claude/scripts/glm5-teammate.sh "glm5-coder" "$TASK" "loop-${ITERATION}"
+
+# Check reasoning for insights
+cat .ralph/reasoning/loop-${ITERATION}.txt
+
+# Validate with standard gates
+./scripts/quality-gates.sh
+```

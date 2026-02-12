@@ -1,16 +1,29 @@
 ---
-# VERSION: 2.43.0
+# VERSION: 2.84.1
 name: bugs
 prefix: "@bugs"
 category: review
 color: red
 description: "Bug hunting with Codex CLI"
-argument-hint: "<path>"
+argument-hint: "<path> [--with-glm5]"
 ---
 
-# /bugs
+# /bugs (v2.84.1)
 
 Deep bug analysis using Codex gpt-5.2-codex with the bug-hunter skill.
+
+## v2.84.1 Key Change (GLM-5 INTEGRATION)
+
+**`--with-glm5` flag** enables GLM-5 teammates for bug hunting:
+
+```
+/bugs src/auth/ --with-glm5
+```
+
+When `--with-glm5` is set:
+- Uses `glm5-reviewer` for parallel bug analysis
+- Captures reasoning for complex bug investigations
+- Complements Codex analysis with GLM-5 thinking
 
 ## Overview
 
@@ -305,3 +318,29 @@ ralph gates
 | Sonnet | 60% | Medium | Task orchestration only |
 
 **Recommended**: Codex GPT-5.2 for bug hunting (optimized for code analysis)
+
+## GLM-5 Integration (v2.84.1)
+
+When `$ARGUMENTS` contains `--with-glm5`:
+
+**Parse Arguments:**
+```
+TARGET=<path before --with-glm5>
+USE_GLM5=true
+```
+
+**Execution Pattern:**
+```bash
+# Spawn GLM-5 teammate with thinking mode
+.claude/scripts/glm5-teammate.sh "glm5-reviewer" "$TASK" "${TASK_ID}"
+
+# View reasoning
+cat .ralph/reasoning/${TASK_ID}.txt
+
+# Check status
+cat .ralph/teammates/${TASK_ID}/status.json
+```
+
+**Output Files:**
+- `.ralph/teammates/{task_id}/status.json` - Review status
+- `.ralph/reasoning/{task_id}.txt` - GLM-5 thinking process

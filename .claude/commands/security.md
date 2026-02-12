@@ -1,16 +1,29 @@
 ---
-# VERSION: 2.43.0
+# VERSION: 2.84.1
 name: security
 prefix: "@sec"
 category: review
 color: red
 description: "Security audit with Codex + MiniMax second opinion"
-argument-hint: "<path>"
+argument-hint: "<path> [--with-glm5]"
 ---
 
-# /security - Multi-Agent Security Audit (v2.24)
+# /security - Multi-Agent Security Audit (v2.84.1)
 
 Comprehensive security audit using Codex GPT-5 for primary analysis and MiniMax for second opinion validation.
+
+## v2.84.1 Key Change (GLM-5 INTEGRATION)
+
+**`--with-glm5` flag** enables GLM-5 security analysis:
+
+```
+/security src/auth/ --with-glm5
+```
+
+When `--with-glm5` is set:
+- Uses `glm5-reviewer` for security vulnerability analysis
+- Captures reasoning for complex security issues
+- Complements Codex with GLM-5 thinking mode
 
 ## Overview
 
@@ -474,3 +487,20 @@ ralph loop --security "Fix security findings in src/auth/"
 # 3. Re-audit
 # 4. Repeat until clean (max 15 iterations)
 ```
+
+## GLM-5 Integration (v2.84.1)
+
+When `--with-glm5` flag is present:
+
+**Execution Pattern:**
+```bash
+# Spawn GLM-5 reviewer for security analysis
+.claude/scripts/glm5-teammate.sh "glm5-reviewer" "Security audit for $TARGET" "${TASK_ID}"
+
+# View security reasoning
+cat .ralph/reasoning/${TASK_ID}.txt
+```
+
+**Output Files:**
+- `.ralph/teammates/{task_id}/status.json` - Security analysis status
+- `.ralph/reasoning/{task_id}.txt` - GLM-5 security reasoning

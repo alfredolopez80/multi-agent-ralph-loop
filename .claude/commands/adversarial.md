@@ -1,16 +1,29 @@
 ---
-# VERSION: 2.43.0
+# VERSION: 2.84.1
 name: adversarial
 prefix: "@adv"
 category: review
 color: red
 description: "Adversarial spec refinement via adversarial-spec"
-argument-hint: "<spec text|file>"
+argument-hint: "<spec text|file> [--with-glm5]"
 ---
 
-# /adversarial - Adversarial Spec Refinement (v2.81.1)
+# /adversarial - Adversarial Spec Refinement (v2.84.1)
 
 Iteratively refines a PRD or technical spec using multi-agent adversarial validation with swarm mode.
+
+## v2.84.1 Key Change (GLM-5 INTEGRATION)
+
+**`--with-glm5` flag** enables GLM-5 reviewer teammates:
+
+```
+/adversarial "OAuth2 implementation spec" --with-glm5
+```
+
+When `--with-glm5` is set:
+- Uses `glm5-reviewer` for spec validation
+- Captures adversarial reasoning for transparency
+- Identifies gaps with thinking mode analysis
 
 ## Overview
 
@@ -321,3 +334,29 @@ tail -f ~/.ralph/logs/adversarial-latest.log
 ---
 
 **Version**: 2.81.1 | **Status**: SWARM MODE ENABLED | **Team Size**: 4 agents
+
+## GLM-5 Integration (v2.84.1)
+
+When `$ARGUMENTS` contains `--with-glm5`:
+
+**Parse Arguments:**
+```
+TARGET=<path before --with-glm5>
+USE_GLM5=true
+```
+
+**Execution Pattern:**
+```bash
+# Spawn GLM-5 teammate with thinking mode
+.claude/scripts/glm5-teammate.sh "glm5-reviewer" "$TASK" "${TASK_ID}"
+
+# View reasoning
+cat .ralph/reasoning/${TASK_ID}.txt
+
+# Check status
+cat .ralph/teammates/${TASK_ID}/status.json
+```
+
+**Output Files:**
+- `.ralph/teammates/{task_id}/status.json` - Review status
+- `.ralph/reasoning/{task_id}.txt` - GLM-5 thinking process

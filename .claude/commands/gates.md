@@ -1,15 +1,29 @@
 ---
-# VERSION: 2.43.0
+# VERSION: 2.84.1
 name: gates
 prefix: "@gates"
 category: tools
 color: green
 description: "Run quality gates for 9 languages (TypeScript, JavaScript, Python, Go, Rust, Solidity, Swift, JSON, YAML)"
+argument-hint: "[--with-glm5]"
 ---
 
-# /gates - Quality Gates with Swarm Mode (v2.81.1)
+# /gates - Quality Gates with Swarm Mode (v2.84.1)
 
 Run comprehensive quality gates across 9 programming languages with parallel validation using swarm mode.
+
+## v2.84.1 Key Change (GLM-5 INTEGRATION)
+
+**`--with-glm5` flag** enables GLM-5 quality validation:
+
+```
+/gates --with-glm5
+```
+
+When `--with-glm5` is set:
+- Uses `glm5-reviewer` for code quality analysis
+- Captures reasoning for gate failures
+- Provides detailed explanations with thinking mode
 
 ## Overview
 
@@ -405,3 +419,20 @@ ralph pre-merge  # Blocking mode
 ---
 
 **Version**: 2.81.1 | **Status**: SWARM MODE ENABLED | **Team Size**: 6 agents (1 lead + 5 language groups)
+
+## GLM-5 Integration (v2.84.1)
+
+When `--with-glm5` flag is present:
+
+**Execution Pattern:**
+```bash
+# Spawn GLM-5 reviewer for quality analysis
+.claude/scripts/glm5-teammate.sh "glm5-reviewer" "Analyze code quality for $FILES" "${TASK_ID}"
+
+# View reasoning for detailed analysis
+cat .ralph/reasoning/${TASK_ID}.txt
+```
+
+**Output Files:**
+- `.ralph/teammates/{task_id}/status.json` - Gate analysis status
+- `.ralph/reasoning/{task_id}.txt` - GLM-5 quality reasoning
