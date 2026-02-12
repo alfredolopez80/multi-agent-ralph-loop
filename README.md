@@ -2,9 +2,11 @@
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, **GLM-4.7 PRIMARY**, **Dual Context Display System**, **full CLI implementation**, **Automatic Learning System**, **Intelligent Command Routing**, **Swarm Mode Integration**, and **Hook System v2.83.1** (100% validated, race-condition-free).
+**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, **GLM-5 Agent Teams**, **Dual Context Display System**, **full CLI implementation**, **Automatic Learning System**, **Intelligent Command Routing**, **Swarm Mode Integration**, and **Hook System v2.84.0** (100% validated, race-condition-free).
 
-> **🆕 v2.83.1**: **5-Phase Hook System Audit Complete** - 100% validation achieved (18/18 tests passing). Eliminated 4 race conditions, fixed 3 JSON malformations, added TypeScript caching (80-95% speedup), multilingual support (EN/ES) for 20+ file extensions, atomic file locking for critical hooks, and 5 new critical hooks: `orchestrator-auto-learn.sh`, `promptify-security.sh`, `parallel-explore.sh`, `recursive-decompose.sh`, `todo-plan-sync.sh`. **v2.82.0**: **Intelligent Command Router Hook** - Analyzes prompts and suggests optimal commands. Multilingual support (English + Spanish). Confidence-based filtering (≥ 80%). **v2.81.2**: Learning System fully integrated. **Swarm Mode v2.81.1**: 7 commands with parallel multi-agent execution.
+> **🆕 v2.84.0**: **GLM-5 Agent Teams Integration** - Native TeammateIdle/TaskCompleted hooks, project-scoped storage, reasoning capture, memory integration. 5 phases implemented, 20/20 tests passing. See [docs/architecture/GLM5_AGENT_TEAMS_INTEGRATION_PLAN_v2.84.md](docs/architecture/GLM5_AGENT_TEAMS_INTEGRATION_PLAN_v2.84.md) for complete details.
+
+> **v2.83.1**: **5-Phase Hook System Audit Complete** - 100% validation achieved (18/18 tests passing). Eliminated 4 race conditions, fixed 3 JSON malformations, added TypeScript caching (80-95% speedup), multilingual support (EN/ES) for 20+ file extensions, atomic file locking for critical hooks, and 5 new critical hooks. **v2.82.0**: **Intelligent Command Router Hook** - Analyzes prompts and suggests optimal commands. **v2.81.1**: Swarm Mode Integration with 7 parallel commands.
 
 ---
 
@@ -230,6 +232,62 @@ tail -f ~/.ralph/logs/command-router.log
 ```
 
 **Documentation**: [Command Router Guide](docs/command-router/README.md) | [Implementation Summary](docs/command-router/IMPLEMENTATION_SUMMARY.md) | [Test Suite](tests/test-command-router.sh)
+
+---
+
+## 🤖 GLM-5 Agent Teams (v2.84.0) ✅ NEW
+
+**Overview**: Integration of GLM-5's Agentic Engineering capabilities with Claude Code's Agent Teams system using native hooks.
+
+### Key Features
+
+1. **Native Hooks Integration** (v2.1.33+)
+   - `TeammateIdle` - Fires when teammate is about to go idle
+   - `TaskCompleted` - Fires when task is marked complete
+   - Both hooks can block/allow with exit codes
+
+2. **Project-Scoped Storage**
+   - All teammate data in `.ralph/` directory
+   - Isolated per project, portable with git clone
+
+3. **GLM-5 Thinking Mode**
+   - `reasoning_content` captured separately
+   - Stored in `.ralph/reasoning/{task_id}.txt`
+
+4. **Agent Types**
+   - `glm5-coder` - Implementation & refactoring
+   - `glm5-reviewer` - Code review & quality
+   - `glm5-tester` - Test generation
+   - `glm5-orchestrator` - Multi-agent coordination
+
+### Quick Start
+
+```bash
+# Initialize team
+.claude/scripts/glm5-init-team.sh "my-team"
+
+# Spawn teammate
+.claude/scripts/glm5-teammate.sh coder "Implement auth" "auth-001"
+
+# Check status
+cat .ralph/team-status.json
+
+# View logs
+tail -f .ralph/logs/teammates.log
+```
+
+### File Structure
+
+```
+.ralph/
+├── teammates/     # Teammate status
+├── reasoning/     # GLM-5 reasoning
+├── agent-memory/  # Agent memory
+├── logs/          # Activity logs
+└── team-status.json
+```
+
+**Documentation**: [Integration Plan](docs/architecture/GLM5_AGENT_TEAMS_INTEGRATION_PLAN_v2.84.md) | [Implementation Summary](docs/architecture/GLM5_AGENT_TEAMS_IMPLEMENTATION_SUMMARY.md) | [Test Suite](tests/agent-teams/test-glm5-teammates.sh)
 
 ---
 
