@@ -27,19 +27,23 @@ This plan outlines the integration of **GLM-5's Agentic Engineering capabilities
 
 ## ⚠️ CRITICAL ARCHITECTURE DECISIONS (Re-validated v2.1.39)
 
-### Decision #1: Use Native TeammateIdle and TaskCompleted Hooks ✅ AVAILABLE
+### Decision #1: Use SubagentStop Hook (NOT TeammateIdle/TaskCompleted)
 
-**Status**: ✅ **VERIFIED AVAILABLE** in Claude Code v2.1.33+
+**Status**: ⚠️ **CORRECTED** - TeammateIdle/TaskCompleted do NOT exist
 
-**Previous Error**: The adversarial validation incorrectly stated these hooks didn't exist. This was based on outdated information.
+**Previous Error**: The plan incorrectly stated TeammateIdle and TaskCompleted hooks existed. This was WRONG.
 
-**Official Documentation Confirms**:
-| Hook | When it fires | Can Block? |
-|------|---------------|------------|
-| `TeammateIdle` | When an agent team teammate is about to go idle | Yes |
-| `TaskCompleted` | When a task is being marked as completed | Yes |
+**Official Documentation Confirms (v2.1.39)**:
+| Hook | Available | Notes |
+|------|-----------|-------|
+| `SubagentStop` | ✅ YES | Use this for teammate completion |
+| `TeammateIdle` | ❌ NO | DOES NOT EXIST |
+| `TaskCompleted` | ❌ NO | DOES NOT EXIST |
 
-**Solution**: Use native `TeammateIdle` and `TaskCompleted` hooks directly. No workaround needed.
+**Available Hooks**:
+- PreToolUse, PostToolUse, Stop, **SubagentStop**, SessionStart, SessionEnd, UserPromptSubmit, PreCompact, Notification
+
+**Solution**: Use `SubagentStop` hook with `glm5-*` matcher pattern.
 
 ### Decision #2: File-Based Reasoning Capture (Project-Scoped)
 
