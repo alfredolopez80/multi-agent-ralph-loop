@@ -1,9 +1,5 @@
 #!/bin/bash
-# NOTE: Ralph memory system deprecated - using claude-mem MCP only
-# This hook is temporarily disabled pending migration to claude-mem
-echo "{"decision": "approve", "suppressOutput": true}"
-exit 0
-# Decision Extractor Hook (v2.62.3)
+# Decision Extractor Hook (v2.84.3)
 # Hook: PostToolUse (Edit|Write)
 # Purpose: Extract architectural decisions from code changes
 #
@@ -18,7 +14,8 @@ exit 0
 # v2.62.3: P0 FIX - Use semantic-write-helper.sh for all semantic writes
 #          P1 FIX - Exclude JSON/YAML from pattern detection (config files only)
 #
-# VERSION: 2.69.1
+# VERSION: 2.84.3
+# v2.84.3: FIX CRITICAL - Removed invalid early-exit JSON, fixed 'local' scope bug
 # v2.69.1: SEC-112 FIX - Clear trap before output to prevent duplicate JSON
 # SECURITY: SEC-003 (jq JSON), SEC-006 (error trap), SEC-009 (portable mkdir lock)
 
@@ -119,8 +116,9 @@ if [[ -z "$CONTENT" ]] || [[ ${#CONTENT} -lt 50 ]]; then
 fi
 
 # FASE 2: Mejorar locking con cleanup de trap
-local LOCK_DIR="${HOME}/.ralph/locks/decision-extractor"
-local LOCK_ACQUIRED=false
+# v2.84.3 FIX: 'local' must be inside function - moved to global scope
+LOCK_DIR="${HOME}/.ralph/locks/decision-extractor"
+LOCK_ACQUIRED=false
 
 acquire_lock() {
     if mkdir "$LOCK_DIR" 2>/dev/null; then

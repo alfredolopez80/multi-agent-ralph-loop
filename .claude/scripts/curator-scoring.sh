@@ -1,8 +1,10 @@
 #!/bin/bash
-# Repo Curator Scoring Script v2.55.0
+# Repo Curator Scoring Script v2.84.2
 # Scores candidate repositories based on quality metrics AND context relevance
 #
-# Usage: curator-scoring.sh --input <file> --output <file> [--tier <tier>] [--context <keywords>]
+# Usage: curator-scoring.sh --input <file> --output <file> [--tier <tier>] [--context <keywords]
+#
+# v2.84.2: SECURITY FIX - Sanitize owner/repo names to prevent URL injection
 
 set -euo pipefail
 umask 077
@@ -31,6 +33,14 @@ log_info() { echo -e "${BLUE}[INFO]${NC} $1" >&2; }
 log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1" >&2; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1" >&2; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
+
+# v2.84.2: SECURITY FIX - Sanitize GitHub owner/repo names
+# Only allow alphanumeric, hyphens, underscores, and dots
+sanitize_github_name() {
+    local name="$1"
+    # Remove any character that's not alphanumeric, hyphen, underscore, or dot
+    echo "$name" | sed 's/[^a-zA-Z0-9._-]//g'
+}
 
 # Parse arguments
 parse_args() {
@@ -124,7 +134,13 @@ EOF
 check_tests() {
     local owner="$1"
     local repo="$2"
-    # Note: tmp_file was dead code (never written to), removed
+
+    # v2.84.2: SECURITY FIX - Sanitize owner and repo names
+    owner=$(sanitize_github_name "$owner")
+    repo=$(sanitize_github_name "$repo")
+
+    # Validate sanitized values are not empty
+    [[ -z "$owner" || -z "$repo" ]] && { echo "false"; return; }
 
     # Check if repo has test files using GitHub API
     if command -v gh &>/dev/null && [[ -n "${GITHUB_TOKEN:-}" ]]; then
@@ -140,8 +156,10 @@ check_tests() {
     local has_tests=false
 
     for pattern in "${test_patterns[@]}"; do
+        # v2.84.2: Use URL encoding for pattern
+        local encoded_pattern=$(printf '%s' "$pattern" | jq -sRr @uri)
         if curl -s -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/search/code?q=$pattern+repo:$owner/$repo" | \
+            "https://api.github.com/search/code?q=${encoded_pattern}+repo:${owner}/${repo}" | \
             jq -e '.total_count > 0' 2>/dev/null; then
             has_tests=true
             break
@@ -156,11 +174,20 @@ check_ci() {
     local owner="$1"
     local repo="$2"
 
+    # v2.84.2: SECURITY FIX - Sanitize owner and repo names
+    owner=$(sanitize_github_name "$owner")
+    repo=$(sanitize_github_name "$repo")
+
+    # Validate sanitized values are not empty
+    [[ -z "$owner" || -z "$repo" ]] && { echo "false"; return; }
+
     local ci_patterns=(".github/workflows" ".travis.yml" ".circleci/config.yml" "Jenkinsfile" ".gitlab-ci.yml" "Makefile")
 
     for pattern in "${ci_patterns[@]}"; do
+        # v2.84.2: Use URL encoding for pattern
+        local encoded_pattern=$(printf '%s' "$pattern" | jq -sRr @uri)
         if curl -s -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/$owner/$repo/contents/$pattern" 2>/dev/null | \
+            "https://api.github.com/repos/${owner}/${repo}/contents/${encoded_pattern}" 2>/dev/null | \
             jq -e 'type == "object"' 2>/dev/null; then
             echo "true"
             return
