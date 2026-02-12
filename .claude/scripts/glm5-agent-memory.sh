@@ -1,7 +1,7 @@
 #!/bin/bash
 # .claude/scripts/glm5-agent-memory.sh
 # Manages agent-scoped memory for GLM-5 teammates (project-scoped)
-# Version: 2.84.1
+# Version: 2.84.2
 
 set -e
 
@@ -47,10 +47,12 @@ write_memory() {
         return 1
     fi
 
-    local entry=$(cat <<EOF
-{"timestamp": "$(date -Iseconds)", "content": $(echo "$content" | jq -Rs .), "type": "${type}"}
-EOF
-)
+    # v2.84.2 FIX: Use jq for safe JSON construction to prevent injection
+    local entry=$(jq -n \
+        --arg timestamp "$(date -Iseconds)" \
+        --arg content "$content" \
+        --arg type "$type" \
+        '{"timestamp": $timestamp, "content": $content, "type": $type}')
 
     echo "$entry" >> "${MEMORY_DIR}/${type}.jsonl"
     log "Wrote to ${type} memory (${#content} chars)"
@@ -111,22 +113,43 @@ transfer_memory() {
 gc_memory() {
     local days="${1:-30}"
 
+    # v2.84.2 FIX: Cross-platform date calculation with proper error handling
+    local cutoff=""
+    if date -d "-${days} days" +%s >/dev/null 2>&1; then
+        # GNU date (Linux)
+        cutoff=$(date -d "-${days} days" +%s)
+    elif date -v-${days}d +%s >/dev/null 2>&1; then
+        # BSD date (macOS)
+        cutoff=$(date -v-${days}d +%s)
+    else
+        log "Error: Unable to calculate date for GC (neither GNU nor BSD date available)"
+        echo "Error: Unsupported date command" >&2
+        return 1
+    fi
+
     # Remove episodic entries older than N days
     if [ -f "${MEMORY_DIR}/episodic.jsonl" ]; then
-        local cutoff=$(date -d "-${days} days" +%s 2>/dev/null || date -v-${days}d +%s)
+        # v2.84.2 FIX: Use atomic write pattern to prevent race conditions
+        local temp_file="${MEMORY_DIR}/episodic.jsonl.tmp.$$"
 
-        # Filter old entries (simplified - keeps recent)
-        local temp_file=$(mktemp)
         while IFS= read -r line; do
-            local timestamp=$(echo "$line" | jq -r '.timestamp // empty')
+            local timestamp=$(echo "$line" | jq -r '.timestamp // empty' 2>/dev/null || echo "")
             if [ -n "$timestamp" ]; then
-                local entry_epoch=$(date -d "$timestamp" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S" "$timestamp" +%s 2>/dev/null)
+                # Try GNU date first, then BSD date
+                local entry_epoch=""
+                if date -d "$timestamp" +%s >/dev/null 2>&1; then
+                    entry_epoch=$(date -d "$timestamp" +%s 2>/dev/null)
+                elif date -j -f "%Y-%m-%dT%H:%M:%S" "$(echo "$timestamp" | cut -d'+' -f1)" +%s >/dev/null 2>&1; then
+                    entry_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S" "$(echo "$timestamp" | cut -d'+' -f1)" +%s 2>/dev/null)
+                fi
+
                 if [ -n "$entry_epoch" ] && [ "$entry_epoch" -ge "$cutoff" ]; then
                     echo "$line" >> "$temp_file"
                 fi
             fi
         done < "${MEMORY_DIR}/episodic.jsonl"
 
+        # Atomic rename
         mv "$temp_file" "${MEMORY_DIR}/episodic.jsonl"
         log "GC completed (retained ${days} days)"
         echo "✅ Garbage collection completed"

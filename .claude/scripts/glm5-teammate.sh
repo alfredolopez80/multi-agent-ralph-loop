@@ -1,7 +1,7 @@
 #!/bin/bash
 # .claude/scripts/glm5-teammate.sh
 # GLM-5 Teammate Execution Script with project-scoped file-based status
-# Version: 2.84.1
+# Version: 2.84.2
 
 set -e
 
@@ -36,8 +36,20 @@ if [ -z "$TASK" ]; then
     exit 1
 fi
 
+# v2.84.2: Validate Z_AI_API_KEY exists and has reasonable length
 if [ -z "$Z_AI_API_KEY" ]; then
     echo "Error: Z_AI_API_KEY environment variable is not set" >&2
+    exit 1
+fi
+
+if [ ${#Z_AI_API_KEY} -lt 10 ]; then
+    echo "Error: Z_AI_API_KEY appears to be invalid (too short)" >&2
+    exit 1
+fi
+
+# v2.84.2: Check jq is available
+if ! command -v jq &> /dev/null; then
+    echo "Error: jq is required but not installed" >&2
     exit 1
 fi
 
@@ -68,28 +80,24 @@ build_system_prompt() {
 
 SYSTEM_PROMPT=$(build_system_prompt "$ROLE")
 
-# === Escape Task for JSON ===
-# Simple escaping for JSON strings
-TASK_ESCAPED=$(echo "$TASK" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | tr '\n' ' ')
-SYSTEM_PROMPT_ESCAPED=$(echo "$SYSTEM_PROMPT" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | tr '\n' ' ')
-
 # === Call GLM-5 API ===
 log "Calling GLM-5 API (thinking: ${THINKING})"
 
-# Build JSON payload properly to avoid encoding issues
-JSON_PAYLOAD=$(cat <<EOF
-{
-  "model": "glm-5",
-  "messages": [
-    {"role": "system", "content": $(echo "$SYSTEM_PROMPT" | jq -Rs .)},
-    {"role": "user", "content": $(echo "$TASK" | jq -Rs .)}
-  ],
-  "thinking": {"type": "${THINKING}"},
-  "max_tokens": 8192,
-  "temperature": 0.7
-}
-EOF
-)
+# v2.84.2 FIX: Build JSON payload safely using jq to prevent injection
+JSON_PAYLOAD=$(jq -n \
+  --arg system "$SYSTEM_PROMPT" \
+  --arg user "$TASK" \
+  --arg thinking "$THINKING" \
+  '{
+    model: "glm-5",
+    messages: [
+      {role: "system", content: $system},
+      {role: "user", content: $user}
+    ],
+    thinking: {type: $thinking},
+    max_tokens: 8192,
+    temperature: 0.7
+  }')
 
 RESPONSE=$(curl -s -X POST "$API_ENDPOINT" \
   -H "Content-Type: application/json" \
@@ -129,22 +137,35 @@ fi
 
 # === Write Status File ===
 STATUS_FILE="${STATUS_DIR}/status.json"
-cat > "$STATUS_FILE" << EOF
-{
-  "task_id": "${TASK_ID}",
-  "agent_type": "glm5-${ROLE}",
-  "status": "completed",
-  "project": "${PROJECT_ROOT}",
-  "reasoning_file": "${REASONING_FILE}",
-  "output_summary": $(echo "$CONTENT" | head -c 500 | jq -Rs .),
-  "usage": {
-    "prompt_tokens": ${PROMPT_TOKENS},
-    "completion_tokens": ${COMPLETION_TOKENS},
-    "total_tokens": ${TOTAL_TOKENS}
-  },
-  "timestamp": "$(date -Iseconds)"
-}
-EOF
+
+# v2.84.2 FIX: Use jq for safe JSON construction to prevent truncation issues
+# Truncate content safely without breaking escape sequences
+CONTENT_SUMMARY=$(echo "$CONTENT" | head -c 500)
+
+jq -n \
+  --arg task_id "$TASK_ID" \
+  --arg agent_type "glm5-${ROLE}" \
+  --arg project "$PROJECT_ROOT" \
+  --arg reasoning_file "$REASONING_FILE" \
+  --arg output_summary "$CONTENT_SUMMARY" \
+  --argjson prompt_tokens "$PROMPT_TOKENS" \
+  --argjson completion_tokens "$COMPLETION_TOKENS" \
+  --argjson total_tokens "$TOTAL_TOKENS" \
+  --arg timestamp "$(date -Iseconds)" \
+  '{
+    task_id: $task_id,
+    agent_type: $agent_type,
+    status: "completed",
+    project: $project,
+    reasoning_file: $reasoning_file,
+    output_summary: $output_summary,
+    usage: {
+      prompt_tokens: $prompt_tokens,
+      completion_tokens: $completion_tokens,
+      total_tokens: $total_tokens
+    },
+    timestamp: $timestamp
+  }' > "$STATUS_FILE"
 
 log "Status file written to ${STATUS_FILE}"
 
