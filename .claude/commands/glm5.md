@@ -49,7 +49,7 @@ Spawn GLM-5 powered teammates with native thinking mode for parallel execution.
 2. Call GLM-5 API with thinking enabled
 3. Capture reasoning to `.ralph/reasoning/`
 4. Write status to `.ralph/teammates/`
-5. Fire native hooks (TeammateIdle, TaskCompleted)
+5. Fire native hooks (SubagentStop)
 
 ## Files Created
 
