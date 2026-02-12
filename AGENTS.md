@@ -1,61 +1,65 @@
-# Multi-Agent Ralph Wiggum - Agents Reference v2.83.1 - Simplified
+# Multi-Agent Ralph Wiggum - Agents Reference v2.84.1
 
 ## Overview
 
-Ralph orchestrates **10 specialized agents** across different domains with **simplified multi-model support**: GLM-4.7 (PRIMARY for all tasks) + Codex GPT-5.2 (SPECIALIZED for security/performance).
+Ralph orchestrates **14 specialized agents** across different domains with **simplified multi-model support**: GLM-4.7 (PRIMARY for all tasks) + GLM-5 (TEAMMATES with thinking mode) + Codex GPT-5.3 (SPECIALIZED for security/performance).
 
-> **🆕 v2.83.1 - Hook System 5-Phase Audit Complete**: 100% validation achieved (18/18 tests passing). Eliminated 4 race conditions with atomic file locking, fixed 3 JSON malformations, added TypeScript caching (80-95% speedup), multilingual support (EN/ES), and 5 new critical hooks: `orchestrator-auto-learn.sh`, `promptify-security.sh`, `parallel-explore.sh`, `recursive-decompose.sh`, `todo-plan-sync.sh`. All 83 hooks production-ready.
+> **🆕 v2.84.1 - GLM-5 Agent Teams Complete Integration**: 7 commands with `--with-glm5` flag (`/orchestrator`, `/loop`, `/adversarial`, `/bugs`, `/parallel`, `/gates`, `/security`). 4 GLM-5 teammate agents with thinking mode. SubagentStop native hook (not TeammateIdle/TaskCompleted which don't exist). Codex upgraded to `gpt-5.3-codex`. 42/42 tests passing.
 
-> **v2.82.0 - Intelligent Command Router Hook**: New UserPromptSubmit hook that analyzes prompts and suggests optimal commands. Multilingual support (English + Spanish). Confidence-based filtering (≥ 80%). See [docs/command-router/README.md](docs/command-router/README.md).
+> **v2.83.1 - Hook System 5-Phase Audit Complete**: 100% validation achieved (18/18 tests passing). Eliminated 4 race conditions with atomic file locking, fixed 3 JSON malformations, added TypeScript caching (80-95% speedup), multilingual support (EN/ES), and 5 new critical hooks.
 
-> **v2.81.2 - PreToolUse JSON Schema Fix**: Fixed JSON validation errors in 4 PreToolUse hooks. Hooks now use correct `hookSpecificOutput` format. See [docs/bugs/PRETOOLUSE_JSON_SCHEMA_FIX_v2.81.2.md](docs/bugs/PRETOOLUSE_JSON_SCHEMA_FIX_v2.81.2.md).
+## Model Support (v2.84.1) - SIMPLIFIED
 
-> **v2.81.1 - Critical Hooks Fix**: Fixed SessionStart hook errors and corrected compaction hooks. **IMPORTANT**: `PostCompact` does NOT exist in Claude Code. See [docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md](docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md).
-
-## Model Support (v2.80.9) - SIMPLIFIED
-
-Ralph now uses a **simplified 2-model architecture** for maximum cost efficiency:
+Ralph now uses a **simplified 3-model architecture** for maximum cost efficiency:
 
 | Model | Provider | Cost | Use Case | Status |
 |-------|----------|------|----------|--------|
 | **GLM-4.7** | Z.AI | **~0.15x** | All tasks (PRIMARY) | **PRIMARY** |
-| **Codex GPT-5.2** | OpenAI | Variable | Security, performance, high-level review | **SPECIALIZED** |
-| **Gemini 2.5 Pro** | Google | Variable | Cross-validation, 1M context | OPTIONAL |
+| **GLM-5** | Z.AI | **~0.20x** | Teammates with thinking mode | **TEAMMATES** |
+| **Codex GPT-5.3** | OpenAI | Variable | Security, performance, planning | **SPECIALIZED** |
 
-### GLM-4.7 - PRIMARY Model (v2.80.9)
+### GLM-5 - TEAMMATES Model (v2.84.1) ✅ NEW
 
-**Purpose**: PRIMARY model for ALL tasks (orchestration, debugging, refactoring, testing, documentation).
+**Purpose**: Teammate agents with native thinking mode for parallel execution.
 
 **Features**:
-- ~85% cost reduction vs Claude models
-- 14 tools: vision, web search, documentation
-- Reasoning model with `reasoning_content` support
-- Extended loops (50 iterations)
-- JUDGE in Adversarial Council
-- Web search validation
+- Native `thinking` mode with `reasoning_content` capture
+- 4 specialized teammates: `glm5-coder`, `glm5-reviewer`, `glm5-tester`, `glm5-orchestrator`
+- Project-scoped storage in `.ralph/`
+- Integrated with 7 commands via `--with-glm5` flag
 
 **Usage**:
 ```bash
-# Direct query (DEFAULT for all tasks)
-/glm-4.7 "Review this authentication code"
+# Spawn single teammate
+/glm5 coder "Implement authentication"
 
-# Web search
-/glm-web-search "TypeScript best practices 2026"
+# Parallel execution
+/glm5-parallel "Complex task" --teammates coder,reviewer,tester
 
-# Via mmc CLI (auto-routes to GLM-4.7)
-mmc --query "Analyze this code"
+# With orchestrator
+/orchestrator "Implement feature" --with-glm5
+
+# With loop for iterative fixing
+/loop "Fix all errors" --with-glm5
 ```
 
-### Codex GPT-5.2 - SPECIALIZED Model (v2.80.9)
+**Output Files**:
+- `.ralph/teammates/{task_id}/status.json` - Task status
+- `.ralph/reasoning/{task_id}.txt` - Thinking process
 
-**Purpose**: SPECIALIZED model for security audits, performance analysis, and high-level code review.
+### Codex GPT-5.3 - SPECIALIZED Model (v2.84.1) ✅ UPGRADED
 
-**Features**:
-- Deep code analysis capabilities
-- Security vulnerability detection
-- Performance optimization recommendations
-- Used as FIRST option for security-critical tasks
-- Fallback to GLM-4.7 if unavailable
+**Purpose**: SPECIALIZED model for security audits, planning, and code analysis.
+
+**Upgraded from GPT-5.2 to GPT-5.3** with adaptive reasoning:
+- `--complexity low` → reasoning "medium" (faster)
+- `--complexity medium` → reasoning "high" (balanced)
+- `--complexity high` → reasoning "xhigh" (deepest)
+
+**Usage**:
+```bash
+# Planning with Codex
+/codex-plan "Design microservice architecture" --complexity high
 |-----|-----|
 | `mmc --query` | `mmc --query` (auto-routes to GLM) |
 | `@minimax-reviewer` | `@glm-reviewer` |
@@ -105,7 +109,7 @@ mmc --query "Analyze this code"
 - **Web search**: Can verify against current documentation
 - **Independent perspective**: Chinese LLM provides diverse viewpoint
 
-## Core Orchestration Agents (v2.80.9)
+## Core Orchestration Agents (v2.84.1)
 
 | Agent | Model | Purpose | Priority |
 |-------|-------|---------|----------|
@@ -114,6 +118,32 @@ mmc --query "Analyze this code"
 | `@debugger` | glm-4.7 | Bug detection and fixes | PRIMARY |
 | `@code-reviewer` | glm-4.7 → codex | Code quality, patterns, best practices | PRIMARY → SECONDARY |
 | `@performance-reviewer` | codex | Performance optimization | SPECIALIZED |
+
+## GLM-5 Teammate Agents (v2.84.1) ✅ NEW
+
+| Agent | Model | Purpose | Thinking Mode |
+|-------|-------|---------|---------------|
+| `glm5-coder` | glm-5 | Implementation, refactoring, bug fixes | ✅ Enabled |
+| `glm5-reviewer` | glm-5 | Code review, security analysis | ✅ Enabled |
+| `glm5-tester` | glm-5 | Test generation, coverage analysis | ✅ Enabled |
+| `glm5-orchestrator` | glm-5 | Team coordination, task delegation | ✅ Enabled |
+
+**Features**:
+- All agents have `thinking: true` for transparent reasoning
+- Reasoning captured to `.ralph/reasoning/{task_id}.txt`
+- Status tracked in `.ralph/teammates/{task_id}/status.json`
+- Spawned via `/glm5` command or `--with-glm5` flag
+
+**Usage**:
+```bash
+# Single teammate
+/glm5 coder "Implement factorial function"
+
+# With commands
+/orchestrator "Task" --with-glm5
+/loop "Fix bugs" --with-glm5
+/parallel src/ --with-glm5
+```
 
 | Agent | Model | Purpose |
 |-------|-------|---------|

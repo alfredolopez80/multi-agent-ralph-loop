@@ -2,9 +2,9 @@
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, **GLM-5 Agent Teams**, **Dual Context Display System**, **full CLI implementation**, **Automatic Learning System**, **Intelligent Command Routing**, **Swarm Mode Integration**, and **Hook System v2.84.0** (100% validated, race-condition-free).
+**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, **GLM-5 Agent Teams**, **Dual Context Display System**, **full CLI implementation**, **Automatic Learning System**, **Intelligent Command Routing**, **Swarm Mode Integration**, and **Hook System v2.84.1** (100% validated, race-condition-free).
 
-> **🆕 v2.84.0**: **GLM-5 Agent Teams Integration** - Native TeammateIdle/TaskCompleted hooks, project-scoped storage, reasoning capture, memory integration. 5 phases implemented, 20/20 tests passing. See [docs/architecture/GLM5_AGENT_TEAMS_INTEGRATION_PLAN_v2.84.md](docs/architecture/GLM5_AGENT_TEAMS_INTEGRATION_PLAN_v2.84.md) for complete details.
+> **🆕 v2.84.1**: **GLM-5 Agent Teams Complete Integration** - 7 commands with `--with-glm5` flag (`/orchestrator`, `/loop`, `/adversarial`, `/bugs`, `/parallel`, `/gates`, `/security`), SubagentStop native hook (not TeammateIdle/TaskCompleted which don't exist), project-scoped storage (`.ralph/`), reasoning capture with thinking mode, Codex upgraded to `gpt-5.3-codex`. 42/42 tests passing. See [docs/architecture/GLM5_AGENT_TEAMS_INTEGRATION_PLAN_v2.84.md](docs/architecture/GLM5_AGENT_TEAMS_INTEGRATION_PLAN_v2.84.md).
 
 > **v2.83.1**: **5-Phase Hook System Audit Complete** - 100% validation achieved (18/18 tests passing). Eliminated 4 race conditions, fixed 3 JSON malformations, added TypeScript caching (80-95% speedup), multilingual support (EN/ES) for 20+ file extensions, atomic file locking for critical hooks, and 5 new critical hooks. **v2.82.0**: **Intelligent Command Router Hook** - Analyzes prompts and suggests optimal commands. **v2.81.1**: Swarm Mode Integration with 7 parallel commands.
 
@@ -147,6 +147,66 @@ ralph health
 ```
 
 **Documentation**: [Learning System Guide](docs/guides/LEARNING_SYSTEM_INTEGRATION_GUIDE.md) | [Implementation Report](docs/implementation/IMPLEMENTACION_COMPLETA_OPCIONES_A_C_D_v2.81.2.md)
+
+---
+
+## 🤖 GLM-5 Agent Teams (v2.84.1) ✅ NEW
+
+**Overview**: Native GLM-5 teammate integration with thinking mode, project-scoped storage, and 7 command integrations.
+
+### Components
+
+| Component | Files | Purpose |
+|-----------|-------|---------|
+| **Agents** | `glm5-coder.md`, `glm5-reviewer.md`, `glm5-tester.md`, `glm5-orchestrator.md` | Agent definitions with thinking mode enabled |
+| **Scripts** | `glm5-teammate.sh`, `glm5-team-coordinator.sh`, `glm5-agent-memory.sh` | Execution and coordination scripts |
+| **Hook** | `glm5-subagent-stop.sh` | Native SubagentStop hook handler |
+| **Commands** | `/glm5` | Single teammate spawn command |
+| **Skills** | `glm5/`, `glm5-parallel/` | Skill invocations |
+
+### Command Integration
+
+All 7 major commands now support `--with-glm5` flag:
+
+```bash
+/orchestrator "Implement OAuth2" --with-glm5    # Full orchestration with GLM-5
+/loop "Fix TypeScript errors" --with-glm5       # Iterative fixing with GLM-5
+/adversarial "Review spec" --with-glm5          # Spec validation with GLM-5
+/bugs src/auth/ --with-glm5                     # Bug hunting with GLM-5
+/parallel src/ --with-glm5                      # Parallel review with GLM-5
+/gates --with-glm5                              # Quality gates with GLM-5
+/security src/ --with-glm5                      # Security audit with GLM-5
+```
+
+### Output Files
+
+| File | Content |
+|------|---------|
+| `.ralph/teammates/{task_id}/status.json` | Task status and metadata |
+| `.ralph/reasoning/{task_id}.txt` | GLM-5 thinking/reasoning process |
+| `.ralph/team-status.json` | Team coordination state |
+
+### Validation
+
+```
+Tests: 42/42 passing (100%)
+├── GLM-5 API Connectivity ✅
+├── Teammate Script Execution ✅
+├── SubagentStop Hook ✅
+├── Directory Structure ✅
+├── Agent Definitions (4) ✅
+├── Hooks Registration ✅
+└── Command Integration (7) ✅
+```
+
+### Codex Upgrade
+
+Codex CLI upgraded from `gpt-5.2-codex` to `gpt-5.3-codex` with adaptive reasoning:
+- `--complexity low` → reasoning "medium" (faster)
+- `--complexity medium` → reasoning "high" (balanced)
+- `--complexity high` → reasoning "xhigh" (deepest)
+
+**Documentation**: [Integration Plan](docs/architecture/GLM5_AGENT_TEAMS_INTEGRATION_PLAN_v2.84.md) | [Implementation Summary](docs/architecture/GLM5_AGENT_TEAMS_IMPLEMENTATION_SUMMARY.md)
 
 ---
 
