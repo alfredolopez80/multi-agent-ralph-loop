@@ -6,7 +6,7 @@ exit 0
 # smart-memory-search.sh - v2.83.1 Smart Memory-Driven Orchestration (GLM-4.7 Enhanced)
 # Hook: PreToolUse (Task - before orchestration)
 # Purpose: PARALLEL search across all memory sources for relevant context
-# VERSION: 2.84.2
+# VERSION: 2.84.3
 # Timestamp: 2026-01-30
 # v2.83.1: PERF-002 - Added API rate limiting for GLM-4.7 calls
 #
@@ -28,7 +28,7 @@ exit 0
 #   - fork_suggestions: Top 5 sessions to fork from
 #   - web_search: External best practices (GLM-4.7)
 #
-# VERSION: 2.84.2
+# VERSION: 2.84.3
 # v2.69.0: FIX CRIT-003 - Added guaranteed JSON output trap
 # v2.68.26: GLM-4.7 web search integration - 5th parallel source via webSearchPrime API
 # v2.68.25: FIX CRIT-001 - Removed duplicate stdin read (SEC-111 already reads at top)
@@ -54,19 +54,19 @@ validate_input_schema() {
     # Check if input is valid JSON
     # v2.70.0: PreToolUse hooks use {"hookSpecificOutput": {"permissionDecision": "allow"}}, NOT {"continue": true}
     if ! echo "$input" | jq empty 2>/dev/null; then
-        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
         exit 0
     fi
 
     # Check required field exists
     if ! echo "$input" | jq -e '.tool_name' >/dev/null 2>&1; then
-        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
         exit 0
     fi
 
     # Check tool_name is a string (jq type check)
     if [[ $(echo "$input" | jq -r '.tool_name | type' 2>/dev/null) != "string" ]]; then
-        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
         exit 0
     fi
 
@@ -82,7 +82,7 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 
 # Only trigger on Task tool (orchestration start)
 if [[ "$TOOL_NAME" != "Task" ]]; then
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
     exit 0
 fi
 
@@ -97,7 +97,7 @@ if [[ "$TASK_TYPE" != "orchestrator" ]] && \
    [[ "$TASK_TYPE" != "gap-analyst" ]] && \
    [[ "$TASK_TYPE" != "Explore" ]] && \
    [[ "$TASK_TYPE" != "general-purpose" ]]; then
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
     exit 0
 fi
 
@@ -213,7 +213,7 @@ chmod 700 "$TEMP_DIR"  # Restrictive permissions - only owner can access
 cleanup_and_json() {
     rm -rf "$TEMP_DIR" 2>/dev/null || true
     # Output JSON only if we haven't already (script didn't reach end)
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
 }
 trap 'cleanup_and_json' EXIT ERR INT TERM
 

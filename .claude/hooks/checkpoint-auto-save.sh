@@ -15,7 +15,7 @@ INPUT=$(head -c 100000)
 set -euo pipefail
 umask 077
 
-# VERSION: 2.84.2
+# VERSION: 2.84.3
 # v2.81.2: FIX JSON schema - use hookSpecificOutput for PreToolUse
 # v2.66.6: SEC-049 - Fixed registration (was PostToolUse, now PreToolUse)
 
@@ -120,7 +120,7 @@ detect_critical_operation() {
 # Output JSON and exit
 allow_and_exit() {
     trap - ERR EXIT  # Disable trap before explicit output
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
     exit 0
 }
 

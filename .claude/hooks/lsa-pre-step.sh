@@ -1,6 +1,6 @@
 #!/bin/bash
 #!/usr/bin/env bash
-# VERSION: 2.84.2
+# VERSION: 2.84.3
 # LSA Pre-Step Verification
 # v2.69.0: CRIT-003 - Added EXIT to trap + trap clears before outputs
 # v2.68.7: CRIT-002 - Added error trap for guaranteed JSON output
@@ -35,7 +35,7 @@ log() {
 if [ ! -f "$PLAN_STATE" ]; then
     # Not in orchestrated mode, skip LSA verification
     trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'; exit 0
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'; exit 0
 fi
 
 # Get current step from environment or plan-state
@@ -57,7 +57,7 @@ fi
 if [ -z "$CURRENT_STEP" ]; then
     log "No active step found, skipping LSA pre-check"
     trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'; exit 0
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'; exit 0
 fi
 
 log "LSA Pre-Step Check for step: $CURRENT_STEP"
@@ -76,7 +76,7 @@ SPEC=$(jq -r --arg id "$CURRENT_STEP" '
 if [ "$SPEC" = "null" ] || [ -z "$SPEC" ]; then
     log "No spec found for step $CURRENT_STEP"
     trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'; exit 0
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'; exit 0
 fi
 
 # v2.69.0: Write verification banner to log file instead of stderr (fixes hook error warnings)

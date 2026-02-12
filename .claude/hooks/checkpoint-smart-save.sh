@@ -1,6 +1,6 @@
 #!/bin/bash
 # checkpoint-smart-save.sh - Smart checkpoint based on risk/complexity
-# VERSION: 2.84.2
+# VERSION: 2.84.3
 # v2.69.0: VERSION sync - all CRIT-003b fixes were already in place
 # v2.68.10: SEC-105 FIX - Atomic noclobber (O_EXCL) eliminates TOCTOU gap completely
 # v2.68.1: FIX CRIT-003 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
@@ -42,7 +42,7 @@ MAX_SMART_CHECKPOINTS=20
 # Check if disabled
 if [[ "${RALPH_CHECKPOINT_SMART:-true}" == "false" ]]; then
     trap - EXIT  # CRIT-003: Clear trap before explicit output
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
     exit 0
 fi
 
@@ -62,7 +62,7 @@ case "$TOOL_NAME" in
     Edit|Write) ;;
     *)
         trap - EXIT  # CRIT-003: Clear trap before explicit output
-        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
         exit 0
         ;;
 esac
@@ -72,7 +72,7 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // ""' 2>/dev/null || e
 
 if [[ -z "$FILE_PATH" ]]; then
     trap - EXIT  # CRIT-003: Clear trap before explicit output
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
     exit 0
 fi
 
@@ -87,7 +87,7 @@ if [[ -f "$LAST_CHECKPOINT_FILE" ]]; then
     if [[ "$ELAPSED" -lt "$COOLDOWN_SECONDS" ]]; then
         log "Cooldown active ($ELAPSED < $COOLDOWN_SECONDS)"
         trap - EXIT  # CRIT-003: Clear trap before explicit output
-        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
         exit 0
     fi
 fi
@@ -104,7 +104,7 @@ if ! mkdir "$LOCK_DIR" 2>/dev/null; then
     # Another process is handling this or already edited
     log "File already being processed or edited: $FILE_PATH"
     trap - EXIT  # CRIT-003: Clear trap before explicit output
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
     exit 0
 fi
 # CRIT-003: Update trap to clean lock AND clear on exit
@@ -118,7 +118,7 @@ if ! (set -C; echo "$$" > "$EDITED_FLAG") 2>/dev/null; then
     log "File already edited this session (atomic check): $FILE_PATH"
     rmdir "$LOCK_DIR" 2>/dev/null || true  # Clean lock before exit
     trap - EXIT  # CRIT-003: Clear trap before explicit output
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
     exit 0
 fi
 
@@ -217,4 +217,4 @@ fi
 # CRIT-003: Clean lock and clear trap before explicit JSON output
 rmdir "$LOCK_DIR" 2>/dev/null || true
 trap - EXIT
-echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}\'
+echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
