@@ -1,16 +1,14 @@
-# Multi-Agent Ralph v2.83.1
+# Multi-Agent Ralph v2.84.1
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
-**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, **GLM-4.7 PRIMARY**, **Dual Context Display System**, **full CLI implementation**, **Automatic Context Compaction**, **Intelligent Command Routing**, and **Hook System v2.83.1** (100% validated, race-condition-free, TypeScript caching).
+**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, quality-first validation, **checkpoints**, **agent handoffs**, local observability, autonomous self-improvement, **Dynamic Contexts**, **Eval Harness (EDD)**, **Cross-Platform Hooks**, **Claude Code Task Primitive integration**, **Plan Lifecycle Management**, **adversarial-validated hook system**, **Claude Code Documentation Mirror**, **GLM-5 Agent Teams**, **Dual Context Display System**, **full CLI implementation**, **Automatic Context Compaction**, **Intelligent Command Routing**, and **Hook System v2.84.1** (100% validated, race-condition-free, TypeScript caching).
 
-> **🆕 v2.83.1**: **Hook System 5-Phase Audit Complete** - 100% validation achieved. Eliminated 4 race conditions with atomic file locking, fixed 3 JSON malformations, added TypeScript caching (80-95% speedup), multilingual support (EN/ES), 5 new critical hooks (`orchestrator-auto-learn.sh`, `promptify-security.sh`, `parallel-explore.sh`, `recursive-decompose.sh`, `todo-plan-sync.sh`). All 83 hooks production-ready.
+> **🆕 v2.84.1**: **GLM-5 Agent Teams Complete Integration** - 7 commands with `--with-glm5` flag (`/orchestrator`, `/loop`, `/adversarial`, `/bugs`, `/parallel`, `/gates`, `/security`), 4 GLM-5 teammate agents with thinking mode (coder, reviewer, tester, orchestrator), SubagentStop native hook, project-scoped storage (`.ralph/`), Codex upgraded to `gpt-5.3-codex`. 42/42 tests passing. See [docs/architecture/GLM5_AGENT_TEAMS_INTEGRATION_PLAN_v2.84.md](docs/architecture/GLM5_AGENT_TEAMS_INTEGRATION_PLAN_v2.84.md).
 
 > **🔒 CRITICAL v2.83.1 SECURITY FIX**: Registered 11 missing hooks including **git-safety-guard.py** (blocks `rm -rf`, `git reset --hard`). See [docs/bugs/HOOK_REGISTRATION_FIX_v2.83.1.md](docs/bugs/HOOK_REGISTRATION_FIX_v2.83.1.md) for complete details. **Validation script**: `./scripts/validate-hooks-registration.sh`
 
-> **v2.82.0**: **Intelligent Command Router Hook** - Analyzes prompts and suggests optimal commands. Multilingual support (English + Spanish). Confidence-based filtering (≥ 80%). See [docs/command-router/README.md](docs/command-router/README.md) for details.
-
-> **v2.81.1**: Fixed critical compaction hooks issue - `PostCompact` does NOT exist in Claude Code. Use `PreCompact` for saving state and `SessionStart` for restoring. See [docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md](docs/hooks/POSTCOMPACT_DOES_NOT_EXIST.md) for critical information.
+> **v2.83.1**: **Hook System 5-Phase Audit Complete** - 100% validation achieved. Eliminated 4 race conditions with atomic file locking, fixed 3 JSON malformations, added TypeScript caching (80-95% speedup), multilingual support (EN/ES).
 
 ---
 
