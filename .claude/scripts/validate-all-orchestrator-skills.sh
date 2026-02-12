@@ -5,7 +5,7 @@
 
 set -e
 
-REPO_DIR="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+REPO_DIR="$PROJECT_ROOT"
 SKILLS_REPO_DIR="$REPO_DIR/.claude/skills"
 SKILLS_GLOBAL_DIR="$HOME/.claude-sneakpeek/zai/config/skills"
 TEMP_DIR="/tmp/ralph-skills-test-$$"

@@ -5,8 +5,9 @@
 
 set -e
 
+# Get project root dynamically
+REPO_DIR="${REPO_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || cd "$(dirname "$0")/.." && pwd)}"
 SKILLS_DIR="$HOME/.claude-sneakpeek/zai/config/skills"
-REPO_DIR="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
 TEMP_DIR="/tmp/claude-skills-test-$$"
 
 echo "========================================="

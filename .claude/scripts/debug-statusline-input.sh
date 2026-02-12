@@ -16,4 +16,4 @@ mkdir -p "$(dirname "$LOG_FILE")"
 ) &
 
 # Pass stdin to the real statusline
-echo "$stdin_data" | bash /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/scripts/statusline-ralph.sh
+echo "$stdin_data" | bash $PROJECT_ROOT/.claude/scripts/statusline-ralph.sh

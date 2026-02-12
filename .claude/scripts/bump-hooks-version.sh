@@ -7,7 +7,7 @@ set -euo pipefail
 
 NEW_VERSION="${1:-2.57.4}"
 HOOKS_DIR="${HOME}/.claude/hooks"
-PROJECT_HOOKS_DIR="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/hooks"
+PROJECT_HOOKS_DIR="$PROJECT_ROOT/.claude/hooks"
 
 echo "=== Bumping hooks to version $NEW_VERSION ==="
 echo ""

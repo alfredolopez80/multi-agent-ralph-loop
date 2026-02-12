@@ -1,21 +1,29 @@
 ---
-# VERSION: 2.50.0
+# VERSION: 2.84.1
 name: codex-plan
 prefix: "@codex-plan"
 category: planning
 color: purple
-description: "Generate implementation plans using Codex 5.2 with deep reasoning"
-argument-hint: "<task-description>"
+description: "Generate implementation plans using Codex 5.3 with deep reasoning"
+argument-hint: "<task-description> [--complexity low|medium|high]"
 ---
 
-# Codex Plan Generator
+# Codex Plan Generator (v2.84.1)
 
-Generate comprehensive implementation plans using OpenAI Codex 5.2 with maximum reasoning depth (`xhigh`). Uses AskUser for clarifying questions before planning.
+Generate comprehensive implementation plans using OpenAI Codex 5.3 with adaptive reasoning depth. Uses AskUser for clarifying questions before planning.
+
+## v2.84.1 Key Change
+
+**Model upgraded to `gpt-5.3-codex`** with adaptive reasoning:
+- `--complexity low` → reasoning "medium" (faster)
+- `--complexity medium` → reasoning "high" (balanced)
+- `--complexity high` → reasoning "xhigh" (deepest)
 
 ## Usage
 
 ```
 /codex-plan <task-description>
+/codex-plan <task-description> --complexity high
 ```
 
 ## Workflow
@@ -36,12 +44,20 @@ Ask 3-6 clarifying questions using the AskUser tool:
 
 ### Phase 2: Codex Execution
 
-Execute Codex with maximum reasoning:
+Execute Codex with adaptive reasoning:
 
 ```bash
+# Detect complexity from task or use --complexity flag
+COMPLEXITY="${COMPLEXITY:-medium}"
+case "$COMPLEXITY" in
+    low) REASONING="medium" ;;
+    medium) REASONING="high" ;;
+    high) REASONING="xhigh" ;;
+esac
+
 codex plan \
-  --model "gpt-5.2-codex" \
-  --reasoning "xhigh" \
+  --model "gpt-5.3-codex" \
+  --reasoning "$REASONING" \
   --prompt "Based on user clarifications:
   - Goal: {user_goal}
   - Tech stack: {tech_stack}
@@ -139,11 +155,12 @@ Plan saved to: /Users/.../http://codex-plan.md
 | Tool | Purpose |
 |------|---------|
 | `codex` | OpenAI Codex CLI (`npm install -g @openai/codex`) |
-| `gpt-5.2-codex` | Model with maximum reasoning capability |
+| `gpt-5.3-codex` | Model with adaptive reasoning capability |
 
 ## Notes
 
-- **Reasoning Level**: `xhigh` provides deepest analysis but takes longer
+- **Model**: `gpt-5.3-codex` (upgraded from 5.2)
+- **Reasoning Levels**: `medium` (low complexity), `high` (medium), `xhigh` (high complexity)
 - **Auto-Mode**: `--full-auto` prevents interactive prompts
 - **Git Check**: `--skip-git-repo-check` allows running outside git repos
 - **Plan Location**: `http://codex-plan.md` uses local file path syntax

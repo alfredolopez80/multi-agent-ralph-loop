@@ -6,7 +6,7 @@
 set -euo pipefail
 
 # Configuration
-PROJECT_DIR="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+PROJECT_DIR="$PROJECT_ROOT"
 GLOBAL_SKILLS_DIR="${HOME}/.claude-sneakpeek/zai/config/skills"
 PROJECT_SKILLS_DIR="${PROJECT_DIR}/.claude/skills"
 

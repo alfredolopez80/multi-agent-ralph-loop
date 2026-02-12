@@ -8,7 +8,7 @@
 
 CACHE_DIR="${HOME}/.ralph/cache"
 CACHE_FILE="${CACHE_DIR}/context-usage.json"
-STATUSLINE_SCRIPT="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/scripts/statusline-ralph.sh"
+STATUSLINE_SCRIPT="$PROJECT_ROOT/.claude/scripts/statusline-ralph.sh"
 
 echo "=== Forzar Actualización del Statusline ==="
 echo ""
