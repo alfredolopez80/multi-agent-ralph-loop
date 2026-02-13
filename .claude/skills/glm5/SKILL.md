@@ -1,7 +1,7 @@
 ---
 name: glm5
 description: GLM-5 Agent Teams skill for spawning teammates with thinking mode
-version: 2.84.0
+version: 2.84.2
 allowed-tools:
   - Bash
   - Read
@@ -50,7 +50,7 @@ When this skill is invoked:
 2. **Generate Task ID**: `task-{timestamp}`
 3. **Call GLM-5 API**: With thinking mode enabled
 4. **Capture Output**: Reasoning + result
-5. **Fire Hooks**: TeammateIdle/TaskCompleted
+5. **Fire Hooks**: SubagentStop (native Claude Code hook)
 
 ## Bash Commands
 
