@@ -25,9 +25,10 @@
 # Prevents DoS from malicious input
 INPUT=$(head -c 100000)
 
-# VERSION: 2.69.0
+# VERSION: 2.81.0
 # v2.68.25: FIX CRIT-001 - Removed duplicate stdin read (SEC-111 already reads at top)
 # v2.68.8: SEC-054 - Fixed PreCompact JSON format (continue:true, not decision:allow)
+# v2.81.0: Added plan state backup before compaction - "the plan survives execution"
 set -euo pipefail
 
 # Error trap: Always output valid JSON for PreCompact (SEC-054 fix)
@@ -196,6 +197,36 @@ if command -v ralph &>/dev/null; then
             log "WARN" "Memvid indexing failed (non-critical)"
         }
     fi
+fi
+
+# Clean up old handoffs (keep last 20 per session, older than 7 days)
+
+# Backup plan state if exists (v2.81.0)
+PLAN_STATE_FILE="${PROJECT_DIR}/.claude/plan-state.json"
+PLAN_BACKUP_DIR="${LEDGER_DIR}/plan-states"
+
+if [[ -f "$PLAN_STATE_FILE" ]]; then
+    log "INFO" "Backing up plan state before compaction"
+    
+    mkdir -p "$PLAN_BACKUP_DIR"
+    
+    # Copy plan state to backup location
+    cp "$PLAN_STATE_FILE" "${PLAN_BACKUP_DIR}/plan-state-${SESSION_ID}-${TIMESTAMP}.json" && {
+        log "INFO" "Plan state backed up to: ${PLAN_BACKUP_DIR}/plan-state-${SESSION_ID}-${TIMESTAMP}.json"
+        
+        # Also save a symlink to the latest plan state for this project
+        PROJECT_NAME=$(basename "$PROJECT_DIR")
+        LATEST_LINK="${PLAN_BACKUP_DIR}/latest-${PROJECT_NAME}.json"
+        ln -sf "plan-state-${SESSION_ID}-${TIMESTAMP}.json" "$LATEST_LINK" && {
+            log "INFO" "Latest plan state link created: $LATEST_LINK"
+        } || {
+            log "WARN" "Failed to create latest plan state link"
+        }
+    } || {
+        log "ERROR" "Failed to backup plan state"
+    }
+else
+    log "INFO" "No plan state file found to backup"
 fi
 
 # Clean up old handoffs (keep last 20 per session, older than 7 days)
