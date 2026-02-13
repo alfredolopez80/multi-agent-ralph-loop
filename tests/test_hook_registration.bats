@@ -146,11 +146,12 @@ setup() {
     [ $status -eq 0 ]
 }
 
-@test "session-start-ledger.sh is registered in SessionStart (v2.57.4)" {
+# v2.85: session-start-ledger.sh was archived (redundant with session-start-restore-context.sh)
+@test "session-start-restore-context.sh is registered in SessionStart (v2.85)" {
     run jq -e '
         .hooks.SessionStart[] |
         .hooks[] |
-        select(.command | contains("session-start-ledger.sh"))
+        select(.command | contains("session-start-restore-context.sh"))
     ' "$SETTINGS_JSON"
     [ $status -eq 0 ]
 }

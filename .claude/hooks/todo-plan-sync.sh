@@ -1,9 +1,12 @@
 #!/bin/bash
-# VERSION: 2.69.0
+# VERSION: 2.84.2
 # PostToolUse hook for TodoWrite - Sync todos with plan-state progress
 #
 # TRIGGER: PostToolUse (TodoWrite)
 # PURPOSE: Synchronize todos with plan-state progress tracking
+#
+# v2.84.2: SEC-039 FIX - Changed {"decision": "continue"} to {"continue": true}
+#          PostToolUse hooks MUST use {"continue": true}, NOT {"decision": "continue"}
 #
 # This hook:
 #   1. Detects changes in todos from PostToolUse TodoWrite events
@@ -33,7 +36,7 @@ log_entry "=== Todo-Plan Sync Started ==="
 # Validate jq is available
 if ! command -v jq &>/dev/null; then
     log_entry "ERROR: jq not found"
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -44,14 +47,14 @@ log_entry "Todo operation: $TODO_OP"
 # Check if plan-state.json exists
 if [[ ! -f "$PLAN_STATE" ]]; then
     log_entry "WARNING: plan-state.json not found at $PLAN_STATE"
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
 # Validate plan-state.json is readable
 if [[ ! -r "$PLAN_STATE" ]]; then
     log_entry "ERROR: Cannot read plan-state.json"
-    echo '{"decision": "continue"}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -85,7 +88,7 @@ if jq --argjson completed "$COMPLETED" \
       .progress.percentage = $progress |
       .last_updated = now | todate
       ' "$PLAN_STATE" > "$TMP_FILE" 2>>"$LOG_FILE"; then
-    
+
     # Atomic move
     if mv "$TMP_FILE" "$PLAN_STATE" 2>>"$LOG_FILE"; then
         log_entry "Successfully updated plan-state.json"
@@ -100,5 +103,5 @@ fi
 
 log_entry "=== Todo-Plan Sync Completed ==="
 
-# Always return valid JSON for hook output
-echo '{"decision": "continue"}'
+# SEC-039: PostToolUse hooks use {"continue": true}, NOT {"decision": "continue"}
+echo '{"continue": true}'

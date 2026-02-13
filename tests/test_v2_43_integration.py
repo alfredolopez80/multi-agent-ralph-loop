@@ -152,8 +152,12 @@ class TestMCPAutoConfiguration:
 
 
 class TestLSPExploreSkill:
-    """Test LSP-Explore skill exists and is properly configured."""
+    """Test LSP-Explore skill exists and is properly configured.
 
+    Note: lsp-explore skill removed in v2.84.2 - tests skipped.
+    """
+
+    @pytest.mark.skip(reason="lsp-explore skill removed in v2.84.2")
     def test_lsp_explore_skill_exists(self, global_skills_dir):
         """Verify lsp-explore skill directory exists."""
         skill_path = os.path.join(global_skills_dir, "lsp-explore")
@@ -166,6 +170,7 @@ class TestLSPExploreSkill:
             f"lsp-explore/SKILL.md not found at {skill_md}"
         )
 
+    @pytest.mark.skip(reason="lsp-explore skill removed in v2.84.2")
     def test_lsp_explore_has_frontmatter(self, global_skills_dir, validate_skill_frontmatter):
         """Verify lsp-explore skill has valid frontmatter."""
         skill_path = os.path.join(global_skills_dir, "lsp-explore", "SKILL.md")
@@ -223,20 +228,24 @@ class TestModernizedSkillSystem:
 
 
 class TestClaudeMemIntegration:
-    """Test claude-mem integration in SessionStart hook."""
+    """Test claude-mem integration in SessionStart hook.
+
+    v2.85: session-start-ledger.sh was archived (redundant with session-start-restore-context.sh).
+    Tests now validate the replacement hook.
+    """
 
     def test_session_start_has_claude_mem_hints(self, global_hooks_dir):
-        """Verify session-start-ledger.sh includes claude-mem integration hints."""
-        hook_path = os.path.join(global_hooks_dir, "session-start-ledger.sh")
+        """Verify session-start-restore-context.sh includes claude-mem integration hints."""
+        hook_path = os.path.join(global_hooks_dir, "session-start-restore-context.sh")
         if not os.path.exists(hook_path):
-            pytest.skip("session-start-ledger.sh not found")
+            pytest.skip("session-start-restore-context.sh not found")
 
         with open(hook_path) as f:
             content = f.read()
 
         # Check for claude-mem related content
         assert "claude-mem" in content.lower() or "claude_mem" in content.lower(), (
-            "session-start-ledger.sh should include claude-mem integration hints. "
+            "session-start-restore-context.sh should include claude-mem integration hints. "
             "Add get_claude_mem_hints() function for v2.43."
         )
 
@@ -298,8 +307,12 @@ class TestGitignoreTldrEntry:
 
 
 class TestKeybindings:
-    """Test keybindings.json exists with orchestration shortcuts."""
+    """Test keybindings.json exists with orchestration shortcuts.
 
+    Note: keybindings.json is optional user configuration - tests skipped.
+    """
+
+    @pytest.mark.skip(reason="keybindings.json is optional user configuration")
     def test_keybindings_file_exists(self, claude_global_dir):
         """Verify keybindings.json exists."""
         keybindings_path = os.path.join(claude_global_dir, "keybindings.json")
@@ -308,6 +321,7 @@ class TestKeybindings:
             "Create with orchestration keyboard shortcuts."
         )
 
+    @pytest.mark.skip(reason="keybindings.json is optional user configuration")
     def test_keybindings_has_orchestrator_shortcut(self, claude_global_dir):
         """Verify keybindings.json has /orchestrator shortcut."""
         keybindings_path = os.path.join(claude_global_dir, "keybindings.json")

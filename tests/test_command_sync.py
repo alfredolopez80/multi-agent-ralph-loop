@@ -421,6 +421,7 @@ class TestCommandFormatCompliance:
     def test_commands_have_version_header(self, claude_commands_dir):
         """Verify all valid commands have VERSION header.
 
+        v2.85: Accept VERSION: in content OR version: in frontmatter.
         Only checks files that pass is_valid_command_file() check.
         Documentation files without frontmatter are excluded.
         """
@@ -432,8 +433,13 @@ class TestCommandFormatCompliance:
             if not is_valid_command_file(cmd_file):
                 continue
             content = cmd_file.read_text()
-            # Should have VERSION marker
-            assert "VERSION:" in content or "# VERSION:" in content, \
+            # Should have VERSION marker (in content or frontmatter)
+            has_version = (
+                "VERSION:" in content or
+                "# VERSION:" in content or
+                "version:" in content[:500]  # Check frontmatter area
+            )
+            assert has_version, \
                 f"Command {cmd_file.name} missing VERSION header"
 
     def test_commands_have_name_frontmatter(self, claude_commands_dir):

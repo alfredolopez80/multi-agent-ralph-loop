@@ -4,6 +4,9 @@ Tests for slash command definitions in .claude/commands.
 
 Validates frontmatter structure, metadata, and content for all commands.
 Run with: pytest tests/test_slash_commands.py -v
+
+VERSION: 1.1.0
+UPDATED: 2026-02-13 - Updated expected commands list for v2.84.1
 """
 
 import re
@@ -14,6 +17,7 @@ import yaml
 
 COMMANDS_DIR = Path(".claude/commands")
 
+# Expected commands for v2.84.1
 EXPECTED_COMMANDS = [
     "adversarial.md",
     "ast-search.md",
@@ -21,7 +25,8 @@ EXPECTED_COMMANDS = [
     "blender-3d.md",
     "blender-status.md",
     "browse.md",
-    "bugs.md",
+    "bug.md",  # v2.84.1: Single bug debugging
+    "bugs.md",  # Multiple bugs workflow
     "checkpoint-clear.md",
     "checkpoint-list.md",
     "checkpoint-restore.md",
@@ -31,9 +36,10 @@ EXPECTED_COMMANDS = [
     "commands.md",
     "curator.md",  # v2.55: Repository curator workflow
     "diagram.md",
-    "docs.md",  # v2.66.8: Claude Code documentation mirror (has valid frontmatter)
+    "docs.md",  # v2.66.8: Claude Code documentation mirror
     "full-review.md",
     "gates.md",
+    "glm5.md",  # v2.84.1: GLM-5 agent teams
     "image-analyze.md",
     "image-to-3d.md",
     "improvements.md",
@@ -114,10 +120,18 @@ def test_all_command_files_are_expected(all_command_files):
     # not an actual slash command
     found = sorted([p.name for p in all_command_files if p.name != "CLAUDE.md"])
     expected = sorted(EXPECTED_COMMANDS)
-    assert found == expected, (
-        f"Command files in .claude/commands do not match expected list. "
-        f"Found: {found}, Expected: {expected}"
-    )
+
+    # Instead of failing on mismatch, report differences
+    missing = set(expected) - set(found)
+    extra = set(found) - set(expected)
+
+    if missing or extra:
+        msg = f"Command files mismatch.\n"
+        if missing:
+            msg += f"Missing: {sorted(missing)}\n"
+        if extra:
+            msg += f"Extra: {sorted(extra)}"
+        pytest.fail(msg)
 
 
 def test_commands_directory_exists():
@@ -125,12 +139,15 @@ def test_commands_directory_exists():
 
 
 def test_expected_command_count():
-    assert len(EXPECTED_COMMANDS) == 38, "Expected exactly 38 command files"
+    # v2.84.1 has 40 expected commands
+    assert len(EXPECTED_COMMANDS) == 40, f"Expected exactly 40 command files, got {len(EXPECTED_COMMANDS)}"
 
 
 @pytest.mark.parametrize("command_name", EXPECTED_COMMANDS)
 def test_command_has_frontmatter_and_content(command_name, command_paths):
     path = command_paths[command_name]
+    if not path.exists():
+        pytest.skip(f"Command file {command_name} not found")
     frontmatter_text, frontmatter, content = load_command(path)
     assert frontmatter_text is not None, f"Missing frontmatter in {command_name}"
     assert frontmatter is not None, (
@@ -142,6 +159,8 @@ def test_command_has_frontmatter_and_content(command_name, command_paths):
 @pytest.mark.parametrize("command_name", EXPECTED_COMMANDS)
 def test_frontmatter_fields_and_values(command_name, command_paths):
     path = command_paths[command_name]
+    if not path.exists():
+        pytest.skip(f"Command file {command_name} not found")
     _, frontmatter, _ = load_command(path)
     assert isinstance(frontmatter, dict), (
         f"Frontmatter should be a mapping in {command_name}"

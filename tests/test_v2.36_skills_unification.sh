@@ -341,13 +341,14 @@ test_context_thresholds() {
 test_postcompact_recovery() {
     section "PostCompact Recovery Tests (SessionStart:compact)"
 
-    # Test 4.1: session-start-ledger.sh exists
-    echo "Test 4.1: session-start-ledger.sh hook exists"
-    local SESSION_HOOK="$GLOBAL_HOOKS_DIR/session-start-ledger.sh"
+    # v2.85: session-start-ledger.sh was archived (redundant with session-start-restore-context.sh)
+    # Test 4.1: session-start-restore-context.sh exists
+    echo "Test 4.1: session-start-restore-context.sh hook exists"
+    local SESSION_HOOK="$GLOBAL_HOOKS_DIR/session-start-restore-context.sh"
     if [[ -f "$SESSION_HOOK" ]]; then
-        test_pass "session-start-ledger.sh exists"
+        test_pass "session-start-restore-context.sh exists"
     else
-        test_fail "session-start-ledger.sh not found"
+        test_fail "session-start-restore-context.sh not found"
         return
     fi
 

@@ -1,21 +1,78 @@
 #!/usr/bin/env python3
 """
-Functional tests for v2.57.3 hooks.
+Functional tests for v2.84.1 hooks.
 
 These tests verify actual BEHAVIOR, not just existence.
 They run the hooks with realistic inputs and validate outputs.
 
-VERSION: 2.57.3
-CHANGES from 2.45.2:
-- Updated JSON format validation (SEC-039): PreToolUse uses "decision", PostToolUse/PreCompact use "continue"
-- Added tests for new v2.55+ hooks
-- Fixed functional tests for plan-state hooks
+VERSION: 2.84.1
+CHANGES from 2.57.3:
+- Updated to support v2.81.2+ hookSpecificOutput wrapper format
+- PreToolUse hooks now use {"hookSpecificOutput": {"permissionDecision": "allow"}}
+  or legacy {"decision": "allow"} format
+- PostToolUse hooks use {"continue": true} format
 """
 
 import json
 import subprocess
 import pytest
 from pathlib import Path
+
+
+def is_valid_pretooluse_permission(output: dict) -> bool:
+    """Check if output has valid PreToolUse permission decision.
+
+    Supports both v2.81.2+ format and legacy format:
+    - {"hookSpecificOutput": {"permissionDecision": "allow"}}
+    - {"permissionDecision": "allow"}
+    - {"decision": "allow"}
+    """
+    if output is None:
+        return False
+    if output == {}:
+        return True
+
+    # v2.81.2+ format
+    if "hookSpecificOutput" in output:
+        hso = output.get("hookSpecificOutput", {})
+        if hso.get("permissionDecision") in ("allow", "block"):
+            return True
+
+    # Intermediate format
+    if output.get("permissionDecision") in ("allow", "block"):
+        return True
+
+    # Legacy format
+    if output.get("decision") in ("allow", "block"):
+        return True
+
+    return False
+
+
+def get_pretooluse_decision(output: dict) -> str:
+    """Extract the permission decision from PreToolUse output (supports both formats).
+
+    Returns "allow", "block", or empty string if not found.
+    """
+    if output is None:
+        return ""
+
+    # v2.81.2+ format
+    if "hookSpecificOutput" in output:
+        hso = output.get("hookSpecificOutput", {})
+        decision = hso.get("permissionDecision", "")
+        if decision in ("allow", "block"):
+            return decision
+
+    # Intermediate format
+    if output.get("permissionDecision") in ("allow", "block"):
+        return output["permissionDecision"]
+
+    # Legacy format
+    if output.get("decision") in ("allow", "block"):
+        return output["decision"]
+
+    return ""
 
 
 class TestAutoPlanStateHookFunctional:
@@ -195,12 +252,12 @@ class TestInjectSessionContextHookFunctional:
         pytest.skip("inject-session-context.sh not found")
 
     def test_hook_returns_valid_json_for_task_tool(self, hook_path, tmp_path):
-        """Hook should return valid JSON with decision=allow for Task tool.
+        """Hook should return valid JSON with permission=allow for Task tool.
 
         Note: PreToolUse hooks cannot inject context into Task calls.
         The hook allows the Task tool and provides info via additionalContext.
 
-        CORRECTED: PreToolUse hooks return {"decision": "allow"} format.
+        v2.84.1: Supports both legacy and v2.81.2+ formats.
         """
         # Create minimal CLAUDE.md
         claude_md = tmp_path / "CLAUDE.md"
@@ -225,17 +282,17 @@ class TestInjectSessionContextHookFunctional:
         # Parse output as JSON
         output = json.loads(result.stdout)
 
-        # Verify structure - PreToolUse returns {"decision": "allow"} (CORRECTED)
-        assert "decision" in output, f"Expected 'decision' field, got: {output}"
-        assert output["decision"] == "allow", f"Expected decision=allow, got: {output}"
-        # additionalContext MAY be present for informational purposes
-        if "additionalContext" in output:
-            assert "Task tool" in output["additionalContext"] or "allowed" in output["additionalContext"]
+        # v2.84.1: Support both legacy and v2.81.2+ formats
+        assert is_valid_pretooluse_permission(output), (
+            f"Expected valid PreToolUse permission format, got: {output}"
+        )
+        decision = get_pretooluse_decision(output)
+        assert decision == "allow", f"Expected permission=allow, got: {decision}"
 
     def test_hook_skips_non_task_tools(self, hook_path, tmp_path):
-        """Hook should return decision=allow for non-Task tools.
+        """Hook should return permission=allow for non-Task tools.
 
-        CORRECTED: PreToolUse hooks return {"decision": "allow"}.
+        v2.84.1: Supports both legacy and v2.81.2+ formats.
         """
         hook_input = json.dumps({
             "tool_name": "Read",
@@ -254,8 +311,12 @@ class TestInjectSessionContextHookFunctional:
         assert result.returncode == 0
 
         output = json.loads(result.stdout)
-        # PreToolUse returns {"decision": "allow"} for non-Task tools (CORRECTED)
-        assert output.get("decision") == "allow", f"Expected decision=allow, got: {output}"
+        # v2.84.1: Support both legacy and v2.81.2+ formats
+        assert is_valid_pretooluse_permission(output), (
+            f"Expected valid PreToolUse permission format, got: {output}"
+        )
+        decision = get_pretooluse_decision(output)
+        assert decision == "allow", f"Expected permission=allow, got: {decision}"
 
     def test_hook_performance_under_5_seconds(self, hook_path, tmp_path):
         """Hook should complete within 5 seconds (well under 15s timeout)."""
@@ -432,7 +493,7 @@ Implement user authentication
         Note: PreToolUse hooks cannot inject context into Task calls.
         The hook acknowledges the Task tool but context injection requires SessionStart.
 
-        CORRECTED: PreToolUse hooks return {"decision": "allow"} format.
+        v2.84.1: Supports both legacy and v2.81.2+ formats.
         """
         hook_path = Path.home() / ".claude" / "hooks" / "inject-session-context.sh"
         if not hook_path.exists():
@@ -456,13 +517,12 @@ Implement user authentication
 
         output = json.loads(result.stdout)
 
-        # Verify structure - PreToolUse returns {"decision": "allow"} (CORRECTED)
-        assert "decision" in output, f"Expected 'decision' field, got: {output}"
-        assert output["decision"] == "allow", f"Expected decision=allow, got: {output}"
-        # additionalContext MAY be present for informational purposes
-        if "additionalContext" in output:
-            # Context injection not available for PreToolUse, but hook runs successfully
-            pass
+        # v2.84.1: Support both legacy and v2.81.2+ formats
+        assert is_valid_pretooluse_permission(output), (
+            f"Expected valid PreToolUse permission format, got: {output}"
+        )
+        decision = get_pretooluse_decision(output)
+        assert decision == "allow", f"Expected permission=allow, got: {decision}"
 
 
 if __name__ == "__main__":

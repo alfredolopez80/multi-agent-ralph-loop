@@ -1,9 +1,14 @@
 ---
 name: glm5
+prefix: "@glm5"
+category: orchestration
+color: purple
 description: GLM-5 Agent Teams - Spawn teammates with thinking mode
 ---
 
 # GLM-5 Agent Teams
+
+<!-- VERSION: 2.84.0 -->
 
 Spawn GLM-5 powered teammates with native thinking mode for parallel execution.
 
@@ -96,6 +101,6 @@ TASK_ID="task-$(date +%s)"
 
 # Show result location
 echo ""
-echo "📁 Status: .ralph/teammates/${TASK_ID}/status.json"
-echo "🧠 Reasoning: .ralph/reasoning/${TASK_ID}.txt"
+echo "Status: .ralph/teammates/${TASK_ID}/status.json"
+echo "Reasoning: .ralph/reasoning/${TASK_ID}.txt"
 ```

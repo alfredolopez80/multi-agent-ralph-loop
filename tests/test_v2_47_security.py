@@ -391,10 +391,9 @@ class TestSecurityIntegration:
         assert result.returncode == 0, f"Hook failed: {result.stderr}"
 
         output = json.loads(result.stdout)
-        # PreToolUse hooks MUST return "decision": "allow" (not "continue")
-        # "continue" is for PostToolUse hooks only
-        assert output.get("decision") == "allow", (
-            f"PreToolUse hook should return 'decision': 'allow', got: {output}"
+        # v2.81.2+: PreToolUse hooks use hookSpecificOutput.permissionDecision
+        assert output.get("hookSpecificOutput", {}).get("permissionDecision") == "allow", (
+            f"PreToolUse hook must use v2.81.2+ format with hookSpecificOutput.permissionDecision, got: {output}"
         )
 
 

@@ -162,8 +162,10 @@ class TestJsonOutputValidation:
             f"stdout: {result['stdout']}\n"
             f"stderr: {result['stderr']}"
         )
-        assert result["output"].get("decision") == "allow", (
-            f"Output should have 'decision': 'allow' (PreToolUse format), got: {result['output']}"
+        # v2.81.2+ format: hookSpecificOutput.permissionDecision
+        output = result["output"]
+        assert output.get("hookSpecificOutput", {}).get("permissionDecision") == "allow", (
+            f"Output must use v2.81.2+ format with hookSpecificOutput.permissionDecision, got: {output}"
         )
 
     def test_empty_input_returns_valid_json(self):
@@ -212,7 +214,11 @@ class TestJsonOutputValidation:
         result = run_hook(HOOK_PATH, input_json)
 
         assert result["is_valid_json"], "Should return valid JSON for missing tool_name"
-        assert result["output"].get("decision") == "allow"
+        # v2.81.2+ format: hookSpecificOutput.permissionDecision
+        output = result["output"]
+        assert output.get("hookSpecificOutput", {}).get("permissionDecision") == "allow", (
+            f"Output must use v2.81.2+ format, got: {output}"
+        )
 
     def test_wrong_type_tool_name_returns_valid_json(self):
         """Non-string tool_name should return valid JSON with error."""
@@ -220,7 +226,11 @@ class TestJsonOutputValidation:
         result = run_hook(HOOK_PATH, input_json)
 
         assert result["is_valid_json"], "Should return valid JSON for wrong type tool_name"
-        assert result["output"].get("decision") == "allow"
+        # v2.81.2+ format: hookSpecificOutput.permissionDecision
+        output = result["output"]
+        assert output.get("hookSpecificOutput", {}).get("permissionDecision") == "allow", (
+            f"Output must use v2.81.2+ format, got: {output}"
+        )
 
     def test_non_task_tool_returns_valid_json(self):
         """Non-Task tool names should return valid JSON quickly."""
@@ -231,7 +241,11 @@ class TestJsonOutputValidation:
             result = run_hook(HOOK_PATH, input_json)
 
             assert result["is_valid_json"], f"Should return valid JSON for {tool} tool"
-            assert result["output"].get("decision") == "allow"
+            # v2.81.2+ format: hookSpecificOutput.permissionDecision
+            output = result["output"]
+            assert output.get("hookSpecificOutput", {}).get("permissionDecision") == "allow", (
+                f"Output must use v2.81.2+ format for {tool}, got: {output}"
+            )
             assert result["execution_time"] < 1.0, f"{tool} should complete quickly"
 
 
@@ -680,10 +694,10 @@ class TestInjectSessionContextHook:
         )
 
     def test_uses_decision_field(self):
-        """CORRECTED v2.69: PreToolUse hooks must use 'decision' field, NOT 'continue'.
+        """CORRECTED v2.81.2: PreToolUse hooks must use hookSpecificOutput.permissionDecision.
 
-        Per official Claude Code documentation:
-        - PreToolUse: {"decision": "allow"/"block"}
+        Per official Claude Code documentation (v2.81.2+):
+        - PreToolUse: {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}
         - PostToolUse: {"continue": true/false}
         - Stop hooks: {"decision": "approve"}
         """
@@ -694,9 +708,13 @@ class TestInjectSessionContextHook:
         result = run_hook(INJECT_CONTEXT_HOOK, input_json)
 
         assert result["is_valid_json"]
-        # PreToolUse hooks MUST use 'decision' field (string), NOT 'continue'
-        assert "decision" in result["output"] or result["output"] == {}, (
-            f"PreToolUse hooks must use 'decision' field format, got: {result['output']}"
+        output = result["output"]
+        # v2.81.2+ format: must have hookSpecificOutput with permissionDecision
+        assert "hookSpecificOutput" in output, (
+            f"PreToolUse hooks must use hookSpecificOutput wrapper, got: {output}"
+        )
+        assert output.get("hookSpecificOutput", {}).get("permissionDecision") in ["allow", "block"], (
+            f"hookSpecificOutput.permissionDecision must be 'allow' or 'block', got: {output}"
         )
 
     def test_non_task_returns_quickly(self):

@@ -65,6 +65,51 @@ truncate_context() {
     fi
 }
 
+# Get claude-mem hints for session context (v2.43 integration)
+# Queries claude-mem SQLite database directly for relevant observations
+get_claude_mem_hints() {
+    local project_name="$1"
+    local hints=""
+    local max_hints=5
+
+    # Path to claude-mem SQLite database
+    local claude_mem_db="${HOME}/.claude-mem/claude-mem.db"
+
+    # Try SQLite query first (direct database access - most reliable)
+    if [[ -f "$claude_mem_db" ]]; then
+        # Extract project identifier from project name (handle various formats)
+        # e.g., "multi-agent-ralph-loop" matches "multi-agent" or "ralph"
+        local project_pattern=$(echo "$project_name" | sed 's/-/ /g' | awk '{print $1}')
+
+        # Query recent observations for this project
+        # Search in both project column and title for matches
+        hints=$(sqlite3 "$claude_mem_db" \
+            "SELECT '- [' || type || '] ' || title
+             FROM observations
+             WHERE project LIKE '%${project_pattern}%'
+                OR title LIKE '%${project_pattern}%'
+                OR narrative LIKE '%${project_pattern}%'
+             ORDER BY created_at_epoch DESC
+             LIMIT ${max_hints}" 2>/dev/null || echo "")
+
+        # If no exact match, get most recent observations overall
+        if [[ -z "$hints" ]]; then
+            hints=$(sqlite3 "$claude_mem_db" \
+                "SELECT '- [' || type || '] ' || title
+                 FROM observations
+                 ORDER BY created_at_epoch DESC
+                 LIMIT ${max_hints}" 2>/dev/null || echo "")
+        fi
+    fi
+
+    # If still no hints, return a helpful message
+    if [[ -z "$hints" ]]; then
+        hints="No recent claude-mem observations found. Use /memory to search semantic memory."
+    fi
+
+    echo "$hints"
+}
+
 # Get most recent file matching pattern (avoids pipefail issues with head)
 get_most_recent_file() {
     local dir="$1"
@@ -189,7 +234,17 @@ if [[ -d "$SESSION_HANDOFF_DIR" ]]; then
     fi
 fi
 
-# 4. Add continuity guidance if context was found
+# 4. Get claude-mem hints for this project (v2.43 integration)
+CLAUDE_MEM_HINTS=$(get_claude_mem_hints "$PROJECT_NAME")
+if [[ -n "$CLAUDE_MEM_HINTS" && "$CLAUDE_MEM_HINTS" != "Use /memory search to find relevant past context" ]]; then
+    CONTEXT+="### Claude-Mem Context\n\n"
+    CONTEXT+="Recent observations from semantic memory:\n\n"
+    CONTEXT+="${CLAUDE_MEM_HINTS}\n\n"
+    FOUND_CONTEXT=true
+    log "INFO" "Claude-mem hints added"
+fi
+
+# 5. Add continuity guidance if context was found
 if [[ "$FOUND_CONTEXT" == "true" ]]; then
     CONTEXT+="---\n\n"
     CONTEXT+="### Next Steps\n\n"

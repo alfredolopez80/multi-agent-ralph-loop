@@ -123,27 +123,53 @@ def ralph_data_dir(home_dir):
 
 
 @pytest.fixture(scope="session")
-def global_skills_dir(claude_global_dir):
-    """Return global skills directory."""
-    return os.path.join(claude_global_dir, "skills")
+def global_skills_dir(claude_global_dir, project_root):
+    """Return skills directory - project-local first, then global.
+
+    Priority:
+    1. Project .claude/skills/ (versioned)
+    2. Global ~/.claude/skills/ (user-wide)
+    """
+    project_skills = os.path.join(project_root, ".claude", "skills")
+    global_skills = os.path.join(claude_global_dir, "skills")
+
+    # Return project skills if exists and has content
+    if os.path.isdir(project_skills) and os.listdir(project_skills):
+        return project_skills
+    return global_skills
 
 
 @pytest.fixture(scope="session")
-def global_agents_dir(claude_global_dir):
-    """Return global agents directory."""
-    return os.path.join(claude_global_dir, "agents")
+def global_agents_dir(claude_global_dir, project_root):
+    """Return agents directory - project-local first, then global."""
+    project_agents = os.path.join(project_root, ".claude", "agents")
+    global_agents = os.path.join(claude_global_dir, "agents")
+
+    if os.path.isdir(project_agents) and os.listdir(project_agents):
+        return project_agents
+    return global_agents
 
 
 @pytest.fixture(scope="session")
-def global_hooks_dir(claude_global_dir):
-    """Return global hooks directory."""
-    return os.path.join(claude_global_dir, "hooks")
+def global_hooks_dir(claude_global_dir, project_root):
+    """Return hooks directory - project-local first, then global."""
+    project_hooks = os.path.join(project_root, ".claude", "hooks")
+    global_hooks = os.path.join(claude_global_dir, "hooks")
+
+    if os.path.isdir(project_hooks) and os.listdir(project_hooks):
+        return project_hooks
+    return global_hooks
 
 
 @pytest.fixture(scope="session")
-def global_commands_dir(claude_global_dir):
-    """Return global commands directory."""
-    return os.path.join(claude_global_dir, "commands")
+def global_commands_dir(claude_global_dir, project_root):
+    """Return commands directory - project-local first, then global."""
+    project_commands = os.path.join(project_root, ".claude", "commands")
+    global_commands = os.path.join(claude_global_dir, "commands")
+
+    if os.path.isdir(project_commands) and os.listdir(project_commands):
+        return project_commands
+    return global_commands
 
 
 @pytest.fixture(scope="session")
@@ -160,16 +186,19 @@ def github_projects_dir(home_dir):
 
 @pytest.fixture
 def critical_skills():
-    """List of critical skills that must exist for v2.40."""
+    """List of critical skills that must exist for v2.84.2.
+
+    Updated: Removed 'ultrathink' (not in project).
+    """
     return [
         "orchestrator",
         "clarify",
         "gates",
         "adversarial",
-        "ultrathink",
         "retrospective",
         "loop",
         "parallel",
+        "bugs",
     ]
 
 
@@ -177,10 +206,11 @@ def critical_skills():
 def critical_hooks():
     """List of critical hooks that must exist for v2.40+.
 
-    v2.69.0: Updated quality-gates.sh → quality-gates-v2.sh (renamed in v2.46).
+    v2.69.0: Updated quality-gates.sh -> quality-gates-v2.sh (renamed in v2.46).
+    v2.85: Updated session-start-ledger.sh -> session-start-restore-context.sh (archived redundant hook).
     """
     return [
-        "session-start-ledger.sh",
+        "session-start-restore-context.sh",  # v2.85: Replaces archived session-start-ledger.sh
         "session-start-tldr.sh",
         "pre-compact-handoff.sh",
         "quality-gates-v2.sh",  # v2.46+: renamed from quality-gates.sh

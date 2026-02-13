@@ -311,7 +311,7 @@ class TestPreToolUseHooks:
     def test_inject_session_context(self):
         """Test inject-session-context.sh returns valid JSON for Task tool.
 
-        CORRECTED: PreToolUse hooks return {"decision": "allow"} format.
+        v2.81.2+: PreToolUse hooks use {"hookSpecificOutput": {"permissionDecision": "allow"}} format.
         """
         hook = HOOKS_DIR / "inject-session-context.sh"
         if not hook.exists():
@@ -332,20 +332,22 @@ class TestPreToolUseHooks:
         except json.JSONDecodeError as e:
             pytest.fail(f"Invalid JSON: {e}. Output: {stdout}")
 
-        # PreToolUse hooks return {"decision": "allow"} format (CORRECTED)
-        assert "decision" in data, f"Missing 'decision' field: {data}"
-        assert data["decision"] == "allow", f"Expected decision=allow: {data}"
+        # v2.81.2+: PreToolUse hooks use hookSpecificOutput wrapper with permissionDecision
+        assert "hookSpecificOutput" in data, f"Missing 'hookSpecificOutput' field: {data}"
+        assert data["hookSpecificOutput"].get("permissionDecision") == "allow", (
+            f"Expected hookSpecificOutput.permissionDecision=allow: {data}"
+        )
 
     def test_inject_session_context_non_task(self):
         """Test inject-session-context.sh handles non-Task tools.
 
-        CORRECTED: PreToolUse hooks return {"decision": "allow"} format.
+        v2.81.2+: PreToolUse hooks use {"hookSpecificOutput": {"permissionDecision": "allow"}} format.
         """
         hook = HOOKS_DIR / "inject-session-context.sh"
         if not hook.exists():
             pytest.skip("inject-session-context.sh not found")
 
-        # Test with Bash tool (should return {"decision": "allow"} and skip)
+        # Test with Bash tool (should return {"hookSpecificOutput": {"permissionDecision": "allow"}} and skip)
         input_data = json.dumps({
             "tool_name": "Bash",
             "session_id": "test-session-456"
@@ -360,19 +362,25 @@ class TestPreToolUseHooks:
         except json.JSONDecodeError as e:
             pytest.fail(f"Invalid JSON: {e}. Output: {stdout}")
 
-        # PreToolUse hooks return {"decision": "allow"} format (CORRECTED)
-        assert "decision" in data, f"Missing 'decision' field: {data}"
-        assert data["decision"] == "allow", f"Expected decision=allow: {data}"
+        # v2.81.2+: PreToolUse hooks use hookSpecificOutput wrapper with permissionDecision
+        assert "hookSpecificOutput" in data, f"Missing 'hookSpecificOutput' field: {data}"
+        assert data["hookSpecificOutput"].get("permissionDecision") == "allow", (
+            f"Expected hookSpecificOutput.permissionDecision=allow: {data}"
+        )
 
 
 class TestSessionStartHooks:
-    """Test SessionStart hooks for proper output format."""
+    """Test SessionStart hooks for proper output format.
 
-    def test_session_start_ledger(self):
-        """Test session-start-ledger.sh returns proper SessionStart format."""
-        hook = HOOKS_DIR / "session-start-ledger.sh"
+    v2.85: session-start-ledger.sh was archived (redundant with session-start-restore-context.sh).
+    Tests now validate the replacement hook.
+    """
+
+    def test_session_start_restore_context(self):
+        """Test session-start-restore-context.sh returns proper SessionStart format."""
+        hook = HOOKS_DIR / "session-start-restore-context.sh"
         if not hook.exists():
-            pytest.skip("session-start-ledger.sh not found")
+            pytest.skip("session-start-restore-context.sh not found")
 
         input_data = json.dumps({
             "source": "startup",
@@ -500,8 +508,7 @@ class TestHookVersions:
 class TestHookExecutability:
     """Verify all hooks are executable."""
 
-    # v2.69.1: Updated hook list - removed archived hooks, renamed quality-gates
-    # Archived (removed): sentry-check-status.sh, sentry-correlation.sh, detect-environment.sh
+    # v2.85: Updated hook list - session-start-ledger.sh archived (redundant with session-start-restore-context.sh)
     ALL_HOOKS = [
         "quality-gates-v2.sh",  # Renamed from quality-gates.sh in v2.46
         "progress-tracker.sh",
@@ -514,7 +521,7 @@ class TestHookExecutability:
         "context-warning.sh",
         "stop-verification.sh",
         "git-safety-guard.py",
-        "session-start-ledger.sh",
+        "session-start-restore-context.sh",  # v2.85: Replaces archived session-start-ledger.sh
         "pre-compact-handoff.sh",
         "auto-save-context.sh",
         "inject-session-context.sh",

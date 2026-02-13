@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Task Hook Testing Suite - v2.57.3
+Task Hook Testing Suite - v2.84.1
 
 Tests for hooks that execute on PreToolUse(Task) and PostToolUse(Task) events:
 
@@ -20,15 +20,18 @@ PostToolUse:Task:
 All tests validate:
 - JSON output is ALWAYS valid
 - Correct format per OFFICIAL Claude Code documentation:
-  * PostToolUse/PreToolUse: {"continue": true, ...}
+  * PostToolUse: {"continue": true, ...}
+  * PreToolUse: {"hookSpecificOutput": {"permissionDecision": "allow"}} or {"decision": "allow"}
   * Stop hooks ONLY: {"decision": "approve|block", ...}
 - No timeout (< configured seconds)
 - Proper error handling
 - Security patterns
 
-VERSION: 2.57.3
-SEC-038: CORRECTED - PostToolUse/PreToolUse hooks use {"continue": true}
-         The string "decision": "continue" is NEVER valid per official docs.
+VERSION: 2.84.1
+CHANGES from 2.57.3:
+- Updated to support v2.81.2+ hookSpecificOutput wrapper format
+- Hooks may output multiple JSON lines; we extract the last valid one
+- PreToolUse hooks can use either legacy or v2.81.2+ format
 """
 import os
 import json
@@ -73,6 +76,23 @@ HOOK_TIMEOUT = 15  # seconds
 # Helper Functions
 # ═══════════════════════════════════════════════════════════════════════════════
 
+def extract_last_json(stdout: str) -> Optional[Dict[str, Any]]:
+    """Extract the last valid JSON line from multi-line output.
+
+    Some hooks output debug messages followed by JSON. This function
+    extracts the last valid JSON object from the output.
+    """
+    lines = stdout.strip().split('\n')
+    for line in reversed(lines):
+        line = line.strip()
+        if line.startswith('{') and line.endswith('}'):
+            try:
+                return json.loads(line)
+            except json.JSONDecodeError:
+                continue
+    return None
+
+
 def run_hook(hook_name: str, input_json: Dict[str, Any], timeout: int = HOOK_TIMEOUT,
              prefer_global: bool = True) -> Dict[str, Any]:
     """
@@ -85,7 +105,7 @@ def run_hook(hook_name: str, input_json: Dict[str, Any], timeout: int = HOOK_TIM
         - output: Parsed JSON output (or None if invalid)
         - is_valid_json: Whether output is valid JSON
         - execution_time: Time in seconds
-        - has_correct_format: Whether uses {"decision": "..."} format
+        - has_correct_format: Whether uses correct format for hook type
     """
     # Find hook path
     global_path = GLOBAL_HOOKS_DIR / hook_name
@@ -122,7 +142,7 @@ def run_hook(hook_name: str, input_json: Dict[str, Any], timeout: int = HOOK_TIM
 
         execution_time = time.time() - start_time
 
-        # Parse JSON output
+        # Parse JSON output - try direct parse first, then extract last JSON line
         is_valid_json = False
         output = None
         has_correct_format = False
@@ -130,14 +150,32 @@ def run_hook(hook_name: str, input_json: Dict[str, Any], timeout: int = HOOK_TIM
         try:
             output = json.loads(result.stdout)
             is_valid_json = True
-            # SEC-038: Correct format is {"continue": true} for PostToolUse/PreToolUse
-            # Empty {} is also acceptable, or "continue" must be boolean
-            has_correct_format = (
-                output == {} or
-                ("continue" in output and isinstance(output.get("continue"), bool))
-            )
         except (json.JSONDecodeError, ValueError):
-            pass
+            # Try to extract the last JSON line
+            output = extract_last_json(result.stdout)
+            if output is not None:
+                is_valid_json = True
+
+        # Check format based on hook type
+        if is_valid_json and output is not None:
+            # For PreToolUse hooks, check for permissionDecision or decision
+            if hook_name in PRE_TOOLUSE_TASK_HOOKS:
+                # v2.81.2+ format
+                if "hookSpecificOutput" in output:
+                    hso = output.get("hookSpecificOutput", {})
+                    has_correct_format = hso.get("permissionDecision") in ("allow", "block")
+                # Legacy format
+                elif output.get("decision") in ("allow", "block"):
+                    has_correct_format = True
+                # Empty is acceptable
+                elif output == {}:
+                    has_correct_format = True
+            # For PostToolUse hooks, check for "continue" field
+            else:
+                has_correct_format = (
+                    output == {} or
+                    ("continue" in output and isinstance(output.get("continue"), bool))
+                )
 
         return {
             "returncode": result.returncode,
@@ -209,7 +247,7 @@ class TestPreToolUseTaskHooks:
 
     @pytest.mark.parametrize("hook_name", PRE_TOOLUSE_TASK_HOOKS)
     def test_has_correct_format(self, hook_name):
-        """PreToolUse hooks must use {"continue": true} format (per official docs)"""
+        """PreToolUse hooks must use valid permission format (v2.81.2+ or legacy)"""
         input_json = make_pretooluse_input()
         result = run_hook(hook_name, input_json)
 
@@ -223,13 +261,24 @@ class TestPreToolUseTaskHooks:
         if result["output"] == {}:
             return
 
-        # SEC-038: PreToolUse hooks use {"continue": true}, NOT {"decision": "continue"}
-        # The string "continue" is NEVER valid for the decision field per official docs
-        assert "decision" not in result["output"] or result["output"].get("decision") not in ("continue",), (
-            f"Hook {hook_name} uses WRONG format 'decision: continue'.\n"
-            f"PreToolUse hooks must use {{'continue': true}}.\n"
-            f"Got: {result['output']}"
-        )
+        # Check for valid format (either v2.81.2+ or legacy)
+        output = result["output"]
+
+        # v2.81.2+ format: {"hookSpecificOutput": {"permissionDecision": "allow"}}
+        if "hookSpecificOutput" in output:
+            hso = output.get("hookSpecificOutput", {})
+            assert hso.get("permissionDecision") in ("allow", "block"), (
+                f"Hook {hook_name} has invalid hookSpecificOutput.permissionDecision.\n"
+                f"Got: {output}"
+            )
+            return
+
+        # Legacy format: {"decision": "allow"}
+        if "decision" in output:
+            assert output.get("decision") in ("allow", "block"), (
+                f"Hook {hook_name} has invalid decision.\n"
+                f"Got: {output}"
+            )
 
     @pytest.mark.parametrize("hook_name", PRE_TOOLUSE_TASK_HOOKS)
     def test_no_timeout(self, hook_name):

@@ -16,7 +16,13 @@ from unittest.mock import patch, MagicMock
 import pytest
 
 # Add scripts directory to path for imports
-SCRIPTS_DIR = Path.home() / ".claude" / "scripts"
+# Priority: project-local scripts, then global scripts
+PROJECT_ROOT = Path(__file__).parent.parent
+PROJECT_SCRIPTS = PROJECT_ROOT / ".claude" / "scripts"
+GLOBAL_SCRIPTS = Path.home() / ".claude" / "scripts"
+
+# Use project scripts if available, otherwise global
+SCRIPTS_DIR = PROJECT_SCRIPTS if PROJECT_SCRIPTS.exists() else GLOBAL_SCRIPTS
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 
@@ -396,8 +402,12 @@ class TestHooksIntegration:
         return Path.home() / ".claude" / "hooks"
 
     def test_session_start_hook_exists(self, hooks_dir):
-        """Test that session-start-ledger.sh exists and is executable."""
-        hook_path = hooks_dir / "session-start-ledger.sh"
+        """Test that session-start-restore-context.sh exists and is executable.
+
+        v2.85: session-start-ledger.sh was archived (redundant with session-start-restore-context.sh).
+        Tests now validate the replacement hook.
+        """
+        hook_path = hooks_dir / "session-start-restore-context.sh"
         assert hook_path.exists(), f"Hook not found: {hook_path}"
 
         mode = hook_path.stat().st_mode
@@ -412,8 +422,12 @@ class TestHooksIntegration:
         assert mode & 0o111, "Hook is not executable"
 
     def test_session_start_hook_output_format(self, hooks_dir):
-        """Test that SessionStart hook returns valid JSON."""
-        hook_path = hooks_dir / "session-start-ledger.sh"
+        """Test that SessionStart hook returns valid JSON.
+
+        v2.85: session-start-ledger.sh was archived (redundant with session-start-restore-context.sh).
+        Tests now validate the replacement hook.
+        """
+        hook_path = hooks_dir / "session-start-restore-context.sh"
 
         result = subprocess.run(
             ["bash", str(hook_path)],

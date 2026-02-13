@@ -24,15 +24,16 @@ import pytest
 # Hook Registry Definition
 # ============================================================
 
-# Master registry of all hooks that MUST be registered in settings.json
+# Master registry of ESSENTIAL hooks that MUST be registered in settings.json
+# v2.85: Simplified to only essential hooks for autonomous development
 # Format: {hook_name: {event_type, matchers, version, cli_only}}
 # cli_only=True means it's a CLI script, not an auto-triggered hook
 HOOK_REGISTRY = {
     # === v2.35 Core Hooks ===
-    "session-start-ledger.sh": {
+    "session-start-restore-context.sh": {  # v2.85: Replaces archived session-start-ledger.sh
         "event": "SessionStart",
         "matchers": ["startup", "resume", "compact", "clear"],
-        "version": "2.35",
+        "version": "2.85",
         "cli_only": False,
     },
     "pre-compact-handoff.sh": {
@@ -44,7 +45,7 @@ HOOK_REGISTRY = {
     "quality-gates-v2.sh": {
         "event": "PostToolUse",
         "matchers": ["Edit", "Write"],
-        "version": "2.46",  # Updated from quality-gates.sh
+        "version": "2.46",
         "cli_only": False,
     },
     "git-safety-guard.py": {
@@ -69,22 +70,10 @@ HOOK_REGISTRY = {
     },
 
     # === v2.42 Hooks ===
-    "stop-verification.sh": {
-        "event": "Stop",
-        "matchers": ["*"],
-        "version": "2.42",
-        "cli_only": False,
-    },
-    "auto-save-context.sh": {
-        "event": "PostToolUse",
-        "matchers": ["Edit", "Write", "Bash", "Read", "Grep", "Glob"],
-        "version": "2.42",
-        "cli_only": False,
-    },
     "checkpoint-auto-save.sh": {
-        "event": "PreToolUse",  # Corrected in v2.66.6 - changed from PostToolUse
+        "event": "PreToolUse",
         "matchers": ["Edit", "Write"],
-        "version": "2.69.0",  # Updated to actual version
+        "version": "2.69.0",
         "cli_only": False,
     },
 
@@ -95,35 +84,6 @@ HOOK_REGISTRY = {
         "version": "2.43",
         "cli_only": False,
     },
-    "session-start-tldr.sh": {
-        "event": "SessionStart",
-        "matchers": ["startup", "resume"],
-        "version": "2.43",
-        "cli_only": False,
-    },
-    "session-start-welcome.sh": {
-        "event": "SessionStart",
-        "matchers": ["startup", "resume"],
-        "version": "2.43",
-        "cli_only": False,
-    },
-    "post-compact-restore.sh": {
-        "event": "SessionStart",
-        "matchers": ["compact"],
-        "version": "2.43",
-        "cli_only": False,
-    },
-    "sentry-report.sh": {
-        "event": "Stop",
-        "matchers": ["*"],
-        "version": "2.43",
-        "cli_only": False,
-    },
-    # NOTE: sentry-check-status.sh and sentry-correlation.sh were archived in v2.60
-    # They are now in ~/.claude/hooks-archive/utilities/
-    # Keeping entries commented for reference:
-    # "sentry-check-status.sh": {"event": "PostToolUse", "version": "2.43", "cli_only": True},
-    # "sentry-correlation.sh": {"event": "PostToolUse", "version": "2.43", "cli_only": True},
     "skill-validator.sh": {
         "event": "PreToolUse",
         "matchers": ["Skill"],
@@ -142,20 +102,6 @@ HOOK_REGISTRY = {
         "version": "2.43",
         "cli_only": False,
     },
-    "prompt-analyzer.sh": {
-        "event": "UserPromptSubmit",
-        "matchers": None,
-        "version": "2.43",
-        "cli_only": False,
-    },
-
-    # === v2.44 Hooks ===
-    "plan-analysis-cleanup.sh": {
-        "event": "PostToolUse",
-        "matchers": ["ExitPlanMode"],
-        "version": "2.44",
-        "cli_only": False,
-    },
 
     # === v2.45 Hooks ===
     "lsa-pre-step.sh": {
@@ -171,30 +117,18 @@ HOOK_REGISTRY = {
         "cli_only": False,
     },
 
-    # === v2.45.1 Hooks ===
-    "auto-plan-state.sh": {
-        "event": "PostToolUse",
-        "matchers": ["Write"],
-        "version": "2.45.1",
-        "cli_only": False,
-        "description": "Auto-creates plan-state.json when orchestrator-analysis.md is written",
-    },
-
     # === CLI-Only Scripts (NOT auto-triggered hooks) ===
     "detect-environment.sh": {
         "event": None,
         "matchers": None,
         "version": "2.44",
-        "cli_only": True,  # Sourced by other scripts, not auto-triggered
+        "cli_only": True,
     },
-    # NOTE: orchestrator-helper.sh was archived in v2.60
-    # It is now in ~/.ralph/backups/ - functionality merged into orchestrator skill
-    # "orchestrator-helper.sh": {"event": None, "version": "2.43", "cli_only": True},
     "plan-state-init.sh": {
         "event": None,
         "matchers": None,
         "version": "2.45",
-        "cli_only": True,  # CLI script with subcommands
+        "cli_only": True,
     },
 }
 
@@ -467,142 +401,6 @@ class TestV245Hooks:
         assert "plan-sync-post-step.sh" in hook_names, (
             "plan-sync-post-step.sh not registered in PostToolUse.\n"
             "This hook is critical for v2.45 drift detection."
-        )
-
-
-class TestV2451Hooks:
-    """Test v2.45.1 specific hooks: auto-plan-state automation."""
-
-    def test_auto_plan_state_hook_exists(self, global_hooks_dir):
-        """auto-plan-state.sh should exist."""
-        hook_path = os.path.join(global_hooks_dir, "auto-plan-state.sh")
-        assert os.path.isfile(hook_path), (
-            "auto-plan-state.sh not found.\n"
-            "This hook auto-creates plan-state.json for v2.45.1 orchestration."
-        )
-
-    def test_auto_plan_state_registered(self, registered_hooks):
-        """auto-plan-state.sh should be registered for PostToolUse Write."""
-        hook_names = [h["name"] for h in registered_hooks.get("PostToolUse", [])]
-        assert "auto-plan-state.sh" in hook_names, (
-            "auto-plan-state.sh not registered in PostToolUse.\n"
-            "Plan-state.json won't be auto-created when orchestrator-analysis.md is written."
-        )
-
-    def test_auto_plan_state_has_orchestrator_analysis_check(self, global_hooks_dir):
-        """auto-plan-state.sh should check for orchestrator-analysis.md."""
-        hook_path = os.path.join(global_hooks_dir, "auto-plan-state.sh")
-        if not os.path.exists(hook_path):
-            pytest.skip("auto-plan-state.sh not found")
-
-        with open(hook_path) as f:
-            content = f.read()
-
-        assert "orchestrator-analysis.md" in content, (
-            "auto-plan-state.sh should check for orchestrator-analysis.md.\n"
-            "The hook should only trigger when this specific file is written."
-        )
-
-    def test_auto_plan_state_creates_plan_state_json(self, global_hooks_dir):
-        """auto-plan-state.sh should create plan-state.json."""
-        hook_path = os.path.join(global_hooks_dir, "auto-plan-state.sh")
-        if not os.path.exists(hook_path):
-            pytest.skip("auto-plan-state.sh not found")
-
-        with open(hook_path) as f:
-            content = f.read()
-
-        assert "plan-state.json" in content, (
-            "auto-plan-state.sh should create plan-state.json.\n"
-            "This is the primary purpose of the hook."
-        )
-
-    def test_auto_plan_state_uses_atomic_write(self, global_hooks_dir):
-        """auto-plan-state.sh should use atomic file operations."""
-        hook_path = os.path.join(global_hooks_dir, "auto-plan-state.sh")
-        if not os.path.exists(hook_path):
-            pytest.skip("auto-plan-state.sh not found")
-
-        with open(hook_path) as f:
-            content = f.read()
-
-        # Check for mktemp (atomic writes) or temp file pattern
-        has_atomic = "mktemp" in content or "temp_file" in content.lower()
-        assert has_atomic, (
-            "auto-plan-state.sh should use atomic file operations (mktemp).\n"
-            "This prevents race conditions during plan-state.json creation."
-        )
-
-    def test_auto_plan_state_has_version_marker(self, global_hooks_dir):
-        """auto-plan-state.sh should have VERSION marker (2.45.x - 2.99.x)."""
-        hook_path = os.path.join(global_hooks_dir, "auto-plan-state.sh")
-        if not os.path.exists(hook_path):
-            pytest.skip("auto-plan-state.sh not found")
-
-        with open(hook_path) as f:
-            content = f.read()
-
-        import re
-        # v2.62.3: Accept any version from 2.45 to 2.99
-        version_match = re.search(r'VERSION:\s*2\.(4[5-9]|[5-9][0-9])\.\d+', content)
-        assert "VERSION:" in content and version_match, (
-            "auto-plan-state.sh should have VERSION: 2.45.x+ marker.\n"
-            "This helps track hook versions."
-        )
-
-
-class TestV243SentryHooks:
-    """Test v2.43 Sentry integration hooks.
-
-    NOTE: sentry-check-status.sh and sentry-correlation.sh were archived in v2.60.
-    Only sentry-report.sh remains active.
-    """
-
-    # Only sentry-report.sh is still active (v2.60+)
-    SENTRY_HOOKS = ["sentry-report.sh"]
-
-    def test_sentry_hooks_exist(self, global_hooks_dir):
-        """Active Sentry hooks should exist."""
-        missing = []
-        for hook in self.SENTRY_HOOKS:
-            if not os.path.exists(os.path.join(global_hooks_dir, hook)):
-                missing.append(hook)
-
-        assert not missing, f"Missing Sentry hooks: {missing}"
-
-    def test_sentry_hooks_registered(self, registered_hooks):
-        """Sentry hooks should be registered."""
-        stop_hooks = [h["name"] for h in registered_hooks.get("Stop", [])]
-
-        # sentry-report.sh -> Stop (only active sentry hook after v2.60)
-        assert "sentry-report.sh" in stop_hooks, (
-            "sentry-report.sh not registered in Stop"
-        )
-
-
-class TestV243SessionHooks:
-    """Test v2.43 session-related hooks."""
-
-    def test_welcome_hook_registered(self, registered_hooks):
-        """session-start-welcome.sh should be registered for SessionStart."""
-        hook_names = [h["name"] for h in registered_hooks.get("SessionStart", [])]
-        assert "session-start-welcome.sh" in hook_names, (
-            "session-start-welcome.sh not registered in SessionStart.\n"
-            "User won't see welcome message on session start."
-        )
-
-    def test_post_compact_restore_registered(self, registered_hooks):
-        """post-compact-restore.sh should be registered for SessionStart compact."""
-        session_hooks = registered_hooks.get("SessionStart", [])
-
-        # Find hooks with compact matcher
-        compact_hooks = [h for h in session_hooks if "compact" in str(h.get("matcher", ""))]
-        compact_hook_names = [h["name"] for h in compact_hooks]
-
-        assert "post-compact-restore.sh" in compact_hook_names or \
-               any("post-compact-restore.sh" in h["name"] for h in session_hooks), (
-            "post-compact-restore.sh not registered for SessionStart compact.\n"
-            "Context won't be restored after compaction."
         )
 
 

@@ -2,7 +2,7 @@
 # Auto-sync global commands/agents/hooks to current project
 # Runs on SessionStart to ensure all projects have global configs
 
-# VERSION: 2.69.0
+# VERSION: 2.85.0
 set -euo pipefail
 
 GLOBAL_DIR="${HOME}/.claude"
@@ -60,4 +60,5 @@ if [ -d "$GLOBAL_DIR/hooks" ]; then
     done
 fi
 
-exit 0
+# v2.85: SessionStart hooks must output JSON with hookSpecificOutput wrapper
+echo '{"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": ""}}'

@@ -137,12 +137,15 @@ setup() {
 # POST-COMPACT RECOVERY TESTS
 # ============================================================================
 
-@test "v2.36: session-start-ledger.sh exists" {
-    [ -f "$GLOBAL_HOOKS_DIR/session-start-ledger.sh" ]
+# v2.85: session-start-ledger.sh was archived (redundant with session-start-restore-context.sh)
+# Tests now validate the replacement hook
+
+@test "v2.36: session-start-restore-context.sh exists" {
+    [ -f "$GLOBAL_HOOKS_DIR/session-start-restore-context.sh" ]
 }
 
-@test "v2.36: session-start-ledger.sh handles compact event" {
-    grep -q "compact" "$GLOBAL_HOOKS_DIR/session-start-ledger.sh"
+@test "v2.36: session-start-restore-context.sh handles compact event" {
+    grep -q "compact" "$GLOBAL_HOOKS_DIR/session-start-restore-context.sh"
 }
 
 @test "v2.36: pre-compact-handoff.sh exists" {

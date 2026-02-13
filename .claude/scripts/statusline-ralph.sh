@@ -1,7 +1,23 @@
 #!/bin/bash
 # statusline-ralph.sh - Enhanced StatusLine with Git + Ralph Progress + GLM Usage + Context Info
 #
-# VERSION: 2.80.0
+# VERSION: 2.81.2
+#
+# CHANGELOG v2.81.2:
+# - CRITICAL FIX: Use remaining_percentage from stdin JSON (matches /context exactly)
+# - If /context shows "7% left", statusline now shows 93% (not 100%)
+# - Priority: remaining_percentage > used_percentage > cumulative fallback
+# - Added remaining_percentage to cache file for validation
+#
+# CHANGELOG v2.81.1:
+# - Changed cumulative display: TokenUsed: 818k (more descriptive)
+# - Added progress bar to CtxUse: ██████████ CtxUse: 200k/200k (100%)
+# - Added cache file for validation tests
+#
+# CHANGELOG v2.81.0:
+# - Simplified cumulative display: just token volume (e.g., 786k) without progress bar
+# - Added cost to CtxUse display: CtxUse: 133k/200k (66%) │ $0.83
+# - Removed "tokens" word from CtxUse format for cleaner display
 #
 # CHANGELOG v2.80.0:
 # - Simplified context display to show only CtxUse (removed Free and Buff)
@@ -92,24 +108,69 @@ format_tokens() {
     fi
 }
 
-# Get cumulative context usage (for claude-hud style progress bar)
-# Shows: 🤖 ██████████░░ 391k/200k (195%)
+# Get cumulative context usage - v2.81.1
+# Shows: TokenUsed: 786k (session accumulated tokens)
 # Uses total_input_tokens + total_output_tokens to show SESSION ACCUMULATED usage
-# This shows total tokens used in the session, NOT current window percentage
 get_context_usage_cumulative() {
     local context_json="$1"
 
-    local context_size=$(echo "$context_json" | jq -r '.context_window_size // 200000')
     local total_input=$(echo "$context_json" | jq -r '.total_input_tokens // 0')
     local total_output=$(echo "$context_json" | jq -r '.total_output_tokens // 0')
 
     local total_used=$((total_input + total_output))
-    local used_pct=$((total_used * 100 / context_size))
 
+    # Format: TokenUsed: 786k
     local used_display=$(format_tokens "$total_used")
+
+    printf 'TokenUsed: %s' "${used_display}"
+}
+
+# Get current context usage - v2.81.2
+# Shows: ██████████ CtxUse: 133k/200k (66%) │ $0.83
+# Uses remaining_percentage from stdin JSON (matches /context exactly)
+get_context_usage_current() {
+    local context_json="$1"
+    local cost="${2:-0}"
+
+    local context_size=$(echo "$context_json" | jq -r '.context_window_size // 200000')
+    local used_pct=0
+    local used_tokens=0
+
+    # PRIORITY 1: Use remaining_percentage from stdin JSON (matches /context)
+    # remaining_percentage = 7 means 7% left, so 93% used
+    local remaining_pct=$(echo "$context_json" | jq -r '.remaining_percentage // null')
+    if [[ -n "$remaining_pct" ]] && [[ "$remaining_pct" != "null" ]] && [[ "$remaining_pct" =~ ^[0-9]+$ ]]; then
+        used_pct=$((100 - remaining_pct))
+        used_tokens=$((context_size * used_pct / 100))
+    else
+        # PRIORITY 2: Use used_percentage if available
+        used_pct=$(echo "$context_json" | jq -r '.used_percentage // null')
+        if [[ -n "$used_pct" ]] && [[ "$used_pct" != "null" ]] && [[ "$used_pct" =~ ^[0-9]+$ ]]; then
+            used_tokens=$((context_size * used_pct / 100))
+        else
+            # PRIORITY 3: Calculate from cumulative tokens (fallback, less accurate)
+            local total_input=$(echo "$context_json" | jq -r '.total_input_tokens // 0')
+            local total_output=$(echo "$context_json" | jq -r '.total_output_tokens // 0')
+            local cumulative_tokens=$((total_input + total_output))
+
+            if [[ $cumulative_tokens -gt $context_size ]]; then
+                used_tokens=$context_size
+                used_pct=100
+            elif [[ $cumulative_tokens -gt 0 ]]; then
+                used_tokens=$cumulative_tokens
+                used_pct=$((used_tokens * 100 / context_size))
+            fi
+        fi
+    fi
+
+    # Validate percentage is within bounds (0-100)
+    if [[ $used_pct -lt 0 ]]; then used_pct=0; fi
+    if [[ $used_pct -gt 100 ]]; then used_pct=100; fi
+
+    local ctx_display=$(format_tokens "$used_tokens")
     local size_display=$(format_tokens "$context_size")
 
-    # Color coding
+    # Color coding for percentage
     local color="$CYAN"
     if [[ $used_pct -ge 85 ]]; then
         color="$RED"
@@ -123,74 +184,15 @@ get_context_usage_cumulative() {
     local filled_blocks=$((used_pct / 10))
     [[ $filled_blocks -gt 10 ]] && filled_blocks=10
     [[ $filled_blocks -lt 0 ]] && filled_blocks=0
-    local progress_bar=$(printf '█%.0s' $(seq 1 $filled_blocks))$(printf '░%.0s' $(seq 1 $((10 - filled_blocks))))
+    local progress_bar=$(printf '█%.0s' $(seq 1 $filled_blocks 2>/dev/null))$(printf '░%.0s' $(seq 1 $((10 - filled_blocks)) 2>/dev/null))
 
-    # Format: 🤖 ██████████░░ 391k/200k (195%)
-    printf '%b' "${color}🤖 ${progress_bar}${RESET} ${color}${used_display}/${size_display} (${used_pct}%)${RESET}"
-}
-
-# Get current context usage matching /context format exactly
-# Shows: | CtxUse: 133k/200k tokens (66.6%) | Free: 22k (10.9%) | Buff 45.0k tokens (22.5%) |
-# v2.78.5: Use cumulative tokens but clamped to context window (best available approximation)
-# The stdin JSON does NOT contain current_usage, and /context is internal API only
-# We use total_input_tokens + total_output_tokens as the best available proxy
-get_context_usage_current() {
-    local context_json="$1"
-
-    local context_size=$(echo "$context_json" | jq -r '.context_window_size // 200000')
-    local used_pct=0
-    local used_tokens=0
-
-    # v2.78.5: Use cumulative tokens as proxy (best available approximation)
-    # The stdin JSON does not contain current_usage (it's null or missing)
-    # /context uses internal API that statusline cannot access
-    local total_input=$(echo "$context_json" | jq -r '.total_input_tokens // 0')
-    local total_output=$(echo "$context_json" | jq -r '.total_output_tokens // 0')
-    local cumulative_tokens=$((total_input + total_output))
-
-    # Clamp to context window (we can't exceed the window)
-    if [[ $cumulative_tokens -gt $context_size ]]; then
-        used_tokens=$context_size
-        used_pct=100
-    elif [[ $cumulative_tokens -gt 0 ]]; then
-        used_tokens=$cumulative_tokens
-        used_pct=$((used_tokens * 100 / context_size))
+    # Format: ██████████ CtxUse: 133k/200k (66%) │ $0.83
+    local output="${color}${progress_bar}${RESET} CtxUse: ${ctx_display}/${size_display} (${color}${used_pct}%${RESET})"
+    if [[ -n "$cost" ]] && [[ "$cost" != "0" ]]; then
+        output="${output} │ ${YELLOW}\$${cost}${RESET}"
     fi
 
-    # Fallback: try used_percentage if available
-    if [[ $used_tokens -eq 0 ]]; then
-        used_pct=$(echo "$context_json" | jq -r '.used_percentage // 0')
-        used_tokens=$((context_size * used_pct / 100))
-    fi
-
-    # Validate percentage is within bounds (0-100)
-    if [[ $used_pct -lt 0 ]]; then used_pct=0; fi
-    if [[ $used_pct -gt 100 ]]; then used_pct=100; fi
-
-    # Calculate remaining and token counts
-    local remaining_pct=$((100 - used_pct))
-    local free_space=$((context_size - used_tokens))
-
-    # Autocompact buffer (22.5% of context window)
-    local autocompact_buffer=$((context_size * 225 / 1000))
-
-    local ctx_display=$(format_tokens "$used_tokens")
-    local size_display=$(format_tokens "$context_size")
-    local free_display=$(format_tokens "$free_space")
-    local buffer_display=$(format_tokens "$autocompact_buffer" true)
-
-    # Color coding
-    local color="$CYAN"
-    if [[ $used_pct -ge 85 ]]; then
-        color="$RED"
-    elif [[ $used_pct -ge 75 ]]; then
-        color="$YELLOW"
-    elif [[ $used_pct -ge 50 ]]; then
-        color="$GREEN"
-    fi
-
-    # Format: | CtxUse: 133k/200k tokens (66.6%)
-    printf '%b' "CtxUse:${RESET} ${ctx_display}/${size_display} tokens (${color}${used_pct}%${RESET})"
+    printf '%b' "$output"
 }
 
 # ============================================
@@ -485,9 +487,63 @@ context_info=$(echo "$stdin_data" | jq -r '.context_window // "{}"' 2>/dev/null)
 context_cumulative_display=""
 context_current_display=""
 
+# DEBUG v2.81.2: Log available context_window keys for troubleshooting
+if [[ -n "${STATUSLINE_DEBUG:-}" ]]; then
+    echo "$stdin_data" | jq '.context_window | keys' >> "${HOME}/.ralph/logs/statusline-context-keys.log" 2>/dev/null || true
+fi
+
+# Extract cost from stdin JSON (v2.81.0)
+session_cost=$(echo "$stdin_data" | jq -r 'try (.cost.total_cost_usd // 0 | . * 100 | floor / 100) catch 0' 2>/dev/null)
+
 if [[ -n "$context_info" ]] && [[ "$context_info" != "null" ]] && [[ "$context_info" != "{}" ]]; then
     context_cumulative_display=$(get_context_usage_cumulative "$context_info")
-    context_current_display=$(get_context_usage_current "$context_info")
+    context_current_display=$(get_context_usage_current "$context_info" "$session_cost")
+
+    # v2.81.2: Save context data to cache for validation script
+    context_size=$(echo "$context_info" | jq -r '.context_window_size // 200000')
+    total_input=$(echo "$context_info" | jq -r '.total_input_tokens // 0')
+    total_output=$(echo "$context_info" | jq -r '.total_output_tokens // 0')
+    cumulative_tokens=$((total_input + total_output))
+
+    # Calculate used tokens - PRIORITY: remaining_percentage > used_percentage > cumulative
+    local remaining_pct=$(echo "$context_info" | jq -r '.remaining_percentage // null')
+
+    if [[ -n "$remaining_pct" ]] && [[ "$remaining_pct" != "null" ]] && [[ "$remaining_pct" =~ ^[0-9]+$ ]]; then
+        # Use remaining_percentage (matches /context exactly)
+        used_pct=$((100 - remaining_pct))
+        used_tokens=$((context_size * used_pct / 100))
+    else
+        # Fallback to used_percentage
+        used_pct=$(echo "$context_info" | jq -r '.used_percentage // null')
+        if [[ -n "$used_pct" ]] && [[ "$used_pct" != "null" ]] && [[ "$used_pct" =~ ^[0-9]+$ ]]; then
+            used_tokens=$((context_size * used_pct / 100))
+        else
+            # Last resort: cumulative tokens clamped
+            if [[ $cumulative_tokens -gt $context_size ]]; then
+                used_tokens=$context_size
+                used_pct=100
+            elif [[ $cumulative_tokens -gt 0 ]]; then
+                used_tokens=$cumulative_tokens
+                used_pct=$((used_tokens * 100 / context_size))
+            else
+                used_pct=0
+                used_tokens=0
+            fi
+        fi
+    fi
+
+    # Write to cache for validation
+    mkdir -p /tmp 2>/dev/null
+    cat > /tmp/ralph-statusline-context.json << EOF
+{
+  "used_tokens": ${used_tokens},
+  "total_tokens": ${context_size},
+  "percentage": ${used_pct},
+  "cumulative_tokens": ${cumulative_tokens},
+  "remaining_percentage": ${remaining_pct:-null},
+  "timestamp": $(date +%s)
+}
+EOF
 fi
 
 # Get git info

@@ -5,7 +5,8 @@ Test Suite for Repository Learner Components (v1.0)
 Tests for github-repo-loader, pattern-extractor, best-practices-analyzer,
 and procedural-enricher components.
 
-VERSION: 1.0.0
+VERSION: 1.1.0
+UPDATED: 2026-02-13 - Added graceful skip when dependencies unavailable
 """
 
 import json
@@ -14,8 +15,23 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pytest
+
 # Load modules from ~/.claude/scripts
 SCRIPTS_DIR = Path.home() / '.claude' / 'scripts'
+
+# Check if required scripts exist
+REQUIRED_SCRIPTS = [
+    'github-repo-loader.py',
+    'pattern-extractor.py',
+    'best-practices-analyzer.py',
+    'procedural-enricher.py'
+]
+
+DEPENDENCIES_AVAILABLE = all(
+    (SCRIPTS_DIR / script).exists() for script in REQUIRED_SCRIPTS
+)
+
 
 def load_module(script_name: str):
     """Load a module from scripts directory."""
@@ -30,24 +46,46 @@ def load_module(script_name: str):
     sys.modules[module_name] = module
     return module
 
-# Load all modules
-github_repo_loader = load_module('github-repo-loader.py')
-pattern_extractor = load_module('pattern-extractor.py')
-best_practices_analyzer = load_module('best-practices-analyzer.py')
-procedural_enricher = load_module('procedural-enricher.py')
 
-# Import classes from loaded modules
-GitHubRepoLoader = github_repo_loader.GitHubRepoLoader
-FileContent = github_repo_loader.FileContent
-PatternExtractor = pattern_extractor.PatternExtractor
-Pattern = pattern_extractor.Pattern
-PythonPatternExtractor = pattern_extractor.PythonPatternExtractor
-TypeScriptPatternExtractor = pattern_extractor.TypeScriptPatternExtractor
-RustPatternExtractor = pattern_extractor.RustPatternExtractor
-GoPatternExtractor = pattern_extractor.GoPatternExtractor
-BestPracticesAnalyzer = best_practices_analyzer.BestPracticesAnalyzer
-AnalyzedPattern = best_practices_analyzer.AnalyzedPattern
-ProceduralEnricher = procedural_enricher.ProceduralEnricher
+# Skip all tests in this module if dependencies are not available
+pytestmark = pytest.mark.skipif(
+    not DEPENDENCIES_AVAILABLE,
+    reason=f"Required scripts not found in {SCRIPTS_DIR}: {REQUIRED_SCRIPTS}"
+)
+
+# Only load modules if dependencies are available
+if DEPENDENCIES_AVAILABLE:
+    # Load all modules
+    github_repo_loader = load_module('github-repo-loader.py')
+    pattern_extractor = load_module('pattern-extractor.py')
+    best_practices_analyzer = load_module('best-practices-analyzer.py')
+    procedural_enricher = load_module('procedural-enricher.py')
+
+    # Import classes from loaded modules
+    GitHubRepoLoader = github_repo_loader.GitHubRepoLoader
+    FileContent = github_repo_loader.FileContent
+    PatternExtractor = pattern_extractor.PatternExtractor
+    Pattern = pattern_extractor.Pattern
+    PythonPatternExtractor = pattern_extractor.PythonPatternExtractor
+    TypeScriptPatternExtractor = pattern_extractor.TypeScriptPatternExtractor
+    RustPatternExtractor = pattern_extractor.RustPatternExtractor
+    GoPatternExtractor = pattern_extractor.GoPatternExtractor
+    BestPracticesAnalyzer = best_practices_analyzer.BestPracticesAnalyzer
+    AnalyzedPattern = best_practices_analyzer.AnalyzedPattern
+    ProceduralEnricher = procedural_enricher.ProceduralEnricher
+else:
+    # Define placeholder classes for type hints
+    GitHubRepoLoader = None
+    FileContent = None
+    PatternExtractor = None
+    Pattern = None
+    PythonPatternExtractor = None
+    TypeScriptPatternExtractor = None
+    RustPatternExtractor = None
+    GoPatternExtractor = None
+    BestPracticesAnalyzer = None
+    AnalyzedPattern = None
+    ProceduralEnricher = None
 
 
 class TestGitHubRepoLoader(unittest.TestCase):
@@ -597,6 +635,11 @@ async def fetch_user(user_id: int) -> User:
 
 def main():
     """Run all tests."""
+    if not DEPENDENCIES_AVAILABLE:
+        print(f"SKIP: Required scripts not found in {SCRIPTS_DIR}")
+        print(f"Missing: {[s for s in REQUIRED_SCRIPTS if not (SCRIPTS_DIR / s).exists()]}")
+        return 0  # Exit gracefully
+
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
 

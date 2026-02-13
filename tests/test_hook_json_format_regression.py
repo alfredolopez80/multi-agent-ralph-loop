@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
 """
 test_hook_json_format_regression.py - CRITICAL Regression Tests for Hook JSON Formats
-VERSION: 2.57.3
+VERSION: 2.84.1
+UPDATED: 2026-02-13 - Updated for v2.84.1 hook format with hookSpecificOutput wrapper
 
 This test file exists because of a critical incident where incorrect JSON format
 expectations in tests caused hooks to be "fixed" with WRONG formats, leading to
 a cascade of back-and-forth corrections.
 
 CRITICAL FORMAT RULES (per OFFICIAL Claude Code documentation):
-- PreToolUse: {"decision": "allow"} or {"decision": "block", "reason": "..."}
+- PreToolUse: {"permissionDecision": "allow"} or with hookSpecificOutput wrapper
 - PostToolUse: {"continue": true} or {"continue": true, "systemMessage": "..."}
 - UserPromptSubmit: {} or {"additionalContext": "..."}
 - PreCompact: {"continue": true}
 - Stop: {"decision": "approve"} or {"decision": "approve", "reason": "..."}
 - SessionStart: Plain text (no JSON required)
 - The string "continue" is NEVER valid for the "decision" field!
+
+v2.81.2 UPDATE: Hooks now use hookSpecificOutput wrapper for some events:
+- PreToolUse: {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}
+- This is the CORRECT format as of v2.81.2
 
 Reference: tests/HOOK_FORMAT_REFERENCE.md
 Source: Claude Code official documentation via Context7 MCP
@@ -73,7 +78,7 @@ def get_hook_type(hook_name: str, settings_json: dict = None) -> str:
     2. UserPromptSubmit hooks (use {} or {"additionalContext": ...})
     3. SessionStart hooks (plain text, no JSON required)
     4. PreCompact hooks (use {"continue": true})
-    5. PreToolUse hooks (use {"decision": "allow/block"})
+    5. PreToolUse hooks (use {"permissionDecision": "allow/block"} or {"hookSpecificOutput": {...}})
     6. Default: PostToolUse (use {"continue": true})
     """
     # Load settings.json if not provided
@@ -97,7 +102,8 @@ def get_hook_type(hook_name: str, settings_json: dict = None) -> str:
 
     # Fallback to static classification (for missing hooks or offline testing)
     # Stop hooks (use {"decision": "approve/block"})
-    if any(x in hook_name for x in ['stop-', 'sentry-report', 'reflection-engine',
+    # NOTE: stop-slop-hook.sh is NOT a Stop hook - it's a PostToolUse quality check hook
+    if any(x in hook_name for x in ['stop-verification', 'sentry-report', 'reflection-engine',
                                       'semantic-auto-extractor', 'continuous-learning',
                                       'orchestrator-report', 'project-backup-metadata']):
         return 'Stop'
@@ -119,7 +125,7 @@ def get_hook_type(hook_name: str, settings_json: dict = None) -> str:
     elif 'pre-compact' in hook_name:
         return 'PreCompact'
 
-    # PreToolUse hooks (use {"decision": "allow/block"})
+    # PreToolUse hooks (use {"permissionDecision": "allow/block"} or hookSpecificOutput)
     # Note: This list is now a fallback for offline testing when settings.json is unavailable
     elif any(x in hook_name for x in [
         'repo-boundary-guard', 'git-safety-guard', 'skill-validator',
@@ -134,6 +140,26 @@ def get_hook_type(hook_name: str, settings_json: dict = None) -> str:
     # Default: PostToolUse (use {"continue": true})
     else:
         return 'PostToolUse'
+
+
+def is_valid_pretooluse_output(output: dict) -> bool:
+    """Check if output is valid PreToolUse format (v2.81.2+).
+
+    Valid formats:
+    - {"permissionDecision": "allow"}
+    - {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}
+    """
+    # Direct permissionDecision format
+    if output.get("permissionDecision") in ("allow", "block"):
+        return True
+
+    # hookSpecificOutput wrapper format (v2.81.2+)
+    if "hookSpecificOutput" in output:
+        hso = output["hookSpecificOutput"]
+        if hso.get("permissionDecision") in ("allow", "block"):
+            return True
+
+    return False
 
 
 class TestCriticalFormatRegression:
@@ -151,6 +177,7 @@ class TestCriticalFormatRegression:
         for hooks_dir in [HOOKS_DIR, PROJECT_HOOKS_DIR]:
             if hooks_dir.exists():
                 hooks.extend(hooks_dir.glob("*.sh"))
+                hooks.extend(hooks_dir.glob("*.py"))
         return hooks
 
     @pytest.fixture
@@ -224,14 +251,14 @@ class TestCriticalFormatRegression:
     def test_posttooluse_hooks_use_continue(self, all_hooks):
         """PostToolUse hooks must use {"continue": true/false}, NOT {"decision": ...}.
 
-        NOTE: PreToolUse hooks CORRECTLY use {"decision": "allow/block"} - this is NOT an error!
+        NOTE: PreToolUse hooks CORRECTLY use {"permissionDecision": "allow/block"} - this is NOT an error!
         This test only checks PostToolUse hooks.
         """
         violations = []
 
         for hook_path in all_hooks:
             hook_type = get_hook_type(hook_path.name)
-            # Only check PostToolUse hooks - PreToolUse correctly uses "decision"
+            # Only check PostToolUse hooks - PreToolUse correctly uses "permissionDecision"
             if hook_type != 'PostToolUse':
                 continue
 
@@ -254,7 +281,7 @@ class TestCriticalFormatRegression:
             f"POSTTOOLUSE FORMAT ERROR: {len(violations)} hook(s) use wrong format!\n"
             f"Violations:\n" + "\n".join(f"  - {v}" for v in violations) + "\n\n"
             f"PostToolUse hooks MUST use: {{\"continue\": true/false}}\n"
-            f"PreToolUse hooks correctly use: {{\"decision\": \"allow/block\"}}\n"
+            f"PreToolUse hooks correctly use: {{\"permissionDecision\": \"allow/block\"}}\n"
             f"Reference: tests/HOOK_FORMAT_REFERENCE.md"
         )
 
@@ -288,7 +315,7 @@ class TestRuntimeFormatValidation:
 
     @pytest.mark.parametrize("hook_name", [
         # NOTE: inject-session-context.sh and procedural-inject.sh are PreToolUse hooks
-        # (registered under PreToolUse:Task) - they correctly use {"decision": "allow"}
+        # (registered under PreToolUse:Task) - they correctly use {"permissionDecision": "allow"}
         # Only test ACTUAL PostToolUse hooks here:
         "quality-gates-v2.sh",
         "status-auto-check.sh",
@@ -299,6 +326,8 @@ class TestRuntimeFormatValidation:
     def test_posttooluse_hooks_output_continue_format(self, hook_name, test_input_posttooluse):
         """Verify PostToolUse hooks output {"continue": true/false} format."""
         hook_path = HOOKS_DIR / hook_name
+        if not hook_path.exists():
+            hook_path = PROJECT_HOOKS_DIR / hook_name
         if not hook_path.exists():
             pytest.skip(f"Hook not found: {hook_name}")
 
@@ -329,12 +358,50 @@ class TestRuntimeFormatValidation:
             )
 
     @pytest.mark.parametrize("hook_name", [
+        "git-safety-guard.py",
+    ])
+    def test_pretooluse_hooks_output_permission_decision(self, hook_name):
+        """Verify PreToolUse hooks output {"permissionDecision": "allow/block"} format (v2.81.2+)."""
+        hook_path = PROJECT_HOOKS_DIR / hook_name
+        if not hook_path.exists():
+            hook_path = HOOKS_DIR / hook_name
+        if not hook_path.exists():
+            pytest.skip(f"Hook not found: {hook_name}")
+
+        test_input = json.dumps({
+            "tool_name": "Bash",
+            "tool_input": {"command": "echo test"},
+            "session_id": "test-session"
+        })
+
+        exit_code, stdout, stderr = run_hook(hook_path, test_input)
+
+        # Should not crash
+        assert exit_code == 0, f"Hook crashed: {stderr}"
+
+        # Extract JSON
+        output = extract_json_from_output(stdout)
+
+        if output is None:
+            pytest.fail(f"PreToolUse hook {hook_name} did not output JSON")
+
+        # v2.81.2+: Accept either direct permissionDecision or hookSpecificOutput wrapper
+        assert is_valid_pretooluse_output(output), (
+            f"PreToolUse hook {hook_name} has invalid output format.\n"
+            f"Output: {output}\n"
+            f"Expected: {{\"permissionDecision\": \"allow\"}} or "
+            f"{{\"hookSpecificOutput\": {{\"permissionDecision\": \"allow\"}}}}"
+        )
+
+    @pytest.mark.parametrize("hook_name", [
         "stop-verification.sh",
         "sentry-report.sh",
     ])
     def test_stop_hooks_output_decision_format(self, hook_name, test_input_stop):
         """Verify Stop hooks output {"decision": "approve"/"block"} format."""
         hook_path = HOOKS_DIR / hook_name
+        if not hook_path.exists():
+            hook_path = PROJECT_HOOKS_DIR / hook_name
         if not hook_path.exists():
             pytest.skip(f"Hook not found: {hook_name}")
 

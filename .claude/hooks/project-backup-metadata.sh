@@ -1,6 +1,6 @@
 #!/bin/bash
 # project-backup-metadata.sh - SessionStart/Stop hooks for project metadata backup
-# VERSION: 2.69.0
+# VERSION: 2.85.0
 #
 # Purpose: Track project sessions globally for multi-project task tracking.
 #          Enables viewing task history across different repositories.
@@ -265,14 +265,14 @@ case "$HOOK_TYPE" in
             save_current_session "$PROJECT_JSON" "$SESSION_ID" "$START_TIME"
 
             REPO_NAME=$(jq -r '.repo' <<< "$PROJECT_JSON")
-            echo ""
-            echo "📁 Project: $REPO_NAME"
-            echo "📂 Path: $(jq -r '.path' <<< "$PROJECT_JSON")"
-            echo "🌿 Branch: $(jq -r '.branch' <<< "$PROJECT_JSON")"
-            echo "🆔 Session: $SESSION_ID"
-            echo ""
+            PROJECT_PATH=$(jq -r '.path' <<< "$PROJECT_JSON")
+            BRANCH=$(jq -r '.branch' <<< "$PROJECT_JSON")
+
+            # v2.85: SessionStart hooks must use hookSpecificOutput wrapper
+            CONTEXT="📁 Project: $REPO_NAME\\n📂 Path: $PROJECT_PATH\\n🌿 Branch: $BRANCH\\n🆔 Session: $SESSION_ID"
+            echo "{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"$CONTEXT\"}}"
         else
-            echo "⚠️ Not in a git repository - project tracking disabled"
+            echo '{"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "⚠️ Not in a git repository - project tracking disabled"}}'
         fi
         ;;
 
