@@ -47,6 +47,10 @@ Based on @PerceptualPeak Smart Forking concept:
 
 # Via CLI
 ralph orch "Migrate database from MySQL to PostgreSQL"
+
+# With GLM-5 teammates for faster parallel execution
+/orchestrator "Implement auth system" --with-glm5
+/orchestrator "Refactor database layer" --with-glm5 --teammates coder,reviewer
 ```
 
 ## Core Workflow (v2.52.0 - 8 Major Steps, 23 Sub-steps)
@@ -418,4 +422,97 @@ ralph memory-stats
 ralph orch "task description"
 ralph gates
 ralph adversarial "spec"
+
+# With GLM-5 teammates
+ralph orch "task description" --with-glm5
+ralph orch "complex feature" --with-glm5 --teammates coder,reviewer,tester
 ```
+
+## GLM-5 Integration (--with-glm5)
+
+Spawn GLM-5 teammates for faster parallel execution during orchestration.
+
+### Usage
+
+```bash
+# Basic GLM-5 orchestration
+/orchestrator "Implement auth system" --with-glm5
+
+# With specific teammates
+/orchestrator "Refactor database layer" --with-glm5 --teammates coder,reviewer
+
+# Full team for complex tasks
+/orchestrator "Build payment module" --with-glm5 --teammates coder,reviewer,tester,orchestrator
+```
+
+### Available Teammates
+
+| Teammate | Role | Best For |
+|----------|------|----------|
+| `coder` | Implementation | Writing code, fixing bugs |
+| `reviewer` | Code Review | Quality checks, security |
+| `tester` | Test Generation | Unit tests, coverage |
+| `orchestrator` | Coordination | Complex multi-step tasks |
+
+### How It Works
+
+When `--with-glm5` is specified:
+
+1. **Step 5 (DELEGATE)**: Spawns GLM-5 teammates instead of Claude subagents
+2. **Step 6 (EXECUTE)**: GLM-5 teammates execute in parallel with thinking mode
+3. **Hook Integration**: `glm5-subagent-stop.sh` handles teammate completion
+4. **Storage**: Results in `.ralph/teammates/` and `.ralph/reasoning/`
+
+### Benefits
+
+- **Speed**: 2-3x faster for parallelizable tasks
+- **Cost**: Lower API costs than Claude for repetitive work
+- **Thinking Mode**: GLM-5 provides reasoning for transparency
+- **Scalability**: Multiple teammates work simultaneously
+
+### Example Session
+
+```
+User: /orchestrator "Implement user authentication" --with-glm5
+
+Step 0: Classify -> Complexity: 7, STANDARD route
+Step 1: Clarify -> Requirements gathered
+Step 3: Plan -> Created implementation plan
+
+Step 5: DELEGATE (GLM-5)
+  🤖 Spawning teammates: coder, reviewer, tester
+
+  [coder] Implementing auth middleware...
+  [reviewer] Reviewing security patterns...
+  [tester] Generating auth tests...
+
+Step 6: EXECUTE (Parallel)
+  ✅ coder: Auth middleware complete
+  ✅ reviewer: 2 security suggestions
+  ✅ tester: 15 tests generated
+
+Step 7: VALIDATE
+  ✅ All quality gates passed
+
+Step 8: RETROSPECTIVE
+  📝 Learnings saved to memory
+
+✅ VERIFIED_DONE
+```
+
+### Bash Commands
+
+```bash
+# Spawn GLM-5 teammate
+.claude/scripts/glm5-teammate.sh <role> "<task>" "<task_id>"
+
+# Check teammate status
+cat .ralph/teammates/<task_id>/status.json
+
+# View reasoning
+cat .ralph/reasoning/<task_id>.txt
+
+# Initialize GLM-5 team
+.claude/scripts/glm5-init-team.sh
+```
+
