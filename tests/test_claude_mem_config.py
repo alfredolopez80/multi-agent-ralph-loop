@@ -260,6 +260,85 @@ class TestZshrcConfiguration:
         )
 
 
+class TestClaudeMemHooksJson:
+    """Test claude-mem hooks.json configuration."""
+
+    @pytest.fixture
+    def plugin_root(self):
+        """Get CLAUDE_PLUGIN_ROOT path."""
+        root = os.environ.get("CLAUDE_PLUGIN_ROOT")
+        if not root:
+            pytest.skip("CLAUDE_PLUGIN_ROOT not set")
+        return Path(root)
+
+    def test_hooks_json_exists(self, plugin_root):
+        """hooks.json should exist in the hooks directory."""
+        hooks_json = plugin_root / "hooks" / "hooks.json"
+        assert hooks_json.exists(), f"hooks.json not found: {hooks_json}"
+
+    def test_hooks_json_not_using_node_bun_runner(self, plugin_root):
+        """hooks.json should NOT use node bun-runner.js wrapper.
+
+        The bun-runner.js wrapper was causing issues because it didn't
+        preserve the current working directory, which the worker uses
+        to detect the project name.
+
+        Fix: Use 'bun' directly instead of 'node bun-runner.js'
+        """
+        hooks_json = plugin_root / "hooks" / "hooks.json"
+        if not hooks_json.exists():
+            pytest.skip(f"hooks.json not found: {hooks_json}")
+
+        content = hooks_json.read_text()
+
+        # Check that we're NOT using the broken node bun-runner.js pattern
+        assert 'node " ' not in content.lower() or "bun-runner.js" not in content, (
+            "hooks.json is using the broken 'node bun-runner.js' pattern. "
+            "This causes project detection to fail. Use 'bun' directly instead."
+        )
+
+    def test_hooks_json_uses_bun_directly(self, plugin_root):
+        """hooks.json should use bun directly for worker commands."""
+        hooks_json = plugin_root / "hooks" / "hooks.json"
+        if not hooks_json.exists():
+            pytest.skip(f"hooks.json not found: {hooks_json}")
+
+        content = hooks_json.read_text()
+
+        # Check that we're using bun directly (escaped quote in JSON)
+        assert 'bun \\"' in content or 'bun "' in content, (
+            "hooks.json should use 'bun' directly for worker commands. "
+            "Pattern: bun \"${CLAUDE_PLUGIN_ROOT}/scripts/worker-service.cjs\" ..."
+        )
+
+    def test_hooks_json_session_start_has_context_hook(self, plugin_root):
+        """SessionStart should have the context hook for injecting claude-mem context."""
+        import json
+
+        hooks_json = plugin_root / "hooks" / "hooks.json"
+        if not hooks_json.exists():
+            pytest.skip(f"hooks.json not found: {hooks_json}")
+
+        content = json.loads(hooks_json.read_text())
+
+        session_start = content.get("hooks", {}).get("SessionStart", [])
+        assert len(session_start) > 0, "SessionStart hooks not found"
+
+        # Check that there's a context hook
+        has_context_hook = False
+        for hook_group in session_start:
+            for hook in hook_group.get("hooks", []):
+                command = hook.get("command", "")
+                if "context" in command:
+                    has_context_hook = True
+                    break
+
+        assert has_context_hook, (
+            "SessionStart should have a hook that generates context. "
+            "Pattern: ... hook claude-code context"
+        )
+
+
 class TestClaudeMemDatabase:
     """Test claude-mem SQLite database."""
 
