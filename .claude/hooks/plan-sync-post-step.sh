@@ -215,3 +215,7 @@ EOF
 fi
 
 log "Plan-Sync post-step check completed"
+
+# v2.87.0 FIX: Always output JSON for PostToolUse hooks
+trap - ERR EXIT
+echo '{"continue": true}'

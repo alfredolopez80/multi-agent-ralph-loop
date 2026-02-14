@@ -24,7 +24,8 @@ INPUT=$(head -c 100000)
 set -euo pipefail
 
 # Error trap for guaranteed JSON output (v2.62.3)
-trap 'echo "{}"' ERR EXIT
+# v2.87.0 FIX: UserPromptSubmit uses {"continue": true} format, not {}
+trap 'echo "{\"continue\": true}"' ERR EXIT
 
 umask 077
 
@@ -267,7 +268,7 @@ main() {
     if [[ -z "$prompt" ]] || [[ "$prompt" == "null" ]]; then
         log "No prompt provided, skipping"
         trap - EXIT  # CRIT-007: Clear trap before explicit output
-        echo '{}'
+        echo '{"continue": true}'
         exit 0
     fi
 
@@ -311,7 +312,7 @@ main() {
     if [[ "$complexity_mode" == "ORCHESTRATOR" ]]; then
         log "Orchestrator task detected, deferring plan-state creation"
         trap - EXIT  # CRIT-007: Clear trap before explicit output
-        echo '{}'
+        echo '{"continue": true}'
         exit 0
     fi
 
@@ -343,7 +344,7 @@ main() {
     else
         log "Failed to create plan-state"
         trap - EXIT  # CRIT-007: Clear trap before explicit output
-        echo '{}'
+        echo '{"continue": true}'
     fi
 }
 

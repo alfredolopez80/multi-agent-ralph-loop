@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.43.0
+# VERSION: 2.87.0
 name: security
 description: "Security audit with Codex + MiniMax second opinion Use when: (1) /security is invoked, (2) task relates to security functionality."
 user-invocable: true

@@ -1,10 +1,9 @@
-<!--
-name: 'Skill: Senior Software Engineer'
-description: Global skill that enforces senior software engineering best practices
-ccVersion: 2.83.1
-variables:
-  - TASK_TOOL_NAME
--->
+---
+# VERSION: 2.87.0
+name: senior-software-engineer
+description: "Global skill enforcing senior software engineering best practices"
+user-invocable: true
+---
 
 # SENIOR SOFTWARE ENGINEER - Global Skill
 

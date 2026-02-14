@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.43.0
+# VERSION: 2.87.0
 name: parallel
 description: "Run multiple Ralph loops concurrently for independent tasks. Manages parallel agent execution with proper isolation and result aggregation. Use when: (1) multiple independent fixes needed, (2) parallel reviews required, (3) batch processing tasks. Triggers: /parallel, 'parallel loops', 'concurrent execution', 'run in parallel', 'batch'."
 context: fork

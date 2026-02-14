@@ -163,13 +163,16 @@ FULL_CONTEXT="${CONTEXT_HEADER}${MATCHING_RULES}${CONTEXT_FOOTER}"
 
 # Use jq for safe JSON construction - jq will properly escape the \n sequences
 # Note: Using --rawfile or direct string keeps \n as literal characters
-# v2.70.0: PreToolUse hooks use {"hookSpecificOutput": {"permissionDecision": "allow"}}, NOT {"decision": "allow"}
+# v2.87.0 FIX: PreToolUse hooks MUST use hookSpecificOutput wrapper
 FEEDBACK_RESULT=$(jq -c -n --arg rules "$FULL_CONTEXT" \
     --argjson rules_matched "$MATCH_COUNT" \
     --arg ts "$(date -Iseconds)" \
     '{
-        decision: "allow",
-        additionalContext: $rules,
+        hookSpecificOutput: {
+            hookEventName: "PreToolUse",
+            permissionDecision: "allow",
+            additionalContext: $rules
+        },
         procedural_injection: {
             rules_matched: $rules_matched,
             timestamp: $ts

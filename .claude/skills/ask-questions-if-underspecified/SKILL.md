@@ -1,4 +1,9 @@
-# VERSION: 2.43.0
+---
+# VERSION: 2.87.0
+name: ask-questions-if-underspecified
+description: "Ask clarifying questions when requirements are underspecified"
+user-invocable: true
+---
 
 # Skill: Ask Questions If Underspecified
 

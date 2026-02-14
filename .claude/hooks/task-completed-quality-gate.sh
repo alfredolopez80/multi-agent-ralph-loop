@@ -100,10 +100,12 @@ if [[ -n "$files_modified" ]] && [[ "$files_modified" != "[]" ]]; then
 fi
 
 # Output decision
+# v2.87.0 FIX: TaskCompleted uses {"continue": true|false} format, NOT {"decision": "..."}
 if [[ -n "$BLOCKING_ISSUES" ]]; then
     feedback=$(echo -e "$BLOCKING_ISSUES" | tr '\n' ' ' | sed 's/\\n/ /g')
+    feedback_escaped=$(echo "Please resolve before marking complete: $feedback" | jq -Rs '.')
     cat <<EOF
-{"decision": "request_changes", "reason": "Task incomplete", "feedback": "Please resolve before marking complete: $feedback"}
+{"continue": false, "reason": "Task incomplete", "feedback": $feedback_escaped}
 EOF
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] TaskCompleted BLOCKED: ${task_id} - $feedback" >> "$LOG_DIR/agent-teams.log"
     exit 2
@@ -115,7 +117,7 @@ fi
 
 # All checks passed
 cat <<EOF
-{"decision": "approve", "reason": "All acceptance criteria verified"}
+{"continue": true, "reason": "All acceptance criteria verified"}
 EOF
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] TaskCompleted APPROVED: ${task_id}" >> "$LOG_DIR/agent-teams.log"
 exit 0

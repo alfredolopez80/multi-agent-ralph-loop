@@ -18,7 +18,8 @@ INPUT=$(head -c 100000)
 set -euo pipefail
 
 # SEC-006: Guaranteed JSON output on any error (CRIT-002 + CRIT-003 fix)
-trap 'echo "{\"decision\": \"allow\"}"' ERR EXIT
+# v2.87.0 FIX: Use hookSpecificOutput wrapper for PreToolUse hooks
+trap 'echo "{\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"allow\"}"' ERR EXIT
 
 # Configuration
 PLAN_STATE=".claude/plan-state.json"
@@ -143,5 +144,6 @@ fi
 log "LSA pre-check completed for step $CURRENT_STEP"
 
 # v2.69.0: PreToolUse hooks output JSON with additionalContext (instead of stderr)
+# v2.87.0 FIX: Use hookSpecificOutput wrapper for PreToolUse hooks
 trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-echo "{\"decision\": \"allow\", \"additionalContext\": \"$LSA_CONTEXT\"}"
+echo "{\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"allow\", \"additionalContext\": \"$LSA_CONTEXT\"}}"

@@ -31,8 +31,8 @@ INPUT=$(head -c 100000)
 
 set -euo pipefail
 
-# SEC-006: Guaranteed JSON output on any error
-trap 'echo "{\"continue\": true}"' ERR EXIT
+# SEC-006: Guaranteed JSON output on any error (ERR only, not EXIT)
+trap 'echo "{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"Error during context restoration\"}}"' ERR
 
 LOG_FILE="${HOME}/.ralph/logs/post-compact.log"
 SESSION_FILE="${HOME}/.ralph/.current-session"
@@ -158,16 +158,16 @@ else
     CONTEXT+="No previous context found. Starting fresh.\n\n"
 fi
 
-# Output the context for the user
-# Note: PostCompact hooks cannot inject context via hookSpecificOutput
-# They can only output to stdout/stderr, which will be visible to the user
-echo ""
-echo "$CONTEXT"
-echo ""
+# Output the context via hookSpecificOutput (SessionStart format)
+# v2.87.0 FIX: SessionStart hooks MUST use hookSpecificOutput for context injection
+# Clear error trap and output proper JSON
+trap - ERR EXIT
+
+# Escape context for JSON using jq
+ESCAPED_CONTEXT=$(echo -e "$CONTEXT" | jq -Rs '.' 2>/dev/null || echo '""')
+
+# Output with hookSpecificOutput wrapper for SessionStart
+echo "{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": $ESCAPED_CONTEXT}}"
 
 # Log completion
 log "PostCompact hook completed - context restored: $FOUND_CONTEXT"
-
-# Clear error trap and output success JSON
-trap - ERR EXIT
-echo '{"continue": true}'

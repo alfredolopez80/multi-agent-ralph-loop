@@ -4,12 +4,14 @@
 # Date: 2026-02-14
 # Purpose: Prevent regressions in the unified skills model
 #
+# Validates compliance with:
+# - https://code.claude.com/docs/en/skills
+# - https://code.claude.com/docs/en/agent-teams
+# - https://code.claude.com/docs/en/sub-agents
+# - https://code.claude.com/docs/en/hooks-guide
+#
 # Usage:
 #   ./tests/unit/test-skills-unification-v2.87.sh [--verbose] [--fix]
-#
-# Options:
-#   --verbose  Show detailed output for each test
-#   --fix      Attempt to fix minor issues automatically
 #
 # Exit codes:
 #   0 - All tests passed (100%)
@@ -23,6 +25,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 GLOBAL_SKILLS="$HOME/.claude/skills"
 GLOBAL_COMMANDS="$HOME/.claude/commands"
+SETTINGS_FILE="$HOME/.claude/settings.json"
 EXPECTED_VERSION="2.87.0"
 
 # Colors
@@ -105,10 +108,17 @@ RALPH_OPTIONAL_SKILLS=(
     "vercel-react-best-practices"
 )
 
+# Required hooks per Claude Code docs
+REQUIRED_HOOKS=(
+    "git-safety-guard.py:PreToolUse:Bash"
+    "repo-boundary-guard.sh:PreToolUse:Bash"
+    "session-end-handoff.sh:SessionEnd"
+    "post-compact-restore.sh:SessionStart"
+)
+
 #######################################
 # Test utility functions
 #######################################
-
 print_header() {
     echo ""
     echo -e "${BOLD}${CYAN}═══════════════════════════════════════════════════════════════${NC}"
@@ -202,10 +212,10 @@ test_repo_skills_structure() {
 }
 
 #######################################
-# Test 2: SKILL.md Frontmatter Validation
+# Test 2: SKILL.md Frontmatter Validation (Claude Code Standard)
 #######################################
 test_skill_frontmatter() {
-    print_header "Test 2: SKILL.md Frontmatter Validation"
+    print_header "Test 2: SKILL.md Frontmatter Validation (Claude Code Standard)"
 
     for skill in "${RALPH_CORE_SKILLS[@]}"; do
         local skill_file="$REPO_ROOT/.claude/skills/$skill/SKILL.md"
@@ -214,28 +224,42 @@ test_skill_frontmatter() {
             continue
         fi
 
-        # Check for frontmatter
-        print_test "Skill '$skill' has YAML frontmatter"
+        # Check for YAML frontmatter (--- at start)
+        print_test "Skill '$skill' has YAML frontmatter (---)"
         if head -1 "$skill_file" | grep -q "^---$"; then
             pass
         else
-            fail "Missing YAML frontmatter delimiter '---'"
+            fail "Missing YAML frontmatter delimiter '---' at start of file"
         fi
 
-        # Check for version field
-        print_test "Skill '$skill' has VERSION field"
-        if grep -q "^# VERSION:" "$skill_file" || grep -q "^version:" "$skill_file"; then
-            pass
-        else
-            warn "Missing VERSION field in frontmatter"
+        # Check for version field (VERSION comment or version field)
+        print_test "Skill '$skill' has VERSION"
+        local version=""
+        version=$(grep -E "^# VERSION:" "$skill_file" 2>/dev/null | head -1 | sed 's/# VERSION:[[:space:]]*//' | tr -d ' ')
+        if [[ -z "$version" ]]; then
+            version=$(grep -E "^version:" "$skill_file" 2>/dev/null | head -1 | sed 's/version:[[:space:]]*//' | tr -d ' "' | tr -d "'")
         fi
 
-        # Check for description
-        print_test "Skill '$skill' has description"
-        if grep -qiE "^# (DESCRIPTION|Name):|^description:|^name:" "$skill_file"; then
+        if [[ -n "$version" ]]; then
             pass
         else
-            warn "Missing description in SKILL.md"
+            fail "Missing VERSION field"
+        fi
+
+        # Check for name field
+        print_test "Skill '$skill' has 'name' field"
+        if grep -qE "^name:" "$skill_file" 2>/dev/null; then
+            pass
+        else
+            warn "Missing 'name' field (recommended by Claude Code docs)"
+        fi
+
+        # Check for description field
+        print_test "Skill '$skill' has 'description' field"
+        if grep -qE "^description:" "$skill_file" 2>/dev/null; then
+            pass
+        else
+            warn "Missing 'description' field (recommended by Claude Code docs)"
         fi
     done
 }
@@ -313,19 +337,12 @@ test_no_duplicate_commands() {
 }
 
 #######################################
-# Test 5: Version Consistency
+# Test 5: Version Consistency (STRICT)
 #######################################
 test_version_consistency() {
-    print_header "Test 5: Version Consistency"
+    print_header "Test 5: Version Consistency (STRICT - All v2.87.0)"
 
-    local core_skills_with_version=(
-        "orchestrator"
-        "loop"
-        "gates"
-        "adversarial"
-    )
-
-    for skill in "${core_skills_with_version[@]}"; do
+    for skill in "${RALPH_CORE_SKILLS[@]}"; do
         local skill_file="$REPO_ROOT/.claude/skills/$skill/SKILL.md"
 
         if [[ ! -f "$skill_file" ]]; then
@@ -344,7 +361,7 @@ test_version_consistency() {
         if [[ "$version" == "$EXPECTED_VERSION" ]]; then
             pass
         elif [[ -n "$version" ]]; then
-            warn "Version is $version (expected: $EXPECTED_VERSION)"
+            fail "Version is $version (expected: $EXPECTED_VERSION)"
         else
             fail "Cannot determine version"
         fi
@@ -388,8 +405,6 @@ test_no_backup_folders() {
 test_no_empty_skills() {
     print_header "Test 7: No Empty Skill Directories"
 
-    local empty_count=0
-
     for skill in "${RALPH_CORE_SKILLS[@]}"; do
         local skill_dir="$REPO_ROOT/.claude/skills/$skill"
 
@@ -402,7 +417,6 @@ test_no_empty_skills() {
                 pass
             else
                 fail "Empty directory: $skill_dir"
-                ((empty_count++))
             fi
         fi
     done
@@ -417,6 +431,7 @@ test_architecture_docs() {
     local docs=(
         "$REPO_ROOT/docs/architecture/UNIFIED_ARCHITECTURE_v2.87.md"
         "$REPO_ROOT/docs/architecture/SKILLS_COMMANDS_UNIFICATION_v2.87.md"
+        "$REPO_ROOT/docs/architecture/REMEDIATION_PLAN_v2.87.md"
     )
 
     for doc in "${docs[@]}"; do
@@ -437,43 +452,65 @@ test_architecture_docs() {
 }
 
 #######################################
-# Test 9: Settings Registration
+# Test 9: Settings Configuration (Hooks + Agent Teams)
 #######################################
 test_settings_registration() {
-    print_header "Test 9: Settings Configuration"
-
-    local settings_file="$HOME/.claude/settings.json"
+    print_header "Test 9: Settings Configuration (Hooks + Agent Teams)"
 
     print_test "settings.json exists"
-    if [[ -f "$settings_file" ]]; then
+    if [[ -f "$SETTINGS_FILE" ]]; then
         pass
     else
-        fail "Missing: $settings_file"
+        fail "Missing: $SETTINGS_FILE"
         return
     fi
 
     print_test "settings.json is valid JSON"
-    if python3 -c "import json; json.load(open('$settings_file'))" 2>/dev/null; then
+    if python3 -c "import json; json.load(open('$SETTINGS_FILE'))" 2>/dev/null; then
         pass
     else
-        fail "Invalid JSON in $settings_file"
+        fail "Invalid JSON in $SETTINGS_FILE"
         return
+    fi
+
+    # Check for Agent Teams environment variable
+    print_test "Agent Teams environment configured"
+    if grep -q "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS" "$SETTINGS_FILE" 2>/dev/null; then
+        pass
+    else
+        warn "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS not configured"
     fi
 
     # Check for critical hooks registration
     local critical_hooks=("git-safety-guard.py" "repo-boundary-guard.sh")
     for hook in "${critical_hooks[@]}"; do
         print_test "Hook '$hook' registered in settings"
-        if grep -q "$hook" "$settings_file" 2>/dev/null; then
+        if grep -q "$hook" "$SETTINGS_FILE" 2>/dev/null; then
             pass
         else
             warn "Hook not registered: $hook"
         fi
     done
+
+    # Check for Session lifecycle hooks
+    print_test "Session lifecycle hooks configured"
+    if grep -q "SessionEnd" "$SETTINGS_FILE" 2>/dev/null && grep -q "SessionStart" "$SETTINGS_FILE" 2>/dev/null; then
+        pass
+    else
+        warn "Session lifecycle hooks incomplete"
+    fi
+
+    # Check for Subagent hooks
+    print_test "Subagent hooks configured"
+    if grep -q "SubagentStart" "$SETTINGS_FILE" 2>/dev/null || grep -q "SubagentStop" "$SETTINGS_FILE" 2>/dev/null; then
+        pass
+    else
+        warn "Subagent hooks not configured"
+    fi
 }
 
 #######################################
-# Test 10: Symlink Script Exists
+# Test 10: Setup Scripts
 #######################################
 test_setup_scripts() {
     print_header "Test 10: Setup and Validation Scripts"
@@ -554,6 +591,73 @@ test_optional_skills() {
 }
 
 #######################################
+# Test 13: Agent Teams Integration (NEW)
+#######################################
+test_agent_teams_integration() {
+    print_header "Test 13: Agent Teams Integration (Claude Code Docs)"
+
+    # Check for subagent types in settings
+    print_test "Agent Teams subagent types configured"
+    if grep -q "ralph-coder\|ralph-reviewer\|ralph-tester\|ralph-researcher" "$SETTINGS_FILE" 2>/dev/null; then
+        pass
+    else
+        warn "No Ralph subagent types found in settings"
+    fi
+
+    # Check for context: fork in skills that spawn subagents
+    local subagent_skills=("orchestrator" "loop" "parallel" "quality-gates-parallel")
+    for skill in "${subagent_skills[@]}"; do
+        local skill_file="$REPO_ROOT/.claude/skills/$skill/SKILL.md"
+        if [[ -f "$skill_file" ]]; then
+            print_test "Skill '$skill' has context: fork for subagents"
+            if grep -q "context:.*fork" "$skill_file" 2>/dev/null || grep -q "agent:" "$skill_file" 2>/dev/null; then
+                pass
+            else
+                warn "Skill may need context: fork configuration"
+            fi
+        fi
+    done
+
+    # Check for TeammateIdle and TaskCompleted hooks
+    print_test "TeammateIdle/TaskCompleted hooks configured"
+    if grep -q "TeammateIdle\|TaskCompleted" "$SETTINGS_FILE" 2>/dev/null; then
+        pass
+    else
+        warn "Agent Teams lifecycle hooks not configured"
+    fi
+}
+
+#######################################
+# Test 14: Hooks Event Coverage (NEW)
+#######################################
+test_hooks_coverage() {
+    print_header "Test 14: Hooks Event Coverage (Claude Code Docs)"
+
+    # Official Claude Code hook events
+    local required_events=("SessionStart" "UserPromptSubmit" "PreToolUse" "PostToolUse" "Stop" "SessionEnd")
+
+    for event in "${required_events[@]}"; do
+        print_test "Hook event '$event' has registered hooks"
+        if grep -q "\"$event\"" "$SETTINGS_FILE" 2>/dev/null; then
+            pass
+        else
+            warn "No hooks registered for event: $event"
+        fi
+    done
+
+    # Check for optional but recommended events
+    local optional_events=("PreCompact" "SubagentStart" "SubagentStop" "TeammateIdle" "TaskCompleted")
+    for event in "${optional_events[@]}"; do
+        print_test "Optional hook event '$event' configured"
+        if grep -q "\"$event\"" "$SETTINGS_FILE" 2>/dev/null; then
+            pass
+        else
+            skip "Not configured (optional)"
+        fi
+    done
+}
+
+#######################################
 # Summary
 #######################################
 print_summary() {
@@ -580,6 +684,12 @@ print_summary() {
     if [[ $FAILED -eq 0 ]]; then
         echo -e "${GREEN}${BOLD}✓ ALL TESTS PASSED${NC}"
         echo ""
+        echo "Compliance validated against:"
+        echo "  - https://code.claude.com/docs/en/skills"
+        echo "  - https://code.claude.com/docs/en/agent-teams"
+        echo "  - https://code.claude.com/docs/en/sub-agents"
+        echo "  - https://code.claude.com/docs/en/hooks-guide"
+        echo ""
         return 0
     else
         echo -e "${RED}${BOLD}✗ SOME TESTS FAILED${NC}"
@@ -599,11 +709,13 @@ main() {
     echo -e "${BOLD}${CYAN}╔═══════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${BOLD}${CYAN}║     Skills Unification Unit Test Suite v2.87.0               ║${NC}"
     echo -e "${BOLD}${CYAN}║     Repository: multi-agent-ralph-loop                        ║${NC}"
+    echo -e "${BOLD}${CYAN}║     Claude Code Docs Compliance Validation                   ║${NC}"
     echo -e "${BOLD}${CYAN}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo "Repository: $REPO_ROOT"
     echo "Global Skills: $GLOBAL_SKILLS"
     echo "Global Commands: $GLOBAL_COMMANDS"
+    echo "Settings: $SETTINGS_FILE"
     echo "Expected Version: $EXPECTED_VERSION"
     echo "Verbose: $VERBOSE"
     echo "Fix Mode: $FIX_MODE"
@@ -621,6 +733,8 @@ main() {
     test_setup_scripts
     test_no_symlink_loops
     test_optional_skills
+    test_agent_teams_integration
+    test_hooks_coverage
 
     # Print summary and exit
     print_summary

@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.43.0
+# VERSION: 2.87.0
 name: audit
 description: "Generate usage report for MiniMax and token optimization Use when: (1) /audit is invoked, (2) task relates to audit functionality."
 user-invocable: true

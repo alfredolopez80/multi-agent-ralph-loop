@@ -27,8 +27,9 @@ CONTEXT_THRESHOLD="${CONTEXT_THRESHOLD:-40}"      # Context % to trigger reminde
 ENABLE_LOGGING="${ENABLE_LOGGING:-true}"
 
 # SEC-030: Guaranteed JSON output on any exit
+# v2.87.0 FIX: UserPromptSubmit uses {"continue": true} format, not {}
 output_json() {
-    echo '{}'
+    echo '{"continue": true}'
 }
 trap 'output_json' EXIT
 
@@ -216,7 +217,7 @@ main() {
         log_reminder "DEBUG" "No goal set, skipping reminder"
         # SEC-030: Disable trap and output explicit JSON
         trap - EXIT
-        echo '{}'
+        echo '{"continue": true}'
         exit 0
     fi
 
@@ -262,7 +263,7 @@ main() {
 
     # SEC-030: Disable trap and output explicit JSON
     trap - EXIT
-    echo '{}'
+    echo '{"continue": true}'
     exit 0
 }
 

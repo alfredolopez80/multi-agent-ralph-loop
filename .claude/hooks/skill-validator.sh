@@ -25,8 +25,9 @@ set -euo pipefail
 
 # Error trap: Only set when running directly (not when sourced by timeout subshell)
 # This prevents duplicate JSON from nested bash invocations
+# v2.87.0 FIX: Use hookSpecificOutput wrapper for PreToolUse hooks
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    trap 'echo "{\"decision\": \"allow\"}"' ERR EXIT
+    trap 'echo "{\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"allow\"}}"' ERR EXIT
 fi
 
 # Configuration
@@ -354,7 +355,7 @@ except:
     else
         log_error "Validation failed or timed out for: $skill_name"
         trap - EXIT  # CRIT-004: Clear trap before explicit output
-        echo '{"decision": "block", "reason": "Skill validation failed"}'
+        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "block", "permissionDecisionReason": "Skill validation failed"}}'
         exit 1  # Block skill execution on validation failure
     fi
 }

@@ -73,16 +73,18 @@ fi
 # This is logged but doesn't block idle - task completion will catch it
 
 # Output decision
+# v2.87.0 FIX: TeammateIdle uses {"continue": true|false} format, NOT {"decision": "..."}
 if [[ -n "$BLOCKING_ISSUES" ]]; then
     feedback=$(echo -e "$BLOCKING_ISSUES" | tr '\n' ' ' | sed 's/\\n/ /g')
+    feedback_escaped=$(echo "Please fix before going idle: $feedback" | jq -Rs '.')
     cat <<EOF
-{"decision": "request_changes", "reason": "Quality issues found", "feedback": "Please fix before going idle: $feedback"}
+{"continue": false, "reason": "Quality issues found", "feedback": $feedback_escaped}
 EOF
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] TeammateIdle BLOCKED: ${teammate_id} - $feedback" >> "$LOG_DIR/agent-teams.log"
     exit 2
 else
     cat <<EOF
-{"decision": "approve", "reason": "All quality checks passed"}
+{"continue": true, "reason": "All quality checks passed"}
 EOF
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] TeammateIdle APPROVED: ${teammate_id}" >> "$LOG_DIR/agent-teams.log"
     exit 0

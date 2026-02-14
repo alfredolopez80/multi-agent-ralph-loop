@@ -1,4 +1,11 @@
-# Defense Profiler - v1.0.0
+---
+# VERSION: 2.87.0
+name: defense-profiler
+description: "Codebase defense analysis system for security profiling"
+user-invocable: true
+---
+
+# Defense Profiler
 
 **Codebase Defense Analysis System** inspired by ZeroLeaks defense profiling.
 

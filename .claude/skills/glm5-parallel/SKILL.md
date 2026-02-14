@@ -1,7 +1,7 @@
 ---
 name: glm5-parallel
 description: Spawn multiple GLM-5 teammates in parallel for comprehensive analysis
-version: 2.84.0
+version: 2.87.0
 allowed-tools:
   - Bash
   - Read

@@ -38,7 +38,8 @@ INPUT=$(head -c 100000)
 set -euo pipefail
 
 # Error trap for guaranteed JSON output (v2.62.3)
-trap 'echo "{}"' ERR EXIT
+# v2.87.0 FIX: UserPromptSubmit uses {"continue": true} format, not {}
+trap 'echo "{\"continue\": true}"' ERR EXIT
 
 
 PLAN_STATE=".claude/plan-state.json"
@@ -119,7 +120,7 @@ fi
 if [[ ! -f "$PLAN_STATE" ]]; then
     # No plan-state, nothing to check
     trap - EXIT  # CRIT-008: Clear trap before explicit output
-    echo '{}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -131,7 +132,7 @@ if [[ -f "$PLAN_STATE" ]]; then
     PLAN_AGE_HOURS=$((PLAN_AGE_SECONDS / 3600))
 else
     trap - EXIT  # CRIT-008: Clear trap before explicit output
-    echo '{}'
+    echo '{"continue": true}'
     exit 0
 fi
 

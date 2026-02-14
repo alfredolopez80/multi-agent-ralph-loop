@@ -29,11 +29,15 @@
 # SEC-111: Read input from stdin with length limit (100KB max)
 INPUT=$(head -c 100000)
 
-# VERSION: 2.85.0
+# VERSION: 2.86.2
 set -euo pipefail
 
-# Error trap: Always output valid JSON
-trap 'echo "{\"continue\": true}"' ERR EXIT
+# CRITICAL: Redirect all stderr to log to prevent external messages from contaminating JSON output
+# Save original stderr for final JSON output
+exec 3>&2 2>> "${HOME}/.ralph/logs/session-end.log"
+
+# Error trap: Only on ERR, NOT on EXIT (EXIT would duplicate output)
+trap 'exec 2>&3 3>&-; echo "{\"continue\": true}"; exit 0' ERR
 
 # Configuration
 LEDGER_DIR="${HOME}/.ralph/ledgers"
@@ -88,7 +92,8 @@ log "INFO" "SessionEnd hook triggered - session: $SESSION_ID, reason: $END_REASO
 # Check if handoff feature is enabled
 if ! check_feature_enabled "RALPH_ENABLE_HANDOFF" "true"; then
     log "INFO" "Handoff feature disabled via features.json"
-    trap - ERR EXIT
+    trap - ERR
+    exec 2>&3 3>&-  # Restore stderr
     echo '{"continue": true}'
     exit 0
 fi
@@ -252,13 +257,19 @@ log "INFO" "SessionEnd hook completed successfully"
 
 # Output JSON with additionalContext for SessionStart to pick up
 # Note: SessionEnd additionalContext may be used by SessionStart in next session
-trap - ERR EXIT
-cat <<EOF
-{
-  "continue": true,
-  "hookSpecificOutput": {
-    "hookEventName": "SessionEnd",
-    "additionalContext": "Session ended. Handoff saved to ~/.ralph/handoffs/${SESSION_ID}/. Use /smart-fork to continue."
-  }
-}
-EOF
+# CRITICAL: Only JSON to stdout, everything else to stderr/log
+
+# Clear any traps that might interfere
+trap - ERR
+
+# Restore stderr to original before final output (in case JSON needs to report errors)
+exec 2>&3 3>&-
+
+# Build JSON in variable, then output at the very end (single echo to stdout)
+# NOTE: SessionEnd does NOT support hookSpecificOutput in Claude Code schema.
+# Only PreToolUse, UserPromptSubmit, and PostToolUse support hookSpecificOutput.
+# Context is saved to $NEXT_SESSION_FILE for SessionStart to pick up.
+JSON_OUTPUT='{"continue": true}'
+
+# Final output - single write to stdout, nothing else
+echo "$JSON_OUTPUT"

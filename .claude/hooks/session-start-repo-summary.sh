@@ -106,7 +106,9 @@ fi
 log "Summary generated (${#SUMMARY} chars)"
 
 # Output for SessionStart hook
+# v2.87.0 FIX: Use jq for proper JSON escaping instead of sed
 # The additionalContext field will be shown to Claude
-echo "{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"$(echo -e "$SUMMARY" | sed 's/"/\\"/g' | tr '\n' '\\n')\"}}"
+ESCAPED_SUMMARY=$(echo -e "$SUMMARY" | jq -Rs '.' 2>/dev/null || echo '""')
+echo "{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": $ESCAPED_SUMMARY}}"
 
 log "=== Repo Summary Complete ==="

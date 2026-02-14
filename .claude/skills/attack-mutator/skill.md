@@ -1,4 +1,11 @@
-# Attack Mutator - v1.0.0
+---
+# VERSION: 2.87.0
+name: attack-mutator
+description: "Test case mutation and variation generator for adversarial testing"
+user-invocable: true
+---
+
+# Attack Mutator
 
 **Test Case Mutation and Variation Generator** inspired by ZeroLeaks Mutator agent.
 

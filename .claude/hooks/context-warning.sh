@@ -24,8 +24,9 @@ INPUT=$(head -c 100000)
 set -uo pipefail
 
 # SEC-029: Guaranteed JSON output on exit (even on errors)
+# v2.87.0 FIX: UserPromptSubmit uses {"continue": true} format
 output_json() {
-    jq -n '{}'
+    echo '{"continue": true}'
 }
 trap 'output_json' EXIT
 
@@ -252,11 +253,12 @@ main() {
     trap - EXIT
 
     # Output JSON with message if there's a warning
+    # v2.87.0 FIX: Use {"continue": true} format with hookSpecificOutput for UserPromptSubmit
     if [[ -n "$warning_msg" ]]; then
-        jq -n --arg msg "$warning_msg" --arg lvl "$level" --argjson pct "$context_pct" \
-            '{message: $msg, context_level: $lvl, context_percentage: $pct}'
+        warning_escaped=$(echo "$warning_msg" | jq -Rs '.')
+        echo "{\"continue\": true, \"hookSpecificOutput\": {\"hookEventName\": \"UserPromptSubmit\", \"additionalContext\": $warning_escaped}}"
     else
-        jq -n '{}'
+        echo '{"continue": true}'
     fi
 
     exit 0

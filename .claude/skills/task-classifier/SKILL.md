@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.43.0
+# VERSION: 2.87.0
 name: task-classifier
 description: "Classify task complexity (1-10) to route to optimal model. Use when starting any non-trivial task to determine resources and approach. Triggers include: 'classify', 'complexity', 'what model', 'how complex'."
 context: fork

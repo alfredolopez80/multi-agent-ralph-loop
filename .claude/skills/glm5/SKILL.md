@@ -1,7 +1,7 @@
 ---
 name: glm5
 description: GLM-5 Agent Teams skill for spawning teammates with thinking mode
-version: 2.84.2
+version: 2.87.0
 allowed-tools:
   - Bash
   - Read

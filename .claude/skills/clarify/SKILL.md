@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.43.0
+# VERSION: 2.87.0
 name: clarify
 description: "Intensive requirement clarification using structured AskUserQuestion workflow. Gathers MUST_HAVE (blocking) and NICE_TO_HAVE (optional) information before implementation. Use when: (1) starting new feature implementation, (2) requirements are ambiguous, (3) multiple approaches possible, (4) before writing any code. Triggers: /clarify, 'clarify requirements', 'ask questions', 'gather requirements'."
 user-invocable: true

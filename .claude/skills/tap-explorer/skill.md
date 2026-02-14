@@ -1,4 +1,11 @@
-# TAP Explorer - v1.0.0
+---
+# VERSION: 2.87.0
+name: tap-explorer
+description: "Tree of Attacks with Pruning for systematic code analysis"
+user-invocable: true
+---
+
+# TAP Explorer
 
 **Tree of Attacks with Pruning** exploration pattern for systematic code analysis.
 

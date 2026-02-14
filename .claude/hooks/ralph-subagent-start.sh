@@ -93,8 +93,11 @@ if [[ -f "$MEMORY_DIR/semantic.json" ]]; then
 fi
 
 # Output context
+# v2.87.0 FIX: SubagentStart uses {"continue": true} format
+# Context is passed via hookSpecificOutput.additionalContext
+CONTEXT_ESCAPED=$(echo -e "$CONTEXT" | jq -Rs '.')
 cat <<EOF
-{"context": "$(echo -e "$CONTEXT" | jq -Rs '.')"}
+{"continue": true, "hookSpecificOutput": {"hookEventName": "SubagentStart", "additionalContext": $CONTEXT_ESCAPED}}
 EOF
 
 exit 0

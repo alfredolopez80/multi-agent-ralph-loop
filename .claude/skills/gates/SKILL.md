@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.43.0
+# VERSION: 2.87.0
 name: gates
 description: "9-language quality gate validation: linting, formatting, type checking, and test execution. Validates code changes meet quality standards before completion. Use when: (1) after code implementation, (2) before PR creation, (3) as part of /orchestrator Step 6, (4) manual quality check. Triggers: /gates, 'quality gates', 'run validation', 'check quality', 'validate code'."
 context: fork

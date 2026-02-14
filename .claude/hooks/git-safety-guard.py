@@ -212,7 +212,7 @@ def check_blocked_pattern(command: str) -> tuple[bool, str]:
 
 def allow_and_exit():
     """CRIT-002 FIX: Always output JSON for PreToolUse compliance."""
-    print('{"permissionDecision": "allow"}')
+    print('{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}')
     sys.exit(0)
 
 
@@ -259,11 +259,14 @@ def main():
         if needs_confirm:
             log_security_event("NEEDS_CONFIRMATION", original_command, confirm_reason)
             response = {
-                "decision": "block",
-                "reason": f"⚠️ CONFIRMATION REQUIRED: {confirm_reason}\n\n"
-                f"Command: {original_command[:100]}{'...' if len(original_command) > 100 else ''}\n\n"
-                f"Use AskUserQuestion to confirm. If user approves, run:\n"
-                f"GIT_FORCE_PUSH_CONFIRMED=1 {original_command}",
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "block",
+                    "permissionDecisionReason": f"⚠️ CONFIRMATION REQUIRED: {confirm_reason}\n\n"
+                    f"Command: {original_command[:100]}{'...' if len(original_command) > 100 else ''}\n\n"
+                    f"Use AskUserQuestion to confirm. If user approves, run:\n"
+                    f"GIT_FORCE_PUSH_CONFIRMED=1 {original_command}",
+                }
             }
             print(json.dumps(response))
             sys.exit(1)
@@ -274,10 +277,13 @@ def main():
         if blocked:
             log_security_event("BLOCKED", original_command, reason)
             response = {
-                "decision": "block",
-                "reason": f"BLOCKED by git-safety-guard: {reason}. "
-                f"Command: {original_command[:100]}{'...' if len(original_command) > 100 else ''}. "
-                f"If truly needed, ask the user to run it manually.",
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "block",
+                    "permissionDecisionReason": f"BLOCKED by git-safety-guard: {reason}. "
+                    f"Command: {original_command[:100]}{'...' if len(original_command) > 100 else ''}. "
+                    f"If truly needed, ask the user to run it manually.",
+                }
             }
             print(json.dumps(response))
             sys.exit(1)
@@ -291,8 +297,11 @@ def main():
             "BLOCKED", original_command or "<unknown>", f"Invalid JSON input: {e}"
         )
         response = {
-            "decision": "block",
-            "reason": "git-safety-guard: Invalid input format. Command blocked for safety.",
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "block",
+                "permissionDecisionReason": "git-safety-guard: Invalid input format. Command blocked for safety.",
+            }
         }
         print(json.dumps(response))
         sys.exit(1)
@@ -302,8 +311,11 @@ def main():
             "BLOCKED", original_command or "<unknown>", f"Unexpected error: {e}"
         )
         response = {
-            "decision": "block",
-            "reason": f"git-safety-guard: Internal error, command blocked for safety. Error: {e}",
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "block",
+                "permissionDecisionReason": f"git-safety-guard: Internal error, command blocked for safety. Error: {e}",
+            }
         }
         print(json.dumps(response))
         sys.exit(1)
