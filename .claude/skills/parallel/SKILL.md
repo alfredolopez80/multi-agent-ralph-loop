@@ -26,7 +26,15 @@ Run multiple Ralph loops concurrently for independent tasks.
 
 ## Agent Teams Integration (v2.88)
 
-Parallel execution now uses Agent Teams for automatic parallelization with coordinated quality gates.
+**Optimal Scenario**: Integrated (Agent Teams + Custom Subagents)
+
+Parallel execution combines Agent Teams coordination with ralph-coder specialization for optimal parallel file processing.
+
+### Why Scenario C for Parallel Execution
+- Multiple files require coordinated distribution
+- Quality gates essential for result validation
+- Specialized ralph-coder agents for implementation
+- Shared task list tracks all parallel work
 
 ### Automatic Team Creation
 

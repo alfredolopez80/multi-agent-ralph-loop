@@ -165,7 +165,34 @@ Task:
 
 ## Agent Teams Integration (v2.88)
 
-The Ralph Loop uses Agent Teams for automatic multi-agent coordination during iterative execution.
+**Optimal Scenario**: Integrated (Agent Teams + Custom Subagents)
+
+This skill uses the INTEGRATED approach combining Agent Teams coordination with Custom Subagent specialization.
+
+### Why Scenario C for This Skill
+- **Iterative execution** requires tight coordination between implementation and validation phases
+- **Quality gates (TeammateIdle, TaskCompleted)** are essential for VERIFIED_DONE guarantee on each iteration
+- **Specialized ralph-coder agents** for implementation, ralph-tester for validation
+- **Shared task list** tracks iteration progress and blockers
+- **Multi-phase iteration** (EXECUTE -> VALIDATE -> CHECK) benefits from team coordination
+
+### Configuration
+1. **TeamCreate**: Create team "loop-{task-hash}" on loop invocation
+2. **TaskCreate**: Create iteration tasks for each loop cycle
+3. **Spawn**: Use ralph-coder for implementation, ralph-tester for validation
+4. **Hooks**: TeammateIdle + TaskCompleted for quality validation on each iteration
+5. **Coordination**: Shared task list at ~/.claude/tasks/{team}/
+
+### Workflow Pattern
+```
+TeamCreate(team_name, description)
+  → TaskCreate(iteration_n, "Implement iteration {n}")
+  → Task(subagent_type="ralph-coder", team_name) for implementation
+  → Task(subagent_type="ralph-tester", team_name) for validation
+  → TaskUpdate(status="completed") when iteration passes gates
+  → Hooks validate quality before marking complete
+  → VERIFIED_DONE when all iterations pass
+```
 
 ### Team Creation Pattern
 

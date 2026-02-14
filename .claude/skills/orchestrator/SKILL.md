@@ -315,33 +315,33 @@ ralph fork-suggest "Add authentication"
 
 ## Agent Teams Integration (v2.88)
 
-**AUTOMATIC TEAM CREATION**: When the orchestrator skill is invoked, it automatically creates an Agent Team and spawns specialized teammates for parallel execution. No manual TeamCreate step is required.
+**Optimal Scenario**: Integrated (Agent Teams + Custom Subagents)
 
-### Team Creation Workflow
+This skill uses the INTEGRATED approach combining Agent Teams coordination with Custom Subagent specialization.
 
+### Why Scenario C for This Skill
+- **Multi-phase orchestration** requires tight coordination across evaluate, clarify, plan, execute, validate phases
+- **Quality gates (TeammateIdle, TaskCompleted)** are essential for VERIFIED_DONE guarantee
+- **Specialized ralph-* agents** for different task types (coder, reviewer, tester, researcher)
+- **Shared task list** for progress tracking and dependency management
+- **10-step workflow** benefits from both team coordination and agent specialization
+
+### Configuration
+1. **TeamCreate**: Create team "orchestration-team-{timestamp}" on skill invocation
+2. **TaskCreate**: Create tasks for each orchestration phase (evaluate, clarify, plan, execute, validate)
+3. **Spawn**: Use ralph-coder, ralph-reviewer, ralph-tester, ralph-researcher as needed
+4. **Hooks**: TeammateIdle + TaskCompleted for VERIFIED_DONE guarantee
+5. **Coordination**: Shared task list at ~/.claude/tasks/{team}/
+
+### Workflow Pattern
 ```
-1. SKILL INVOCATION
-   ↓
-2. AUTOMATIC TeamCreate
-   - Team name: "orchestration-team-{timestamp}"
-   - Team lead: orchestrator
-   ↓
-3. SPAWN TEAMMATES
-   - ralph-coder (implementation)
-   - ralph-reviewer (code review)
-   - ralph-tester (validation/testing)
-   ↓
-4. TASK COORDINATION
-   - TaskCreate for each subtask
-   - Task tool to spawn ralph-* subagents
-   - Parallel execution when independent
-   ↓
-5. QUALITY GATES
-   - TeammateIdle hook checks before idle
-   - TaskCompleted hook validates before completion
-   ↓
-6. TEAM DELETION
-   - TeamDelete when VERIFIED_DONE
+TeamCreate(team_name, description)
+  → TaskCreate(evaluate, clarify, classify, persist)
+  → TaskCreate(plan-mode tasks)
+  → Task(subagent_type="ralph-*", team_name) for execute phase
+  → TaskUpdate(status="completed") as phases finish
+  → Hooks validate quality at each stage
+  → VERIFIED_DONE after retrospective
 ```
 
 ### Ralph Agent Types (v2.88)

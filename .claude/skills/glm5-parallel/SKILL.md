@@ -80,116 +80,56 @@ Aggregated in `.ralph/team-status.json`
 
 ## Agent Teams Integration (v2.88)
 
-As of v2.88.0, this skill integrates with Claude Code's Agent Teams system for robust parallel execution.
+**Optimal Scenario**: Pure Agent Teams (Native)
 
-### Team Creation
+This skill uses Pure Agent Teams with native coordination - no custom subagent specialization needed.
 
-Automatically creates an Agent Team at skill invocation:
+### Why Scenario A for This Skill
+- Parallel execution is a core Agent Teams capability
+- Standard Task tool supports native parallel execution
+- No specialized subagent configuration required
+- Native agent types provide all needed tools (Read, Edit, Write, Bash)
+- Lower complexity, faster setup
 
-```bash
-TeamCreate(team_name="glm5-parallel-{timestamp}", description="Parallel GLM-5 execution for: {task}")
+### Configuration
+1. **TeamCreate**: Recommended for parallel execution coordination
+2. **Task**: Use native agent types with parallel execution
+3. **Hooks**: TeammateIdle + TaskCompleted for quality gates
+4. **Simple**: Leverage built-in Agent Teams parallelism
+
+### Workflow Pattern
+```
+TeamCreate
+  → Task(prompt, subagent_type) for each parallel workstream
+  → Native agents execute in parallel
+  → Aggregate results
+  → Complete
 ```
 
-### Teammate Spawning
-
-Spawns multiple `ralph-coder` instances configured for parallel work:
+### Parallel Execution Pattern
 
 ```javascript
-// For each file or subtask
-Task(
-  subagent_type="ralph-coder",
-  team_name="glm5-parallel-{timestamp}",
-  input={
-    task: "Specific subtask for this teammate",
-    files: ["list_of_files_for_this_teammate"]
-  }
-)
-```
+// Create team for coordination
+TeamCreate(team_name="parallel-{timestamp}", description="Parallel execution for: {task}")
 
-### Task Coordination
-
-Uses shared task list for coordination:
-
-```javascript
-// Create master task
-TaskCreate({
-  subject: "Parallel execution: {task}",
-  description: "Full task description"
-})
-
-// Create subtasks for each teammate
-TaskCreate({
-  subject: "Subtask 1: {specific_task}",
-  description: "Detailed subtask",
-  metadata: { assigned_to: "teammate_1", files: [...] }
-})
-
-// Track completion via TaskList
-TaskList()
-```
-
-### Quality Gates
-
-Leverages Agent Teams hooks for quality validation:
-
-| Hook | Purpose |
-|------|---------|
-| `TeammateIdle` | Runs quality gates when each teammate finishes |
-| `TaskCompleted` | Final validation before marking subtask complete |
-| `SubagentStop` | Quality check when teammate terminates |
-
-### VERIFIED_DONE Guarantee
-
-Each parallel task achieves VERIFIED_DONE status through:
-
-1. **CORRECTNESS**: Syntax validation via teammate-idle-quality-gate.sh
-2. **QUALITY**: Type checking and console.log detection
-3. **SECURITY**: Secret scanning via sanitize-secrets hook
-4. **CONSISTENCY**: Linting and format validation
-
-### Multi-File Parallel Pattern
-
-For tasks involving multiple files:
-
-```javascript
-// File groupings for parallel execution
-const fileGroups = [
-  ["src/auth/*.ts"],           // Group 1: Auth files
-  ["src/api/*.ts"],            // Group 2: API files
-  ["src/utils/*.ts"]           // Group 3: Utils
+// Spawn native agents in parallel
+const workstreams = [
+  { task: "Implement feature X", files: ["src/a.ts"] },
+  { task: "Implement feature Y", files: ["src/b.ts"] },
+  { task: "Write tests", files: ["tests/*.test.ts"] }
 ];
 
-// Spawn teammate per group
-fileGroups.forEach((group, index) => {
+workstreams.forEach(work => {
   Task(
-    subagent_type="ralph-coder",
-    team_name=`glm5-parallel-${Date.now()}`,
-    input={
-      task: "Apply changes to: " + group.join(", "),
-      files: group
-    }
+    subagent_type="coder",  // Native agent type
+    team_name="parallel-{timestamp}",
+    input=work
   );
 });
 ```
 
-### Model Configuration
-
-While named `glm5-parallel`, the skill is model-agnostic:
-
-- Uses `ralph-coder` subagent type
-- Actual model determined by Agent Teams routing
-- Default: GLM-4.7 / glm-5 (complexity 1-4)
-- Fallback: Claude Sonnet (complexity 5-6), Opus (7-10)
-
-### Completion Signal
-
-Team lead waits for all teammates to signal completion:
-
-```javascript
-// Via SendMessage for coordination
-SendMessage({
-  type: "message",
-  recipient: "team-lead",
-  content: "VERIFIED_DONE: Subtask {n} completed with all quality gates passed"
-});
-```
+### When This Is Sufficient
+- Parallel code execution across files
+- Standard implementation tasks
+- No specialized tool restrictions needed
+- Leverage native Agent Teams parallelism

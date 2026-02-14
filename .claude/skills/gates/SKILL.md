@@ -137,7 +137,17 @@ ralph gates --full       # Lint + Format + Types + Tests
 
 ## Agent Teams Integration (v2.88)
 
-This skill automatically integrates with Agent Teams when running in team mode:
+**Optimal Scenario**: Integrated (Agent Teams + Custom Subagents)
+
+Quality gates use Agent Teams coordination with specialized ralph-tester agents for parallel quality validation.
+
+### Why Scenario C for Gates
+- Multiple quality checks require coordination (lint, format, type, test)
+- Quality gates are meta-validation (hooks validate the validators)
+- Language-specific specialization via ralph-tester
+- TeammateIdle/TaskCompleted hooks for quality enforcement
+
+### Subagent Roles
 
 | Subagent | Role in Gates |
 |----------|---------------|

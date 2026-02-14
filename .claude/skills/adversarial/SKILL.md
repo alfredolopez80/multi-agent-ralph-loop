@@ -45,7 +45,17 @@ STRATEGIST      ATTACKER        EVALUATOR
 
 ## Agent Teams Integration (v2.88)
 
-This skill integrates with Agent Teams for parallel adversarial analysis:
+**Optimal Scenario**: Integrated (Agent Teams + Custom Subagents)
+
+Adversarial analysis uses Agent Teams coordination with specialized ralph-* agents for multi-vector attack simulation.
+
+### Why Scenario C for Adversarial
+- Multi-agent coordination essential (Strategist, Attacker, Evaluator, Mutator)
+- Quality gates validate vulnerability findings
+- Specialized roles map to ralph-* agents
+- Coordinated attack strategy via shared task list
+
+### Subagent Roles
 
 | Subagent | Role in Adversarial Analysis |
 |----------|------------------------------|

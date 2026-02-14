@@ -19,7 +19,35 @@ Comprehensive security audit using Codex GPT-5 for primary analysis and MiniMax 
 
 ## Agent Teams Integration (v2.88)
 
-The `/security` command automatically creates an Agent Team for parallel security scanning and coordinated remediation.
+**Optimal Scenario**: Integrated (Agent Teams + Custom Subagents)
+
+This skill uses the INTEGRATED approach combining Agent Teams coordination with Custom Subagent specialization.
+
+### Why Scenario C for This Skill
+- **Parallel security scanning** requires coordinated multi-agent analysis across different vulnerability types
+- **Quality gates (TeammateIdle, TaskCompleted)** ensure all security findings are properly addressed
+- **Specialized ralph-reviewer agents** for vulnerability detection, ralph-coder for remediation
+- **Shared task list** tracks findings and fix assignments
+- **Multi-phase workflow** (scan -> prioritize -> fix -> verify) benefits from team coordination
+
+### Configuration
+1. **TeamCreate**: Create team "security-audit-${TARGET}" on security invocation
+2. **TaskCreate**: Create tasks for analysis, prioritization, and remediation phases
+3. **Spawn**: Use ralph-reviewer for scanning, ralph-coder for fixes
+4. **Hooks**: TeammateIdle + TaskCompleted for security validation
+5. **Coordination**: Shared task list at ~/.claude/tasks/{team}/
+
+### Workflow Pattern
+```
+TeamCreate(team_name, description)
+  → TaskCreate(scan_task, "Security vulnerability analysis")
+  → Task(subagent_type="ralph-reviewer", team_name) for parallel scanning
+  → TaskCreate(fix_task, "Apply security fixes")
+  → Task(subagent_type="ralph-coder", team_name) for remediation
+  → TaskUpdate(status="completed") as findings are resolved
+  → Hooks validate security standards
+  → VERIFIED_DONE when all critical/high findings fixed
+```
 
 ### Automatic Team Creation
 

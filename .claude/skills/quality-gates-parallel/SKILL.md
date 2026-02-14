@@ -42,7 +42,17 @@ Based on: [claude-sneakpeek native-multiagent-gates](https://github.com/mikekell
 
 ## Agent Teams Integration (v2.88)
 
-This skill uses Agent Teams for parallel quality gate execution:
+**Optimal Scenario**: Integrated (Agent Teams + Custom Subagents)
+
+Parallel quality gates combine Agent Teams coordination with specialized ralph-* agents for comprehensive parallel validation.
+
+### Why Scenario C for Quality Gates Parallel
+- Designed specifically for parallel execution
+- Quality hooks (TeammateIdle, TaskCompleted) are core functionality
+- 4 different check types need coordinated distribution
+- Task list tracks all parallel quality phases
+
+### Subagent Roles
 
 | Subagent | Quality Gate Role |
 |----------|-------------------|

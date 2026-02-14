@@ -47,25 +47,36 @@ MANDATORY after every task completion, before declaring VERIFIED_DONE.
 
 ## Agent Teams Integration (v2.88)
 
-This skill integrates with Agent Teams for team-based retrospective analysis:
+**Optimal Scenario**: Pure Agent Teams (Native)
 
-| Subagent | Role in Retrospective |
-|----------|----------------------|
-| `ralph-reviewer` | Analyzes code quality trends |
-| `ralph-researcher` | Gathers metrics and patterns |
-| `ralph-coder` | Implements improvement suggestions |
+This skill uses Pure Agent Teams with native coordination - no custom subagent specialization needed.
 
-### Parallel Retrospective Analysis
-When Agent Teams is active:
-1. **Team Lead** initiates retrospective session
-2. **ralph-researcher** gathers task metrics in parallel
-3. **ralph-reviewer** analyzes quality trends
-4. **ralph-coder** proposes and validates improvements
+### Why Scenario A for This Skill
+- Retrospective is primarily analytical and sequential
+- Read/Grep tools available to all native agents
+- Analysis doesn't require specialized tool restrictions
+- Native agent types sufficient for metric gathering
+- Lower complexity, faster execution
 
-### Team Coordination
-- TeamCreate establishes retrospective team
-- Task list tracks analysis phases
-- Shared findings through SendMessage coordination
+### Configuration
+1. **TeamCreate**: Optional, for simple retrospective tasks
+2. **Task**: Use native agent types (no ralph-* needed)
+3. **Hooks**: TeammateIdle + TaskCompleted available if needed
+4. **Simple**: Minimal setup overhead
+
+### Workflow Pattern
+```
+TeamCreate (optional)
+  → Task(analyze completed work)
+  → Native agent gathers metrics
+  → Complete with improvement proposals
+```
+
+### When This Is Sufficient
+- Single-task retrospective analysis
+- Simple metric gathering workflows
+- No specialized analysis needed
+- Quick post-task reviews preferred
 
 ### 2. Clarification Quality
 - Were the right questions asked?

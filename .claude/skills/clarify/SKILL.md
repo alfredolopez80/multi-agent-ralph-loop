@@ -161,22 +161,36 @@ AskUserQuestion:
 
 ## Agent Teams Integration (v2.88)
 
-This skill integrates with Agent Teams for parallel requirement gathering:
+**Optimal Scenario**: Pure Agent Teams (Native)
 
-| Subagent | Role in Clarification |
-|----------|----------------------|
-| `ralph-researcher` | Research existing codebase patterns |
-| `ralph-reviewer` | Validate requirements against architecture |
+This skill uses Pure Agent Teams with native coordination - no custom subagent specialization needed.
 
-### Parallel Research
-When Agent Teams is active:
-1. **Team Lead** initiates clarification
-2. **ralph-researcher** searches for existing implementations
-3. **ralph-reviewer** validates technical constraints
-4. Results consolidate into unified requirements
+### Why Scenario A for This Skill
+- Clarification is primarily sequential questioning workflow
+- AskUserQuestion is the primary tool, available to all agents
+- No specialized parallel research requirements
+- Native agent types sufficient for requirement gathering
+- Lower complexity, faster execution
 
-### Team Coordination
-Uses shared task list for requirement tracking and Agent Teams messaging for coordination.
+### Configuration
+1. **TeamCreate**: Optional, for simple clarification tasks
+2. **Task**: Use native agent types (no ralph-* needed)
+3. **Hooks**: TeammateIdle + TaskCompleted available if needed
+4. **Simple**: Minimal setup overhead
+
+### Workflow Pattern
+```
+TeamCreate (optional)
+  → AskUserQuestion for requirements
+  → Native agent executes clarification
+  → Complete
+```
+
+### When This Is Sufficient
+- Sequential requirement gathering
+- Simple clarification workflows
+- No specialized research needed
+- Quick interactive sessions preferred
 
 ## Anti-Patterns
 
