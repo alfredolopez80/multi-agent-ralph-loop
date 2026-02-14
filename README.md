@@ -1,12 +1,13 @@
 # Multi-Agent Ralph Loop
 
-Orchestration system for Claude Code with memory-driven planning, multi-agent coordination, and automatic learning.
+Orchestration system for Claude Code with memory-driven planning, multi-agent coordination, Agent Teams integration, and automatic learning.
 
 ## Overview
 
 Ralph extends Claude Code with intelligent orchestration capabilities. It classifies tasks, routes to appropriate models, coordinates multiple agents, and maintains persistent memory across sessions.
 
 Key capabilities:
+- **Agent Teams Integration** - Multiple Claude Code instances working in parallel
 - Task classification and routing
 - Parallel memory search across multiple backends
 - Multi-agent coordination with swarm mode
@@ -16,18 +17,19 @@ Key capabilities:
 
 ## Version
 
-Current: v2.84.3
+Current: **v2.86.0**
 
 Recent changes:
-- Fixed 10 hooks with invalid JSON format
-- Eliminated race conditions with atomic file locking
-- Added TypeScript compilation caching (80-95% speedup)
-- Multilingual support (English/Spanish) for command detection
+- **Agent Teams Integration** - TeammateIdle, TaskCompleted, SubagentStart, SubagentStop hooks
+- **Custom Subagents** - ralph-coder, ralph-reviewer, ralph-tester, ralph-researcher
+- **Session Lifecycle** - PreCompact → SessionStart(compact) → SessionEnd flow
+- **Centralized Skills** - 1,856 skills consolidated from multiple sources
+- Quality gates for teammates (console.log, debugger, TODO detection)
 
 ## Requirements
 
-- Claude Code v2.1.16 or higher
-- GLM-4.7 API access (configured in Zai environment)
+- Claude Code v2.1.39 or higher (for Agent Teams support)
+- GLM-5 API access (configured via Z.AI)
 - Bash 4.0+
 - jq 1.6+
 - git 2.0+
@@ -44,12 +46,17 @@ Optional:
 git clone https://github.com/alfredolopez80/multi-agent-ralph-loop.git
 cd multi-agent-ralph-loop
 
+# Run setup script (creates symlinks)
+./.claude/scripts/centralize-all.sh
+
 # Verify installation
-ls -la ~/.ralph/
 ralph health --compact
 
 # Run orchestration
 /orchestrator "Create a REST API endpoint"
+
+# With GLM-5 teammates for faster execution
+/orchestrator "Implement feature X" --with-glm5
 
 # Complex task with swarm mode
 /orchestrator "Implement distributed caching" --launch-swarm --teammate-count 3
@@ -61,11 +68,12 @@ ralph health --compact
 User Request
     |
     v
-Claude Code (v2.1.22+)
+Claude Code (v2.1.39+)
     |
     v
 +-------------------+
-| Settings.json     | -- Hook registration
+| ~/.claude/        |
+| settings.json     | -- Hook registration & Agent Teams config
 +-------------------+
     |
     v
@@ -80,9 +88,18 @@ Claude Code (v2.1.22+)
 +-------------------------------------------+
 |            Orchestration Layer            |
 | - Task classification (1-10 complexity)   |
-| - Model routing (GLM-4.7 primary)         |
-| - Swarm mode coordination                 |
+| - Model routing (GLM-5 primary)           |
+| - Agent Teams coordination                |
 | - Quality gates validation                |
++-------------------------------------------+
+    |
+    v
++-------------------------------------------+
+|            Agent Teams (v2.86)            |
+| - ralph-coder (implementation)            |
+| - ralph-reviewer (code review)            |
+| - ralph-tester (testing & QA)             |
+| - ralph-researcher (research)             |
 +-------------------------------------------+
     |
     v
@@ -96,20 +113,44 @@ Implementation / Analysis / Review
 ```
 multi-agent-ralph-loop/
 ├── .claude/
-│   ├── agents/         # 42 agent definitions
+│   ├── agents/         # 46 agent definitions (4 ralph-* + 42 specialized)
 │   ├── commands/       # 41 slash commands
-│   ├── hooks/          # 83 hook scripts
-│   └── skills/         # 84 skill directories
+│   ├── hooks/          # 89 hook scripts
+│   ├── skills/         # Ralph-specific skills
+│   └── scripts/        # Utility scripts
 ├── docs/               # Architecture and guides
-├── scripts/            # Utility scripts
+│   └── agent-teams/    # Agent Teams documentation
+├── scripts/            # CLI utilities
 ├── tests/              # Test suites
+│   ├── session-lifecycle/  # Session lifecycle tests
+│   └── agent-teams/        # Agent Teams tests
 └── .ralph/             # Session data (not in repo)
 ```
 
-### Agents (42)
+### Agent Teams (v2.86.0)
+
+Custom subagents for parallel execution:
+
+| Agent | Role | Tools | Max Turns |
+|-------|------|-------|-----------|
+| `ralph-coder` | Code implementation | Read, Edit, Write, Bash | 50 |
+| `ralph-reviewer` | Code review | Read, Grep, Glob | 25 |
+| `ralph-tester` | Testing & QA | Read, Edit, Write, Bash(test) | 30 |
+| `ralph-researcher` | Research | Read, Grep, Glob, WebSearch, WebFetch | 20 |
+
+All configured with `model: glm-5` for optimal performance.
+
+```bash
+# Spawn teammates
+Task(subagent_type="ralph-coder", team_name="my-project")
+Task(subagent_type="ralph-reviewer", team_name="my-project")
+```
+
+### Agents (46)
 
 | Category | Agents |
 |----------|--------|
+| **Agent Teams** | ralph-coder, ralph-reviewer, ralph-tester, ralph-researcher |
 | Orchestration | orchestrator, debugger, code-reviewer |
 | Security | security-auditor, blockchain-security-auditor |
 | Quality | test-architect, refactorer, quality-auditor |
@@ -133,7 +174,26 @@ GLM-5 integration (v2.84.1+):
 /security src/ --with-glm5
 ```
 
-### Hooks (83)
+## Session Lifecycle Hooks (v2.86)
+
+| Event | Hook | Purpose |
+|-------|------|---------|
+| `PreCompact` | pre-compact-handoff.sh | Save state BEFORE compaction |
+| `SessionStart(compact)` | post-compact-restore.sh | Restore context AFTER compaction |
+| `SessionEnd` | session-end-handoff.sh | Save state when session TERMINATES |
+
+> **Critical**: `PostCompact` event does NOT exist in Claude Code. Use `SessionStart(matcher="compact")` instead.
+
+## Agent Teams Hooks (v2.86)
+
+| Event | Purpose | Exit 2 Behavior |
+|-------|---------|-----------------|
+| `TeammateIdle` | Quality gate when teammate goes idle | Keep working + feedback |
+| `TaskCompleted` | Quality gate before task completion | Prevent completion + feedback |
+| `SubagentStart` | Load Ralph context into subagents | - |
+| `SubagentStop` | Quality gates when subagent stops | - |
+
+### Hooks (89)
 
 Hook events:
 - `SessionStart` - Context restoration at startup
@@ -141,6 +201,9 @@ Hook events:
 - `PostToolUse` - Quality checks after tool execution
 - `UserPromptSubmit` - Command routing and context injection
 - `PreCompact` - State save before context compaction
+- `TeammateIdle` - Quality gates for Agent Teams
+- `TaskCompleted` - Task completion validation
+- `SubagentStart/Stop` - Subagent lifecycle
 - `Stop` - Session reports
 
 Critical hooks (must be registered):
@@ -149,21 +212,28 @@ Critical hooks (must be registered):
 | `git-safety-guard.py` | PreToolUse (Bash) | Blocks rm -rf, git reset --hard |
 | `repo-boundary-guard.sh` | PreToolUse (Bash) | Prevents work outside current repo |
 | `learning-gate.sh` | PreToolUse (Task) | Triggers /curator when memory empty |
-| `rule-verification.sh` | PostToolUse | Validates learned rules applied |
+| `teammate-idle-quality-gate.sh` | TeammateIdle | Quality checks before idle |
+| `task-completed-quality-gate.sh` | TaskCompleted | Validation before completion |
 
 ## Model Support
 
 | Model | Provider | Use Case |
 |-------|----------|----------|
-| GLM-4.7 | Z.AI | Primary for all tasks |
-| GLM-5 | Z.AI | Teammates with thinking mode |
+| GLM-5 | Z.AI | Primary for all tasks + Agent Teams |
+| GLM-4.7 | Z.AI | Web search, vision tasks |
 | Codex GPT-5.3 | OpenAI | Security, performance, planning |
 
-GLM-4.7 MCP servers:
-- `zai-mcp-server` - Vision tools for screenshots
-- `web-search-prime` - Real-time web search
-- `web-reader` - Content extraction
-- `zread` - Repository knowledge access
+GLM-5 configuration (in `~/.claude/settings.json`):
+```json
+{
+  "env": {
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-5",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  }
+}
+```
 
 ## Memory System
 
@@ -205,26 +275,6 @@ Current statistics:
 - Auto-learning: Enabled
 - System status: Production
 
-## Swarm Mode (v2.81.1)
-
-Parallel multi-agent execution for 7 core commands:
-
-| Command | Agents | Speedup |
-|---------|--------|---------|
-| /orchestrator | 4 | 3x |
-| /loop | 4 | 3x |
-| /parallel | 7 | 6x |
-| /gates | 6 | 3x |
-
-Configuration requirement:
-```json
-{
-  "permissions": {
-    "defaultMode": "delegate"
-  }
-}
-```
-
 ## Quality Validation
 
 Validation stages:
@@ -235,22 +285,32 @@ Validation stages:
 
 3-Fix Rule: Maximum 3 attempts per validation failure before escalation.
 
+### Quality Gates for Teammates
+
+| Gate | Type | Detection |
+|------|------|-----------|
+| Gate 1 | Blocking | `console.log|debug` |
+| Gate 2 | Blocking | `debugger|breakpoint` |
+| Gate 3 | Blocking | `TODO:|FIXME:|XXX:|HACK:` |
+| Gate 4 | Blocking | Placeholder code |
+| Gate 5 | Advisory | Empty function bodies |
+
 ## Configuration
 
-Primary settings: `~/.claude-sneakpeek/zai/config/settings.json`
+**Primary settings**: `~/.claude/settings.json`
 
 ```json
 {
-  "model": "glm-4.7",
-  "defaultMode": "delegate",
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Task",
-        "hooks": [
-          {"command": "/path/to/learning-gate.sh"}
-        ]
-      }
+    "TeammateIdle": [{"matcher": "*", "hooks": [...]}],
+    "TaskCompleted": [{"matcher": "*", "hooks": [...]}],
+    "SubagentStart": [{"matcher": "ralph-*", "hooks": [...]}],
+    "SubagentStop": [
+      {"matcher": "ralph-*", "hooks": [...]},
+      {"matcher": "glm5-*", "hooks": [...]}
     ]
   }
 }
@@ -265,24 +325,31 @@ Learning configuration: `~/.ralph/curator/config.json`
 Test structure:
 ```
 tests/
-├── quality-parallel/    # Quality gate tests
-├── swarm-mode/          # Swarm mode tests
-└── unit/                # Unit tests
+├── session-lifecycle/    # Session lifecycle tests
+│   └── test_session_lifecycle_hooks.sh
+├── agent-teams/          # Agent Teams tests
+│   └── test_agent_teams_integration.sh
+├── quality-parallel/     # Quality gate tests
+├── swarm-mode/           # Swarm mode tests
+└── unit/                 # Unit tests
 ```
 
 Run tests:
 ```bash
+# All integration tests
+./tests/test_all_integration.sh
+
+# Session lifecycle tests
+./tests/session-lifecycle/test_session_lifecycle_hooks.sh
+
+# Agent Teams tests
+./tests/agent-teams/test_agent_teams_integration.sh
+
 # Hook validation
 ./tests/unit/test-hooks-validation.sh
-
-# Swarm mode tests
-./tests/swarm-mode/test-swarm-mode-config.sh
-
-# Learning system tests
-./tests/learning/run-all-tests.sh
 ```
 
-Current test status: 100% passing (83/83 hooks validated, 62/62 learning tests)
+Current test status: **100% passing** (89 hooks validated, 30+ integration tests)
 
 ## CLI Reference
 
@@ -320,6 +387,7 @@ ralph trace show 30            # Recent events
 | Topic | Location |
 |-------|----------|
 | Architecture | `docs/architecture/` |
+| Agent Teams | `docs/agent-teams/` |
 | Swarm Mode | `docs/swarm-mode/` |
 | Learning System | `docs/guides/LEARNING_SYSTEM_INTEGRATION_GUIDE.md` |
 | Hooks Reference | `docs/hooks/` |
@@ -345,6 +413,8 @@ MIT License - see LICENSE file for details.
 
 ## References
 
+- [Claude Code Agent Teams Docs](https://code.claude.com/docs/en/agent-teams)
+- [Claude Code Subagents Docs](https://code.claude.com/docs/en/sub-agents)
+- [Claude Code Hooks Guide](https://code.claude.com/docs/en/hooks-guide)
 - [claude-sneakpeek](https://github.com/mikekelly/claude-sneakpeek) - Zai variant and swarm mode
 - [cc-mirror](https://github.com/numman-ali/cc-mirror) - Documentation patterns
-- [Claude Code Docs](https://github.com/ericbuess/claude-code-docs) - Official documentation mirror
