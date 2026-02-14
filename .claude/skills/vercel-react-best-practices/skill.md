@@ -1,11 +1,18 @@
 ---
-# VERSION: 2.87.0
+# VERSION: 2.88.0
 name: vercel-react-best-practices
 description: React and Next.js performance optimization guidelines from Vercel Engineering. Use when writing, reviewing, or refactoring React/Next.js code. Triggers on tasks involving React components, Next.js pages, data fetching, bundle optimization, or performance improvements.
 allowed-tools: Bash,Read,Write,Edit,Grep,Glob,Task
 ---
 
 # Vercel React Best Practices
+
+## v2.88 Key Changes (MODEL-AGNOSTIC)
+
+- **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
+- **No flags required**: Works with the configured default model
+- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
 Comprehensive performance optimization guide for React and Next.js applications from Vercel Engineering. Contains 45 rules across 8 categories, prioritized by impact.
 

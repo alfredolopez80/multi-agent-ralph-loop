@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.87.0
+# VERSION: 2.88.0
 name: gates
 description: "9-language quality gate validation: linting, formatting, type checking, and test execution. Validates code changes meet quality standards before completion. Use when: (1) after code implementation, (2) before PR creation, (3) as part of /orchestrator Step 6, (4) manual quality check. Triggers: /gates, 'quality gates', 'run validation', 'check quality', 'validate code'."
 context: fork
@@ -9,6 +9,13 @@ user-invocable: true
 # Gates - Quality Validation (v2.37)
 
 Comprehensive quality validation across 9 programming languages with **TLDR-assisted analysis**.
+
+## v2.88 Key Changes (MODEL-AGNOSTIC)
+
+- **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
+- **No flags required**: Works with the configured default model
+- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
 ## Quick Start
 

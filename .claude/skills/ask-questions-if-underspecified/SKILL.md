@@ -1,11 +1,18 @@
 ---
-# VERSION: 2.87.0
+# VERSION: 2.88.0
 name: ask-questions-if-underspecified
 description: "Ask clarifying questions when requirements are underspecified"
 user-invocable: true
 ---
 
 # Skill: Ask Questions If Underspecified
+
+## v2.88 Key Changes (MODEL-AGNOSTIC)
+
+- **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
+- **No flags required**: Works with the configured default model
+- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
 **ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.
 

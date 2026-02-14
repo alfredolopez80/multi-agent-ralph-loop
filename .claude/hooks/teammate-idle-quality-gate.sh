@@ -1,6 +1,6 @@
 #!/bin/bash
 # teammate-idle-quality-gate.sh - Quality gate for Agent Teams teammates
-# VERSION: 2.85.0
+# VERSION: 2.88.0
 # REPO: multi-agent-ralph-loop
 #
 # Triggered by: TeammateIdle hook event

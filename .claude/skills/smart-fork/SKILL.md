@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.87.0
+# VERSION: 2.88.0
 name: smart-fork
 description: Smart Forking - Find and fork from relevant historical sessions using parallel memory search across claude-mem, memvid, handoffs, and ledgers
 author: Multi-Agent Ralph
@@ -21,6 +21,13 @@ hooks:
 # /smart-fork - Smart Memory-Driven Session Forking
 
 Based on @PerceptualPeak's Smart Forking concept:
+
+## v2.88 Key Changes (MODEL-AGNOSTIC)
+
+- **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
+- **No flags required**: Works with the configured default model
+- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 > "Why not utilize the knowledge gained from your hundreds/thousands of other Claude code sessions? Don't let that valuable context go to waste!!"
 
 ## Quick Start

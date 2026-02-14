@@ -1,11 +1,18 @@
 ---
-# VERSION: 2.87.0
+# VERSION: 2.88.0
 name: sec-context-depth
 description: Comprehensive AI code security review using 27 sec-context anti-patterns. Use for code review when security vulnerabilities are suspected, especially for AI-generated code.
 allowed-tools: Read,Glob,mcp__ast-grep__*,Bash
 ---
 
 # Sec-Context Depth: AI Code Security Anti-Patterns Review (v2.68)
+
+## v2.88 Key Changes (MODEL-AGNOSTIC)
+
+- **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
+- **No flags required**: Works with the configured default model
+- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
 Use this skill to perform comprehensive security reviews on AI-generated code, detecting **27 security anti-patterns** from the sec-context framework.
 

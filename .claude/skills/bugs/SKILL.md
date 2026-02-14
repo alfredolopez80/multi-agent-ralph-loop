@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.87.0
+# VERSION: 2.88.0
 name: bugs
 description: "Bug hunting with Codex CLI Use when: (1) /bugs is invoked, (2) task relates to bugs functionality."
 context: fork
@@ -9,6 +9,13 @@ user-invocable: true
 # /bugs (v2.37)
 
 Deep bug analysis using Codex gpt-5.2-codex with the bug-hunter skill and **TLDR context optimization**.
+
+## v2.88 Key Changes (MODEL-AGNOSTIC)
+
+- **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
+- **No flags required**: Works with the configured default model
+- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
 ## Pre-Bugs: TLDR Context Preparation (v2.37)
 

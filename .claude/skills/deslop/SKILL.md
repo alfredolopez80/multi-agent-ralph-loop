@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.87.0
+# VERSION: 2.88.0
 name: deslop
 description: Remove AI-generated code slop from a branch. Use when cleaning up AI-generated code, removing unnecessary comments, defensive checks, or type casts. Checks diff against main and fixes style inconsistencies.
 ---
@@ -7,6 +7,13 @@ description: Remove AI-generated code slop from a branch. Use when cleaning up A
 # Remove AI Code Slop
 
 Check the diff against main and remove all AI-generated slop introduced in this branch.
+
+## v2.88 Key Changes (MODEL-AGNOSTIC)
+
+- **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
+- **No flags required**: Works with the configured default model
+- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
 ## What to Remove
 

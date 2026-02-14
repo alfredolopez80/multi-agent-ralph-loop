@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.87.0
+# VERSION: 2.88.0
 name: clarify
 description: "Intensive requirement clarification using structured AskUserQuestion workflow. Gathers MUST_HAVE (blocking) and NICE_TO_HAVE (optional) information before implementation. Use when: (1) starting new feature implementation, (2) requirements are ambiguous, (3) multiple approaches possible, (4) before writing any code. Triggers: /clarify, 'clarify requirements', 'ask questions', 'gather requirements'."
 user-invocable: true
@@ -8,6 +8,13 @@ user-invocable: true
 # Clarify - Intensive Questioning (v2.37)
 
 Systematically gather requirements using **TLDR semantic search** + AskUserQuestion tool.
+
+## v2.88 Key Changes (MODEL-AGNOSTIC)
+
+- **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
+- **No flags required**: Works with the configured default model
+- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
 ## Quick Start
 

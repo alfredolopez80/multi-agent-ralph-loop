@@ -1,6 +1,6 @@
 #!/bin/bash
 # task-completed-quality-gate.sh - Quality gate before task completion
-# VERSION: 2.85.0
+# VERSION: 2.88.0
 # REPO: multi-agent-ralph-loop
 #
 # Triggered by: TaskCompleted hook event

@@ -1,8 +1,17 @@
 ---
-# VERSION: 2.87.0
+# VERSION: 2.88.0
 name: codex-cli
 description: "OpenAI Codex CLI orchestration for AI-assisted development using gpt-5.2-codex model. Capabilities: code generation, refactoring, automated editing, parallel task execution, session management, code review, architecture analysis, and MCP integration. Actions: analyze, implement, review, fix, refactor with Codex. Keywords: Codex CLI, gpt-5.2-codex, codex exec, code generation, refactoring, parallel execution, session resume, code review, second opinion, independent review, architecture validation, Context7 MCP. Use when: delegating complex code tasks to Codex, running multi-agent workflows, executing automated reviews, implementing features with AI assistance, resuming previous sessions, querying OpenAI documentation. Triggers: 'use codex', 'codex exec', 'run with codex', 'codex resume', 'implement with codex', 'review with codex', 'codex docs'."
 ---
+
+# Codex CLI Integration Skill (v2.37)
+
+## v2.88 Key Changes (MODEL-AGNOSTIC)
+
+- **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
+- **No flags required**: Works with the configured default model
+- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
 **ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.
 

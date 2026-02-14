@@ -1,17 +1,25 @@
 ---
-# VERSION: 2.69.0
+# VERSION: 2.88.0
 name: plan
-prefix: "@plan"
-category: tools
-color: green
-description: "Plan-State Management for Ralph v2.45. Create, track, and manage implementation plans with LSA verification"
-argument-hint: "<arguments>"
+description: "Plan-State Management for Ralph. Create, track, and manage implementation plans with LSA verification"
+user-invocable: true
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Bash
 ---
 
+## v2.88 Key Changes (MODEL-AGNOSTIC)
 
-Plan-State Management for Ralph v2.45. Create, track, and manage implementation plans with Lead Software Architect verification.
+- **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
+- **No flags required**: Works with the configured default model
+- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
-[Extended thinking: The plan command suite implements v2.45 Plan-Sync pattern with 7 subcommands: init, status, add-step, start, complete, verify, sync. Each subcommand manages a plan-state.json file in .claude/ directory. Plans include phases, risks, file modifications, and validation status. LSA verification ensures architecture compliance before execution.]
+# Plan-State Management
+
+Create, track, and manage implementation plans with Lead Software Architect verification.
 
 ## Subcommands
 
@@ -19,7 +27,7 @@ Plan-State Management for Ralph v2.45. Create, track, and manage implementation 
 ```
 /plan init "Implement user authentication"
 ```
-Creates .claude/plan-state.json with:
+Creates `.claude/plan-state.json` with:
 - Task title, phases, risk level
 - File modifications list
 - Test strategy
@@ -113,3 +121,10 @@ Steps:
 Next Action: /plan complete --step 2
 ========================================
 ```
+
+## Related Skills
+
+- `/orchestrator` - Full orchestration with plan integration
+- `/loop` - Iterative execution following plan steps
+- `/gates` - Quality validation at plan milestones
+- `/retrospective` - Post-completion analysis

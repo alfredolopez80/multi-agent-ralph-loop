@@ -1,10 +1,17 @@
 ---
-# VERSION: 2.87.0
+# VERSION: 2.88.0
 name: gemini-cli
 description: "Google Gemini CLI orchestration (v0.22.0+) for AI-assisted development. Capabilities: second opinion/cross-validation, real-time Google Search grounding, codebase architecture analysis with codebase_investigator, Gemini 3 model access, extensions support (Conductor, Endor Labs), parallel code generation, code review from different perspective. INTEGRATED WITH TASK PRIMITIVE - creates traceable tasks in claude-task-viewer. Actions: query, search, analyze, generate, review with Gemini. Keywords: Gemini CLI, Gemini 3, google_web_search, codebase_investigator, second opinion, cross-validation, web research, current information, parallel AI, code review, architecture analysis, gemini prompt, AI comparison, real-time search, alternative perspective, extensions, Conductor. Use when: needing second AI opinion, searching current web information, analyzing codebase architecture, generating code in parallel, getting alternative code review, researching current events/docs, using Gemini extensions."
 ---
 
 # Gemini CLI Integration Skill
+
+## v2.88 Key Changes (MODEL-AGNOSTIC)
+
+- **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
+- **No flags required**: Works with the configured default model
+- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
 This skill enables Claude Code to orchestrate Google Gemini CLI (v0.22.0+) with **Gemini 3 Pro** for code generation, review, analysis, and specialized tasks including real-time web search.
 

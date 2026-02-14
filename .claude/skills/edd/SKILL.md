@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.87.0
+# VERSION: 2.88.0
 name: edd
 description: "Eval-Driven Development (EDD) Framework v2.87.0 - Define-before-implement pattern with structured evals. Provides workflow: Define specifications → Implement features → Verify against evals. Components: TEMPLATE.md for eval definitions, edd.sh CLI script, /edd skill invocation. Check types: CC- (Capability), BC- (Behavior), NFC- (Non-Functional). Integrates with orchestrator workflow for quality-first development. Keywords: evals, define, implement, verify, capability checks, behavior checks, non-functional checks, template, quality assurance, test-driven, specification. Use when: defining new features with structured evals, implementing with verification requirements, creating quality specifications, TDD-style workflow with evals."
 ---
@@ -7,6 +7,13 @@ description: "Eval-Driven Development (EDD) Framework v2.87.0 - Define-before-im
 # EDD (Eval-Driven Development) Framework v2.64
 
 **Eval-Driven Development** is a quality-first development pattern that enforces **define-before-implement** workflow with structured evaluations.
+
+## v2.88 Key Changes (MODEL-AGNOSTIC)
+
+- **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
+- **No flags required**: Works with the configured default model
+- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
 ## What is EDD?
 
