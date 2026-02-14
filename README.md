@@ -20,10 +20,14 @@ Key capabilities:
 Current: **v2.88.0**
 
 Recent changes:
+- **Batch Task Execution** - New `/task-batch` and `/create-task-batch` skills for autonomous multi-task execution
+- **PRD Parsing** - Native support for Product Requirements Documents with task decomposition
+- **Completion Criteria** - MANDATORY validation criteria per task for VERIFIED_DONE guarantee
+- **Progress Tracking** - `batch-progress-tracker.sh` hook with Exit 2 continuation pattern
+- **Test Suite** - 35 new tests for batch skills (unit + integration)
 - **Model-Agnostic Architecture** - Skills work with any configured model (GLM-5, Claude, Minimax, etc.)
 - **No Flags Required** - Removed `--with-glm5` and `--mmc` flags; uses default model from settings
 - **Security Hooks** - Secret sanitization (sanitize-secrets.js), DB cleanup, procedural forget
-- **Test Suite** - 78 unit tests (Session Lifecycle: 23, Agent Teams: 34, Security: 21)
 - **Agent Teams Integration** - TeammateIdle, TaskCompleted, SubagentStart, SubagentStop hooks
 - **Custom Subagents** - ralph-coder, ralph-reviewer, ralph-tester, ralph-researcher
 - **Session Lifecycle** - PreCompact → SessionStart(compact) → SessionEnd flow
@@ -263,6 +267,8 @@ Combines `TeamCreate` coordination with `ralph-*` specialized subagents and qual
 Core commands:
 - `/orchestrator` - Full orchestration workflow
 - `/loop` - Iterative execution with validation
+- `/task-batch` - Autonomous batch task execution (v2.88)
+- `/create-task-batch` - Interactive PRD/task list creator (v2.88)
 - `/gates` - Quality gate validation
 - `/bug` or `/bugs` - Systematic debugging
 - `/security` - Security audit
@@ -439,6 +445,10 @@ tests/
 │   └── test_session_lifecycle_hooks.sh
 ├── agent-teams/          # Agent Teams tests
 │   └── test_agent_teams_integration.sh
+├── skills/               # Skill tests (v2.88)
+│   ├── test-task-batch.sh
+│   ├── test-create-task-batch.sh
+│   └── test-batch-skills-integration.sh
 ├── quality-parallel/     # Quality gate tests
 ├── swarm-mode/           # Swarm mode tests
 └── unit/                 # Unit tests
@@ -498,6 +508,7 @@ ralph trace show 30            # Recent events
 |-------|----------|
 | Architecture | `docs/architecture/` |
 | Agent Teams | `docs/agent-teams/` |
+| Batch Execution | `docs/batch-execution/BATCH_SKILLS_v2.88.0.md` |
 | Swarm Mode | `docs/swarm-mode/` |
 | Learning System | `docs/guides/LEARNING_SYSTEM_INTEGRATION_GUIDE.md` |
 | Hooks Reference | `docs/hooks/` |

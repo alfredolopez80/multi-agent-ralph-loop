@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.87.0
+# Multi-Agent Ralph v2.88.0
 
 Orchestration system with memory-driven planning, multi-agent coordination, automatic learning, and quality validation.
 
@@ -9,6 +9,24 @@ Orchestration system with memory-driven planning, multi-agent coordination, auto
 This is the ONLY configuration file for Claude Code. All hooks, agents, and settings are here.
 
 > ⚠️ **NOT**: `~/.claude-sneakpeek/zai/config/settings.json` (Zai variant - legacy)
+
+## Batch Task Execution (v2.88.0)
+
+New skills for autonomous multi-task execution:
+
+| Skill | Purpose | Usage |
+|-------|---------|-------|
+| `/task-batch` | Execute task lists autonomously | `/task-batch docs/prd/file.prq.md` |
+| `/create-task-batch` | Interactive PRD creator | `/create-task-batch "Feature name"` |
+
+**Key Features**:
+- Handles MULTIPLE tasks (not single task)
+- MANDATORY completion criteria per task
+- VERIFIED_DONE validation guarantee
+- Fresh context per task execution
+- Auto-commit after each completed task
+
+See: `docs/batch-execution/BATCH_SKILLS_v2.88.0.md`
 
 ## Skills/Commands Unification (v2.87.0)
 
@@ -106,6 +124,8 @@ Agent Teams está habilitado en `~/.claude/settings.json`:
 # Orchestration
 /orchestrator "task"           # Full workflow
 /loop "task"                   # Iterative execution
+/task-batch <prd-file>         # Batch task execution (v2.88)
+/create-task-batch "feature"   # Create PRD interactively (v2.88)
 /gates                         # Quality validation
 /adversarial                   # Spec refinement
 
@@ -144,6 +164,7 @@ These hooks must be registered in settings.json:
 | `repo-boundary-guard.sh` | PreToolUse (Bash) | Prevents work outside repo |
 | `learning-gate.sh` | PreToolUse (Task) | Auto-learning trigger |
 | `status-auto-check.sh` | PostToolUse | Status updates |
+| `batch-progress-tracker.sh` | PostToolUse | Batch progress tracking (v2.88) |
 
 Validation: `./scripts/validate-hooks-registration.sh`
 
@@ -192,6 +213,10 @@ Use `/repo-learn` to extract patterns from external repos.
 Tests in `tests/` at project root:
 ```
 tests/
+├── skills/               # Skill unit tests (v2.88)
+│   ├── test-task-batch.sh
+│   ├── test-create-task-batch.sh
+│   └── test-batch-skills-integration.sh
 ├── quality-parallel/
 ├── swarm-mode/
 └── unit/
@@ -203,9 +228,11 @@ Do not place tests in `.claude/tests/` (deprecated).
 
 All documentation in `docs/`:
 - `docs/architecture/` - Design documents
+- `docs/batch-execution/` - Batch task execution (v2.88)
 - `docs/swarm-mode/` - Swarm mode guides
 - `docs/security/` - Security documentation
 - `docs/hooks/` - Hook reference
+- `docs/prd/` - Example PRD files
 
 ## References
 

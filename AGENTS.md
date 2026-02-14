@@ -1,8 +1,27 @@
-# Multi-Agent Ralph - Agents Reference v2.86.1
+# Multi-Agent Ralph - Agents Reference v2.88.0
 
 ## Overview
 
 Ralph coordinates 46+ specialized agents across different domains. Uses GLM-5 as primary model for all tasks, with Agent Teams support for parallel execution.
+
+## New in v2.88.0
+
+### Batch Task Execution
+
+New skills for autonomous multi-task execution:
+
+| Skill | Purpose |
+|-------|---------|
+| `/task-batch` | Execute lists of tasks autonomously until all complete |
+| `/create-task-batch` | Interactive wizard for creating PRDs with mandatory criteria |
+
+**Key Features**:
+- Handles MULTIPLE tasks per batch
+- MANDATORY completion criteria per task
+- VERIFIED_DONE validation guarantee
+- Fresh context per task (avoids contamination)
+- Auto-commit after each completed task
+- Progress tracking via `batch-progress-tracker.sh` hook
 
 ## Model Configuration
 
