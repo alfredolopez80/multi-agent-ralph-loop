@@ -1,8 +1,13 @@
 #!/bin/bash
-# VERSION: 2.81.0
-# post-compact-restore.sh - Multi-Agent Ralph v2.81.0
+# VERSION: 2.85.0
+# post-compact-restore.sh - Multi-Agent Ralph v2.85.0
 # Restores context and plan state after compaction
-# Triggered by PostCompact hook event
+# Triggered by: SessionStart hook with matcher="compact"
+#
+# v2.85.0: CRITICAL FIX
+#   - PostCompact event does NOT exist in Claude Code
+#   - Must use SessionStart with matcher="compact" instead
+#   - This hook now uses SessionStart format
 #
 # v2.81.0: MAJOR REFACTOR
 #   - Proper plan state restoration
@@ -12,12 +17,13 @@
 #
 # Input (JSON via stdin):
 #   - session_id: Current session identifier
+#   - source: "compact" (matcher that triggered this)
 #   - transcript_path: Path to current transcript
 #
 # Output (JSON):
-#   - {"continue": true} - PostCompact format
+#   - {"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "..."}}
 #
-# NOTE: PostCompact happens AFTER compaction but BEFORE the next user message
+# NOTE: SessionStart with matcher="compact" fires AFTER compaction when session resumes
 # This is the right time to restore context for immediate use
 
 # SEC-111: Read input from stdin with length limit (100KB max)

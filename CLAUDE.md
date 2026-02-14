@@ -1,12 +1,68 @@
-# Multi-Agent Ralph v2.84.3
+# Multi-Agent Ralph v2.86.0
 
 Orchestration system with memory-driven planning, multi-agent coordination, automatic learning, and quality validation.
 
 ## Configuration Location
 
-**Settings**: `~/.claude-sneakpeek/zai/config/settings.json` (Zai variant)
+**PRIMARY SETTINGS**: `~/.claude/settings.json`
 
-Do not use `~/.claude/settings.json` - that is the legacy location.
+This is the ONLY configuration file for Claude Code. All hooks, agents, and settings are here.
+
+> ⚠️ **NOT**: `~/.claude-sneakpeek/zai/config/settings.json` (Zai variant - legacy)
+
+## Session Lifecycle Hooks (v2.86)
+
+| Event | Hook | Purpose |
+|-------|------|---------|
+| `PreCompact` | pre-compact-handoff.sh | Save state BEFORE compaction |
+| `SessionStart(compact)` | post-compact-restore.sh | Restore context AFTER compaction |
+| `SessionEnd` | session-end-handoff.sh | Save state when session TERMINATES |
+
+> **Note**: `PostCompact` event does NOT exist in Claude Code. Use `SessionStart(matcher="compact")` instead.
+
+## Agent Teams (v2.86)
+
+Agent Teams permite múltiples Claude Code instances trabajando en paralelo con un team lead coordinando.
+
+### Nuevos Hooks
+
+| Event | Purpose | Exit 2 Behavior |
+|-------|---------|-----------------|
+| `TeammateIdle` | Quality gate when teammate goes idle | Keep working + feedback |
+| `TaskCompleted` | Quality gate before task completion | Prevent completion + feedback |
+| `SubagentStart` | Load Ralph context into subagents | - |
+| `SubagentStop` | Quality gates when subagent stops | - |
+
+### Teammate Types
+
+| Type | Role | Tools |
+|------|------|-------|
+| `ralph-coder` | Code implementation | Read, Edit, Write, Bash |
+| `ralph-reviewer` | Code review | Read, Grep, Glob |
+| `ralph-tester` | Testing & QA | Read, Edit, Write, Bash(test) |
+| `ralph-researcher` | Research & exploration | Read, Grep, Glob, WebSearch |
+
+### Crear Team
+
+```bash
+# Usando TeamCreate tool en Claude Code
+TeamCreate(team_name="my-project", description="Working on feature X")
+
+# Spawn teammates
+Task(subagent_type="ralph-coder", team_name="my-project")
+Task(subagent_type="ralph-reviewer", team_name="my-project")
+```
+
+### Agent Teams Configuration
+
+Agent Teams está habilitado en `~/.claude/settings.json`:
+```json
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  }
+}
+```
 
 ## Language Policy
 

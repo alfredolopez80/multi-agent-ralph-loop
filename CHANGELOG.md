@@ -2,6 +2,60 @@
 
 ---
 
+## [2.86.0] - 2026-02-14
+
+### Added - Agent Teams Integration
+
+- **Agent Teams Hooks**: Complete integration with Claude Code Agent Teams
+  - `TeammateIdle`: Quality gate when teammate goes idle (exit 2 = keep working)
+  - `TaskCompleted`: Quality gate before task completion (exit 2 = prevent)
+  - `SubagentStart`: Inject Ralph context into ralph-* subagents
+  - `SubagentStop`: Handle GLM-5 and ralph-* subagent completion
+
+- **Custom Subagents**: 4 specialized teammates for Agent Teams
+  - `ralph-coder`: Code implementation with quality gates (Read, Edit, Write, Bash)
+  - `ralph-reviewer`: Code review with security focus (Read, Grep, Glob)
+  - `ralph-tester`: Testing & QA with 80% coverage standard (Read, Edit, Write, Bash)
+  - `ralph-researcher`: Research & exploration (Read, Grep, Glob, WebSearch, WebFetch)
+  - All configured with `model: glm-5` for optimal performance
+
+- **Session Lifecycle Hooks**: Correct implementation per Claude Code docs
+  - `PreCompact` → `pre-compact-handoff.sh` (save state BEFORE compaction)
+  - `SessionStart(compact)` → `post-compact-restore.sh` (restore AFTER compaction)
+  - `SessionEnd` → `session-end-handoff.sh` (save on termination)
+  - **Critical**: `PostCompact` event does NOT exist - use `SessionStart(matcher="compact")`
+
+- **Integration Tests**: Comprehensive test suites
+  - `tests/session-lifecycle/test_session_lifecycle_hooks.sh` (10 tests)
+  - `tests/agent-teams/test_agent_teams_integration.sh` (13 tests)
+  - `tests/test_all_integration.sh` (master suite)
+
+- **Centralization Scripts**: Skills and plugins consolidation
+  - `.claude/scripts/centralize-all.sh`: Consolidates skills from multiple locations
+  - Centralized 1,856 skills, 45 agents, 35 plugins
+
+### Changed
+
+- **Configuration Location**: Primary settings now in `~/.claude/settings.json`
+  - Updated documentation to reflect correct Claude Code config location
+  - Added `~/.claude/CLAUDE.md` for global documentation
+
+- **Quality Gates**: Enhanced blocking behavior
+  - Gate 1: console.log/debug (blocking)
+  - Gate 2: debugger statements (blocking)
+  - Gate 3: TODO/FIXME/XXX/HACK (blocking in TaskCompleted)
+  - Gate 4: Placeholder code (blocking)
+  - Gate 5: Empty function bodies (advisory)
+
+### Verified
+
+- All Agent Teams hooks validated against Claude Code official documentation
+- Session lifecycle flow verified: `SessionStart(*) → PreCompact → SessionStart(compact) → SessionEnd`
+- GLM-5 integration confirmed for all ralph-* subagents
+- 3 independent validation agents confirmed implementation correctness
+
+---
+
 ## [2.83.1] - 2026-02-04
 
 ### Security

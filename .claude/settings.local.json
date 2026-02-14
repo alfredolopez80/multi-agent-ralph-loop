@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__gordon__run_command",
+      "mcp__filesystem__read_text_file"
+    ]
+  }
+}
