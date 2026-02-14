@@ -126,7 +126,7 @@ multi-agent-ralph-loop/
 └── .ralph/             # Session data (not in repo)
 ```
 
-### Agent Teams (v2.86.0)
+### Agent Teams (v2.88.0)
 
 Custom subagents for parallel execution:
 
@@ -157,6 +157,94 @@ The system is **model-agnostic** - change the model in settings and all skills/a
 # Spawn teammates (uses configured default model)
 Task(subagent_type="ralph-coder", team_name="my-project")
 Task(subagent_type="ralph-reviewer", team_name="my-project")
+```
+
+### Multi-Agent Execution Scenarios (v2.88.0)
+
+The Ralph system supports three distinct execution scenarios for multi-agent coordination. Each skill is configured with its optimal scenario based on task requirements.
+
+#### Scenario Overview
+
+| Scenario | Description | Best For |
+|----------|-------------|----------|
+| **A: Pure Agent Teams** | Native Claude Code teams with built-in coordination | Simple coordination, low specialization |
+| **B: Custom Subagents** | Direct spawn of ralph-* agents without team overhead | Specialized tasks, independent execution |
+| **C: Integrated** | TeamCreate + ralph-* subagents + quality hooks | Complex workflows, production-grade |
+
+#### Scenario A: Pure Agent Teams
+
+Uses native Claude Code team coordination with `TeamCreate`, `TaskCreate`, `TaskUpdate`, and `SendMessage` tools. Best for tasks requiring simple coordination without specialized agent behavior.
+
+**Characteristics**:
+- Native Claude Code integration
+- Automatic task coordination via shared task list
+- Built-in quality gates via hooks
+- No custom agent specialization
+
+**Skills using Scenario A**:
+- `clarify` - Sequential question flow
+- `retrospective` - Single-threaded analysis
+- `glm5-parallel` - Same-type parallel execution
+
+#### Scenario B: Pure Custom Subagents
+
+Direct spawn of specialized `ralph-*` agents via the `Task` tool. Best for independent specialized tasks where coordination overhead is unnecessary.
+
+**Characteristics**:
+- Full customization of agent behavior
+- Tool restrictions per agent type
+- Simpler setup without team overhead
+- Manual coordination when needed
+
+**Skills using Scenario B**:
+- `bugs` - Bug scanning (independent)
+- `code-reviewer` - Code review (single-purpose)
+
+#### Scenario C: Integrated (Recommended for Complex Tasks)
+
+Combines `TeamCreate` coordination with `ralph-*` specialized subagents and quality validation hooks (`TeammateIdle`, `TaskCompleted`). This is the most powerful scenario.
+
+**Characteristics**:
+- Native task coordination from Agent Teams
+- Custom agent specialization from ralph-* subagents
+- Quality gates via hooks for VERIFIED_DONE guarantee
+- Tool restrictions per agent type
+
+**Skills using Scenario C**:
+- `orchestrator` - Multi-phase workflow coordination
+- `parallel` - Parallel execution with results aggregation
+- `loop` - Iterative execution with quality validation
+- `security` - Security analysis with specialized patterns
+- `gates` - Quality validation (meta-validation)
+- `quality-gates-parallel` - Parallel quality checks
+- `adversarial` - Multi-agent attack coordination
+
+#### Implementation Matrix
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    MULTI-AGENT SCENARIO DECISION TREE                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   Does the task require tight coordination between agents?                   │
+│                    │                                                         │
+│         ┌──────────┴──────────┐                                              │
+│         ▼                     ▼                                              │
+│       YES                    NO ──► SCENARIO B (Custom Subagents)            │
+│         │                                                                     │
+│   Does it need specialized agents (coder, tester, reviewer)?                 │
+│         │                                                                     │
+│    ┌────┴────┐                                                               │
+│    ▼         ▼                                                               │
+│   YES       NO ──► SCENARIO A (Pure Agent Teams)                             │
+│    │                                                                          │
+│    ▼                                                                          │
+│ SCENARIO C (Integrated)                                                       │
+│ - TeamCreate for coordination                                                 │
+│ - ralph-* for specialization                                                  │
+│ - Hooks for quality gates                                                     │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Agents (46)

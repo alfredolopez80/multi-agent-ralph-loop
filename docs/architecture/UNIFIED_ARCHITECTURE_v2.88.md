@@ -396,8 +396,32 @@ multi-agent-ralph-loop/
 | v2.87 | 2026-02 | Skills/Commands unification |
 | **v2.88** | **2026-02** | **Model-agnostic, Hook Integration (5 findings)** |
 
+## Multi-Agent Execution Scenarios
+
+v2.88 introduces three execution scenarios for multi-agent coordination. Each skill is configured with its optimal scenario based on task requirements.
+
+### Scenario Overview
+
+| Scenario | Description | Skills |
+|----------|-------------|--------|
+| **A: Pure Agent Teams** | Native Claude Code teams | clarify, retrospective, glm5-parallel |
+| **B: Custom Subagents** | Direct ralph-* spawn | bugs, code-reviewer |
+| **C: Integrated** | TeamCreate + ralph-* + hooks | orchestrator, parallel, loop, security, gates, quality-gates-parallel, adversarial |
+
+### Decision Criteria
+
+- **Coordination Need (25%)** - Inter-agent coordination requirements
+- **Specialization Need (25%)** - Custom agent behavior requirements
+- **Quality Gate Need (20%)** - Quality validation importance
+- **Tool Restriction Need (15%)** - Restricted tool access
+- **Scalability (15%)** - Task complexity scaling
+
+**Full Analysis**: See [MULTI_AGENT_SCENARIOS_v2.88.md](./MULTI_AGENT_SCENARIOS_v2.88.md)
+
 ## References
 
+- [Multi-Agent Scenarios v2.88](./MULTI_AGENT_SCENARIOS_v2.88.md) - Detailed scenario analysis
+- [Scenario Final Decisions v2.88](./SCENARIO_FINAL_DECISIONS_v2.88.md) - Skill-by-skill decisions
 - [Adversarial Analysis v2.88](./ADVERSARIAL_HOOK_INTEGRATION_ANALYSIS_v2.88.md)
 - [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills)
 - [Claude Code Hooks Documentation](https://code.claude.com/docs/en/hooks)
