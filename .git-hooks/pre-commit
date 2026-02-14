@@ -140,7 +140,6 @@ if [[ -n "$STAGED_SKILL_DIRS" ]]; then
             echo -e "  ${GREEN}✓ Skills symlinks validated${NC}"
         else
             echo -e "  ${YELLOW}⚠ Skills symlink test has warnings (run -v for details)${NC}"
-            # Don't block on symlink warnings, just notify
         fi
     else
         echo -e "  ${YELLOW}⚠ Symlink test script not found${NC}"
@@ -148,6 +147,26 @@ if [[ -n "$STAGED_SKILL_DIRS" ]]; then
 else
     echo ""
     echo -e "${YELLOW}[Phase 5] Skipped (no skills changed)${NC}"
+fi
+
+#######################################
+# Phase 6: Skills Sync Validation
+#######################################
+SYNC_TEST="$REPO_ROOT/tests/unit/test-skills-sync-v2.87.sh"
+
+if [[ -x "$SYNC_TEST" ]]; then
+    echo ""
+    echo -e "${YELLOW}[Phase 6] Validating skills sync${NC}"
+
+    if "$SYNC_TEST" > /dev/null 2>&1; then
+        echo -e "  ${GREEN}✓ Skills sync validated${NC}"
+    else
+        echo -e "  ${YELLOW}⚠ Skills sync test has warnings${NC}"
+        echo -e "  ${YELLOW}  Run: $SYNC_TEST -v${NC}"
+    fi
+else
+    echo ""
+    echo -e "${YELLOW}[Phase 6] Skipped (sync test not found)${NC}"
 fi
 
 #######################################
