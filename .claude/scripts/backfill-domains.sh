@@ -30,18 +30,20 @@ log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1" >&2; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1" >&2; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 
-# GAP-C02: Domain detection keywords (same as curator-learn.sh)
-declare -A DOMAIN_KEYWORDS
-DOMAIN_KEYWORDS["backend"]="api server rest graphql microservice endpoint controller service repository middleware express fastapi django nestjs spring"
-DOMAIN_KEYWORDS["frontend"]="react vue angular component hook state css styled jsx tsx dom render props context redux"
-DOMAIN_KEYWORDS["database"]="sql query schema migration orm prisma sequelize typeorm knex postgres mysql mongodb redis index transaction"
-DOMAIN_KEYWORDS["security"]="auth jwt token encrypt decrypt hash password csrf xss injection sanitize validate permission role rbac"
-DOMAIN_KEYWORDS["testing"]="test spec jest vitest mocha cypress playwright mock stub assert coverage unit integration e2e"
-DOMAIN_KEYWORDS["devops"]="docker kubernetes ci cd pipeline deploy container helm terraform ansible jenkins github actions gitlab ci"
-DOMAIN_KEYWORDS["hooks"]="hook lifecycle callback trigger event listener middleware interceptor pre post init destroy"
-DOMAIN_KEYWORDS["general"]="config util helper common shared lib types interface enum constant"
+# GAP-C02: Domain detection keywords (portable - no associative arrays)
+# Format: domain|keyword1|keyword2|keyword3...
+DOMAIN_PATTERNS="
+backend|api|server|rest|graphql|microservice|endpoint|controller|service|repository|middleware|express|fastapi|django|nestjs|spring
+frontend|react|vue|angular|component|hook|state|css|styled|jsx|tsx|dom|render|props|context|redux
+database|sql|query|schema|migration|orm|prisma|sequelize|typeorm|knex|postgres|mysql|mongodb|redis|index|transaction
+security|auth|jwt|token|encrypt|decrypt|hash|password|csrf|xss|injection|sanitize|validate|permission|role|rbac
+testing|test|spec|jest|vitest|mocha|cypress|playwright|mock|stub|assert|coverage|unit|integration|e2e
+devops|docker|kubernetes|ci|cd|pipeline|deploy|container|helm|terraform|ansible|jenkins|github|actions
+hooks|hook|lifecycle|callback|trigger|event|listener|interceptor|pre|post|init|destroy
+general|config|util|helper|common|shared|lib|types|interface|enum|constant
+"
 
-# Detect domain from rule content
+# Detect domain from rule content (portable version)
 detect_domain_from_rule() {
     local rule_json="$1"
     local detected_domain="general"
@@ -49,26 +51,26 @@ detect_domain_from_rule() {
 
     # Extract text content from rule
     local content=""
-    content+=$(echo "$rule_json" | jq -r '.name // ""' 2>/dev/null)
+    content+=$(echo "$rule_json" | jq -r '.name // ""' 2>/dev/null || echo "")
     content+=" "
-    content+=$(echo "$rule_json" | jq -r '.behavior // ""' 2>/dev/null)
+    content+=$(echo "$rule_json" | jq -r '.behavior // ""' 2>/dev/null || echo "")
     content+=" "
-    content+=$(echo "$rule_json" | jq -r '.trigger // ""' 2>/dev/null)
+    content+=$(echo "$rule_json" | jq -r '.trigger // ""' 2>/dev/null || echo "")
     content+=" "
-    content+=$(echo "$rule_json" | jq -r '.category // ""' 2>/dev/null)
+    content+=$(echo "$rule_json" | jq -r '.category // ""' 2>/dev/null || echo "")
     content+=" "
-    content+=$(echo "$rule_json" | jq -r '.source_file // ""' 2>/dev/null)
+    content+=$(echo "$rule_json" | jq -r '.source_file // ""' 2>/dev/null || echo "")
 
     # Convert to lowercase for matching
     content=$(echo "$content" | tr '[:upper:]' '[:lower:]')
 
     # Count keyword matches for each domain
-    for domain in "${!DOMAIN_KEYWORDS[@]}"; do
-        local keywords="${DOMAIN_KEYWORDS[$domain]}"
-        local matches=0
+    while IFS='|' read -r domain keywords; do
+        [[ -z "$domain" || -z "$keywords" ]] && continue
 
-        for kw in $keywords; do
-            local count=$(echo "$content" | grep -o "\b$kw\b" | wc -l | tr -d ' ')
+        local matches=0
+        for kw in ${keywords//|/ }; do
+            local count=$(echo "$content" | grep -o "\b$kw\b" 2>/dev/null | wc -l | tr -d ' ')
             matches=$((matches + count))
         done
 
@@ -76,7 +78,7 @@ detect_domain_from_rule() {
             max_matches=$matches
             detected_domain="$domain"
         fi
-    done
+    done <<< "$DOMAIN_PATTERNS"
 
     echo "$detected_domain"
 }
@@ -153,9 +155,8 @@ main() {
     # Process rules
     local processed=0
     local updated=0
-    local domain_counts=""
 
-    # Get list of rule indices needing backfill
+    # Get indices of rules needing backfill
     local indices=$(jq -r '[.rules | to_entries[] | select(.value.domain == null or .value.domain == "" or .value.domain == "all" or .value.category == "all") | .key] | @tsv' "$RULES_FILE" 2>/dev/null)
 
     for idx in $indices; do
@@ -168,14 +169,16 @@ main() {
         local current_domain=$(echo "$rule" | jq -r '.domain // "null"')
 
         if [[ "$detected_domain" != "$current_domain" ]]; then
+            local rule_name=$(echo "$rule" | jq -r '.name // .rule_id // "unnamed"')
+
             if [[ "$DRY_RUN" == "true" ]]; then
-                echo "  Rule $idx: '$(echo "$rule" | jq -r '.name // .rule_id // "unnamed"')' -> domain: $detected_domain"
+                echo "  Rule $idx: '$rule_name' -> domain: $detected_domain"
             else
                 # Update the rule
                 local temp_file=$(mktemp)
                 jq --arg idx "$idx" --arg domain "$detected_domain" \
                     ".rules[$idx].domain = \$domain | .rules[$idx].category = \$domain" \
-                    "$RULES_FILE" > "$temp_file" && mv "$temp_file" "$RULES_FILE"
+                    "$RULES_FILE" > "$temp_file" 2>/dev/null && mv "$temp_file" "$RULES_FILE" || rm -f "$temp_file"
             fi
             updated=$((updated + 1))
         fi
@@ -183,7 +186,7 @@ main() {
         processed=$((processed + 1))
 
         # Progress indicator
-        if [[ $((processed % 50)) -eq 0 ]]; then
+        if [[ $((processed % 100)) -eq 0 ]]; then
             log_info "Processed $processed/$uncategorized rules..."
         fi
     done
