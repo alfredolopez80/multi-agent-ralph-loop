@@ -191,6 +191,27 @@ else
 fi
 
 #######################################
+# Phase 8: Hook Integration Validation
+#######################################
+HOOK_INTEGRATION_TEST="$REPO_ROOT/tests/hook-integration/test-hook-integration-v2.88.sh"
+
+if [[ -x "$HOOK_INTEGRATION_TEST" ]]; then
+    echo ""
+    echo -e "${YELLOW}[Phase 8] Validating hook integration (5 findings)${NC}"
+
+    if "$HOOK_INTEGRATION_TEST" > /dev/null 2>&1; then
+        echo -e "  ${GREEN}✓ Hook integration validated${NC}"
+    else
+        echo -e "  ${RED}✗ Hook integration validation failed${NC}"
+        echo -e "  ${YELLOW}  Run: $HOOK_INTEGRATION_TEST -v${NC}"
+        ((ERRORS++))
+    fi
+else
+    echo ""
+    echo -e "${YELLOW}[Phase 8] Skipped (hook integration test not found)${NC}"
+fi
+
+#######################################
 # Summary
 #######################################
 echo ""

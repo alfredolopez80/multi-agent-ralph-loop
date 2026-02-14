@@ -1,16 +1,23 @@
 #!/bin/bash
 # ralph-subagent-start.sh - Initialize subagents with Ralph context
-# VERSION: 2.85.0
+# VERSION: 2.88.0
 # REPO: multi-agent-ralph-loop
 #
 # Triggered by: SubagentStart hook event (matcher: ralph-*)
 # Purpose: Load Ralph context into new subagents
 #
+# v2.88.0 Changes:
+#   - Register subagent state on start (Finding #4)
+#   - Track parent-child relationships
+#   - Enable lifecycle tracking for Stop hook
+#
 # Input (stdin JSON):
 #   {
 #     "subagentId": "subagent-xxx",
 #     "subagentType": "ralph-coder|ralph-reviewer|ralph-tester|ralph-researcher",
-#     "parentId": "parent-xxx"
+#     "parentId": "parent-xxx",
+#     "sessionId": "session-xxx",
+#     "taskId": "task-xxx"
 #   }
 #
 # Output (stdout JSON):
@@ -20,9 +27,10 @@ set -euo pipefail
 
 # Configuration
 REPO_ROOT="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+STATE_DIR="$HOME/.ralph/state"
 LOG_DIR="$HOME/.ralph/logs"
 MEMORY_DIR="$HOME/.ralph/memory"
-mkdir -p "$LOG_DIR"
+mkdir -p "$LOG_DIR" "$STATE_DIR"
 
 # Read stdin for subagent info
 stdin_data=$(cat)
@@ -31,9 +39,37 @@ stdin_data=$(cat)
 subagent_id=$(echo "$stdin_data" | jq -r '.subagentId // .subagent_id // "unknown"')
 subagent_type=$(echo "$stdin_data" | jq -r '.subagentType // .subagent_type // "unknown"')
 parent_id=$(echo "$stdin_data" | jq -r '.parentId // .parent_id // "unknown"')
+session_id=$(echo "$stdin_data" | jq -r '.sessionId // .session_id // "default"')
+task_id=$(echo "$stdin_data" | jq -r '.taskId // .task_id // ""')
 
 # Log the event
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] SubagentStart: ${subagent_id} (${subagent_type}) parent=${parent_id}" >> "$LOG_DIR/agent-teams.log"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] SubagentStart: ${subagent_id} (${subagent_type}) parent=${parent_id} session=${session_id}" >> "$LOG_DIR/agent-teams.log"
+
+# ============================================
+# v2.88.0: Register subagent state (Finding #4)
+# ============================================
+SUBAGENT_STATE="$STATE_DIR/${session_id}/subagents/${subagent_id}.json"
+mkdir -p "$(dirname "$SUBAGENT_STATE")"
+
+jq -n \
+    --arg id "$subagent_id" \
+    --arg type "$subagent_type" \
+    --arg parent "$parent_id" \
+    --arg session "$session_id" \
+    --arg task "$task_id" \
+    --arg time "$(date -Iseconds)" \
+    '{
+        id: $id,
+        type: $type,
+        parent: $parent,
+        session: $session,
+        task: $task,
+        status: "active",
+        started_at: $time,
+        last_heartbeat: $time
+    }' > "$SUBAGENT_STATE"
+
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Subagent state registered: $SUBAGENT_STATE" >> "$LOG_DIR/agent-teams.log"
 
 # Build context based on subagent type
 CONTEXT=""
