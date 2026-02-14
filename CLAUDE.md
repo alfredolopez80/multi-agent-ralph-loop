@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.86.1
+# Multi-Agent Ralph v2.87.0
 
 Orchestration system with memory-driven planning, multi-agent coordination, automatic learning, and quality validation.
 
@@ -9,6 +9,23 @@ Orchestration system with memory-driven planning, multi-agent coordination, auto
 This is the ONLY configuration file for Claude Code. All hooks, agents, and settings are here.
 
 > ⚠️ **NOT**: `~/.claude-sneakpeek/zai/config/settings.json` (Zai variant - legacy)
+
+## Skills/Commands Unification (v2.87.0)
+
+**Unified Skills Model**: All commands now use the SKILL.md format per Claude Code best practices.
+
+| Location | Purpose | Format |
+|----------|---------|--------|
+| `.claude/skills/<name>/SKILL.md` | Source of truth (repo) | Skill directory |
+| `~/.claude/skills/<name>` | Symlink to repo | Symlink |
+
+**Key Changes**:
+- Removed duplicate command files from `~/.claude/commands/`
+- All Ralph skills symlinked from global to repo
+- Single source of truth: changes in repo reflect globally
+- Version aligned to v2.87.0 across all skills
+
+See: `docs/architecture/UNIFIED_ARCHITECTURE_v2.87.md`
 
 ## Security Hooks (v2.86.1)
 

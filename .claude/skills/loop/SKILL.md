@@ -1,206 +1,280 @@
 ---
-# VERSION: 2.43.0
+# VERSION: 2.87.0
 name: loop
-description: "Execute task with Ralph Loop pattern: Execute -> Validate -> Iterate until VERIFIED_DONE. Enforces iteration limits per model (Claude: 25, MiniMax: 50, MiniMax-lightning: 100). Use when: (1) iterative fixes needed, (2) running until quality passes, (3) automated task completion. Triggers: /loop, 'loop until done', 'iterate', 'keep trying', 'fix until passing'."
+description: "Ralph Loop pattern with swarm mode: iterative execution until VERIFIED_DONE with multi-agent coordination. Use when: (1) iterative refinement needed, (2) quality gates must pass, (3) automated validation required. Triggers: /loop, 'loop until done', 'iterate', 'keep trying', 'fix until passing'."
+argument-hint: "<task> [--with-glm5]"
 user-invocable: true
+context: fork
+agent: general-purpose
+allowed-tools:
+  - Task
+  - Read
+  - Edit
+  - Write
+  - Bash
+  - Glob
+  - Grep
 ---
 
-# Loop - Ralph Loop Pattern
+# /loop - Ralph Loop Pattern (v2.87)
 
-Execute -> Validate -> Iterate until VERIFIED_DONE.
+Execute tasks iteratively with automatic quality validation until VERIFIED_DONE signal.
 
-## Quick Start
+## v2.87 Key Changes (UNIFIED SKILLS MODEL)
 
-```bash
-/loop "fix all type errors"
-/loop "implement tests until 80% coverage"
-ralph loop "fix lint errors"
+- **Skills/Commands unification**: All commands now use SKILL.md format
+- **Single source of truth**: Skills live in repo, symlinked globally
+- **Version alignment**: All skills updated to v2.87.0
+- **Documentation consolidated**: Architecture docs in `docs/architecture/`
 
-# With GLM-5 teammates for faster execution
-/loop "fix all type errors" --with-glm5
-/loop "refactor auth module" --with-glm5 --teammates coder,reviewer
-```
+## v2.84 Key Change (GLM-5 INTEGRATION)
 
-## Pattern
+**`--with-glm5` flag** enables GLM-5 teammates for iterative execution:
 
 ```
-     EXECUTE
-        |
-        v
-    +---------+
-    | VALIDATE |
-    +---------+
-        |
-   Quality    YES    +---------------+
-   Passed? --------> | VERIFIED_DONE |
-        |            +---------------+
-        | NO
-        v
-    +---------+
-    | ITERATE | (max iterations)
-    +---------+
-        |
-        +-------> Back to EXECUTE
+/loop "Fix all TypeScript errors" --with-glm5
+/loop "Implement authentication" --with-glm5
 ```
+
+When `--with-glm5` is set:
+- Each iteration uses GLM-5 with thinking mode
+- Reasoning captured for debugging failed iterations
+- Faster iterations for complexity 1-4 tasks
+
+## Overview
+
+The Ralph Loop is a **continuous execution pattern** that iterates through EXECUTE -> VALIDATE -> QUALITY CHECK cycles until the task passes all quality gates or reaches the iteration limit.
+
+```
++------------------------------------------------------------------+
+|                    RALPH LOOP PATTERN                             |
++------------------------------------------------------------------+
+|                                                                   |
+|   +----------+    +--------------+    +-----------------+         |
+|   | EXECUTE  |--->|   VALIDATE   |--->| Quality Passed? |         |
+|   |   Task   |    | (hooks/gates)|    +--------+--------+         |
+|   +----------+    +--------------+             |                  |
+|                                          NO <--+--> YES           |
+|                                           |         |             |
+|                          +----------------+         |             |
+|                          v                          v             |
+|                   +------------+          +---------------+       |
+|                   |  ITERATE   |          | VERIFIED_DONE |       |
+|                   | (max 15/30)|          |   (output)    |       |
+|                   +-----+------+          +---------------+       |
+|                         |                                         |
+|                         +----------> Back to EXECUTE              |
+|                                                                   |
++------------------------------------------------------------------+
+```
+
+## When to Use
+
+Use `/loop` when:
+1. **Iterative refinement needed** - Code requires multiple passes to meet quality standards
+2. **Quality gates must pass** - TypeScript, ESLint, tests, linting must all pass
+3. **Automated validation** - Let the loop handle retries automatically
+4. **Complex implementations** - Multi-file changes that need coordination
+5. **Research tasks** - Gathering information until complete
+
+**DO NOT use** for:
+- Simple one-shot tasks (use direct claude call)
+- Tasks already in orchestration flow (redundant)
+- Spec refinement workflows (use /adversarial)
 
 ## Iteration Limits
 
-| Model | Max Iterations | Use Case |
-|-------|----------------|----------|
-| Claude (Sonnet/Opus) | 25 | Complex reasoning |
-| MiniMax M2.1 | 50 | Standard tasks |
-| MiniMax-lightning | 100 | Extended loops |
+| Model | Max Iterations | Cost vs Claude | Quality | Use Case |
+|-------|----------------|----------------|---------|----------|
+| Claude (Sonnet/Opus) | **15** | 100% (baseline) | 85-90% SWE-bench | Complex reasoning, high accuracy |
+| GLM-5 | **30** | ~10% | 80%+ SWE-bench | Standard tasks (2x multiplier) |
+| MiniMax M2.1 | **30** | ~8% | 74% SWE-bench | Standard tasks (2x multiplier) |
 
-## Workflow
+## Model Selection
 
-### 1. Execute Task
+### Default Mode (Claude)
+
+```bash
+ralph loop "implement OAuth2 authentication"
+```
+
+Uses Claude Sonnet with **15 iteration limit**:
+- Best for: Complex features, security-critical code, architectural changes
+- Cost: Standard Claude pricing
+- Quality: 85%+ SWE-bench accuracy
+
+### GLM-5 Mode (--with-glm5 flag)
+
+```bash
+ralph loop "implement OAuth2 authentication" --with-glm5
+```
+
+Uses GLM-5 with **30 iteration limit**:
+- Best for: Standard features, refactoring, testing, documentation
+- Cost: ~10% of Claude cost
+- Quality: 80%+ SWE-bench accuracy
+
+### MiniMax Mode (--mmc flag)
+
+```bash
+ralph loop --mmc "implement OAuth2 authentication"
+```
+
+Uses MiniMax M2.1 with **30 iteration limit**:
+- Best for: Non-critical features, exploratory research
+- Cost: ~8% of Claude cost
+- Quality: 74% SWE-bench accuracy
+
+## CLI Execution
+
+```bash
+# Claude mode (15 iterations)
+ralph loop "implement user authentication with JWT"
+
+# GLM-5 mode (30 iterations)
+ralph loop "refactor database queries" --with-glm5
+
+# MiniMax mode (30 iterations)
+ralph loop --mmc "refactor database queries to use TypeORM"
+
+# Complex task with specific requirements
+ralph loop "add rate limiting to API endpoints with Redis"
+```
+
+## Task Tool Invocation (Swarm Mode)
+
+**IMPORTANT**: /loop uses swarm mode by default with full multi-agent coordination.
+
 ```yaml
-# Attempt implementation
-Edit/Write/Bash as needed
+Task:
+  subagent_type: "general-purpose"
+  model: "sonnet"
+  run_in_background: true
+  max_iterations: 15
+  description: "Loop execution with swarm mode"
+  team_name: "loop-execution-team"
+  name: "loop-lead"
+  mode: "delegate"
+  prompt: |
+    Execute the following task iteratively until VERIFIED_DONE:
+
+    Task: $ARGUMENTS
+
+    Ralph Loop pattern:
+    1. EXECUTE - Implement the task
+    2. VALIDATE - Run quality gates (tsc, eslint, tests)
+    3. CHECK - Did all gates pass?
+       - YES -> VERIFIED_DONE
+       - NO -> ITERATE (max 15)
+
+    Output: Final implementation + quality report
 ```
 
-### 2. Validate
-```yaml
-# Run quality gates
-ralph gates
-```
+## Team Composition (Auto-Spawned)
 
-### 3. Check & Iterate
-```yaml
-# If validation fails and under limit
-iteration += 1
-if iteration <= MAX:
-    continue  # Back to Execute
-else:
-    report "Max iterations reached"
-```
+When /loop is invoked, it automatically spawns:
 
-## Loop Types
+| Role | Purpose | Count |
+|------|---------|-------|
+| **Leader** | Loop coordinator | 1 |
+| **Teammate 1** | Implementation specialist | 1 |
+| **Teammate 2** | Quality validation specialist | 1 |
+| **Teammate 3** | Test verification specialist | 1 |
 
-### Fix Loop
+**Total**: 4 agents working in parallel (1 leader + 3 teammates)
+
+## Output Location
+
 ```bash
-/loop "fix all type errors"
-```
-Repeatedly fix errors until build passes.
+# Logs saved to ~/.ralph/logs/
+ls ~/.ralph/logs/loop-*.log
 
-### Coverage Loop
+# View last loop execution
+tail -f ~/.ralph/logs/loop-latest.log
+```
+
+## Pattern Details
+
+### Loop Structure
+
 ```bash
-/loop "increase test coverage to 80%"
-```
-Add tests until coverage target met.
+iteration=0
+max_iterations=15  # or 30 for GLM-5/MiniMax
 
-### Lint Loop
+while [[ $iteration -lt $max_iterations ]]; do
+    # Step 1: EXECUTE
+    implement_task
+
+    # Step 2: VALIDATE
+    run_quality_gates  # tsc, eslint, tests, semgrep
+
+    # Step 3: CHECK
+    if all_gates_passed; then
+        echo "VERIFIED_DONE"
+        exit 0
+    fi
+
+    # Step 4: ITERATE
+    ((iteration++))
+    analyze_failures
+    apply_fixes
+done
+
+# Max iterations reached without VERIFIED_DONE
+exit 1
+```
+
+### Quality Gates Integration
+
+Each iteration runs quality gates:
+
+1. **TypeScript**: `tsc --noEmit`
+2. **ESLint**: `eslint .`
+3. **Tests**: `npm test` or `pytest`
+4. **Security**: `semgrep --config=auto`
+5. **Custom**: Project-specific gates
+
+### Stop Hook Integration
+
+The loop integrates with the Stop hook:
+
 ```bash
-/loop "fix all lint warnings"
+# Initialize state
+.claude/scripts/ralph-state.sh init "$SESSION_ID" loop "$TASK"
+
+# On VERIFIED_DONE
+.claude/scripts/ralph-state.sh complete "$SESSION_ID" loop
+
+# On failure
+.claude/scripts/ralph-state.sh fail "$SESSION_ID" loop "$ERROR"
 ```
-Fix lint issues until clean.
-
-### Build Loop
-```bash
-/loop "fix build errors"
-```
-Fix compilation errors until success.
-
-## Exit Conditions
-
-### Success (VERIFIED_DONE)
-- Quality gates pass
-- Tests pass
-- No remaining errors
-
-### Failure (MAX_ITERATIONS)
-- Iteration limit reached
-- Report remaining issues
-- Ask user for guidance
-
-### Manual Exit
-- User interrupts
-- Critical error detected
-- Deadlock detected
-
-## Integration
-
-- Core pattern for all Ralph tasks
-- Used by /orchestrator in Step 5
-- Hooks enforce limits automatically
 
 ## Anti-Patterns
 
-- Never exceed iteration limits
-- Never loop without validation step
-- Never ignore failing tests
-- Never loop on same error repeatedly (detect deadlock)
+- Never use infinite loops (always set max_iterations)
+- Never skip quality gates (defeats the purpose)
+- Never use for one-shot tasks (use direct execution)
+- Never nest loops (causes exponential iterations)
 
-## GLM-5 Integration (--with-glm5)
+## Completion Criteria
 
-Spawn GLM-5 teammates for faster parallel execution.
+`VERIFIED_DONE` requires ALL:
+1. All quality gates passed
+2. No TypeScript errors
+3. No ESLint errors
+4. Tests passing
+5. Security scan clean (no P0/P1 findings)
 
-### Usage
+## Related Skills
 
-```bash
-# Basic GLM-5 loop
-/loop "fix all type errors" --with-glm5
+- `/orchestrator` - Full orchestration workflow
+- `/gates` - Quality validation gates
+- `/adversarial` - Spec refinement
+- `/parallel` - Parallel subagent execution
+- `/retrospective` - Post-task analysis
 
-# With specific teammates
-/loop "refactor auth module" --with-glm5 --teammates coder,reviewer
+## References
 
-# Extended loop with all teammates
-/loop "implement full test suite" --with-glm5 --teammates coder,reviewer,tester
-```
-
-### Available Teammates
-
-| Teammate | Role | Best For |
-|----------|------|----------|
-| `coder` | Implementation | Writing code, fixing bugs |
-| `reviewer` | Code Review | Quality checks, patterns |
-| `tester` | Test Generation | Unit tests, coverage |
-| `orchestrator` | Coordination | Complex multi-step tasks |
-
-### How It Works
-
-1. **Spawn Teammates**: GLM-5 teammates spawned via `.claude/scripts/glm5-teammate.sh`
-2. **Parallel Execution**: Each iteration uses GLM-5 for faster processing
-3. **Hook Integration**: `glm5-subagent-stop.sh` handles teammate completion
-4. **Storage**: Results stored in `.ralph/teammates/` and `.ralph/reasoning/`
-
-### Benefits
-
-- **Speed**: 2-3x faster than sequential execution
-- **Thinking Mode**: GLM-5 provides reasoning for each step
-- **Cost Effective**: Lower cost than Claude for repetitive tasks
-- **Parallelization**: Multiple teammates work simultaneously
-
-### Example Session
-
-```
-User: /loop "fix all lint errors" --with-glm5
-
-[Iteration 1/25]
-🤖 GLM-5 coder: Analyzing lint errors...
-   Found 12 errors in 5 files
-   Fixed: src/auth.ts, src/user.ts
-
-[Iteration 2/25]
-🤖 GLM-5 coder: Checking remaining errors...
-   Found 3 errors in 2 files
-   Fixed: src/utils.ts
-
-[Validation]
-✅ All lint errors fixed
-✅ VERIFIED_DONE
-```
-
-### Bash Commands
-
-```bash
-# Spawn GLM-5 teammate
-.claude/scripts/glm5-teammate.sh coder "Fix lint errors" "loop-fix-1"
-
-# Check teammate status
-cat .ralph/teammates/loop-fix-1/status.json
-
-# View reasoning
-cat .ralph/reasoning/loop-fix-1.txt
-```
-
+- [Unified Architecture v2.87](docs/architecture/UNIFIED_ARCHITECTURE_v2.87.md)
+- [Skills/Commands Unification](docs/architecture/SKILLS_COMMANDS_UNIFICATION_v2.87.md)
+- [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills)

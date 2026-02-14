@@ -1,9 +1,10 @@
 ---
-# VERSION: 2.47.2
+# VERSION: 2.87.0
 name: orchestrator
-description: "Full orchestration workflow with Smart Memory-Driven context (v2.47), RLM-inspired routing (v2.46), and quality gates: clarify, smart memory search, classify 3D, plan, delegate, execute with parallel memory, validate quality-first, retrospect. Use when: (1) implementing features, (2) complex refactoring, (3) multi-file changes, (4) tasks requiring coordination. Triggers: /orchestrator, /orch, 'orchestrate', 'full workflow', 'implement feature'."
-context: fork
+description: "Full orchestration workflow with swarm mode: evaluate -> clarify -> classify -> persist -> plan mode -> spawn teammates -> execute -> validate -> retrospective. Use when: (1) implementing features, (2) complex refactoring, (3) multi-file changes, (4) tasks requiring coordination. Triggers: /orchestrator, /orch, 'orchestrate', 'full workflow', 'implement feature'."
+argument-hint: "<task description> [--with-glm5]"
 user-invocable: true
+context: fork
 agent: orchestrator
 allowed-tools:
   - Task
@@ -18,23 +19,11 @@ allowed-tools:
   - Glob
   - Grep
   - mcp__plugin_claude-mem_*
-hooks:
-  SessionStart:
-    - path: ~/.claude/hooks/orchestrator-init.sh
-      once: true
-  PreToolUse:
-    - event: "Task"
-      path: ~/.claude/hooks/smart-memory-search.sh
-  PostToolUse:
-    - event: "Task"
-      path: ~/.claude/hooks/parallel-explore.sh
-  Stop:
-    - path: ~/.claude/hooks/orchestrator-report.sh
 ---
 
-# Orchestrator - Multi-Agent Ralph v2.52
+# Orchestrator - Multi-Agent Ralph v2.87
 
-**Smart Memory-Driven Orchestration** with parallel memory search, RLM-inspired routing, and quality-first validation.
+**Smart Memory-Driven Orchestration** with swarm mode, parallel memory search, RLM-inspired routing, and quality-first validation.
 
 Based on @PerceptualPeak Smart Forking concept:
 > "Why not utilize the knowledge gained from your hundreds/thousands of other Claude code sessions? Don't let that valuable context go to waste!!"
@@ -53,39 +42,62 @@ ralph orch "Migrate database from MySQL to PostgreSQL"
 /orchestrator "Refactor database layer" --with-glm5 --teammates coder,reviewer
 ```
 
-## Core Workflow (v2.52.0 - 8 Major Steps, 23 Sub-steps)
+## v2.87 Key Changes (UNIFIED SKILLS MODEL)
 
-### Step 0: EVALUATE (3-Dimension Classification)
+- **Skills/Commands unification**: All commands now use SKILL.md format
+- **Single source of truth**: Skills live in repo, symlinked globally
+- **Version alignment**: All skills updated to v2.87.0
+- **Documentation consolidated**: Architecture docs in `docs/architecture/`
 
-**0a. Classification (v2.46 RLM)**:
+## v2.84 Key Changes (GLM-5 TEAMS)
+
+**`--with-glm5` flag** enables GLM-5 teammates with thinking mode:
+
+```
+/orchestrator Implement OAuth2 --with-glm5
+/orchestrator Fix auth bugs --with-glm5
+```
+
+When `--with-glm5` is set:
+- Spawns `glm5-coder`, `glm5-reviewer`, `glm5-tester` teammates
+- Each teammate uses GLM-5 API with thinking mode enabled
+- Reasoning captured to `.ralph/reasoning/{task_id}.txt`
+- Status tracked in `.ralph/teammates/{task_id}/status.json`
+
+## v2.81 Key Changes (SWARM MODE)
+
+**Swarm mode is now ENABLED by default** using native Claude Code multi-agent features:
+
+1. **Team Creation**: Orchestrator creates team "orchestration-team" with identity
+2. **Teammate Spawning**: ExitPlanMode spawns 3 teammates (code-reviewer, test-architect, security-auditor)
+3. **Shared Task List**: All teammates see same tasks via TeammateTool
+4. **Inter-Agent Messaging**: Teammates can communicate via mailbox
+5. **Plan Approval**: Leader can approve/reject teammate plans
+
+## Core Workflow (10 Steps)
+
+```
+0. EVALUATE     -> Quick complexity assessment (trivial vs non-trivial)
+1. CLARIFY      -> AskUserQuestion intensively (MUST_HAVE + NICE_TO_HAVE)
+2. CLASSIFY     -> Complexity 1-10, model routing
+2b. WORKTREE    -> Ask about worktree isolation
+3. PLAN         -> Design detailed plan (orchestrator analysis)
+3b. PERSIST     -> Write to .claude/orchestrator-analysis.md
+4. PLAN MODE    -> EnterPlanMode (reads analysis as foundation)
+5. DELEGATE     -> Route to appropriate model/agent
+6. EXECUTE      -> Parallel subagents
+7. VALIDATE     -> Quality gates + Adversarial
+8. RETROSPECT   -> Analyze and improve
+```
+
+## Step 0: EVALUATE (3-Dimension Classification)
+
+**Classification (RLM-inspired)**:
 | Dimension | Values | Purpose |
 |-----------|--------|---------|
 | Complexity | 1-10 | Scope, risk, ambiguity |
 | Information Density | CONSTANT / LINEAR / QUADRATIC | How answer scales |
 | Context Requirement | FITS / CHUNKED / RECURSIVE | Decomposition needs |
-
-**0b. SMART MEMORY SEARCH (v2.47 NEW)**:
-
-```
-┌────────────────────────────────────────────────────────────────┐
-│              SMART MEMORY SEARCH (PARALLEL)                    │
-├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│   ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐        │
-│   │claude-mem│ │ memvid   │ │ handoffs │ │ ledgers  │        │
-│   └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘        │
-│        │ PARALLEL   │ PARALLEL   │ PARALLEL   │ PARALLEL      │
-│        └────────────┴────────────┴────────────┘               │
-│                         ↓                                      │
-│              .claude/memory-context.json                       │
-│              ├── past_successes                                │
-│              ├── past_errors                                   │
-│              ├── recommended_patterns                          │
-│              └── fork_suggestions (top 5)                      │
-└────────────────────────────────────────────────────────────────┘
-```
-
-**AUTOMATIC**: Triggered by PreToolUse hook on Task invocation.
 
 **Workflow Routing**:
 | Density | Context | Complexity | Route |
@@ -95,24 +107,7 @@ ralph orch "Migrate database from MySQL to PostgreSQL"
 | LINEAR | CHUNKED | ANY | PARALLEL_CHUNKS |
 | QUADRATIC | ANY | ANY | RECURSIVE_DECOMPOSE |
 
-### Step 0c: FAST_PATH Decision
-
-If FAST_PATH eligible (complexity <= 3, CONSTANT, FITS):
-```
-DIRECT_EXECUTE -> MICRO_VALIDATE -> DONE (3 steps)
-```
-Otherwise, continue to Step 1.
-
-### Step 1: CLARIFY (Memory-Enhanced)
-
-**AUTOMATIC TLDR + MEMORY CONTEXT**:
-```bash
-# 1. Check memory context for similar past implementations
-cat .claude/memory-context.json | jq '.fork_suggestions[:3]'
-
-# 2. Semantic search for existing code
-tldr semantic "$USER_TASK_KEYWORDS" .
-```
+## Step 1: CLARIFY (Memory-Enhanced)
 
 **MUST_HAVE Questions** (Blocking):
 ```yaml
@@ -127,77 +122,26 @@ AskUserQuestion:
         - label: "Performance"
 ```
 
-### Step 1b: GAP-ANALYST (Memory-Enhanced)
-
-Pre-implementation gap analysis using memory context:
-- Check `past_errors` to avoid known pitfalls
-- Review `recommended_patterns` for best practices
-- Identify requirements not covered by memory
-
-### Step 1c: PARALLEL_EXPLORE (5 Concurrent + Memory)
-
-Launch 5 parallel exploration tasks:
-1. **Semantic Search** - Code patterns
-2. **Structure Analysis** - Codebase overview
-3. **Dependency Scan** - Understanding deps
-4. **Pattern Search** - Similar implementations
-5. **Memory Correlation** - Match with past sessions
-
-Results aggregated to `.claude/exploration-context.json`
-
-### Step 2: CLASSIFY (3-Dimension)
+## Step 2: CLASSIFY (Model Routing)
 
 | Score | Complexity | Model | Adversarial |
 |-------|------------|-------|-------------|
-| 1-2 | Trivial | MiniMax-lightning | No |
-| 3-4 | Simple | MiniMax M2.1 | No |
+| 1-2 | Trivial | GLM-4.7 / glm-5 | No |
+| 3-4 | Simple | GLM-4.7 / glm-5 | No |
 | 5-6 | Medium | Sonnet | Optional |
 | 7-8 | Complex | Opus | Yes |
 | 9-10 | Critical | Opus (thinking) | Yes |
 
-### Step 2b: WORKTREE DECISION
+## Step 3: PLAN + PERSIST
 
-```yaml
-AskUserQuestion:
-  questions:
-    - question: "Requires isolated worktree?"
-      header: "Isolation"
-      options:
-        - label: "Yes, create worktree"
-        - label: "No, current branch"
-```
-
-### Step 3: PLAN (Memory-Informed)
-
-**Use memory context in planning**:
-```bash
-# Review what worked before
-cat .claude/memory-context.json | jq '.insights.past_successes'
-
-# Review what to avoid
-cat .claude/memory-context.json | jq '.insights.past_errors'
-```
-
-Write plan with:
+Write plan to `.claude/orchestrator-analysis.md` with:
 - Summary (informed by memory)
 - Files to modify/create
 - Dependencies
 - Testing strategy
 - Risks (include known issues from memory)
 
-### Step 3b: PERSIST
-
-Write to `.claude/orchestrator-analysis.md`
-
-### Step 3c: PLAN-STATE
-
-Initialize `.claude/plan-state.json` with spec vs actual tracking.
-
-### Step 3d: RECURSIVE_DECOMPOSE (if needed)
-
-For QUADRATIC or RECURSIVE tasks, spawn sub-orchestrators (max depth 3).
-
-### Step 4: PLAN MODE
+## Step 4: PLAN MODE
 
 ```yaml
 EnterPlanMode: {}  # Claude Code reads orchestrator-analysis.md
@@ -205,29 +149,28 @@ EnterPlanMode: {}  # Claude Code reads orchestrator-analysis.md
 
 Exit with `ExitPlanMode` when approved.
 
-### Step 5: DELEGATE (Parallel-First)
+## Step 5: DELEGATE (Parallel-First with Swarm)
 
 **PRIORITY: Parallel execution when possible**
 
 ```yaml
-# PARALLEL: Independent tasks
+# With swarm mode (v2.81+)
 Task:
-  subagent_type: "security-auditor"
-  model: "opus"
-  run_in_background: true
-  prompt: "Audit: $FILES"
-
-Task:
-  subagent_type: "test-architect"
+  subagent_type: "orchestrator"
+  description: "Full orchestration with swarm"
+  prompt: "$ARGUMENTS"
   model: "sonnet"
-  run_in_background: true
-  prompt: "Generate tests: $FILES"
+  team_name: "orchestration-team"
+  name: "orchestrator-lead"
+  mode: "delegate"
 
-# SEQUENTIAL: Dependent tasks
-# Wait for results before continuing
+# ExitPlanMode with swarm launch:
+ExitPlanMode:
+  launchSwarm: true
+  teammateCount: 3
 ```
 
-### Step 6: EXECUTE-WITH-SYNC
+## Step 6: EXECUTE-WITH-SYNC
 
 Nested loop with parallel substeps:
 
@@ -242,64 +185,14 @@ EXTERNAL RALPH LOOP (max 25)
 
 **CRITICAL: model: "sonnet" for all subagents**
 
-### Step 6b.5: QUALITY-PARALLEL (NEW v2.80)
-
-**Trigger**: `complexity >= 5` OR security-related code
-
-**Launch parallel quality checks**:
-```bash
-# Launch 4 quality subagents in parallel
-QUALITY_RESULT=$(./.claude/scripts/quality-coordinator.sh "$TARGET_FILE" "$COMPLEXITY")
-
-# Parse result and extract run_id
-RUN_ID=$(echo "$QUALITY_RESULT" | jq -r '.run_id')
-
-# Store run_id for step 7
-echo "$RUN_ID" > .claude/quality-results/current_run_id.txt
-```
-
-**Quality Agents Launched** (parallel, non-blocking):
-1. **Security** (27 patterns, P0/P1/P2)
-2. **Code Review** (4 agents, confidence ≥80)
-3. **Deslop** (AI code cleanup)
-4. **Stop-Slop** (AI prose cleanup)
-
-**Store RUN_ID** for retrieval in step 7a.
-
-### Step 7: VALIDATE (Quality-First v2.46)
-
-### Step 7a: READ QUALITY RESULTS (NEW v2.80)
-
-**Check if quality checks completed**:
-```bash
-# Read current run_id
-if [[ -f .claude/quality-results/current_run_id.txt ]]; then
-    CURRENT_RUN_ID=$(cat .claude/quality-results/current_run_id.txt)
-
-    # Read aggregated results
-    QUALITY_RESULTS=$(./.claude/scripts/read-quality-results.sh "$CURRENT_RUN_ID")
-
-    # Parse results
-    CRITICAL_COUNT=$(echo "$QUALITY_RESULTS" | jq -r '.summary.critical_findings // 0')
-    TOTAL_FINDINGS=$(echo "$QUALITY_RESULTS" | jq -r '.summary.total_findings // 0')
-
-    echo "Quality Results: $TOTAL_FINDINGS findings ($CRITICAL_COUNT critical)"
-fi
-```
-
-**Decision Logic**:
-- `CRITICAL_COUNT > 0`: BLOCK and require fixes
-- `TOTAL_FINDINGS == 0`: Proceed to validation
-- `TOTAL_FINDINGS > 0` but `CRITICAL_COUNT == 0`: Proceed with warnings
-
-### Step 7: VALIDATE (Quality-First v2.46)
+## Step 7: VALIDATE (Quality-First)
 
 **Stage 1: CORRECTNESS (BLOCKING)**
 - Meets requirements?
 - Edge cases handled?
 
 **Stage 2: QUALITY (BLOCKING)**
-- Security verified?
+- Security verified? (semgrep + gitleaks)
 - Performance OK?
 - Tests adequate?
 
@@ -312,55 +205,71 @@ fi
 ralph adversarial "Design review"
 ```
 
-### Step 8: RETROSPECTIVE (Mandatory)
+## Step 8: RETROSPECTIVE (Mandatory)
 
 ```bash
 ralph retrospective
 ```
 
-**NEW v2.47**: Save learnings to memory for future sessions:
+**Save learnings to memory**:
 ```bash
-# Save successful patterns
 ralph memvid save "Implemented OAuth2 successfully: [pattern details]"
-
-# Record errors to avoid
 ralph memvid save "AVOID: [error pattern] caused [issue]"
 ```
 
 -> **VERIFIED_DONE**
 
-## Model Routing (v2.47)
+## Model Routing
 
 | Route | Primary | Secondary | Max Iter |
 |-------|---------|-----------|----------|
 | FAST_PATH | sonnet | - | 3 |
-| STANDARD (1-4) | minimax-m2.1 | sonnet | 25 |
+| STANDARD (1-4) | glm-5 | sonnet | 25 |
 | STANDARD (5-6) | sonnet | opus | 25 |
 | STANDARD (7-10) | opus | sonnet | 25 |
 | PARALLEL_CHUNKS | sonnet (chunks) | opus (aggregate) | 15/chunk |
 | RECURSIVE | opus (root) | sonnet (sub) | 15/sub |
 
-## Integration Points
+## GLM-5 Teams Integration (--with-glm5)
 
-| Component | Role | When |
-|-----------|------|------|
-| **smart-memory-search.sh** | **PARALLEL memory search** | **Step 0b (NEW)** |
-| /smart-fork | Find relevant sessions | Manual invocation |
-| /fast-path-check | Trivial task detection | Step 0c |
-| /parallel-explore | 5 concurrent exploration | Step 1c |
-| /classify | 3-dimension classification | Step 2 |
-| /gates | Quality validation | Step 7 |
-| /adversarial | Spec refinement | Step 7 |
-| /retrospective | Post-analysis | Step 8 |
+When `$ARGUMENTS` contains `--with-glm5`:
 
-## Memory Sources (Searched in Parallel)
+**Step 1: Parse Arguments**
+```
+TASK=<everything before --with-glm5>
+USE_GLM5=true
+```
 
-| Source | Content | Speed |
-|--------|---------|-------|
-| **claude-mem MCP** | Semantic observations | Fast |
-| **memvid** | Vector-encoded context | Sub-5ms |
-| **handoffs** | Session snapshots | Fast |
-| **ledgers** | Continuity data | Fast |
+**Step 2: Spawn GLM-5 Teammates**
+```bash
+# GLM-5 Coder
+.claude/scripts/glm5-teammate.sh "glm5-coder" "$CODER_TASK" "$TASK_ID-coder"
+
+# GLM-5 Reviewer
+.claude/scripts/glm5-teammate.sh "glm5-reviewer" "$REVIEW_TASK" "$TASK_ID-reviewer"
+
+# GLM-5 Tester
+.claude/scripts/glm5-teammate.sh "glm5-tester" "$TEST_TASK" "$TASK_ID-tester"
+```
+
+**Step 3: Wait for Completion**
+```bash
+cat .ralph/teammates/$TASK_ID-*/status.json
+```
+
+**Step 4: Aggregate Results**
+- Collect outputs from `.ralph/reasoning/`
+- Show thinking process for transparency
+- Apply quality gates
+
+## Available Teammates
+
+| Teammate | Role | Best For |
+|----------|------|----------|
+| `coder` | Implementation | Writing code, fixing bugs |
+| `reviewer` | Code Review | Quality checks, security |
+| `tester` | Test Generation | Unit tests, coverage |
+| `orchestrator` | Coordination | Complex multi-step tasks |
 
 ## Anti-Patterns
 
@@ -375,7 +284,7 @@ ralph memvid save "AVOID: [error pattern] caused [issue]"
 ## Completion Criteria
 
 `VERIFIED_DONE` requires ALL:
-1. Smart Memory Search complete (memory-context.json exists)
+1. Smart Memory Search complete
 2. Task classified (3 dimensions)
 3. MUST_HAVE questions answered
 4. Plan approved
@@ -385,134 +294,36 @@ ralph memvid save "AVOID: [error pattern] caused [issue]"
 8. Adversarial passed (if complexity >= 7)
 9. Retrospective done + learnings saved to memory
 
-## Examples
-
-### Standard Task with Memory
-
-```
-User: "Add JWT authentication"
-
-Step 0a: Classify -> Complexity: 7, LINEAR, FITS
-Step 0b: Smart Memory Search
-  -> Found: 3 past sessions with auth implementations
-  -> past_successes: "Use passport.js for OAuth"
-  -> past_errors: "Don't store tokens in localStorage"
-  -> fork_suggestion: session-abc123
-
-Step 1: Clarify (informed by memory)
-  -> Skip questions about token storage (already known)
-  -> Focus on new requirements
-
-... (continue with memory-informed implementation)
-
-Step 8: Retrospective
-  -> Save: "JWT with refresh tokens implemented successfully"
-  -> Save: "AVOID: Token expiry not handled - fix applied"
-```
-
-## CLI Commands (v2.47)
+## CLI Commands
 
 ```bash
-# Smart memory search
-ralph memory-search "OAuth implementation"
-ralph fork-suggest "Add authentication"
-ralph memory-stats
-
 # Standard orchestration
 ralph orch "task description"
-ralph gates
-ralph adversarial "spec"
 
 # With GLM-5 teammates
 ralph orch "task description" --with-glm5
 ralph orch "complex feature" --with-glm5 --teammates coder,reviewer,tester
+
+# Quality gates
+ralph gates
+ralph adversarial "spec"
+
+# Memory
+ralph memory-search "query"
+ralph fork-suggest "Add authentication"
 ```
 
-## GLM-5 Integration (--with-glm5)
+## Related Skills
 
-Spawn GLM-5 teammates for faster parallel execution during orchestration.
+- `/loop` - Iterative execution until VERIFIED_DONE
+- `/gates` - Quality validation gates
+- `/adversarial` - Spec refinement
+- `/parallel` - Parallel subagent execution
+- `/retrospective` - Post-task analysis
+- `/clarify` - Requirement clarification
 
-### Usage
+## References
 
-```bash
-# Basic GLM-5 orchestration
-/orchestrator "Implement auth system" --with-glm5
-
-# With specific teammates
-/orchestrator "Refactor database layer" --with-glm5 --teammates coder,reviewer
-
-# Full team for complex tasks
-/orchestrator "Build payment module" --with-glm5 --teammates coder,reviewer,tester,orchestrator
-```
-
-### Available Teammates
-
-| Teammate | Role | Best For |
-|----------|------|----------|
-| `coder` | Implementation | Writing code, fixing bugs |
-| `reviewer` | Code Review | Quality checks, security |
-| `tester` | Test Generation | Unit tests, coverage |
-| `orchestrator` | Coordination | Complex multi-step tasks |
-
-### How It Works
-
-When `--with-glm5` is specified:
-
-1. **Step 5 (DELEGATE)**: Spawns GLM-5 teammates instead of Claude subagents
-2. **Step 6 (EXECUTE)**: GLM-5 teammates execute in parallel with thinking mode
-3. **Hook Integration**: `glm5-subagent-stop.sh` handles teammate completion
-4. **Storage**: Results in `.ralph/teammates/` and `.ralph/reasoning/`
-
-### Benefits
-
-- **Speed**: 2-3x faster for parallelizable tasks
-- **Cost**: Lower API costs than Claude for repetitive work
-- **Thinking Mode**: GLM-5 provides reasoning for transparency
-- **Scalability**: Multiple teammates work simultaneously
-
-### Example Session
-
-```
-User: /orchestrator "Implement user authentication" --with-glm5
-
-Step 0: Classify -> Complexity: 7, STANDARD route
-Step 1: Clarify -> Requirements gathered
-Step 3: Plan -> Created implementation plan
-
-Step 5: DELEGATE (GLM-5)
-  🤖 Spawning teammates: coder, reviewer, tester
-
-  [coder] Implementing auth middleware...
-  [reviewer] Reviewing security patterns...
-  [tester] Generating auth tests...
-
-Step 6: EXECUTE (Parallel)
-  ✅ coder: Auth middleware complete
-  ✅ reviewer: 2 security suggestions
-  ✅ tester: 15 tests generated
-
-Step 7: VALIDATE
-  ✅ All quality gates passed
-
-Step 8: RETROSPECTIVE
-  📝 Learnings saved to memory
-
-✅ VERIFIED_DONE
-```
-
-### Bash Commands
-
-```bash
-# Spawn GLM-5 teammate
-.claude/scripts/glm5-teammate.sh <role> "<task>" "<task_id>"
-
-# Check teammate status
-cat .ralph/teammates/<task_id>/status.json
-
-# View reasoning
-cat .ralph/reasoning/<task_id>.txt
-
-# Initialize GLM-5 team
-.claude/scripts/glm5-init-team.sh
-```
-
+- [Unified Architecture v2.87](docs/architecture/UNIFIED_ARCHITECTURE_v2.87.md)
+- [Skills/Commands Unification](docs/architecture/SKILLS_COMMANDS_UNIFICATION_v2.87.md)
+- [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills)

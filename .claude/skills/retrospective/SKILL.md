@@ -1,4 +1,8 @@
-# VERSION: 2.43.0
+---
+# VERSION: 2.87.0
+# NAME: retrospective
+# DESCRIPTION: Analyze completed tasks to improve the Ralph system
+---
 
 # Skill: Retrospective & Self-Improvement
 

@@ -1,4 +1,10 @@
-# Adversarial Code Analyzer - v1.0.0
+---
+# VERSION: 2.87.0
+# NAME: adversarial
+# DESCRIPTION: Multi-Agent Adversarial Analysis System for code security
+---
+
+# Adversarial Code Analyzer
 
 **Multi-Agent Adversarial Analysis System** inspired by ZeroLeaks architecture.
 
