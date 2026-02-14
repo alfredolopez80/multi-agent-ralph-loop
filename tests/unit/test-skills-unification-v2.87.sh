@@ -596,9 +596,9 @@ test_optional_skills() {
 test_agent_teams_integration() {
     print_header "Test 13: Agent Teams Integration (Claude Code Docs)"
 
-    # Check for subagent types in settings
+    # Check for subagent types in settings (accepts specific names or ralph-* pattern)
     print_test "Agent Teams subagent types configured"
-    if grep -q "ralph-coder\|ralph-reviewer\|ralph-tester\|ralph-researcher" "$SETTINGS_FILE" 2>/dev/null; then
+    if grep -qE "ralph-coder|ralph-reviewer|ralph-tester|ralph-researcher|ralph-\*" "$SETTINGS_FILE" 2>/dev/null; then
         pass
     else
         warn "No Ralph subagent types found in settings"

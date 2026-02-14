@@ -1,7 +1,7 @@
 ---
 # VERSION: 2.87.0
-# NAME: adversarial
-# DESCRIPTION: Multi-Agent Adversarial Analysis System for code security
+name: adversarial
+description: Multi-Agent Adversarial Analysis System for code security
 ---
 
 # Adversarial Code Analyzer
