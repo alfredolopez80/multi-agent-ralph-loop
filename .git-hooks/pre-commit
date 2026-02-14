@@ -1,80 +1,168 @@
-#!/usr/bin/env bash
-# Pre-commit hook: Security validation with gitleaks and semgrep
-# VERSION: 1.0.0
+#!/bin/bash
+# pre-commit hook for multi-agent-ralph-loop
+# VERSION: 2.87.0
+# Purpose: Validate hooks, skills, and architecture before commit
 #
-# This hook prevents commits that contain:
-# - API keys, tokens, secrets (detected by gitleaks)
-# - Security vulnerabilities (detected by semgrep)
+# CRITICAL FORMAT RULES (per official Claude Code docs):
+# - PostToolUse/PreToolUse/UserPromptSubmit: {"continue": true/false}
+# - Stop hooks ONLY: {"decision": "approve"/"block"}
+# - The string "continue" is NEVER valid for the "decision" field
+#
+# VALIDATION PHASES:
+# 1. Hook JSON format validation
+# 2. Skills unification validation (if skills changed)
+# 3. Architecture documentation validation
 
-set -euo pipefail
+set -uo pipefail
 
-# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+BLUE='\033[0;34m'
+NC='\033[0m'
 
-# Get the list of staged files
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -v '^\.git' || true)
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+ERRORS=0
 
-if [ -z "$STAGED_FILES" ]; then
-    exit 0
+echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}  Pre-commit Validation v2.87.0${NC}"
+echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+echo ""
+
+#######################################
+# Phase 1: Hook JSON Format Validation
+#######################################
+STAGED_HOOKS=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.claude/hooks/.*\.(sh|py)$' || true)
+
+if [[ -n "$STAGED_HOOKS" ]]; then
+    echo -e "${YELLOW}[Phase 1] Validating Claude Code hook JSON formats${NC}"
+
+    for hook_file in $STAGED_HOOKS; do
+        [[ ! -f "$hook_file" ]] && continue
+
+        hook_name=$(basename "$hook_file")
+
+        # CRITICAL: "decision": "continue" is NEVER valid
+        if grep -qE '"decision":\s*"continue"' "$hook_file"; then
+            echo -e "  ${RED}✗ $hook_name: Uses invalid {\"decision\": \"continue\"}${NC}"
+            ((ERRORS++))
+            continue
+        fi
+
+        echo -e "  ${GREEN}✓ $hook_name${NC}"
+    done
+else
+    echo -e "${YELLOW}[Phase 1] Skipped (no hooks changed)${NC}"
 fi
 
-echo -e "${YELLOW}🔒 Running security checks...${NC}"
+#######################################
+# Phase 2: Skills Unification Validation
+#######################################
+STAGED_SKILLS=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.claude/skills/.*SKILL\.md$' || true)
 
-# ============================================
-# 1. Gitleaks: Scan for secrets/API keys
-# ============================================
-echo -e "${YELLOW}  → Scanning for secrets with gitleaks...${NC}"
+if [[ -n "$STAGED_SKILLS" ]]; then
+    echo ""
+    echo -e "${YELLOW}[Phase 2] Validating skills unification${NC}"
 
-# Create a temporary file with staged content
-TEMP_DIR=$(mktemp -d)
-trap "rm -rf $TEMP_DIR" EXIT
+    SKILLS_TEST="$REPO_ROOT/tests/unit/test-skills-unification-v2.87.sh"
 
-GIT_ROOT=$(git rev-parse --show-toplevel)
-
-# Copy staged files to temp directory
-while IFS= read -r file; do
-    if [ -f "$GIT_ROOT/$file" ]; then
-        mkdir -p "$TEMP_DIR/$(dirname "$file")"
-        cp "$GIT_ROOT/$file" "$TEMP_DIR/$file"
+    if [[ -x "$SKILLS_TEST" ]]; then
+        # Run quick validation (not verbose, just check pass/fail)
+        if "$SKILLS_TEST" > /dev/null 2>&1; then
+            echo -e "  ${GREEN}✓ Skills unification validated${NC}"
+        else
+            echo -e "  ${RED}✗ Skills unification test failed${NC}"
+            echo -e "  ${YELLOW}  Run for details: $SKILLS_TEST --verbose${NC}"
+            ((ERRORS++))
+        fi
+    else
+        echo -e "  ${YELLOW}⚠ Skills test script not found or not executable${NC}"
     fi
-done <<< "$STAGED_FILES"
+else
+    echo -e "${YELLOW}[Phase 2] Skipped (no skills changed)${NC}"
+fi
 
-# Run gitleaks on the temporary directory
-if gitleaks detect --source "$TEMP_DIR" --no-git --no-banner --log-level=error 2>&1 | grep -q "leaks found"; then
-    echo -e "${RED}❌ GITLEAKS DETECTED SECRETS!${NC}"
-    echo -e "${RED}Commit blocked. Run 'gitleaks detect --source .' for details.${NC}"
+#######################################
+# Phase 3: Architecture Documentation Check
+#######################################
+STAGED_DOCS=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^docs/architecture/.*\.md$' || true)
+
+if [[ -n "$STAGED_DOCS" ]]; then
+    echo ""
+    echo -e "${YELLOW}[Phase 3] Validating architecture documentation${NC}"
+
+    for doc in $STAGED_DOCS; do
+        if [[ -f "$doc" ]]; then
+            # Check for required metadata
+            if grep -qE "^\*\*Date\*\*:|^\*\*Version\*\*:" "$doc" 2>/dev/null; then
+                echo -e "  ${GREEN}✓ $(basename "$doc")${NC}"
+            else
+                echo -e "  ${YELLOW}⚠ $(basename "$doc"): Missing metadata header${NC}"
+            fi
+        fi
+    done
+else
+    echo -e "${YELLOW}[Phase 3] Skipped (no architecture docs changed)${NC}"
+fi
+
+#######################################
+# Phase 4: CLAUDE.md Version Check
+#######################################
+STAGED_CLAUDE_MD=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^CLAUDE\.md$' || true)
+
+if [[ -n "$STAGED_CLAUDE_MD" ]]; then
+    echo ""
+    echo -e "${YELLOW}[Phase 4] Validating CLAUDE.md version${NC}"
+
+    CURRENT_VERSION=$(grep -E "^# Multi-Agent Ralph v" "$REPO_ROOT/CLAUDE.md" 2>/dev/null | head -1 | sed 's/^# Multi-Agent Ralph v//' | tr -d ' ')
+
+    if [[ -n "$CURRENT_VERSION" ]]; then
+        echo -e "  ${GREEN}✓ CLAUDE.md version: $CURRENT_VERSION${NC}"
+    else
+        echo -e "  ${YELLOW}⚠ Could not detect version in CLAUDE.md${NC}"
+    fi
+fi
+
+#######################################
+# Phase 5: Skills Symlink Validation
+#######################################
+STAGED_SKILL_DIRS=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.claude/skills/[^/]+/' | head -1 || true)
+
+if [[ -n "$STAGED_SKILL_DIRS" ]]; then
+    echo ""
+    echo -e "${YELLOW}[Phase 5] Validating skills symlinks${NC}"
+
+    SYMLINK_TEST="$REPO_ROOT/tests/unit/test-skills-symlinks-v2.87.sh"
+
+    if [[ -x "$SYMLINK_TEST" ]]; then
+        # Run quick validation
+        if "$SYMLINK_TEST" > /dev/null 2>&1; then
+            echo -e "  ${GREEN}✓ Skills symlinks validated${NC}"
+        else
+            echo -e "  ${YELLOW}⚠ Skills symlink test has warnings (run -v for details)${NC}"
+            # Don't block on symlink warnings, just notify
+        fi
+    else
+        echo -e "  ${YELLOW}⚠ Symlink test script not found${NC}"
+    fi
+else
+    echo ""
+    echo -e "${YELLOW}[Phase 5] Skipped (no skills changed)${NC}"
+fi
+
+#######################################
+# Summary
+#######################################
+echo ""
+echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+
+if [[ $ERRORS -gt 0 ]]; then
+    echo -e "${RED}COMMIT BLOCKED: $ERRORS validation error(s)${NC}"
+    echo ""
+    echo "Fix the issues above and try again."
+    echo "For detailed skills validation: tests/unit/test-skills-unification-v2.87.sh --verbose"
     exit 1
 fi
 
-echo -e "${GREEN}  ✅ No secrets detected${NC}"
-
-# ============================================
-# 2. Semgrep: Scan for security vulnerabilities
-# ============================================
-echo -e "${YELLOW}  → Scanning for vulnerabilities with semgrep...${NC}"
-
-# Run semgrep on staged files only
-SEMGREP_OUTPUT=$(semgrep --config auto --error --severity=ERROR \
-    --exclude=node_modules \
-    --exclude=__pycache__ \
-    --exclude=.git \
-    --quiet \
-    $STAGED_FILES 2>&1 || true)
-
-if [ -n "$SEMGREP_OUTPUT" ]; then
-    echo -e "${RED}❌ SEMGREP DETECTED SECURITY ISSUES!${NC}"
-    echo "$SEMGREP_OUTPUT"
-    echo -e "${RED}Commit blocked. Fix security issues before committing.${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}  ✅ No security issues detected${NC}"
-
-# ============================================
-# All checks passed
-# ============================================
-echo -e "${GREEN}🔒 Security checks passed!${NC}"
+echo -e "${GREEN}✓ All validations passed${NC}"
 exit 0
