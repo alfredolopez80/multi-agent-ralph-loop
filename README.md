@@ -17,14 +17,14 @@ Key capabilities:
 
 ## Version
 
-Current: **v2.86.0**
+Current: **v2.86.1**
 
 Recent changes:
+- **Security Hooks** - Secret sanitization (sanitize-secrets.js), DB cleanup, procedural forget
+- **Test Suite** - 78 unit tests (Session Lifecycle: 23, Agent Teams: 34, Security: 21)
 - **Agent Teams Integration** - TeammateIdle, TaskCompleted, SubagentStart, SubagentStop hooks
-- **Custom Subagents** - ralph-coder, ralph-reviewer, ralph-tester, ralph-researcher
+- **Custom Subagents** - ralph-coder, ralph-reviewer, ralph-tester, ralph-researcher with GLM-5
 - **Session Lifecycle** - PreCompact → SessionStart(compact) → SessionEnd flow
-- **Centralized Skills** - 1,856 skills consolidated from multiple sources
-- Quality gates for teammates (console.log, debugger, TODO detection)
 
 ## Requirements
 

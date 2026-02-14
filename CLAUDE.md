@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.86.0
+# Multi-Agent Ralph v2.86.1
 
 Orchestration system with memory-driven planning, multi-agent coordination, automatic learning, and quality validation.
 
@@ -9,6 +9,16 @@ Orchestration system with memory-driven planning, multi-agent coordination, auto
 This is the ONLY configuration file for Claude Code. All hooks, agents, and settings are here.
 
 > ⚠️ **NOT**: `~/.claude-sneakpeek/zai/config/settings.json` (Zai variant - legacy)
+
+## Security Hooks (v2.86.1)
+
+| Hook | Purpose | Trigger |
+|------|---------|---------|
+| `sanitize-secrets.js` | Redacts 20+ secret patterns before saving | PostToolUse (before claude-mem) |
+| `cleanup-secrets-db.js` | Scans DB for exposed secrets | Manual run |
+| `procedural-forget.sh` | Removes obsolete patterns from memory | Manual/scheduled |
+
+Secret patterns detected: GitHub PAT, OpenAI keys, AWS keys, Anthropic keys, JWT tokens, SSH keys, Ethereum private keys, Slack/Discord/Stripe tokens, database connection strings.
 
 ## Session Lifecycle Hooks (v2.86)
 

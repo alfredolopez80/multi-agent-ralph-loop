@@ -1,16 +1,27 @@
-# Multi-Agent Ralph - Agents Reference v2.84.3
+# Multi-Agent Ralph - Agents Reference v2.86.1
 
 ## Overview
 
-Ralph coordinates 14 specialized agents across different domains. Uses GLM-4.7 as primary model, GLM-5 for teammates, and supports multiprocessing for stability.
+Ralph coordinates 46+ specialized agents across different domains. Uses GLM-5 as primary model for all tasks, with Agent Teams support for parallel execution.
 
 ## Model Configuration
 
 | Role | Model | Usage |
 |------|-------|-------|
-| Primary | GLM-4.7 | Main orchestration, code tasks |
-| Teammate | GLM-5 | Parallel subtasks |
-| Fallback | Claude | Complex reasoning |
+| Primary | GLM-5 | Main orchestration, code tasks |
+| Teammates | GLM-5 | Parallel subtasks via Agent Teams |
+| Fallback | Claude | Complex reasoning (optional) |
+
+## Agent Teams (v2.86)
+
+Custom subagents for Agent Teams with GLM-5:
+
+| Agent | Role | Tools | Max Turns |
+|-------|------|-------|-----------|
+| `ralph-coder` | Code implementation | Read, Edit, Write, Bash | 50 |
+| `ralph-reviewer` | Code review | Read, Grep, Glob | 25 |
+| `ralph-tester` | Testing & QA | Read, Edit, Write, Bash(test) | 30 |
+| `ralph-researcher` | Research | Read, Grep, Glob, WebSearch | 20 |
 
 ## Agent Directory
 
@@ -32,43 +43,30 @@ Ralph coordinates 14 specialized agents across different domains. Uses GLM-4.7 a
 | **agent-sdk-verifier-py** | Python SDK verification |
 | **statusline-setup** | Status line configuration |
 
-## Tool Access
+### GLM-5 Teammates
 
-All agents have access to:
-- Read/Write/Edit files
-- Bash commands
-- Glob/Grep search
-- WebFetch/WebSearch
-- NotebookEdit (for Jupyter)
-
-Restricted tools (main agent only):
-- Task (spawning agents)
-- ExitPlanMode
+| Agent | Purpose |
+|-------|---------|
+| `glm5-coder` | Code implementation with thinking mode |
+| `glm5-reviewer` | Code review with thinking mode |
+| `glm5-tester` | Test generation with thinking mode |
+| `glm5-orchestrator` | Task coordination |
 
 ## Usage Examples
 
-```python
-# Spawn a Bash agent
-Task("git commit", agent="Bash")
+```bash
+# Spawn ralph-coder teammate
+Task(subagent_type="ralph-coder", team_name="my-project")
 
-# Spawn an Explore agent for quick search
-Task("find API endpoints", agent="Explore", mode="quick")
-
-# Spawn Plan agent for architecture
-Task("design auth system", agent="Plan")
+# Spawn GLM-5 teammate for code
+Task(subagent_type="glm5-coder", prompt="Implement feature X")
 ```
-
-## Spawn Parameters
-
-| Parameter | Values | Description |
-|-----------|--------|-------------|
-| `mode` | quick, medium, thorough | Search depth for Explore |
-| `resume` | agent_id | Resume interrupted agent |
 
 ## Agent Selection Guide
 
 - **Quick file search** → Explore (quick mode)
-- **Code change** → Bash or Edit directly
+- **Code implementation** → ralph-coder or glm5-coder
+- **Code review** → ralph-reviewer or glm5-reviewer
+- **Testing** → ralph-tester or glm5-tester
 - **Architecture design** → Plan
-- **Research task** → General-purpose
-- **SDK verification** → agent-sdk-verifier-*
+- **Research task** → General-purpose or ralph-researcher
