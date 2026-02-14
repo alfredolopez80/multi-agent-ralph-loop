@@ -157,7 +157,7 @@ echo -e "  ${RED}Failed:${NC} $FAILED_SUITES"
 echo -e "  ${BOLD}Total:${NC}  $TOTAL_SUITES"
 echo ""
 
-local pass_rate=0
+pass_rate=0
 if [[ $TOTAL_SUITES -gt 0 ]]; then
     pass_rate=$((PASSED_SUITES * 100 / TOTAL_SUITES))
 fi
