@@ -1,5 +1,5 @@
 ---
-# VERSION: 1.0.0 (Native Multi-Agent Integration)
+# VERSION: 2.87.0
 name: quality-gates-parallel
 description: Launch 4 quality subagents in parallel using Claude Code 2.1+ native Task tool. Reads results post-analysis for orchestrator decision-making.
 allowed-tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Bash

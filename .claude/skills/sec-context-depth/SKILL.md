@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.87.0
 name: sec-context-depth
 description: Comprehensive AI code security review using 27 sec-context anti-patterns. Use for code review when security vulnerabilities are suspected, especially for AI-generated code.
 allowed-tools: Read,Glob,mcp__ast-grep__*,Bash

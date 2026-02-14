@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.43.0
+# VERSION: 2.87.0
 name: task-visualizer
 description: "Visualize task dependencies and progress (Gastown-style)"
 ---

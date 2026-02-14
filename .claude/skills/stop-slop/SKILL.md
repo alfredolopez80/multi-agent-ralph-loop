@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.43.0
+# VERSION: 2.87.0
 name: stop-slop
 description: "A skill for removing AI-generated writing patterns ('slop') from prose. Eliminates telltale signs of AI writing like filler phrases, excessive hedging, overly formal language, and mechanical sentence structures. Use when: writing content that should sound human and natural, editing AI-generated drafts, cleaning up prose for publication, or any content that needs to sound authentic rather than AI-generated. Triggers: 'stop-slop', 'remove AI tells', 'clean up prose', 'make it sound human', 'edit AI writing'."
 allowed-tools: Read,Edit,Write,Bash,Glob

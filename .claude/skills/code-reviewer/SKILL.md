@@ -1,5 +1,5 @@
 ---
-# VERSION: 1.0.0 (Official Plugin Integration)
+# VERSION: 2.87.0
 name: code-reviewer
 description: Automated code review using official Claude Code plugin with 4 parallel agents.
 allowed-tools: Read,Write,Bash,Glob,Grep

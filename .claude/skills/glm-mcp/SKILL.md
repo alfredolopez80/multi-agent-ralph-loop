@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.87.0
 name: glm-mcp
 description: Custom skill for glm-mcp
 ---

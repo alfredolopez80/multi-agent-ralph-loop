@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.43.0
+# VERSION: 2.87.0
 name: openai-docs
 description: "Access OpenAI developer documentation via Context7 MCP. Provides up-to-date docs for Codex CLI, OpenAI API, Python/Node SDKs, Agents SDK, and MCP configuration. Use when: (1) configuring Codex CLI or MCP servers, (2) writing OpenAI API integrations, (3) building agents with OpenAI SDKs, (4) troubleshooting Codex execution. Triggers: 'openai docs', 'codex documentation', 'openai api reference', 'codex mcp', 'agents sdk'."
 ---

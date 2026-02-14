@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.87.0
 name: vercel-react-best-practices
 description: React and Next.js performance optimization guidelines from Vercel Engineering. Use when writing, reviewing, or refactoring React/Next.js code. Triggers on tasks involving React components, Next.js pages, data fetching, bundle optimization, or performance improvements.
 allowed-tools: Bash,Read,Write,Edit,Grep,Glob,Task

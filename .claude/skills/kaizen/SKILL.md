@@ -1,4 +1,5 @@
 ---
+# VERSION: 2.87.0
 name: kaizen
 description: Custom skill for kaizen
 ---

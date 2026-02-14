@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.43.0
+# VERSION: 2.87.0
 name: worktree-pr
 description: Manage git worktrees with PR workflow and multi-agent review (Claude + Codex). Use when developing features in isolation with easy rollback.
 triggers:
