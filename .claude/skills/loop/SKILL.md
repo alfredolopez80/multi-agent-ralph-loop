@@ -1,8 +1,8 @@
 ---
-# VERSION: 2.87.0
+# VERSION: 2.88.0
 name: loop
 description: "Ralph Loop pattern with swarm mode: iterative execution until VERIFIED_DONE with multi-agent coordination. Use when: (1) iterative refinement needed, (2) quality gates must pass, (3) automated validation required. Triggers: /loop, 'loop until done', 'iterate', 'keep trying', 'fix until passing'."
-argument-hint: "<task> [--with-glm5]"
+argument-hint: "<task>"
 user-invocable: true
 context: fork
 agent: general-purpose
@@ -16,9 +16,16 @@ allowed-tools:
   - Grep
 ---
 
-# /loop - Ralph Loop Pattern (v2.87)
+# /loop - Ralph Loop Pattern (v2.88)
 
 Execute tasks iteratively with automatic quality validation until VERIFIED_DONE signal.
+
+## v2.88 Key Changes (MODEL-AGNOSTIC)
+
+- **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
+- **No flags required**: Iterations use the configured default model
+- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
 ## v2.87 Key Changes (UNIFIED SKILLS MODEL)
 
@@ -26,20 +33,6 @@ Execute tasks iteratively with automatic quality validation until VERIFIED_DONE 
 - **Single source of truth**: Skills live in repo, symlinked globally
 - **Version alignment**: All skills updated to v2.87.0
 - **Documentation consolidated**: Architecture docs in `docs/architecture/`
-
-## v2.84 Key Change (GLM-5 INTEGRATION)
-
-**`--with-glm5` flag** enables GLM-5 teammates for iterative execution:
-
-```
-/loop "Fix all TypeScript errors" --with-glm5
-/loop "Implement authentication" --with-glm5
-```
-
-When `--with-glm5` is set:
-- Each iteration uses GLM-5 with thinking mode
-- Reasoning captured for debugging failed iterations
-- Faster iterations for complexity 1-4 tasks
 
 ## Overview
 

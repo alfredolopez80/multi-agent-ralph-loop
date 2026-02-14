@@ -170,6 +170,27 @@ else
 fi
 
 #######################################
+# Phase 7: Model-Agnostic Validation
+#######################################
+MODEL_AGNOSTIC_TEST="$REPO_ROOT/tests/unit/test-model-agnostic-v2.88.sh"
+
+if [[ -x "$MODEL_AGNOSTIC_TEST" ]]; then
+    echo ""
+    echo -e "${YELLOW}[Phase 7] Validating model-agnostic architecture${NC}"
+
+    if "$MODEL_AGNOSTIC_TEST" > /dev/null 2>&1; then
+        echo -e "  ${GREEN}✓ Model-agnostic validated${NC}"
+    else
+        echo -e "  ${RED}✗ Model-agnostic validation failed${NC}"
+        echo -e "  ${YELLOW}  Run: $MODEL_AGNOSTIC_TEST -v${NC}"
+        ((ERRORS++))
+    fi
+else
+    echo ""
+    echo -e "${YELLOW}[Phase 7] Skipped (model-agnostic test not found)${NC}"
+fi
+
+#######################################
 # Summary
 #######################################
 echo ""

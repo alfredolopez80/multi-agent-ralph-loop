@@ -7,7 +7,7 @@ tools:
   - Glob
   - WebSearch
   - WebFetch
-model: glm-5
+# Model is inherited from ~/.claude/settings.json (ANTHROPIC_DEFAULT_*_MODEL)
 permissionMode: default
 maxTurns: 20
 ---

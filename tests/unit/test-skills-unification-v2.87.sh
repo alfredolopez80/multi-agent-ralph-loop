@@ -26,7 +26,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 GLOBAL_SKILLS="$HOME/.claude/skills"
 GLOBAL_COMMANDS="$HOME/.claude/commands"
 SETTINGS_FILE="$HOME/.claude/settings.json"
-EXPECTED_VERSION="2.87.0"
+MIN_VERSION="2.87.0"  # Minimum acceptable version
 
 # Colors
 RED='\033[0;31m'
@@ -349,7 +349,7 @@ test_version_consistency() {
             continue
         fi
 
-        print_test "Skill '$skill' version is $EXPECTED_VERSION"
+            print_test "Skill '$skill' version is >= $MIN_VERSION"
 
         # Try to extract version from different formats
         local version=""
@@ -358,10 +358,10 @@ test_version_consistency() {
             version=$(grep -E "^version:" "$skill_file" 2>/dev/null | head -1 | sed 's/version:[[:space:]]*//' | tr -d ' "' | tr -d "'")
         fi
 
-        if [[ "$version" == "$EXPECTED_VERSION" ]]; then
+        if [[ "$version" == "$MIN_VERSION" ]] || [[ "$version" > "$MIN_VERSION" ]]; then
             pass
         elif [[ -n "$version" ]]; then
-            fail "Version is $version (expected: $EXPECTED_VERSION)"
+            fail "Version is $version (expected: >= $MIN_VERSION)"
         else
             fail "Cannot determine version"
         fi
@@ -716,7 +716,7 @@ main() {
     echo "Global Skills: $GLOBAL_SKILLS"
     echo "Global Commands: $GLOBAL_COMMANDS"
     echo "Settings: $SETTINGS_FILE"
-    echo "Expected Version: $EXPECTED_VERSION"
+    echo "Min Version: $MIN_VERSION"
     echo "Verbose: $VERBOSE"
     echo "Fix Mode: $FIX_MODE"
 

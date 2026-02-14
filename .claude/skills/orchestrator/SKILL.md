@@ -1,8 +1,8 @@
 ---
-# VERSION: 2.87.0
+# VERSION: 2.88.0
 name: orchestrator
 description: "Full orchestration workflow with swarm mode: evaluate -> clarify -> classify -> persist -> plan mode -> spawn teammates -> execute -> validate -> retrospective. Use when: (1) implementing features, (2) complex refactoring, (3) multi-file changes, (4) tasks requiring coordination. Triggers: /orchestrator, /orch, 'orchestrate', 'full workflow', 'implement feature'."
-argument-hint: "<task description> [--with-glm5]"
+argument-hint: "<task description>"
 user-invocable: true
 context: fork
 agent: orchestrator
@@ -21,7 +21,7 @@ allowed-tools:
   - mcp__plugin_claude-mem_*
 ---
 
-# Orchestrator - Multi-Agent Ralph v2.87
+# Orchestrator - Multi-Agent Ralph v2.88
 
 **Smart Memory-Driven Orchestration** with swarm mode, parallel memory search, RLM-inspired routing, and quality-first validation.
 
@@ -37,10 +37,16 @@ Based on @PerceptualPeak Smart Forking concept:
 # Via CLI
 ralph orch "Migrate database from MySQL to PostgreSQL"
 
-# With GLM-5 teammates for faster parallel execution
-/orchestrator "Implement auth system" --with-glm5
-/orchestrator "Refactor database layer" --with-glm5 --teammates coder,reviewer
+# With specific teammates
+/orchestrator "Refactor database layer" --teammates coder,reviewer
 ```
+
+## v2.88 Key Changes (MODEL-AGNOSTIC)
+
+- **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
+- **No flags required**: All teammates use the configured default model
+- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
 ## v2.87 Key Changes (UNIFIED SKILLS MODEL)
 
@@ -48,21 +54,6 @@ ralph orch "Migrate database from MySQL to PostgreSQL"
 - **Single source of truth**: Skills live in repo, symlinked globally
 - **Version alignment**: All skills updated to v2.87.0
 - **Documentation consolidated**: Architecture docs in `docs/architecture/`
-
-## v2.84 Key Changes (GLM-5 TEAMS)
-
-**`--with-glm5` flag** enables GLM-5 teammates with thinking mode:
-
-```
-/orchestrator Implement OAuth2 --with-glm5
-/orchestrator Fix auth bugs --with-glm5
-```
-
-When `--with-glm5` is set:
-- Spawns `glm5-coder`, `glm5-reviewer`, `glm5-tester` teammates
-- Each teammate uses GLM-5 API with thinking mode enabled
-- Reasoning captured to `.ralph/reasoning/{task_id}.txt`
-- Status tracked in `.ralph/teammates/{task_id}/status.json`
 
 ## v2.81 Key Changes (SWARM MODE)
 

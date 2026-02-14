@@ -6,7 +6,7 @@ tools:
   - Edit
   - Write
   - Bash(npm:*, yarn:*, pnpm:*, bun:*, git:*, python:*, pytest:*, npx:*)
-model: glm-5
+# Model is inherited from ~/.claude/settings.json (ANTHROPIC_DEFAULT_*_MODEL)
 permissionMode: acceptEdits
 maxTurns: 50
 ---

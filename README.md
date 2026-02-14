@@ -17,13 +17,15 @@ Key capabilities:
 
 ## Version
 
-Current: **v2.86.1**
+Current: **v2.88.0**
 
 Recent changes:
+- **Model-Agnostic Architecture** - Skills work with any configured model (GLM-5, Claude, Minimax, etc.)
+- **No Flags Required** - Removed `--with-glm5` and `--mmc` flags; uses default model from settings
 - **Security Hooks** - Secret sanitization (sanitize-secrets.js), DB cleanup, procedural forget
 - **Test Suite** - 78 unit tests (Session Lifecycle: 23, Agent Teams: 34, Security: 21)
 - **Agent Teams Integration** - TeammateIdle, TaskCompleted, SubagentStart, SubagentStop hooks
-- **Custom Subagents** - ralph-coder, ralph-reviewer, ralph-tester, ralph-researcher with GLM-5
+- **Custom Subagents** - ralph-coder, ralph-reviewer, ralph-tester, ralph-researcher
 - **Session Lifecycle** - PreCompact → SessionStart(compact) → SessionEnd flow
 
 ## Requirements
@@ -52,11 +54,8 @@ cd multi-agent-ralph-loop
 # Verify installation
 ralph health --compact
 
-# Run orchestration
+# Run orchestration (uses configured default model)
 /orchestrator "Create a REST API endpoint"
-
-# With GLM-5 teammates for faster execution
-/orchestrator "Implement feature X" --with-glm5
 
 # Complex task with swarm mode
 /orchestrator "Implement distributed caching" --launch-swarm --teammate-count 3
@@ -138,10 +137,24 @@ Custom subagents for parallel execution:
 | `ralph-tester` | Testing & QA | Read, Edit, Write, Bash(test) | 30 |
 | `ralph-researcher` | Research | Read, Grep, Glob, WebSearch, WebFetch | 20 |
 
-All configured with `model: glm-5` for optimal performance.
+All subagents use the configured default model from `~/.claude/settings.json`.
+
+**Model Configuration** (in `~/.claude/settings.json`):
+```json
+{
+  "env": {
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-5",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  }
+}
+```
+
+The system is **model-agnostic** - change the model in settings and all skills/agents automatically use it.
 
 ```bash
-# Spawn teammates
+# Spawn teammates (uses configured default model)
 Task(subagent_type="ralph-coder", team_name="my-project")
 Task(subagent_type="ralph-reviewer", team_name="my-project")
 ```
@@ -167,11 +180,16 @@ Core commands:
 - `/security` - Security audit
 - `/parallel` - Parallel code review
 
-GLM-5 integration (v2.84.1+):
+Model-agnostic (v2.88+):
 ```bash
-/orchestrator "Task" --with-glm5
-/loop "Fix errors" --with-glm5
-/security src/ --with-glm5
+# All commands use the configured default model automatically
+/orchestrator "Task"
+/loop "Fix errors"
+/security src/
+
+# For specific GLM-5 evaluations, use dedicated skills
+/glm5 "Task"           # GLM-5 specific evaluation
+/glm5-parallel "Task"  # GLM-5 parallel execution
 ```
 
 ## Session Lifecycle Hooks (v2.86)
@@ -217,23 +235,27 @@ Critical hooks (must be registered):
 
 ## Model Support
 
-| Model | Provider | Use Case |
-|-------|----------|----------|
-| GLM-5 | Z.AI | Primary for all tasks + Agent Teams |
-| GLM-4.7 | Z.AI | Web search, vision tasks |
-| Codex GPT-5.3 | OpenAI | Security, performance, planning |
+**Model-Agnostic Architecture (v2.88)**: The system works with any model configured in Claude Code settings.
 
-GLM-5 configuration (in `~/.claude/settings.json`):
+| Model | Provider | Configuration |
+|-------|----------|---------------|
+| GLM-5 | Z.AI | `ANTHROPIC_DEFAULT_*_MODEL: "glm-5"` |
+| Claude Sonnet/Opus | Anthropic | `ANTHROPIC_DEFAULT_*_MODEL: "claude-sonnet-4"` |
+| Minimax M2.5 | Minimax | `ANTHROPIC_DEFAULT_*_MODEL: "minimax-m2.5"` |
+
+To change the default model, update `~/.claude/settings.json`:
 ```json
 {
   "env": {
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-5",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "your-model",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "your-model",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "your-model",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   }
 }
 ```
+
+All skills, agents, and subagents automatically use the configured model. No flags required.
 
 ## Memory System
 

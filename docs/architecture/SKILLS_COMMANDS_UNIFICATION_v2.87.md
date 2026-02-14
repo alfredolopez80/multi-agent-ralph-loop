@@ -1,7 +1,7 @@
 # Skills/Commands Unification Analysis v2.87
 
 **Date**: 2026-02-14
-**Version**: v2.87.0
+**Version**: v2.88.0
 **Status**: ANALYSIS COMPLETE
 
 ## Executive Summary
@@ -127,7 +127,7 @@ multi-agent-ralph-loop/
 # VERSION: 2.87.0
 name: orchestrator
 description: "Full orchestration workflow with swarm mode: evaluate -> clarify -> classify -> persist -> plan mode -> spawn teammates -> execute -> validate -> retrospective. Use when: (1) implementing features, (2) complex refactoring, (3) multi-file changes, (4) tasks requiring coordination."
-argument-hint: "<task description> [--with-glm5]"
+argument-hint: "<task description>"
 user-invocable: true
 context: fork
 agent: orchestrator
@@ -200,7 +200,8 @@ These skills should be unified and maintained in the repo:
 | v2.81 | Swarm mode integration |
 | v2.84 | GLM-5 Agent Teams |
 | v2.86 | Security hooks, Agent Teams hooks |
-| v2.87 | **Skills/Commands unification** |
+| v2.87 | Skills/Commands unification |
+| v2.88 | **Model-agnostic architecture** - No flags required, uses configured default model |
 
 ## Next Steps
 
