@@ -40,6 +40,29 @@ Based on: [claude-sneakpeek native-multiagent-gates](https://github.com/mikekell
 - **Parallel execution**: Multiple agents work independently
 - **Result aggregation**: Collect findings from all agents
 
+## Agent Teams Integration (v2.88)
+
+This skill uses Agent Teams for parallel quality gate execution:
+
+| Subagent | Quality Gate Role |
+|----------|-------------------|
+| `ralph-tester` | Test execution and coverage |
+| `ralph-reviewer` | Code quality analysis |
+| `ralph-coder` | Auto-fix application |
+
+### Agent Teams Parallel Workflow
+When Agent Teams is active:
+1. **Team Lead** creates quality gate task list
+2. **ralph-tester** runs tests in parallel
+3. **ralph-reviewer** performs linting and type checks
+4. **ralph-coder** applies auto-fixes for issues
+
+### Native Integration
+This skill was designed for Agent Teams with:
+- TaskCreate for each quality phase
+- Parallel execution via Task tool
+- TaskCompleted hooks for gate validation
+
 ## Workflow
 
 ### Phase 1: Launch Parallel Quality Checks

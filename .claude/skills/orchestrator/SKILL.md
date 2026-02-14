@@ -313,8 +313,139 @@ ralph fork-suggest "Add authentication"
 - `/retrospective` - Post-task analysis
 - `/clarify` - Requirement clarification
 
-## References
+## Agent Teams Integration (v2.88)
+
+**AUTOMATIC TEAM CREATION**: When the orchestrator skill is invoked, it automatically creates an Agent Team and spawns specialized teammates for parallel execution. No manual TeamCreate step is required.
+
+### Team Creation Workflow
+
+```
+1. SKILL INVOCATION
+   ↓
+2. AUTOMATIC TeamCreate
+   - Team name: "orchestration-team-{timestamp}"
+   - Team lead: orchestrator
+   ↓
+3. SPAWN TEAMMATES
+   - ralph-coder (implementation)
+   - ralph-reviewer (code review)
+   - ralph-tester (validation/testing)
+   ↓
+4. TASK COORDINATION
+   - TaskCreate for each subtask
+   - Task tool to spawn ralph-* subagents
+   - Parallel execution when independent
+   ↓
+5. QUALITY GATES
+   - TeammateIdle hook checks before idle
+   - TaskCompleted hook validates before completion
+   ↓
+6. TEAM DELETION
+   - TeamDelete when VERIFIED_DONE
+```
+
+### Ralph Agent Types (v2.88)
+
+| Agent | Role | Tools | Model |
+|-------|------|-------|-------|
+| `ralph-coder` | Code implementation | Read, Edit, Write, Bash | Inherited from settings.json |
+| `ralph-reviewer` | Code review (security, quality) | Read, Grep, Glob | Inherited from settings.json |
+| `ralph-tester` | Testing & QA | Read, Edit, Write, Bash(test) | Inherited from settings.json |
+| `ralph-researcher` | Research & exploration | Read, Grep, Glob, WebSearch | Inherited from settings.json |
+
+**Note**: All agents inherit their model from `~/.claude/settings.json` via `ANTHROPIC_DEFAULT_*_MODEL` environment variables (v2.88 model-agnostic architecture).
+
+### VERIFIED_DONE Pattern with Hooks
+
+The orchestrator ensures VERIFIED_DONE through these critical hooks:
+
+| Hook | Event | Purpose | Exit 2 Behavior |
+|------|-------|---------|-----------------|
+| `teammate-idle-quality-gate.sh` | TeammateIdle | Quality check before idle | Keep working + feedback |
+| `task-completed-quality-gate.sh` | TaskCompleted | Quality before task completion | Prevent completion + feedback |
+| `ralph-subagent-stop.sh` | SubagentStop | Quality gate for ralph-* agents | Block if incomplete |
+
+**Exit 2 Behavior**: When hooks return exit code 2, the agent continues working instead of completing/idling, ensuring continuous execution until VERIFIED_DONE.
+
+### Team Coordination Example
+
+```yaml
+# 1. Create team (automatic on skill invocation)
+TeamCreate:
+  team_name: "orchestration-team-20250214"
+  description: "Orchestrating feature implementation"
+
+# 2. Create tasks for teammates
+TaskCreate:
+  subject: "Implement OAuth2 flow"
+  description: "Add OAuth2 authentication with Google provider"
+  metadata:
+    assigned_to: "ralph-coder"
+    priority: "high"
+
+TaskCreate:
+  subject: "Review OAuth2 implementation"
+  description: "Security and quality review of OAuth2 code"
+  metadata:
+    assigned_to: "ralph-reviewer"
+    depends_on: ["implement-oauth2-flow"]
+
+TaskCreate:
+  subject: "Test OAuth2 authentication"
+  description: "Unit and integration tests for OAuth2"
+  metadata:
+    assigned_to: "ralph-tester"
+    depends_on: ["implement-oauth2-flow"]
+
+# 3. Spawn teammates for parallel execution
+Task:
+  subagent_type: "ralph-coder"
+  team_name: "orchestration-team-20250214"
+
+Task:
+  subagent_type: "ralph-reviewer"
+  team_name: "orchestration-team-20250214"
+
+Task:
+  subagent_type: "ralph-tester"
+  team_name: "orchestration-team-20250214"
+
+# 4. Monitor progress and aggregate results
+TaskList:
+  status: "in_progress"
+
+# 5. Mark tasks complete
+TaskUpdate:
+  taskId: "1"
+  status: "completed"
+
+# 6. Delete team when VERIFIED_DONE
+TeamDelete:
+  team_name: "orchestration-team-20250214"
+```
+
+### Quality Standards (All Ralph Agents)
+
+1. **CORRECTNESS**: Syntax must be valid, logic must be sound
+2. **QUALITY**: No console.log, no TODO/FIXME, proper types
+3. **SECURITY**: No hardcoded secrets, proper input validation
+4. **CONSISTENCY**: Follow project style guides
+
+### Communication Pattern
+
+Teammates communicate via the shared task list and SendMessage tool:
+
+```yaml
+SendMessage:
+  type: "message"
+  recipient: "ralph-reviewer"
+  content: "OAuth2 implementation complete, ready for review"
+  summary: "Implementation ready for review"
+```
+
+### References
 
 - [Unified Architecture v2.87](docs/architecture/UNIFIED_ARCHITECTURE_v2.87.md)
 - [Skills/Commands Unification](docs/architecture/SKILLS_COMMANDS_UNIFICATION_v2.87.md)
 - [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills)
+- [Claude Code Agent Teams Documentation](https://code.claude.com/docs/en/agent-teams)

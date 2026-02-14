@@ -163,18 +163,115 @@ Task:
     Output: Final implementation + quality report
 ```
 
-## Team Composition (Auto-Spawned)
+## Agent Teams Integration (v2.88)
+
+The Ralph Loop uses Agent Teams for automatic multi-agent coordination during iterative execution.
+
+### Team Creation Pattern
+
+When `/loop` is invoked, it automatically creates a dedicated team for the iteration:
+
+```bash
+# Automatic team creation
+TeamCreate(
+  team_name: "loop-{task-hash}",
+  description: "Iterative execution: {task}"
+)
+
+# Spawn implementation teammate
+Task(
+  subagent_type: "ralph-coder",
+  team_name: "loop-{task-hash}"
+)
+
+# Spawn validation teammate
+Task(
+  subagent_type: "ralph-tester",
+  team_name: "loop-{task-hash}"
+)
+```
+
+### Iteration Execution Flow
+
+Each iteration follows this pattern:
+
+1. **Phase 1: Implementation**
+   - Spawn `ralph-coder` teammate
+   - Execute task implementation
+   - Teammate reports progress via TaskUpdate
+
+2. **Phase 2: Validation**
+   - Spawn `ralph-tester` teammate
+   - Run quality gates
+   - Collect validation results
+
+3. **Phase 3: Hook Verification**
+   - `TeammateIdle` hook triggers quality checks
+   - `task-completed-quality-gate.sh` validates before completion
+   - Exit 2 from hook = keep working with feedback
+   - Exit 0 = proceed to next phase
+
+4. **Phase 4: Decision**
+   - All gates pass → `VERIFIED_DONE`
+   - Any gate fails → Iterate (max 15/30)
+
+### Hook Integration Points
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `teammate-idle-quality-gate.sh` | TeammateIdle | Quality checks before idle |
+| `task-completed-quality-gate.sh` | TaskCompleted | Final validation before completion |
+| `ralph-subagent-start.sh` | SubagentStart | Load Ralph context into teammates |
+| `glm5-subagent-stop.sh` | SubagentStop | Quality gates when teammate stops |
+
+### Team Composition
 
 When /loop is invoked, it automatically spawns:
 
 | Role | Purpose | Count |
 |------|---------|-------|
-| **Leader** | Loop coordinator | 1 |
-| **Teammate 1** | Implementation specialist | 1 |
-| **Teammate 2** | Quality validation specialist | 1 |
-| **Teammate 3** | Test verification specialist | 1 |
+| **Leader** | Loop coordinator, iteration management | 1 |
+| **ralph-coder** | Implementation specialist | 1 |
+| **ralph-tester** | Quality validation specialist | 1 |
 
-**Total**: 4 agents working in parallel (1 leader + 3 teammates)
+**Total**: 3 agents working in parallel (1 leader + 2 teammates)
+
+### Task Coordination
+
+```bash
+# Leader creates iteration task
+TaskCreate(
+  subject: "Implement iteration {n}",
+  description: "{task requirements}",
+  activeForm: "Implementing iteration {n}"
+)
+
+# Assign to coder
+TaskUpdate(
+  taskId: "{id}",
+  owner: "ralph-coder",
+  status: "in_progress"
+)
+
+# Coder completes work
+TaskUpdate(
+  taskId: "{id}",
+  status: "completed"
+)
+
+# Leader validates, then marks VERIFIED_DONE or iterates
+```
+
+### VERIFIED_DONE Guarantee
+
+The Agent Teams system ensures VERIFIED_DONE through:
+
+1. **TeammateIdle Hook**: Validates work quality before any teammate goes idle
+2. **TaskCompleted Hook**: Final validation gate before task completion
+3. **Exit 2 Feedback**: Hooks return exit 2 to request fixes with specific feedback
+4. **Task Coordination**: TaskUpdate system tracks progress and blockers
+
+This creates a quality feedback loop that prevents completion until all standards are met.
 
 ## Output Location
 
@@ -268,6 +365,6 @@ The loop integrates with the Stop hook:
 
 ## References
 
-- [Unified Architecture v2.87](docs/architecture/UNIFIED_ARCHITECTURE_v2.87.md)
-- [Skills/Commands Unification](docs/architecture/SKILLS_COMMANDS_UNIFICATION_v2.87.md)
+- [Unified Architecture v2.88](docs/architecture/UNIFIED_ARCHITECTURE_v2.88.md)
+- [Skills/Commands Unification](docs/architecture/COMMANDS_TO_SKILLS_MIGRATION_v2.88.md)
 - [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills)

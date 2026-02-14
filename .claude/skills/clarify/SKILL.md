@@ -159,6 +159,25 @@ AskUserQuestion:
 | Context gathering | `tldr structure .` | Codebase overview |
 | Dependency check | `tldr deps "$FILE" .` | Impact analysis |
 
+## Agent Teams Integration (v2.88)
+
+This skill integrates with Agent Teams for parallel requirement gathering:
+
+| Subagent | Role in Clarification |
+|----------|----------------------|
+| `ralph-researcher` | Research existing codebase patterns |
+| `ralph-reviewer` | Validate requirements against architecture |
+
+### Parallel Research
+When Agent Teams is active:
+1. **Team Lead** initiates clarification
+2. **ralph-researcher** searches for existing implementations
+3. **ralph-reviewer** validates technical constraints
+4. Results consolidate into unified requirements
+
+### Team Coordination
+Uses shared task list for requirement tracking and Agent Teams messaging for coordination.
+
 ## Anti-Patterns
 
 - Never proceed with unanswered MUST_HAVE questions

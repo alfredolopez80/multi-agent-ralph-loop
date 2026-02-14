@@ -45,3 +45,25 @@ Official plugin: `~/.claude-sneakpeek/zai/config/plugins/cache/anthropics/code-r
 
 **Author**: Boris Cherny (boris@anthropic.com)
 **Version**: 1.0.0
+
+## Agent Teams Integration (v2.88)
+
+This skill integrates with Agent Teams for parallel code review:
+
+| Subagent | Role in Code Review |
+|----------|---------------------|
+| `ralph-reviewer` | Primary code analysis |
+| `ralph-researcher` | Context and history lookup |
+| `ralph-coder` | Fix suggestions |
+
+### Parallel Review with Agent Teams
+When Agent Teams is active:
+1. **Team Lead** creates review task list
+2. Multiple **ralph-reviewer** instances review in parallel
+3. **ralph-researcher** provides codebase context
+4. **ralph-coder** generates fix recommendations
+
+### Native Multi-Agent Support
+- Already uses 4 parallel agents natively
+- Agent Teams enhances with ralph-* subagent types
+- TeammateIdle validates review completeness

@@ -43,6 +43,28 @@ STRATEGIST      ATTACKER        EVALUATOR
 | **Evaluator** | Analyzes responses for vulnerabilities | Assessment |
 | **Mutator** | Creates variations of test cases | Variation |
 
+## Agent Teams Integration (v2.88)
+
+This skill integrates with Agent Teams for parallel adversarial analysis:
+
+| Subagent | Role in Adversarial Analysis |
+|----------|------------------------------|
+| `ralph-reviewer` | Striker - Identifies vulnerabilities |
+| `ralph-researcher` | Strategist - Maps attack surface |
+| `ralph-coder` | Evaluator - Creates test cases |
+
+### Parallel Attack Analysis
+When Agent Teams is active:
+1. **Team Lead** orchestrates multi-vector attack analysis
+2. **ralph-reviewer** identifies security weaknesses in parallel
+3. **ralph-researcher** maps codebase attack surface
+4. **ralph-coder** generates proof-of-concept tests
+
+### Agent Teams Workflow
+- Uses TeamCreate for coordinated attack analysis
+- Task coordination tracks vulnerability findings
+- TeammateIdle triggers cross-validation of discoveries
+
 ## Usage
 
 ```bash

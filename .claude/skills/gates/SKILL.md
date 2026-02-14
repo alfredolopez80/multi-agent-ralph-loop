@@ -135,6 +135,27 @@ ralph gates --full       # Lint + Format + Types + Tests
 | Error context | `tldr context $FILE .` | Understand failing code |
 | Impact analysis | `tldr deps $FILE .` | Find related tests |
 
+## Agent Teams Integration (v2.88)
+
+This skill automatically integrates with Agent Teams when running in team mode:
+
+| Subagent | Role in Gates |
+|----------|---------------|
+| `ralph-tester` | Execute test suites in parallel |
+| `ralph-reviewer` | Analyze code quality issues |
+| `ralph-coder` | Apply auto-fixes for linting/formatting |
+
+### Parallel Gates Execution
+When Agent Teams is active, gates run in parallel across subagents:
+1. **Team Lead** creates task list with gate phases
+2. **ralph-tester** runs tests concurrently
+3. **ralph-reviewer** reviews linter output
+4. **ralph-coder** applies fixes
+
+### Quality Gate Hooks
+- `TeammateIdle`: Triggers before agent goes idle
+- `TaskCompleted`: Validates gate completion
+
 ## Anti-Patterns
 
 - Never skip gates for "quick fixes"

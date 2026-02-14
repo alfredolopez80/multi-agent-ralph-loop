@@ -17,6 +17,151 @@ Comprehensive security audit using Codex GPT-5 for primary analysis and MiniMax 
 - **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
 - **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
+## Agent Teams Integration (v2.88)
+
+The `/security` command automatically creates an Agent Team for parallel security scanning and coordinated remediation.
+
+### Automatic Team Creation
+
+When `/security` is invoked on a directory with multiple files, it automatically:
+
+```bash
+# 1. Create security audit team
+TeamCreate(team_name="security-audit-${TARGET}", description="Security analysis and fixes")
+
+# 2. Spawn specialized teammates
+Task(subagent_type="ralph-reviewer", team_name="security-audit-${TARGET}")  # Analyze vulnerabilities
+Task(subagent_type="ralph-coder", team_name="security-audit-${TARGET}")     # Apply security fixes
+```
+
+### Teammate Roles
+
+| Agent | Role | Model | Tasks |
+|-------|------|-------|-------|
+| `ralph-reviewer` | Security analysis, vulnerability detection | Model from settings | - CWE vulnerability scan<br>- OWASP Top 10 check<br>- Input validation review<br>- Remediation guidance |
+| `ralph-coder` | Security fix implementation | Model from settings | - Apply security patches<br>- Add validation<br>- Implement secure patterns<br>- Add security tests |
+| `team-lead` | Coordination | Opus | - Assign tasks<br>- Aggregate findings<br>- Validate remediation |
+
+### Coordination via Shared Task List
+
+```yaml
+# Team lead creates coordinated tasks
+TaskCreate:
+  subject: "Analyze ${TARGET} for security vulnerabilities"
+  description: |
+    ralph-reviewer: Perform security audit on assigned files
+    Focus on:
+    - CWE vulnerabilities (prioritize High/Critical)
+    - OWASP Top 10 risks
+    - Input validation issues
+    - Authentication/authorization flaws
+    - SQL/Command/XSS injection vectors
+
+    Output format per file:
+    {
+      "findings": [
+        {
+          "severity": "CRITICAL|HIGH|MEDIUM|LOW",
+          "cwe": "CWE-XXX",
+          "owasp": "A01:2021-Broken Access Control",
+          "title": "Brief description",
+          "file": "path/to/file.ext",
+          "line": 42,
+          "code": "vulnerable code snippet",
+          "description": "Detailed explanation",
+          "remediation": "How to fix",
+          "references": ["URL1", "URL2"]
+        }
+      ]
+    }
+
+TaskCreate:
+  subject: "Fix CRITICAL/HIGH security findings in ${TARGET}"
+  description: |
+    ralph-coder: Implement security fixes
+    - Read findings from ralph-reviewer
+    - Apply remediation steps
+    - Add input validation
+    - Implement secure patterns
+    - Add security tests
+    - Run quality gates after each fix
+```
+
+### Quality Gates Integration
+
+Agent Teams hooks automatically validate security fixes:
+
+```bash
+# Hooks run automatically (configured in ~/.claude/settings.json)
+TeammateIdle  → teammate-idle-quality-gate.sh    # Before going idle
+TaskCompleted → task-completed-quality-gate.sh   # Before marking complete
+
+# Security-specific quality checks:
+# 1. No hardcoded secrets
+# 2. Proper input validation
+# 3. No console.log with sensitive data
+# 4. All CRITICAL/HIGH findings fixed
+```
+
+### Parallel Security Scanning Workflow
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ AGENT TEAMS: Security Audit Parallel Scan               │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│ 1. TEAM CREATE   → TeamCreate("security-audit-${TARGET}")│
+│                                                         │
+│ 2. PARALLEL SCAN → ralph-reviewer x N (file chunks)     │
+│    ├─ Reviewer 1: auth files                            │
+│    ├─ Reviewer 2: API endpoints                         │
+│    └─ Reviewer 3: data handling                         │
+│                                                         │
+│ 3. AGGREGATE    → Team lead consolidates findings       │
+│                                                         │
+│ 4. PRIORITIZE   → Sort by severity (CRITICAL first)     │
+│                                                         │
+│ 5. PARALLEL FIX → ralph-coder x N (vulnerability assignments)│
+│    ├─ Coder 1: CRITICAL injections                     │
+│    ├─ Coder 2: HIGH auth flaws                         │
+│    └─ Coder 3: MEDIUM validation issues                │
+│                                                         │
+│ 6. QUALITY GATE → Hooks validate all security fixes     │
+│                                                         │
+│ 7. VERIFY      → Re-scan until all findings resolved   │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Example Team-Based Security Audit
+
+```bash
+# User invokes /security on large codebase
+ralph security src/
+
+# Behind the scenes:
+# 1. Team created: "security-audit-src"
+# 2. Files split among 3 ralph-reviewer agents by module
+# 3. Each reviewer performs security audit in parallel
+# 4. Team lead aggregates findings, removes duplicates
+# 5. CRITICAL/HIGH findings assigned to ralph-coder agents
+# 6. Quality gates run automatically after each fix
+# 7. Final verification scan confirms all vulnerabilities resolved
+
+# Time savings: 3x faster than sequential audit
+# Coverage: Parallel agents catch different vulnerability types
+```
+
+### Multi-Model Second Opinion (Optional)
+
+For critical security audits, combine Agent Teams with multi-model validation:
+
+```bash
+# Primary audit: ralph-reviewer (model from settings)
+# Second opinion: Additional reviewer with different model
+Task(subagent_type="ralph-reviewer", model="opus", team_name="security-audit-${TARGET}")
+```
+
 ## Overview
 
 The `/security` command performs a thorough security audit of your codebase, checking for:

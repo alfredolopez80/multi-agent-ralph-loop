@@ -45,6 +45,28 @@ MANDATORY after every task completion, before declaring VERIFIED_DONE.
 - Did the chosen model perform well?
 - Should routing thresholds change?
 
+## Agent Teams Integration (v2.88)
+
+This skill integrates with Agent Teams for team-based retrospective analysis:
+
+| Subagent | Role in Retrospective |
+|----------|----------------------|
+| `ralph-reviewer` | Analyzes code quality trends |
+| `ralph-researcher` | Gathers metrics and patterns |
+| `ralph-coder` | Implements improvement suggestions |
+
+### Parallel Retrospective Analysis
+When Agent Teams is active:
+1. **Team Lead** initiates retrospective session
+2. **ralph-researcher** gathers task metrics in parallel
+3. **ralph-reviewer** analyzes quality trends
+4. **ralph-coder** proposes and validates improvements
+
+### Team Coordination
+- TeamCreate establishes retrospective team
+- Task list tracks analysis phases
+- Shared findings through SendMessage coordination
+
 ### 2. Clarification Quality
 - Were the right questions asked?
 - Did any missed clarifications cause rework?

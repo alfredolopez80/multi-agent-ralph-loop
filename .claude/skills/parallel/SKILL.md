@@ -24,6 +24,98 @@ Run multiple Ralph loops concurrently for independent tasks.
 - **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
 - **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
+## Agent Teams Integration (v2.88)
+
+Parallel execution now uses Agent Teams for automatic parallelization with coordinated quality gates.
+
+### Automatic Team Creation
+
+When the parallel skill is invoked, automatically create a team:
+
+```yaml
+# Automatically create team on skill invocation
+TeamCreate:
+  team_name: "parallel-execution-{timestamp}"
+  description: "Parallel execution of independent tasks"
+```
+
+### Spawning Parallel Agents
+
+Create multiple ralph-coder instances for parallel tasks:
+
+```yaml
+# Spawn 3 parallel ralph-coder agents
+Task:
+  subagent_type: "ralph-coder"
+  team_name: "parallel-execution-{timestamp}"
+  prompt: "Fix auth errors in src/auth/"
+
+Task:
+  subagent_type: "ralph-coder"
+  team_name: "parallel-execution-{timestamp}"
+  prompt: "Fix API errors in src/api/"
+
+Task:
+  subagent_type: "ralph-coder"
+  team_name: "parallel-execution-{timestamp}"
+  prompt: "Fix UI errors in src/ui/"
+```
+
+### Task Coordination Pattern
+
+Use the shared task list for coordination:
+
+```yaml
+# Create master task list
+TaskCreate:
+  subject: "Parallel fixes batch"
+  description: "Execute auth, API, and UI fixes in parallel"
+
+# Create subtasks with dependencies
+TaskCreate:
+  subject: "Fix auth errors"
+  activeForm: "Fixing auth errors"
+
+TaskCreate:
+  subject: "Fix API errors"
+  activeForm: "Fixing API errors"
+
+TaskCreate:
+  subject: "Fix UI errors"
+  activeForm: "Fixing UI errors"
+```
+
+### Quality Gates
+
+Quality validation via Agent Teams hooks:
+
+| Hook | Purpose | Behavior |
+|------|---------|----------|
+| `TeammateIdle` | Pre-idle validation | Keep working + feedback if issues found |
+| `TaskCompleted` | Pre-completion validation | Block completion + feedback if issues found |
+
+Quality standards enforced:
+1. **CORRECTNESS**: Valid syntax, sound logic
+2. **QUALITY**: No console.log, proper types, no TODOs
+3. **SECURITY**: No hardcoded secrets, proper validation
+4. **CONSISTENCY**: Follow project style guides
+
+### Result Aggregation
+
+After all parallel agents complete:
+
+```yaml
+# Aggregate results
+TaskUpdate:
+  taskId: "<master-task>"
+  status: "completed"
+
+# Report summary
+- All subtasks completed
+- Quality gates passed
+- Changes ready for commit
+```
+
 ## Quick Start
 
 ```bash
@@ -47,53 +139,55 @@ ralph parallel task1 task2 task3
 
 ## Workflow
 
-### 1. Spawn Parallel Agents
+### 1. Create Team and Spawn Agents
 
 ```yaml
-# Launch multiple background agents
+# Auto-create team for coordination
+TeamCreate:
+  team_name: "parallel-{task-name}"
+  description: "Parallel execution of {task-name}"
+
+# Launch multiple ralph-coder background agents
 Task:
-  subagent_type: "code-reviewer"
-  model: "sonnet"
-  run_in_background: true
-  prompt: "Review auth module"
+  subagent_type: "ralph-coder"
+  team_name: "parallel-{task-name}"
+  prompt: "Execute task 1"
 
 Task:
-  subagent_type: "code-reviewer"
-  model: "sonnet"
-  run_in_background: true
-  prompt: "Review api module"
+  subagent_type: "ralph-coder"
+  team_name: "parallel-{task-name}"
+  prompt: "Execute task 2"
 
 Task:
-  subagent_type: "code-reviewer"
-  model: "sonnet"
-  run_in_background: true
-  prompt: "Review ui module"
+  subagent_type: "ralph-coder"
+  team_name: "parallel-{task-name}"
+  prompt: "Execute task 3"
 ```
 
 ### 2. Monitor Progress
 
 ```yaml
-# Check each task
-TaskOutput:
-  task_id: "<auth-task>"
-  block: false
+# Check task list for all subtask status
+TaskList:
+  # Returns all tasks with status, owner, blockedBy
 
-TaskOutput:
-  task_id: "<api-task>"
-  block: false
+# Monitor specific subtask
+TaskGet:
+  taskId: "<subtask-id>"
 ```
 
 ### 3. Aggregate Results
 
 ```yaml
-# Wait for all to complete
-TaskOutput:
-  task_id: "<auth-task>"
-  block: true
+# Mark master task as completed
+TaskUpdate:
+  taskId: "<master-task>"
+  status: "completed"
 
-TaskOutput:
-  task_id: "<api-task>"
-  block: true
+# Report summary
+- All subtasks completed
+- Quality gates passed
+- Changes ready for commit
 ```
 
 ## Parallel Patterns

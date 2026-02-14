@@ -17,6 +17,129 @@ Deep bug analysis using Codex gpt-5.2-codex with the bug-hunter skill and **TLDR
 - **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
 - **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
+## Agent Teams Integration (v2.88)
+
+The `/bugs` command automatically creates an Agent Team for parallel bug scanning and coordinated fixes.
+
+### Automatic Team Creation
+
+When `/bugs` is invoked on a directory with multiple files, it automatically:
+
+```bash
+# 1. Create bug-hunting team
+TeamCreate(team_name="bug-hunt-${TARGET}", description="Bug analysis and fixes")
+
+# 2. Spawn specialized teammates
+Task(subagent_type="ralph-reviewer", team_name="bug-hunt-${TARGET}")  # Analyze bugs
+Task(subagent_type="ralph-coder", team_name="bug-hunt-${TARGET}")     # Apply fixes
+```
+
+### Teammate Roles
+
+| Agent | Role | Model | Tasks |
+|-------|------|-------|-------|
+| `ralph-reviewer` | Code analysis, bug detection | Model from settings | - Static analysis<br>- Pattern matching<br>- Severity assessment<br>- Fix suggestions |
+| `ralph-coder` | Fix implementation | Model from settings | - Apply bug fixes<br>- Add tests<br>- Refactor patterns |
+| `team-lead` | Coordination | Opus | - Assign tasks<br>- Review findings<br>- Quality gate validation |
+
+### Coordination via Shared Task List
+
+```yaml
+# Team lead creates coordinated tasks
+TaskCreate:
+  subject: "Analyze ${TARGET} for bugs"
+  description: |
+    ralph-reviewer: Perform static analysis on assigned files
+    ralph-coder: Standby for fix implementation
+
+    Output format per file:
+    {
+      "bugs": [
+        {
+          "severity": "CRITICAL|HIGH|MEDIUM|LOW",
+          "type": "logic|race|memory|type|error-handling|edge-case|async|security",
+          "file": "path/to/file.ts",
+          "line": 42,
+          "description": "Clear bug description",
+          "fix": "Concrete remediation steps"
+        }
+      ]
+    }
+
+TaskCreate:
+  subject: "Fix HIGH+ severity bugs in ${TARGET}"
+  description: |
+    ralph-coder: Implement fixes for approved bugs
+    - Read bug findings from ralph-reviewer
+    - Apply fixes with proper error handling
+    - Add regression tests for each fix
+    - Run quality gates after each fix
+```
+
+### Quality Gates Integration
+
+Agent Teams hooks automatically validate bug fixes:
+
+```bash
+# Hooks run automatically (configured in ~/.claude/settings.json)
+TeammateIdle  → teammate-idle-quality-gate.sh    # Before going idle
+TaskCompleted → task-completed-quality-gate.sh   # Before marking complete
+
+# Quality checks:
+# 1. No console.log statements
+# 2. No TODO/FIXME comments
+# 3. Valid syntax
+# 4. All HIGH+ bugs fixed or approved
+```
+
+### Parallel Scanning Workflow
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ AGENT TEAMS: Bug Hunting Parallel Scan                  │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│ 1. TEAM CREATE   → TeamCreate("bug-hunt-${TARGET}")     │
+│                                                         │
+│ 2. PARALLEL SCAN → ralph-reviewer x N (file chunks)     │
+│    ├─ Reviewer 1: files 1-10                            │
+│    ├─ Reviewer 2: files 11-20                           │
+│    └─ Reviewer 3: files 21-30                           │
+│                                                         │
+│ 3. AGGREGATE    → Team lead consolidates findings       │
+│                                                         │
+│ 4. PRIORITIZE   → Sort by severity (HIGH+ first)        │
+│                                                         │
+│ 5. PARALLEL FIX → ralph-coder x N (bug assignments)     │
+│    ├─ Coder 1: CRITICAL bugs                           │
+│    ├─ Coder 2: HIGH bugs                                │
+│    └─ Coder 3: MEDIUM bugs                              │
+│                                                         │
+│ 6. QUALITY GATE → Hooks validate all fixes              │
+│                                                         │
+│ 7. VERIFY      → Re-scan until clean                    │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Example Team-Based Bug Hunt
+
+```bash
+# User invokes /bugs on large codebase
+ralph bugs src/
+
+# Behind the scenes:
+# 1. Team created: "bug-hunt-src"
+# 2. Files split among 3 ralph-reviewer agents
+# 3. Each reviewer analyzes their chunk in parallel
+# 4. Team lead aggregates findings into single report
+# 5. HIGH+ bugs assigned to ralph-coder agents
+# 6. Quality gates run automatically after each fix
+# 7. Final verification scan confirms all bugs resolved
+
+# Time savings: 3x faster than sequential analysis
+```
+
 ## Pre-Bugs: TLDR Context Preparation (v2.37)
 
 **AUTOMATIC** - Before bug hunting, gather context with 95% token savings:
