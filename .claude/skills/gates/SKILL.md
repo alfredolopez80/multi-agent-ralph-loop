@@ -35,6 +35,54 @@ ralph gates         # Via CLI
 ralph gates src/    # Specific directory
 ```
 
+## LSP Usage for Type Checking
+
+**IMPORTANT**: Use LSP for efficient type checking instead of reading entire files.
+
+### When to Use LSP
+- Type checking TypeScript/JavaScript files
+- Finding type errors without running `tsc --noEmit`
+- Getting hover information for symbols
+- Finding references across the codebase
+
+### LSP Commands
+```yaml
+# Type check a specific file (TypeScript)
+LSP:
+  server: typescript-language-server
+  action: diagnostics
+  file: src/auth/login.ts
+
+# Get hover information for a symbol
+LSP:
+  server: typescript-language-server
+  action: hover
+  file: src/auth/login.ts
+  line: 42
+  character: 10
+
+# Find all references
+LSP:
+  server: typescript-language-server
+  action: references
+  file: src/auth/login.ts
+  line: 42
+  character: 10
+
+# Python type checking with pyright
+LSP:
+  server: pyright
+  action: diagnostics
+  file: src/auth/login.py
+```
+
+### LSP vs Traditional Type Checking
+| Method | Tokens Used | Speed | Use Case |
+|--------|-------------|-------|----------|
+| `tsc --noEmit` | HIGH (reads all files) | Slow | Full project check |
+| `LSP diagnostics` | LOW (indexed access) | Fast | Single file check |
+| `LSP hover` | MINIMAL | Instant | Quick type lookup |
+
 ## Pre-Gates: TLDR Language Detection (v2.37)
 
 **AUTOMATIC** - Detect project languages efficiently:

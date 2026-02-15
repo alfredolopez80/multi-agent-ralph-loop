@@ -3,6 +3,7 @@ name: ralph-coder
 version: 2.88.0
 description: Specialized coding teammate for Agent Teams with Ralph quality gates
 tools:
+  - LSP
   - Read
   - Edit
   - Write

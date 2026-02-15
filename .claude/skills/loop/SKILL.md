@@ -7,6 +7,7 @@ user-invocable: true
 context: fork
 agent: general-purpose
 allowed-tools:
+  - LSP
   - Task
   - Read
   - Edit
@@ -14,6 +15,10 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
+hooks:
+  PreToolUse:
+    - path: .claude/hooks/validate-lsp-servers.sh
+      match_tool: LSP
 ---
 
 # /loop - Ralph Loop Pattern (v2.88)

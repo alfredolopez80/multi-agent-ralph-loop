@@ -3,6 +3,7 @@ name: ralph-tester
 version: 2.88.0
 description: Testing teammate for unit and integration tests
 tools:
+  - LSP
   - Read
   - Edit
   - Write

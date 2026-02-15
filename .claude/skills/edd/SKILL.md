@@ -2,6 +2,19 @@
 # VERSION: 2.88.0
 name: edd
 description: "Eval-Driven Development (EDD) Framework v2.87.0 - Define-before-implement pattern with structured evals. Provides workflow: Define specifications → Implement features → Verify against evals. Components: TEMPLATE.md for eval definitions, edd.sh CLI script, /edd skill invocation. Check types: CC- (Capability), BC- (Behavior), NFC- (Non-Functional). Integrates with orchestrator workflow for quality-first development. Keywords: evals, define, implement, verify, capability checks, behavior checks, non-functional checks, template, quality assurance, test-driven, specification. Use when: defining new features with structured evals, implementing with verification requirements, creating quality specifications, TDD-style workflow with evals."
+allowed-tools:
+  - LSP
+  - Task
+  - Read
+  - Edit
+  - Write
+  - Bash
+  - Grep
+  - Glob
+hooks:
+  PreToolUse:
+    - path: .claude/hooks/validate-lsp-servers.sh
+      match_tool: LSP
 ---
 
 # EDD (Eval-Driven Development) Framework v2.64

@@ -3,6 +3,7 @@ name: ralph-reviewer
 version: 2.88.0
 description: Code review teammate with security and quality focus
 tools:
+  - LSP
   - Read
   - Grep
   - Glob

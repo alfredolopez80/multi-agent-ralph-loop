@@ -3,6 +3,7 @@ name: ralph-researcher
 version: 2.88.0
 description: Research and exploration teammate using Zai MCP web search
 tools:
+  - LSP
   - Read
   - Grep
   - Glob

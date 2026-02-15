@@ -4,6 +4,16 @@ name: bugs
 description: "Bug hunting with Codex CLI Use when: (1) /bugs is invoked, (2) task relates to bugs functionality."
 context: fork
 user-invocable: true
+allowed-tools:
+  - LSP
+  - Read
+  - Bash
+  - Grep
+  - Glob
+hooks:
+  PreToolUse:
+    - path: .claude/hooks/validate-lsp-servers.sh
+      match_tool: LSP
 ---
 
 # /bugs (v2.37)

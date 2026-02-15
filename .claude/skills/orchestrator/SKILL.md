@@ -7,6 +7,7 @@ user-invocable: true
 context: fork
 agent: orchestrator
 allowed-tools:
+  - LSP
   - Task
   - AskUserQuestion
   - EnterPlanMode
@@ -19,6 +20,10 @@ allowed-tools:
   - Glob
   - Grep
   - mcp__plugin_claude-mem_*
+hooks:
+  PreToolUse:
+    - path: .claude/hooks/validate-lsp-servers.sh
+      match_tool: LSP
 ---
 
 # Orchestrator - Multi-Agent Ralph v2.88

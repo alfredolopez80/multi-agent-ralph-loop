@@ -5,12 +5,17 @@ description: "Run multiple Ralph loops concurrently for independent tasks. Manag
 context: fork
 user-invocable: true
 allowed-tools:
+  - LSP
   - Task
   - TaskOutput
   - Read
   - Edit
   - Write
   - Bash
+hooks:
+  PreToolUse:
+    - path: .claude/hooks/validate-lsp-servers.sh
+      match_tool: LSP
 ---
 
 # Parallel - Concurrent Execution (v2.88)
