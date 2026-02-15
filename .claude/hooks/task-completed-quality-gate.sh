@@ -1,6 +1,6 @@
 #!/bin/bash
 # task-completed-quality-gate.sh - Quality gate before task completion
-# VERSION: 2.88.0
+# VERSION: 2.90.0
 # REPO: multi-agent-ralph-loop
 #
 # Triggered by: TaskCompleted hook event
@@ -36,6 +36,8 @@ task_description=$(echo "$stdin_data" | jq -r '.task_description // .taskDescrip
 task_subject=$(echo "$stdin_data" | jq -r '.task_subject // ""')
 teammate_id=$(echo "$stdin_data" | jq -r '.teammate_name // .teammateId // .teammate_id // "unknown"')
 team_name=$(echo "$stdin_data" | jq -r '.team_name // "unknown"')
+# v2.90.0 FIX: Extract files_modified from stdin (was missing!)
+files_modified=$(echo "$stdin_data" | jq -c '.files_modified // .filesModified // []')
 
 # Log the event
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] TaskCompleted: ${task_id} by ${teammate_id}" >> "$LOG_DIR/agent-teams.log"

@@ -1,6 +1,6 @@
 #!/bin/bash
 # teammate-idle-quality-gate.sh - Quality gate for Agent Teams teammates
-# VERSION: 2.88.0
+# VERSION: 2.90.0
 # REPO: multi-agent-ralph-loop
 #
 # Triggered by: TeammateIdle hook event
@@ -35,6 +35,8 @@ teammate_id=$(echo "$stdin_data" | jq -r '.teammate_name // .teammateId // .team
 teammate_type=$(echo "$stdin_data" | jq -r '.agent_type // .teammateType // .teammate_type // "unknown"')
 task_id=$(echo "$stdin_data" | jq -r '.task_id // .taskId // "unknown"')
 team_name=$(echo "$stdin_data" | jq -r '.team_name // "unknown"')
+# v2.90.0 FIX: Extract files_modified from stdin (was missing!)
+files_modified=$(echo "$stdin_data" | jq -c '.files_modified // .filesModified // []')
 
 # Log the event
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] TeammateIdle: ${teammate_id} (${teammate_type}) task=${task_id}" >> "$LOG_DIR/agent-teams.log"
