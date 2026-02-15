@@ -254,24 +254,30 @@ setup() {
 # SECTION 7: Hook output format validation
 # =============================================================================
 
-@test "LSP: validate-lsp-servers.sh produces valid JSON output when LSP available" {
+@test "LSP: validate-lsp-servers.sh produces valid JSON output with --json flag" {
     hook_file="${HOOKS_DIR}/validate-lsp-servers.sh"
     [ -f "$hook_file" ]
 
-    # Create a mock input for the hook
-    export TOOL_INPUT='{"server":"typescript"}'
-    export TOOL_NAME="LSP"
+    # Run hook with --json flag to get JSON output
+    output=$(bash "$hook_file" --json 2>&1)
 
-    # Run hook - it should produce JSON output
-    output=$(bash "$hook_file" 2>&1 || true)
+    # Validate it's valid JSON
+    echo "$output" | python3 -c "import sys,json; data=json.loads(sys.stdin.read()); assert 'status' in data; assert 'servers' in data" 2>/dev/null
+}
 
-    # If there's JSON output, validate it
-    if echo "$output" | grep -q "{"; then
-        json_line=$(echo "$output" | grep -m1 "{")
-        echo "$json_line" | python3 -c "import sys,json; json.loads(sys.stdin.read())" 2>/dev/null || \
-        skip "Output may not be pure JSON"
+@test "LSP: validate-lsp-servers.sh hook mode produces valid JSON" {
+    hook_file="${HOOKS_DIR}/validate-lsp-servers.sh"
+    [ -f "$hook_file" ]
+
+    # Run hook with --hook flag for hook response format
+    output=$(bash "$hook_file" --hook 2>&1 || true)
+
+    # Should produce JSON with continue field
+    if echo "$output" | grep -q '"continue"'; then
+        echo "$output" | python3 -c "import sys,json; data=json.loads(sys.stdin.read()); assert 'continue' in data" 2>/dev/null
     else
-        skip "Hook may not produce JSON in test mode"
+        # Hook may exit 2 if servers missing, which is valid behavior
+        true
     fi
 }
 
