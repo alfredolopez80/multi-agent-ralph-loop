@@ -1,0 +1,9 @@
+{
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "rm -rf /important/data",
+        "description": "Dangerous command for testing"
+    },
+    "session_id": "test-session-123",
+    "transcript_path": "/tmp/test-transcript.json"
+}

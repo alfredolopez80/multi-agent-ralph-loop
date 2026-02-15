@@ -1,0 +1,10 @@
+{
+    "tool_name": "Task",
+    "tool_input": {
+        "subagent_type": "ralph-coder",
+        "prompt": "Implement a test feature",
+        "team_name": "test-team"
+    },
+    "session_id": "test-session-123",
+    "transcript_path": "/tmp/test-transcript.json"
+}

@@ -1,0 +1,13 @@
+{
+    "tool_name": "Edit",
+    "tool_input": {
+        "file_path": "/tmp/test-file.py",
+        "old_string": "old content",
+        "new_string": "new content"
+    },
+    "tool_result": {
+        "status": "success",
+        "message": "File edited successfully"
+    },
+    "session_id": "test-session-123"
+}

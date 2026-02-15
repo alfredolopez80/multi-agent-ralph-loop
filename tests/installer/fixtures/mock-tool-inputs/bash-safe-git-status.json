@@ -1,0 +1,7 @@
+{
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "git status",
+        "description": "Check repository status"
+    }
+}

@@ -1,0 +1,66 @@
+{
+  "scenarios": [
+    {
+      "name": "post_edit_security_audit",
+      "description": "After Edit, security and quality hooks fire",
+      "tool_used": "Edit",
+      "expected_hooks": [
+        "claude-mem observation hook",
+        "sec-context-validate.sh",
+        "security-full-audit.sh",
+        "quality-gates-v2.sh",
+        "decision-extractor.sh",
+        "semantic-realtime-extractor.sh",
+        "plan-sync-post-step.sh",
+        "glm-context-update.sh",
+        "progress-tracker.sh",
+        "typescript-quick-check.sh",
+        "quality-parallel-async.sh",
+        "status-auto-check.sh",
+        "console-log-detector.sh",
+        "ai-code-audit.sh"
+      ],
+      "expected_behavior": "Memory recorded, quality checked, security audited"
+    },
+    {
+      "name": "post_task_completion",
+      "description": "After Task completes, swarm and review hooks fire",
+      "tool_used": "Task",
+      "expected_hooks": [
+        "claude-mem observation hook",
+        "auto-background-swarm.sh",
+        "parallel-explore.sh",
+        "recursive-decompose.sh",
+        "adversarial-auto-trigger.sh",
+        "code-review-auto.sh"
+      ],
+      "expected_behavior": "Swarm coordination, auto-review triggered"
+    },
+    {
+      "name": "post_bash_execution",
+      "description": "After Bash command executes",
+      "tool_used": "Bash",
+      "expected_hooks": [
+        "claude-mem observation hook",
+        "sec-context-validate.sh",
+        "security-full-audit.sh",
+        "quality-gates-v2.sh",
+        "status-auto-check.sh"
+      ],
+      "expected_behavior": "Security audit and status update"
+    },
+    {
+      "name": "async_quality_check",
+      "description": "Quality parallel async hook runs in background",
+      "tool_used": "Edit",
+      "expected_hooks": [
+        "quality-parallel-async.sh"
+      ],
+      "expected_behavior": "Async hook with 60s timeout runs in background",
+      "hook_config": {
+        "async": true,
+        "timeout": 60
+      }
+    }
+  ]
+}

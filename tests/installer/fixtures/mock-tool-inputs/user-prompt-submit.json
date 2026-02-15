@@ -1,0 +1,5 @@
+{
+    "prompt": "Write a function to calculate fibonacci numbers",
+    "session_id": "test-session-123",
+    "cwd": "/tmp/test-project"
+}

@@ -1,0 +1,8 @@
+{
+    "tool_name": "Edit",
+    "tool_input": {
+        "file_path": "/Users/test/project/src/main.py",
+        "old_string": "def old_function():",
+        "new_string": "def new_function():"
+    }
+}

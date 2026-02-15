@@ -1,0 +1,59 @@
+{
+  "scenarios": [
+    {
+      "name": "normal_task_spawn",
+      "description": "Normal Task tool invocation for subagent",
+      "input": {
+        "tool_name": "Task",
+        "tool_input": {
+          "subagent_type": "ralph-coder",
+          "prompt": "Implement a new feature in src/feature.py"
+        }
+      },
+      "expected_hooks": [
+        "lsa-pre-step.sh",
+        "repo-boundary-guard.sh",
+        "fast-path-check.sh",
+        "smart-memory-search.sh",
+        "skill-validator.sh",
+        "procedural-inject.sh",
+        "checkpoint-smart-save.sh",
+        "orchestrator-auto-learn.sh",
+        "promptify-security.sh",
+        "inject-session-context.sh",
+        "rules-injector.sh"
+      ],
+      "expected_decision": "allow"
+    },
+    {
+      "name": "task_with_skill_reference",
+      "description": "Task with skill reference triggers skill-validator",
+      "input": {
+        "tool_name": "Task",
+        "tool_input": {
+          "subagent_type": "ralph-coder",
+          "prompt": "Use /orchestrator to plan the implementation"
+        }
+      },
+      "expected_hooks": [
+        "skill-validator.sh"
+      ],
+      "expected_behavior": "Validates skill reference in prompt"
+    },
+    {
+      "name": "task_triggers_memory_search",
+      "description": "Task triggers smart memory search for context",
+      "input": {
+        "tool_name": "Task",
+        "tool_input": {
+          "subagent_type": "ralph-researcher",
+          "prompt": "Research the authentication module"
+        }
+      },
+      "expected_hooks": [
+        "smart-memory-search.sh"
+      ],
+      "expected_behavior": "Searches memory for relevant patterns"
+    }
+  ]
+}

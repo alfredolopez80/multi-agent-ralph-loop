@@ -1,0 +1,76 @@
+{
+  "$schema": "https://example.com/my-custom-schema.json",
+  "permissions": {
+    "allow": [
+      "Bash(docker:*)",
+      "Bash(npm:*)",
+      "Bash(python:*)",
+      "Read(**/*.md)"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)"
+    ]
+  },
+  "env": {
+    "MY_API_KEY": "my-secret-key",
+    "CUSTOM_SETTING": "value123",
+    "DEBUG_MODE": "true"
+  },
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/user/projects"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "ghp_xxx"
+      }
+    }
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/my/custom/pre-hook.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/my/custom/post-hook.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/my/custom/prompt-hook.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "outputStyle": "Custom",
+  "customField": {
+    "nested": {
+      "deeply": true,
+      "value": "preserved"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+    "session_id": "test-session-123",
+    "transcript_path": "/tmp/test-transcript.json",
+    "cwd": "/tmp/test-project",
+    "trigger": "new_session"
+}

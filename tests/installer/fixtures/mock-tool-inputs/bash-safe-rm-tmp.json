@@ -1,0 +1,7 @@
+{
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "rm -rf /tmp/test-files",
+        "description": "Clean temp files"
+    }
+}

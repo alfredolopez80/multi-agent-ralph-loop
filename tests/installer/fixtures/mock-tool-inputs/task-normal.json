@@ -1,0 +1,7 @@
+{
+    "tool_name": "Task",
+    "tool_input": {
+        "subagent_type": "ralph-coder",
+        "prompt": "Implement a new feature in src/feature.py"
+    }
+}

@@ -1,0 +1,115 @@
+{
+  "scenarios": [
+    {
+      "name": "safe_git_status",
+      "description": "Safe read-only git command",
+      "input": {
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "git status",
+          "description": "Check repository status"
+        }
+      },
+      "expected_hooks": [
+        "git-safety-guard.py",
+        "repo-boundary-guard.sh"
+      ],
+      "expected_decision": "allow"
+    },
+    {
+      "name": "blocked_git_reset_hard",
+      "description": "Destructive git reset --hard command",
+      "input": {
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "git reset --hard HEAD",
+          "description": "Reset to HEAD"
+        }
+      },
+      "expected_hooks": [
+        "git-safety-guard.py"
+      ],
+      "expected_decision": "block",
+      "expected_reason": "destroys all uncommitted changes"
+    },
+    {
+      "name": "blocked_rm_rf",
+      "description": "Recursive deletion outside temp directories",
+      "input": {
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "rm -rf /Users/test/project/important",
+          "description": "Delete directory"
+        }
+      },
+      "expected_hooks": [
+        "git-safety-guard.py"
+      ],
+      "expected_decision": "block",
+      "expected_reason": "recursive deletion"
+    },
+    {
+      "name": "allowed_rm_rf_tmp",
+      "description": "Recursive deletion in temp directory",
+      "input": {
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "rm -rf /tmp/test-files",
+          "description": "Clean temp files"
+        }
+      },
+      "expected_hooks": [
+        "git-safety-guard.py"
+      ],
+      "expected_decision": "allow"
+    },
+    {
+      "name": "confirmation_force_push",
+      "description": "Force push requires user confirmation",
+      "input": {
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "git push --force origin main",
+          "description": "Force push to main"
+        }
+      },
+      "expected_hooks": [
+        "git-safety-guard.py"
+      ],
+      "expected_decision": "block",
+      "expected_behavior": "Requires user confirmation via GIT_FORCE_PUSH_CONFIRMED=1"
+    },
+    {
+      "name": "blocked_stash_clear",
+      "description": "Stash clear permanently deletes all stashes",
+      "input": {
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "git stash clear",
+          "description": "Clear all stashes"
+        }
+      },
+      "expected_hooks": [
+        "git-safety-guard.py"
+      ],
+      "expected_decision": "block",
+      "expected_reason": "permanently deletes ALL stashed changes"
+    },
+    {
+      "name": "readonly_command_external_repo",
+      "description": "Read-only command in external repo should be allowed",
+      "input": {
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "ls -la /Users/test/other-repo/",
+          "description": "List external repo"
+        }
+      },
+      "expected_hooks": [
+        "repo-boundary-guard.sh"
+      ],
+      "expected_decision": "allow",
+      "notes": "Read-only commands are safe for cross-repo inspection"
+    }
+  ]
+}

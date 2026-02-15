@@ -1,0 +1,630 @@
+{
+  "batch_name": "Installer & Configuration Validation Suite",
+  "created": "2026-02-15T00:00:00Z",
+  "version": "2.88.0",
+  "config": {
+    "stop_on_failure": false,
+    "auto_commit": true,
+    "teammates": ["ralph-coder", "ralph-tester"]
+  },
+  "phases": [
+    {
+      "name": "PHASE 0: Infrastructure Setup",
+      "tasks": [
+        {
+          "id": "TASK-0.1",
+          "description": "Install and configure BATS (Bash Automated Testing System) framework",
+          "priority": 1,
+          "dependencies": [],
+          "files": [
+            "tests/installer/install-bats.sh",
+            "tests/installer/test_helper.bash"
+          ],
+          "acceptance_criteria": [
+            {
+              "criteria": "bats --version returns valid version",
+              "verification": "command",
+              "command": "bats --version"
+            },
+            {
+              "criteria": "bats-support library installed",
+              "verification": "file_exists",
+              "path": "/usr/local/lib/bats-support/load.bash"
+            },
+            {
+              "criteria": "bats-assert library installed",
+              "verification": "file_exists",
+              "path": "/usr/local/lib/bats-assert/load.bash"
+            },
+            {
+              "criteria": "test_helper.bash loads without errors",
+              "verification": "command",
+              "command": "bash -c 'source tests/installer/test_helper.bash'"
+            }
+          ],
+          "estimated_time": "1-2 hours"
+        }
+      ]
+    },
+    {
+      "name": "PHASE 1: Environment Validation",
+      "tasks": [
+        {
+          "id": "TASK-1.1",
+          "description": "Create system dependencies validator with version checking for all required tools",
+          "priority": 1,
+          "dependencies": ["TASK-0.1"],
+          "files": [
+            "tests/installer/test-system-dependencies.bats",
+            "scripts/validate-system-requirements.sh"
+          ],
+          "acceptance_criteria": [
+            {
+              "criteria": "Test file exists and is executable",
+              "verification": "file_exists",
+              "path": "tests/installer/test-system-dependencies.bats"
+            },
+            {
+              "criteria": "Validates required tools (bash, jq, curl, git)",
+              "verification": "code_contains",
+              "file": "tests/installer/test-system-dependencies.bats",
+              "pattern": "required.*bash.*jq.*curl.*git"
+            },
+            {
+              "criteria": "Validates optional tools with warnings",
+              "verification": "code_contains",
+              "file": "tests/installer/test-system-dependencies.bats",
+              "pattern": "optional|warning"
+            },
+            {
+              "criteria": "All tests pass",
+              "verification": "command",
+              "command": "bats tests/installer/test-system-dependencies.bats"
+            }
+          ],
+          "estimated_time": "2-3 hours"
+        },
+        {
+          "id": "TASK-1.2",
+          "description": "Create shell environment validator for PATH, aliases, and environment variables",
+          "priority": 1,
+          "dependencies": ["TASK-0.1"],
+          "files": [
+            "tests/installer/test-shell-environment.bats",
+            "scripts/validate-shell-config.sh"
+          ],
+          "acceptance_criteria": [
+            {
+              "criteria": "Test file exists",
+              "verification": "file_exists",
+              "path": "tests/installer/test-shell-environment.bats"
+            },
+            {
+              "criteria": "Validates PATH contains ~/.local/bin",
+              "verification": "code_contains",
+              "file": "tests/installer/test-shell-environment.bats",
+              "pattern": "local/bin"
+            },
+            {
+              "criteria": "Validates Ralph markers in shell rc",
+              "verification": "code_contains",
+              "file": "tests/installer/test-shell-environment.bats",
+              "pattern": "RALPH.*MARKER|marker"
+            },
+            {
+              "criteria": "All tests pass",
+              "verification": "command",
+              "command": "bats tests/installer/test-shell-environment.bats"
+            }
+          ],
+          "estimated_time": "1-2 hours"
+        },
+        {
+          "id": "TASK-1.3",
+          "description": "Create directory structure validator with permission checking",
+          "priority": 1,
+          "dependencies": ["TASK-0.1"],
+          "files": [
+            "tests/installer/test-directory-structure.bats",
+            "scripts/validate-directories.sh"
+          ],
+          "acceptance_criteria": [
+            {
+              "criteria": "Test file exists",
+              "verification": "file_exists",
+              "path": "tests/installer/test-directory-structure.bats"
+            },
+            {
+              "criteria": "Validates ~/.ralph directory structure",
+              "verification": "code_contains",
+              "file": "tests/installer/test-directory-structure.bats",
+              "pattern": ".ralph"
+            },
+            {
+              "criteria": "Validates ~/.claude directory structure",
+              "verification": "code_contains",
+              "file": "tests/installer/test-directory-structure.bats",
+              "pattern": ".claude"
+            },
+            {
+              "criteria": "All tests pass",
+              "verification": "command",
+              "command": "bats tests/installer/test-directory-structure.bats"
+            }
+          ],
+          "estimated_time": "1 hour"
+        }
+      ]
+    },
+    {
+      "name": "PHASE 2: Hooks Validation",
+      "tasks": [
+        {
+          "id": "TASK-2.1",
+          "description": "Create hooks registration validator for settings.json",
+          "priority": 1,
+          "dependencies": ["TASK-0.1", "TASK-1.1"],
+          "files": [
+            "tests/installer/test-hooks-registration.bats",
+            "scripts/validate-hooks-registration.sh"
+          ],
+          "acceptance_criteria": [
+            {
+              "criteria": "Test file exists",
+              "verification": "file_exists",
+              "path": "tests/installer/test-hooks-registration.bats"
+            },
+            {
+              "criteria": "Validates hooks are registered in settings.json",
+              "verification": "code_contains",
+              "file": "tests/installer/test-hooks-registration.bats",
+              "pattern": "settings.json|hooks"
+            },
+            {
+              "criteria": "Checks hook scripts exist and are executable",
+              "verification": "code_contains",
+              "file": "tests/installer/test-hooks-registration.bats",
+              "pattern": "executable|exists"
+            },
+            {
+              "criteria": "All tests pass",
+              "verification": "command",
+              "command": "bats tests/installer/test-hooks-registration.bats"
+            }
+          ],
+          "estimated_time": "3-4 hours"
+        },
+        {
+          "id": "TASK-2.2",
+          "description": "Create hooks execution validator with mock inputs",
+          "priority": 1,
+          "dependencies": ["TASK-2.1"],
+          "files": [
+            "tests/installer/test-hooks-execution.bats",
+            "tests/installer/fixtures/mock-tool-inputs/",
+            "scripts/validate-hooks-execution.sh"
+          ],
+          "acceptance_criteria": [
+            {
+              "criteria": "Test file exists",
+              "verification": "file_exists",
+              "path": "tests/installer/test-hooks-execution.bats"
+            },
+            {
+              "criteria": "Mock input fixtures created",
+              "verification": "file_exists",
+              "path": "tests/installer/fixtures/mock-tool-inputs"
+            },
+            {
+              "criteria": "Tests hook execution with mock input",
+              "verification": "code_contains",
+              "file": "tests/installer/test-hooks-execution.bats",
+              "pattern": "mock|execute|run"
+            },
+            {
+              "criteria": "All tests pass",
+              "verification": "command",
+              "command": "bats tests/installer/test-hooks-execution.bats"
+            }
+          ],
+          "estimated_time": "4-5 hours"
+        },
+        {
+          "id": "TASK-2.3",
+          "description": "Create hooks syntax validator for shell and Python scripts",
+          "priority": 2,
+          "dependencies": ["TASK-0.1"],
+          "files": [
+            "tests/installer/test-hooks-syntax.bats",
+            "scripts/validate-hooks-syntax.sh"
+          ],
+          "acceptance_criteria": [
+            {
+              "criteria": "Test file exists",
+              "verification": "file_exists",
+              "path": "tests/installer/test-hooks-syntax.bats"
+            },
+            {
+              "criteria": "Validates bash syntax with bash -n",
+              "verification": "code_contains",
+              "file": "tests/installer/test-hooks-syntax.bats",
+              "pattern": "bash -n"
+            },
+            {
+              "criteria": "Validates Python syntax with py_compile",
+              "verification": "code_contains",
+              "file": "tests/installer/test-hooks-syntax.bats",
+              "pattern": "py_compile"
+            },
+            {
+              "criteria": "All tests pass",
+              "verification": "command",
+              "command": "bats tests/installer/test-hooks-syntax.bats"
+            }
+          ],
+          "estimated_time": "1-2 hours"
+        }
+      ]
+    },
+    {
+      "name": "PHASE 3: Skills Validation",
+      "tasks": [
+        {
+          "id": "TASK-3.1",
+          "description": "Create skills registration validator for SKILL.md files",
+          "priority": 1,
+          "dependencies": ["TASK-0.1"],
+          "files": [
+            "tests/installer/test-skills-registration.bats",
+            "scripts/validate-skills-registration.sh"
+          ],
+          "acceptance_criteria": [
+            {
+              "criteria": "Test file exists",
+              "verification": "file_exists",
+              "path": "tests/installer/test-skills-registration.bats"
+            },
+            {
+              "criteria": "Validates SKILL.md exists for each skill",
+              "verification": "code_contains",
+              "file": "tests/installer/test-skills-registration.bats",
+              "pattern": "SKILL.md"
+            },
+            {
+              "criteria": "Validates skill frontmatter",
+              "verification": "code_contains",
+              "file": "tests/installer/test-skills-registration.bats",
+              "pattern": "frontmatter|name|description"
+            },
+            {
+              "criteria": "All tests pass",
+              "verification": "command",
+              "command": "bats tests/installer/test-skills-registration.bats"
+            }
+          ],
+          "estimated_time": "2-3 hours"
+        },
+        {
+          "id": "TASK-3.2",
+          "description": "Create skills execution validator for core skills loading",
+          "priority": 2,
+          "dependencies": ["TASK-3.1"],
+          "files": [
+            "tests/installer/test-skills-execution.bats",
+            "scripts/validate-skills-execution.sh"
+          ],
+          "acceptance_criteria": [
+            {
+              "criteria": "Test file exists",
+              "verification": "file_exists",
+              "path": "tests/installer/test-skills-execution.bats"
+            },
+            {
+              "criteria": "Tests core skills load without errors",
+              "verification": "code_contains",
+              "file": "tests/installer/test-skills-execution.bats",
+              "pattern": "load|skill"
+            },
+            {
+              "criteria": "All tests pass",
+              "verification": "command",
+              "command": "bats tests/installer/test-skills-execution.bats"
+            }
+          ],
+          "estimated_time": "3-4 hours"
+        }
+      ]
+    },
+    {
+      "name": "PHASE 4: Agents Validation",
+      "tasks": [
+        {
+          "id": "TASK-4.1",
+          "description": "Create agents registration validator for agent definition files",
+          "priority": 1,
+          "dependencies": ["TASK-0.1"],
+          "files": [
+            "tests/installer/test-agents-registration.bats",
+            "scripts/validate-agents-registration.sh"
+          ],
+          "acceptance_criteria": [
+            {
+              "criteria": "Test file exists",
+              "verification": "file_exists",
+              "path": "tests/installer/test-agents-registration.bats"
+            },
+            {
+              "criteria": "Validates all ralph-* agents exist",
+              "verification": "code_contains",
+              "file": "tests/installer/test-agents-registration.bats",
+              "pattern": "ralph-coder|ralph-reviewer|ralph-tester|ralph-researcher"
+            },
+            {
+              "criteria": "All tests pass",
+              "verification": "command",
+              "command": "bats tests/installer/test-agents-registration.bats"
+            }
+          ],
+          "estimated_time": "1-2 hours"
+        }
+      ]
+    },
+    {
+      "name": "PHASE 5: Settings Validation",
+      "tasks": [
+        {
+          "id": "TASK-5.1",
+          "description": "Create settings structure validator for JSON schema compliance",
+          "priority": 1,
+          "dependencies": ["TASK-0.1"],
+          "files": [
+            "tests/installer/test-settings-structure.bats",
+            "scripts/validate-settings-structure.sh"
+          ],
+          "acceptance_criteria": [
+            {
+              "criteria": "Test file exists",
+              "verification": "file_exists",
+              "path": "tests/installer/test-settings-structure.bats"
+            },
+            {
+              "criteria": "Validates JSON structure",
+              "verification": "code_contains",
+              "file": "tests/installer/test-settings-structure.bats",
+              "pattern": "jq|json"
+            },
+            {
+              "criteria": "Validates required top-level keys",
+              "verification": "code_contains",
+              "file": "tests/installer/test-settings-structure.bats",
+              "pattern": "env|permissions|hooks"
+            },
+            {
+              "criteria": "All tests pass",
+              "verification": "command",
+              "command": "bats tests/installer/test-settings-structure.bats"
+            }
+          ],
+          "estimated_time": "2-3 hours"
+        },
+        {
+          "id": "TASK-5.2",
+          "description": "Create settings merge validator for installer merge logic",
+          "priority": 1,
+          "dependencies": ["TASK-5.1"],
+          "files": [
+            "tests/installer/test-settings-merge.bats",
+            "tests/installer/fixtures/settings-*.json"
+          ],
+          "acceptance_criteria": [
+            {
+              "criteria": "Test file exists",
+              "verification": "file_exists",
+              "path": "tests/installer/test-settings-merge.bats"
+            },
+            {
+              "criteria": "Tests fresh install scenario",
+              "verification": "code_contains",
+              "file": "tests/installer/test-settings-merge.bats",
+              "pattern": "fresh|new"
+            },
+            {
+              "criteria": "Tests merge with existing settings",
+              "verification": "code_contains",
+              "file": "tests/installer/test-settings-merge.bats",
+              "pattern": "merge|existing"
+            },
+            {
+              "criteria": "All tests pass",
+              "verification": "command",
+              "command": "bats tests/installer/test-settings-merge.bats"
+            }
+          ],
+          "estimated_time": "2-3 hours"
+        }
+      ]
+    },
+    {
+      "name": "PHASE 6: End-to-End Tests",
+      "tasks": [
+        {
+          "id": "TASK-6.1",
+          "description": "Create full installation E2E test with clean environment simulation",
+          "priority": 1,
+          "dependencies": ["TASK-1.1", "TASK-2.1", "TASK-3.1", "TASK-4.1", "TASK-5.1"],
+          "files": [
+            "tests/installer/test-e2e-installation.bats",
+            "tests/installer/e2e-setup.sh",
+            "tests/installer/e2e-cleanup.sh"
+          ],
+          "acceptance_criteria": [
+            {
+              "criteria": "Test file exists",
+              "verification": "file_exists",
+              "path": "tests/installer/test-e2e-installation.bats"
+            },
+            {
+              "criteria": "Simulates clean environment",
+              "verification": "code_contains",
+              "file": "tests/installer/test-e2e-installation.bats",
+              "pattern": "temp|clean|isolated"
+            },
+            {
+              "criteria": "Tests full install.sh execution",
+              "verification": "code_contains",
+              "file": "tests/installer/test-e2e-installation.bats",
+              "pattern": "install.sh"
+            },
+            {
+              "criteria": "All tests pass",
+              "verification": "command",
+              "command": "bats tests/installer/test-e2e-installation.bats"
+            }
+          ],
+          "estimated_time": "4-6 hours"
+        },
+        {
+          "id": "TASK-6.2",
+          "description": "Create hook chain integration test for sequential hook firing",
+          "priority": 1,
+          "dependencies": ["TASK-2.2"],
+          "files": [
+            "tests/installer/test-hook-chain.bats",
+            "tests/installer/fixtures/hook-scenarios/"
+          ],
+          "acceptance_criteria": [
+            {
+              "criteria": "Test file exists",
+              "verification": "file_exists",
+              "path": "tests/installer/test-hook-chain.bats"
+            },
+            {
+              "criteria": "Tests hook firing order",
+              "verification": "code_contains",
+              "file": "tests/installer/test-hook-chain.bats",
+              "pattern": "order|sequence|chain"
+            },
+            {
+              "criteria": "All tests pass",
+              "verification": "command",
+              "command": "bats tests/installer/test-hook-chain.bats"
+            }
+          ],
+          "estimated_time": "3-4 hours"
+        },
+        {
+          "id": "TASK-6.3",
+          "description": "Create CLI commands E2E test for ralph and mmc commands",
+          "priority": 2,
+          "dependencies": ["TASK-1.1"],
+          "files": [
+            "tests/installer/test-cli-commands.bats"
+          ],
+          "acceptance_criteria": [
+            {
+              "criteria": "Test file exists",
+              "verification": "file_exists",
+              "path": "tests/installer/test-cli-commands.bats"
+            },
+            {
+              "criteria": "Tests ralph help command",
+              "verification": "code_contains",
+              "file": "tests/installer/test-cli-commands.bats",
+              "pattern": "ralph help"
+            },
+            {
+              "criteria": "Tests mmc help command",
+              "verification": "code_contains",
+              "file": "tests/installer/test-cli-commands.bats",
+              "pattern": "mmc.*help"
+            },
+            {
+              "criteria": "All tests pass",
+              "verification": "command",
+              "command": "bats tests/installer/test-cli-commands.bats"
+            }
+          ],
+          "estimated_time": "2-3 hours"
+        }
+      ]
+    },
+    {
+      "name": "PHASE 7: Master Integration",
+      "tasks": [
+        {
+          "id": "TASK-7.1",
+          "description": "Create master validation script that runs all validators",
+          "priority": 1,
+          "dependencies": ["TASK-1.1", "TASK-2.1", "TASK-3.1", "TASK-4.1", "TASK-5.1", "TASK-6.1"],
+          "files": [
+            "scripts/validate-installation.sh"
+          ],
+          "acceptance_criteria": [
+            {
+              "criteria": "Script exists and is executable",
+              "verification": "command",
+              "command": "test -x scripts/validate-installation.sh"
+            },
+            {
+              "criteria": "Runs all validation scripts",
+              "verification": "code_contains",
+              "file": "scripts/validate-installation.sh",
+              "pattern": "validate-"
+            },
+            {
+              "criteria": "Supports JSON output",
+              "verification": "code_contains",
+              "file": "scripts/validate-installation.sh",
+              "pattern": "json|--format"
+            },
+            {
+              "criteria": "Returns appropriate exit code",
+              "verification": "command",
+              "command": "./scripts/validate-installation.sh --help || true"
+            }
+          ],
+          "estimated_time": "2-3 hours"
+        },
+        {
+          "id": "TASK-7.2",
+          "description": "Create GitHub Actions workflow for CI integration",
+          "priority": 2,
+          "dependencies": ["TASK-7.1"],
+          "files": [
+            ".github/workflows/test-installer.yml"
+          ],
+          "acceptance_criteria": [
+            {
+              "criteria": "Workflow file exists",
+              "verification": "file_exists",
+              "path": ".github/workflows/test-installer.yml"
+            },
+            {
+              "criteria": "Runs on PR and push to main",
+              "verification": "code_contains",
+              "file": ".github/workflows/test-installer.yml",
+              "pattern": "pull_request|push.*main"
+            },
+            {
+              "criteria": "Installs BATS and runs tests",
+              "verification": "code_contains",
+              "file": ".github/workflows/test-installer.yml",
+              "pattern": "bats|test"
+            }
+          ],
+          "estimated_time": "2-3 hours"
+        }
+      ]
+    }
+  ],
+  "execution_order": [
+    "TASK-0.1",
+    "TASK-1.1", "TASK-1.2", "TASK-1.3",
+    "TASK-2.1", "TASK-2.2", "TASK-2.3",
+    "TASK-3.1", "TASK-3.2",
+    "TASK-4.1",
+    "TASK-5.1", "TASK-5.2",
+    "TASK-6.1", "TASK-6.2", "TASK-6.3",
+    "TASK-7.1", "TASK-7.2"
+  ]
+}

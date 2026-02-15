@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(git:*)",
+      "Bash(ralph:*)",
+      "Bash(mmc:*)",
+      "Read",
+      "Write",
+      "Edit"
+    ],
+    "deny": [
+      "Read(**/.ssh/**)"
+    ]
+  },
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "CUSTOM_VAR": "already-set"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/user/.claude/hooks/git-safety-guard.py",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/user/.claude/hooks/repo-boundary-guard.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/user/.claude/hooks/quality-gates-v2.sh"
+          },
+          {
+            "type": "command",
+            "command": "/home/user/.claude/hooks/status-auto-check.sh"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/user/.claude/hooks/orchestrator-init.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "outputStyle": "Explanatory",
+  "plansDirectory": "/home/user/.ralph/plans/"
+}

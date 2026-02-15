@@ -1,0 +1,54 @@
+{
+  "scenarios": [
+    {
+      "name": "normal_session_start",
+      "description": "Normal session startup with all hooks firing",
+      "expected_behavior": "All SessionStart hooks execute in order",
+      "hooks_to_fire": [
+        "worker-service.cjs start",
+        "worker-service.cjs hook claude-code context",
+        "auto-migrate-plan-state.sh",
+        "auto-sync-global.sh",
+        "session-start-restore-context.sh",
+        "orchestrator-init.sh",
+        "project-backup-metadata.sh",
+        "session-start-repo-summary.sh"
+      ],
+      "expected_order": [
+        "claude-mem worker start",
+        "claude-mem context hook",
+        "auto-migrate",
+        "auto-sync",
+        "restore-context",
+        "orchestrator-init",
+        "backup-metadata",
+        "repo-summary"
+      ]
+    },
+    {
+      "name": "first_time_session",
+      "description": "First time session with no prior state",
+      "expected_behavior": "Hooks initialize gracefully without existing state",
+      "hooks_to_fire": [
+        "orchestrator-init.sh",
+        "session-start-restore-context.sh"
+      ],
+      "expected_files_created": [
+        "~/.ralph/episodes/",
+        "~/.ralph/memory/",
+        "~/.ralph/plans/"
+      ]
+    },
+    {
+      "name": "post_compact_restore",
+      "description": "Session start after context compaction",
+      "expected_behavior": "Restores context from pre-compact handoff",
+      "hooks_to_fire": [
+        "session-start-restore-context.sh"
+      ],
+      "reads_from": [
+        "~/.ralph/handoffs/pre-compact-*.json"
+      ]
+    }
+  ]
+}

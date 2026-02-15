@@ -1,0 +1,280 @@
+# GitHub Actions Workflow: Installer Tests
+# Runs BATS tests for the multi-agent-ralph-loop installer validation suite
+#
+# Documentation: docs/prd/installer-validation.prq.md
+# Test Location: tests/installer/
+
+name: Installer Tests
+
+"on":
+  push:
+    branches: [main]
+    paths:
+      - 'tests/installer/**'
+      - '.claude/hooks/**'
+      - '.claude/skills/**'
+      - '.claude/agents/**'
+      - 'scripts/**'
+      - 'install.sh'
+      - '.github/workflows/test-installer.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tests/installer/**'
+      - '.claude/hooks/**'
+      - '.claude/skills/**'
+      - '.claude/agents/**'
+      - 'scripts/**'
+      - 'install.sh'
+      - '.github/workflows/test-installer.yml'
+  workflow_dispatch:
+    inputs:
+      test_filter:
+        description: 'Test file pattern to run (e.g., test-system-dependencies.bats)'
+        required: false
+        default: ''
+
+env:
+  BATS_VERSION: '1.11.0'
+  BATS_SUPPORT_VERSION: '0.3.0'
+  BATS_ASSERT_VERSION: '2.1.0'
+
+jobs:
+  test-installer:
+    name: Installer Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install BATS and dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          echo "::group::Installing BATS on Ubuntu"
+          sudo apt-get update
+          sudo apt-get install -y bats
+
+          # Install bats-support and bats-assert manually
+          sudo mkdir -p /usr/lib/bats
+          sudo git clone --depth 1 --branch v${{ env.BATS_SUPPORT_VERSION }} \
+            https://github.com/bats-core/bats-support.git /usr/lib/bats/bats-support
+          sudo git clone --depth 1 --branch v${{ env.BATS_ASSERT_VERSION }} \
+            https://github.com/bats-core/bats-assert.git /usr/lib/bats/bats-assert
+
+          bats --version
+          echo "::endgroup::"
+
+      - name: Install BATS and dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          echo "::group::Installing BATS on macOS"
+          # Install bats-core via Homebrew
+          brew install bats-core
+
+          # Install bats-support and bats-assert
+          brew tap kaos/shell
+          brew install bats-support bats-assert || {
+            echo "Falling back to manual installation..."
+            mkdir -p ~/.local/lib/bats
+            git clone --depth 1 --branch v${{ env.BATS_SUPPORT_VERSION }} \
+              https://github.com/bats-core/bats-support.git ~/.local/lib/bats/bats-support
+            git clone --depth 1 --branch v${{ env.BATS_ASSERT_VERSION }} \
+              https://github.com/bats-core/bats-assert.git ~/.local/lib/bats/bats-assert
+          }
+
+          bats --version
+          echo "::endgroup::"
+
+      - name: Setup test environment
+        run: |
+          echo "::group::Setting up test environment"
+
+          # Create required directories for testing
+          mkdir -p ~/.claude
+          mkdir -p ~/.claude/hooks
+          mkdir -p ~/.claude/skills
+          mkdir -p ~/.claude/agents
+          mkdir -p ~/.ralph
+          mkdir -p ~/.ralph/logs
+          mkdir -p ~/.ralph/memory
+          mkdir -p ~/.ralph/config
+          mkdir -p ~/.ralph/plans
+          mkdir -p ~/.ralph/episodes
+          mkdir -p ~/.ralph/ledgers
+          mkdir -p ~/.ralph/handoffs
+          mkdir -p ~/.ralph/improvements
+          mkdir -p ~/.local/bin
+
+          # Set repository path for tests
+          echo "RALPH_REPO_PATH=${{ github.workspace }}" >> $GITHUB_ENV
+
+          echo "::endgroup::"
+
+      - name: Run BATS tests
+        id: run_tests
+        run: |
+          echo "::group::Running BATS tests"
+
+          # Determine test filter
+          TEST_FILTER="${{ github.event.inputs.test_filter }}"
+          if [ -z "$TEST_FILTER" ]; then
+            TEST_FILTER="*.bats"
+          fi
+
+          echo "Running tests matching: $TEST_FILTER"
+          echo "Working directory: $(pwd)"
+          echo "Test directory: tests/installer/"
+
+          # Create test results directory
+          mkdir -p test-results
+
+          # Set BATS library paths
+          if [ -d "/usr/lib/bats" ]; then
+            export BATS_LIB_PATH="/usr/lib/bats"
+          elif [ -d "$HOME/.local/lib/bats" ]; then
+            export BATS_LIB_PATH="$HOME/.local/lib/bats"
+          elif [ -d "/opt/homebrew/lib" ]; then
+            export BATS_LIB_PATH="/opt/homebrew/lib"
+          fi
+
+          # Find library paths for bats-support and bats-assert
+          BATS_SUPPORT_PATH=""
+          BATS_ASSERT_PATH=""
+
+          for path in /usr/lib/bats/bats-support ~/.local/lib/bats/bats-support /opt/homebrew/Cellar/bats-support; do
+            if [ -d "$path" ]; then
+              BATS_SUPPORT_PATH="$path"
+              break
+            fi
+          done
+
+          for path in /usr/lib/bats/bats-assert ~/.local/lib/bats/bats-assert /opt/homebrew/Cellar/bats-assert; do
+            if [ -d "$path" ]; then
+              BATS_ASSERT_PATH="$path"
+              break
+            fi
+          done
+
+          echo "BATS Support Path: $BATS_SUPPORT_PATH"
+          echo "BATS Assert Path: $BATS_ASSERT_PATH"
+
+          # Run tests and capture results
+          TEST_FAILURE=0
+
+          for test_file in tests/installer/${TEST_FILTER}; do
+            if [ -f "$test_file" ]; then
+              echo ""
+              echo "========================================"
+              echo "Running: $(basename "$test_file")"
+              echo "========================================"
+
+              # Run with tap output for better CI logging
+              if bats --tap "$test_file" 2>&1 | tee "test-results/$(basename "$test_file" .bats).tap"; then
+                echo "PASSED: $(basename "$test_file")"
+              else
+                echo "FAILED: $(basename "$test_file")"
+                TEST_FAILURE=1
+              fi
+            fi
+          done
+
+          echo "::endgroup::"
+
+          # Exit with appropriate code
+          if [ $TEST_FAILURE -eq 1 ]; then
+            echo "::error::Some tests failed"
+            exit 1
+          fi
+
+          echo "All tests passed!"
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: test-results/
+          retention-days: 7
+
+      - name: Upload test logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs-${{ matrix.os }}
+          path: |
+            ~/.ralph/logs/
+            ~/.claude/logs/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| OS | ${{ matrix.os }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| BATS Version | $(bats --version 2>&1 | head -1) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Test Filter | ${{ github.event.inputs.test_filter || 'all tests' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY
+
+  validate-workflow:
+    name: Validate Workflow Syntax
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check workflow syntax
+        run: |
+          echo "::group::Validating workflow syntax"
+
+          # Install actionlint if available
+          if command -v actionlint &>/dev/null; then
+            actionlint .github/workflows/test-installer.yml || {
+              echo "::warning::Workflow syntax validation failed"
+              # Don't fail the build for syntax warnings
+            }
+          else
+            echo "actionlint not installed, skipping syntax validation"
+            echo "Install with: go install github.com/rhysd/actionlint/cmd/actionlint@latest"
+          fi
+
+          echo "::endgroup::"
+
+      - name: YAML lint check
+        run: |
+          echo "::group::YAML lint check"
+
+          # Basic YAML validation using Python
+          python3 << 'EOF'
+          import yaml
+          import sys
+
+          try:
+              with open('.github/workflows/test-installer.yml', 'r') as f:
+                  yaml.safe_load(f)
+              print('YAML syntax is valid')
+          except yaml.YAMLError as e:
+              print(f'YAML syntax error: {e}')
+              sys.exit(1)
+          except Exception as e:
+              print(f'Error reading file: {e}')
+              sys.exit(1)
+          EOF
+
+          echo "::endgroup::"

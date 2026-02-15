@@ -2,12 +2,27 @@
 #===============================================================================
 # test-hooks-registration.bats - Test hooks registration validation
 #
-# VERSION: 1.0.0
+# VERSION: 1.0.1
 # DATE: 2026-02-15
 # PURPOSE: Verify hooks registration validation works correctly
+#
+# WARNING: E2E Post-Installation Verification Test
+# ================================================
+# These tests run against the REAL user environment (HOME, PATH).
+# This is intentional for post-installation verification purposes.
+#
+# RISK: These tests may interact with production hooks and settings.
+# Set SKIP_E2E_REAL_ENV=1 to skip these tests in CI or isolated environments.
 #===============================================================================
 
 load test_helper
+
+# WARNING: E2E Post-Installation Verification Test
+# These tests run against the REAL user environment.
+# Set SKIP_E2E_REAL_ENV=1 to skip these tests.
+if [[ -n "${SKIP_E2E_REAL_ENV:-}" ]]; then
+    skip "Skipping E2E tests with real environment (SKIP_E2E_REAL_ENV is set)"
+fi
 
 # Store original HOME for tests that need real settings
 ORIGINAL_HOME="${HOME}"

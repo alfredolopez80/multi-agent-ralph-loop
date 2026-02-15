@@ -1,0 +1,55 @@
+{
+  "scenarios": [
+    {
+      "name": "safe_edit_allowed",
+      "description": "Normal edit to a file in the current repo",
+      "input": {
+        "tool_name": "Edit",
+        "tool_input": {
+          "file_path": "/Users/test/project/src/main.py",
+          "old_string": "def old():",
+          "new_string": "def new():"
+        }
+      },
+      "expected_hooks": [
+        "checkpoint-auto-save.sh",
+        "smart-skill-reminder.sh"
+      ],
+      "expected_decision": "allow"
+    },
+    {
+      "name": "edit_outside_repo_blocked",
+      "description": "Attempt to edit file outside current repository",
+      "input": {
+        "tool_name": "Edit",
+        "tool_input": {
+          "file_path": "/Users/test/other-repo/src/main.py",
+          "old_string": "old",
+          "new_string": "new"
+        }
+      },
+      "expected_hooks": [
+        "repo-boundary-guard.sh"
+      ],
+      "expected_decision": "block",
+      "expected_reason": "REPO BOUNDARY"
+    },
+    {
+      "name": "edit_sensitive_file",
+      "description": "Edit to sensitive configuration file",
+      "input": {
+        "tool_name": "Edit",
+        "tool_input": {
+          "file_path": "/Users/test/project/.env",
+          "old_string": "OLD_KEY=value",
+          "new_string": "NEW_KEY=value"
+        }
+      },
+      "expected_hooks": [
+        "checkpoint-auto-save.sh"
+      ],
+      "expected_decision": "allow",
+      "notes": "File type checking is typically done in PostToolUse security audits"
+    }
+  ]
+}

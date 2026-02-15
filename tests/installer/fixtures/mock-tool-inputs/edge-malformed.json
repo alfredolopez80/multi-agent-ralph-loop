@@ -1,0 +1,7 @@
+{
+    "tool_name": "Bash",
+    "tool_input": {
+        "command": "git push --force origin main",
+        "description": "Force push to main branch"
+    }
+}

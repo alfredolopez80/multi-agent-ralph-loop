@@ -1,0 +1,7 @@
+{
+    "tool_name": "Write",
+    "tool_input": {
+        "file_path": "/Users/test/project/src/new_module.py",
+        "content": "# New module\n\ndef main():\n    pass\n"
+    }
+}

@@ -70,8 +70,25 @@ Based on research from:
 | No internet connectivity | **STOP** - Report error, save state |
 | Token limit reached | **STOP** - Save progress, report position |
 | System crash/error | **STOP** - Emergency save, report diagnostics |
-| Max iterations reached | **STOP** - Safety limit, report incomplete tasks |
+| Max iterations reached | **FAIL** - **CRITICAL ERROR**: This indicates infinite loop, report all incomplete tasks |
+| **Tasks remaining at exit** | **FAIL** - **CRITICAL ERROR**: NEVER exit with pending tasks unless critical failure |
 | **Normal user questions** | **CONTINUE** - Queue for end-of-batch response |
+
+### ⚠️ CRITICAL RULE: NO PARTIAL SUCCESS
+
+**The skill MUST NEVER report success with incomplete tasks.**
+
+```
+❌ WRONG: "Completed 10 of 17 tasks" → Summary → Exit 0
+✅ RIGHT: "Completed 10 of 17 tasks" → Continue execution until ALL 17 done
+✅ RIGHT: "Cannot continue due to [critical failure]" → Report error → Exit 1
+```
+
+If execution cannot continue (blocked dependencies, critical failure), the skill MUST:
+1. Report explicit FAILURE status
+2. List all incomplete tasks with reasons
+3. Exit with non-zero code
+4. Save state for manual recovery
 
 ### 3. Task Execution Model (MULTIPLE TASKS)
 
@@ -276,8 +293,10 @@ while task_queue and iteration < max_iterations:
     task = select_next_task(task_queue, completed_tasks)
 
     if task is None:
-        # All remaining tasks blocked
-        break
+        # All remaining tasks blocked - THIS IS A FAILURE
+        blocked_tasks = identify_blocked_reasons(task_queue, completed_tasks)
+        report_failure("BLOCKED", blocked_tasks)
+        exit 1  # FAILURE - cannot continue
 
     # Fresh context per task (via new subagent)
     result = execute_with_orchestrator(task)
@@ -296,13 +315,37 @@ while task_queue and iteration < max_iterations:
             task.feedback = result.errors
         else:
             failed_tasks.append(task)
+            # DO NOT break - continue with remaining tasks
+            # Unless stop_on_failure is explicitly set
             if config.stop_on_failure:
                 break
 
     iteration++
 
-# Batch complete
-output_summary(completed_tasks, failed_tasks)
+# ══════════════════════════════════════════════════════════════════
+# CRITICAL: FINAL VALIDATION - NO PARTIAL SUCCESS ALLOWED
+# ══════════════════════════════════════════════════════════════════
+if len(task_queue) > 0:
+    # THERE ARE STILL PENDING TASKS - THIS IS A FAILURE
+    print("❌ BATCH FAILED: Incomplete tasks remain")
+    print(f"   Completed: {len(completed_tasks)}")
+    print(f"   Pending:   {len(task_queue)}")
+    print(f"   Failed:    {len(failed_tasks)}")
+    for task in task_queue:
+        print(f"   - {task.id}: {task.description}")
+    exit 1  # EXPLICIT FAILURE
+
+if len(failed_tasks) > 0:
+    # SOME TASKS FAILED AFTER MAX RETRIES
+    print("❌ BATCH FAILED: Tasks exceeded max retries")
+    for task in failed_tasks:
+        print(f"   - {task.id}: {task.description}")
+        print(f"     Error: {task.last_error}")
+    exit 1  # EXPLICIT FAILURE
+
+# ALL TASKS COMPLETED SUCCESSFULLY
+output_summary(completed_tasks, [])
+exit 0  # SUCCESS
 ```
 
 ### Phase 5: REPORT
@@ -552,6 +595,29 @@ Requires ALL:
 - **NEVER** share context between tasks (contamination risk)
 - **NEVER** ignore rate limits (will cause failures)
 - **NEVER** commit without VERIFIED_DONE (incomplete work)
+- **⚠️ CRITICAL: NEVER report success with incomplete tasks**
+
+### The "Partial Success" Anti-Pattern
+
+```
+❌ WRONG BEHAVIOR:
+  Output: "Completed Tasks (10 of 17)"
+  Output: "Remaining Tasks (7)"
+  Action: Exit 0 (success)
+
+✅ CORRECT BEHAVIOR:
+  Option A: Continue execution until ALL 17 tasks complete
+  Option B: If cannot continue:
+    Output: "❌ BATCH FAILED: Cannot continue"
+    Output: "Completed: 10, Pending: 7, Failed: 0"
+    Output: "Reason: [blocked dependency | critical error | token limit]"
+    Exit: 1 (failure)
+```
+
+If you find yourself about to output a summary with remaining tasks:
+1. STOP - do not output success
+2. Either continue execution OR report explicit failure
+3. Partial completion = FAILURE, not success
 
 ## Comparison: /task-batch vs /orchestrator vs /loop
 

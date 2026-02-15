@@ -2,6 +2,61 @@
 
 ---
 
+## [2.88.1] - 2026-02-15
+
+### Fixed - Batch Task Execution
+
+- **CRITICAL FIX**: `/task-batch` skill no longer allows partial completion
+  - Fixed design flaw where skill could exit with "success" when tasks remained
+  - Added explicit validation: `len(task_queue) > 0` → FAIL (exit 1)
+  - Added "NO PARTIAL SUCCESS" rule to skill documentation
+  - Updated execution loop pseudocode with final queue validation
+  - Documented "Partial Success" anti-pattern with examples
+  - See: `docs/batch-execution/TASK_BATCH_FIX_v2.88.1.md`
+
+### Changed
+
+- `/task-batch` now fails explicitly if:
+  - Tasks remain in queue at exit
+  - All remaining tasks are blocked
+  - Max iterations reached (indicates infinite loop)
+- Success now requires: `task_queue` is EMPTY AND `failed_tasks` is EMPTY
+
+---
+
+## [2.88.0] - 2026-02-15
+
+### Added - Batch Task Execution System
+
+- **`/task-batch`**: Autonomous batch task execution with PRD parsing
+  - Handles MULTIPLE tasks (not single task)
+  - MANDATORY completion criteria per task
+  - VERIFIED_DONE validation guarantee
+  - Fresh context per task execution
+  - Auto-commit after each completed task
+  - Agent Teams integration (ralph-coder, ralph-reviewer, ralph-tester)
+
+- **`/create-task-batch`**: Interactive PRD creator wizard
+  - Generates .prq.md files with 17 tasks
+  - Creates JSON task file with dependencies
+  - Creates markdown task reference
+
+- **Hooks**: New batch execution hooks
+  - `batch-progress-tracker.sh`: Track batch progress (PostToolUse)
+  - `pre-commit-batch-skills-test.sh`: Validate batch skills (pre-commit)
+
+- **Tests**: 35 tests for batch skills
+  - Unit tests for task-batch and create-task-batch
+  - Integration tests for full batch workflow
+  - PRD parsing tests
+
+### Documentation
+
+- `docs/batch-execution/BATCH_SKILLS_v2.88.0.md`: Complete batch system guide
+- `docs/prd/example-feature.prq.md`: Example PRD file format
+
+---
+
 ## [2.86.0] - 2026-02-14
 
 ### Added - Agent Teams Integration

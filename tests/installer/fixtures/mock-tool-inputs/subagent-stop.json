@@ -1,0 +1,10 @@
+{
+    "agentId": "ralph-coder-001",
+    "agentType": "ralph-coder",
+    "taskId": "task-456",
+    "status": "completed",
+    "result": {
+        "success": true,
+        "message": "Task completed successfully"
+    }
+}

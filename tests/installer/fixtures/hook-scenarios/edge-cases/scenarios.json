@@ -1,0 +1,84 @@
+{
+  "scenarios": [
+    {
+      "name": "malformed_json_input",
+      "description": "Hook receives malformed JSON input",
+      "input": "not valid json { broken",
+      "expected_behavior": "Hook should fail-safe (fail-closed for security hooks)",
+      "security_hooks": [
+        "git-safety-guard.py"
+      ],
+      "expected_exit_code": 1,
+      "expected_output_contains": "block"
+    },
+    {
+      "name": "empty_input",
+      "description": "Hook receives empty input",
+      "input": "",
+      "expected_behavior": "Most hooks should allow (empty = no operation to block)",
+      "expected_decision": "allow"
+    },
+    {
+      "name": "missing_tool_name",
+      "description": "Input missing tool_name field",
+      "input": {
+        "tool_input": {
+          "command": "git status"
+        }
+      },
+      "expected_behavior": "Hook should handle gracefully",
+      "expected_decision": "allow"
+    },
+    {
+      "name": "very_long_command",
+      "description": "Extremely long command string",
+      "input": {
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "echo 'very long string... [10000 chars]'",
+          "description": "Long command test"
+        }
+      },
+      "expected_behavior": "Hook should truncate or handle without crashing",
+      "notes": "git-safety-guard truncates output to 100 chars in messages"
+    },
+    {
+      "name": "unicode_in_command",
+      "description": "Command with unicode characters",
+      "input": {
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "echo 'Hello \u4e16\u754c \ud83d\ude00'",
+          "description": "Unicode test"
+        }
+      },
+      "expected_behavior": "Should handle unicode without error",
+      "expected_decision": "allow"
+    },
+    {
+      "name": "command_injection_attempt",
+      "description": "Potential command injection pattern",
+      "input": {
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "echo test; rm -rf /",
+          "description": "Injection test"
+        }
+      },
+      "expected_behavior": "Should be analyzed for destructive patterns",
+      "notes": "git-safety-guard should catch 'rm -rf /' pattern"
+    },
+    {
+      "name": "hook_timeout",
+      "description": "Hook that exceeds timeout",
+      "expected_behavior": "Claude Code terminates hook after timeout",
+      "notes": "Timeouts are enforced by Claude Code, not the hooks themselves"
+    },
+    {
+      "name": "hook_exception",
+      "description": "Hook throws unhandled exception",
+      "expected_behavior": "Hook returns error, chain continues",
+      "notes": "Claude Code continues executing other hooks even if one fails"
+    }
+  ]
+}

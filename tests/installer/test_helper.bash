@@ -63,20 +63,25 @@ teardown_installer_test() {
 }
 
 # Create a mock executable
+# Security: Uses printf %s to safely handle output strings without command substitution
 create_mock_bin() {
     local name="$1"
     local output="${2:-}"
     local version="${3:-1.0.0}"
 
-    cat > "$TEST_BIN/$name" << EOF
-#!/usr/bin/env bash
-case "\$1" in
-    --version|-V) echo "$name $version"; exit 0;;
-    --help|-h) echo "Usage: $name [options]"; exit 0;;
-esac
-${output:+echo "$output"}
-exit 0
-EOF
+    # Build script safely using printf to avoid command injection via $output
+    {
+        printf '%s\n' '#!/usr/bin/env bash'
+        printf '%s\n' 'case "$1" in'
+        printf '\t%s\n' "--version|-V) echo \"$name $version\"; exit 0;;"
+        printf '\t%s\n' "--help|-h) echo \"Usage: $name [options]\"; exit 0;;"
+        printf '%s\n' 'esac'
+        # Only add output line if output is non-empty; use printf %s to prevent command execution
+        if [[ -n "$output" ]]; then
+            printf "printf '%%s\\n' '%s'\n" "${output//\'/\'\\\'\'}"
+        fi
+        printf '%s\n' 'exit 0'
+    } > "$TEST_BIN/$name"
     chmod +x "$TEST_BIN/$name"
 }
 
