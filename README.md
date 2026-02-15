@@ -17,24 +17,25 @@ Key capabilities:
 
 ## Version
 
-Current: **v2.89.1**
+Current: **v2.89.2**
 
-### What's New in v2.89.1
+### What's New in v2.89.2
 
-- **Security Hardening** - Complete remediation of 14 security findings (1 CRITICAL, 4 HIGH, 6 MEDIUM, 3 LOW)
-  - Command chaining detection in `git-safety-guard.py` (blocks `echo safe && rm -rf /`)
-  - SHA-256 checksum validation for handoff/ledger integrity
-  - Expanded deny list (28 patterns blocking sensitive files)
-  - Settings self-protection (`Write/Edit` to `settings.json` denied)
-  - File locking for concurrent plan-state access
-  - Auto-sync whitelist to prevent malicious hook propagation
-  - SEC-111 stdin limiting compliance across all hooks
-- **Validation Audit v2.89** - 102 hooks cataloged, 10 events configured, 61 hook entries
-- **37 Security Tests** - Automated BATS test suite validating all 14 security fixes
-- **Security Model Documentation** - Complete threat model, trust boundaries, and attack surface analysis
+- **Hooks alignment** — All hooks now follow the official Claude Code hooks guide
+  - `SessionEnd` event replaces misuse of `Stop` for session-end-handoff
+  - `TeammateIdle` and `TaskCompleted` use exit codes + stderr (no JSON stdout)
+  - Official field names (`agent_id`, `agent_type`, `teammate_name`, `task_id`) with backwards-compatible fallbacks
+  - Dynamic `REPO_ROOT` detection via `git rev-parse` instead of hardcoded paths
+- **15 additional security fixes** — Orchestrator audit remediation
+  - Replaced `xargs rm -rf` pipelines with safe `while IFS= read -r` loops
+  - Eliminated `eval` usage in favor of `bash -c` with quoted arguments
+  - Fixed double shebangs in 7 hook files
+  - Removed API key fallback from `.zshrc` sourcing
+  - Safe JSON construction via `jq` instead of string interpolation
 
 ### Previous Releases
 
+- **v2.89.1** - 14 security vulnerability fixes (command chaining, SHA-256 checksums, deny list expansion, settings self-protection, file locking, SEC-111 compliance), 37 security tests, threat model documentation
 - **v2.88.2** - LSP Integration, Batch Task Execution, 950+ BATS tests passing
 - **v2.88.0** - Agent Teams, Multi-Agent Scenarios, `/task-batch` and `/create-task-batch` skills
 - **v2.86.0** - Session Lifecycle Hooks, Agent Teams hooks
@@ -42,7 +43,7 @@ Current: **v2.89.1**
 
 ## Requirements
 
-- Claude Code v2.1.39 or higher (for Agent Teams support)
+- Claude Code v2.1.42 or higher (for Agent Teams + SessionEnd support)
 - GLM-5 API access (configured via Z.AI)
 - Bash 4.0+
 - jq 1.6+
@@ -81,7 +82,7 @@ Ensure you have the following installed:
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| **Claude Code** | v2.1.39+ | Main CLI tool |
+| **Claude Code** | v2.1.42+ | Main CLI tool |
 | **Bash** | 3.2+ | Shell scripts |
 | **jq** | 1.6+ | JSON processing |
 | **git** | 2.0+ | Version control |
@@ -495,9 +496,10 @@ Model-agnostic (v2.88+):
 |-------|------|---------|
 | `PreCompact` | pre-compact-handoff.sh | Save state BEFORE compaction |
 | `SessionStart(compact)` | post-compact-restore.sh | Restore context AFTER compaction |
-| `SessionEnd` | session-end-handoff.sh | Save state when session TERMINATES |
+| `SessionEnd` | session-end-handoff.sh | Save state when session terminates |
+| `Stop` | summarize, reports | Session reports and cleanup |
 
-> **Critical**: `PostCompact` event does NOT exist in Claude Code. Use `SessionStart(matcher="compact")` instead.
+> **Note**: `PostCompact` does not exist in Claude Code. Use `SessionStart(matcher="compact")` instead. `SessionEnd` and `Stop` are separate events — use `SessionEnd` for state persistence, `Stop` for reports.
 
 ## Agent Teams Hooks (v2.86)
 
@@ -672,7 +674,7 @@ Run tests:
 ./tests/unit/test-hooks-validation.sh
 ```
 
-Current test status: **100% passing** (89 hooks validated, 30+ integration tests)
+Current test status: **100% passing** (102 hooks validated, 37 security tests, 950+ BATS tests)
 
 ## CLI Reference
 

@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.88.0
+# Multi-Agent Ralph v2.89.2
 
 Orchestration system with memory-driven planning, multi-agent coordination, automatic learning, and quality validation.
 
@@ -45,15 +45,25 @@ See: `docs/batch-execution/BATCH_SKILLS_v2.88.0.md`
 
 See: `docs/architecture/UNIFIED_ARCHITECTURE_v2.87.md`
 
-## Security Hooks (v2.86.1)
+## Security (v2.89.2)
+
+### Security Hooks
 
 | Hook | Purpose | Trigger |
 |------|---------|---------|
-| `sanitize-secrets.js` | Redacts 20+ secret patterns before saving | PostToolUse (before claude-mem) |
-| `cleanup-secrets-db.js` | Scans DB for exposed secrets | Manual run |
-| `procedural-forget.sh` | Removes obsolete patterns from memory | Manual/scheduled |
+| `git-safety-guard.py` | Blocks rm -rf, git reset --hard, command chaining | PreToolUse (Bash) |
+| `repo-boundary-guard.sh` | Prevents operations outside current repo | PreToolUse (Bash) |
+| `sanitize-secrets.js` | Redacts 20+ secret patterns before saving | PostToolUse |
+| `cleanup-secrets-db.js` | Scans DB for exposed secrets | Manual |
+| `procedural-forget.sh` | Removes obsolete patterns from memory | Manual |
 
-Secret patterns detected: GitHub PAT, OpenAI keys, AWS keys, Anthropic keys, JWT tokens, SSH keys, Ethereum private keys, Slack/Discord/Stripe tokens, database connection strings.
+### v2.89.2 Fixes
+
+- Hooks aligned with official Claude Code hooks guide (exit codes, field names, dynamic paths)
+- 15 orchestrator audit findings fixed (xargs rm -rf, eval, double shebangs, JSON injection)
+- 14 security vulnerabilities remediated in v2.89.1 (command chaining, SHA-256, deny list, file locking)
+- 37 automated security tests in `tests/security/`
+- Threat model: `docs/security/SECURITY_MODEL_v2.89.md`
 
 ## Session Lifecycle Hooks (v2.86)
 
@@ -165,8 +175,14 @@ These hooks must be registered in settings.json:
 | `learning-gate.sh` | PreToolUse (Task) | Auto-learning trigger |
 | `status-auto-check.sh` | PostToolUse | Status updates |
 | `batch-progress-tracker.sh` | PostToolUse | Batch progress tracking (v2.88) |
+| `teammate-idle-quality-gate.sh` | TeammateIdle | Quality checks before idle |
+| `task-completed-quality-gate.sh` | TaskCompleted | Validation before completion |
 
 Validation: `./scripts/validate-hooks-registration.sh`
+
+### Hook Events (11 configured)
+
+`SessionStart`, `SessionEnd`, `Stop`, `PreToolUse`, `PostToolUse`, `PreCompact`, `UserPromptSubmit`, `TeammateIdle`, `TaskCompleted`, `SubagentStart`, `SubagentStop`
 
 ## LSP Integration (v2.88.1)
 

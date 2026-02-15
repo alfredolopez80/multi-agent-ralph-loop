@@ -1,27 +1,25 @@
-# Multi-Agent Ralph - Agents Reference v2.88.0
+# Multi-Agent Ralph - Agents Reference v2.89.2
 
 ## Overview
 
 Ralph coordinates 46+ specialized agents across different domains. Uses GLM-5 as primary model for all tasks, with Agent Teams support for parallel execution.
 
-## New in v2.88.0
+## Changes in v2.89.2
 
-### Batch Task Execution
+- Hooks aligned with official Claude Code hooks guide (exit codes, field names)
+- `TeammateIdle` and `TaskCompleted` hooks use exit codes + stderr instead of JSON stdout
+- `SubagentStart` uses official field names (`agent_id`, `agent_type`) with fallbacks
+- 29 security vulnerabilities fixed across v2.89.1 and v2.89.2
+- 37 automated security tests
 
-New skills for autonomous multi-task execution:
+## Batch Task Execution (v2.88)
 
 | Skill | Purpose |
 |-------|---------|
 | `/task-batch` | Execute lists of tasks autonomously until all complete |
 | `/create-task-batch` | Interactive wizard for creating PRDs with mandatory criteria |
 
-**Key Features**:
-- Handles MULTIPLE tasks per batch
-- MANDATORY completion criteria per task
-- VERIFIED_DONE validation guarantee
-- Fresh context per task (avoids contamination)
-- Auto-commit after each completed task
-- Progress tracking via `batch-progress-tracker.sh` hook
+Features: multiple tasks per batch, mandatory completion criteria, VERIFIED_DONE validation, fresh context per task, auto-commit after each task, progress tracking via `batch-progress-tracker.sh`
 
 ## Model Configuration
 
