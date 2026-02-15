@@ -168,6 +168,25 @@ These hooks must be registered in settings.json:
 
 Validation: `./scripts/validate-hooks-registration.sh`
 
+## LSP Integration (v2.88.1)
+
+Language Server Protocol for efficient code navigation:
+
+| Skill | LSP Usage |
+|-------|-----------|
+| `/gates` | Type checking without reading files |
+| `/security` | Navigate code during audits |
+| `/code-reviewer` | Find references efficiently |
+| `/lsp-explore` | Dedicated LSP navigation skill |
+
+**Essential Language Servers:**
+- `typescript-language-server` - TypeScript/JavaScript
+- `pyright` - Python
+- `clangd` - C/C++
+
+**Installation:** `./scripts/install-language-servers.sh --essential`
+**Validation:** `./scripts/install-language-servers.sh --check`
+
 ## Model Routing
 
 | Complexity | Model |

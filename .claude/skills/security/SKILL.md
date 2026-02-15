@@ -1,9 +1,19 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 2.88.1
 name: security
-description: "Security audit with Codex + MiniMax second opinion Use when: (1) /security is invoked, (2) task relates to security functionality."
+description: "Security audit with Codex + MiniMax second opinion. Uses LSP for code navigation during analysis. Use when: (1) /security is invoked, (2) task relates to security functionality."
 user-invocable: true
 context: fork
+allowed-tools:
+  - LSP
+  - Read
+  - Bash
+  - Grep
+  - Glob
+hooks:
+  PreToolUse:
+    - path: .claude/hooks/validate-lsp-servers.sh
+      match_tool: LSP
 ---
 
 # /security - Multi-Agent Security Audit (v2.24)

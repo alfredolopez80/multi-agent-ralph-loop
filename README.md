@@ -17,20 +17,19 @@ Key capabilities:
 
 ## Version
 
-Current: **v2.88.0**
+Current: **v2.88.1**
 
 Recent changes:
+- **LSP Integration** - Language Server Protocol for efficient code navigation in /gates, /security, /code-reviewer
+- **Auto Checkpoint** - Automatic checkpoint management when context reaches 75%
+- **Language Servers** - 4 essential servers (TypeScript, Python, C/C++, Swift) + 6 optional
+- **Security Hardening** - JSON injection prevention, PATH hijacking protection, input validation
+- **90 Tests** - Complete test coverage for LSP ecosystem and checkpoint system
 - **Batch Task Execution** - New `/task-batch` and `/create-task-batch` skills for autonomous multi-task execution
 - **PRD Parsing** - Native support for Product Requirements Documents with task decomposition
 - **Completion Criteria** - MANDATORY validation criteria per task for VERIFIED_DONE guarantee
 - **Progress Tracking** - `batch-progress-tracker.sh` hook with Exit 2 continuation pattern
-- **Test Suite** - 35 new tests for batch skills (unit + integration)
 - **Model-Agnostic Architecture** - Skills work with any configured model (GLM-5, Claude, Minimax, etc.)
-- **No Flags Required** - Removed `--with-glm5` and `--mmc` flags; uses default model from settings
-- **Security Hooks** - Secret sanitization (sanitize-secrets.js), DB cleanup, procedural forget
-- **Agent Teams Integration** - TeammateIdle, TaskCompleted, SubagentStart, SubagentStop hooks
-- **Custom Subagents** - ralph-coder, ralph-reviewer, ralph-tester, ralph-researcher
-- **Session Lifecycle** - PreCompact → SessionStart(compact) → SessionEnd flow
 
 ## Requirements
 
