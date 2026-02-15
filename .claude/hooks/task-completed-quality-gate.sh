@@ -22,19 +22,20 @@
 
 set -euo pipefail
 
-# Configuration
-REPO_ROOT="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+# Configuration - v2.89.2: Dynamic path + official field names
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}")"
 LOG_DIR="$HOME/.ralph/logs"
 mkdir -p "$LOG_DIR"
 
-# Read stdin for task info
-stdin_data=$(cat)
+# Read stdin (SEC-111 compliant)
+stdin_data=$(head -c 100000)
 
-# Extract info with fallbacks
-task_id=$(echo "$stdin_data" | jq -r '.taskId // .task_id // "unknown"')
-task_description=$(echo "$stdin_data" | jq -r '.taskDescription // .task_description // ""')
-files_modified=$(echo "$stdin_data" | jq -r '.filesModified // .files_modified // []')
-teammate_id=$(echo "$stdin_data" | jq -r '.teammateId // .teammate_id // "unknown"')
+# Extract info - official Claude Code field names first, then fallbacks
+task_id=$(echo "$stdin_data" | jq -r '.task_id // .taskId // "unknown"')
+task_description=$(echo "$stdin_data" | jq -r '.task_description // .taskDescription // ""')
+task_subject=$(echo "$stdin_data" | jq -r '.task_subject // ""')
+teammate_id=$(echo "$stdin_data" | jq -r '.teammate_name // .teammateId // .teammate_id // "unknown"')
+team_name=$(echo "$stdin_data" | jq -r '.team_name // "unknown"')
 
 # Log the event
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] TaskCompleted: ${task_id} by ${teammate_id}" >> "$LOG_DIR/agent-teams.log"
@@ -100,24 +101,18 @@ if [[ -n "$files_modified" ]] && [[ "$files_modified" != "[]" ]]; then
 fi
 
 # Output decision
-# v2.87.0 FIX: TaskCompleted uses {"continue": true|false} format, NOT {"decision": "..."}
+# v2.89.2 FIX: TaskCompleted uses exit codes only per official docs
+# Exit 0 = allow completion, Exit 2 = block with feedback on stderr
 if [[ -n "$BLOCKING_ISSUES" ]]; then
     feedback=$(echo -e "$BLOCKING_ISSUES" | tr '\n' ' ' | sed 's/\\n/ /g')
-    feedback_escaped=$(echo "Please resolve before marking complete: $feedback" | jq -Rs '.')
-    cat <<EOF
-{"continue": false, "reason": "Task incomplete", "feedback": $feedback_escaped}
-EOF
+    echo "Please resolve before marking complete: $feedback" >&2
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] TaskCompleted BLOCKED: ${task_id} - $feedback" >> "$LOG_DIR/agent-teams.log"
     exit 2
 elif [[ -n "$ADVISORY_ISSUES" ]]; then
-    # Advisory issues don't block but are logged
     advisory=$(echo -e "$ADVISORY_ISSUES" | tr '\n' ' ')
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] TaskCompleted ADVISORY: ${task_id} - $advisory" >> "$LOG_DIR/agent-teams.log"
 fi
 
 # All checks passed
-cat <<EOF
-{"continue": true, "reason": "All acceptance criteria verified"}
-EOF
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] TaskCompleted APPROVED: ${task_id}" >> "$LOG_DIR/agent-teams.log"
 exit 0

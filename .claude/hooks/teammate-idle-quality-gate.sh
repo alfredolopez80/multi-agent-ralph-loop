@@ -22,19 +22,19 @@
 
 set -euo pipefail
 
-# Configuration
-REPO_ROOT="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+# Configuration - v2.89.2: Dynamic path + official field names
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}")"
 LOG_DIR="$HOME/.ralph/logs"
 mkdir -p "$LOG_DIR"
 
-# Read stdin for teammate info
-stdin_data=$(cat)
+# Read stdin (SEC-111 compliant)
+stdin_data=$(head -c 100000)
 
-# Extract info with fallbacks
-teammate_id=$(echo "$stdin_data" | jq -r '.teammateId // .teammate_id // "unknown"')
-teammate_type=$(echo "$stdin_data" | jq -r '.teammateType // .teammate_type // "unknown"')
-task_id=$(echo "$stdin_data" | jq -r '.taskId // .task_id // "unknown"')
-files_modified=$(echo "$stdin_data" | jq -r '.filesModified // .files_modified // []')
+# Extract info - official Claude Code field names first, then fallbacks
+teammate_id=$(echo "$stdin_data" | jq -r '.teammate_name // .teammateId // .teammate_id // "unknown"')
+teammate_type=$(echo "$stdin_data" | jq -r '.agent_type // .teammateType // .teammate_type // "unknown"')
+task_id=$(echo "$stdin_data" | jq -r '.task_id // .taskId // "unknown"')
+team_name=$(echo "$stdin_data" | jq -r '.team_name // "unknown"')
 
 # Log the event
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] TeammateIdle: ${teammate_id} (${teammate_type}) task=${task_id}" >> "$LOG_DIR/agent-teams.log"
@@ -73,19 +73,14 @@ fi
 # This is logged but doesn't block idle - task completion will catch it
 
 # Output decision
-# v2.87.0 FIX: TeammateIdle uses {"continue": true|false} format, NOT {"decision": "..."}
+# v2.89.2 FIX: TeammateIdle uses exit codes only per official docs
+# Exit 0 = allow idle, Exit 2 = block with feedback on stderr
 if [[ -n "$BLOCKING_ISSUES" ]]; then
     feedback=$(echo -e "$BLOCKING_ISSUES" | tr '\n' ' ' | sed 's/\\n/ /g')
-    feedback_escaped=$(echo "Please fix before going idle: $feedback" | jq -Rs '.')
-    cat <<EOF
-{"continue": false, "reason": "Quality issues found", "feedback": $feedback_escaped}
-EOF
+    echo "Please fix before going idle: $feedback" >&2
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] TeammateIdle BLOCKED: ${teammate_id} - $feedback" >> "$LOG_DIR/agent-teams.log"
     exit 2
 else
-    cat <<EOF
-{"continue": true, "reason": "All quality checks passed"}
-EOF
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] TeammateIdle APPROVED: ${teammate_id}" >> "$LOG_DIR/agent-teams.log"
     exit 0
 fi

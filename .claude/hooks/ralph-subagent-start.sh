@@ -37,9 +37,10 @@ mkdir -p "$LOG_DIR" "$STATE_DIR"
 stdin_data=$(head -c 100000)
 
 # Extract info
-subagent_id=$(echo "$stdin_data" | jq -r '.subagentId // .subagent_id // "unknown"')
-subagent_type=$(echo "$stdin_data" | jq -r '.subagentType // .subagent_type // "unknown"')
-parent_id=$(echo "$stdin_data" | jq -r '.parentId // .parent_id // "unknown"')
+# v2.89.2: Official field names first (agent_id, agent_type), then fallbacks
+subagent_id=$(echo "$stdin_data" | jq -r '.agent_id // .subagentId // .subagent_id // "unknown"')
+subagent_type=$(echo "$stdin_data" | jq -r '.agent_type // .subagentType // .subagent_type // "unknown"')
+parent_id=$(echo "$stdin_data" | jq -r '.parent_id // .parentId // "unknown"')
 session_id=$(echo "$stdin_data" | jq -r '.sessionId // .session_id // "default"')
 task_id=$(echo "$stdin_data" | jq -r '.taskId // .task_id // ""')
 
