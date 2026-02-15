@@ -17,14 +17,16 @@ Key capabilities:
 
 ## Version
 
-Current: **v2.88.1**
+Current: **v2.88.2**
 
 Recent changes:
-- **LSP Integration** - Language Server Protocol for efficient code navigation in /gates, /security, /code-reviewer
+- **LSP Integration v2** - Complete LSP integration in ALL code-related skills (orchestrator, loop, bugs, parallel, edd, gates, security, code-reviewer) and ralph-* agents
+- **PreToolUse Hooks** - LSP validation hooks before every LSP tool call for guaranteed usage
+- **91 Installation Tests** - Complete test coverage for installation validation (55 complete + 36 LSP)
+- **Installation Guide** - Comprehensive step-by-step installation documentation
 - **Auto Checkpoint** - Automatic checkpoint management when context reaches 75%
 - **Language Servers** - 4 essential servers (TypeScript, Python, C/C++, Swift) + 6 optional
 - **Security Hardening** - JSON injection prevention, PATH hijacking protection, input validation
-- **90 Tests** - Complete test coverage for LSP ecosystem and checkpoint system
 - **Batch Task Execution** - New `/task-batch` and `/create-task-batch` skills for autonomous multi-task execution
 - **PRD Parsing** - Native support for Product Requirements Documents with task decomposition
 - **Completion Criteria** - MANDATORY validation criteria per task for VERIFIED_DONE guarantee
@@ -62,6 +64,201 @@ ralph health --compact
 
 # Complex task with swarm mode
 /orchestrator "Implement distributed caching" --launch-swarm --teammate-count 3
+```
+
+## Installation Guide
+
+### Prerequisites
+
+Ensure you have the following installed:
+
+| Tool | Version | Purpose |
+|------|---------|---------|
+| **Claude Code** | v2.1.39+ | Main CLI tool |
+| **Bash** | 3.2+ | Shell scripts |
+| **jq** | 1.6+ | JSON processing |
+| **git** | 2.0+ | Version control |
+| **curl** | Any | HTTP requests |
+| **python3** | 3.8+ | Python tooling |
+
+### Step-by-Step Installation
+
+#### 1. Clone Repository
+
+```bash
+git clone https://github.com/alfredolopez80/multi-agent-ralph-loop.git
+cd multi-agent-ralph-loop
+```
+
+#### 2. Run Centralization Script
+
+This script creates symlinks from your global `~/.claude/` directory to the repository:
+
+```bash
+./.claude/scripts/centralize-all.sh
+```
+
+**What it does:**
+- Creates backup of existing configuration
+- Symlinks skills from repository to `~/.claude/skills/`
+- Symlinks agents from repository to `~/.claude/agents/`
+- Consolidates plugins from multiple sources
+
+#### 3. Install Language Servers (LSP)
+
+LSP provides intelligent code navigation for skills like `/gates`, `/security`, and `/code-reviewer`:
+
+```bash
+# Install essential language servers (TypeScript, Python, C/C++, Swift)
+./scripts/install-language-servers.sh --essential
+
+# Or install all servers including optional ones
+./scripts/install-language-servers.sh --all
+
+# Check what's installed
+./scripts/install-language-servers.sh --check
+```
+
+**Essential Language Servers:**
+
+| Server | Language | Install Command |
+|--------|----------|-----------------|
+| `typescript-language-server` | TypeScript/JavaScript | `npm install -g typescript-language-server typescript` |
+| `pyright` | Python | `npm install -g pyright` |
+| `clangd` | C/C++ | `brew install llvm` (macOS) or system package |
+| `sourcekit-lsp` | Swift | Included with Xcode (macOS) |
+
+**Optional Language Servers:**
+- `bash-language-server` - Shell scripts
+- `dockerfile-language-server` - Dockerfiles
+- `yaml-language-server` - YAML files
+- `json-language-server` - JSON files
+- `html-language-server` - HTML
+- `css-language-server` - CSS
+
+#### 4. Install Security Tools (Optional but Recommended)
+
+```bash
+./scripts/install-security-tools.sh
+```
+
+This installs:
+- `semgrep` - Static analysis for security
+- `gitleaks` - Secret detection
+
+#### 5. Validate Installation
+
+Run the comprehensive validation script:
+
+```bash
+# Full validation
+./scripts/validate-installation.sh
+
+# Quick check (critical only)
+./scripts/validate-installation.sh --quick
+
+# Verbose output
+./scripts/validate-installation.sh --verbose
+
+# JSON output for CI/CD
+./scripts/validate-installation.sh --format json
+```
+
+**Validation checks:**
+1. System Requirements - Required tools and versions
+2. Shell Environment - PATH, aliases, environment
+3. Directory Structure - Required directories and permissions
+4. Hooks Registration - All hooks registered and executable
+5. Skills Registration - All skills properly installed
+6. Agents Registration - All agents properly defined
+7. LSP Servers - Language servers availability
+
+#### 6. Verify System Health
+
+```bash
+ralph health --compact
+```
+
+Expected output:
+```
+✓ System healthy
+✓ Memory system operational
+✓ LSP servers available: typescript-language-server, pyright, clangd
+✓ Hooks registered: 89
+✓ Skills available: 30+
+✓ Agents available: 46
+```
+
+### Running Tests
+
+The project includes comprehensive test suites to verify everything works:
+
+```bash
+# Run all installer tests
+bats tests/installer/
+
+# Run specific test suites
+bats tests/installer/test-complete-installation.bats   # 55 tests
+bats tests/installer/test-lsp-usage-validation.bats    # 36 tests
+
+# Run all integration tests
+./tests/test_all_integration.sh
+```
+
+### Troubleshooting
+
+#### LSP Servers Not Found
+
+If language servers are not detected:
+
+```bash
+# Check if servers are in PATH
+which typescript-language-server
+which pyright
+which clangd
+
+# Verify npm global packages
+npm list -g --depth=0 | grep -E 'typescript-language-server|pyright'
+
+# Reinstall language servers
+./scripts/install-language-servers.sh --essential --force
+```
+
+#### Hooks Not Executing
+
+If hooks are not running:
+
+```bash
+# Validate hook registration
+./scripts/validate-all-hooks.sh
+
+# Check hook permissions
+chmod +x .claude/hooks/*.sh
+chmod +x .claude/hooks/*.py
+```
+
+#### Skills Not Available
+
+If skills are not showing up:
+
+```bash
+# Re-run centralization
+./.claude/scripts/centralize-all.sh
+
+# Verify symlinks
+ls -la ~/.claude/skills/ | head -20
+```
+
+#### Agent Teams Not Working
+
+If Agent Teams features aren't working:
+
+```bash
+# Check Claude Code version
+claude --version  # Should be v2.1.39+
+
+# Verify Agent Teams is enabled
+grep -A5 '"env"' ~/.claude/settings.json | grep AGENT_TEAMS
 ```
 
 ## Architecture
