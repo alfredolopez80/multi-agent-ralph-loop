@@ -77,7 +77,10 @@ echo "[$(date '+%Y-%m-%d %H:%M:%S')] Stop hook fired: session=$SESSION_ID stop_h
 SESSION_FILE="$STATE_DIR/${SESSION_ID}/session.json"
 if [[ ! -f "$SESSION_FILE" ]]; then
     # No active session, check for stale sessions to cleanup
-    find "$STATE_DIR" -mindepth 2 -name "session.json" -mtime +1 -exec rm -rf {} \; 2>/dev/null || true
+    # SEC: Validate STATE_DIR before deletion, use -delete for files only
+    if [[ -n "$STATE_DIR" && "$STATE_DIR" == *"/.ralph/"* ]]; then
+        find "$STATE_DIR" -mindepth 2 -name "session.json" -mtime +1 -delete 2>/dev/null || true
+    fi
     echo '{"decision": "approve", "reason": "No active session"}'
     exit 0
 fi

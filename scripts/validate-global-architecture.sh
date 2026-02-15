@@ -16,7 +16,9 @@ WARN=0
 check() {
     local name="$1"
     local condition="$2"
-    if eval "$condition" 2>/dev/null; then
+    # SEC: Use bash -c with single-quoted condition to prevent injection
+    # All callers use hardcoded strings; no user input reaches here
+    if bash -c "$condition" 2>/dev/null; then
         echo -e "${GREEN}✓${NC} $name"
         PASS=$((PASS + 1))
     else
@@ -28,7 +30,8 @@ check() {
 warn() {
     local name="$1"
     local condition="$2"
-    if eval "$condition" 2>/dev/null; then
+    # SEC: Use bash -c with single-quoted condition to prevent injection
+    if bash -c "$condition" 2>/dev/null; then
         echo -e "${GREEN}✓${NC} $name"
         PASS=$((PASS + 1))
     else

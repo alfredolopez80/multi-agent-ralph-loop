@@ -172,7 +172,8 @@ log "Rules after cleanup: $AFTER_COUNT"
 log "Total removed: $REMOVED"
 
 # Cleanup old backups (keep last 10)
-ls -t "${BACKUP_DIR}"/rules_*.json.bak 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null || true
+# SEC: Safe file cleanup without xargs (handles spaces in paths)
+ls -t "${BACKUP_DIR}"/rules_*.json.bak 2>/dev/null | tail -n +11 | while IFS= read -r f; do rm -f "$f"; done 2>/dev/null || true
 log "Old backups cleaned up"
 
 log "=== Procedural memory cleanup complete ==="

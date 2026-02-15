@@ -124,7 +124,8 @@ save_cache() {
     local cache_key=$(get_cache_key "$file")
     echo "$result" > "${CACHE_DIR}/${cache_key}"
     # Limit cache size (keep only last 1000 entries)
-    ls -t "${CACHE_DIR}"/* 2>/dev/null | tail -n +1001 | xargs rm -f 2>/dev/null || true
+    # SEC: Safe file cleanup without xargs (handles spaces in paths)
+    ls -t "${CACHE_DIR}"/* 2>/dev/null | tail -n +1001 | while IFS= read -r f; do rm -f "$f"; done 2>/dev/null || true
 }
 
 # Get file extension

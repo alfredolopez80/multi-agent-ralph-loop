@@ -1,4 +1,3 @@
-#!/bin/bash
 #!/usr/bin/env bash
 # VERSION: 2.69.0
 # Hook: auto-plan-state.sh

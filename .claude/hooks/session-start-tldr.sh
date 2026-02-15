@@ -25,7 +25,8 @@ set +e
 # Obtener directorio del proyecto desde variable de entorno o usar directorio actual
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 TLDR_DIR="$PROJECT_DIR/.tldr"
-LOG_FILE="/tmp/tldr-warm-$$.log"
+# SEC: Use TMPDIR for portable temp path
+LOG_FILE="${TMPDIR:-/tmp}/tldr-warm-$$.log"
 
 # Función para verificar si hay código en el proyecto
 has_source_code() {

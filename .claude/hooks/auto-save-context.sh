@@ -10,7 +10,7 @@ INPUT=$(head -c 100000)
 
 
 # VERSION: 2.69.0
-# v2.57.3: Fixed LAST remaining {"decision": "continue"} on line 89 (SEC-037)
+# v2.57.3: Fixed LAST remaining legacy output format on line 89 (SEC-037)
 # v2.57.2: Fixed JSON output format (SEC-036) - PostToolUse hooks MUST output JSON
 set -euo pipefail
 
@@ -87,7 +87,8 @@ if [ $((CURRENT_COUNT % SAVE_INTERVAL)) -eq 0 ]; then
     } > "$STATE_FILE"
 
     # Mantener solo los últimos 10 snapshots
-    ls -t "${STATE_DIR}"/context-snapshot-*.md 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null || true
+    # SEC: Safe file cleanup without xargs (handles spaces in paths)
+    ls -t "${STATE_DIR}"/context-snapshot-*.md 2>/dev/null | tail -n +11 | while IFS= read -r f; do rm -f "$f"; done 2>/dev/null || true
 
     log "Context saved to ${STATE_FILE}"
 

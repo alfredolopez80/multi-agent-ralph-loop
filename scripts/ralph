@@ -1001,10 +1001,9 @@ get_glm_api_key() {
         jq -r '.apiKey // empty' "${CONFIG_DIR}/glm.json" 2>/dev/null
     elif [ -f "${RALPH_DIR}/config/glm.json" ]; then
         jq -r '.apiKey // empty' "${RALPH_DIR}/config/glm.json" 2>/dev/null
-    elif [ -f "$HOME/.zshrc" ]; then
-        # Fallback: extract from .zshrc
-        grep "^export Z_AI_API_KEY=" "$HOME/.zshrc" 2>/dev/null | head -1 | sed "s/export Z_AI_API_KEY=//; s/['\"]//g"
     fi
+    # SEC: Removed .zshrc API key extraction fallback (insecure - reads secrets from shell profile)
+    # Use environment variable Z_AI_API_KEY or config files instead
 }
 
 # Get MiniMax API key (for fallback)

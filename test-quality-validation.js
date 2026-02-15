@@ -1,7 +1,7 @@
 // Test file for quality validation
 // Contains INTENTIONAL vulnerabilities for testing
 
-const API_KEY = "sk-1234567890abcdef";  // P0: Hardcoded secret
+const API_KEY = "sk-TESTONLY_000000000000";  // P0: FAKE CREDENTIAL FOR TESTING ONLY
 
 function authenticateUser(userId, password) {
     const query = "SELECT * FROM users WHERE id=" + userId;  // P0: SQL injection

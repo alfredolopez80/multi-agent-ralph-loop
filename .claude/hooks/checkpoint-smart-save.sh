@@ -204,12 +204,11 @@ if [[ "$SHOULD_CHECKPOINT" == "true" ]]; then
     # Update last checkpoint time
     echo "$NOW" > "$LAST_CHECKPOINT_FILE"
 
-    # Cleanup old smart checkpoints (keep last N)
-    SMART_CHECKPOINTS=$(ls -dt "$CHECKPOINT_DIR"/smart-* 2>/dev/null | tail -n +$((MAX_SMART_CHECKPOINTS + 1)))
-    if [[ -n "$SMART_CHECKPOINTS" ]]; then
-        echo "$SMART_CHECKPOINTS" | xargs rm -rf
-        log "Cleaned old checkpoints"
-    fi
+    # Cleanup old smart checkpoints (keep last N) - SEC: safe deletion without xargs
+    find "$CHECKPOINT_DIR" -maxdepth 1 -name 'smart-*' -type d -print0 2>/dev/null | \
+        sort -z -r | tail -z -n +$((MAX_SMART_CHECKPOINTS + 1)) | \
+        while IFS= read -r -d '' dir; do rm -rf "$dir"; done
+    log "Cleaned old checkpoints"
 
     log "Checkpoint saved: $CHECKPOINT_NAME"
 fi

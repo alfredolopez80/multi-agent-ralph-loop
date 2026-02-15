@@ -1,4 +1,3 @@
-#!/bin/bash
 #!/usr/bin/env bash
 # VERSION: 2.69.0
 # Usage Count Consolidation Hook (v2.68.6)

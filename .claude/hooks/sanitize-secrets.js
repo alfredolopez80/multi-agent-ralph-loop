@@ -256,7 +256,12 @@ async function main() {
     console.log(JSON.stringify(sanitizedData));
 
   } catch (error) {
-    // If parsing fails, try to sanitize as plain text
+    // SEC: Log parse failure for anomaly detection, then fail-open with text sanitization
+    const fs = require('fs');
+    const logDir = `${process.env.HOME}/.ralph/logs`;
+    try { fs.mkdirSync(logDir, { recursive: true }); } catch (_) {}
+    fs.appendFileSync(`${logDir}/sanitize-secrets.log`,
+      `[${new Date().toISOString()}] WARN: JSON parse failed, falling back to text sanitization: ${error.message}\n`);
     const sanitized = sanitizeText(input);
     console.log(sanitized);
   }

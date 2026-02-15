@@ -87,7 +87,8 @@ is_allowed_path() {
        [[ "$path" == "${HOME}/.ralph"* ]] || \
        [[ "$path" == "${HOME}/.config"* ]] || \
        [[ "$path" == "/tmp"* ]] || \
-       [[ "$path" == "/var"* ]]; then
+       [[ "$path" == "/private/tmp"* ]] || \
+       [[ "$path" == "/var/tmp"* ]]; then
         return 0  # Allowed
     fi
 

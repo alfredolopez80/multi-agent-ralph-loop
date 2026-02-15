@@ -151,9 +151,10 @@ check_server() {
 
     printf "  %-25s " "$name"
 
-    if eval "$check_cmd" >/dev/null 2>&1; then
+    # SEC: Use bash -c instead of eval for command execution
+    if bash -c "$check_cmd" >/dev/null 2>&1; then
         local version
-        version=$(eval "$check_cmd" 2>/dev/null | head -1 | cut -c1-40)
+        version=$(bash -c "$check_cmd" 2>/dev/null | head -1 | cut -c1-40)
         echo -e "${GREEN}✅ ${version:-installed}${NC}"
         return 0
     else

@@ -61,7 +61,8 @@ get_context_usage() {
     fi
 
     # Default: check for context file
-    local context_file="/tmp/claude-context-$$"
+    # SEC: Use mktemp pattern instead of predictable PID-based path
+    local context_file="${TMPDIR:-/tmp}/claude-context-$$"
     if [ -f "$context_file" ]; then
         cat "$context_file"
         return

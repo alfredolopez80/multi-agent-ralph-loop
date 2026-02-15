@@ -1,4 +1,3 @@
-#!/bin/bash
 #!/usr/bin/env bash
 # skill-validator.sh - Validate YAML-based skills before execution
 # Hook: PreToolUse (Skill)

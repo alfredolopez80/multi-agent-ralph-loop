@@ -436,7 +436,7 @@ PID4=$!
         "https://api.z.ai/api/coding/paas/v4/chat/completions" \
         -H "Authorization: Bearer ${Z_AI_API_KEY}" \
         -H "Content-Type: application/json" \
-        -d "{\"model\":\"glm-4.7\",\"messages\":[{\"role\":\"system\",\"content\":\"You are a search assistant. Provide a brief summary of best practices.\"},{\"role\":\"user\",\"content\":\"Search and summarize: $QUERY\"}],\"max_tokens\":500,\"temperature\":0.3,\"web_search\":{\"enable\":true}}" \
+        -d "$(jq -n --arg query "$QUERY" '{model:"glm-4.7",messages:[{role:"system",content:"You are a search assistant. Provide a brief summary of best practices."},{role:"user",content:("Search and summarize: "+$query)}],max_tokens:500,temperature:0.3,web_search:{enable:true}}')" \
         2>/dev/null) || {
         echo "  [5/6] GLM web search: API call failed (network)" >> "$LOG_FILE"
         exit 0

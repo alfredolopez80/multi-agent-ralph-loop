@@ -1,4 +1,3 @@
-#!/bin/bash
 #!/usr/bin/env bash
 # VERSION: 2.69.0
 # plan-analysis-cleanup.sh
@@ -57,7 +56,8 @@ if [ -f "$ANALYSIS_FILE" ]; then
     rm "$ANALYSIS_FILE"
 
     # Keep only last 20 backups
-    ls -t "$BACKUP_DIR"/*.md 2>/dev/null | tail -n +21 | xargs rm -f 2>/dev/null || true
+    # SEC: Safe file cleanup without xargs (handles spaces in paths)
+    ls -t "$BACKUP_DIR"/*.md 2>/dev/null | tail -n +21 | while IFS= read -r f; do rm -f "$f"; done 2>/dev/null || true
 
     return_json true "Analysis backed up to: $BACKUP_FILE"
 else
