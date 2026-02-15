@@ -21,12 +21,12 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "${RALPH_DIR}/logs/glm5-subagent.log"
 }
 
-# Read stdin for subagent info
+# SEC-111: Read input from stdin with length limit (100KB max)
 stdin_data=""
 if [[ -t 0 ]]; then
     log "No stdin data available"
 else
-    stdin_data=$(cat)
+    stdin_data=$(head -c 100000)
 fi
 
 log "SubagentStop triggered"

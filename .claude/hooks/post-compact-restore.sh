@@ -44,6 +44,13 @@ log() {
     echo "[$(date -Iseconds)] $*" >> "$LOG_FILE"
 }
 
+# SEC-2.1: Source integrity library for checksum verification
+HOOKS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INTEGRITY_LIB="${HOOKS_DIR}/handoff-integrity.sh"
+if [[ -f "$INTEGRITY_LIB" ]]; then
+    source "$INTEGRITY_LIB" 2>/dev/null || true
+fi
+
 log "PostCompact hook triggered for project: $(basename "$PROJECT_DIR")"
 
 # Get current session ID
@@ -108,15 +115,38 @@ if [[ -n "$SESSION_ID" ]]; then
     if [[ -f "$LEDGER_FILE" ]]; then
         log "Loading ledger for session: $SESSION_ID"
 
-        CONTEXT+="### Session Ledger\n\n"
-        CONTEXT+="Context from before compaction:\n\n"
+        # SEC-2.1: Verify checksum before loading ledger
+        LEDGER_TRUSTED=true
+        if type handoff_verify_checksum &>/dev/null; then
+            if ! handoff_verify_checksum "$LEDGER_FILE"; then
+                log "WARN" "SECURITY: Ledger checksum verification FAILED for: $LEDGER_FILE"
+                LEDGER_TRUSTED=false
+            else
+                log "INFO" "Ledger checksum verified OK"
+            fi
+        fi
 
-        # Add first 100 lines of ledger
-        LEDGER_SUMMARY=$(head -100 "$LEDGER_FILE" 2>/dev/null || echo "Unable to read ledger")
-        CONTEXT+="\`\`\`\n${LEDGER_SUMMARY}\n\`\`\`\n\n"
+        if [[ "$LEDGER_TRUSTED" == "true" ]]; then
+            CONTEXT+="### Session Ledger\n\n"
+            CONTEXT+="Context from before compaction:\n\n"
 
-        FOUND_CONTEXT=true
-        log "Ledger loaded and added to context"
+            # Add first 100 lines of ledger
+            LEDGER_SUMMARY=$(head -100 "$LEDGER_FILE" 2>/dev/null || echo "Unable to read ledger")
+
+            # SEC-2.1: Sanitize content before injection
+            if type handoff_sanitize_content &>/dev/null; then
+                LEDGER_SUMMARY=$(handoff_sanitize_content "$LEDGER_SUMMARY")
+            fi
+
+            CONTEXT+="\`\`\`\n${LEDGER_SUMMARY}\n\`\`\`\n\n"
+
+            FOUND_CONTEXT=true
+            log "Ledger loaded and added to context"
+        else
+            CONTEXT+="### Session Ledger (UNTRUSTED)\n\n"
+            CONTEXT+="WARNING: Ledger file integrity check failed. Content not loaded for safety.\n\n"
+            log "WARN" "Ledger skipped due to failed integrity check"
+        fi
     else
         log "No ledger found for session: $SESSION_ID"
     fi

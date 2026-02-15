@@ -210,6 +210,19 @@ def check_blocked_pattern(command: str) -> tuple[bool, str]:
     return False, ""
 
 
+def split_chained_commands(command: str) -> list[str]:
+    """Split a command string by shell chaining operators (&&, ||, ;, |).
+
+    SEC-1.6: Detects command chaining to prevent bypass of safety checks
+    via patterns like 'echo safe && rm -rf /' or 'ls ; git reset --hard'.
+    """
+    # Split by &&, ||, ;, | (but not ||= or &&= which are not shell operators)
+    # Use regex to split on these operators while preserving quoted strings
+    # Simple approach: split on operators outside of quotes
+    parts = re.split(r'\s*(?:&&|\|\||[;|])\s*', command)
+    return [p.strip() for p in parts if p.strip()]
+
+
 def allow_and_exit():
     """CRIT-002 FIX: Always output JSON for PreToolUse compliance."""
     print('{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}')
@@ -241,54 +254,64 @@ def main():
         # SECURITY: Normalize command to prevent regex bypass
         command = normalize_command(original_command)
 
-        # Check safe patterns first (always allow)
-        if is_safe_pattern(command):
-            allow_and_exit()
+        # SEC-1.6: Split by chaining operators and check EACH subcommand
+        subcommands = split_chained_commands(command)
 
-        # Check if user already confirmed (via env var)
-        if os.environ.get("GIT_FORCE_PUSH_CONFIRMED") == "1":
-            # User confirmed, allow this time
-            log_security_event(
-                "ALLOWED_CONFIRMED", original_command, "User confirmed force push"
-            )
-            allow_and_exit()
+        # If there are multiple subcommands, check each one individually
+        # A chained command is only safe if ALL subcommands are safe
+        for subcmd in subcommands:
+            subcmd_normalized = normalize_command(subcmd)
 
-        # Check confirmation patterns (require user consent)
-        needs_confirm, confirm_reason = check_confirmation_pattern(command)
+            # Check safe patterns first (skip to next subcommand if safe)
+            if is_safe_pattern(subcmd_normalized):
+                continue
 
-        if needs_confirm:
-            log_security_event("NEEDS_CONFIRMATION", original_command, confirm_reason)
-            response = {
-                "hookSpecificOutput": {
-                    "hookEventName": "PreToolUse",
-                    "permissionDecision": "block",
-                    "permissionDecisionReason": f"⚠️ CONFIRMATION REQUIRED: {confirm_reason}\n\n"
-                    f"Command: {original_command[:100]}{'...' if len(original_command) > 100 else ''}\n\n"
-                    f"Use AskUserQuestion to confirm. If user approves, run:\n"
-                    f"GIT_FORCE_PUSH_CONFIRMED=1 {original_command}",
+            # Check if user already confirmed (via env var)
+            if os.environ.get("GIT_FORCE_PUSH_CONFIRMED") == "1":
+                log_security_event(
+                    "ALLOWED_CONFIRMED", original_command, "User confirmed force push"
+                )
+                continue
+
+            # Check confirmation patterns (require user consent)
+            needs_confirm, confirm_reason = check_confirmation_pattern(subcmd_normalized)
+
+            if needs_confirm:
+                log_security_event("NEEDS_CONFIRMATION", original_command, f"Chained command contains: {confirm_reason}")
+                response = {
+                    "hookSpecificOutput": {
+                        "hookEventName": "PreToolUse",
+                        "permissionDecision": "block",
+                        "permissionDecisionReason": f"BLOCKED by git-safety-guard: Command chaining detected. "
+                        f"Dangerous subcommand found: {subcmd_normalized[:80]}. "
+                        f"Reason: {confirm_reason}. "
+                        f"Command: {original_command[:100]}{'...' if len(original_command) > 100 else ''}. "
+                        f"Split into separate commands for safety.",
+                    }
                 }
-            }
-            print(json.dumps(response))
-            sys.exit(1)
+                print(json.dumps(response))
+                sys.exit(1)
 
-        # Check blocked patterns (never allow)
-        blocked, reason = check_blocked_pattern(command)
+            # Check blocked patterns (never allow)
+            blocked, reason = check_blocked_pattern(subcmd_normalized)
 
-        if blocked:
-            log_security_event("BLOCKED", original_command, reason)
-            response = {
-                "hookSpecificOutput": {
-                    "hookEventName": "PreToolUse",
-                    "permissionDecision": "block",
-                    "permissionDecisionReason": f"BLOCKED by git-safety-guard: {reason}. "
-                    f"Command: {original_command[:100]}{'...' if len(original_command) > 100 else ''}. "
-                    f"If truly needed, ask the user to run it manually.",
+            if blocked:
+                log_security_event("BLOCKED", original_command, f"Chained command contains: {reason}")
+                response = {
+                    "hookSpecificOutput": {
+                        "hookEventName": "PreToolUse",
+                        "permissionDecision": "block",
+                        "permissionDecisionReason": f"BLOCKED by git-safety-guard: Command chaining detected. "
+                        f"Dangerous subcommand found: {subcmd_normalized[:80]}. "
+                        f"Reason: {reason}. "
+                        f"Command: {original_command[:100]}{'...' if len(original_command) > 100 else ''}. "
+                        f"If truly needed, ask the user to run it manually.",
+                    }
                 }
-            }
-            print(json.dumps(response))
-            sys.exit(1)
+                print(json.dumps(response))
+                sys.exit(1)
 
-        # Allow by default (CRIT-002: output JSON for compliance)
+        # All subcommands passed - allow (CRIT-002: output JSON for compliance)
         allow_and_exit()
 
     except json.JSONDecodeError as e:

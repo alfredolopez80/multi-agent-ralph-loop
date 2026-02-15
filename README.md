@@ -17,21 +17,28 @@ Key capabilities:
 
 ## Version
 
-Current: **v2.88.2**
+Current: **v2.89.1**
 
-Recent changes:
-- **LSP Integration v2** - Complete LSP integration in ALL code-related skills (orchestrator, loop, bugs, parallel, edd, gates, security, code-reviewer) and ralph-* agents
-- **PreToolUse Hooks** - LSP validation hooks before every LSP tool call for guaranteed usage
-- **91 Installation Tests** - Complete test coverage for installation validation (55 complete + 36 LSP)
-- **Installation Guide** - Comprehensive step-by-step installation documentation
-- **Auto Checkpoint** - Automatic checkpoint management when context reaches 75%
-- **Language Servers** - 4 essential servers (TypeScript, Python, C/C++, Swift) + 6 optional
-- **Security Hardening** - JSON injection prevention, PATH hijacking protection, input validation
-- **Batch Task Execution** - New `/task-batch` and `/create-task-batch` skills for autonomous multi-task execution
-- **PRD Parsing** - Native support for Product Requirements Documents with task decomposition
-- **Completion Criteria** - MANDATORY validation criteria per task for VERIFIED_DONE guarantee
-- **Progress Tracking** - `batch-progress-tracker.sh` hook with Exit 2 continuation pattern
-- **Model-Agnostic Architecture** - Skills work with any configured model (GLM-5, Claude, Minimax, etc.)
+### What's New in v2.89.1
+
+- **Security Hardening** - Complete remediation of 14 security findings (1 CRITICAL, 4 HIGH, 6 MEDIUM, 3 LOW)
+  - Command chaining detection in `git-safety-guard.py` (blocks `echo safe && rm -rf /`)
+  - SHA-256 checksum validation for handoff/ledger integrity
+  - Expanded deny list (28 patterns blocking sensitive files)
+  - Settings self-protection (`Write/Edit` to `settings.json` denied)
+  - File locking for concurrent plan-state access
+  - Auto-sync whitelist to prevent malicious hook propagation
+  - SEC-111 stdin limiting compliance across all hooks
+- **Validation Audit v2.89** - 102 hooks cataloged, 10 events configured, 61 hook entries
+- **37 Security Tests** - Automated BATS test suite validating all 14 security fixes
+- **Security Model Documentation** - Complete threat model, trust boundaries, and attack surface analysis
+
+### Previous Releases
+
+- **v2.88.2** - LSP Integration, Batch Task Execution, 950+ BATS tests passing
+- **v2.88.0** - Agent Teams, Multi-Agent Scenarios, `/task-batch` and `/create-task-batch` skills
+- **v2.86.0** - Session Lifecycle Hooks, Agent Teams hooks
+- **v2.84.1** - GLM-5 integration, model-agnostic architecture
 
 ## Requirements
 

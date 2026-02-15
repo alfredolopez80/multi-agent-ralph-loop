@@ -1,0 +1,889 @@
+{
+  "batch_name": "ralph-validation-audit-v2.89",
+  "created": "2026-02-15",
+  "prd_file": "docs/prd/ralph-validation-audit-v2.89.prq.md",
+  "tracking_file": "docs/prd/ralph-validation-audit-tracking-v2.89.md",
+  "config": {
+    "stop_on_failure": false,
+    "auto_commit": true,
+    "teammates": ["coder", "reviewer"],
+    "validation_tools": ["/codex-cli", "/adversarial", "/gemini-cli"],
+    "iteration_style": "loop",
+    "context_strategy": "fresh_per_task"
+  },
+  "tracks": {
+    "track_a": {
+      "name": "Hooks Integration Audit",
+      "phases": ["A1", "A2", "A3", "A4"],
+      "total_tasks": 21
+    },
+    "track_b": {
+      "name": "Unit Test Audit",
+      "phases": ["B1", "B2", "B3", "B4", "B5"],
+      "total_tasks": 32
+    },
+    "track_c": {
+      "name": "Final Validation",
+      "phases": ["C1", "C2"],
+      "total_tasks": 7
+    }
+  },
+  "tasks": [
+    {
+      "id": "A1.1",
+      "track": "A",
+      "phase": "A1",
+      "description": "Inventory all hook files in .claude/hooks/ directory",
+      "priority": 1,
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Complete list of all .sh, .js, .py hooks generated",
+        "List saved to tracking file"
+      ],
+      "verification": {
+        "method": "file_exists",
+        "files": ["docs/prd/hooks-audit-tracking.md"]
+      }
+    },
+    {
+      "id": "A1.2",
+      "track": "A",
+      "phase": "A1",
+      "description": "Cross-reference hooks in settings.json vs files on disk",
+      "priority": 1,
+      "dependencies": ["A1.1"],
+      "acceptance_criteria": [
+        "Identify orphaned hooks (in settings but no file)",
+        "Identify unused hooks (file exists but not in settings)"
+      ],
+      "verification": {
+        "method": "report_generated",
+        "report_type": "hooks_cross_reference"
+      }
+    },
+    {
+      "id": "A1.3",
+      "track": "A",
+      "phase": "A1",
+      "description": "Categorize hooks by functional area",
+      "priority": 1,
+      "dependencies": ["A1.1", "A1.2"],
+      "acceptance_criteria": [
+        "Each hook assigned to functional categories",
+        "JSON mapping file created"
+      ],
+      "verification": {
+        "method": "file_exists",
+        "files": ["docs/prd/hooks-categories.json"]
+      }
+    },
+    {
+      "id": "A2.1",
+      "track": "A",
+      "phase": "A2",
+      "description": "Audit Context Management hooks",
+      "priority": 1,
+      "dependencies": ["A1.3"],
+      "hooks": [
+        "unified-context-tracker.sh",
+        "glm-context-tracker.sh",
+        "context-injector.sh",
+        "ralph-context-injector.sh",
+        "inject-session-context.sh"
+      ],
+      "acceptance_criteria": [
+        "Each hook executes without error",
+        "Each hook produces valid JSON output",
+        "Each hook integrates with session context"
+      ],
+      "verification": {
+        "method": "codex_cli_audit",
+        "severity_levels": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+        "expected_result": "zero_findings"
+      }
+    },
+    {
+      "id": "A2.2",
+      "track": "A",
+      "phase": "A2",
+      "description": "Audit Compaction hooks",
+      "priority": 1,
+      "dependencies": ["A1.3"],
+      "hooks": ["pre-compact-handoff.sh", "post-compact-restore.sh"],
+      "acceptance_criteria": [
+        "State saved before compaction",
+        "State restored after compaction",
+        "No data loss during compaction"
+      ],
+      "verification": {
+        "method": "codex_cli_audit",
+        "expected_result": "zero_findings"
+      }
+    },
+    {
+      "id": "A2.3",
+      "track": "A",
+      "phase": "A2",
+      "description": "Audit Task Execution Tracking hooks",
+      "priority": 1,
+      "dependencies": ["A1.3"],
+      "hooks": [
+        "progress-tracker.sh",
+        "task-primitive-sync.sh",
+        "task-orchestration-optimizer.sh",
+        "task-project-tracker.sh",
+        "global-task-sync.sh",
+        "todo-plan-sync.sh"
+      ],
+      "acceptance_criteria": [
+        "Task progress tracked",
+        "Dependencies resolved",
+        "Status updates correct"
+      ],
+      "verification": {
+        "method": "codex_cli_audit",
+        "expected_result": "zero_findings"
+      }
+    },
+    {
+      "id": "A2.4",
+      "track": "A",
+      "phase": "A2",
+      "description": "Audit Curator hooks",
+      "priority": 1,
+      "dependencies": ["A1.3"],
+      "hooks": [
+        "curator-suggestion.sh",
+        "semantic-auto-extractor.sh",
+        "semantic-write-helper.sh",
+        "semantic-realtime-extractor.sh",
+        "episodic-auto-convert.sh",
+        "decision-extractor.sh"
+      ],
+      "acceptance_criteria": [
+        "Suggestions generated",
+        "Semantic extraction works",
+        "Episodic conversion functional"
+      ],
+      "verification": {
+        "method": "codex_cli_audit",
+        "expected_result": "zero_findings"
+      }
+    },
+    {
+      "id": "A2.5",
+      "track": "A",
+      "phase": "A2",
+      "description": "Audit Auto-Learning hooks",
+      "priority": 1,
+      "dependencies": ["A1.3"],
+      "hooks": [
+        "orchestrator-auto-learn.sh",
+        "continuous-learning.sh",
+        "reflection-engine.sh",
+        "memory-write-trigger.sh"
+      ],
+      "acceptance_criteria": [
+        "Learning triggers work",
+        "Patterns captured",
+        "Knowledge stored"
+      ],
+      "verification": {
+        "method": "codex_cli_audit",
+        "expected_result": "zero_findings"
+      }
+    },
+    {
+      "id": "A2.6",
+      "track": "A",
+      "phase": "A2",
+      "description": "Audit Security hooks",
+      "priority": 1,
+      "dependencies": ["A1.3"],
+      "hooks": [
+        "git-safety-guard.py",
+        "repo-boundary-guard.sh",
+        "security-full-audit.sh",
+        "security-real-audit.sh",
+        "sanitize-secrets.js",
+        "cleanup-secrets-db.js",
+        "promptify-security.sh",
+        "sec-context-validate.sh"
+      ],
+      "acceptance_criteria": [
+        "Dangerous commands blocked",
+        "Repo boundaries enforced",
+        "Secrets sanitized"
+      ],
+      "verification": {
+        "method": "codex_cli_audit",
+        "expected_result": "zero_findings"
+      }
+    },
+    {
+      "id": "A2.7",
+      "track": "A",
+      "phase": "A2",
+      "description": "Audit Quality hooks",
+      "priority": 1,
+      "dependencies": ["A1.3"],
+      "hooks": [
+        "quality-gates-v2.sh",
+        "quality-parallel-async.sh",
+        "ralph-quality-gates.sh",
+        "typescript-quick-check.sh",
+        "console-log-detector.sh",
+        "auto-format-prettier.sh"
+      ],
+      "acceptance_criteria": [
+        "Quality checks execute",
+        "Failures block appropriately",
+        "Reports generated"
+      ],
+      "verification": {
+        "method": "codex_cli_audit",
+        "expected_result": "zero_findings"
+      }
+    },
+    {
+      "id": "A2.8",
+      "track": "A",
+      "phase": "A2",
+      "description": "Audit Session Lifecycle hooks",
+      "priority": 1,
+      "dependencies": ["A1.3"],
+      "hooks": [
+        "session-start-restore-context.sh",
+        "session-start-welcome.sh",
+        "session-start-repo-summary.sh",
+        "session-start-tldr.sh",
+        "session-end-handoff.sh",
+        "auto-migrate-plan-state.sh",
+        "auto-sync-global.sh"
+      ],
+      "acceptance_criteria": [
+        "Session state restored on start",
+        "State saved on end",
+        "Migrations applied"
+      ],
+      "verification": {
+        "method": "codex_cli_audit",
+        "expected_result": "zero_findings"
+      }
+    },
+    {
+      "id": "A2.9",
+      "track": "A",
+      "phase": "A2",
+      "description": "Audit Memory Integration hooks",
+      "priority": 1,
+      "dependencies": ["A1.3"],
+      "hooks": [
+        "agent-memory-auto-init.sh",
+        "smart-memory-search.sh",
+        "ralph-memory-integration.sh",
+        "memory-write-trigger.sh"
+      ],
+      "acceptance_criteria": [
+        "Memory initialized",
+        "Searches work",
+        "Writes captured"
+      ],
+      "verification": {
+        "method": "codex_cli_audit",
+        "expected_result": "zero_findings"
+      }
+    },
+    {
+      "id": "A2.10",
+      "track": "A",
+      "phase": "A2",
+      "description": "Audit Subagent hooks",
+      "priority": 1,
+      "dependencies": ["A1.3"],
+      "hooks": [
+        "glm5-subagent-stop.sh",
+        "verification-subagent.sh",
+        "agent-teams-coordinator.sh"
+      ],
+      "acceptance_criteria": [
+        "Subagents start/stop correctly",
+        "Quality gates applied"
+      ],
+      "verification": {
+        "method": "codex_cli_audit",
+        "expected_result": "zero_findings"
+      }
+    },
+    {
+      "id": "A3.1",
+      "track": "A",
+      "phase": "A3",
+      "description": "Test hook chain execution order",
+      "priority": 2,
+      "dependencies": ["A2.1", "A2.2", "A2.3", "A2.4", "A2.5", "A2.6", "A2.7", "A2.8", "A2.9", "A2.10"],
+      "acceptance_criteria": [
+        "Hooks execute in correct order per event type",
+        "No race conditions"
+      ],
+      "verification": {
+        "method": "integration_test",
+        "test_file": "tests/hook-integration/test-hook-chain.sh"
+      }
+    },
+    {
+      "id": "A3.2",
+      "track": "A",
+      "phase": "A3",
+      "description": "Test hook output format compliance",
+      "priority": 2,
+      "dependencies": ["A3.1"],
+      "acceptance_criteria": [
+        "All hooks output valid JSON",
+        "JSON contains continue/transitions structure"
+      ],
+      "verification": {
+        "method": "schema_validation",
+        "schema": "hooks/json-output-schema.json"
+      }
+    },
+    {
+      "id": "A3.3",
+      "track": "A",
+      "phase": "A3",
+      "description": "Test hook timeout handling",
+      "priority": 2,
+      "dependencies": ["A3.1"],
+      "acceptance_criteria": [
+        "Hooks respect timeout settings",
+        "Long-running hooks handled correctly"
+      ],
+      "verification": {
+        "method": "test_execution",
+        "test_type": "timeout"
+      }
+    },
+    {
+      "id": "A3.4",
+      "track": "A",
+      "phase": "A3",
+      "description": "Test hook error handling",
+      "priority": 2,
+      "dependencies": ["A3.1"],
+      "acceptance_criteria": [
+        "Hook failures logged",
+        "Session continues appropriately"
+      ],
+      "verification": {
+        "method": "error_scenario_test"
+      }
+    },
+    {
+      "id": "A4.1",
+      "track": "A",
+      "phase": "A4",
+      "description": "Run /codex-cli audit on all hooks (iteration 1)",
+      "priority": 2,
+      "dependencies": ["A3.1", "A3.2", "A3.3", "A3.4"],
+      "acceptance_criteria": [
+        "Initial audit report generated",
+        "All findings categorized"
+      ],
+      "verification": {
+        "method": "codex_cli_audit",
+        "output": "docs/prd/hooks-audit-iteration-1.md"
+      }
+    },
+    {
+      "id": "A4.2",
+      "track": "A",
+      "phase": "A4",
+      "description": "Resolve CRITICAL findings from audit",
+      "priority": 2,
+      "dependencies": ["A4.1"],
+      "acceptance_criteria": [
+        "All CRITICAL issues resolved",
+        "Verified by re-audit"
+      ],
+      "verification": {
+        "method": "codex_cli_audit",
+        "severity_filter": ["CRITICAL"],
+        "expected_result": "zero_findings"
+      }
+    },
+    {
+      "id": "A4.3",
+      "track": "A",
+      "phase": "A4",
+      "description": "Resolve HIGH findings from audit",
+      "priority": 2,
+      "dependencies": ["A4.2"],
+      "acceptance_criteria": [
+        "All HIGH issues resolved",
+        "Verified by re-audit"
+      ],
+      "verification": {
+        "method": "codex_cli_audit",
+        "severity_filter": ["HIGH"],
+        "expected_result": "zero_findings"
+      }
+    },
+    {
+      "id": "A4.4",
+      "track": "A",
+      "phase": "A4",
+      "description": "Resolve MEDIUM findings from audit",
+      "priority": 3,
+      "dependencies": ["A4.3"],
+      "acceptance_criteria": [
+        "All MEDIUM issues resolved",
+        "Verified by re-audit"
+      ],
+      "verification": {
+        "method": "codex_cli_audit",
+        "severity_filter": ["MEDIUM"],
+        "expected_result": "zero_findings"
+      }
+    },
+    {
+      "id": "A4.5",
+      "track": "A",
+      "phase": "A4",
+      "description": "Resolve LOW findings from audit",
+      "priority": 3,
+      "dependencies": ["A4.4"],
+      "acceptance_criteria": [
+        "All LOW issues resolved",
+        "Verified by re-audit"
+      ],
+      "verification": {
+        "method": "codex_cli_audit",
+        "severity_filter": ["LOW"],
+        "expected_result": "zero_findings"
+      }
+    },
+    {
+      "id": "A4.6",
+      "track": "A",
+      "phase": "A4",
+      "description": "Final /codex-cli clean audit",
+      "priority": 3,
+      "dependencies": ["A4.5"],
+      "acceptance_criteria": [
+        "Zero findings across all severity levels"
+      ],
+      "verification": {
+        "method": "codex_cli_audit",
+        "expected_result": "zero_findings_all"
+      }
+    },
+    {
+      "id": "B1.1",
+      "track": "B",
+      "phase": "B1",
+      "description": "Inventory all shell test files (.sh)",
+      "priority": 1,
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Complete list of all test files with locations"
+      ],
+      "verification": {
+        "method": "file_exists",
+        "files": ["docs/prd/tests-inventory-shell.json"]
+      }
+    },
+    {
+      "id": "B1.2",
+      "track": "B",
+      "phase": "B1",
+      "description": "Inventory all BATS test files (.bats)",
+      "priority": 1,
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Complete list of all BATS test files"
+      ],
+      "verification": {
+        "method": "file_exists",
+        "files": ["docs/prd/tests-inventory-bats.json"]
+      }
+    },
+    {
+      "id": "B1.3",
+      "track": "B",
+      "phase": "B1",
+      "description": "Analyze test file purposes and coverage",
+      "priority": 1,
+      "dependencies": ["B1.1", "B1.2"],
+      "acceptance_criteria": [
+        "Each test file has documented purpose",
+        "Coverage area defined"
+      ],
+      "verification": {
+        "method": "file_exists",
+        "files": ["docs/prd/tests-catalog.md"]
+      }
+    },
+    {
+      "id": "B2.1-B2.27",
+      "track": "B",
+      "phase": "B2",
+      "description": "Individual test file audits (27 test groups)",
+      "priority": 1,
+      "dependencies": ["B1.3"],
+      "acceptance_criteria": [
+        "Each test executes",
+        "Assertions valid",
+        "No false positives/negatives"
+      ],
+      "verification": {
+        "method": "codex_cli_audit",
+        "per_file": true
+      }
+    },
+    {
+      "id": "B3.1",
+      "track": "B",
+      "phase": "B3",
+      "description": "Identify duplicate test cases across files",
+      "priority": 2,
+      "dependencies": ["B2.1-B2.27"],
+      "acceptance_criteria": [
+        "List of duplicate tests generated",
+        "Marked for consolidation"
+      ],
+      "verification": {
+        "method": "report_generated",
+        "report": "docs/prd/test-duplicates-report.md"
+      }
+    },
+    {
+      "id": "B3.2",
+      "track": "B",
+      "phase": "B3",
+      "description": "Identify redundant test files",
+      "priority": 2,
+      "dependencies": ["B3.1"],
+      "acceptance_criteria": [
+        "Overlapping test files identified",
+        "Marked for merge/removal"
+      ],
+      "verification": {
+        "method": "report_generated"
+      }
+    },
+    {
+      "id": "B3.3",
+      "track": "B",
+      "phase": "B3",
+      "description": "Analyze test coverage gaps",
+      "priority": 2,
+      "dependencies": ["B3.1"],
+      "acceptance_criteria": [
+        "Functionality not covered by tests identified"
+      ],
+      "verification": {
+        "method": "report_generated",
+        "report": "docs/prd/test-coverage-gaps.md"
+      }
+    },
+    {
+      "id": "B3.4",
+      "track": "B",
+      "phase": "B3",
+      "description": "Validate test dependencies",
+      "priority": 2,
+      "dependencies": ["B3.1"],
+      "acceptance_criteria": [
+        "Test execution order dependencies documented"
+      ],
+      "verification": {
+        "method": "file_exists",
+        "files": ["docs/prd/test-dependencies.md"]
+      }
+    },
+    {
+      "id": "B3.5",
+      "track": "B",
+      "phase": "B3",
+      "description": "Check for regression test coverage",
+      "priority": 2,
+      "dependencies": ["B3.3"],
+      "acceptance_criteria": [
+        "All critical paths have regression tests"
+      ],
+      "verification": {
+        "method": "coverage_matrix"
+      }
+    },
+    {
+      "id": "B4.1",
+      "track": "B",
+      "phase": "B4",
+      "description": "Remove/merge duplicate test files",
+      "priority": 2,
+      "dependencies": ["B3.1", "B3.2"],
+      "acceptance_criteria": [
+        "No duplicate tests remain"
+      ],
+      "verification": {
+        "method": "re_audit",
+        "expected": "zero_duplicates"
+      }
+    },
+    {
+      "id": "B4.2",
+      "track": "B",
+      "phase": "B4",
+      "description": "Archive obsolete test files",
+      "priority": 2,
+      "dependencies": ["B4.1"],
+      "acceptance_criteria": [
+        "Obsolete tests moved to archive"
+      ],
+      "verification": {
+        "method": "directory_exists",
+        "path": "tests/archive/"
+      }
+    },
+    {
+      "id": "B4.3",
+      "track": "B",
+      "phase": "B4",
+      "description": "Add missing test coverage",
+      "priority": 2,
+      "dependencies": ["B3.3"],
+      "acceptance_criteria": [
+        "Coverage gaps addressed with new tests"
+      ],
+      "verification": {
+        "method": "new_files_created"
+      }
+    },
+    {
+      "id": "B4.4",
+      "track": "B",
+      "phase": "B4",
+      "description": "Update test documentation",
+      "priority": 2,
+      "dependencies": ["B4.1", "B4.2", "B4.3"],
+      "acceptance_criteria": [
+        "All tests have documented purpose"
+      ],
+      "verification": {
+        "method": "file_updated",
+        "files": ["docs/prd/tests-catalog.md"]
+      }
+    },
+    {
+      "id": "B5.1",
+      "track": "B",
+      "phase": "B5",
+      "description": "Run full test suite execution",
+      "priority": 2,
+      "dependencies": ["B4.1", "B4.2", "B4.3", "B4.4"],
+      "acceptance_criteria": [
+        "All tests pass"
+      ],
+      "verification": {
+        "method": "test_execution",
+        "command": "bats tests/",
+        "expected": "100% pass"
+      }
+    },
+    {
+      "id": "B5.2",
+      "track": "B",
+      "phase": "B5",
+      "description": "Run /codex-cli audit on test suite (iteration 1)",
+      "priority": 2,
+      "dependencies": ["B5.1"],
+      "acceptance_criteria": [
+        "Initial test audit report generated"
+      ],
+      "verification": {
+        "method": "codex_cli_audit",
+        "output": "docs/prd/tests-audit-iteration-1.md"
+      }
+    },
+    {
+      "id": "B5.3",
+      "track": "B",
+      "phase": "B5",
+      "description": "Resolve test audit findings (CRITICAL/HIGH/MEDIUM/LOW)",
+      "priority": 2,
+      "dependencies": ["B5.2"],
+      "acceptance_criteria": [
+        "All findings resolved"
+      ],
+      "verification": {
+        "method": "codex_cli_audit",
+        "expected_result": "zero_findings_all"
+      }
+    },
+    {
+      "id": "B5.4",
+      "track": "B",
+      "phase": "B5",
+      "description": "Final test suite validation",
+      "priority": 3,
+      "dependencies": ["B5.3"],
+      "acceptance_criteria": [
+        "Clean test suite",
+        "No issues"
+      ],
+      "verification": {
+        "method": "full_execution",
+        "expected": "100% pass, audit clean"
+      }
+    },
+    {
+      "id": "C1.1",
+      "track": "C",
+      "phase": "C1",
+      "description": "Run /adversarial validation on completed Track A",
+      "priority": 1,
+      "dependencies": ["A4.6"],
+      "acceptance_criteria": [
+        "Adversarial review finds no issues"
+      ],
+      "verification": {
+        "method": "adversarial_validation",
+        "scope": "track_a"
+      }
+    },
+    {
+      "id": "C1.2",
+      "track": "C",
+      "phase": "C1",
+      "description": "Run /adversarial validation on completed Track B",
+      "priority": 1,
+      "dependencies": ["B5.4"],
+      "acceptance_criteria": [
+        "Adversarial review finds no issues"
+      ],
+      "verification": {
+        "method": "adversarial_validation",
+        "scope": "track_b"
+      }
+    },
+    {
+      "id": "C1.3",
+      "track": "C",
+      "phase": "C1",
+      "description": "Run /codex-cli final comprehensive audit",
+      "priority": 1,
+      "dependencies": ["C1.1", "C1.2"],
+      "acceptance_criteria": [
+        "Full codebase audit clean"
+      ],
+      "verification": {
+        "method": "codex_cli_audit",
+        "scope": "comprehensive"
+      }
+    },
+    {
+      "id": "C1.4",
+      "track": "C",
+      "phase": "C1",
+      "description": "Run /gemini-cli validation (if available)",
+      "priority": 1,
+      "dependencies": ["C1.3"],
+      "acceptance_criteria": [
+        "Gemini validation confirms completion"
+      ],
+      "verification": {
+        "method": "gemini_cli_validation"
+      }
+    },
+    {
+      "id": "C2.1",
+      "track": "C",
+      "phase": "C2",
+      "description": "Generate hooks audit final report",
+      "priority": 2,
+      "dependencies": ["C1.1"],
+      "acceptance_criteria": [
+        "Complete report with before/after metrics"
+      ],
+      "verification": {
+        "method": "file_exists",
+        "files": ["docs/quality-gates/HOOKS_AUDIT_v2.89.md"]
+      }
+    },
+    {
+      "id": "C2.2",
+      "track": "C",
+      "phase": "C2",
+      "description": "Generate test audit final report",
+      "priority": 2,
+      "dependencies": ["C1.2"],
+      "acceptance_criteria": [
+        "Complete report with coverage metrics"
+      ],
+      "verification": {
+        "method": "file_exists",
+        "files": ["docs/quality-gates/TEST_AUDIT_v2.89.md"]
+      }
+    },
+    {
+      "id": "C2.3",
+      "track": "C",
+      "phase": "C2",
+      "description": "Update CLAUDE.md with validation results",
+      "priority": 2,
+      "dependencies": ["C2.1", "C2.2"],
+      "acceptance_criteria": [
+        "Documentation reflects current state"
+      ],
+      "verification": {
+        "method": "file_updated",
+        "files": ["CLAUDE.md"]
+      }
+    },
+    {
+      "id": "C2.4",
+      "track": "C",
+      "phase": "C2",
+      "description": "Create tracking file for ongoing maintenance",
+      "priority": 2,
+      "dependencies": ["C2.1", "C2.2", "C2.3"],
+      "acceptance_criteria": [
+        "Process established for future audits"
+      ],
+      "verification": {
+        "method": "file_exists",
+        "files": ["docs/maintenance/VALIDATION_MAINTENANCE.md"]
+      }
+    }
+  ],
+  "execution_order": [
+    ["A1.1"],
+    ["A1.2"],
+    ["A1.3"],
+    ["A2.1", "A2.2", "A2.3", "A2.4", "A2.5", "A2.6", "A2.7", "A2.8", "A2.9", "A2.10"],
+    ["A3.1"],
+    ["A3.2", "A3.3", "A3.4"],
+    ["A4.1"],
+    ["A4.2"],
+    ["A4.3"],
+    ["A4.4"],
+    ["A4.5"],
+    ["A4.6"],
+    ["B1.1", "B1.2"],
+    ["B1.3"],
+    ["B2.1-B2.27"],
+    ["B3.1"],
+    ["B3.2", "B3.3", "B3.4", "B3.5"],
+    ["B4.1", "B4.2", "B4.3", "B4.4"],
+    ["B5.1"],
+    ["B5.2"],
+    ["B5.3"],
+    ["B5.4"],
+    ["C1.1", "C1.2"],
+    ["C1.3"],
+    ["C1.4"],
+    ["C2.1", "C2.2"],
+    ["C2.3"],
+    ["C2.4"]
+  ]
+}

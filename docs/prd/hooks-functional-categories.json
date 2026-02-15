@@ -1,0 +1,211 @@
+{
+  "version": "2.89.0",
+  "created": "2026-02-15",
+  "categories": {
+    "context_management": {
+      "description": "Hooks that manage session context, state injection, and context tracking",
+      "hooks": [
+        "unified-context-tracker.sh",
+        "glm-context-tracker.sh",
+        "glm-context-update.sh",
+        "context-injector.sh",
+        "ralph-context-injector.sh",
+        "inject-session-context.sh"
+      ]
+    },
+    "compaction": {
+      "description": "Hooks for handling context compaction - saving and restoring state",
+      "hooks": [
+        "pre-compact-handoff.sh",
+        "post-compact-restore.sh"
+      ]
+    },
+    "task_tracking": {
+      "description": "Hooks that track task progress, synchronization, and orchestration",
+      "hooks": [
+        "progress-tracker.sh",
+        "task-primitive-sync.sh",
+        "task-orchestration-optimizer.sh",
+        "task-project-tracker.sh",
+        "global-task-sync.sh",
+        "todo-plan-sync.sh",
+        "batch-progress-tracker.sh"
+      ]
+    },
+    "curator": {
+      "description": "Hooks for semantic extraction, episodic conversion, and curation",
+      "hooks": [
+        "curator-suggestion.sh",
+        "semantic-auto-extractor.sh",
+        "semantic-write-helper.sh",
+        "semantic-realtime-extractor.sh",
+        "episodic-auto-convert.sh",
+        "decision-extractor.sh"
+      ]
+    },
+    "auto_learning": {
+      "description": "Hooks that enable automatic learning, reflection, and knowledge capture",
+      "hooks": [
+        "orchestrator-auto-learn.sh",
+        "continuous-learning.sh",
+        "reflection-engine.sh",
+        "memory-write-trigger.sh"
+      ]
+    },
+    "security": {
+      "description": "Hooks that provide security guards, auditing, and secret management",
+      "hooks": [
+        "git-safety-guard.py",
+        "repo-boundary-guard.sh",
+        "security-full-audit.sh",
+        "security-real-audit.sh",
+        "sanitize-secrets.js",
+        "cleanup-secrets-db.js",
+        "promptify-security.sh",
+        "sec-context-validate.sh"
+      ]
+    },
+    "quality": {
+      "description": "Hooks that perform quality checks, linting, and code validation",
+      "hooks": [
+        "quality-gates-v2.sh",
+        "quality-parallel-async.sh",
+        "ralph-quality-gates.sh",
+        "typescript-quick-check.sh",
+        "console-log-detector.sh",
+        "auto-format-prettier.sh",
+        "ai-code-audit.sh"
+      ]
+    },
+    "memory": {
+      "description": "Hooks for memory initialization, search, and integration",
+      "hooks": [
+        "agent-memory-auto-init.sh",
+        "smart-memory-search.sh",
+        "ralph-memory-integration.sh",
+        "procedural-forget.sh",
+        "procedural-inject.sh"
+      ]
+    },
+    "session_lifecycle": {
+      "description": "Hooks for session start, end, and state management",
+      "hooks": [
+        "session-start-restore-context.sh",
+        "session-start-welcome.sh",
+        "session-start-repo-summary.sh",
+        "session-start-tldr.sh",
+        "session-end-handoff.sh",
+        "auto-migrate-plan-state.sh",
+        "auto-sync-global.sh"
+      ]
+    },
+    "subagent": {
+      "description": "Hooks for managing subagents and agent teams",
+      "hooks": [
+        "glm5-subagent-stop.sh",
+        "verification-subagent.sh",
+        "agent-teams-coordinator.sh",
+        "ralph-subagent-start.sh",
+        "ralph-subagent-stop.sh",
+        "teammate-idle-quality-gate.sh",
+        "task-completed-quality-gate.sh"
+      ]
+    },
+    "checkpoint": {
+      "description": "Hooks for automatic checkpointing and state saving",
+      "hooks": [
+        "checkpoint-auto-save.sh",
+        "checkpoint-smart-save.sh",
+        "auto-checkpoint.sh"
+      ]
+    },
+    "plan_state": {
+      "description": "Hooks for managing plan state, lifecycle, and synchronization",
+      "hooks": [
+        "plan-state-adaptive.sh",
+        "plan-state-init.sh",
+        "plan-state-lifecycle.sh",
+        "plan-sync-post-step.sh",
+        "auto-plan-state.sh",
+        "plan-analysis-cleanup.sh"
+      ]
+    },
+    "orchestration": {
+      "description": "Hooks for orchestrating workflows and command routing",
+      "hooks": [
+        "orchestrator-init.sh",
+        "orchestrator-report.sh",
+        "command-router.sh",
+        "recursive-decompose.sh",
+        "parallel-explore.sh"
+      ]
+    },
+    "adversarial": {
+      "description": "Hooks for adversarial validation and testing",
+      "hooks": [
+        "adversarial-auto-trigger.sh",
+        "stop-verification.sh",
+        "stop-slop-hook.sh"
+      ]
+    },
+    "code_review": {
+      "description": "Hooks for automatic code review",
+      "hooks": [
+        "code-review-auto.sh"
+      ]
+    },
+    "integration": {
+      "description": "Hooks for external service integrations",
+      "hooks": [
+        "sentry-report.sh",
+        "glm-visual-validation.sh"
+      ]
+    },
+    "utilities": {
+      "description": "Utility hooks for various purposes",
+      "hooks": [
+        "status-auto-check.sh",
+        "statusline-health-monitor.sh",
+        "smart-skill-reminder.sh",
+        "periodic-reminder.sh",
+        "context-warning.sh",
+        "usage-consolidate.sh",
+        "deslop-auto-clean.sh",
+        "fast-path-check.sh",
+        "lsa-pre-step.sh",
+        "project-backup-metadata.sh",
+        "project-state.sh",
+        "ralph-integration.sh",
+        "ralph-stop-quality-gate.sh",
+        "rules-injector.sh",
+        "prompt-analyzer.sh",
+        "promptify-auto-detect.sh",
+        "skill-validator.sh",
+        "skills-sync-validator.sh",
+        "validate-lsp-servers.sh"
+      ]
+    },
+    "pre_commit": {
+      "description": "Pre-commit hooks for CI/CD",
+      "hooks": [
+        "pre-commit-batch-skills-test.sh",
+        "pre-commit-installer-tests.sh"
+      ]
+    }
+  },
+  "hooks_by_registration_status": {
+    "registered": 49,
+    "unregistered": 53,
+    "total_on_disk": 102
+  },
+  "hooks_by_event": {
+    "SubagentStop": 1,
+    "SessionStart": 7,
+    "PreToolUse": 16,
+    "Stop": 2,
+    "PostToolUse": 19,
+    "PreCompact": 1,
+    "UserPromptSubmit": 8,
+    "unregistered": 53
+  }
+}

@@ -1,7 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "mcp__gordon__run_command",
+      "mcp__gordon__build_logs",
+      "mcp__gordon__docker",
+      "mcp__gordon__filesystem",
+      "mcp__gordon__get_command_help",
+      "mcp__gordon__get_security_recommendations",
+      "mcp__gordon__git",
+      "mcp__gordon__list_builds",
+      "mcp__gordon__search_for_cves",
+      "mcp__gordon__fetch",
       "mcp__filesystem__read_text_file"
     ]
   }

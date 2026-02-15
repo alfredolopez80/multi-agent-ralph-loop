@@ -1,0 +1,355 @@
+{
+  "version": "2.89.0",
+  "created": "2026-02-15",
+  "test_catalog": {
+    "version_specific_tests": {
+      "description": "Tests for specific version features and regressions",
+      "tests": [
+        {
+          "file": "tests/test_v2.24.1_security.sh",
+          "purpose": "Security hooks validation for v2.24.1",
+          "coverage": "Security hooks execution, blocking behavior",
+          "status": "active"
+        },
+        {
+          "file": "tests/test_v2.25_search_hierarchy.sh",
+          "purpose": "Search hierarchy functionality validation",
+          "coverage": "Search commands, MCP integration",
+          "status": "active"
+        },
+        {
+          "file": "tests/test_v2.24_minimax_mcp.sh",
+          "purpose": "Minimax MCP integration tests",
+          "coverage": "MCP server integration, minimax provider",
+          "status": "active"
+        },
+        {
+          "file": "tests/test_v2.26_prefix_commands.sh",
+          "purpose": "Prefix command routing validation",
+          "coverage": "Command routing, prefix detection",
+          "status": "active"
+        },
+        {
+          "file": "tests/test_v2.27_security_loop.sh",
+          "purpose": "Security loop execution tests",
+          "coverage": "Security hooks in loop mode",
+          "status": "active"
+        },
+        {
+          "file": "tests/test_v2.28_comprehensive.sh",
+          "purpose": "Comprehensive integration tests for v2.28",
+          "coverage": "Full system integration",
+          "status": "active"
+        },
+        {
+          "file": "tests/test_v2.33_sentry_integration.sh",
+          "purpose": "Sentry error reporting integration",
+          "coverage": "Sentry CLI, error capture, reporting",
+          "status": "active"
+        },
+        {
+          "file": "tests/test_v2.34_codex_v079.sh",
+          "purpose": "Codex CLI v0.79 integration tests",
+          "coverage": "Codex CLI commands, audit functionality",
+          "status": "active"
+        },
+        {
+          "file": "tests/test_v2.37_tldr_integration.sh",
+          "purpose": "TLDR documentation integration",
+          "coverage": "TLDR pages, documentation lookup",
+          "status": "active"
+        },
+        {
+          "file": "tests/test_v2.36_skills_unification.sh",
+          "purpose": "Skills unification validation (v2.36+)",
+          "coverage": "Skills directory structure, symlinks",
+          "status": "active"
+        }
+      ]
+    },
+    "quality_parallel_tests": {
+      "description": "Quality gate parallel execution tests",
+      "tests": [
+        {
+          "file": "tests/quality-parallel/test-quality-parallel-v3-robust.sh",
+          "purpose": "Robust quality parallel execution v3",
+          "coverage": "Parallel quality checks, async execution",
+          "status": "active"
+        },
+        {
+          "file": "tests/quality-parallel/test-quality-parallel-v4-final.sh",
+          "purpose": "Final quality parallel execution v4",
+          "coverage": "Quality gates, parallel validation, error handling",
+          "status": "active"
+        }
+      ]
+    },
+    "swarm_mode_tests": {
+      "description": "Swarm mode and multi-agent coordination tests",
+      "tests": [
+        {
+          "file": "tests/swarm-mode/test-swarm-mode-config.sh",
+          "purpose": "Swarm mode configuration validation",
+          "coverage": "Swarm settings, agent spawning",
+          "status": "active"
+        },
+        {
+          "file": "tests/swarm-mode/configure-swarm-mode.sh",
+          "purpose": "Swarm mode setup script",
+          "coverage": "Configuration setup",
+          "status": "utility"
+        },
+        {
+          "file": "tests/swarm-mode/test-swarm-integration.sh",
+          "purpose": "Swarm integration tests",
+          "coverage": "Multi-agent coordination",
+          "status": "active"
+        },
+        {
+          "file": "tests/swarm-mode/test-swarm-integration-corrected.sh",
+          "purpose": "Corrected swarm integration tests",
+          "coverage": "Fixed multi-agent tests",
+          "status": "active"
+        },
+        {
+          "file": "tests/swarm-mode/test-phase-1-validation.sh",
+          "purpose": "Phase 1 swarm validation",
+          "coverage": "Initial swarm functionality",
+          "status": "active"
+        },
+        {
+          "file": "tests/swarm-mode/test-complete-integration.sh",
+          "purpose": "Complete swarm integration suite",
+          "coverage": "Full swarm system validation",
+          "status": "active"
+        }
+      ]
+    },
+    "agent_teams_tests": {
+      "description": "Agent Teams feature tests",
+      "tests": [
+        {
+          "file": "tests/agent-teams/test-glm5-teammates.sh",
+          "purpose": "GLM-5 teammate spawning tests",
+          "coverage": "GLM-5 subagent creation, coordination",
+          "status": "active"
+        },
+        {
+          "file": "tests/agent-teams/test_agent_teams_integration.sh",
+          "purpose": "Agent Teams integration tests",
+          "coverage": "TeamCreate, Task coordination, messaging",
+          "status": "active"
+        }
+      ]
+    },
+    "session_lifecycle_tests": {
+      "description": "Session lifecycle hooks tests",
+      "tests": [
+        {
+          "file": "tests/session-lifecycle/test_skills_centralization.sh",
+          "purpose": "Skills centralization validation",
+          "coverage": "Skills directory, symlinks",
+          "status": "active"
+        },
+        {
+          "file": "tests/session-lifecycle/test_session_lifecycle_hooks.sh",
+          "purpose": "Session lifecycle hooks execution",
+          "coverage": "SessionStart, SessionEnd, PreCompact hooks",
+          "status": "active"
+        }
+      ]
+    },
+    "learning_system_tests": {
+      "description": "Learning and memory system tests",
+      "tests": [
+        {
+          "file": "tests/learning-system/test-learning-system-v2.88.sh",
+          "purpose": "Learning system v2.88 validation",
+          "coverage": "Pattern capture, knowledge storage",
+          "status": "active"
+        },
+        {
+          "file": "tests/learning-system/test-learning-complete-v2.88.sh",
+          "purpose": "Complete learning system suite",
+          "coverage": "Full learning workflow",
+          "status": "active"
+        }
+      ]
+    },
+    "skills_tests": {
+      "description": "Batch skills execution tests",
+      "tests": [
+        {
+          "file": "tests/skills/test-task-batch.sh",
+          "purpose": "Task batch execution validation",
+          "coverage": "Batch processing, PRD parsing",
+          "status": "active"
+        },
+        {
+          "file": "tests/skills/test-create-task-batch.sh",
+          "purpose": "Create task batch skill tests",
+          "coverage": "Interactive PRD creation",
+          "status": "active"
+        },
+        {
+          "file": "tests/skills/test-batch-skills-integration.sh",
+          "purpose": "Batch skills integration suite",
+          "coverage": "Full batch workflow",
+          "status": "active"
+        }
+      ]
+    },
+    "installer_bats_tests": {
+      "description": "Installer validation BATS tests",
+      "tests": [
+        {
+          "file": "tests/installer/test_helper.bats",
+          "purpose": "Helper functions for installer tests",
+          "coverage": "Test utilities",
+          "status": "utility"
+        },
+        {
+          "file": "tests/installer/test-system-dependencies.bats",
+          "purpose": "System dependencies validation",
+          "coverage": "Required tools, versions",
+          "status": "active"
+        },
+        {
+          "file": "tests/installer/test-shell-environment.bats",
+          "purpose": "Shell environment validation",
+          "coverage": "Shell config, PATH",
+          "status": "active"
+        },
+        {
+          "file": "tests/installer/test-directory-structure.bats",
+          "purpose": "Directory structure validation",
+          "coverage": ".claude/, .ralph/ directories",
+          "status": "active"
+        },
+        {
+          "file": "tests/installer/test-settings-structure.bats",
+          "purpose": "Settings structure validation",
+          "coverage": "JSON schema, required fields",
+          "status": "active"
+        },
+        {
+          "file": "tests/installer/test-skills-registration.bats",
+          "purpose": "Skills registration validation",
+          "coverage": "Skills directory, SKILL.md files",
+          "status": "active"
+        },
+        {
+          "file": "tests/installer/test-agents-registration.bats",
+          "purpose": "Agents registration validation",
+          "coverage": "Agents directory, configuration",
+          "status": "active"
+        },
+        {
+          "file": "tests/installer/test-settings-merge.bats",
+          "purpose": "Settings merge functionality",
+          "coverage": "Merge logic, conflict resolution",
+          "status": "active"
+        },
+        {
+          "file": "tests/installer/test-hooks-execution.bats",
+          "purpose": "Hooks execution validation",
+          "coverage": "Hook execution, output format",
+          "status": "active"
+        },
+        {
+          "file": "tests/installer/test-e2e-installation.bats",
+          "purpose": "End-to-end installation tests",
+          "coverage": "Full installation workflow",
+          "status": "active"
+        },
+        {
+          "file": "tests/installer/test-skills-execution.bats",
+          "purpose": "Skills execution validation",
+          "coverage": "Skill invocation, output",
+          "status": "active"
+        },
+        {
+          "file": "tests/installer/test-hook-chain.bats",
+          "purpose": "Hook chain execution tests",
+          "coverage": "Hook ordering, dependencies",
+          "status": "active"
+        },
+        {
+          "file": "tests/installer/test-cli-commands.bats",
+          "purpose": "CLI commands validation",
+          "coverage": "ralph CLI, subcommands",
+          "status": "active"
+        },
+        {
+          "file": "tests/installer/test-hooks-registration.bats",
+          "purpose": "Hooks registration validation",
+          "coverage": "Hook registration in settings",
+          "status": "active"
+        },
+        {
+          "file": "tests/installer/test-hooks-syntax.bats",
+          "purpose": "Hooks syntax validation",
+          "coverage": "Shellcheck, syntax errors",
+          "status": "active"
+        },
+        {
+          "file": "tests/installer/test-language-servers.bats",
+          "purpose": "Language servers validation",
+          "coverage": "LSP installation, configuration",
+          "status": "active"
+        },
+        {
+          "file": "tests/installer/test-lsp-integration.bats",
+          "purpose": "LSP integration tests",
+          "coverage": "LSP with Claude Code",
+          "status": "active"
+        },
+        {
+          "file": "tests/installer/test-lsp-skills-integration.bats",
+          "purpose": "LSP skills integration",
+          "coverage": "LSP usage in skills",
+          "status": "active"
+        },
+        {
+          "file": "tests/installer/test-auto-checkpoint.bats",
+          "purpose": "Auto checkpoint validation",
+          "coverage": "Checkpoint hooks, state saving",
+          "status": "active"
+        },
+        {
+          "file": "tests/installer/test-lsp-usage-validation.bats",
+          "purpose": "LSP usage validation",
+          "coverage": "LSP tool usage",
+          "status": "active"
+        },
+        {
+          "file": "tests/installer/test-complete-installation.bats",
+          "purpose": "Complete installation validation",
+          "coverage": "Full system validation",
+          "status": "active"
+        }
+      ]
+    }
+  },
+  "coverage_analysis": {
+    "well_covered": [
+      "Security hooks",
+      "Quality gates",
+      "Session lifecycle",
+      "Agent Teams",
+      "Installer functionality",
+      "Skills execution"
+    ],
+    "partially_covered": [
+      "Swarm mode",
+      "Learning system",
+      "LSP integration"
+    ],
+    "needs_coverage": [
+      "Batch execution edge cases",
+      "Memory system integration",
+      "Cross-platform validation",
+      "Error recovery scenarios"
+    ]
+  }
+}

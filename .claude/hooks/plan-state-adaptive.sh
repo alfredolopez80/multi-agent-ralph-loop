@@ -174,6 +174,18 @@ create_plan_state() {
     # Ensure .claude directory exists
     mkdir -p "$(dirname "$PLAN_STATE")" 2>/dev/null || true
 
+    # SEC-2.2: Acquire file lock before writing plan-state (TOCTOU prevention)
+    local _lock_dir="${PLAN_STATE}.lock"
+    local _lock_attempt=0
+    while ! mkdir "$_lock_dir" 2>/dev/null; do
+        _lock_attempt=$((_lock_attempt + 1))
+        if [[ $_lock_attempt -ge 50 ]]; then
+            log "ERROR: Cannot acquire plan-state lock"
+            break
+        fi
+        sleep 0.1
+    done
+
     # Prepare task_summary as JSON string (escape special characters)
     task_summary_json=$(echo "$task_summary" | head -c 200 | jq -Rs '.')
 
@@ -249,6 +261,10 @@ PLANEOF
     fi
 
     chmod 600 "$PLAN_STATE"
+
+    # SEC-2.2: Release file lock
+    rmdir "${PLAN_STATE}.lock" 2>/dev/null || true
+
     log "Created plan-state: $plan_id ($complexity_mode, complexity=$complexity, max_iter=$max_iter)"
     return 0
 }

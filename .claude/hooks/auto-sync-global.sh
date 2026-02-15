@@ -46,16 +46,46 @@ if [ -d "$GLOBAL_DIR/agents" ]; then
     done
 fi
 
-# Sync hooks silently
+# SEC-2.3: Whitelist of approved hook names for sync
+# Only hooks in this list will be copied from global to project
+APPROVED_HOOKS=(
+    "git-safety-guard.py"
+    "repo-boundary-guard.sh"
+    "sanitize-secrets.js"
+    "cleanup-secrets-db.js"
+    "procedural-forget.sh"
+    "detect-environment.sh"
+    "handoff-integrity.sh"
+)
+
+# Sync hooks silently (SEC-2.3: with whitelist validation)
 if [ -d "$GLOBAL_DIR/hooks" ]; then
     mkdir -p "$PROJECT_CLAUDE_DIR/hooks"
+    LOG_FILE="${HOME}/.ralph/logs/auto-sync-global.log"
+    mkdir -p "$(dirname "$LOG_FILE")"
     for hook in "$GLOBAL_DIR/hooks"/*; do
         [ -f "$hook" ] || continue  # Skip if glob didn't match
         basename=$(basename "$hook")
+
+        # SEC-2.3: Check if hook is in whitelist
+        HOOK_APPROVED=false
+        for approved in "${APPROVED_HOOKS[@]}"; do
+            if [ "$basename" = "$approved" ]; then
+                HOOK_APPROVED=true
+                break
+            fi
+        done
+
+        if [ "$HOOK_APPROVED" = "false" ]; then
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] SKIPPED: $basename (not in whitelist)" >> "$LOG_FILE" 2>/dev/null || true
+            continue
+        fi
+
         target="$PROJECT_CLAUDE_DIR/hooks/$basename"
         if [ ! -f "$target" ]; then
             cp "$hook" "$target" 2>/dev/null || true
             chmod +x "$target" 2>/dev/null || true
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] SYNCED: $basename" >> "$LOG_FILE" 2>/dev/null || true
         fi
     done
 fi

@@ -26,14 +26,15 @@
 set -euo pipefail
 
 # Configuration
-REPO_ROOT="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 STATE_DIR="$HOME/.ralph/state"
 LOG_DIR="$HOME/.ralph/logs"
 MEMORY_DIR="$HOME/.ralph/memory"
 mkdir -p "$LOG_DIR" "$STATE_DIR"
 
 # Read stdin for subagent info
-stdin_data=$(cat)
+# SEC-111: Limit stdin to 100KB to prevent memory exhaustion
+stdin_data=$(head -c 100000)
 
 # Extract info
 subagent_id=$(echo "$stdin_data" | jq -r '.subagentId // .subagent_id // "unknown"')

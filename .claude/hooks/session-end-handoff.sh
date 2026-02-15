@@ -64,6 +64,12 @@ if [[ -f "${HOOKS_DIR}/detect-environment.sh" ]]; then
     source "${HOOKS_DIR}/detect-environment.sh" 2>/dev/null || true
 fi
 
+# SEC-2.1: Source integrity library for checksum creation
+INTEGRITY_LIB="${HOOKS_DIR}/handoff-integrity.sh"
+if [[ -f "$INTEGRITY_LIB" ]]; then
+    source "$INTEGRITY_LIB" 2>/dev/null || true
+fi
+
 # Check feature flags
 check_feature_enabled() {
     local feature="$1"
@@ -168,6 +174,13 @@ if check_feature_enabled "RALPH_ENABLE_LEDGER" "true"; then
         fi
 
         log "INFO" "Ledger saved to: ${LEDGER_DIR}/CONTINUITY_RALPH-${SESSION_ID}.md"
+
+        # SEC-2.1: Create checksum for ledger integrity validation
+        if type handoff_create_checksum &>/dev/null; then
+            handoff_create_checksum "${LEDGER_DIR}/CONTINUITY_RALPH-${SESSION_ID}.md" && \
+                log "INFO" "Checksum created for ledger" || \
+                log "WARN" "Failed to create ledger checksum"
+        fi
     fi
 fi
 
@@ -186,6 +199,13 @@ if [[ -x "$HANDOFF_SCRIPT" ]]; then
         }
 
     log "INFO" "Handoff saved to: ${SESSION_HANDOFF_DIR}/handoff-${TIMESTAMP}.md"
+
+    # SEC-2.1: Create checksum for handoff integrity validation
+    if type handoff_create_checksum &>/dev/null; then
+        handoff_create_checksum "${SESSION_HANDOFF_DIR}/handoff-${TIMESTAMP}.md" && \
+            log "INFO" "Checksum created for handoff" || \
+            log "WARN" "Failed to create handoff checksum"
+    fi
 fi
 
 # Backup plan state if exists

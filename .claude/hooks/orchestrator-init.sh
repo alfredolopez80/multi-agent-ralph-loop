@@ -92,6 +92,14 @@ fi
 if [[ ! -f "$PLAN_STATE" ]]; then
     log "Creating new plan-state at: $PLAN_STATE"
     mkdir -p "$(dirname "$PLAN_STATE")"
+    # SEC-2.2: Acquire lock before writing plan-state
+    _ps_lock="${PLAN_STATE}.lock"
+    _ps_attempt=0
+    while ! mkdir "$_ps_lock" 2>/dev/null; do
+        _ps_attempt=$((_ps_attempt + 1))
+        [[ $_ps_attempt -ge 50 ]] && break
+        sleep 0.1
+    done
     cat > "$PLAN_STATE" << 'EOF'
 {
   "version": "2.57.0",
@@ -122,6 +130,8 @@ if [[ ! -f "$PLAN_STATE" ]]; then
   }
 }
 EOF
+    # SEC-2.2: Release lock
+    rmdir "$_ps_lock" 2>/dev/null || true
 else
     # Validate existing plan-state
     if jq empty "$PLAN_STATE" 2>/dev/null; then

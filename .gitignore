@@ -239,6 +239,10 @@ backend/
 *.py[cod]
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# BACKUPS DE SKILLS CONSOLIDADOS (Fase 1 v2.83.0)
+# BACKUP FILES (SEC-2.6 v2.89.0)
 # ═══════════════════════════════════════════════════════════════════════════════
+*.bak
+*.backup.*
+.claude/hooks/*.bak
+.claude/hooks/*.backup.*
 .claude/skills/*.bak

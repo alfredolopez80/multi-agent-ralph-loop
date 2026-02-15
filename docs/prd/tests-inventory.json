@@ -1,0 +1,257 @@
+{
+  "version": "2.89.0",
+  "created": "2026-02-15",
+  "test_inventory": {
+    "shell_tests": {
+      "total": 62,
+      "categories": {
+        "version_specific": {
+          "count": 10,
+          "files": [
+            "tests/test_v2.24.1_security.sh",
+            "tests/test_v2.25_search_hierarchy.sh",
+            "tests/test_v2.24_minimax_mcp.sh",
+            "tests/test_v2.26_prefix_commands.sh",
+            "tests/test_v2.27_security_loop.sh",
+            "tests/test_v2.28_comprehensive.sh",
+            "tests/test_v2.33_sentry_integration.sh",
+            "tests/test_v2.34_codex_v079.sh",
+            "tests/test_v2.37_tldr_integration.sh",
+            "tests/test_v2.36_skills_unification.sh"
+          ]
+        },
+        "quality_parallel": {
+          "count": 2,
+          "files": [
+            "tests/quality-parallel/test-quality-parallel-v4-final.sh",
+            "tests/quality-parallel/test-quality-parallel-v3-robust.sh"
+          ]
+        },
+        "swarm_mode": {
+          "count": 6,
+          "files": [
+            "tests/swarm-mode/test-swarm-mode-config.sh",
+            "tests/swarm-mode/configure-swarm-mode.sh",
+            "tests/swarm-mode/test-swarm-integration.sh",
+            "tests/swarm-mode/test-swarm-integration-corrected.sh",
+            "tests/swarm-mode/test-phase-1-validation.sh",
+            "tests/swarm-mode/test-complete-integration.sh"
+          ]
+        },
+        "integration": {
+          "count": 1,
+          "files": [
+            "tests/integration/test-learning-integration-v1.sh"
+          ]
+        },
+        "functional": {
+          "count": 1,
+          "files": [
+            "tests/functional/test-functional-learning-v1.sh"
+          ]
+        },
+        "unit": {
+          "count": 7,
+          "files": [
+            "tests/unit/test-unit-learning-hooks-v1.sh",
+            "tests/unit/test-statusline-context.sh",
+            "tests/unit/test-skills-symlinks-v2.87.sh",
+            "tests/unit/test-skills-sync-v2.87.sh",
+            "tests/unit/test-model-agnostic-v2.88.sh",
+            "tests/unit/test-skills-unification-v2.87.sh"
+          ]
+        },
+        "end_to_end": {
+          "count": 1,
+          "files": [
+            "tests/end-to-end/test-e2e-learning-complete-v1.sh"
+          ]
+        },
+        "agent_teams": {
+          "count": 2,
+          "files": [
+            "tests/agent-teams/test-glm5-teammates.sh",
+            "tests/agent-teams/test_agent_teams_integration.sh"
+          ]
+        },
+        "session_lifecycle": {
+          "count": 2,
+          "files": [
+            "tests/session-lifecycle/test_skills_centralization.sh",
+            "tests/session-lifecycle/test_session_lifecycle_hooks.sh"
+          ]
+        },
+        "security": {
+          "count": 1,
+          "files": [
+            "tests/security/test_security_hooks.sh"
+          ]
+        },
+        "stop_hook": {
+          "count": 2,
+          "files": [
+            "tests/stop-hook/test-ralph-stop-quality-gate.sh",
+            "tests/stop-hook/test-ralph-subagent-stop.sh"
+          ]
+        },
+        "hook_integration": {
+          "count": 1,
+          "files": [
+            "tests/hook-integration/test-hook-integration-v2.88.sh"
+          ]
+        },
+        "learning_system": {
+          "count": 2,
+          "files": [
+            "tests/learning-system/test-learning-system-v2.88.sh",
+            "tests/learning-system/test-learning-complete-v2.88.sh"
+          ]
+        },
+        "skills": {
+          "count": 3,
+          "files": [
+            "tests/skills/test-task-batch.sh",
+            "tests/skills/test-create-task-batch.sh",
+            "tests/skills/test-batch-skills-integration.sh"
+          ]
+        },
+        "promptify_integration": {
+          "count": 8,
+          "files": [
+            "tests/promptify-integration/run-all-tests.sh",
+            "tests/promptify-integration/test-clarity-scoring.sh",
+            "tests/promptify-integration/test-security-functions.sh",
+            "tests/promptify-integration/test-e2e.sh",
+            "tests/promptify-integration/test-credential-redaction.sh",
+            "tests/promptify-integration/run-promptify-tests.sh",
+            "tests/promptify-integration/test-phase3-ralph-integration.sh",
+            "tests/promptify-integration/run-all-complete-tests.sh"
+          ]
+        },
+        "orchestrator_validation": {
+          "count": 2,
+          "files": [
+            "tests/orchestrator-validation/test-suite.sh",
+            "tests/orchestrator-validation/run-all.sh"
+          ]
+        },
+        "installer": {
+          "count": 3,
+          "files": [
+            "tests/installer/install-bats.sh",
+            "tests/installer/e2e-setup.sh",
+            "tests/installer/e2e-cleanup.sh"
+          ]
+        },
+        "root_level": {
+          "count": 6,
+          "files": [
+            "tests/run-all-learning-tests.sh",
+            "tests/test-command-router.sh",
+            "tests/test-command-router-quick.sh",
+            "tests/run_tests.sh",
+            "tests/test_all_integration.sh",
+            "tests/run-all-unit-tests.sh"
+          ]
+        },
+        "legacy_c claude_tests": {
+          "count": 5,
+          "location": ".claude/tests/",
+          "files": [
+            ".claude/tests/test-quality-parallel-e2e-fixed.sh",
+            ".claude/tests/test-quality-parallel-e2e-v2.sh",
+            ".claude/tests/test-quality-parallel-e2e.sh",
+            ".claude/tests/test-quality-parallel-v3-robust.sh",
+            ".claude/tests/test-quality-parallel-v4-final.sh"
+          ],
+          "note": "Legacy location - duplicates of tests/quality-parallel/"
+        }
+      }
+    },
+    "bats_tests": {
+      "total": 48,
+      "categories": {
+        "root_level": {
+          "count": 27,
+          "files": [
+            "tests/test_settings_merge.bats",
+            "tests/test_quality_gates.bats",
+            "tests/test_install_security.bats",
+            "tests/test_uninstall_security.bats",
+            "tests/test_tool_validation.bats",
+            "tests/test_cli_commands.bats",
+            "tests/test_cross_platform.bats",
+            "tests/test_security_functions.bats",
+            "tests/test_worktree_workflow.bats",
+            "tests/test_ralph_security.bats",
+            "tests/test_orchestrator_flow.bats",
+            "tests/test_state_coordinator.bats",
+            "tests/test_handoff_integration.bats",
+            "tests/test_orchestration_workflow_v254.bats",
+            "tests/test_documentation_sync.bats",
+            "tests/test_plan_state_lifecycle.bats",
+            "tests/test_v268_auto_invoke_hooks.bats",
+            "tests/test_v261_adversarial_council.bats",
+            "tests/test_v263_dynamic_contexts.bats",
+            "tests/test_v264_edd_framework.bats",
+            "tests/test_v265_cross_platform_hooks.bats",
+            "tests/test_v256_task_primitives.bats",
+            "tests/test_v2_68_23_security.bats",
+            "tests/test_v2_68_22_cli_commands.bats",
+            "tests/test_mmc_security.bats",
+            "tests/test_v2.36_integration.bats",
+            "tests/test_hook_registration.bats"
+          ]
+        },
+        "installer": {
+          "count": 21,
+          "files": [
+            "tests/installer/test_helper.bats",
+            "tests/installer/test-system-dependencies.bats",
+            "tests/installer/test-shell-environment.bats",
+            "tests/installer/test-directory-structure.bats",
+            "tests/installer/test-settings-structure.bats",
+            "tests/installer/test-skills-registration.bats",
+            "tests/installer/test-agents-registration.bats",
+            "tests/installer/test-settings-merge.bats",
+            "tests/installer/test-hooks-execution.bats",
+            "tests/installer/test-e2e-installation.bats",
+            "tests/installer/test-skills-execution.bats",
+            "tests/installer/test-hook-chain.bats",
+            "tests/installer/test-cli-commands.bats",
+            "tests/installer/test-hooks-registration.bats",
+            "tests/installer/test-hooks-syntax.bats",
+            "tests/installer/test-language-servers.bats",
+            "tests/installer/test-lsp-integration.bats",
+            "tests/installer/test-lsp-skills-integration.bats",
+            "tests/installer/test-auto-checkpoint.bats",
+            "tests/installer/test-lsp-usage-validation.bats",
+            "tests/installer/test-complete-installation.bats"
+          ]
+        }
+      }
+    }
+  },
+  "summary": {
+    "total_shell_tests": 62,
+    "total_bats_tests": 48,
+    "total_tests": 110,
+    "legacy_tests": 5,
+    "duplicate_candidates": [
+      {
+        "files": [
+          ".claude/tests/test-quality-parallel-v3-robust.sh",
+          "tests/quality-parallel/test-quality-parallel-v3-robust.sh"
+        ],
+        "action": "Archive .claude/tests/ version"
+      },
+      {
+        "files": [
+          ".claude/tests/test-quality-parallel-v4-final.sh",
+          "tests/quality-parallel/test-quality-parallel-v4-final.sh"
+        ],
+        "action": "Archive .claude/tests/ version"
+      }
+    ]
+  }
+}

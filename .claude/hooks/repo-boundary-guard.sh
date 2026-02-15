@@ -1,4 +1,3 @@
-#!/bin/bash
 #!/usr/bin/env bash
 # repo-boundary-guard.sh - Repository Isolation Enforcement
 # Hook: PreToolUse (Edit|Write|Bash)

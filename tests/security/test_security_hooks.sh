@@ -175,7 +175,8 @@ fi
 # =============================================================================
 section "TEST 7: Sanitize Secrets Functional Test"
 
-TEST_INPUT='{"content": "api_key=sk-1234567890abcdef1234567890abcdef", "token": "ghp_abcdefghijklmnopqrstuvwxyz123456"}'
+# FAKE CREDENTIAL FOR TESTING ONLY - these are deliberately invalid test patterns
+TEST_INPUT='{"content": "api_key=sk-TESTONLY_000000000000000000000000", "token": "ghp_TESTONLY_00000000000000000000000000"}'
 EXPECTED_REDACTED="REDACTED"
 
 if command -v node &> /dev/null; then

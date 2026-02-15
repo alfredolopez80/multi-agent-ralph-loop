@@ -1,4 +1,3 @@
-#!/bin/bash
 #!/usr/bin/env bash
 # VERSION: 2.69.0
 # Hook: Plan State Initialization
@@ -23,6 +22,28 @@ mkdir -p ".claude"
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
+}
+
+# SEC-2.2: Portable file lock using mkdir (TOCTOU prevention)
+# macOS lacks flock, mkdir is atomic on all POSIX systems
+PLAN_STATE_LOCK="${PLAN_STATE}.lock"
+plan_state_lock() {
+    local max_attempts=50
+    local attempt=0
+    while ! mkdir "$PLAN_STATE_LOCK" 2>/dev/null; do
+        attempt=$((attempt + 1))
+        if [[ $attempt -ge $max_attempts ]]; then
+            log "ERROR: Failed to acquire plan-state lock after $max_attempts attempts"
+            return 1
+        fi
+        sleep 0.1
+    done
+    # Auto-cleanup on exit
+    trap 'rmdir "$PLAN_STATE_LOCK" 2>/dev/null || true' EXIT
+    return 0
+}
+plan_state_unlock() {
+    rmdir "$PLAN_STATE_LOCK" 2>/dev/null || true
 }
 
 # SECURITY: Atomic JSON update helper (v2.45.1)
@@ -64,11 +85,14 @@ generate_uuid() {
     fi
 }
 
-# Initialize plan state
+# Initialize plan state (SEC-2.2: with file lock)
 init_plan_state() {
     local task_description="${1:-Unspecified task}"
     local complexity="${2:-5}"
     local model_routing="${3:-sonnet}"
+
+    # SEC-2.2: Acquire lock before writing
+    plan_state_lock || { log "ERROR: Cannot lock plan-state for init"; return 1; }
 
     local plan_id
     local timestamp
