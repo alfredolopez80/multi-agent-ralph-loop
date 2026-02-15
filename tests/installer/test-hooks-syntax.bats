@@ -49,7 +49,7 @@ teardown() {
     run "$VALIDATE_SCRIPT" --help
     [[ "$output" == *"bash -n"* ]]
     [[ "$output" == *"py_compile"* ]]
-    [[ "$output" == *"shebang"* ]]
+    [[ "$output" == *"shebang"* || "$output" == *"Shebang"* ]]
 }
 
 #===============================================================================

@@ -1,17 +1,25 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 2.89.0
 name: codex-cli
-description: "OpenAI Codex CLI orchestration for AI-assisted development using gpt-5.2-codex model. Capabilities: code generation, refactoring, automated editing, parallel task execution, session management, code review, architecture analysis, and MCP integration. Actions: analyze, implement, review, fix, refactor with Codex. Keywords: Codex CLI, gpt-5.2-codex, codex exec, code generation, refactoring, parallel execution, session resume, code review, second opinion, independent review, architecture validation, Context7 MCP. Use when: delegating complex code tasks to Codex, running multi-agent workflows, executing automated reviews, implementing features with AI assistance, resuming previous sessions, querying OpenAI documentation. Triggers: 'use codex', 'codex exec', 'run with codex', 'codex resume', 'implement with codex', 'review with codex', 'codex docs'."
+description: "OpenAI Codex CLI orchestration for AI-assisted development using gpt-5.3-codex model family. Model variants: gpt-5.3-codex (medium), gpt-5.3-codex-high, gpt-5.3-codex-xhigh. Capabilities: code generation, refactoring, automated editing, parallel task execution, session management, code review, architecture analysis, and MCP integration. Actions: analyze, implement, review, fix, refactor with Codex. Keywords: Codex CLI, gpt-5.3-codex, codex exec, code generation, refactoring, parallel execution, session resume, code review, second opinion, independent review, architecture validation, Context7 MCP. Use when: delegating complex code tasks to Codex, running multi-agent workflows, executing automated reviews, implementing features with AI assistance, resuming previous sessions, querying OpenAI documentation. Triggers: 'use codex', 'codex exec', 'run with codex', 'codex resume', 'implement with codex', 'review with codex', 'codex docs'."
 ---
 
 # Codex CLI Integration Skill (v2.37)
 
-## v2.88 Key Changes (MODEL-AGNOSTIC)
+## v2.89 Key Changes (GPT-5.3-CODEX FAMILY)
 
-- **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
-- **No flags required**: Works with the configured default model
-- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
-- **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
+- **Model family**: `gpt-5.3-codex` with three reasoning tiers
+- **Reasoning tiers**: medium (default), high, xhigh (maximum)
+- **Profiles**: Pre-configured profiles for each reasoning level
+- **Backward compatible**: Still supports model override via `-m` flag
+
+**Reasoning Tier Selection**:
+
+| Tier | Model | Use Case | Command |
+|------|-------|----------|---------|
+| `medium` | `gpt-5.3-codex` | Default, fast code tasks | `codex exec "prompt"` |
+| `high` | `gpt-5.3-codex-high` | Complex analysis, security | `codex exec --profile high "prompt"` |
+| `xhigh` | `gpt-5.3-codex-xhigh` | Architecture, critical review | `codex exec --profile xhigh "prompt"` |
 
 **ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.
 
@@ -35,7 +43,7 @@ Codex orchestration should feel inevitable: minimal risk, maximum clarity.
 
 # Codex CLI Integration Skill (v2.37)
 
-This skill enables Claude to orchestrate OpenAI's Codex CLI (v0.79+) with the **gpt-5.2-codex** model for code generation, review, analysis, and automated editing. Includes Context7 MCP integration for documentation access.
+This skill enables Claude to orchestrate OpenAI's Codex CLI (v0.79+) with the **gpt-5.3-codex** model for code generation, review, analysis, and automated editing. Includes Context7 MCP integration for documentation access.
 
 ## When to Use This Skill
 
@@ -62,17 +70,29 @@ codex  # Interactive login via ChatGPT account
 # Or: export CODEX_API_KEY=sk-...
 ```
 
-### Model Selection
+### Model Selection (v2.89)
 
-**Default model**: `gpt-5.2-codex` - Optimized for software engineering tasks
+**Model family**: `gpt-5.3-codex` with reasoning tiers
 
-| Model | Use Case |
-|-------|----------|
-| `gpt-5.2-codex` | Default, optimized for code (recommended) |
-| `gpt-5.2` | General purpose, complex reasoning |
-| `gpt-5.2-codex-max` | Maximum context, large codebases |
-| `o3` | Highest reasoning capability |
-| `o4-mini` | Fast, simple tasks |
+| Model | Reasoning | Use Case |
+|-------|-----------|----------|
+| `gpt-5.3-codex` | medium | Default, fast code tasks (recommended) |
+| `gpt-5.3-codex-high` | high | Complex analysis, security review |
+| `gpt-5.3-codex-xhigh` | xhigh | Architecture design, critical decisions |
+| `o3` | - | Highest reasoning capability |
+| `o4-mini` | - | Fast, simple tasks |
+
+**Usage by tier**:
+```bash
+# Medium (default) - fast iteration
+codex exec "refactor authentication module"
+
+# High - complex analysis
+codex exec -m gpt-5.3-codex-high "security audit of payment flow"
+
+# XHigh - architectural decisions
+codex exec -m gpt-5.3-codex-xhigh "design microservices architecture"
+```
 
 ### Sandbox Modes
 
@@ -88,13 +108,13 @@ codex  # Interactive login via ChatGPT account
 
 ```bash
 # Read-only analysis (default)
-codex exec -m gpt-5.2-codex "analyze src/auth for security issues"
+codex exec -m gpt-5.3-codex "analyze src/auth for security issues"
 
 # Code editing (workspace-write)
-codex exec -m gpt-5.2-codex --full-auto "fix bug in login.py"
+codex exec -m gpt-5.3-codex --full-auto "fix bug in login.py"
 
 # With reasoning effort
-codex exec -m gpt-5.2-codex --config model_reasoning_effort=high "complex analysis"
+codex exec -m gpt-5.3-codex --config model_reasoning_effort=high "complex analysis"
 
 # Skip git check (non-git directories)
 codex exec --skip-git-repo-check "analyze code"
@@ -104,7 +124,7 @@ codex exec --skip-git-repo-check "analyze code"
 
 Add `2>/dev/null` to suppress stderr (thinking tokens):
 ```bash
-codex exec -m gpt-5.2-codex "review code" 2>/dev/null
+codex exec -m gpt-5.3-codex "review code" 2>/dev/null
 ```
 
 ### Session Resume
@@ -126,7 +146,7 @@ echo "follow-up" | codex exec resume SESSION_ID
 
 ```bash
 # JSON Lines output
-codex exec --json -m gpt-5.2-codex "analyze code" > output.jsonl
+codex exec --json -m gpt-5.3-codex "analyze code" > output.jsonl
 
 # Extract session ID
 SID=$(grep -o '"thread_id":"[^"]*"' output.jsonl | head -1 | cut -d'"' -f4)
@@ -146,7 +166,7 @@ Claude collects information first, injects into prompt for faster execution:
 ERRORS=$(npm run lint 2>&1 | grep error)
 
 # Inject context
-codex exec -m gpt-5.2-codex --full-auto "Fix these errors:
+codex exec -m gpt-5.3-codex --full-auto "Fix these errors:
 $ERRORS
 
 Files: src/auth/login.ts, src/utils/token.ts
@@ -159,7 +179,7 @@ Related tasks reuse sessions for context preservation:
 
 ```bash
 # First: analyze
-codex exec -m gpt-5.2-codex "analyze src/auth for issues"
+codex exec -m gpt-5.3-codex "analyze src/auth for issues"
 
 # Continue: fix (reuses context)
 echo "fix the issues you found" | codex exec resume --last --full-auto
@@ -176,8 +196,8 @@ Independent tasks run simultaneously:
 
 ```bash
 # Parallel analysis
-codex exec --json -m gpt-5.2-codex "analyze auth" > auth.jsonl 2>&1 &
-codex exec --json -m gpt-5.2-codex "analyze api" > api.jsonl 2>&1 &
+codex exec --json -m gpt-5.3-codex "analyze auth" > auth.jsonl 2>&1 &
+codex exec --json -m gpt-5.3-codex "analyze api" > api.jsonl 2>&1 &
 wait
 
 # Parallel fixes with resume
@@ -200,7 +220,7 @@ wait
 
 Before running Codex tasks, confirm with user:
 
-1. **Model selection**: `gpt-5.2-codex` or `gpt-5.2`?
+1. **Model selection**: `gpt-5.3-codex` or `gpt-5.2`?
 2. **Reasoning effort**: `low`, `medium`, or `high`?
 3. **Sandbox mode**: Based on task requirements
 
@@ -220,7 +240,7 @@ Before running Codex tasks, confirm with user:
 Use Codex as second opinion on Claude's work:
 
 ```bash
-codex exec -m gpt-5.2-codex --sandbox read-only "Review src/payment/processor.py for:
+codex exec -m gpt-5.3-codex --sandbox read-only "Review src/payment/processor.py for:
 1. Race conditions in transaction processing
 2. Proper error handling and rollback
 3. Security issues with payment data
@@ -232,7 +252,7 @@ Provide specific line numbers and severity ratings."
 
 ```bash
 # Security audit
-codex exec -m gpt-5.2-codex --sandbox read-only --config model_reasoning_effort=high \
+codex exec -m gpt-5.3-codex --sandbox read-only --config model_reasoning_effort=high \
   "Perform security audit of src/auth. Check for:
   - Authentication/authorization issues
   - Input validation vulnerabilities
@@ -240,7 +260,7 @@ codex exec -m gpt-5.2-codex --sandbox read-only --config model_reasoning_effort=
   - Sensitive data exposure"
 
 # Performance review
-codex exec -m gpt-5.2-codex --sandbox read-only \
+codex exec -m gpt-5.3-codex --sandbox read-only \
   "Analyze src/database for performance:
   - N+1 query problems
   - Missing indexes
@@ -250,7 +270,7 @@ codex exec -m gpt-5.2-codex --sandbox read-only \
 ### Pull Request Review
 
 ```bash
-codex exec -m gpt-5.2-codex --sandbox read-only \
+codex exec -m gpt-5.3-codex --sandbox read-only \
   "Run 'git diff main...HEAD' to see changes.
   Review for:
   1. Breaking changes
@@ -282,7 +302,7 @@ codex exec -m gpt-5.2-codex --sandbox read-only \
 codex exec "review code"
 
 # Good: specific
-codex exec -m gpt-5.2-codex --sandbox read-only \
+codex exec -m gpt-5.3-codex --sandbox read-only \
   "Review src/auth for SQL injection, XSS.
   Output: markdown with severity levels.
   Format: file:line, description, fix suggestion."
@@ -294,9 +314,9 @@ codex exec -m gpt-5.2-codex --sandbox read-only \
 # Consistent structure for aggregation
 FORMAT="Output JSON: {category, items: [{file, line, description}]}"
 
-codex exec -m gpt-5.2-codex "review security. $FORMAT" &
-codex exec -m gpt-5.2-codex "review performance. $FORMAT" &
-codex exec -m gpt-5.2-codex "review quality. $FORMAT" &
+codex exec -m gpt-5.3-codex "review security. $FORMAT" &
+codex exec -m gpt-5.3-codex "review performance. $FORMAT" &
+codex exec -m gpt-5.3-codex "review quality. $FORMAT" &
 wait
 ```
 
@@ -323,10 +343,10 @@ Check for:
 - Logic errors
 - Missing edge cases
 - Architecture flaws
-- Security concerns" | codex exec -m gpt-5.2-codex --sandbox read-only
+- Security concerns" | codex exec -m gpt-5.3-codex --sandbox read-only
 
 # Phase 4: Codex reviews Claude's code
-codex exec -m gpt-5.2-codex --sandbox read-only \
+codex exec -m gpt-5.3-codex --sandbox read-only \
   "Review implementation in src/feature for:
   - Bugs
   - Performance issues
@@ -352,36 +372,70 @@ After every Codex command:
 ### Profile Setup (~/.codex/config.toml)
 
 ```toml
-model = "gpt-5.2-codex"
+model = "gpt-5.3-codex"
 model_reasoning_effort = "medium"
 
+# Reasoning tier profiles
+[profiles.medium]
+model = "gpt-5.3-codex"
+model_reasoning_effort = "medium"
+
+[profiles.high]
+model = "gpt-5.3-codex-high"
+model_reasoning_effort = "high"
+
+[profiles.xhigh]
+model = "gpt-5.3-codex-xhigh"
+model_reasoning_effort = "high"
+
+# Task-specific profiles
 [profiles.review]
-model = "gpt-5.2-codex"
+model = "gpt-5.3-codex-high"
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 
 [profiles.implement]
-model = "gpt-5.2-codex"
-model_reasoning_effort = "high"
+model = "gpt-5.3-codex"
+model_reasoning_effort = "medium"
 sandbox_mode = "workspace-write"
+
+[profiles.architect]
+model = "gpt-5.3-codex-xhigh"
+model_reasoning_effort = "high"
+sandbox_mode = "read-only"
 ```
 
 Usage:
 ```bash
+# Use reasoning tier profiles
+codex exec --profile medium "quick fix"
+codex exec --profile high "security audit"
+codex exec --profile xhigh "architecture review"
+
+# Use task-specific profiles
 codex exec --profile review "analyze code"
+codex exec --profile implement "add feature"
+codex exec --profile architect "design system"
 ```
 
 ## Quick Reference
 
 | Use Case | Command |
 |----------|---------|
-| Analysis | `codex exec -m gpt-5.2-codex "prompt" 2>/dev/null` |
-| Edit files | `codex exec -m gpt-5.2-codex --full-auto "prompt" 2>/dev/null` |
-| High reasoning | `--config model_reasoning_effort=high` |
+| Medium (default) | `codex exec "prompt" 2>/dev/null` |
+| High reasoning | `codex exec -m gpt-5.3-codex-high "prompt" 2>/dev/null` |
+| XHigh reasoning | `codex exec -m gpt-5.3-codex-xhigh "prompt" 2>/dev/null` |
+| Edit files | `codex exec --full-auto "prompt" 2>/dev/null` |
+| High effort | `--config model_reasoning_effort=high` |
 | Resume last | `echo "prompt" \| codex exec resume --last` |
 | JSON output | `codex exec --json "prompt" > out.jsonl` |
 | Specific dir | `codex exec -C /path "prompt"` |
 | Non-git dir | `--skip-git-repo-check` |
+| Profile: medium | `codex exec --profile medium "prompt"` |
+| Profile: high | `codex exec --profile high "prompt"` |
+| Profile: xhigh | `codex exec --profile xhigh "prompt"` |
+| Profile: review | `codex exec --profile review "prompt"` |
+| Profile: architect | `codex exec --profile architect "prompt"` |
 
 ## Documentation Access via Context7 MCP
 
