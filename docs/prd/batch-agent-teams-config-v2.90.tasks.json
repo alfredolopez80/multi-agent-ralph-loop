@@ -1,0 +1,274 @@
+{
+  "batch_name": "agent-teams-config-v2.90",
+  "created": "2026-02-15",
+  "config": {
+    "stop_on_failure": false,
+    "auto_commit": true,
+    "teammates": ["coder", "reviewer", "tester"]
+  },
+  "tasks": [
+    {
+      "id": "task-001",
+      "description": "Add missing claude-mem Stop hooks to settings.json",
+      "priority": 1,
+      "phase": 1,
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Stop hooks contain 3 claude-mem hooks (start, summarize, session-complete)",
+        "claude-mem hooks appear BEFORE ralph hooks in Stop array",
+        "JSON validates cleanly",
+        "Worker responds to summarize command"
+      ],
+      "files": ["~/.claude/settings.json"]
+    },
+    {
+      "id": "task-002",
+      "description": "Add missing smart-install.js hook to SessionStart",
+      "priority": 1,
+      "phase": 1,
+      "dependencies": [],
+      "acceptance_criteria": [
+        "smart-install.js hook present in SessionStart before worker-service start",
+        "Hook timeout set to 300",
+        "JSON validates cleanly",
+        "smart-install.js runs without errors"
+      ],
+      "files": ["~/.claude/settings.json"]
+    },
+    {
+      "id": "task-003",
+      "description": "Add CLAUDE_MEM_ROOT environment variable to settings.json",
+      "priority": 1,
+      "phase": 1,
+      "dependencies": [],
+      "acceptance_criteria": [
+        "CLAUDE_MEM_ROOT key exists in env block",
+        "Value points to correct plugin cache directory",
+        "JSON validates cleanly"
+      ],
+      "files": ["~/.claude/settings.json"]
+    },
+    {
+      "id": "task-004",
+      "description": "Validate claude-mem MCP tools are accessible",
+      "priority": 2,
+      "phase": 1,
+      "dependencies": ["task-002", "task-003"],
+      "acceptance_criteria": [
+        "All 5 MCP tools respond without errors",
+        "search tool returns results",
+        "save_memory can write and retrieve",
+        "timeline returns chronological entries",
+        "get_observations returns detail for known ID"
+      ],
+      "files": []
+    },
+    {
+      "id": "task-005",
+      "description": "Validate claude-mem context injection in CLAUDE.md files",
+      "priority": 2,
+      "phase": 1,
+      "dependencies": ["task-001"],
+      "acceptance_criteria": [
+        "claude-mem-context blocks exist in 2+ CLAUDE.md files",
+        "At least one block shows recent activity",
+        "Worker logs show no ERROR entries in last 24h",
+        "Context hook completes within 60 seconds"
+      ],
+      "files": ["CLAUDE.md", ".claude/CLAUDE.md"]
+    },
+    {
+      "id": "task-006",
+      "description": "Validate claude-mem auto-learning integration",
+      "priority": 2,
+      "phase": 1,
+      "dependencies": ["task-004"],
+      "acceptance_criteria": [
+        "Recent observations exist within last hour",
+        "Observations contain correct types",
+        "Vector search returns semantic results",
+        "No duplicate observations"
+      ],
+      "files": ["~/.claude-mem/claude-mem.db", "~/.claude-mem/settings.json"]
+    },
+    {
+      "id": "task-007",
+      "description": "Synchronize zai/config/settings.json with primary settings",
+      "priority": 1,
+      "phase": 2,
+      "dependencies": [],
+      "acceptance_criteria": [
+        "All non-env fields from primary present in zai",
+        "zai env block unchanged",
+        "zai-specific deny entries preserved",
+        "JSON validates cleanly"
+      ],
+      "files": ["~/.cc-mirror/zai/config/settings.json"]
+    },
+    {
+      "id": "task-008",
+      "description": "Synchronize minimax/config/settings.json with primary settings",
+      "priority": 1,
+      "phase": 2,
+      "dependencies": [],
+      "acceptance_criteria": [
+        "All non-env fields from primary present in minimax",
+        "minimax env block unchanged",
+        "minimax-specific deny entries preserved",
+        "JSON validates cleanly"
+      ],
+      "files": ["~/.cc-mirror/minimax/config/settings.json"]
+    },
+    {
+      "id": "task-009",
+      "description": "Create skills symlinks for zai and minimax",
+      "priority": 1,
+      "phase": 2,
+      "dependencies": [],
+      "acceptance_criteria": [
+        "zai skills is symlink to ~/.claude/skills",
+        "minimax skills is symlink to ~/.claude/skills",
+        "Both list 1852+ skills",
+        "Original zai skills backed up"
+      ],
+      "files": ["~/.cc-mirror/zai/config/skills", "~/.cc-mirror/minimax/config/skills"]
+    },
+    {
+      "id": "task-010",
+      "description": "Synchronize plugins directories for zai and minimax",
+      "priority": 1,
+      "phase": 2,
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Plugin cache symlinks exist and resolve",
+        "claude-mem 10.0.6 accessible from zai plugins",
+        "claude-mem 10.0.6 accessible from minimax plugins"
+      ],
+      "files": ["~/.cc-mirror/zai/config/plugins/cache", "~/.cc-mirror/minimax/config/plugins/cache"]
+    },
+    {
+      "id": "task-011",
+      "description": "Add CLAUDE.md to zai and minimax config dirs",
+      "priority": 2,
+      "phase": 2,
+      "dependencies": [],
+      "acceptance_criteria": [
+        "CLAUDE.md exists in both variant config dirs",
+        "Content matches project CLAUDE.md",
+        "Symlinks resolve correctly"
+      ],
+      "files": ["~/.cc-mirror/zai/config/CLAUDE.md", "~/.cc-mirror/minimax/config/CLAUDE.md"]
+    },
+    {
+      "id": "task-012",
+      "description": "Programmatic validation of variant configurations",
+      "priority": 2,
+      "phase": 2,
+      "dependencies": ["task-007", "task-008", "task-009", "task-010", "task-011"],
+      "acceptance_criteria": [
+        "Validation script exits 0",
+        "All non-env fields match between primary and variants",
+        "Symlinks resolve correctly",
+        "adversarial skill accessible from both variants"
+      ],
+      "files": ["tests/integration/test_cc_mirror_sync.sh"]
+    },
+    {
+      "id": "task-013",
+      "description": "Run all unit tests",
+      "priority": 1,
+      "phase": 3,
+      "dependencies": ["task-006", "task-012"],
+      "acceptance_criteria": [
+        "All Python tests pass or documented known failures",
+        "All BATS tests pass or documented known failures",
+        "All shell tests pass or documented known failures",
+        "Skills tests pass",
+        "No failures from Phase 1/2 changes"
+      ],
+      "files": ["tests/"]
+    },
+    {
+      "id": "task-014",
+      "description": "Run integration and end-to-end tests",
+      "priority": 1,
+      "phase": 3,
+      "dependencies": ["task-013"],
+      "acceptance_criteria": [
+        "Integration tests exit 0 or documented known failures",
+        "E2E tests exit 0 or documented known failures",
+        "Security tests pass",
+        "Agent Teams tests pass"
+      ],
+      "files": ["tests/end-to-end/", "tests/integration/", "tests/hook-integration/"]
+    },
+    {
+      "id": "task-015",
+      "description": "Run pre-commit validation",
+      "priority": 1,
+      "phase": 3,
+      "dependencies": ["task-014"],
+      "acceptance_criteria": [
+        "Pre-commit hook exits 0",
+        "No hook format violations",
+        "No skills unification issues",
+        "No architecture validation errors"
+      ],
+      "files": [".git/hooks/pre-commit"]
+    },
+    {
+      "id": "task-016",
+      "description": "Run /adversarial validation",
+      "priority": 2,
+      "phase": 3,
+      "dependencies": ["task-015"],
+      "acceptance_criteria": [
+        "Adversarial review completes without critical findings",
+        "All security recommendations addressed",
+        "No exposed secrets in git-tracked files",
+        "Symlink targets validated as safe"
+      ],
+      "files": []
+    },
+    {
+      "id": "task-017",
+      "description": "Run /codex-cli validation",
+      "priority": 2,
+      "phase": 3,
+      "dependencies": ["task-015"],
+      "acceptance_criteria": [
+        "Codex-cli review completes",
+        "All critical findings fixed",
+        "All high-severity findings fixed or documented"
+      ],
+      "files": []
+    },
+    {
+      "id": "task-018",
+      "description": "Run /gemini-cli validation",
+      "priority": 2,
+      "phase": 3,
+      "dependencies": ["task-015"],
+      "acceptance_criteria": [
+        "Gemini-cli review completes",
+        "All critical findings fixed",
+        "Test coverage gaps documented"
+      ],
+      "files": []
+    },
+    {
+      "id": "task-019",
+      "description": "Fix all findings from adversarial/codex/gemini reviews",
+      "priority": 3,
+      "phase": 3,
+      "dependencies": ["task-016", "task-017", "task-018"],
+      "acceptance_criteria": [
+        "All critical findings resolved",
+        "All high findings resolved or mitigated",
+        "Tracking document created",
+        "No regressions (re-run tests)"
+      ],
+      "files": ["docs/audits/BATCH_VALIDATION_v2.90.md"]
+    }
+  ]
+}
