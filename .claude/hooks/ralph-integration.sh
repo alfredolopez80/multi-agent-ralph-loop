@@ -155,8 +155,8 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     # Check for quiet mode (for testing)
     if [[ "${1:-}" == "--quiet" ]]; then
         # Output JSON only
-        local test_prompt="Implement user authentication"
-        local result=$(enhance_and_validate "$test_prompt" 60)
+        test_prompt="Implement user authentication"
+        result=$(enhance_and_validate "$test_prompt" 60)
         echo "$result"
     else
         test_ralph_integration

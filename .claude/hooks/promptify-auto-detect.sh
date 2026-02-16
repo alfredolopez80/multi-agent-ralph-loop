@@ -150,11 +150,11 @@ log_message "INFO" "Clarity score: $CLARITY_SCORE% (threshold: ${THRESHOLD}%)"
 # If clarity score is below threshold, suggest /promptify
 if [[ $CLARITY_SCORE -lt $THRESHOLD ]]; then
     # Analyze what's missing to provide helpful feedback
-    local prompt_lower=$(echo "$USER_PROMPT" | tr '[:upper:]' '[:lower:]')
-    local missing_role=false
-    local missing_task=false
-    local missing_constraints=false
-    local missing_details=()
+    prompt_lower=$(echo "$USER_PROMPT" | tr '[:upper:]' '[:lower:]')
+    missing_role=false
+    missing_task=false
+    missing_constraints=false
+    missing_details=()
 
     if ! echo "$prompt_lower" | grep -qE "(you are|act as|role|persona)"; then
         missing_role=true
@@ -172,7 +172,7 @@ if [[ $CLARITY_SCORE -lt $THRESHOLD ]]; then
     fi
 
     # Build suggestion message
-    local suggestion_parts=()
+    suggestion_parts=()
     suggestion_parts+=("💡 **Prompt Clarity**: Your prompt clarity score is **${CLARITY_SCORE}%** (below ${THRESHOLD}% threshold).")
 
     if [[ ${#missing_details[@]} -gt 0 ]]; then
@@ -204,7 +204,7 @@ if [[ $CLARITY_SCORE -lt $THRESHOLD ]]; then
     suggestion_parts+=('```')
 
     # Join suggestion parts with newlines
-    local SUGGESTION=$(IFS=$'\n'; echo "${suggestion_parts[*]}")
+    SUGGESTION=$(IFS=$'\n'; echo "${suggestion_parts[*]}")
 
     # Output via additionalContext (non-intrusive)
     jq -n \
