@@ -231,13 +231,20 @@ def allow_and_exit():
 
 def main():
     original_command = ""
+    hook_input = None
+
     try:
         # Read hook input from stdin
         input_data = sys.stdin.read()
         if not input_data.strip():
             allow_and_exit()  # No input, allow
 
-        hook_input = json.loads(input_data)
+        try:
+            hook_input = json.loads(input_data)
+        except json.JSONDecodeError as e:
+            # Invalid JSON, allow (not a valid hook input)
+            log_security_event("json_error", "invalid", f"Invalid JSON in hook input: {e}")
+            allow_and_exit()
 
         # Only process Bash tool calls
         tool_name = hook_input.get("tool_name", "")

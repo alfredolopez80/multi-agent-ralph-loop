@@ -344,8 +344,18 @@ def main():
     if args.command == "save":
         # Load from JSON if provided
         if args.json:
-            with open(args.json, "r") as f:
-                data = json.load(f)
+            try:
+                with open(args.json, "r") as f:
+                    data = json.load(f)
+            except json.JSONDecodeError as e:
+                print(f"Error: Invalid JSON in {args.json}: {e}", file=sys.stderr)
+                sys.exit(1)
+            except FileNotFoundError as e:
+                print(f"Error: File not found: {args.json}", file=sys.stderr)
+                sys.exit(1)
+            except Exception as e:
+                print(f"Error: Unexpected error reading {args.json}: {e}", file=sys.stderr)
+                sys.exit(1)
             path = manager.save(
                 session_id=args.session,
                 goal=data.get("goal", args.goal),
