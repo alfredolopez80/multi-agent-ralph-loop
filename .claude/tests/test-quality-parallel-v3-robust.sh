@@ -23,7 +23,7 @@ module.exports = { add };
 EOF
 
 INPUT_JSON='{"tool_name":"Write","tool_input":{"file_path":"'"$TEST_DIR"'/clean-test.js"}}'
-echo "$INPUT_JSON" | bash "${PROJECT_ROOT}/.claude/hooks/quality-parallel-async.sh > /dev/null 2>&1
+echo "$INPUT_JSON" | bash "${PROJECT_ROOT}/.claude/hooks/quality-parallel-async.sh" > /dev/null 2>&1
 
 # Get most recent run_id
 LATEST_DONE=$(ls -t "${RESULTS_DIR}"/*.done 2>/dev/null | head -1)
@@ -57,7 +57,7 @@ EOF
 rm -rf "${RESULTS_DIR}"/*
 
 INPUT_JSON='{"tool_name":"Write","tool_input":{"file_path":"'"$TEST_DIR"'/vulnerable-test.js"}}'
-echo "$INPUT_JSON" | bash "${PROJECT_ROOT}/.claude/hooks/quality-parallel-async.sh > /dev/null 2>&1
+echo "$INPUT_JSON" | bash "${PROJECT_ROOT}/.claude/hooks/quality-parallel-async.sh" > /dev/null 2>&1
 
 LATEST_DONE=$(ls -t "${RESULTS_DIR}"/*.done 2>/dev/null | head -1)
 if [[ -n "$LATEST_DONE" ]]; then
@@ -90,7 +90,7 @@ rm -rf "${RESULTS_DIR}"/*
 
 # Step 6b.5: Execute quality check (like orchestrator would)
 INPUT_JSON='{"tool_name":"Write","tool_input":{"file_path":"'"$TEST_DIR"'/orchestrator-test.js"}}'
-echo "$INPUT_JSON" | bash "${PROJECT_ROOT}/.claude/hooks/quality-parallel-async.sh > /dev/null 2>&1
+echo "$INPUT_JSON" | bash "${PROJECT_ROOT}/.claude/hooks/quality-parallel-async.sh" > /dev/null 2>&1
 
 # Wait for completion
 sleep 3

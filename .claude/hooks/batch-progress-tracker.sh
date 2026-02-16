@@ -36,7 +36,7 @@ update_progress() {
             jq --arg id "$task_id" '.total_tasks += 1 | .tasks += [{"id": $id, "status": "pending"}]' "$progress_file" > "${progress_file}.tmp" && mv "${progress_file}.tmp" "$progress_file"
             ;;
         "task_started")
-            jq --arg id "$task_id" --arg time "$(date -u +%Y-%m-%dT%H:%M:%SZ) '(.tasks[] | select(.id == $id)).status = "in_progress" | (.tasks[] | select(.id == $id)).started = $time' "$progress_file" > "${progress_file}.tmp" && mv "${progress_file}.tmp" "$progress_file"
+            jq --arg id "$task_id" --arg time "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '(.tasks[] | select(.id == $id)).status = "in_progress" | (.tasks[] | select(.id == $id)).started = $time' "$progress_file" > "${progress_file}.tmp" && mv "${progress_file}.tmp" "$progress_file"
             jq '.current_task = $id | .last_update = $time' --arg id "$task_id" --arg time "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$progress_file" > "${progress_file}.tmp" && mv "${progress_file}.tmp" "$progress_file"
             ;;
         "task_completed")
