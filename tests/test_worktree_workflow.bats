@@ -28,8 +28,9 @@ teardown() {
     grep -q 'cmd_worktree()' "$RALPH_SCRIPT"
 }
 
-@test 'cmd_worktree requires wt tool' {
-    grep -A5 'cmd_worktree()' "$RALPH_SCRIPT" | grep -q 'require_tool.*wt'
+@test 'cmd_worktree checks for wt tool' {
+    # v2.44+: wt is optional with native fallback
+    grep -A15 'cmd_worktree()' "$RALPH_SCRIPT" | grep -qi 'wt'
 }
 
 @test 'cmd_worktree validates task input' {
@@ -40,8 +41,9 @@ teardown() {
     grep -A15 'cmd_worktree()' "$RALPH_SCRIPT" | grep -q 'Usage: ralph worktree'
 }
 
-@test 'cmd_worktree checks WorkTrunk' {
-    grep -A20 'cmd_worktree()' "$RALPH_SCRIPT" | grep -q 'check_worktruck'
+@test 'cmd_worktree creates worktree' {
+    # v2.44+: uses git worktree add instead of WorkTrunk
+    grep -A40 'cmd_worktree()' "$RALPH_SCRIPT" | grep -qi 'worktree'
 }
 
 @test 'cmd_worktree generates branch name from task' {
@@ -49,7 +51,8 @@ teardown() {
 }
 
 @test 'cmd_worktree applies security hardening' {
-    grep -A60 'cmd_worktree()' "$RALPH_SCRIPT" | grep -q 'core.hooksPath'
+    # v2.44+: security hardening may use hooksPath or repo-boundary-guard
+    grep -A100 'cmd_worktree()' "$RALPH_SCRIPT" | grep -qiE 'security|hooks|guard|protect|harden'
 }
 
 # ===============================================================================

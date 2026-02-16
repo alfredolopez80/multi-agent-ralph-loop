@@ -1,0 +1,831 @@
+{
+  "$schema": "plan-state-v2",
+  "version": "2.62.3",
+  "plan_id": "7151b639-aeb0-462a-b023-46325b7f5531",
+  "task": "Unknown task",
+  "created_at": "2026-02-15T23:27:34Z",
+  "updated_at": "2026-02-15T23:27:34Z",
+  "classification": {
+    "complexity": 5,
+    "information_density": "LINEAR",
+    "context_requirement": "FITS",
+    "model_routing": "sonnet",
+    "route": "STANDARD",
+    "adversarial_required": false,
+    "worktree": {
+      "enabled": false,
+      "path": null,
+      "branch": null
+    }
+  },
+  "clarification": {
+    "must_have": [],
+    "nice_to_have": []
+  },
+  "phases": [],
+  "steps": {
+    "1": {
+      "name": "TeammateIdle Hook - Enforce quality gates when teammates go idle",
+      "status": "pending",
+      "result": null,
+      "error": null,
+      "agent": null,
+      "handoff_id": null,
+      "checkpoint_id": null,
+      "started_at": null,
+      "completed_at": null,
+      "verification": {
+        "required": false,
+        "method": "skip",
+        "agent": null,
+        "status": "pending",
+        "result": null,
+        "started_at": null,
+        "completed_at": null,
+        "task_id": null
+      },
+      "_v1_data": {
+        "id": "1",
+        "title": "TeammateIdle Hook - Enforce quality gates when teammates go idle",
+        "status": "pending",
+        "spec": {
+          "file": null,
+          "exports": [],
+          "signatures": {}
+        },
+        "actual": null,
+        "drift": {
+          "detected": false,
+          "items": [],
+          "needs_sync": false
+        },
+        "lsa_verification": {
+          "pre_check": null,
+          "post_check": null
+        }
+      }
+    },
+    "2": {
+      "name": "TaskCompleted Hook - Prevent premature task completion",
+      "status": "pending",
+      "result": null,
+      "error": null,
+      "agent": null,
+      "handoff_id": null,
+      "checkpoint_id": null,
+      "started_at": null,
+      "completed_at": null,
+      "verification": {
+        "required": false,
+        "method": "skip",
+        "agent": null,
+        "status": "pending",
+        "result": null,
+        "started_at": null,
+        "completed_at": null,
+        "task_id": null
+      },
+      "_v1_data": {
+        "id": "2",
+        "title": "TaskCompleted Hook - Prevent premature task completion",
+        "status": "pending",
+        "spec": {
+          "file": null,
+          "exports": [],
+          "signatures": {}
+        },
+        "actual": null,
+        "drift": {
+          "detected": false,
+          "items": [],
+          "needs_sync": false
+        },
+        "lsa_verification": {
+          "pre_check": null,
+          "post_check": null
+        }
+      }
+    },
+    "3": {
+      "name": "Agent Teams Configuration - Enable via environment variable",
+      "status": "pending",
+      "result": null,
+      "error": null,
+      "agent": null,
+      "handoff_id": null,
+      "checkpoint_id": null,
+      "started_at": null,
+      "completed_at": null,
+      "verification": {
+        "required": false,
+        "method": "skip",
+        "agent": null,
+        "status": "pending",
+        "result": null,
+        "started_at": null,
+        "completed_at": null,
+        "task_id": null
+      },
+      "_v1_data": {
+        "id": "3",
+        "title": "Agent Teams Configuration - Enable via environment variable",
+        "status": "pending",
+        "spec": {
+          "file": null,
+          "exports": [],
+          "signatures": {}
+        },
+        "actual": null,
+        "drift": {
+          "detected": false,
+          "items": [],
+          "needs_sync": false
+        },
+        "lsa_verification": {
+          "pre_check": null,
+          "post_check": null
+        }
+      }
+    },
+    "4": {
+      "name": "Integration with existing GLM-5 teammates - Unify with current swarm mode",
+      "status": "pending",
+      "result": null,
+      "error": null,
+      "agent": null,
+      "handoff_id": null,
+      "checkpoint_id": null,
+      "started_at": null,
+      "completed_at": null,
+      "verification": {
+        "required": false,
+        "method": "skip",
+        "agent": null,
+        "status": "pending",
+        "result": null,
+        "started_at": null,
+        "completed_at": null,
+        "task_id": null
+      },
+      "_v1_data": {
+        "id": "4",
+        "title": "Integration with existing GLM-5 teammates - Unify with current swarm mode",
+        "status": "pending",
+        "spec": {
+          "file": null,
+          "exports": [],
+          "signatures": {}
+        },
+        "actual": null,
+        "drift": {
+          "detected": false,
+          "items": [],
+          "needs_sync": false
+        },
+        "lsa_verification": {
+          "pre_check": null,
+          "post_check": null
+        }
+      }
+    },
+    "5": {
+      "name": "Phase 1",
+      "status": "pending",
+      "result": null,
+      "error": null,
+      "agent": null,
+      "handoff_id": null,
+      "checkpoint_id": null,
+      "started_at": null,
+      "completed_at": null,
+      "verification": {
+        "required": false,
+        "method": "skip",
+        "agent": null,
+        "status": "pending",
+        "result": null,
+        "started_at": null,
+        "completed_at": null,
+        "task_id": null
+      },
+      "_v1_data": {
+        "id": "5",
+        "title": "Phase 1",
+        "status": "pending",
+        "spec": {
+          "file": null,
+          "exports": [],
+          "signatures": {}
+        },
+        "actual": null,
+        "drift": {
+          "detected": false,
+          "items": [],
+          "needs_sync": false
+        },
+        "lsa_verification": {
+          "pre_check": null,
+          "post_check": null
+        }
+      }
+    },
+    "6": {
+      "name": "Phase 2",
+      "status": "pending",
+      "result": null,
+      "error": null,
+      "agent": null,
+      "handoff_id": null,
+      "checkpoint_id": null,
+      "started_at": null,
+      "completed_at": null,
+      "verification": {
+        "required": false,
+        "method": "skip",
+        "agent": null,
+        "status": "pending",
+        "result": null,
+        "started_at": null,
+        "completed_at": null,
+        "task_id": null
+      },
+      "_v1_data": {
+        "id": "6",
+        "title": "Phase 2",
+        "status": "pending",
+        "spec": {
+          "file": null,
+          "exports": [],
+          "signatures": {}
+        },
+        "actual": null,
+        "drift": {
+          "detected": false,
+          "items": [],
+          "needs_sync": false
+        },
+        "lsa_verification": {
+          "pre_check": null,
+          "post_check": null
+        }
+      }
+    },
+    "7": {
+      "name": "Phase 3",
+      "status": "pending",
+      "result": null,
+      "error": null,
+      "agent": null,
+      "handoff_id": null,
+      "checkpoint_id": null,
+      "started_at": null,
+      "completed_at": null,
+      "verification": {
+        "required": false,
+        "method": "skip",
+        "agent": null,
+        "status": "pending",
+        "result": null,
+        "started_at": null,
+        "completed_at": null,
+        "task_id": null
+      },
+      "_v1_data": {
+        "id": "7",
+        "title": "Phase 3",
+        "status": "pending",
+        "spec": {
+          "file": null,
+          "exports": [],
+          "signatures": {}
+        },
+        "actual": null,
+        "drift": {
+          "detected": false,
+          "items": [],
+          "needs_sync": false
+        },
+        "lsa_verification": {
+          "pre_check": null,
+          "post_check": null
+        }
+      }
+    },
+    "8": {
+      "name": "Phase 4",
+      "status": "pending",
+      "result": null,
+      "error": null,
+      "agent": null,
+      "handoff_id": null,
+      "checkpoint_id": null,
+      "started_at": null,
+      "completed_at": null,
+      "verification": {
+        "required": false,
+        "method": "skip",
+        "agent": null,
+        "status": "pending",
+        "result": null,
+        "started_at": null,
+        "completed_at": null,
+        "task_id": null
+      },
+      "_v1_data": {
+        "id": "8",
+        "title": "Phase 4",
+        "status": "pending",
+        "spec": {
+          "file": null,
+          "exports": [],
+          "signatures": {}
+        },
+        "actual": null,
+        "drift": {
+          "detected": false,
+          "items": [],
+          "needs_sync": false
+        },
+        "lsa_verification": {
+          "pre_check": null,
+          "post_check": null
+        }
+      }
+    },
+    "9": {
+      "name": "Phase 1",
+      "status": "pending",
+      "result": null,
+      "error": null,
+      "agent": null,
+      "handoff_id": null,
+      "checkpoint_id": null,
+      "started_at": null,
+      "completed_at": null,
+      "verification": {
+        "required": false,
+        "method": "skip",
+        "agent": null,
+        "status": "pending",
+        "result": null,
+        "started_at": null,
+        "completed_at": null,
+        "task_id": null
+      },
+      "_v1_data": {
+        "id": "9",
+        "title": "Phase 1",
+        "status": "pending",
+        "spec": {
+          "file": null,
+          "exports": [],
+          "signatures": {}
+        },
+        "actual": null,
+        "drift": {
+          "detected": false,
+          "items": [],
+          "needs_sync": false
+        },
+        "lsa_verification": {
+          "pre_check": null,
+          "post_check": null
+        }
+      }
+    },
+    "10": {
+      "name": "Phase 2",
+      "status": "pending",
+      "result": null,
+      "error": null,
+      "agent": null,
+      "handoff_id": null,
+      "checkpoint_id": null,
+      "started_at": null,
+      "completed_at": null,
+      "verification": {
+        "required": false,
+        "method": "skip",
+        "agent": null,
+        "status": "pending",
+        "result": null,
+        "started_at": null,
+        "completed_at": null,
+        "task_id": null
+      },
+      "_v1_data": {
+        "id": "10",
+        "title": "Phase 2",
+        "status": "pending",
+        "spec": {
+          "file": null,
+          "exports": [],
+          "signatures": {}
+        },
+        "actual": null,
+        "drift": {
+          "detected": false,
+          "items": [],
+          "needs_sync": false
+        },
+        "lsa_verification": {
+          "pre_check": null,
+          "post_check": null
+        }
+      }
+    },
+    "11": {
+      "name": "Phase 3",
+      "status": "pending",
+      "result": null,
+      "error": null,
+      "agent": null,
+      "handoff_id": null,
+      "checkpoint_id": null,
+      "started_at": null,
+      "completed_at": null,
+      "verification": {
+        "required": false,
+        "method": "skip",
+        "agent": null,
+        "status": "pending",
+        "result": null,
+        "started_at": null,
+        "completed_at": null,
+        "task_id": null
+      },
+      "_v1_data": {
+        "id": "11",
+        "title": "Phase 3",
+        "status": "pending",
+        "spec": {
+          "file": null,
+          "exports": [],
+          "signatures": {}
+        },
+        "actual": null,
+        "drift": {
+          "detected": false,
+          "items": [],
+          "needs_sync": false
+        },
+        "lsa_verification": {
+          "pre_check": null,
+          "post_check": null
+        }
+      }
+    },
+    "12": {
+      "name": "Phase 4",
+      "status": "pending",
+      "result": null,
+      "error": null,
+      "agent": null,
+      "handoff_id": null,
+      "checkpoint_id": null,
+      "started_at": null,
+      "completed_at": null,
+      "verification": {
+        "required": false,
+        "method": "skip",
+        "agent": null,
+        "status": "pending",
+        "result": null,
+        "started_at": null,
+        "completed_at": null,
+        "task_id": null
+      },
+      "_v1_data": {
+        "id": "12",
+        "title": "Phase 4",
+        "status": "pending",
+        "spec": {
+          "file": null,
+          "exports": [],
+          "signatures": {}
+        },
+        "actual": null,
+        "drift": {
+          "detected": false,
+          "items": [],
+          "needs_sync": false
+        },
+        "lsa_verification": {
+          "pre_check": null,
+          "post_check": null
+        }
+      }
+    },
+    "13": {
+      "name": "Functional Requirements",
+      "status": "pending",
+      "result": null,
+      "error": null,
+      "agent": null,
+      "handoff_id": null,
+      "checkpoint_id": null,
+      "started_at": null,
+      "completed_at": null,
+      "verification": {
+        "required": false,
+        "method": "skip",
+        "agent": null,
+        "status": "pending",
+        "result": null,
+        "started_at": null,
+        "completed_at": null,
+        "task_id": null
+      },
+      "_v1_data": {
+        "id": "13",
+        "title": "Functional Requirements",
+        "status": "pending",
+        "spec": {
+          "file": null,
+          "exports": [],
+          "signatures": {}
+        },
+        "actual": null,
+        "drift": {
+          "detected": false,
+          "items": [],
+          "needs_sync": false
+        },
+        "lsa_verification": {
+          "pre_check": null,
+          "post_check": null
+        }
+      }
+    },
+    "14": {
+      "name": "Quality Requirements",
+      "status": "pending",
+      "result": null,
+      "error": null,
+      "agent": null,
+      "handoff_id": null,
+      "checkpoint_id": null,
+      "started_at": null,
+      "completed_at": null,
+      "verification": {
+        "required": false,
+        "method": "skip",
+        "agent": null,
+        "status": "pending",
+        "result": null,
+        "started_at": null,
+        "completed_at": null,
+        "task_id": null
+      },
+      "_v1_data": {
+        "id": "14",
+        "title": "Quality Requirements",
+        "status": "pending",
+        "spec": {
+          "file": null,
+          "exports": [],
+          "signatures": {}
+        },
+        "actual": null,
+        "drift": {
+          "detected": false,
+          "items": [],
+          "needs_sync": false
+        },
+        "lsa_verification": {
+          "pre_check": null,
+          "post_check": null
+        }
+      }
+    },
+    "15": {
+      "name": "Documentation Requirements",
+      "status": "pending",
+      "result": null,
+      "error": null,
+      "agent": null,
+      "handoff_id": null,
+      "checkpoint_id": null,
+      "started_at": null,
+      "completed_at": null,
+      "verification": {
+        "required": false,
+        "method": "skip",
+        "agent": null,
+        "status": "pending",
+        "result": null,
+        "started_at": null,
+        "completed_at": null,
+        "task_id": null
+      },
+      "_v1_data": {
+        "id": "15",
+        "title": "Documentation Requirements",
+        "status": "pending",
+        "spec": {
+          "file": null,
+          "exports": [],
+          "signatures": {}
+        },
+        "actual": null,
+        "drift": {
+          "detected": false,
+          "items": [],
+          "needs_sync": false
+        },
+        "lsa_verification": {
+          "pre_check": null,
+          "post_check": null
+        }
+      }
+    },
+    "16": {
+      "name": "IMMEDIATE",
+      "status": "pending",
+      "result": null,
+      "error": null,
+      "agent": null,
+      "handoff_id": null,
+      "checkpoint_id": null,
+      "started_at": null,
+      "completed_at": null,
+      "verification": {
+        "required": false,
+        "method": "skip",
+        "agent": null,
+        "status": "pending",
+        "result": null,
+        "started_at": null,
+        "completed_at": null,
+        "task_id": null
+      },
+      "_v1_data": {
+        "id": "16",
+        "title": "IMMEDIATE",
+        "status": "pending",
+        "spec": {
+          "file": null,
+          "exports": [],
+          "signatures": {}
+        },
+        "actual": null,
+        "drift": {
+          "detected": false,
+          "items": [],
+          "needs_sync": false
+        },
+        "lsa_verification": {
+          "pre_check": null,
+          "post_check": null
+        }
+      }
+    },
+    "17": {
+      "name": "NEXT",
+      "status": "pending",
+      "result": null,
+      "error": null,
+      "agent": null,
+      "handoff_id": null,
+      "checkpoint_id": null,
+      "started_at": null,
+      "completed_at": null,
+      "verification": {
+        "required": false,
+        "method": "skip",
+        "agent": null,
+        "status": "pending",
+        "result": null,
+        "started_at": null,
+        "completed_at": null,
+        "task_id": null
+      },
+      "_v1_data": {
+        "id": "17",
+        "title": "NEXT",
+        "status": "pending",
+        "spec": {
+          "file": null,
+          "exports": [],
+          "signatures": {}
+        },
+        "actual": null,
+        "drift": {
+          "detected": false,
+          "items": [],
+          "needs_sync": false
+        },
+        "lsa_verification": {
+          "pre_check": null,
+          "post_check": null
+        }
+      }
+    },
+    "18": {
+      "name": "THEN",
+      "status": "pending",
+      "result": null,
+      "error": null,
+      "agent": null,
+      "handoff_id": null,
+      "checkpoint_id": null,
+      "started_at": null,
+      "completed_at": null,
+      "verification": {
+        "required": false,
+        "method": "skip",
+        "agent": null,
+        "status": "pending",
+        "result": null,
+        "started_at": null,
+        "completed_at": null,
+        "task_id": null
+      },
+      "_v1_data": {
+        "id": "18",
+        "title": "THEN",
+        "status": "pending",
+        "spec": {
+          "file": null,
+          "exports": [],
+          "signatures": {}
+        },
+        "actual": null,
+        "drift": {
+          "detected": false,
+          "items": [],
+          "needs_sync": false
+        },
+        "lsa_verification": {
+          "pre_check": null,
+          "post_check": null
+        }
+      }
+    },
+    "19": {
+      "name": "FINALLY",
+      "status": "pending",
+      "result": null,
+      "error": null,
+      "agent": null,
+      "handoff_id": null,
+      "checkpoint_id": null,
+      "started_at": null,
+      "completed_at": null,
+      "verification": {
+        "required": false,
+        "method": "skip",
+        "agent": null,
+        "status": "pending",
+        "result": null,
+        "started_at": null,
+        "completed_at": null,
+        "task_id": null
+      },
+      "_v1_data": {
+        "id": "19",
+        "title": "FINALLY",
+        "status": "pending",
+        "spec": {
+          "file": null,
+          "exports": [],
+          "signatures": {}
+        },
+        "actual": null,
+        "drift": {
+          "detected": false,
+          "items": [],
+          "needs_sync": false
+        },
+        "lsa_verification": {
+          "pre_check": null,
+          "post_check": null
+        }
+      }
+    }
+  },
+  "barriers": {},
+  "current_phase": null,
+  "active_agent": "orchestrator",
+  "current_handoff_id": null,
+  "loop_state": {
+    "current_iteration": 0,
+    "max_iterations": 25,
+    "validate_attempts": 0,
+    "last_gate_result": "pending"
+  },
+  "handoffs": [],
+  "checkpoints": [],
+  "state_coordinator": {
+    "last_sync": null,
+    "sync_count": 0,
+    "last_barrier_check": null,
+    "consistency_repairs": 0,
+    "active": true
+  },
+  "metadata": {
+    "created_at": "2026-02-15T23:27:34Z",
+    "created_by": "auto-plan-state-hook",
+    "version": "2.62.3"
+  }
+}

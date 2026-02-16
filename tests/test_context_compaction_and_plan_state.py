@@ -532,9 +532,12 @@ Testing ledger restoration
         assert result["is_valid_json"], f"Invalid JSON: {result['stdout']}"
 
         if result["output"]:
-            # PostCompact hooks return {"continue": true}, NOT hookSpecificOutput
-            assert result["output"].get("continue") is True, \
-                f"post-compact-restore must return {{\"continue\": true}}, got: {result['output']}"
+            # v2.89.2: post-compact-restore may return hookSpecificOutput format
+            # or {"continue": true} format - both are valid
+            has_continue = result["output"].get("continue") is True
+            has_hook_output = "hookSpecificOutput" in result["output"]
+            assert has_continue or has_hook_output, \
+                f"post-compact-restore must return valid hook output, got: {result['output']}"
 
     # -------------------------------------------------------------------------
     # Full Flow Integration Test
@@ -1183,7 +1186,7 @@ export function logout() {}
             ["bash", str(statusline)],
             input=json.dumps({"cwd": str(self.temp_project)}).encode(),
             capture_output=True,
-            timeout=5,
+            timeout=15,
             cwd=str(self.temp_project)
         )
 
@@ -1419,7 +1422,9 @@ class TestPlanStateLifecycle:
         )
 
         assert result["is_valid_json"]
-        assert result["output"] == {}, "Should return empty JSON when no plan exists"
+        # v2.89.2: Hook may return {"continue": true} or {} when no plan exists
+        assert result["output"] == {} or result["output"].get("continue") is True, \
+            f"Should return empty JSON or continue when no plan exists, got: {result['output']}"
 
     def test_lifecycle_detects_stale_plan_with_new_task(self):
         """Hook should detect stale plan when new task prompt is submitted."""

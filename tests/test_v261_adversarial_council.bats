@@ -115,9 +115,9 @@ EOF
     [ -f "$skill_file" ] || skip "adversarial-spec skill not installed"
 }
 
-@test "v2.61.0: adversarial validation uses dual-model pattern" {
-    # Check for model routing in hooks or skills
-    run grep -rE 'opus.*sonnet|sonnet.*opus|dual.?model|adversarial' "$HOOKS_DIR"
+@test "v2.61.0: adversarial validation uses multi-model pattern" {
+    # Check for model routing in hooks or skills (v2.87+ uses skills)
+    run grep -rlE 'adversarial|codex|gemini|opus|sonnet' "$HOOKS_DIR/"
     [ $status -eq 0 ]
 }
 

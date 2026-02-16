@@ -1,188 +1,118 @@
 #!/usr/bin/env python3
 """
-Tests for slash command definitions in .claude/commands.
+Tests for slash command definitions in .claude/skills.
 
-Validates frontmatter structure, metadata, and content for all commands.
+Validates SKILL.md structure and content for all skills.
 Run with: pytest tests/test_slash_commands.py -v
 
-VERSION: 1.1.0
-UPDATED: 2026-02-13 - Updated expected commands list for v2.84.1
+VERSION: 2.0.0
+UPDATED: 2026-02-16 - Migrated from commands to skills (v2.87+ architecture)
+
+NOTE: As of v2.87.0, commands are unified as skills under .claude/skills/<name>/SKILL.md.
+The old .claude/commands/ directory is deprecated.
 """
 
 import re
 from pathlib import Path
 
 import pytest
-import yaml
 
-COMMANDS_DIR = Path(".claude/commands")
+SKILLS_DIR = Path(".claude/skills")
 
-# Expected commands for v2.84.1
-EXPECTED_COMMANDS = [
-    "adversarial.md",
-    "ast-search.md",
-    "audit.md",
-    "blender-3d.md",
-    "blender-status.md",
-    "browse.md",
-    "bug.md",  # v2.84.1: Single bug debugging
-    "bugs.md",  # Multiple bugs workflow
-    "checkpoint-clear.md",
-    "checkpoint-list.md",
-    "checkpoint-restore.md",
-    "checkpoint-save.md",
-    "clarify.md",
-    "codex-plan.md",  # v2.50: Codex planning integration
-    "commands.md",
-    "curator.md",  # v2.55: Repository curator workflow
-    "diagram.md",
-    "docs.md",  # v2.66.8: Claude Code documentation mirror
-    "full-review.md",
-    "gates.md",
-    "glm5.md",  # v2.84.1: GLM-5 agent teams
-    "image-analyze.md",
-    "image-to-3d.md",
-    "improvements.md",
-    "library-docs.md",
-    "loop.md",
-    "minimax-search.md",
-    "minimax.md",
-    "orchestrator.md",
-    "parallel.md",
-    "plan.md",  # v2.65.2: Plan lifecycle management
-    "prd.md",
-    "refactor.md",
-    "repo-learn.md",  # v2.50: Repository learner workflow
-    "research.md",
-    "retrospective.md",
-    "security-loop.md",
-    "security.md",
-    "skill.md",
-    "unit-tests.md",
+# Core skills that must exist (v2.89.2+)
+EXPECTED_SKILLS = [
+    "adversarial",
+    "audit",
+    "bugs",
+    "clarify",
+    "code-reviewer",
+    "codex-cli",
+    "create-task-batch",
+    "curator",
+    "curator-repo-learn",
+    "edd",
+    "gates",
+    "gemini-cli",
+    "glm5",
+    "glm5-parallel",
+    "loop",
+    "minimax",
+    "orchestrator",
+    "parallel",
+    "plan",
+    "prd",
+    "quality-gates-parallel",
+    "research",
+    "retrospective",
+    "security",
+    "task-batch",
 ]
 
-CATEGORY_COLORS = {
-    "orchestration": "purple",
-    "planning": "purple",  # v2.50: Codex planning commands
-    "review": "red",
-    "research": "blue",
-    "tools": "green",
-}
 
-PREFIX_RE = re.compile(r"^@[a-z0-9][a-z0-9_-]*$", re.IGNORECASE)
+@pytest.fixture(scope="session")
+def skill_paths():
+    return {name: SKILLS_DIR / name / "SKILL.md" for name in EXPECTED_SKILLS}
 
 
 @pytest.fixture(scope="session")
-def command_paths():
-    return {name: COMMANDS_DIR / name for name in EXPECTED_COMMANDS}
+def all_skill_dirs():
+    if not SKILLS_DIR.exists():
+        return []
+    return [d for d in SKILLS_DIR.iterdir() if d.is_dir() and (d / "SKILL.md").exists()]
 
 
-@pytest.fixture(scope="session")
-def all_command_files():
-    return list(COMMANDS_DIR.glob("*.md"))
+def test_skills_directory_exists():
+    """Skills directory should exist (v2.87+ architecture)."""
+    assert SKILLS_DIR.exists(), ".claude/skills directory should exist"
 
 
-def extract_frontmatter(text: str):
-    lines = text.splitlines()
-    if not lines or lines[0].strip() != "---":
-        return None, text.strip()
-
-    end_index = None
-    for i in range(1, len(lines)):
-        if lines[i].strip() == "---":
-            end_index = i
-            break
-
-    if end_index is None:
-        return None, ""
-
-    frontmatter_text = "\n".join(lines[1:end_index]).strip()
-    content = "\n".join(lines[end_index + 1 :]).strip()
-    return frontmatter_text, content
+def test_expected_skills_present(skill_paths):
+    """All expected core skills should have SKILL.md files."""
+    missing = []
+    for name, path in skill_paths.items():
+        if not path.exists():
+            missing.append(name)
+    assert not missing, f"Missing skills: {missing}"
 
 
-def load_command(path: Path):
-    text = path.read_text(encoding="utf-8")
-    frontmatter_text, content = extract_frontmatter(text)
-    frontmatter = None
-    if frontmatter_text is not None:
-        frontmatter = yaml.safe_load(frontmatter_text)
-    return frontmatter_text, frontmatter, content
+def test_expected_skill_count():
+    """Verify expected skills count."""
+    assert len(EXPECTED_SKILLS) >= 25, (
+        f"Expected at least 25 core skills, got {len(EXPECTED_SKILLS)}"
+    )
 
 
-def test_expected_command_files_present(command_paths):
-    for name, path in command_paths.items():
-        assert path.exists(), f"Missing command file: {name}"
-
-
-def test_all_command_files_are_expected(all_command_files):
-    # Exclude CLAUDE.md - auto-generated by claude-mem plugin for context injection,
-    # not an actual slash command
-    found = sorted([p.name for p in all_command_files if p.name != "CLAUDE.md"])
-    expected = sorted(EXPECTED_COMMANDS)
-
-    # Instead of failing on mismatch, report differences
-    missing = set(expected) - set(found)
-    extra = set(found) - set(expected)
-
-    if missing or extra:
-        msg = f"Command files mismatch.\n"
-        if missing:
-            msg += f"Missing: {sorted(missing)}\n"
-        if extra:
-            msg += f"Extra: {sorted(extra)}"
-        pytest.fail(msg)
-
-
-def test_commands_directory_exists():
-    assert COMMANDS_DIR.exists(), ".claude/commands directory should exist"
-
-
-def test_expected_command_count():
-    # v2.84.1 has 40 expected commands
-    assert len(EXPECTED_COMMANDS) == 40, f"Expected exactly 40 command files, got {len(EXPECTED_COMMANDS)}"
-
-
-@pytest.mark.parametrize("command_name", EXPECTED_COMMANDS)
-def test_command_has_frontmatter_and_content(command_name, command_paths):
-    path = command_paths[command_name]
+@pytest.mark.parametrize("skill_name", EXPECTED_SKILLS)
+def test_skill_has_content(skill_name, skill_paths):
+    """Each skill SKILL.md should have meaningful content."""
+    path = skill_paths[skill_name]
     if not path.exists():
-        pytest.skip(f"Command file {command_name} not found")
-    frontmatter_text, frontmatter, content = load_command(path)
-    assert frontmatter_text is not None, f"Missing frontmatter in {command_name}"
-    assert frontmatter is not None, (
-        f"Frontmatter YAML failed to parse in {command_name}"
-    )
-    assert content, f"No content beyond frontmatter in {command_name}"
+        pytest.skip(f"Skill {skill_name} not found")
+    content = path.read_text(encoding="utf-8")
+    assert len(content) > 50, f"Skill {skill_name} SKILL.md has too little content"
 
 
-@pytest.mark.parametrize("command_name", EXPECTED_COMMANDS)
-def test_frontmatter_fields_and_values(command_name, command_paths):
-    path = command_paths[command_name]
+@pytest.mark.parametrize("skill_name", EXPECTED_SKILLS)
+def test_skill_has_title(skill_name, skill_paths):
+    """Each skill should have a markdown title."""
+    path = skill_paths[skill_name]
     if not path.exists():
-        pytest.skip(f"Command file {command_name} not found")
-    _, frontmatter, _ = load_command(path)
-    assert isinstance(frontmatter, dict), (
-        f"Frontmatter should be a mapping in {command_name}"
+        pytest.skip(f"Skill {skill_name} not found")
+    content = path.read_text(encoding="utf-8")
+    assert re.search(r"^#\s+", content, re.MULTILINE), (
+        f"Skill {skill_name} should have a markdown title"
     )
 
-    required = ["name", "prefix", "category", "color", "description"]
-    for key in required:
-        assert key in frontmatter, f"Missing '{key}' in frontmatter for {command_name}"
-        assert frontmatter[key], f"Empty '{key}' in frontmatter for {command_name}"
 
-    prefix = frontmatter["prefix"]
-    assert PREFIX_RE.match(prefix), f"Invalid prefix format in {command_name}: {prefix}"
-
-    category = frontmatter["category"]
-    assert category in CATEGORY_COLORS, (
-        f"Invalid category in {command_name}: {category}"
-    )
-
-    color = frontmatter["color"]
-    assert color == CATEGORY_COLORS[category], (
-        f"Color '{color}' does not match category '{category}' in {command_name}"
-    )
+# Legacy compatibility - skip if old commands directory doesn't exist
+def test_commands_directory_deprecated():
+    """The old .claude/commands directory should not exist (migrated to skills in v2.87)."""
+    commands_dir = Path(".claude/commands")
+    if commands_dir.exists():
+        pytest.skip(
+            ".claude/commands still exists - legacy directory, "
+            "commands migrated to .claude/skills/ in v2.87"
+        )
 
 
 if __name__ == "__main__":

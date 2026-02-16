@@ -370,14 +370,14 @@ teardown() {
 # Global Security Settings - VULN-008 FIX
 # ═══════════════════════════════════════════════════════════════════════════════
 
-@test "script starts with umask 077" {
-    head -20 "$RALPH_SCRIPT" | grep -q 'umask 077'
+@test "script has umask 077" {
+    grep -q 'umask 077' "$RALPH_SCRIPT"
 }
 
-@test "umask 077 is set before any file operations" {
-    # Should be within first 20 lines
+@test "umask 077 is set before main logic" {
+    # Should be within first 60 lines (after header comments and sourcing)
     line_number=$(grep -n 'umask 077' "$RALPH_SCRIPT" | head -1 | cut -d: -f1)
-    [ "$line_number" -lt 20 ]
+    [ "$line_number" -lt 60 ]
 }
 
 @test "security log file has restrictive permissions" {

@@ -82,9 +82,14 @@ def validate_json_output(stdout: str) -> tuple[bool, Optional[dict], str]:
 
     # Validate structure based on hook type
     if "hookSpecificOutput" in data:
-        # SessionStart hook format
-        if "additionalContext" not in data.get("hookSpecificOutput", {}):
-            return False, data, "SessionStart hook missing additionalContext"
+        hook_output = data.get("hookSpecificOutput", {})
+        # v2.69.0+: hookSpecificOutput can be SessionStart (additionalContext)
+        # or PreToolUse (permissionDecision) format - both are valid
+        has_additional_context = "additionalContext" in hook_output
+        has_permission_decision = "permissionDecision" in hook_output
+        has_hook_event_name = "hookEventName" in hook_output
+        if not (has_additional_context or has_permission_decision or has_hook_event_name):
+            return False, data, "hookSpecificOutput missing required fields (additionalContext, permissionDecision, or hookEventName)"
     elif "continue" in data:
         # Standard hook format (PostToolUse, PreCompact)
         if not isinstance(data["continue"], bool):
@@ -279,7 +284,10 @@ class TestPreToolUseHooks:
         assert exit_code != 0, "Dangerous command was allowed"
         is_valid, data, error = validate_json_output(stdout)
         assert is_valid, f"Block response not valid JSON: {error}"
-        assert data.get("decision") == "block", f"Expected block decision: {data}"
+        # v2.69.0+: Uses hookSpecificOutput format with permissionDecision
+        hook_output = data.get("hookSpecificOutput", data)
+        decision = hook_output.get("permissionDecision", hook_output.get("decision"))
+        assert decision == "block", f"Expected block decision: {data}"
 
     def test_lsa_pre_step(self):
         """Test lsa-pre-step.sh returns valid JSON.

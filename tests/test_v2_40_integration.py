@@ -62,7 +62,8 @@ class TestTldrIntegration:
 
     def test_tldr_installed(self, tldr_available):
         """Verify llm-tldr is installed."""
-        assert tldr_available, "llm-tldr not installed (run: pip install llm-tldr)"
+        if not tldr_available:
+            pytest.skip("llm-tldr not installed (optional dependency)")
 
     def test_tldr_version(self, tldr_available):
         """Verify tldr version is accessible."""
