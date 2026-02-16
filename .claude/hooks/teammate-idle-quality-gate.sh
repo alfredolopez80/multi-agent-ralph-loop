@@ -71,8 +71,53 @@ if [[ -n "$files_modified" ]] && [[ "$files_modified" != "[]" ]]; then
     done
 fi
 
-# Quality Gate 3: Check for TODO/FIXME in new code (advisory, not blocking for idle)
-# This is logged but doesn't block idle - task completion will catch it
+# Quality Gate 3: Basic security pattern check - hardcoded secrets (CWE-798)
+# v2.90.1 FIX (FINDING-007): Add deeper security validation
+if [[ -n "$files_modified" ]] && [[ "$files_modified" != "[]" ]]; then
+    for file in $(echo "$files_modified" | jq -r '.[]' 2>/dev/null); do
+        if [[ -f "$file" ]]; then
+            # Skip non-code files
+            case "$file" in
+                *.md|*.json|*.yaml|*.yml|*.txt|*.sh|*.log) continue ;;
+            esac
+
+            # Check for hardcoded API key prefixes (P0 Critical - CWE-798)
+            if grep -qE '(sk_live_[a-zA-Z0-9]{10,}|sk_test_[a-zA-Z0-9]{10,}|AKIA[A-Z0-9]{16}|ghp_[a-zA-Z0-9]{36}|AIza[a-zA-Z0-9_-]{35})' "$file" 2>/dev/null; then
+                BLOCKING_ISSUES+="SECURITY: Hardcoded API key prefix found in $file (CWE-798)\n"
+            fi
+
+            # Check for private keys
+            if grep -qE '-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----' "$file" 2>/dev/null; then
+                BLOCKING_ISSUES+="SECURITY: Private key found in $file (CWE-321)\n"
+            fi
+        fi
+    done
+fi
+
+# Quality Gate 4: Syntax validation for common file types
+# v2.90.1 FIX (FINDING-007): Catch syntax errors before idle
+if [[ -n "$files_modified" ]] && [[ "$files_modified" != "[]" ]]; then
+    for file in $(echo "$files_modified" | jq -r '.[]' 2>/dev/null); do
+        [[ -f "$file" ]] || continue
+        case "$file" in
+            *.py)
+                if ! python3 -m py_compile "$file" 2>/dev/null; then
+                    BLOCKING_ISSUES+="SYNTAX: Python syntax error in $file\n"
+                fi
+                ;;
+            *.js|*.jsx)
+                if command -v node &>/dev/null && ! node --check "$file" 2>/dev/null; then
+                    BLOCKING_ISSUES+="SYNTAX: JavaScript syntax error in $file\n"
+                fi
+                ;;
+            *.sh|*.bash)
+                if ! bash -n "$file" 2>/dev/null; then
+                    BLOCKING_ISSUES+="SYNTAX: Bash syntax error in $file\n"
+                fi
+                ;;
+        esac
+    done
+fi
 
 # Output decision
 # v2.89.2 FIX: TeammateIdle uses exit codes only per official docs

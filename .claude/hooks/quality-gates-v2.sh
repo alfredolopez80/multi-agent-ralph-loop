@@ -1,5 +1,5 @@
 #!/bin/bash
-# Quality Gates v2.48 - Quality Over Consistency + Security Scanning
+# Quality Gates v2.83.1 - Quality Over Consistency + Security Scanning
 # Hook: PostToolUse (Edit, Write)
 # Purpose: Validate code changes with quality-first approach
 # VERSION: 2.83.1
@@ -146,7 +146,7 @@ log_check() {
 
 {
     echo ""
-    echo "[$(date -Iseconds)] Quality Gates v2.46 - $FILE_PATH"
+    echo "[$(date -Iseconds)] Quality Gates v2.83.1 - $FILE_PATH"
     echo "  Session: $SESSION_ID"
     echo "  Extension: $EXT"
     echo ""

@@ -173,10 +173,10 @@ INPUT_JSON=$(jq -n \
     '{tool_name: $tool_name, tool_input: {file_path: $file_path}}')
 
 # Launch all 4 quality checks in parallel using EXISTING validated scripts
-# FIX: Use check names that match file naming convention for read-quality-results.sh compatibility
+# v2.90.1 FIX: Check names now match actual script purpose (FINDING-002)
 run_quality_check "sec-context" ".claude/hooks/sec-context-validate.sh" "$SECURITY_RESULT" "$INPUT_JSON" &
-run_quality_check "code-review" ".claude/hooks/quality-gates-v2.sh" "$REVIEW_RESULT" "$INPUT_JSON" &
-run_quality_check "deslop" ".claude/hooks/security-real-audit.sh" "$DESLOP_RESULT" "$INPUT_JSON" &
+run_quality_check "quality-gates" ".claude/hooks/quality-gates-v2.sh" "$REVIEW_RESULT" "$INPUT_JSON" &
+run_quality_check "security-audit" ".claude/hooks/security-real-audit.sh" "$DESLOP_RESULT" "$INPUT_JSON" &
 run_quality_check "stop-slop" ".claude/hooks/stop-slop-hook.sh" "$STOPSLOP_RESULT" "$INPUT_JSON" &
 
 # Wait for all background processes to complete
@@ -197,7 +197,7 @@ cat <<EOF
   "continue": true,
   "hookSpecificOutput": {
     "hookEventName": "QualityParallelAsync",
-    "checks": ["security", "quality-gates", "security-audit", "stop-slop"],
+    "checks": ["sec-context", "quality-gates", "security-audit", "stop-slop"],
     "runId": "${RUN_ID}",
     "resultsDir": "${RESULTS_DIR}",
     "message": "4 quality checks completed using validated bash scripts"

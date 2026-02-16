@@ -1,6 +1,8 @@
 #!/bin/bash
-# VERSION: 2.69.0
-# Set secure permissionsnumask 077
+# VERSION: 2.90.1
+# v2.90.1: FIX FINDING-005 - Parse stdin JSON for PostToolUse compatibility
+# v2.90.1: FIX FINDING-009 - Fixed umask typo
+umask 077
 #===============================================================================
 # SEC-CONTEXT VALIDATE HOOK v2.68.0
 # Hook: PostToolUse (Edit|Write)
@@ -28,7 +30,7 @@ set -euo pipefail
 # Error trap: Always output valid JSON for PostToolUse
 trap 'echo "{\"continue\": true}"' ERR EXIT
 
-readonly VERSION="2.68.0"
+readonly VERSION="2.90.1"
 readonly LOG_DIR="${HOME}/.ralph/logs"
 # SC2155: Separate declaration from command substitution
 LOG_FILE="${LOG_DIR}/sec-context-$(date +%Y%m%d).log"
@@ -368,10 +370,15 @@ main() {
     echo '{"continue": true}'
 }
 
-if [[ $# -lt 2 ]]; then
-    # v2.69.0: Removed stderr output (causes hook error warnings)
-    # Usage errors logged to LOG_FILE only, not displayed to user
-    exit 0
+# v2.90.1 FIX (FINDING-005): Support both positional args AND stdin JSON
+# PostToolUse hooks receive JSON via stdin; quality-parallel-async.sh also uses stdin
+if [[ $# -ge 2 ]]; then
+    main "$1" "$2"
+else
+    # Parse from stdin JSON (PostToolUse schema)
+    PARSED_TOOL=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
+    PARSED_FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null)
+    if [[ -n "$PARSED_TOOL" && -n "$PARSED_FILE" ]]; then
+        main "$PARSED_TOOL" "$PARSED_FILE"
+    fi
 fi
-
-main "$1" "$2"
