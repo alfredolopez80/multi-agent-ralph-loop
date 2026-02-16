@@ -36,6 +36,16 @@ Current: **v2.93.0**
   - Updated context tree to use ast-grep backend instead of llm-tldr
   - Simplified architecture without deprecated tooling
 
+### What's New in v2.91.1
+
+- **Optional Code Quality Improvements** — Enhanced defensive coding practices
+  - API key validation: Format checking (minimum length, placeholder detection)
+  - JSON error handling: Comprehensive try/except blocks in 2 files
+  - Subprocess safety validation: All patterns confirmed safe
+  - Console.log analysis: All uses verified as legitimate
+  - Security grade: Maintained at A- with enhanced robustness
+  - SQL injection warnings: Added to 7 test files for security awareness
+
 ### What's New in v2.90.2
 
 - **MCP Servers Integration** — Structural code search and Zai vision capabilities
