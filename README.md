@@ -17,24 +17,24 @@ Key capabilities:
 
 ## Version
 
-Current: **v2.89.2**
+Current: **v2.90.2**
 
-### What's New in v2.89.2
+### What's New in v2.90.2
 
-- **Hooks alignment** — All hooks now follow the official Claude Code hooks guide
-  - `SessionEnd` event replaces misuse of `Stop` for session-end-handoff
-  - `TeammateIdle` and `TaskCompleted` use exit codes + stderr (no JSON stdout)
-  - Official field names (`agent_id`, `agent_type`, `teammate_name`, `task_id`) with backwards-compatible fallbacks
-  - Dynamic `REPO_ROOT` detection via `git rev-parse` instead of hardcoded paths
-- **15 additional security fixes** — Orchestrator audit remediation
-  - Replaced `xargs rm -rf` pipelines with safe `while IFS= read -r` loops
-  - Eliminated `eval` usage in favor of `bash -c` with quoted arguments
-  - Fixed double shebangs in 7 hook files
-  - Removed API key fallback from `.zshrc` sourcing
-  - Safe JSON construction via `jq` instead of string interpolation
+- **MCP Servers Integration** — Structural code search and Zai vision capabilities
+  - **ast-grep MCP**: AST-based code search (13 MCP servers total)
+    - Tool selection guide: ast-grep vs Grep vs Glob based on benchmark results
+    - 4 cases where only ast-grep works: containment, blocks, negation, scope-aware
+    - Complete rule reference (atomic, relational, composite, metavariables)
+  - **Zai MCP Servers**: 4 servers with 13 tools
+    - `zai-mcp-server`: 8 vision tools (ui_to_artifact, extract_text, diagnose_error, etc.)
+    - `web-search-prime`: Web search with rich results
+    - `web-reader`: Full webpage content extraction
+    - `zread`: GitHub repository documentation (search_doc, read_file, get_repo_structure)
 
 ### Previous Releases
 
+- **v2.89.2** - Hooks alignment with official Claude Code hooks guide, 15 additional security fixes
 - **v2.89.1** - 14 security vulnerability fixes (command chaining, SHA-256 checksums, deny list expansion, settings self-protection, file locking, SEC-111 compliance), 37 security tests, threat model documentation
 - **v2.88.2** - LSP Integration, Batch Task Execution, 950+ BATS tests passing
 - **v2.88.0** - Agent Teams, Multi-Agent Scenarios, `/task-batch` and `/create-task-batch` skills
@@ -52,7 +52,9 @@ Current: **v2.89.2**
 
 Optional:
 - GitHub CLI (`gh`) for enhanced API access
-- Zai CLI for web search and vision capabilities
+- Zai CLI (`@z_ai/coding-helper`) for MCP server management
+- `uv` package manager for ast-grep MCP server
+- `ast-grep` binary for structural code search
 
 ## Quick Start
 
