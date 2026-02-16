@@ -31,8 +31,9 @@ INPUT=$(head -c 100000)
 # v2.81.0: Added plan state backup before compaction - "the plan survives execution"
 set -euo pipefail
 
-# Error trap: Always output valid JSON for PreCompact (SEC-054 fix)
-trap 'echo "{\"continue\": true}"' ERR EXIT
+# BUG-006 FIX: ERR-only trap to prevent double JSON output
+# Using ERR+EXIT causes handler to fire twice (ERR then EXIT), producing invalid JSON
+trap '{ echo "{\"continue\": true}"; exit 0; }' ERR
 
 # Configuration
 LEDGER_DIR="${HOME}/.ralph/ledgers"
@@ -88,7 +89,7 @@ log "INFO" "PreCompact hook triggered - session: $SESSION_ID, transcript: $TRANS
 # Check if handoff feature is enabled (default: true)
 if ! check_feature_enabled "RALPH_ENABLE_HANDOFF" "true"; then
     log "INFO" "Handoff feature disabled via features.json"
-    trap - ERR EXIT
+    trap - ERR
     echo '{"continue": true}'
     exit 0
 fi
@@ -237,5 +238,5 @@ python3 "$HANDOFF_SCRIPT" cleanup --days 7 --keep-min 20 >> "$LOG_FILE" 2>&1 || 
 log "INFO" "PreCompact hook completed successfully"
 
 # Return success (PreCompact cannot block) - SEC-054: correct JSON format
-trap - ERR EXIT
+trap - ERR
 echo '{"continue": true}'

@@ -40,7 +40,8 @@
 set -euo pipefail
 
 # Configuration
-REPO_ROOT="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+# BUG-003 FIX: Dynamic repo root detection instead of hardcoded path
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 STATE_DIR="$HOME/.ralph/state"
 LOG_DIR="$HOME/.ralph/logs"
 BLOCK_STATE_DIR="$STATE_DIR"
@@ -48,8 +49,8 @@ SESSION_MAX_AGE=86400  # 24 hours in seconds
 MAX_BLOCKS=5           # Max blocks before escalation
 mkdir -p "$LOG_DIR"
 
-# Read stdin
-INPUT=$(cat)
+# SEC-111: Read stdin with length limit (100KB max) to prevent DoS
+INPUT=$(head -c 100000)
 
 # ============================================
 # CRITICAL: Check stop_hook_active to prevent infinite loops
@@ -65,6 +66,9 @@ fi
 
 # Extract session info
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
+# BUG-002 FIX: Sanitize SESSION_ID to prevent path traversal (SEC-029)
+SESSION_ID=$(echo "$SESSION_ID" | tr -cd 'a-zA-Z0-9_-' | head -c 64)
+[[ -z "$SESSION_ID" ]] && SESSION_ID="unknown"
 CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
 
 # Log the event

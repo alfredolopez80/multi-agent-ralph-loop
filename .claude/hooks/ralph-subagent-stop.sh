@@ -21,8 +21,8 @@ LOG_DIR="$HOME/.ralph/logs"
 # Ensure directories exist
 mkdir -p "$LOG_DIR"
 
-# Read stdin for subagent info
-INPUT=$(cat)
+# SEC-111: Read stdin with length limit (100KB max) to prevent DoS
+INPUT=$(head -c 100000)
 SUBAGENT_ID=$(echo "$INPUT" | jq -r '.subagentId // "unknown"')
 SUBAGENT_TYPE=$(echo "$INPUT" | jq -r '.subagentType // "unknown"')
 SESSION_ID=$(echo "$INPUT" | jq -r '.sessionId // "default"')

@@ -5133,7 +5133,7 @@ function generateResetToken():
 
 function generateApiKey():
     // Prefix for identification + random component
-    prefix = "sk_live_"
+    prefix = "sk_live_"  // Example prefix only
     randomPart = generateUrlSafeToken(24)
     return prefix + randomPart
 

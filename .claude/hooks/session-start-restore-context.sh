@@ -126,8 +126,8 @@ get_most_recent_file() {
     echo "$recent"
 }
 
-# Read input from stdin
-INPUT=$(cat)
+# SEC-111: Read stdin with length limit (100KB max) to prevent DoS
+INPUT=$(head -c 100000)
 
 # Parse input
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"' 2>/dev/null || echo "unknown")

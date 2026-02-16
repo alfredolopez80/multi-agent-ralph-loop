@@ -17,7 +17,10 @@ handoff_create_checksum() {
         return 1
     fi
     local checksum_file="${file}.sha256"
-    shasum -a 256 "$file" | awk '{print $1}' > "$checksum_file"
+    # BUG-009 FIX: Restrict permissions on checksum sidecar files
+    # Prevents local attackers from modifying checksums to match tampered files
+    (umask 077; shasum -a 256 "$file" | awk '{print $1}' > "$checksum_file")
+    chmod 600 "$checksum_file"
     return 0
 }
 

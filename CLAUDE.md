@@ -45,6 +45,33 @@ See: `docs/batch-execution/BATCH_SKILLS_v2.88.0.md`
 
 See: `docs/architecture/UNIFIED_ARCHITECTURE_v2.87.md`
 
+### Skills Distribution Directories (v2.90.1)
+
+When creating or modifying skills in `.claude/skills/<name>/`, symlinks **MUST** be created in all 6 platform directories:
+
+| Directory | Platform |
+|-----------|----------|
+| `~/.claude/skills/<name>` | Claude Code (primary) |
+| `~/.codex/skills/<name>` | Codex |
+| `~/.ralph/skills/<name>` | Ralph |
+| `~/.cc-mirror/zai/config/skills/<name>` | Zai (cc-mirror) |
+| `~/.cc-mirror/minimax/config/skills/<name>` | Minimax (cc-mirror) |
+| `~/.config/agents/skills/<name>` | Agents (generic) |
+
+**Source of truth**: `.claude/skills/<name>/` in this repo.
+
+**Create symlinks**:
+```bash
+SKILL_NAME="my-skill"
+REPO="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+for dir in ~/.claude/skills ~/.codex/skills ~/.ralph/skills \
+           ~/.cc-mirror/zai/config/skills ~/.cc-mirror/minimax/config/skills \
+           ~/.config/agents/skills; do
+  mkdir -p "$dir"
+  ln -sfn "$REPO/.claude/skills/$SKILL_NAME" "$dir/$SKILL_NAME"
+done
+```
+
 ## Security (v2.89.2)
 
 ### Security Hooks

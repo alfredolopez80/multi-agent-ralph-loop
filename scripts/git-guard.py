@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 """
-git-guard.py - Protective Guard for Dangerous Git Commands
+git-guard.py - Protective Guard for Dangerous Git Commands (Standalone CLI)
 
 Blocks dangerous commands like 'rm -rf' while allowing specific safe exceptions.
 Only permits: rm -rf .next/ (for Next.js build cleanup)
 
-VERSION: 2.0.0
+VERSION: 2.0.1
+
+BUG-012 NOTE: This is a STANDALONE CLI tool (takes command as argument).
+The HOOK version is at .claude/hooks/git-safety-guard.py (reads JSON from stdin).
+Pattern sets differ intentionally: this tool has .next/ exemption, the hook does not.
+See .claude/hooks/git-safety-guard.py for the hook version used by Claude Code.
 """
 
 import os

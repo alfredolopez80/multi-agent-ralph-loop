@@ -254,6 +254,23 @@ def main():
         # SECURITY: Normalize command to prevent regex bypass
         command = normalize_command(original_command)
 
+        # BUG-007 FIX: Detect command substitution patterns ($(...) and backticks)
+        # These can hide destructive commands inside seemingly safe ones
+        if re.search(r'\$\(.*(?:rm\s|git\s+reset|git\s+clean|git\s+checkout\s+--)', command) or \
+           re.search(r'`.*(?:rm\s|git\s+reset|git\s+clean|git\s+checkout\s+--)', command):
+            log_security_event("BLOCKED", original_command, "Command substitution with destructive command detected")
+            response = {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "block",
+                    "permissionDecisionReason": f"BLOCKED by git-safety-guard: Command substitution detected with destructive command. "
+                    f"Command: {original_command[:100]}{'...' if len(original_command) > 100 else ''}. "
+                    f"Remove the $() or backtick wrapper and run the inner command separately.",
+                }
+            }
+            print(json.dumps(response))
+            sys.exit(1)
+
         # SEC-1.6: Split by chaining operators and check EACH subcommand
         subcommands = split_chained_commands(command)
 

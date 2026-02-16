@@ -173,6 +173,27 @@ main() {
         local command
         command=$(echo "$input" | jq -r '.tool_input.command // ""' 2>/dev/null || echo "")
 
+        # BUG-010 FIX: Check ALL pipeline segments for write commands, not just first
+        # Prevents bypass via: cat safe_file | bash -c "rm -rf /external"
+        if echo "$command" | grep -qE '\|'; then
+            local pipe_cmds
+            pipe_cmds=$(echo "$command" | tr '|' '\n')
+            local has_write=false
+            while IFS= read -r pipe_cmd; do
+                pipe_cmd=$(echo "$pipe_cmd" | xargs)
+                if [[ -n "$pipe_cmd" ]] && ! is_readonly_command "$pipe_cmd"; then
+                    has_write=true
+                    break
+                fi
+            done <<< "$pipe_cmds"
+            if [[ "$has_write" == "false" ]]; then
+                log "ALLOWED: All pipeline segments are read-only: $command"
+                trap - ERR EXIT
+                echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+                exit 0
+            fi
+        fi
+
         # v2.69.0 FIX: Check if command is read-only FIRST
         # Read-only commands (ls, cat, grep, etc.) are safe to run on external repos
         if is_readonly_command "$command"; then

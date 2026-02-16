@@ -39,6 +39,8 @@ SESSION_FILE="${HOME}/.ralph/.current-session"
 LEDGER_DIR="${HOME}/.ralph/ledgers"
 PLAN_STATE_FILE=".claude/plan-state.json"
 PROJECT_DIR="$(pwd)"
+# BUG-005 FIX: Initialize PLAN_STATUS before conditional to prevent unset variable crash
+PLAN_STATUS="unknown"
 
 log() {
     echo "[$(date -Iseconds)] $*" >> "$LOG_FILE"
@@ -92,12 +94,9 @@ if [[ -f "${PROJECT_DIR}/${PLAN_STATE_FILE}" ]]; then
         TOTAL_STEPS=$(jq -r '.steps | length' "${PROJECT_DIR}/${PLAN_STATE_FILE}" 2>/dev/null || echo "0")
         COMPLETED_STEPS=$(jq -r '[.steps[] | select(.status == "completed")] | length' "${PROJECT_DIR}/${PLAN_STATE_FILE}" 2>/dev/null || echo "0")
 
+        # BUG-004 FIX: Removed redundant nested check (dead code)
         if [[ "$TOTAL_STEPS" -gt 0 ]]; then
-            if [[ "$TOTAL_STEPS" -gt 0 ]]; then
-                PROGRESS=$((COMPLETED_STEPS * 100 / TOTAL_STEPS))
-            else
-                PROGRESS=0
-            fi
+            PROGRESS=$((COMPLETED_STEPS * 100 / TOTAL_STEPS))
             CONTEXT+="**Progress**: ${COMPLETED_STEPS}/${TOTAL_STEPS} steps completed (${PROGRESS}%)\n\n"
         fi
 

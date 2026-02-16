@@ -14,6 +14,8 @@ const os = require('os');
 
 const DB_PATH = path.join(os.homedir(), '.claude-mem', 'claude-mem.db');
 
+// BUG-011 NOTE: SECRET_PATTERNS[].sql values MUST be constant strings,
+// NEVER derived from user input, to prevent SQL injection.
 const SECRET_PATTERNS = [
   { sql: "content LIKE '%ghp_%'", name: 'GitHub PAT' },
   { sql: "content LIKE '%github_pat_%'", name: 'GitHub Fine-grained PAT' },

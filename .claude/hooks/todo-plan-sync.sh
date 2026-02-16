@@ -23,8 +23,8 @@ PLAN_STATE=".claude/plan-state.json"
 # Ensure log directory exists
 mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
 
-# Read stdin for hook context
-INPUT=$(cat)
+# SEC-111: Read stdin with length limit (100KB max) to prevent DoS
+INPUT=$(head -c 100000)
 
 # Log entry
 log_entry() {

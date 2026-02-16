@@ -28,16 +28,18 @@ const SECRET_PATTERNS = [
     name: 'GitHub Fine-grained PAT'
   },
 
-  // OpenAI API Keys
-  {
-    pattern: /sk-[a-zA-Z0-9]{32,}/g,
-    replacement: '[REDACTED:OPENAI_KEY]',
-    name: 'OpenAI API Key'
-  },
+  // BUG-008 FIX: Most specific patterns FIRST to avoid wrong classification
+  // OpenAI Project Keys (must match before generic sk- pattern)
   {
     pattern: /sk-proj-[a-zA-Z0-9\-_]{40,}/g,
     replacement: '[REDACTED:OPENAI_PROJECT_KEY]',
     name: 'OpenAI Project Key'
+  },
+  // OpenAI API Keys (generic, after project-specific)
+  {
+    pattern: /sk-[a-zA-Z0-9]{32,}/g,
+    replacement: '[REDACTED:OPENAI_KEY]',
+    name: 'OpenAI API Key'
   },
 
   // AWS Credentials

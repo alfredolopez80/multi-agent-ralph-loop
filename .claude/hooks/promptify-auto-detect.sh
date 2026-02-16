@@ -30,16 +30,8 @@ log_message() {
 # Trap for guaranteed JSON output
 trap '{ echo "{\"continue\": true}"; exit 0; }' ERR INT TERM
 
-# Read and validate input
-INPUT=$(cat)
-INPUT_SIZE=$(echo "$INPUT" | wc -c)
-
-# Security: Limit input size (SEC-111)
-readonly MAX_INPUT_SIZE=100000
-if [[ $INPUT_SIZE -gt $MAX_INPUT_SIZE ]]; then
-    log_message "WARN" "Input exceeds ${MAX_INPUT_SIZE} bytes, truncating"
-    INPUT=$(echo "$INPUT" | head -c "$MAX_INPUT_SIZE}")
-fi
+# SEC-111: Read stdin with length limit (100KB max) to prevent DoS
+INPUT=$(head -c 100000)
 
 # Parse user prompt
 USER_PROMPT=$(echo "$INPUT" | jq -r '.user_prompt // empty' 2>/dev/null || echo "")
