@@ -4,7 +4,6 @@
 # ==============================================================================
 # Quick bash-based validation of all v2.40 components:
 # - Skills discovery and frontmatter
-# - llm-tldr integration
 # - ultrathink skill presence
 # - Hooks configuration
 # - Configuration hierarchy
@@ -150,65 +149,7 @@ check_frontmatter() {
 }
 
 # ==============================================================================
-# Section 3: llm-tldr Integration
-# ==============================================================================
-check_tldr() {
-    print_section 3 "llm-tldr Integration"
-
-    # Check if installed
-    if command -v tldr &>/dev/null; then
-        local version
-        version=$(tldr --version 2>&1 | head -1 || echo "unknown")
-        check_pass "llm-tldr installed: $version"
-    else
-        check_fail "llm-tldr NOT installed (run: pip install llm-tldr)"
-        return
-    fi
-
-    # Check hook exists
-    local hook_path="${CLAUDE_GLOBAL}/hooks/session-start-tldr.sh"
-    if [ -f "$hook_path" ]; then
-        check_pass "SessionStart hook exists: session-start-tldr.sh"
-
-        if [ -x "$hook_path" ]; then
-            check_pass "Hook is executable"
-        else
-            check_fail "Hook NOT executable"
-        fi
-    else
-        check_fail "SessionStart hook NOT found: $hook_path"
-    fi
-
-    # Check hook registered
-    local settings="${CLAUDE_GLOBAL}/settings.json"
-    if [ -f "$settings" ]; then
-        if grep -q "session-start-tldr" "$settings"; then
-            check_pass "Hook registered in settings.json"
-        else
-            check_fail "Hook NOT registered in settings.json"
-        fi
-    else
-        check_fail "settings.json NOT found"
-    fi
-
-    # Check tldr skills
-    local tldr_skills=("tldr" "tldr-context" "tldr-impact" "tldr-semantic")
-    local found=0
-    for skill in "${tldr_skills[@]}"; do
-        if [ -d "${CLAUDE_GLOBAL}/skills/${skill}" ]; then
-            found=$((found + 1))
-        fi
-    done
-
-    if [ "$found" -ge 2 ]; then
-        check_pass "TLDR skills found: $found of ${#tldr_skills[@]}"
-    else
-        check_warn "Only $found TLDR skills found (expected >= 2)"
-    fi
-}
-
-# ==============================================================================
-# Section 4: Hooks Configuration
+# Section 3: Hooks Configuration
 # ==============================================================================
 check_hooks() {
     print_section 4 "Hooks Configuration"
@@ -229,7 +170,6 @@ check_hooks() {
     # Check critical hooks
     local critical_hooks=(
         "session-start-ledger.sh"
-        "session-start-tldr.sh"
         "pre-compact-handoff.sh"
         "quality-gates.sh"
         "git-safety-guard.py"
@@ -447,7 +387,6 @@ main() {
 
     check_skills
     check_frontmatter
-    check_tldr
     check_hooks
     check_config
     check_opencode

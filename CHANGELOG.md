@@ -2,6 +2,30 @@
 
 ---
 
+## [2.91.0] - 2026-02-16
+
+### Removed - Obsolete Dependencies
+
+- **llm-tldr**: Completely removed all references and integration
+  - Removed hook: `.claude/hooks/session-start-tldr.sh`
+  - Removed test: `tests/test_v2.37_tldr_integration.sh`
+  - Removed command: `ralph tldr` and all subcommands from `scripts/ralph`
+  - Removed aliases: `rhtldr`, `rhtw`, `rhts`
+  - Updated `scripts/ralph` to use ast-grep instead of llm-tldr
+  - Removed health check for llm-tldr installation
+  - Removed help text and examples
+
+- **claude-sneakpeek**: Removed historical references
+  - Removed from README.md References section
+  - Project no longer uses Zai variant configuration
+
+### Changed
+
+- Context tree now uses ast-grep backend instead of llm-tldr
+- Updated documentation to reflect current architecture (MCP servers integration)
+
+---
+
 ## [2.88.1] - 2026-02-15
 
 ### Fixed - Batch Task Execution

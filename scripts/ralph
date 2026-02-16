@@ -252,7 +252,6 @@ FEATURE_TOOLS=(
     "gemini:Gemini CLI (research):pip install google-gemini-cli"
     "sg:ast-grep (structural code search):brew install ast-grep"
     "memvid:Memvid memory (v2.31):pip install memvid && npm install @memvid/sdk"
-    "tldr:LLM-TLDR (95% token savings v2.37):pip install llm-tldr"
 )
 
 # Herramientas para Quality Gates (9 lenguajes)
@@ -669,16 +668,6 @@ CONTEXT ENGINE (v2.35):
   ralph handoff search "q"   Search handoffs via Memvid
   ralph setup-context-engine One-time setup for 100% automatic context preservation
 
-LLM-TLDR (v2.37) - 95% Token Savings:
-  ralph tldr warm [path]     Index project (5-layer analysis, ~30-60s)
-  ralph tldr semantic "query" Behavior-based code search (1024-dim embeddings)
-  ralph tldr context <func>  LLM-ready function summary (99% token savings)
-  ralph tldr impact <func>   Find all callers (reverse call graph)
-  ralph tldr slice <f> <fn> N What affects line N? (PDG analysis)
-  ralph tldr structure [path] Function/class overview
-  ralph tldr dead [path]     Find unreachable code
-  ralph tldr daemon status   Check/start/stop daemon (100ms queries)
-
 SKILLS (v2.32):
   ralph skill create <name>  Create new YAML-based skill
   ralph skill validate <name> Validate skill structure and patterns
@@ -789,9 +778,6 @@ ALIASES (add to ~/.zshrc or ~/.bashrc):
   alias rhsu='ralph self-update'
   alias rhpm='ralph pre-merge'
   alias rhint='ralph integrations'
-  alias rhtldr='ralph tldr'
-  alias rhtw='ralph tldr warm'
-  alias rhts='ralph tldr semantic'
   # v2.45 Plan-State & LSA
   alias rhpl='ralph plan'
   alias rhpls='ralph plan status'
@@ -813,13 +799,6 @@ EXAMPLES:
   cd .worktrees/ai-ralph-*/  # Work in isolated worktree
   ralph worktree-pr          # Create PR with multi-agent review
   ralph worktree-merge 123   # Merge approved PR
-
-  # LLM-TLDR workflow (v2.37) - 95% token savings
-  ralph tldr warm .                           # Index project (one-time)
-  ralph tldr semantic "validate JWT tokens"   # Find by behavior
-  ralph tldr context main                     # Get optimized context
-  ralph tldr impact login                     # Find all callers
-  ralph tldr slice src/auth.py login 42       # What affects line 42?
 
   # Plan-State & LSA workflow (v2.45)
   ralph plan init "Implement JWT authentication" 7 opus    # Initialize plan
@@ -2771,201 +2750,7 @@ cmd_memory_stats() {
     echo "======================================================================="
 }
 # ===============================================================================
-# LLM-TLDR (v2.37) - 95% Token Savings
-# ===============================================================================
-
-cmd_tldr() {
-    local TLDR_SUBCMD="${1:-help}"
-    shift || true
-
-    # Validate tldr is installed
-    if ! command -v tldr &> /dev/null || ! pip show llm-tldr &>/dev/null 2>&1; then
-        log_error "LLM-TLDR not installed"
-        log_info "Install with: pip install llm-tldr"
-        exit 1
-    fi
-
-    case "$TLDR_SUBCMD" in
-        warm|index|init)
-            local TARGET_PATH="${1:-.}"
-            TARGET_PATH=$(validate_path "$TARGET_PATH")
-
-            # v2.43: Auto-add .tldr to .gitignore if not present
-            local GITIGNORE_PATH="$TARGET_PATH/.gitignore"
-            if [ -f "$GITIGNORE_PATH" ]; then
-                if ! grep -q "^\.tldr/?$" "$GITIGNORE_PATH" 2>/dev/null; then
-                    echo "" >> "$GITIGNORE_PATH"
-                    echo "# llm-tldr index (auto-added by ralph v2.43)" >> "$GITIGNORE_PATH"
-                    echo ".tldr/" >> "$GITIGNORE_PATH"
-                    log_info "Added .tldr/ to .gitignore"
-                fi
-            else
-                # Create .gitignore with .tldr entry
-                cat > "$GITIGNORE_PATH" << 'EOF'
-# llm-tldr index (auto-added by ralph v2.43)
-.tldr/
-EOF
-                log_info "Created .gitignore with .tldr/"
-            fi
-
-            log_info "Indexing project for TLDR (5-layer analysis)..."
-            log_info "  Target: $TARGET_PATH"
-            log_info "  This may take 30-60 seconds for a typical project..."
-            tldr warm "$TARGET_PATH"
-            log_success "Index complete! Query latency now ~100ms via daemon"
-            ;;
-        semantic|search|find)
-            if [ -z "${1:-}" ]; then
-                echo ""
-                echo "╔═══════════════════════════════════════════════════════════════╗"
-                echo "║  TLDR SEMANTIC: Search code by behavior (v2.37)               ║"
-                echo "╠═══════════════════════════════════════════════════════════════╣"
-                echo "║                                                               ║"
-                echo "║  Usage: ralph tldr semantic \"<natural language query>\"        ║"
-                echo "║                                                               ║"
-                echo "║  Examples:                                                    ║"
-                echo "║    ralph tldr semantic \"validate JWT tokens\"                  ║"
-                echo "║    ralph tldr semantic \"database connection pooling\"          ║"
-                echo "║    ralph tldr semantic \"handle authentication errors\"         ║"
-                echo "║                                                               ║"
-                echo "║  Uses 1024-dim embeddings for behavior-based search           ║"
-                echo "╚═══════════════════════════════════════════════════════════════╝"
-                exit 1
-            fi
-            local QUERY="$*"
-            log_info "Semantic search: $QUERY"
-            tldr semantic "$QUERY" .
-            ;;
-        context|ctx)
-            if [ -z "${1:-}" ]; then
-                echo ""
-                echo "╔═══════════════════════════════════════════════════════════════╗"
-                echo "║  TLDR CONTEXT: LLM-ready function summary (99% savings)       ║"
-                echo "╠═══════════════════════════════════════════════════════════════╣"
-                echo "║                                                               ║"
-                echo "║  Usage: ralph tldr context <function_name>                    ║"
-                echo "║                                                               ║"
-                echo "║  Examples:                                                    ║"
-                echo "║    ralph tldr context main                                    ║"
-                echo "║    ralph tldr context process_payment                         ║"
-                echo "║    ralph tldr context authenticate_user                       ║"
-                echo "║                                                               ║"
-                echo "║  Returns optimized context: 175 tokens vs 21,000 raw          ║"
-                echo "╚═══════════════════════════════════════════════════════════════╝"
-                exit 1
-            fi
-            local FUNC_NAME="$1"
-            log_info "Getting context for: $FUNC_NAME"
-            tldr context "$FUNC_NAME" --project .
-            ;;
-        impact|callers|who-calls)
-            if [ -z "${1:-}" ]; then
-                echo ""
-                echo "╔═══════════════════════════════════════════════════════════════╗"
-                echo "║  TLDR IMPACT: Find all callers (reverse call graph)           ║"
-                echo "╠═══════════════════════════════════════════════════════════════╣"
-                echo "║                                                               ║"
-                echo "║  Usage: ralph tldr impact <function_name>                     ║"
-                echo "║                                                               ║"
-                echo "║  Examples:                                                    ║"
-                echo "║    ralph tldr impact login                                    ║"
-                echo "║    ralph tldr impact validate_token                           ║"
-                echo "║                                                               ║"
-                echo "║  Essential before refactoring to understand blast radius      ║"
-                echo "╚═══════════════════════════════════════════════════════════════╝"
-                exit 1
-            fi
-            local FUNC_NAME="$1"
-            log_info "Analyzing impact of: $FUNC_NAME"
-            tldr impact "$FUNC_NAME" .
-            ;;
-        slice|debug)
-            if [ $# -lt 3 ]; then
-                echo ""
-                echo "╔═══════════════════════════════════════════════════════════════╗"
-                echo "║  TLDR SLICE: What affects line X? (PDG analysis)              ║"
-                echo "╠═══════════════════════════════════════════════════════════════╣"
-                echo "║                                                               ║"
-                echo "║  Usage: ralph tldr slice <file> <function> <line>             ║"
-                echo "║                                                               ║"
-                echo "║  Examples:                                                    ║"
-                echo "║    ralph tldr slice src/auth.py login 42                      ║"
-                echo "║    ralph tldr slice lib/api.ts handleRequest 100              ║"
-                echo "║                                                               ║"
-                echo "║  Shows ONLY lines that affect the target line - debugging!   ║"
-                echo "╚═══════════════════════════════════════════════════════════════╝"
-                exit 1
-            fi
-            local FILE="$1" FUNC="$2" LINE="$3"
-            FILE=$(validate_path "$FILE")
-            log_info "Slicing: $FILE -> $FUNC at line $LINE"
-            tldr slice "$FILE" "$FUNC" "$LINE"
-            ;;
-        structure|tree|overview)
-            local TARGET_PATH="${1:-.}"
-            local LANG="${2:-}"
-            TARGET_PATH=$(validate_path "$TARGET_PATH")
-            log_info "Analyzing structure: $TARGET_PATH"
-            if [ -n "$LANG" ]; then
-                tldr structure "$TARGET_PATH" --lang "$LANG"
-            else
-                tldr structure "$TARGET_PATH"
-            fi
-            ;;
-        dead|unreachable)
-            local TARGET_PATH="${1:-.}"
-            TARGET_PATH=$(validate_path "$TARGET_PATH")
-            log_info "Finding dead code in: $TARGET_PATH"
-            tldr dead "$TARGET_PATH"
-            ;;
-        daemon)
-            local DAEMON_CMD="${1:-status}"
-            case "$DAEMON_CMD" in
-                start) tldr daemon start ;;
-                stop) tldr daemon stop ;;
-                status) tldr daemon status ;;
-                *)
-                    log_error "Unknown daemon command: $DAEMON_CMD"
-                    log_info "Options: start, stop, status"
-                    ;;
-            esac
-            ;;
-        help|--help|-h|"")
-            echo ""
-            echo "╔═══════════════════════════════════════════════════════════════╗"
-            echo "║  LLM-TLDR: 95% Token Savings for Code Analysis (v2.37)        ║"
-            echo "╠═══════════════════════════════════════════════════════════════╣"
-            echo "║                                                               ║"
-            echo "║  Setup:                                                       ║"
-            echo "║    ralph tldr warm [path]       Index project (~30-60s)       ║"
-            echo "║                                                               ║"
-            echo "║  Search:                                                      ║"
-            echo "║    ralph tldr semantic \"query\"  Behavior-based search         ║"
-            echo "║    ralph tldr context <func>    LLM-ready summary (99% save)  ║"
-            echo "║                                                               ║"
-            echo "║  Analysis:                                                    ║"
-            echo "║    ralph tldr impact <func>     Find all callers              ║"
-            echo "║    ralph tldr slice <f> <fn> N  What affects line N?          ║"
-            echo "║    ralph tldr structure [path]  Function/class overview       ║"
-            echo "║    ralph tldr dead [path]       Find unreachable code         ║"
-            echo "║                                                               ║"
-            echo "║  Daemon:                                                      ║"
-            echo "║    ralph tldr daemon status     Check daemon                  ║"
-            echo "║    ralph tldr daemon start      Start daemon                  ║"
-            echo "║    ralph tldr daemon stop       Stop daemon                   ║"
-            echo "║                                                               ║"
-            echo "║  5-Layer Analysis: AST → Calls → CFG → DFG → PDG              ║"
-            echo "║  Supported: 16 languages (Python, TS, Go, Rust, Java, etc.)   ║"
-            echo "╚═══════════════════════════════════════════════════════════════╝"
-            ;;
-        *)
-            # Pass through to tldr CLI
-            log_info "Passing to tldr CLI: $TLDR_SUBCMD $*"
-            tldr "$TLDR_SUBCMD" "$@"
-            ;;
-    esac
-}
-
+# CONTEXT TREE (v2.42) - Uses ast-grep Backend
 # ===============================================================================
 # CONTEXT TREE (v2.42) - Uses LLM-TLDR Backend
 # ===============================================================================
@@ -2987,7 +2772,7 @@ cmd_tree() {
         build|init)
             local PROJECT_PATH="${1:-.}"
             PROJECT_PATH=$(validate_path "$PROJECT_PATH")
-            log_info "Building context tree using llm-tldr backend..."
+            log_info "Building context tree using ast-grep backend..."
             log_info "  Project: $PROJECT_PATH"
             python3 "$TREE_GENERATOR" build --project "$PROJECT_PATH"
             ;;
@@ -3005,7 +2790,7 @@ cmd_tree() {
                 echo "║    ralph tree curit \"Auth API\" src/auth/login.py              ║"
                 echo "║    ralph tree curit \"Config\" .env.example                     ║"
                 echo "║                                                               ║"
-                echo "║  Uses llm-tldr for 95% token savings                          ║"
+                echo "║  Uses ast-grep for structural code search                      ║"
                 echo "║  Auto-detects domain from path and content                    ║"
                 echo "╚═══════════════════════════════════════════════════════════════╝"
                 exit 1
@@ -3089,7 +2874,7 @@ print('Merged team context tree')
         help|*)
             echo ""
             echo "╔═══════════════════════════════════════════════════════════════╗"
-            echo "║  CONTEXT TREE (v2.42): Structured context using llm-tldr      ║"
+            echo "║  CONTEXT TREE (v2.42): Structured context using ast-grep      ║"
             echo "╠═══════════════════════════════════════════════════════════════╣"
             echo "║                                                               ║"
             echo "║  Commands:                                                    ║"
@@ -3103,7 +2888,7 @@ print('Merged team context tree')
             echo "║    ralph tree push            Push to .ralph-team/            ║"
             echo "║    ralph tree pull            Pull from team                  ║"
             echo "║                                                               ║"
-            echo "║  Uses llm-tldr as backend for 95% token savings               ║"
+            echo "║  Uses ast-grep as backend for structural search                ║"
             echo "║  Auto-detects domains from code structure                     ║"
             echo "╚═══════════════════════════════════════════════════════════════╝"
             ;;
@@ -3143,23 +2928,14 @@ cmd_query() {
     # Check if tree exists
     if [ ! -f "$TREE_INDEX" ]; then
         log_warning "No context tree found."
-        log_info "Run 'ralph tree build' first, or falling back to tldr semantic only"
-        echo ""
-        tldr semantic "$QUERY" . --limit 5
-        return 0
+        log_info "Run 'ralph tree build' first to create the index"
+        return 1
     fi
 
     log_info "Querying context tree: $QUERY"
     echo ""
 
-    # Step 1: Run TLDR semantic search
-    echo "## TLDR Semantic Results"
-    echo ""
-    SEMANTIC_OUTPUT=$(tldr semantic "$QUERY" . --limit 5 2>/dev/null || true)
-    echo "$SEMANTIC_OUTPUT"
-    echo ""
-
-    # Step 2: Match against context tree domains
+    # Step 1: Query tree domains
     echo "## Context Tree Matches"
     echo ""
     python3 -c "
@@ -6908,14 +6684,6 @@ cmd_integrations() {
     fi
 
     # LLM-TLDR (v2.37)
-    if command -v tldr &> /dev/null && command -v pip &> /dev/null && pip show llm-tldr &>/dev/null; then
-        local TLDR_VER
-        TLDR_VER=$(pip show llm-tldr 2>&1 | grep "Version:" | awk '{print $2}')
-        log_success "  LLM-TLDR:       v$TLDR_VER (95% token savings)"
-    else
-        log_warn "  LLM-TLDR:       not installed (pip install llm-tldr)"
-    fi
-
     echo ""
     log_info "OPTIONAL SERVICES (no cost requirement):"
 
@@ -8398,11 +8166,6 @@ main() {
             ;;
         memory-stats|mem-stats)
             cmd_memory_stats
-            ;;
-
-        # LLM-TLDR (v2.37)
-        tldr|code-analysis|token-optimize)
-            cmd_tldr "$@"
             ;;
 
         # Context Tree (v2.42)

@@ -16,7 +16,6 @@
 | Quality | gates, lint, format, test, type-check, quality-gates.sh | .claude/hooks/quality-gates.sh, .claude/skills/gates/* |
 | Security | security, audit, adversarial, security-auditor, git-safety-guard | .claude/skills/security/*, .claude/hooks/git-safety-guard.py |
 | Testing | test, pytest, integration, validate-integration, test_v2_40 | tests/*, scripts/ralph validate-integration |
-| TLDR | llm-tldr, tldr, semantic, context, impact, structure, warm | .claude/hooks/session-start-tldr.sh, .claude/skills/tldr-*/* |
 | Git | git, worktree, branch, commit, PR, merge, safety | .claude/skills/using-git-worktrees/*, .claude/hooks/git-safety-guard.py |
 
 ## Quick Reference

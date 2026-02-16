@@ -17,7 +17,15 @@ Key capabilities:
 
 ## Version
 
-Current: **v2.90.2**
+Current: **v2.91.0**
+
+### What's New in v2.91.0
+
+- **Removed Obsolete Dependencies** — Cleaned up llm-tldr and claude-sneakpeek references
+  - Removed `llm-tldr` integration (hook, tests, CLI command)
+  - Removed `claude-sneakpeek` historical references
+  - Updated context tree to use ast-grep backend instead of llm-tldr
+  - Simplified architecture without deprecated tooling
 
 ### What's New in v2.90.2
 
@@ -744,5 +752,4 @@ MIT License - see LICENSE file for details.
 - [Claude Code Agent Teams Docs](https://code.claude.com/docs/en/agent-teams)
 - [Claude Code Subagents Docs](https://code.claude.com/docs/en/sub-agents)
 - [Claude Code Hooks Guide](https://code.claude.com/docs/en/hooks-guide)
-- [claude-sneakpeek](https://github.com/mikekelly/claude-sneakpeek) - Zai variant and swarm mode
 - [cc-mirror](https://github.com/numman-ali/cc-mirror) - Documentation patterns
