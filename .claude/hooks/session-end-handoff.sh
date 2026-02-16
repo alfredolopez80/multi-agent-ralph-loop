@@ -266,11 +266,21 @@ echo -e "$NEXT_CONTEXT" > "$NEXT_SESSION_FILE"
 
 log "INFO" "Next session context saved to: $NEXT_SESSION_FILE"
 
-# Clean up old handoffs
+# Clean up old handoffs (7-day TTL, keep minimum 20)
 if [[ -x "$HANDOFF_SCRIPT" ]]; then
     python3 "$HANDOFF_SCRIPT" cleanup --days 7 --keep-min 20 >> "$LOG_FILE" 2>&1 || {
         log "WARN" "Handoff cleanup failed (non-critical)"
     }
+fi
+
+# Clean up old episodic memory (30-day TTL, v2.91.0)
+EPISODES_DIR="${HOME}/.ralph/episodes"
+if [[ -d "$EPISODES_DIR" ]]; then
+    # Find and delete episode files older than 30 days
+    DELETED_COUNT=$(find "$EPISODES_DIR" -name "*.json" -type f -mtime +30 -delete -print | wc -l | tr -d ' ')
+    if [[ $DELETED_COUNT -gt 0 ]]; then
+        log "INFO" "Episodic cleanup: deleted $DELETED_COUNT episodes older than 30 days"
+    fi
 fi
 
 log "INFO" "SessionEnd hook completed successfully"

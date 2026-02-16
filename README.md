@@ -17,9 +17,18 @@ Key capabilities:
 
 ## Version
 
-Current: **v2.91.0**
+Current: **v2.93.0**
 
-### What's New in v2.91.0
+### What's New in v2.93.0
+
+- **Memory System Optimization** — Smart memory search re-enabled + cleanup policies implemented
+  - Re-enabled `smart-memory-search.sh` hook (700+ lines of parallel memory search)
+  - Implemented episodic memory cleanup: 30-day TTL (previously: NO cleanup)
+  - Removed redundant storage: memvid.json (175KB) and semantic.json (62KB)
+  - Streamlined to primary memory storage: claude-mem + episodic + handoffs + ledgers
+  - Removed memvid integration from `ralph` CLI (tool definition + validation)
+
+### What's New in v2.92.0
 
 - **Removed Obsolete Dependencies** — Cleaned up llm-tldr and claude-sneakpeek references
   - Removed `llm-tldr` integration (hook, tests, CLI command)

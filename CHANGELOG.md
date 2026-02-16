@@ -2,6 +2,51 @@
 
 ---
 
+## [2.92.0] - 2026-02-16
+
+### Fixed - Memory System Optimization
+
+- **smart-memory-search.sh**: Re-enabled main memory orchestration hook
+  - Removed disable exit (lines 2-5) blocking 700+ lines of code
+  - Updated header to v2.92.0 with MCP tool integration
+  - Hook now functional for parallel memory search across all sources
+
+- **Episodic Memory Cleanup**: Implemented 30-day TTL policy
+  - Added automatic cleanup to `session-end-handoff.sh`
+  - Deletes episode files older than 30 days using find -mtime +30
+  - Logs number of deleted episodes for audit trail
+  - Previously: NO cleanup policy (2,852 episodes accumulated)
+
+- **Redundant Storage Removed**: Deprecated memory files deleted
+  - Deleted `~/.ralph/memory/memvid.json` (175KB - purpose unclear)
+  - Deleted `~/.ralph/memory/semantic.json` (62KB - deprecated after claude-mem migration)
+  - Removed memvid from `scripts/ralph` (tool definition + validation function)
+  - semantic.json hooks already disabled in v2.55.0 (no action needed)
+
+### Changed
+
+- **Memory Architecture**: Streamlined to primary storage only
+  - Primary: `~/.claude-mem/claude-mem.db` (21,129 observations via MCP server)
+  - Episodic: `~/.ralph/episodes/` (now with 30-day cleanup)
+  - Handoffs: `~/.ralph/handoffs/` (7-day cleanup)
+  - Ledgers: `~/.ralph/ledgers/` (session continuity)
+
+### Technical Notes
+
+- **SQLite → MCP Migration**: Not completed (technical limitation)
+  - MCP tools only available within Claude, not from bash hooks
+  - Direct SQLite access retained in `session-start-restore-context.sh`
+  - Future: Requires MCP server with API REST or CLI wrapper
+  - See: docs/analysis/MCP_MIGRATION_TECHNICAL_LIMITATIONS.md (future doc)
+
+- **Memvid References**: Some hooks still reference memvid (non-blocking)
+  - `pre-compact-handoff.sh`: Will fail gracefully if memvid missing
+  - `session-start-repo-summary.sh`: Creates empty memvid.json if needed
+  - `smart-memory-search.sh`: Skips memvid search if unavailable
+  - These are legacy references that degrade gracefully
+
+---
+
 ## [2.91.0] - 2026-02-16
 
 ### Removed - Obsolete Dependencies

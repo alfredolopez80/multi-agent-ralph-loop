@@ -251,7 +251,6 @@ FEATURE_TOOLS=(
     "codex:Codex CLI (reviews/automation):npm i -g @openai/codex"
     "gemini:Gemini CLI (research):pip install google-gemini-cli"
     "sg:ast-grep (structural code search):brew install ast-grep"
-    "memvid:Memvid memory (v2.31):pip install memvid && npm install @memvid/sdk"
 )
 
 # Herramientas para Quality Gates (9 lenguajes)
@@ -275,35 +274,6 @@ QUALITY_GATE_TOOLS=(
     # JSON/YAML
     "yamllint:YAML linter:pip install yamllint"
 )
-
-# v2.22: Startup validation (fast, non-blocking)
-# v2.31: Validate Memvid (Python package + NPM package)
-validate_memvid_packages() {
-    local MEMVID_STATUS="ok"
-    local MEMVID_MSG=""
-
-    # Check Python package
-    if ! pip show memvid &>/dev/null; then
-        MEMVID_STATUS="missing"
-        MEMVID_MSG="Python: pip install memvid"
-    fi
-
-    # Check NPM package
-    if ! npm list @memvid/sdk &>/dev/null; then
-        if [ "$MEMVID_STATUS" = "missing" ]; then
-            MEMVID_MSG="${MEMVID_MSG} && npm install @memvid/sdk"
-        else
-            MEMVID_STATUS="missing"
-            MEMVID_MSG="NPM: npm install @memvid/sdk"
-        fi
-    fi
-
-    if [ "$MEMVID_STATUS" = "missing" ]; then
-        echo "memvid:missing:${MEMVID_MSG}"
-    else
-        echo "memvid:ok:"
-    fi
-}
 
 # v2.34: Initialize Codex output schemas
 init_codex_schemas() {
@@ -434,13 +404,9 @@ startup_validation() {
         command -v "$tool_name" &>/dev/null || MISSING_CRITICAL+=("$tool_name")
     done
 
-    # Check feature tools (informational) - Skip memvid (validated separately)
+    # Check feature tools (informational)
     for tool_entry in "${FEATURE_TOOLS[@]}"; do
         local tool_name="${tool_entry%%:*}"
-        # Skip memvid - validated via validate_memvid_packages()
-        if [ "$tool_name" = "memvid" ]; then
-            continue
-        fi
         command -v "$tool_name" &>/dev/null || MISSING_FEATURE+=("$tool_name")
     done
 
@@ -449,12 +415,6 @@ startup_validation() {
         local tool_name="${tool_entry%%:*}"
         command -v "$tool_name" &>/dev/null || MISSING_QUALITY+=("$tool_name")
     done
-
-    # v2.31: Validate Memvid packages
-    local MEMVID_CHECK
-    MEMVID_CHECK=$(validate_memvid_packages)
-    local MEMVID_STATUS="${MEMVID_CHECK%%:*}"
-    local MEMVID_INSTALL="${MEMVID_CHECK##*:}"
 
     # Critical tools - always warn (blocking for most commands)
     if [ ${#MISSING_CRITICAL[@]} -gt 0 ]; then

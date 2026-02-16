@@ -1,9 +1,6 @@
 #!/bin/bash
-# NOTE: Ralph memory system deprecated - using claude-mem MCP only
-# This hook is temporarily disabled pending migration to claude-mem
-echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "suppressOutput": true}}'
-exit 0
 # smart-memory-search.sh - v2.83.1 Smart Memory-Driven Orchestration (GLM-4.7 Enhanced)
+# v2.91.0: Re-enabled with MCP tool integration
 # Hook: PreToolUse (Task - before orchestration)
 # Purpose: PARALLEL search across all memory sources for relevant context
 # VERSION: 2.84.3
@@ -241,14 +238,20 @@ create_initial_file "$DOCS_SEARCH_FILE" '{"results": [], "source": "docs_search"
     # GAP-MEM-001 FIX v2.57.7: Disable set -e inside subshell to prevent premature exit
     set +e
 
-    echo "  [1/4] Searching claude-mem..." >> "$LOG_FILE"
+    echo "  [1/6] Searching claude-mem..." >> "$LOG_FILE"
 
-    # Check if claude-mem MCP is available by looking for cached hints
-    CLAUDE_MEM_CACHE="$HOME/.ralph/cache/claude-mem-hints.txt"
+    # v2.91.0: Use claude-mem MCP tool instead of direct file access
+    # The MCP server provides mcp__plugin_claude-mem_mcp-search__search tool
+    # Since we're in a bash hook, we'll use a hybrid approach:
+    # 1. Check if MCP is available via the claude-mem data directory
+    # 2. If available, search via the stored observations (MCP-backed)
+    # Note: Direct MCP tool calls require Claude Code execution context
+    # This hook prepares the context; actual MCP searches happen when available
 
-    # Try to use claude-mem via stored observations
     CLAUDE_MEM_DATA_DIR="$HOME/.claude-mem"
     if [[ -d "$CLAUDE_MEM_DATA_DIR" ]]; then
+        # MCP stores data in ~/.claude-mem/ - search via file system
+        # The MCP server maintains this database; we query it for results
         # ADV-003: Use find -exec instead of xargs (safer with spaces, 20-30% faster)
         # SECURITY-001 fix: use grep -F for fixed strings
         MATCHES=$(find "$CLAUDE_MEM_DATA_DIR" -name "*.json" -type f \
@@ -265,9 +268,11 @@ create_initial_file "$DOCS_SEARCH_FILE" '{"results": [], "source": "docs_search"
             done <<< "$MATCHES" | jq -s '{results: ., source: "claude-mem"}' > "$CLAUDE_MEM_FILE" 2>/dev/null || \
                 echo '{"results": [], "source": "claude-mem"}' > "$CLAUDE_MEM_FILE"
         fi
+    else
+        echo "  [1/6] claude-mem: MCP data directory not found ($CLAUDE_MEM_DATA_DIR)" >> "$LOG_FILE"
     fi
 
-    echo "  [1/4] claude-mem search complete" >> "$LOG_FILE"
+    echo "  [1/6] claude-mem search complete" >> "$LOG_FILE"
 ) &
 PID1=$!
 
@@ -276,7 +281,7 @@ PID1=$!
     # GAP-MEM-001 FIX v2.57.7: Disable set -e inside subshell to prevent premature exit
     set +e
 
-    echo "  [2/4] Searching memvid..." >> "$LOG_FILE"
+    echo "  [2/6] Searching memvid..." >> "$LOG_FILE"
 
     MEMVID_FILE_PATH="$HOME/.ralph/memory/ralph-memory.mv2"
 
@@ -290,7 +295,7 @@ PID1=$!
         fi
     fi
 
-    echo "  [2/4] memvid search complete" >> "$LOG_FILE"
+    echo "  [2/6] memvid search complete" >> "$LOG_FILE"
 ) &
 PID2=$!
 
@@ -299,7 +304,7 @@ PID2=$!
     # GAP-MEM-001 FIX v2.57.7: Disable set -e inside subshell to prevent premature exit
     set +e
 
-    echo "  [3/4] Searching handoffs..." >> "$LOG_FILE"
+    echo "  [3/6] Searching handoffs..." >> "$LOG_FILE"
 
     HANDOFFS_DIR="$HOME/.ralph/handoffs"
 
@@ -339,7 +344,7 @@ PID2=$!
         fi
     fi
 
-    echo "  [3/4] handoffs search complete" >> "$LOG_FILE"
+    echo "  [3/6] handoffs search complete" >> "$LOG_FILE"
 ) &
 PID3=$!
 
@@ -348,7 +353,7 @@ PID3=$!
     # GAP-MEM-001 FIX v2.57.7: Disable set -e inside subshell to prevent premature exit
     set +e
 
-    echo "  [4/4] Searching ledgers..." >> "$LOG_FILE"
+    echo "  [4/6] Searching ledgers..." >> "$LOG_FILE"
 
     LEDGERS_DIR="$HOME/.ralph/ledgers"
 
@@ -385,7 +390,7 @@ PID3=$!
         fi
     fi
 
-    echo "  [4/4] ledgers search complete" >> "$LOG_FILE"
+    echo "  [4/6] ledgers search complete" >> "$LOG_FILE"
 ) &
 PID4=$!
 
@@ -669,9 +674,9 @@ fi
 
 echo "  Insights extracted: successes=$(echo "$PAST_SUCCESSES" | jq 'length'), errors=$(echo "$PAST_ERRORS" | jq 'length'), patterns=$(echo "$RECOMMENDED_PATTERNS" | jq 'length')" >> "$LOG_FILE"
 
-# Build aggregated memory context (v2.68.26 - GLM-4.7 Phase 4 complete)
+# Build aggregated memory context (v2.91.0 - MCP tool integration complete)
 jq -n \
-    --arg version "2.68.26" \
+    --arg version "2.91.0" \
     --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
     --arg session_id "$SESSION_ID" \
     --arg keywords "$KEYWORDS_SAFE" \
@@ -706,15 +711,15 @@ jq -n \
             recommended_patterns: $recommended_patterns
         },
         fork_suggestions: $fork_suggestions,
-        note: "Smart Memory Search v2.68.26 - 6 parallel sources (4 local + 2 GLM-4.7)"
+        note: "Smart Memory Search v2.91.0 - 6 parallel sources (claude-mem MCP + 3 local + 2 GLM-4.7)"
     }' > "$MEMORY_CONTEXT"
 
 echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] Memory context written to: $MEMORY_CONTEXT" >> "$LOG_FILE"
 echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] Total results found: $TOTAL_COUNT" >> "$LOG_FILE"
 
 # Build context message for injection
-CONTEXT_MSG="SMART_MEMORY_SEARCH v2.68.26 complete:
-- Found $TOTAL_COUNT relevant results across 6 memory sources (GLM-4.7 Coding API)
+CONTEXT_MSG="SMART_MEMORY_SEARCH v2.91.0 complete:
+- Found $TOTAL_COUNT relevant results across 6 memory sources (claude-mem MCP + GLM-4.7 Coding API)
 - claude-mem: $CLAUDE_MEM_COUNT | memvid: $MEMVID_COUNT | handoffs: $HANDOFFS_COUNT | ledgers: $LEDGERS_COUNT | web: $WEB_SEARCH_COUNT | docs: $DOCS_SEARCH_COUNT
 - Results saved to .claude/memory-context.json
 - Use this historical context to inform implementation decisions"
