@@ -395,7 +395,54 @@ The loop integrates with the Stop hook:
 - `/parallel` - Parallel subagent execution
 - `/retrospective` - Post-task analysis
 
-## References
+
+## Action Reporting (v2.93.0)
+
+**Esta skill genera reportes automáticos completos** para trazabilidad:
+
+### Reporte Automático
+
+Cuando esta skill completa, se genera automáticamente:
+
+1. **En la conversación de Claude**: Resultados visibles
+2. **En el repositorio**: `docs/actions/loop/{timestamp}.md`
+3. **Metadatos JSON**: `.claude/metadata/actions/loop/{timestamp}.json`
+
+### Contenido del Reporte
+
+Cada reporte incluye:
+- ✅ **Summary**: Descripción de la tarea ejecutada
+- ✅ **Execution Details**: Duración, iteraciones, archivos modificados
+- ✅ **Results**: Errores encontrados, recomendaciones
+- ✅ **Next Steps**: Próximas acciones sugeridas
+
+### Ver Reportes Anteriores
+
+```bash
+# Listar todos los reportes de esta skill
+ls -lt docs/actions/loop/
+
+# Ver el reporte más reciente
+cat $(ls -t docs/actions/loop/*.md | head -1)
+
+# Buscar reportes fallidos
+grep -l "Status: FAILED" docs/actions/loop/*.md
+```
+
+### Generación Manual (Opcional)
+
+```bash
+source .claude/lib/action-report-lib.sh
+start_action_report "loop" "Task description"
+# ... ejecución ...
+complete_action_report "success" "Summary" "Recommendations"
+```
+
+### Referencias del Sistema
+
+- [Action Reports System](docs/actions/README.md) - Documentación completa
+- [action-report-lib.sh](.claude/lib/action-report-lib.sh) - Librería helper
+- [action-report-generator.sh](.claude/lib/action-report-generator.sh) - Generador
 
 - [Unified Architecture v2.88](docs/architecture/UNIFIED_ARCHITECTURE_v2.88.md)
 - [Skills/Commands Unification](docs/architecture/COMMANDS_TO_SKILLS_MIGRATION_v2.88.md)

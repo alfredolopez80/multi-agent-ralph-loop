@@ -91,3 +91,52 @@ Task(subagent_type="ralph-reviewer", prompt="Deep analysis of specific file...")
 - Read-only analysis doesn't need team coordination
 - Tool restrictions prevent accidental changes more effectively than teams
 - When review is a one-shot operation (not multi-phase workflow)
+
+
+## Action Reporting (v2.93.0)
+
+**Esta skill genera reportes automáticos completos** para trazabilidad:
+
+### Reporte Automático
+
+Cuando esta skill completa, se genera automáticamente:
+
+1. **En la conversación de Claude**: Resultados visibles
+2. **En el repositorio**: `docs/actions/code-reviewer/{timestamp}.md`
+3. **Metadatos JSON**: `.claude/metadata/actions/code-reviewer/{timestamp}.json`
+
+### Contenido del Reporte
+
+Cada reporte incluye:
+- ✅ **Summary**: Descripción de la tarea ejecutada
+- ✅ **Execution Details**: Duración, iteraciones, archivos modificados
+- ✅ **Results**: Errores encontrados, recomendaciones
+- ✅ **Next Steps**: Próximas acciones sugeridas
+
+### Ver Reportes Anteriores
+
+```bash
+# Listar todos los reportes de esta skill
+ls -lt docs/actions/code-reviewer/
+
+# Ver el reporte más reciente
+cat $(ls -t docs/actions/code-reviewer/*.md | head -1)
+
+# Buscar reportes fallidos
+grep -l "Status: FAILED" docs/actions/code-reviewer/*.md
+```
+
+### Generación Manual (Opcional)
+
+```bash
+source .claude/lib/action-report-lib.sh
+start_action_report "code-reviewer" "Task description"
+# ... ejecución ...
+complete_action_report "success" "Summary" "Recommendations"
+```
+
+### Referencias del Sistema
+
+- [Action Reports System](docs/actions/README.md) - Documentación completa
+- [action-report-lib.sh](.claude/lib/action-report-lib.sh) - Librería helper
+- [action-report-generator.sh](.claude/lib/action-report-generator.sh) - Generador

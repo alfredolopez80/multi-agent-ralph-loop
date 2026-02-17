@@ -672,7 +672,54 @@ If you find yourself about to output a summary with remaining tasks:
 - `/clarify` - Requirement clarification (used for PRD parsing)
 - `/retrospective` - Post-batch analysis
 
-## References
+
+## Action Reporting (v2.93.0)
+
+**Esta skill genera reportes automáticos completos** para trazabilidad:
+
+### Reporte Automático
+
+Cuando esta skill completa, se genera automáticamente:
+
+1. **En la conversación de Claude**: Resultados visibles
+2. **En el repositorio**: `docs/actions/task-batch/{timestamp}.md`
+3. **Metadatos JSON**: `.claude/metadata/actions/task-batch/{timestamp}.json`
+
+### Contenido del Reporte
+
+Cada reporte incluye:
+- ✅ **Summary**: Descripción de la tarea ejecutada
+- ✅ **Execution Details**: Duración, iteraciones, archivos modificados
+- ✅ **Results**: Errores encontrados, recomendaciones
+- ✅ **Next Steps**: Próximas acciones sugeridas
+
+### Ver Reportes Anteriores
+
+```bash
+# Listar todos los reportes de esta skill
+ls -lt docs/actions/task-batch/
+
+# Ver el reporte más reciente
+cat $(ls -t docs/actions/task-batch/*.md | head -1)
+
+# Buscar reportes fallidos
+grep -l "Status: FAILED" docs/actions/task-batch/*.md
+```
+
+### Generación Manual (Opcional)
+
+```bash
+source .claude/lib/action-report-lib.sh
+start_action_report "task-batch" "Task description"
+# ... ejecución ...
+complete_action_report "success" "Summary" "Recommendations"
+```
+
+### Referencias del Sistema
+
+- [Action Reports System](docs/actions/README.md) - Documentación completa
+- [action-report-lib.sh](.claude/lib/action-report-lib.sh) - Librería helper
+- [action-report-generator.sh](.claude/lib/action-report-generator.sh) - Generador
 
 - [Sugar - Autonomous AI Coding](https://github.com/roboticforce/sugar)
 - [Daedalus/Talos - Task Queue Daemon](https://github.com/internet-development/daedalus)

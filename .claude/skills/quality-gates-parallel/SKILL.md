@@ -277,7 +277,54 @@ fi
   - 4 parallel quality agents
   - Result aggregation and polling
 
-## References
+
+## Action Reporting (v2.93.0)
+
+**Esta skill genera reportes automáticos completos** para trazabilidad:
+
+### Reporte Automático
+
+Cuando esta skill completa, se genera automáticamente:
+
+1. **En la conversación de Claude**: Resultados visibles
+2. **En el repositorio**: `docs/actions/quality-gates-parallel/{timestamp}.md`
+3. **Metadatos JSON**: `.claude/metadata/actions/quality-gates-parallel/{timestamp}.json`
+
+### Contenido del Reporte
+
+Cada reporte incluye:
+- ✅ **Summary**: Descripción de la tarea ejecutada
+- ✅ **Execution Details**: Duración, iteraciones, archivos modificados
+- ✅ **Results**: Errores encontrados, recomendaciones
+- ✅ **Next Steps**: Próximas acciones sugeridas
+
+### Ver Reportes Anteriores
+
+```bash
+# Listar todos los reportes de esta skill
+ls -lt docs/actions/quality-gates-parallel/
+
+# Ver el reporte más reciente
+cat $(ls -t docs/actions/quality-gates-parallel/*.md | head -1)
+
+# Buscar reportes fallidos
+grep -l "Status: FAILED" docs/actions/quality-gates-parallel/*.md
+```
+
+### Generación Manual (Opcional)
+
+```bash
+source .claude/lib/action-report-lib.sh
+start_action_report "quality-gates-parallel" "Task description"
+# ... ejecución ...
+complete_action_report "success" "Summary" "Recommendations"
+```
+
+### Referencias del Sistema
+
+- [Action Reports System](docs/actions/README.md) - Documentación completa
+- [action-report-lib.sh](.claude/lib/action-report-lib.sh) - Librería helper
+- [action-report-generator.sh](.claude/lib/action-report-generator.sh) - Generador
 
 - Native Multi-Agent Gates: [claude-sneakpeek documentation](https://github.com/mikekelly/claude-sneakpeek/blob/main/docs/research/native-multiagent-gates.md)
 - Claude Code 2.1.16+ features: Swarms, TeammateTool, teammate coordination
