@@ -224,6 +224,105 @@ When Agent Teams is active, gates run in parallel across subagents:
 - `TeammateIdle`: Triggers before agent goes idle
 - `TaskCompleted`: Validates gate completion
 
+## Action Reporting (v2.93.0)
+
+**Los resultados de `/gates` generan reportes automáticos completos**:
+
+### Reporte Automático
+
+Cuando `/gates` completa, se genera automáticamente:
+
+1. **En la conversación de Claude**: Resultados visibles de todas las validaciones
+2. **En el repositorio**: `docs/actions/gates/{timestamp}.md`
+3. **Metadatos JSON**: `.claude/metadata/actions/gates/{timestamp}.json`
+
+### Contenido del Reporte
+
+Cada reporte incluye:
+- ✅ **Summary**: Tipo de validación ejecutada
+- ✅ **Results**: Resultados de linters, formatters, type checkers, tests
+- ✅ **Errors**: Errores encontrados por categoría
+- ✅ **Recommendations**: Acciones correctivas sugeridas
+- ✅ **Next Steps**: Qué hacer según el resultado
+
+### Generación Manual (Opcional)
+
+```bash
+# Al inicio
+source .claude/lib/action-report-lib.sh
+start_action_report "gates" "Running quality gates on src/"
+
+# Ejecutar validaciones
+if ! npx tsc --noEmit; then
+    record_error "TypeScript errors found"
+fi
+
+if ! npx eslint .; then
+    record_error "ESLint violations found"
+fi
+
+if ! npm test; then
+    record_error "Test failures found"
+fi
+
+# Al completar
+if [[ ${#CURRENT_ACTION_ERRORS[@]} -eq 0 ]]; then
+    complete_action_report \
+        "success" \
+        "All quality gates passed" \
+        "Safe to commit: git commit -m 'chore: pass quality gates'"
+else
+    complete_action_report \
+        "failed" \
+        "Quality gates failed" \
+        "Fix errors and run /gates again"
+fi
+```
+
+### Ver Reportes Anteriores
+
+```bash
+# Listar todos los reportes de gates
+ls -lt docs/actions/gates/
+
+# Ver el reporte más reciente
+cat $(ls -t docs/actions/gates/*.md | head -1)
+
+# Buscar reportes fallidos
+grep -l "Status: FAILED" docs/actions/gates/*.md
+
+# Ver tendencia de calidad
+grep -c "Status: COMPLETED" docs/actions/gates/*.md
+grep -c "Status: FAILED" docs/actions/gates/*.md
+```
+
+### Integración CI/CD
+
+Los metadatos JSON permiten integración con pipelines:
+
+```bash
+# En tu CI pipeline
+source .claude/lib/action-report-generator.sh
+
+# Ejecutar gates
+/gates
+
+# Obtener resultado del último reporte
+latest_report=$(find_latest_report "gates")
+status=$(grep "Status:" "$latest_report" | awk '{print $2}')
+
+if [[ "$status" != "COMPLETED" ]]; then
+    echo "Quality gates failed - blocking commit"
+    exit 1
+fi
+```
+
+### Referencias del Sistema de Reportes
+
+- [Action Reports System](docs/actions/README.md) - Documentación completa
+- [action-report-lib.sh](.claude/lib/action-report-lib.sh) - Librería helper
+- [action-report-generator.sh](.claude/lib/action-report-generator.sh) - Generador
+
 ## Anti-Patterns
 
 - Never skip gates for "quick fixes"

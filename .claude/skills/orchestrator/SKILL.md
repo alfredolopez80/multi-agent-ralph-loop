@@ -448,6 +448,95 @@ SendMessage:
   summary: "Implementation ready for review"
 ```
 
+## Action Reporting (v2.93.0)
+
+**El orchestrator genera reportes automáticos completos** para garantiza trazabilidad:
+
+### Reporte Automático
+
+Cuando `/orchestrator` completa, se genera automáticamente:
+
+1. **En la conversación de Claude**: Reporte visible con todos los detalles
+2. **En el repositorio**: `docs/actions/orchestrator/{timestamp}.md`
+3. **Metadatos JSON**: `.claude/metadata/actions/orchestrator/{timestamp}.json`
+
+### Contenido del Reporte
+
+Cada reporte incluye:
+- ✅ **Summary**: Descripción de la tarea ejecutada
+- ✅ **Execution Details**: Duración, iteraciones, archivos modificados
+- ✅ **Git State**: Branch, commit, archivos cambiados
+- ✅ **Errors**: Errores encontrados (si aplicable)
+- ✅ **Recommendations**: Próximos pasos sugeridos
+
+### Generación Manual (Opcional)
+
+Si necesitas control manual del reporte:
+
+```bash
+# Al inicio
+source .claude/lib/action-report-lib.sh
+start_action_report "orchestrator" "Implementing OAuth2 with Google"
+
+# Durante ejecución
+mark_iteration  # Cada iteración del loop
+mark_file_modified "src/auth/oauth.ts"  # Cada archivo modificado
+record_error "Type mismatch in config"  # Si hay errores
+
+# Al completar
+complete_action_report \
+    "success" \
+    "OAuth2 implementation completed" \
+    "1. Run tests: npm test
+     2. Security audit: /security src/
+     3. Create PR: gh pr create"
+```
+
+### Ver Reportes Anteriores
+
+```bash
+# Listar todos los reportes del orchestrator
+ls -lt docs/actions/orchestrator/
+
+# Ver el reporte más reciente
+cat $(ls -t docs/actions/orchestrator/*.md | head -1)
+
+# Buscar reportes fallidos
+grep -l "Status: FAILED" docs/actions/orchestrator/*.md
+```
+
+### Estadísticas
+
+```bash
+source .claude/lib/action-report-generator.sh
+get_skill_stats "orchestrator"
+
+# Output:
+# Skill: orchestrator
+# Total Reports: 45
+# Completed: 42
+# Failed: 3
+# Success Rate: 93%
+```
+
+### Integración con Hooks
+
+El sistema de reportes del orchestrator se integra con:
+
+| Hook | Propósito | Ubicación |
+|------|-----------|-----------|
+| `action-report-tracker.sh` | Genera reportes automáticos | `.claude/hooks/` |
+| `orchestrator-report.sh` | Reportes de sesión | `~/.ralph/reports/` |
+| `progress-tracker.sh` | Tracking en tiempo real | `.claude/progress.md` |
+
+**Nota**: Los reportes de acción (`docs/actions/`) son COMPLEMENTARIOS a los reportes de sesión (`~/.ralph/reports/`).
+
+### Referencias del Sistema de Reportes
+
+- [Action Reports System](docs/actions/README.md) - Documentación completa
+- [action-report-lib.sh](.claude/lib/action-report-lib.sh) - Librería helper
+- [action-report-generator.sh](.claude/lib/action-report-generator.sh) - Generador
+
 ### References
 
 - [Unified Architecture v2.87](docs/architecture/UNIFIED_ARCHITECTURE_v2.87.md)
