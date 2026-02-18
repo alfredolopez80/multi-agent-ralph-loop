@@ -1,1 +1,0 @@
-/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/agents/AGENTES_SKILLS_AUDIT_FINAL_v2.72.2.md

@@ -1,1 +1,0 @@
-/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/agents/repo-curator.md

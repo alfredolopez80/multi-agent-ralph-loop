@@ -1,1 +1,0 @@
-/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/agents/WORKFLOW_12_PASOS_COMPLETO.md
