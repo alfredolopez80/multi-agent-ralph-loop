@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.89.2
+# Multi-Agent Ralph v2.94.0
 
 Orchestration system with memory-driven planning, multi-agent coordination, automatic learning, and quality validation.
 
@@ -160,10 +160,11 @@ Agent Teams está habilitado en `~/.claude/settings.json`:
 ```bash
 # Orchestration
 /orchestrator "task"           # Full workflow
-/loop "task"                   # Iterative execution
+/iterate "task"                # Iterative execution (renamed from /loop v2.94)
 /task-batch <prd-file>         # Batch task execution (v2.88)
 /create-task-batch "feature"   # Create PRD interactively (v2.88)
 /gates                         # Quality validation
+/autoresearch <target> <metric> # Autonomous experimentation (v2.94)
 /adversarial                   # Spec refinement
 
 # Debugging
