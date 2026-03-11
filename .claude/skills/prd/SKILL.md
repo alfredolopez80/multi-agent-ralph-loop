@@ -117,6 +117,6 @@ Acceptance Criteria:
 ## Related Skills
 
 - `/clarify` - Intensive questions (populate PRD details)
-- `/loop` - Execute PRD stories iteratively
+- `/iterate` - Execute PRD stories iteratively
 - `/orchestrator` - Full workflow with PRD integration
 - `/plan` - Plan-state management for execution tracking

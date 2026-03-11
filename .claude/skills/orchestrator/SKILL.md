@@ -311,7 +311,7 @@ ralph fork-suggest "Add authentication"
 
 ## Related Skills
 
-- `/loop` - Iterative execution until VERIFIED_DONE
+- `/iterate` - Iterative execution until VERIFIED_DONE
 - `/gates` - Quality validation gates
 - `/adversarial` - Spec refinement
 - `/parallel` - Parallel subagent execution

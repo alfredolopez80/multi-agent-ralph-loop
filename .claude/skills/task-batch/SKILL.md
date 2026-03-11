@@ -619,9 +619,9 @@ If you find yourself about to output a summary with remaining tasks:
 2. Either continue execution OR report explicit failure
 3. Partial completion = FAILURE, not success
 
-## Comparison: /task-batch vs /orchestrator vs /loop
+## Comparison: /task-batch vs /orchestrator vs /iterate
 
-| Feature | /task-batch | /orchestrator | /loop |
+| Feature | /task-batch | /orchestrator | /iterate |
 |---------|-------------|---------------|-------|
 | **Input** | Multiple tasks | Single task | Single task |
 | **Execution** | Continuous until all done | Single workflow | Iterative refinement |
@@ -667,7 +667,7 @@ If you find yourself about to output a summary with remaining tasks:
 ## Related Skills
 
 - `/orchestrator` - Base 10-step workflow (used internally)
-- `/loop` - Iterative refinement pattern
+- `/iterate` - Iterative refinement pattern
 - `/gates` - Quality validation gates
 - `/clarify` - Requirement clarification (used for PRD parsing)
 - `/retrospective` - Post-batch analysis

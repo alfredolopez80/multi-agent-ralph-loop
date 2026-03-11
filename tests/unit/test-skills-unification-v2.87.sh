@@ -63,7 +63,7 @@ done
 # Ralph core skills that MUST be in repo and symlinked globally
 RALPH_CORE_SKILLS=(
     "orchestrator"
-    "loop"
+    "iterate"
     "gates"
     "adversarial"
     "parallel"
@@ -605,7 +605,7 @@ test_agent_teams_integration() {
     fi
 
     # Check for context: fork in skills that spawn subagents
-    local subagent_skills=("orchestrator" "loop" "parallel" "quality-gates-parallel")
+    local subagent_skills=("orchestrator" "iterate" "parallel" "quality-gates-parallel")
     for skill in "${subagent_skills[@]}"; do
         local skill_file="$REPO_ROOT/.claude/skills/$skill/SKILL.md"
         if [[ -f "$skill_file" ]]; then

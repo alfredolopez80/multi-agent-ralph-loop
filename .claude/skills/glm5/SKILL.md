@@ -30,7 +30,7 @@ Spawn GLM-5 powered teammates with native thinking mode.
 This skill integrates with:
 - `/orchestrator` - GLM-5 as teammate option
 - `/parallel` - GLM-5 for parallel review
-- `/loop` - GLM-5 for iterative tasks
+- `/iterate` - GLM-5 for iterative tasks
 
 ## Agent Types
 

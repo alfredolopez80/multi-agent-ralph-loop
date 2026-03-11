@@ -1,7 +1,7 @@
 ---
-# VERSION: 2.88.0
-name: loop
-description: "Ralph Loop pattern with swarm mode: iterative execution until VERIFIED_DONE with multi-agent coordination. Use when: (1) iterative refinement needed, (2) quality gates must pass, (3) automated validation required. Triggers: /loop, 'loop until done', 'iterate', 'keep trying', 'fix until passing'."
+# VERSION: 2.94.0
+name: iterate
+description: "Ralph Loop pattern with swarm mode: iterative execution until VERIFIED_DONE with multi-agent coordination. Use when: (1) iterative refinement needed, (2) quality gates must pass, (3) automated validation required. Triggers: /iterate, 'iterate until done', 'keep trying', 'fix until passing', 'loop until done'."
 argument-hint: "<task>"
 user-invocable: true
 context: fork
@@ -21,7 +21,7 @@ hooks:
       match_tool: LSP
 ---
 
-# /loop - Ralph Loop Pattern (v2.88)
+# /iterate - Ralph Loop Pattern (v2.94)
 
 Execute tasks iteratively with automatic quality validation until VERIFIED_DONE signal.
 
@@ -68,7 +68,7 @@ The Ralph Loop is a **continuous execution pattern** that iterates through EXECU
 
 ## When to Use
 
-Use `/loop` when:
+Use `/iterate` when:
 1. **Iterative refinement needed** - Code requires multiple passes to meet quality standards
 2. **Quality gates must pass** - TypeScript, ESLint, tests, linting must all pass
 3. **Automated validation** - Let the loop handle retries automatically
@@ -141,7 +141,7 @@ ralph loop "add rate limiting to API endpoints with Redis"
 
 ## Task Tool Invocation (Swarm Mode)
 
-**IMPORTANT**: /loop uses swarm mode by default with full multi-agent coordination.
+**IMPORTANT**: /iterate uses swarm mode by default with full multi-agent coordination.
 
 ```yaml
 Task:
@@ -201,7 +201,7 @@ TeamCreate(team_name, description)
 
 ### Team Creation Pattern
 
-When `/loop` is invoked, it automatically creates a dedicated team for the iteration:
+When `/iterate` is invoked, it automatically creates a dedicated team for the iteration:
 
 ```bash
 # Automatic team creation
@@ -258,7 +258,7 @@ Each iteration follows this pattern:
 
 ### Team Composition
 
-When /loop is invoked, it automatically spawns:
+When /iterate is invoked, it automatically spawns:
 
 | Role | Purpose | Count |
 |------|---------|-------|
@@ -405,7 +405,7 @@ The loop integrates with the Stop hook:
 Cuando esta skill completa, se genera automáticamente:
 
 1. **En la conversación de Claude**: Resultados visibles
-2. **En el repositorio**: `docs/actions/loop/{timestamp}.md`
+2. **En el repositorio**: `docs/actions/iterate/{timestamp}.md`
 3. **Metadatos JSON**: `.claude/metadata/actions/loop/{timestamp}.json`
 
 ### Contenido del Reporte
@@ -420,20 +420,20 @@ Cada reporte incluye:
 
 ```bash
 # Listar todos los reportes de esta skill
-ls -lt docs/actions/loop/
+ls -lt docs/actions/iterate/
 
 # Ver el reporte más reciente
-cat $(ls -t docs/actions/loop/*.md | head -1)
+cat $(ls -t docs/actions/iterate/*.md | head -1)
 
 # Buscar reportes fallidos
-grep -l "Status: FAILED" docs/actions/loop/*.md
+grep -l "Status: FAILED" docs/actions/iterate/*.md
 ```
 
 ### Generación Manual (Opcional)
 
 ```bash
 source .claude/lib/action-report-lib.sh
-start_action_report "loop" "Task description"
+start_action_report "iterate" "Task description"
 # ... ejecución ...
 complete_action_report "success" "Summary" "Recommendations"
 ```

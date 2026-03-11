@@ -125,6 +125,6 @@ Next Action: /plan complete --step 2
 ## Related Skills
 
 - `/orchestrator` - Full orchestration with plan integration
-- `/loop` - Iterative execution following plan steps
+- `/iterate` - Iterative execution following plan steps
 - `/gates` - Quality validation at plan milestones
 - `/retrospective` - Post-completion analysis

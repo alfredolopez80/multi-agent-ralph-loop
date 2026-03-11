@@ -83,5 +83,5 @@ Checkpoints are stored in `~/.ralph/checkpoints/` as JSON files.
 ## Related Skills
 
 - `/orchestrator` - Full orchestration workflow
-- `/loop` - Iterative execution with checkpointing
+- `/iterate` - Iterative execution with checkpointing
 - `/gates` - Quality validation before checkpoints
