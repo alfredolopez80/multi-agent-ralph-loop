@@ -23,7 +23,13 @@
 set -euo pipefail
 
 # Configuration - v2.89.2: Dynamic path + official field names
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}")"
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() { get_project_root; }
+  get_claude_dir() { echo "$(get_main_repo)/.claude"; }
+}
+REPO_ROOT="$(get_project_root)"
 LOG_DIR="$HOME/.ralph/logs"
 mkdir -p "$LOG_DIR"
 

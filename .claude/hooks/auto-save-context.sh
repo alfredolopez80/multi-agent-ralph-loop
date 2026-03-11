@@ -25,7 +25,13 @@ SAVE_INTERVAL=${RALPH_AUTO_SAVE_INTERVAL:-5}  # Cada 5 operaciones por defecto
 COUNTER_FILE="${HOME}/.ralph/state/operation-counter"
 STATE_DIR="${HOME}/.ralph/state"
 LOG_FILE="${HOME}/.ralph/logs/auto-save-context.log"
-PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() { get_project_root; }
+  get_claude_dir() { echo "$(get_main_repo)/.claude"; }
+}
+PROJECT_DIR="$(get_project_root)"
 
 # Asegurar directorios existen
 mkdir -p "$STATE_DIR" "$(dirname "$LOG_FILE")"

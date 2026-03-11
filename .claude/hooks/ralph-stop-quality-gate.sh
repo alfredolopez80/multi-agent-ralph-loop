@@ -41,7 +41,13 @@ set -euo pipefail
 
 # Configuration
 # BUG-003 FIX: Dynamic repo root detection instead of hardcoded path
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() { get_project_root; }
+  get_claude_dir() { echo "$(get_main_repo)/.claude"; }
+}
+REPO_ROOT="$(get_project_root)"
 STATE_DIR="$HOME/.ralph/state"
 LOG_DIR="$HOME/.ralph/logs"
 BLOCK_STATE_DIR="$STATE_DIR"

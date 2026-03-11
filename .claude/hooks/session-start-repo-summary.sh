@@ -15,15 +15,21 @@ INPUT=$(head -c 100000)
 
 set -euo pipefail
 
-# Error trap for SessionStart hooks
-trap 'echo "SessionStart repo-summary recovery"' ERR EXIT
+# Error trap for SessionStart hooks - only trigger on actual errors
+trap 'echo "SessionStart repo-summary error recovery"' ERR
 
 umask 077
 
 # Configuration
 RALPH_DIR="${HOME}/.ralph"
 LOG_DIR="${RALPH_DIR}/logs"
-PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo ".")}"
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() { get_project_root; }
+  get_claude_dir() { echo "$(get_main_repo)/.claude"; }
+}
+PROJECT_ROOT="$(get_project_root)"
 PROJECT_NAME=$(basename "$PROJECT_ROOT" 2>/dev/null || echo "unknown")
 
 # Create log directory
@@ -84,7 +90,7 @@ if command -v jq &>/dev/null; then
             LATEST_LEDGER=$(find "$LEDGER_DIR" -name "*.json" -type f -mtime -7 2>/dev/null | head -1)
             if [[ -n "$LATEST_LEDGER" ]]; then
                 LEDGER_GOAL=$(jq -r '.goal // "No goal recorded"' "$LATEST_LEDGER" 2>/dev/null | head -1 || echo "No goal")
-                SUMMARY_PARTS+=("## Latest Session Ledger\nGoal: ${LEDGER_GOAL[:100]}")
+                SUMMARY_PARTS+=("## Latest Session Ledger\nGoal: ${LEDGER_GOAL:0:100}")
             fi
         fi
     fi

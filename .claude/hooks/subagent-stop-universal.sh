@@ -20,7 +20,13 @@
 set -euo pipefail
 
 # Project root detection
-PROJECT_ROOT="${PROJECT_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() { get_project_root; }
+  get_claude_dir() { echo "$(get_main_repo)/.claude"; }
+}
+PROJECT_ROOT="${PROJECT_ROOT:-$(get_project_root)}"
 RALPH_DIR="${HOME}/.ralph"
 LOG_DIR="${RALPH_DIR}/logs"
 

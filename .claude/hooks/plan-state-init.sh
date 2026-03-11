@@ -13,12 +13,18 @@ INPUT=$(head -c 100000)
 set -euo pipefail
 
 # Configuration
-PLAN_STATE=".claude/plan-state.json"
-ANALYSIS_FILE=".claude/orchestrator-analysis.md"
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() { get_project_root; }
+  get_claude_dir() { echo "$(get_main_repo)/.claude"; }
+}
+PLAN_STATE="$(get_claude_dir)/plan-state.json"
+ANALYSIS_FILE="$(get_claude_dir)/orchestrator-analysis.md"
 LOG_FILE="${HOME}/.ralph/logs/plan-state.log"
 
 mkdir -p "$(dirname "$LOG_FILE")"
-mkdir -p ".claude"
+mkdir -p "$(get_claude_dir)"
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"

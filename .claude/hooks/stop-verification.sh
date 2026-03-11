@@ -17,7 +17,13 @@ set -euo pipefail
 trap 'echo "{\"decision\": \"approve\"}"' ERR EXIT
 
 # Configuracion
-PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() { get_project_root; }
+  get_claude_dir() { echo "$(get_main_repo)/.claude"; }
+}
+PROJECT_DIR="$(get_project_root)"
 LOG_FILE="${HOME}/.ralph/logs/stop-verification.log"
 
 # Asegurar directorio de logs existe

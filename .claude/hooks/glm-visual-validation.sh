@@ -77,7 +77,13 @@ LOG_FILE="$LOG_DIR/glm-visual-validation-$(date +%Y%m%d).log"
 
 # Check for screenshot directory
 SCREENSHOT_DIR="$HOME/.ralph/screenshots"
-PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() { get_project_root; }
+  get_claude_dir() { echo "$(get_main_repo)/.claude"; }
+}
+PROJECT_ROOT=$(get_project_root)
 PROJECT_SCREENSHOT_DIR="$PROJECT_ROOT/.claude/screenshots"
 
 # Look for existing screenshots

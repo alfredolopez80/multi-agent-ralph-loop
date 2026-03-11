@@ -28,8 +28,14 @@ log() {
 }
 
 # Get current repository root
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() { get_project_root; }
+}
+
 get_current_repo() {
-    git rev-parse --show-toplevel 2>/dev/null || echo ""
+    get_main_repo 2>/dev/null || git rev-parse --show-toplevel 2>/dev/null || echo ""
 }
 
 # v2.69.0 FIX: Check if command is read-only (safe to run on external repos)

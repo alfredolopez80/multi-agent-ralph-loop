@@ -25,8 +25,14 @@ umask 077
 # CONFIGURATION
 # =============================================================================
 
-ANALYSIS_FILE=".claude/orchestrator-analysis.md"
-PLAN_STATE_FILE=".claude/plan-state.json"
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() { get_project_root; }
+  get_claude_dir() { echo "$(get_main_repo)/.claude"; }
+}
+ANALYSIS_FILE="$(get_claude_dir)/orchestrator-analysis.md"
+PLAN_STATE_FILE="$(get_claude_dir)/plan-state.json"
 LOG_FILE="${HOME}/.ralph/logs/auto-plan-state.log"
 PLAN_STATE_INIT="${HOME}/.claude/hooks/plan-state-init.sh"
 

@@ -36,7 +36,13 @@ output_json() {
 trap 'output_json' ERR EXIT
 
 # Configuration
-PLAN_STATE=".claude/plan-state.json"
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() { get_project_root; }
+  get_claude_dir() { echo "$(get_main_repo)/.claude"; }
+}
+PLAN_STATE="$(get_claude_dir)/plan-state.json"
 CLAUDE_TASKS_DIR="${HOME}/.claude/tasks"
 LOG_FILE="${HOME}/.ralph/logs/global-task-sync.log"
 LOCK_TIMEOUT=5
@@ -248,7 +254,7 @@ write_individual_task() {
     PROJECT_JSON="{}"
     if git rev-parse --is-inside-work-tree &>/dev/null; then
         # SC2168 FIX: Removed 'local' - not inside a function (brace group != function)
-        project_path=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+        project_path=$(get_project_root 2>/dev/null || git rev-parse --show-toplevel 2>/dev/null || pwd)
         repo_remote=$(git remote get-url origin 2>/dev/null || echo "")
         if [[ "$repo_remote" =~ github\.com[:/]([^/]+)/([^/]+)(\.git)?$ ]]; then
             repo_name="${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"

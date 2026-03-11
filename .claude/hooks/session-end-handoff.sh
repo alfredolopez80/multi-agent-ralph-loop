@@ -39,6 +39,14 @@ exec 3>&2 2>> "${HOME}/.ralph/logs/session-end.log"
 # Error trap: Only on ERR, NOT on EXIT (EXIT would duplicate output)
 trap 'exec 2>&3 3>&-; echo "{\"continue\": true}"; exit 0' ERR
 
+# Worktree-safe path resolution
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() { get_project_root; }
+  get_claude_dir() { echo "$(get_main_repo)/.claude"; }
+}
+
 # Configuration
 LEDGER_DIR="${HOME}/.ralph/ledgers"
 HANDOFF_DIR="${HOME}/.ralph/handoffs"
@@ -121,7 +129,7 @@ fi
 
 # Try to get project from git if available
 if [[ "$PROJECT_NAME" == "unknown" ]] && command -v git &>/dev/null; then
-    GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
+    GIT_ROOT=$(get_project_root 2>/dev/null || git rev-parse --show-toplevel 2>/dev/null || true)
     if [[ -n "$GIT_ROOT" ]] && [[ -d "$GIT_ROOT" ]]; then
         PROJECT_DIR="$GIT_ROOT"
         PROJECT_NAME=$(basename "$PROJECT_DIR")

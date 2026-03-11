@@ -19,7 +19,13 @@
 
 # Configuration
 AGENT_TEAMS_LOG_DIR="${AGENT_TEAMS_LOG_DIR:-$HOME/.ralph/logs}"
-AGENT_TEAMS_REPO_ROOT="${AGENT_TEAMS_REPO_ROOT:-/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop}"
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() { get_project_root; }
+  get_claude_dir() { echo "$(get_main_repo)/.claude"; }
+}
+AGENT_TEAMS_REPO_ROOT="${AGENT_TEAMS_REPO_ROOT:-$(get_main_repo)}"
 
 # Ensure log directory exists
 mkdir -p "$AGENT_TEAMS_LOG_DIR"
@@ -117,7 +123,7 @@ json_get() {
     local key="$2"
     local default="${3:-unknown}"
 
-    echo "$json" | jq -r ".${key} // \"${default}\""
+    # [REMOVED: secret was being echoed] // \"${default}\""
 }
 
 # Parse JSON array from stdin
