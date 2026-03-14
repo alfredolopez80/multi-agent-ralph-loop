@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.69.0
+# VERSION: 2.95.0
 name: orchestrator
 description: "Smart Memory-Driven Orchestration with parallel memory search and GLM-4.7 multimodal capabilities. Lead Software Architect coordinator with Plan-Sync validation, RLM-inspired routing (v2.46), GLM-4.7 vision/web/docs integration (v2.69), and memory context from claude-mem, memvid, handoffs, ledgers. Ensures 100% plan coverage through adversarial cross-validation between Claude Opus and Codex GPT-5.2."
 tools: Bash, Read, Write, Task, mcp__plugin_claude-mem_*, mcp__zai-mcp-server__*, mcp__web-search-prime__*, mcp__web-reader__*, mcp__zread__*
@@ -1343,6 +1343,110 @@ Task:
   model: "sonnet"
   run_in_background: true
   prompt: "Review: $ALL_FILES"
+```
+
+## Autoresearch Integration (v2.95)
+
+During orchestration, the orchestrator can detect optimization-oriented tasks and automatically invoke `/autoresearch` for measurable, iterative improvement.
+
+### Detection Logic
+
+During **Step 5 (Execute)**, the orchestrator scans the task description for optimization keywords. When detected alongside a measurable metric, the orchestrator suggests or invokes `/autoresearch` instead of standard implementation.
+
+**Optimization Keywords**:
+- `optimize`, `improve performance`, `reduce bundle`, `speed up`
+- `minimize`, `maximize`, `lower latency`, `reduce size`, `improve accuracy`
+
+**Pattern Extraction**:
+1. **Target path**: Extracted from the plan steps (files to modify)
+2. **Metric command**: Extracted from test/bench commands in the plan (e.g., `npm run bench`, `pytest --benchmark`, `lighthouse`)
+3. **Direction**: Inferred from keyword (e.g., "reduce" = lower-is-better, "improve" = higher-is-better)
+
+### Conditional Invoke Pattern
+
+```
+IF task contains optimization keywords AND has measurable metric:
+  1. Identify target files (from plan steps)
+  2. Identify eval harness (from test/bench commands in plan)
+  3. Identify metric + direction
+  4. Invoke: /autoresearch <target> "<eval_cmd>" --checkpoint=5
+ELSE:
+  Continue normal orchestration
+```
+
+Example invocations:
+
+```yaml
+# Bundle size reduction
+/autoresearch src/components "npm run build && stat -f%z dist/bundle.js" --checkpoint=5
+
+# API latency optimization
+/autoresearch src/api "npm run bench:api -- --json | jq '.mean_ms'" --checkpoint=5
+
+# Test accuracy improvement
+/autoresearch src/ml/model.py "pytest tests/accuracy.py -q | tail -1" --checkpoint=5
+```
+
+### Post-Autoresearch Validation
+
+After `/autoresearch` completes, the orchestrator performs the following:
+
+1. **Read results summary**: Load `autoresearch.md` to review the experiment log, iterations performed, and final metric values
+2. **Adversarial cross-validation**: Feed the autoresearch results into the existing Step 7 (Validate) adversarial pipeline to confirm improvements are genuine and do not introduce regressions
+3. **Branch merge decision**:
+   - If adversarial validation passes and metric improved: merge the autoresearch branch
+   - If validation fails or metric regressed: discard changes and report findings to user
+   - If partial improvement with caveats: present options to user via `AskUserQuestion`
+
+```yaml
+# Post-autoresearch validation flow
+Task:
+  subagent_type: "adversarial-plan-validator"
+  model: "opus"
+  prompt: |
+    AUTORESEARCH_RESULTS: .claude/autoresearch.md
+    PLAN_STATE_PATH: .claude/plan-state.json
+
+    Validate autoresearch outcomes:
+    1. Confirm metric improvement is statistically significant
+    2. Run regression checks on affected modules
+    3. Verify no new security vulnerabilities introduced
+    4. Cross-validate with Codex GPT-5.2
+
+    Output: MERGE | DISCARD | ASK_USER
+```
+
+### Integration with Plan-Sync
+
+Autoresearch results update `plan-state.json` to maintain plan consistency:
+
+1. **Step status**: Steps addressed by autoresearch are marked `completed_via_autoresearch`
+2. **Metric tracking**: The `actual` field for each step records before/after metric values
+3. **Drift detection**: If autoresearch modified files differently than the original spec, Plan-Sync patches downstream steps accordingly
+4. **Iteration log**: The number of autoresearch iterations and checkpoint data are stored in `plan-state.json` under `autoresearch_metadata`
+
+```json
+{
+  "steps": [
+    {
+      "id": "3",
+      "title": "Optimize API response time",
+      "status": "completed_via_autoresearch",
+      "autoresearch_metadata": {
+        "iterations": 12,
+        "checkpoints": 5,
+        "metric_before": "245ms",
+        "metric_after": "89ms",
+        "direction": "lower-is-better",
+        "branch": "autoresearch/optimize-api-20260314"
+      },
+      "actual": {
+        "file": "src/api/handler.ts",
+        "changes_summary": "Replaced N+1 queries with batch loader, added response caching"
+      }
+    }
+  ]
+}
 ```
 
 ## Anti-Patterns to Avoid

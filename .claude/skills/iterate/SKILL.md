@@ -387,10 +387,64 @@ The loop integrates with the Stop hook:
 4. Tests passing
 5. Security scan clean (no P0/P1 findings)
 
+## Autoresearch Delegation (v2.95)
+
+When `/iterate` detects a **metric-based optimization task**, it can delegate to `/autoresearch` for continuous autonomous experimentation instead of running its own quality-gate loop.
+
+### Detection Criteria
+
+A task is a candidate for autoresearch delegation when it contains:
+1. A **measurable metric** (bundle size, latency, accuracy, memory usage, score, etc.)
+2. An **eval command** that produces a numeric result (`npm run build`, `pytest --benchmark`, `time ./run.sh`)
+
+### Delegation Pattern
+
+| User Request | /iterate Behavior | Delegation |
+|---|---|---|
+| "iterate on reducing bundle size" | Detects metric: bundle size | `/autoresearch src/ "npm run build"` |
+| "iterate on improving test coverage" | Detects metric: coverage % | `/autoresearch src/ "npm run test:coverage"` |
+| "iterate until tests pass" | No metric, binary pass/fail | Stays in /iterate (quality-gate loop) |
+| "fix lint errors" | No metric, binary pass/fail | Stays in /iterate (quality-gate loop) |
+| "optimize inference latency below 50ms" | Detects metric: latency | `/autoresearch src/model/ "python bench.py"` |
+
+### How It Works
+
+```
+User: /iterate "reduce bundle size by 30%"
+
+/iterate detects:
+  - metric: "bundle size"
+  - eval: inferred from package.json -> "npm run build"
+  - target: src/
+
+/iterate delegates:
+  /autoresearch src/ "npm run build" --checkpoint=5
+```
+
+The delegation happens at the start of the loop, before the first iteration. If the task does not match the metric-detection heuristic, `/iterate` proceeds with its standard EXECUTE -> VALIDATE -> QUALITY CHECK cycle.
+
+### Clear Distinction
+
+| Aspect | /iterate | /autoresearch |
+|--------|----------|---------------|
+| **Purpose** | Fix until tests/gates pass | Optimize a metric continuously |
+| **Loop type** | Quality-gate loop | Experiment loop |
+| **Termination** | All gates pass (VERIFIED_DONE) | Budget exhausted or metric target reached |
+| **Rollback** | Fix forward | Git reset on regression |
+| **Decision** | Binary pass/fail | Delta comparison (improved/equal/worse) |
+| **Best for** | "Make it correct" | "Make it better" |
+
+### When NOT to Delegate
+
+- Task has no measurable metric (pure correctness fix)
+- Task is part of an `/orchestrator` pipeline (orchestrator manages flow)
+- User explicitly requests `/iterate` behavior with `--no-delegate` flag
+
 ## Related Skills
 
 - `/orchestrator` - Full orchestration workflow
 - `/gates` - Quality validation gates
+- `/autoresearch` - Autonomous metric-driven experimentation
 - `/adversarial` - Spec refinement
 - `/parallel` - Parallel subagent execution
 - `/retrospective` - Post-task analysis

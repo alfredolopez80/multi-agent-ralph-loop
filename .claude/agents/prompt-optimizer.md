@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.43.0
+# VERSION: 2.95.0
 name: prompt-optimizer
 description: Agente que transforma prompts ordinarios en prompts profesionales para IA usando arquitectura en 5 capas
 model: inherit
@@ -249,5 +249,100 @@ Cuando recibas un prompt para optimizar:
 Cada prompt optimizado debe ser **tan específico** que un profesional (artista, writer, developer) pueda recrear exactamente lo solicitado sin ambigüedad.
 
 La calidad debe ser tal que el resultado sea **imposible de distinguir** de trabajo profesional de nivel experto.
+
+## Autonomous Self-Optimization via Autoresearch (v2.95)
+
+Prompt Optimizer can use `/autoresearch` internally to iteratively improve prompts through automated evaluation cycles. This enables autonomous prompt refinement without manual intervention.
+
+### Usage
+
+```bash
+/autoresearch prompt.txt "./eval_prompt.sh"
+```
+
+Where `prompt.txt` contains the prompt being optimized and `eval_prompt.sh` is the evaluation harness.
+
+### Dual-Metric Mode
+
+Autoresearch supports optimizing for two metrics simultaneously using `primary_secondary` mode:
+
+| Metric | Direction | Purpose |
+|--------|-----------|---------|
+| `accuracy` | `higher` | Primary: prompt produces correct/desired outputs |
+| `cost_usd` | `lower` | Secondary: minimize token usage and API cost |
+
+The optimizer prioritizes accuracy improvements first, then reduces cost among equally accurate variants.
+
+### Evaluation Script Template (`eval_prompt.sh`)
+
+```bash
+#!/usr/bin/env bash
+# eval_prompt.sh — evaluates prompt quality for autoresearch
+# Input: prompt.txt (current prompt variant)
+# Output: METRIC lines for autoresearch to parse
+
+set -euo pipefail
+
+PROMPT_FILE="${1:-prompt.txt}"
+
+# Run evaluation suite against N test cases
+correct=0
+total=0
+total_tokens=0
+
+for test_case in eval_cases/*.json; do
+  total=$((total + 1))
+  result=$(run_eval "$PROMPT_FILE" "$test_case" 2>/dev/null)
+  tokens=$(echo "$result" | jq '.usage.total_tokens')
+  passed=$(echo "$result" | jq '.passed')
+
+  total_tokens=$((total_tokens + tokens))
+  if [ "$passed" = "true" ]; then
+    correct=$((correct + 1))
+  fi
+done
+
+# Calculate metrics
+accuracy=$(echo "scale=2; $correct * 100 / $total" | bc)
+cost_usd=$(echo "scale=4; $total_tokens * 0.000003" | bc)
+
+# Output METRIC lines (required format for autoresearch)
+echo "METRIC accuracy=$accuracy"
+echo "METRIC cost_usd=$cost_usd"
+
+# Exit 0 if above minimum threshold
+if [ "$(echo "$accuracy >= 70" | bc)" -eq 1 ]; then
+  exit 0
+else
+  exit 1
+fi
+```
+
+### Budget Caps
+
+Recommended budget configuration to prevent runaway optimization:
+
+| Parameter | Recommended Value | Purpose |
+|-----------|-------------------|---------|
+| `--budget=50` | 50 iterations max | Hard stop on total iterations |
+| `--checkpoint=10` | Every 10 iterations | Save best prompt variant so far |
+
+### Example Invocation
+
+```bash
+/autoresearch prompt.txt "./eval_prompt.sh" \
+  --metric "accuracy:higher" \
+  --secondary-metric "cost_usd:lower" \
+  --budget=50 \
+  --checkpoint=10
+```
+
+### Integration with Optimization Process
+
+1. **PASO 1**: Prompt Optimizer creates initial `prompt.txt` using standard 5-layer architecture
+2. **PASO 2**: Autoresearch runs `eval_prompt.sh` against the prompt
+3. **PASO 3**: Autoresearch mutates the prompt (rewording, reordering layers, adjusting specificity)
+4. **PASO 4**: Repeat until budget exhausted or accuracy plateau detected
+5. **PASO 5**: Best variant is returned as the final optimized prompt
 
 **¿Entendido? Confirma y estaré listo para optimizar prompts.**

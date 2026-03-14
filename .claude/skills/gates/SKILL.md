@@ -323,6 +323,107 @@ fi
 - [action-report-lib.sh](.claude/lib/action-report-lib.sh) - Librería helper
 - [action-report-generator.sh](.claude/lib/action-report-generator.sh) - Generador
 
+## Integration with Autoresearch Checks (v2.95)
+
+The `/gates` quality stages can be wired as the **backpressure mechanism** for `/autoresearch` experiments. When autoresearch modifies code to optimize a metric, gates ensure the optimization does not introduce regressions in correctness, quality, or security.
+
+### Mapping Gates Stages to checks.sh
+
+Each `/gates` stage maps directly to content you can place in the autoresearch `checks.sh` file:
+
+| Gates Stage | checks.sh Content | Purpose |
+|---|---|---|
+| **CORRECTNESS** | `tsc --noEmit && cargo check && go vet ./...` | Syntax and type checks - reject experiments that break compilation |
+| **QUALITY** | `npx eslint . --max-warnings=0 && ruff check .` | Lint + complexity - reject experiments that degrade code quality |
+| **SECURITY** | `semgrep --config=auto --error && gitleaks detect` | Security scan - reject experiments that introduce vulnerabilities |
+| **CONSISTENCY** | `npx prettier --check . && black --check .` | Formatting - advisory, does not block experiments |
+
+### Template: checks.sh Using Gates
+
+```bash
+#!/usr/bin/env bash
+# checks.sh - Autoresearch backpressure via /gates stages
+# Place this file alongside your autoresearch target directory.
+# Autoresearch runs this AFTER every experiment. Non-zero exit = discard change.
+
+set -euo pipefail
+
+# Stage 1: CORRECTNESS (blocking)
+# Ensures the experiment did not break type safety or compilation.
+echo "[checks] Stage 1: CORRECTNESS"
+npx tsc --noEmit 2>&1 || exit 1
+
+# Stage 2: QUALITY (blocking)
+# Ensures the experiment did not introduce lint violations or increase complexity.
+echo "[checks] Stage 2: QUALITY"
+npx eslint . --max-warnings=0 2>&1 || exit 1
+
+# Stage 3: SECURITY (blocking)
+# Ensures the experiment did not introduce security vulnerabilities.
+echo "[checks] Stage 3: SECURITY"
+if command -v semgrep &>/dev/null; then
+    semgrep --config=auto --error --quiet 2>&1 || exit 1
+fi
+
+# Stage 4: TESTS (blocking)
+# Ensures existing tests still pass after the experiment.
+echo "[checks] Stage 4: TESTS"
+npm test 2>&1 || exit 1
+
+echo "[checks] All gates passed"
+exit 0
+```
+
+### How It Works
+
+```
+/autoresearch loop iteration:
+  1. HYPOTHESIZE -> MODIFY -> COMMIT
+  2. RUN metric command (e.g., "npm run build")
+  3. RUN checks.sh  <-- /gates stages act as guardrails
+     - If checks.sh fails -> DISCARD experiment (git reset)
+     - If checks.sh passes -> EVALUATE metric delta
+  4. Keep improvement or discard regression
+```
+
+### Backpressure Levels
+
+Configure which gates stages to enforce based on experiment risk:
+
+| Risk Level | Stages in checks.sh | Use Case |
+|---|---|---|
+| **Low** (prompt tuning, config) | CORRECTNESS only | Non-code experiments |
+| **Medium** (refactoring, optimization) | CORRECTNESS + QUALITY + TESTS | Standard code experiments |
+| **High** (security-adjacent, API changes) | All four stages | Experiments touching auth, crypto, APIs |
+
+### Python Projects Template
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# CORRECTNESS
+echo "[checks] CORRECTNESS"
+python -m py_compile "$TARGET_FILE" || exit 1
+mypy . --ignore-missing-imports 2>&1 || exit 1
+
+# QUALITY
+echo "[checks] QUALITY"
+ruff check . 2>&1 || exit 1
+
+# SECURITY
+echo "[checks] SECURITY"
+if command -v semgrep &>/dev/null; then
+    semgrep --config=auto --error --quiet 2>&1 || exit 1
+fi
+
+# TESTS
+echo "[checks] TESTS"
+pytest --tb=short 2>&1 || exit 1
+
+exit 0
+```
+
 ## Anti-Patterns
 
 - Never skip gates for "quick fixes"
