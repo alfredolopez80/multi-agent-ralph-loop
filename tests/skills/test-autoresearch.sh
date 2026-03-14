@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # test-autoresearch.sh - Tests for /autoresearch skill and agent
-# VERSION: 2.94.0
+# VERSION: 2.95.0
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -14,7 +14,7 @@ pass() { PASS=$((PASS + 1)); echo "  PASS: $1"; }
 fail() { FAIL=$((FAIL + 1)); echo "  FAIL: $1"; }
 
 echo "=========================================="
-echo "  TEST: /autoresearch skill (v2.94.0)"
+echo "  TEST: /autoresearch skill (v2.95.0)"
 echo "=========================================="
 
 # Test 1: Skill exists
@@ -89,13 +89,13 @@ else
   fail "autoresearch/ branch pattern not found"
 fi
 
-# Test 9: Stagnation detection (50 iterations)
+# Test 9: NEVER STOP philosophy (v2.95 - replaced max_stagnation default)
 echo ""
-echo "--- Test 9: Stagnation detection ---"
-if grep -q "50" "$SKILL_PATH" && grep -qi "stagnation" "$SKILL_PATH"; then
-  pass "Stagnation detection with 50 iterations"
+echo "--- Test 9: NEVER STOP philosophy ---"
+if grep -qi "never stop" "$SKILL_PATH" && grep -qi "never stop" "$AGENT_PATH"; then
+  pass "NEVER STOP philosophy in both skill and agent"
 else
-  fail "Stagnation detection missing"
+  fail "NEVER STOP philosophy missing"
 fi
 
 # Test 10: Checkpoint system
@@ -127,6 +127,159 @@ for dir in "${SYMLINK_DIRS[@]}"; do
     fail "Symlink missing: $link"
   fi
 done
+
+# === NEW v2.95 TESTS ===
+
+# Test 12: autoresearch.md living document
+echo ""
+echo "--- Test 12: autoresearch.md living document ---"
+if grep -q "autoresearch.md" "$SKILL_PATH" && grep -q "autoresearch.md" "$AGENT_PATH"; then
+  pass "autoresearch.md session document in skill and agent"
+else
+  fail "autoresearch.md session document missing"
+fi
+
+# Test 13: autoresearch.jsonl structured log
+echo ""
+echo "--- Test 13: JSONL structured log ---"
+if grep -q "autoresearch.jsonl" "$SKILL_PATH" && grep -q "autoresearch.jsonl" "$AGENT_PATH"; then
+  pass "autoresearch.jsonl structured log in skill and agent"
+else
+  fail "autoresearch.jsonl structured log missing"
+fi
+
+# Test 14: autoresearch.checks.sh backpressure
+echo ""
+echo "--- Test 14: Backpressure checks ---"
+if grep -q "autoresearch.checks.sh" "$SKILL_PATH" && grep -q "checks_failed" "$SKILL_PATH"; then
+  pass "Backpressure checks with checks_failed status"
+else
+  fail "Backpressure checks missing"
+fi
+
+# Test 15: autoresearch.ideas.md backlog
+echo ""
+echo "--- Test 15: Ideas backlog ---"
+if grep -q "autoresearch.ideas.md" "$SKILL_PATH" && grep -q "autoresearch.ideas.md" "$AGENT_PATH"; then
+  pass "Ideas backlog in skill and agent"
+else
+  fail "Ideas backlog missing"
+fi
+
+# Test 16: Simplicity criterion
+echo ""
+echo "--- Test 16: Simplicity criterion ---"
+if grep -qi "simplicity" "$SKILL_PATH" && grep -qi "simplicity" "$AGENT_PATH"; then
+  pass "Simplicity criterion in skill and agent"
+else
+  fail "Simplicity criterion missing"
+fi
+
+# Test 17: Output redirect (run.log)
+echo ""
+echo "--- Test 17: Output redirect ---"
+if grep -q "run.log" "$SKILL_PATH" && grep -q "run.log" "$AGENT_PATH"; then
+  pass "Output redirect to run.log in skill and agent"
+else
+  fail "Output redirect missing"
+fi
+
+# Test 18: git reset --hard (not git revert)
+echo ""
+echo "--- Test 18: git reset --hard ---"
+if grep -q "git reset --hard" "$SKILL_PATH" && grep -q "git reset --hard" "$AGENT_PATH"; then
+  pass "git reset --hard in skill and agent"
+else
+  fail "git reset --hard missing"
+fi
+
+# Test 19: Dual metric mode
+echo ""
+echo "--- Test 19: Dual metric mode ---"
+if grep -qi "primary_secondary" "$SKILL_PATH" && grep -qi "pareto" "$SKILL_PATH" && grep -qi "weighted" "$SKILL_PATH"; then
+  pass "Dual metric modes: primary_secondary, pareto, weighted"
+else
+  fail "Dual metric modes missing"
+fi
+
+# Test 20: Cost awareness / budget caps
+echo ""
+echo "--- Test 20: Cost awareness ---"
+if grep -q "budget_max_experiments" "$SKILL_PATH" && grep -q "budget_max_hours" "$SKILL_PATH"; then
+  pass "Budget caps (experiments, hours) present"
+else
+  fail "Budget caps missing"
+fi
+
+# Test 21: Setup contract (4 required components)
+echo ""
+echo "--- Test 21: Setup contract ---"
+if grep -q "Setup Contract" "$SKILL_PATH" && grep -q "eval_harness" "$SKILL_PATH"; then
+  pass "Setup contract with eval_harness present"
+else
+  fail "Setup contract missing"
+fi
+
+# Test 22: Crash handling statuses
+echo ""
+echo "--- Test 22: Crash handling statuses ---"
+STATUSES=("keep" "discard" "crash" "checks_failed")
+ALL_FOUND=true
+for s in "${STATUSES[@]}"; do
+  if ! grep -q "$s" "$SKILL_PATH"; then
+    ALL_FOUND=false
+  fi
+done
+if $ALL_FOUND; then
+  pass "All 4 statuses: keep, discard, crash, checks_failed"
+else
+  fail "Missing one or more statuses"
+fi
+
+# Test 23: Resumability
+echo ""
+echo "--- Test 23: Resumability ---"
+if grep -qi "resumab" "$SKILL_PATH" && grep -qi "resumab" "$AGENT_PATH"; then
+  pass "Resumability documented in skill and agent"
+else
+  fail "Resumability missing"
+fi
+
+# Test 24: Domain examples table
+echo ""
+echo "--- Test 24: Domain examples ---"
+if grep -q "ML training" "$SKILL_PATH" && grep -q "Prompt engineering" "$SKILL_PATH" && grep -q "SQL queries" "$SKILL_PATH"; then
+  pass "Domain examples: ML, prompts, SQL"
+else
+  fail "Domain examples missing"
+fi
+
+# Test 25: Version 2.95
+echo ""
+echo "--- Test 25: Version 2.95 ---"
+if grep -q "2.95" "$SKILL_PATH" && grep -q "2.95" "$AGENT_PATH"; then
+  pass "Version 2.95 in skill and agent"
+else
+  fail "Version 2.95 missing"
+fi
+
+# Test 26: Stagnation strategy in agent
+echo ""
+echo "--- Test 26: Stagnation strategy ---"
+if grep -qi "stagnation" "$AGENT_PATH" && grep -q "25-50" "$AGENT_PATH"; then
+  pass "Stagnation strategy with graduated approach in agent"
+else
+  fail "Stagnation strategy missing from agent"
+fi
+
+# Test 27: User messages during loop
+echo ""
+echo "--- Test 27: User messages during loop ---"
+if grep -qi "user.*message" "$SKILL_PATH" || grep -qi "user sends a message" "$SKILL_PATH"; then
+  pass "User messages during loop handling documented"
+else
+  fail "User messages during loop not documented"
+fi
 
 # Summary
 echo ""
