@@ -10,7 +10,11 @@
       "mcp__gordon__list_builds",
       "mcp__gordon__search_for_cves",
       "mcp__gordon__fetch",
-      "mcp__filesystem__read_text_file"
+      "mcp__filesystem__read_text_file",
+      "WebSearch",
+      "mcp__claude-mem-search____IMPORTANT",
+      "mcp__web-search__search",
+      "mcp__web-reader__webReader"
     ]
   }
 }

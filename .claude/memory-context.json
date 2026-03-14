@@ -1,9 +1,9 @@
 {
-  "version": "2.68.26",
-  "timestamp": "2026-01-29T02:52:36Z",
-  "session_id": "ccd24f7f-8d6b-48eb-9812-f4ee7a6012cd",
-  "search_keywords": "analiza archivos aunque become claude clave code correcta documents entender este falla github grande hook init local memoria necesito plugin ",
-  "total_results": 20,
+  "version": "2.91.0",
+  "timestamp": "2026-02-18T10:34:18Z",
+  "session_id": "25fd3080-7399-483a-85c4-fd6ad303e611",
+  "search_keywords": "access against agent agents allowed analyze bash check code coder compare config configuration each edit especially file find have implementation ",
+  "total_results": 21,
   "sources": {
     "claude_mem": {
       "results": [],
@@ -15,11 +15,6 @@
     },
     "handoffs": {
       "results": [
-        {
-          "session": "a4dbfbe5-6788-4d35-89e8-374300017839",
-          "timestamp": "20260112-205958",
-          "content": "# RALPH HANDOFF Session: a4dbfbe5-6788-4d35-89e8-374300017839 Timestamp: 2026-01-12T19:59:58.369378+00:00 Trigger: PreCompact (auto)  ## RECENT CHANGES | File | Type | |------|------| | .env.example | MODIFIED | | .eslintrc.json | MODIFIED | | .github/dependabot.yml | ADDED | | .prettierignore | MODIFIED | | AGENTS.md | MODIFIED | | CLAUDE.md | MODIFIED | | README.md | MODIFIED | | docs/api/email-verification-api.md | ADDED | | docs/database/report_generations.sql | ADDED | | docs/development/AGENTS.md | DELETED | | docs/development/CLAUDE.md | DELETED | | ...H - Portfolio - Jan 7, 2021 to Jun 26, 2025.pdf | DELETED | | ... - Strategy B - Jan 7, 2021 to Jun 26, 2025.pdf | DELETED | | ... - Strategy K - Jan 7, 2021 to Jun 26, 2025.pdf | DELETED | | ...trategy M L_S - Jan 7, 2021 to Jun 26, 2025.pdf | DELETED | | ... - Strategy T - Jan 7, 2021 to Jun 26, 2025.pdf | DELETED | | ...s/backtesting/pdf-examples/HODL Strategies.xlsx | DELETED | | ...set Strategy - Jan 2, 2021 to Oct 19, 2025 .pdf | DELETED | | ...sset Strategy - Jan 2, 2021 to Oct 19, 2025.pdf | DELETED | | docs/files/backtesting/pdf-examples/README.md | DELETED |  ## RESTORE COMMAND ```bash ralph ledger load a4dbfbe5-6788-4d35-89e8-374300017839 ``` "
-        },
         {
           "session": "a6b851d5-657d-4164-b59d-57ec897e201b",
           "timestamp": "20260123-222721",
@@ -61,9 +56,14 @@
           "content": "# RALPH HANDOFF Session: a6b851d5-657d-4164-b59d-57ec897e201b Timestamp: 2026-01-23T20:53:20.030358+00:00 Trigger: PreCompact (auto)  ## RECENT CHANGES | File | Type | |------|------| | .claude/ADVERSARIAL_IMPROVEMENT_PLAN_ECC.md | ADDED | | .claude/hooks/repo-boundary-guard.sh | ADDED | | AGENTS.md | MODIFIED | | CHANGELOG.md | MODIFIED | | CLAUDE.md | MODIFIED | | README.md | MODIFIED |  ## RESTORE COMMAND ```bash ralph ledger load a6b851d5-657d-4164-b59d-57ec897e201b ``` "
         },
         {
-          "session": "9bc7f9e7-4e63-4a36-95a1-213e47e4d651",
-          "timestamp": "20260112-162028",
-          "content": "# RALPH HANDOFF Session: 9bc7f9e7-4e63-4a36-95a1-213e47e4d651 Timestamp: 2026-01-12T15:20:29.059242+00:00 Trigger: PreCompact (auto)  ## RECENT CHANGES | File | Type | |------|------| | .github/workflows/docker-deploy.yml | MODIFIED | | .gitignore | MODIFIED | | .palmerarc | MODIFIED | | AGENTS.md | ADDED | | README.md | MODIFIED | | backend/Dockerfile | MODIFIED | | backend/README.md | MODIFIED | | backend/hypersig_api/README.md | MODIFIED | | backend/hypersig_api/action_validator.py | MODIFIED | | backend/hypersig_api/config.py | MODIFIED | | backend/hypersig_api/database.py | MODIFIED | | backend/hypersig_api/hl_client.py | MODIFIED | | backend/hypersig_api/logging_config.py | MODIFIED | | backend/hypersig_api/main.py | MODIFIED | | backend/hypersig_api/models.py | MODIFIED | | backend/hypersig_api/routes/cron_jobs_routes.py | MODIFIED | | ...ersig_api/routes/subscription_payment_routes.py | MODIFIED | | backend/hypersig_api/routes/subscription_routes.py | MODIFIED | | ...hypersig_api/scripts/dedupe_legacy_addresses.py | MODIFIED | | backend/hypersig_api/security.py | MODIFIED |  ## RESTORE COMMAND ```bash ralph ledger load 9bc7f9e7-4e63-4a36-95a1-213e47e4d651 ``` "
+          "session": "test-session-1769349483",
+          "timestamp": "20260125-145803",
+          "content": "# RALPH HANDOFF Session: test-session-1769349483 Timestamp: 2026-01-25T13:58:03.741537+00:00 Trigger: PreCompact (auto)  ## RESTORE COMMAND ```bash ralph ledger load test-session-1769349483 ``` "
+        },
+        {
+          "session": "3fc9c451-43ca-4630-b64c-ae672c7e8d0a",
+          "timestamp": "20260120-154748",
+          "content": "# RALPH HANDOFF Session: 3fc9c451-43ca-4630-b64c-ae672c7e8d0a Timestamp: 2026-01-20T14:47:49.398507+00:00 Trigger: PreCompact (auto)  ## RECENT CHANGES | File | Type | |------|------| | __tests__/integration/hypersig-templates.test.ts | MODIFIED | | ...pplications/services/hlWebSocketService.test.ts | MODIFIED | | scripts/seedHyperSigTemplates.js | MODIFIED | | src/applications/services/hlNotificationService.ts | MODIFIED | | src/applications/services/hlWebSocketService.ts | MODIFIED | | src/applications/services/slackService.ts | MODIFIED | | ...lications/services/unifiedNotificationSender.ts | MODIFIED | | src/core/models/OnChain/HLAssetMovement.ts | MODIFIED | | src/infrastructure/websocket/hlWsTypes.ts | MODIFIED | | src/server.ts | MODIFIED |  ## RESTORE COMMAND ```bash ralph ledger load 3fc9c451-43ca-4630-b64c-ae672c7e8d0a ``` "
         }
       ],
       "source": "handoffs"
@@ -79,16 +79,8 @@
           "content": "# CONTINUITY_RALPH: 7b6ac9ca-f9d0-4188-a5d0-a2b77058c760 Generated: 2026-01-19T15:00:26.783952+00:00 Last Updated: 2026-01-19T15:00:26.783952+00:00  ## CURRENT GOAL Session state before compaction (auto-saved)  ## COMPLETED WORK - [x] .gitignore - Staged (modified) - [x] src/config/features.ts - Staged (modified)  ## PENDING WORK - [ ] next.config.mjs - Modified (unchanged) - [ ] src/app/providers.tsx - Modified (unchanged) - [ ] src/components/TradeBox/index.tsx - Modified (unchanged) - [ ] src/components/TradeBox/velvet-trade-box/components/ConnectWallet.tsx - Modified (unchanged) - [ ] src/components/common/CustomConnectButton/index.tsx - Modified (unchanged) - [ ] src/hooks/useDynamicAuth.ts - Modified (unchanged) - [ ] src/hooks/useSmartChainSwitch.ts - Modified (unchanged) - [ ] src/lib/wallet.ts - Modified (unchanged) - [ ] src/services/BanditProvider.tsx - Modified (unchanged)  ## Git Status Branch: feat/add_sdk_dynamic  Recent commits:   - f0f75158 Merge branch 'main' into feat/add_sdk_dynamic   - 2ec6ee25 Merge pull request #160 from HODLprotocol/revert-159-hotfix/fix_footer   - abc4c548 Revert \\\"fix(pdf): remove HODL prefix from OSS footer label\\\"  ## Environment Type: cli | Capabilities: full Project: /Users/alfredolopez/Documents/GitHub/HodlProtocol/Hodlprotocol-web "
         },
         {
-          "session": "273c13e9-7e01-4324-9d87-6519302251d2",
-          "content": "# CONTINUITY_RALPH: 273c13e9-7e01-4324-9d87-6519302251d2 Generated: 2026-01-16T18:00:14.702377+00:00 Last Updated: 2026-01-16T18:00:14.702377+00:00  ## CURRENT GOAL Session state before compaction (auto-saved)  ## COMPLETED WORK - [x] ext.config.mjs - Staged (modified)  ## Git Status Branch: feat/add_sdk_dynamic  Recent commits:   - 72b9ff84 fix(deps): downgrade Dynamic Labs to 4.47.0 for wagmi v2 compatibility   - 622d82a9 chore(lint): remove unused logger imports and format E2E tests   - 85f887c5 feat(docs): update  ## Environment Type: vscode | Capabilities: limited Project: /Users/alfredolopez/Documents/GitHub/HodlProtocol/Hodlprotocol-web "
-        },
-        {
           "session": "6b4bcc30-b531-4590-8624-50051bbcca1c",
           "content": "# CONTINUITY_RALPH: 6b4bcc30-b531-4590-8624-50051bbcca1c Generated: 2026-01-19T13:44:37.285128+00:00 Last Updated: 2026-01-19T13:44:37.285128+00:00  ## CURRENT GOAL Session state before compaction (auto-saved)  ## COMPLETED WORK - [x] claude/docs/CLAUDE.md - Staged (modified)  ## PENDING WORK - [ ] .claude/progress.md - Modified (unchanged) - [ ] tests/test_hooks_functional.py - Modified (unchanged) - [ ] tests/test_hooks_v2454.py - Modified (unchanged)  ## Git Status Branch: main  Recent commits:   - 5d9f29b feat(v2.50.0): Add Repository Learner + git-guard.py protection   - c59a223 docs: Add automatic feedback loop diagram to architecture section   - da7c938 docs: Add English-only policy and Spanish README translation  ## Environment Type: cli | Capabilities: full Project: /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop "
-        },
-        {
-          "session": "1a76f370-b319-487f-8290-6b3bd91773e3",
-          "content": "# CONTINUITY_RALPH: 1a76f370-b319-487f-8290-6b3bd91773e3 Generated: 2026-01-17T19:48:17.716169+00:00 Last Updated: 2026-01-17T19:48:17.716169+00:00  ## CURRENT GOAL Session state before compaction (auto-saved)  ## Environment Type: cli | Capabilities: full Project: /Users/alfredolopez/Documents/GitHub/Claude-docker "
         },
         {
           "session": "c127e30d-3a35-4d64-bab9-7ba3dd44eec7",
@@ -99,16 +91,24 @@
           "content": "# CONTINUITY_RALPH: f7dd1c19-7fd7-4a4e-8a43-8f06164bfb73 Generated: 2026-01-27T05:26:01Z Last Updated: 2026-01-27T05:26:01Z  ## CURRENT GOAL No goal set  ## COMPLETED WORK - [x] null - [x] null - [x] null - [x] null - [x] null - [x] null - [x] null - [x] null  ## PENDING WORK - [ ] null - [ ] null - [ ] null - [ ] null - [ ] null  ## Git Status Branch: main  Recent commits:   - d32d93f feat(v2.73.0): add GLM Coding Plan usage tracking to statusline   - ff037b5 docs(v2.72.1): update documentation for context simulation tools   - 2be93a3 feat(v2.72.1): add context simulation scripts for statusline validation  ## Environment Type: cli | Capabilities: full Project: /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop "
         },
         {
-          "session": "claude-docker-20260117-222215",
-          "content": "# CONTINUITY_RALPH: claude-docker-20260117-222215 Generated: 2026-01-17T21:22:15.314494+00:00 Last Updated: 2026-01-17T21:22:15.314494+00:00  ## CURRENT GOAL Session state before compaction (auto-saved)  ## Environment Type: cli | Capabilities: full Project: /Users/alfredolopez "
-        },
-        {
-          "session": "b05f16e4-f387-48ff-92e7-a80df8344f40",
-          "content": "# CONTINUITY_RALPH: b05f16e4-f387-48ff-92e7-a80df8344f40 Generated: 2026-01-23T13:27:08.618826+00:00 Last Updated: 2026-01-23T13:27:08.618826+00:00  ## CURRENT GOAL Session state before compaction (auto-saved)  ## Git Status Branch: hotfix/metrics_huanzi  Recent commits:   - 126b16a3 Merge branch 'feature/product-detail' into hotfix/metrics_huanzi   - ae56786a feat(docs): README   - ee1c2e73 fix(metrics): enable metrics for Velvet strategies 12, 46, and 47  ## Environment Type: cli | Capabilities: full Project: /Users/alfredolopez/Documents/GitHub/HodlProtocol/Hodlprotocol-web "
-        },
-        {
           "session": "a6b851d5-657d-4164-b59d-57ec897e201b",
           "content": "# CONTINUITY_RALPH: a6b851d5-657d-4164-b59d-57ec897e201b Generated: 2026-01-23T22:07:42.523039+00:00 Last Updated: 2026-01-23T22:07:42.523039+00:00  ## CURRENT GOAL Session state before compaction (auto-saved)  ## COMPLETED WORK - [x] claude/hooks/CLAUDE.md - Staged (modified)  ## PENDING WORK - [ ] .claude/progress.md - Modified (unchanged) - [ ] .ralph/usage.jsonl - Modified (unchanged) - [ ] tests/**/CLAUDE.md - Modified (unchanged) - [ ] tests/CLAUDE.md - Modified (unchanged) - [ ] tests/run_tests.sh - Modified (unchanged)  ## Git Status Branch: main  Recent commits:   - 5bedd57 feat(v2.66.7): Adversarial validation Phase 2 - CRITICAL fixes   - cf4fa0d feat(v2.66.6): Adversarial validation loop - 11 security & compatibility fixes   - 2a6fa3e feat(v2.66.5): Adversarial validation loop complete with security fixes  ## Environment Type: cli | Capabilities: full Project: /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop "
+        },
+        {
+          "session": "f11c2f53-0127-4228-9c77-731d9d53127d",
+          "content": "# CONTINUITY_RALPH: f11c2f53-0127-4228-9c77-731d9d53127d Generated: 2026-01-19T22:00:46.429330+00:00 Last Updated: 2026-01-19T22:00:46.429330+00:00  ## CURRENT GOAL Session state before compaction (auto-saved)  ## Git Status Branch: feat/add_sdk_dynamic  Recent commits:   - 92239385 fix(dynamic): change auth mode to enable embedded wallets for email auth   - 5ecce562 refactor(dynamic): remove RainbowKit dead code and fix lint errors   - 0add6591 test(dynamic): add unit tests for wallet priority configuration  ## Environment Type: cli | Capabilities: full Project: /Users/alfredolopez/Documents/GitHub/HodlProtocol/Hodlprotocol-web "
+        },
+        {
+          "session": "c0bc1f09-7432-4fbc-af6b-dbc853328f07",
+          "content": "# CONTINUITY_RALPH: c0bc1f09-7432-4fbc-af6b-dbc853328f07 Generated: 2026-01-24T17:29:24.913717+00:00 Last Updated: 2026-01-24T17:29:24.913717+00:00  ## CURRENT GOAL Session state before compaction (auto-saved)  ## COMPLETED WORK - [x] claude/hooks/CLAUDE.md - Staged (modified)  ## PENDING WORK - [ ] .claude/hooks/curator-trigger.sh - Modified (unchanged) - [ ] .claude/hooks/detect-environment.sh - Modified (unchanged) - [ ] .claude/hooks/orchestrator-helper.sh - Modified (unchanged) - [ ] .claude/hooks/procedural-forget.sh - Modified (unchanged) - [ ] .claude/hooks/quality-gates.sh - Modified (unchanged) - [ ] .claude/hooks/sentry-check-status.sh - Modified (unchanged) - [ ] .claude/hooks/sentry-correlation.sh - Modified (unchanged) - [ ] .claude/hooks/state-sync.sh - Modified (unchanged) - [ ] .claude/hooks/todo-plan-sync.sh - Modified (unchanged) - [ ] .claude/progress.md - Modified (unchanged) - [ ] .claude/schemas/CLAUDE.md - Modified (unchanged) - [ ] .ralph/usage.jsonl - Modified (unchanged) - [ ] CHANGELOG.md - Modified (unchanged) - [ ] CLAUDE.md - Modified (unchanged) - [ ] README.md - Modified (unchanged) - [ ] scripts/CLAUDE.md - Modified (unchanged) - [ ] tests/**/CLAUDE.md - Modified (unchanged) - [ ] tests/CLAUDE.md - Modified (unchanged) - [ ] tests/run_tests.sh - Modified (unchanged)  ## Git Status Branch: main  Recent commits:   - 3816014 feat(v2.68.22): Complete technical debt closure - 6 CLI commands + SEC-116   - 5992cdd fix(v2.68.20): SEC-029 session ID path traversal + adversarial audit fixes   - 2558c42 docs: Apply stop-slop to README - reduce AI patterns  ## Environment Type: cli | Capabilities: full Project: /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop "
+        },
+        {
+          "session": "49b266e9-8d87-4536-a3c3-fe6a9471596f",
+          "content": "# CONTINUITY_RALPH: 49b266e9-8d87-4536-a3c3-fe6a9471596f Generated: 2026-01-22T13:59:26.570129+00:00 Last Updated: 2026-01-22T13:59:26.570129+00:00  ## CURRENT GOAL Session state before compaction (auto-saved)  ## COMPLETED WORK - [x] rc/app/api/swap/data/route.ts - Staged (modified)  ## PENDING WORK - [ ] src/components/ProductMetrics/InfoVelvet.tsx - Modified (unchanged) - [ ] src/shared/TokenSwap/calculations/strategyClassification.ts - Modified (unchanged)  ## Git Status Branch: hotfix/metrics_huanzi  Recent commits:   - 2546747d feat(update): fix metrics velvet   - 74a9e073 refactor(Velvet tests): apply prettier formatting to strategyId test file   - 60b456ea test(Velvet metrics): add anti-regression tests for strategyId lookup  ## Environment Type: cli | Capabilities: full Project: /Users/alfredolopez/Documents/GitHub/HodlProtocol/Hodlprotocol-web "
+        },
+        {
+          "session": "0001495e-28fc-4b1a-940f-a54a13527318",
+          "content": "# CONTINUITY_RALPH: 0001495e-28fc-4b1a-940f-a54a13527318 Generated: 2026-01-27T10:31:04.283000+00:00 Last Updated: 2026-01-27T10:31:04.283000+00:00  ## CURRENT GOAL Session state before compaction (auto-saved)  ## COMPLETED WORK - [x] env.example - Staged (modified)  ## PENDING WORK - [ ] .gitignore - Modified (unchanged) - [ ] Makefile - Modified (unchanged) - [ ] docker-compose.yml - Modified (unchanged) - [ ] ee/features/security/lib/ratelimit.ts - Modified (unchanged) - [ ] lib/emails/send-verification-request.ts - Modified (unchanged) - [ ] lib/redis.ts - Modified (unchanged) - [ ] package-lock.json - Modified (unchanged) - [ ] package.json - Modified (unchanged) - [ ] pages/api/auth/[...nextauth].ts - Modified (unchanged)  ## Git Status Branch: main  Recent commits:   - 6e66087c fix: resolver conflicto de rutas duplicadas /api/health   - f5e544d1 fix: corregir configuración crítica de Docker Compose y Next.js   - 3abf2068 docs: add Docker fixes report with detailed audit results  ## Environment Type: cli | Capabilities: full Project: /Users/alfredolopez/Documents/GitHub/Hodlmarkets/papermark "
         }
       ],
       "source": "ledgers"
@@ -118,7 +118,11 @@
       "source": "web_search"
     },
     "docs_search": {
-      "results": [],
+      "results": [
+        {
+          "content": "1.  **Analyze the Request:**\n    *   **User Role:** Documentation Expert.\n    *   **Task:** Find documentation for a specific set of keywords: \"access against agent agents allowed analyze bash check code coder compare config configuration each edit especially file find have implementation documentation API reference tutorial\".\n    *   **Implicit Intent:** The user is looking for documentation related to a specific tool or library that involves agents, code analysis, file editing, and configuration. The keywords are jumbled but strongly suggest a context of *AI coding agents*, *code execution environments*, or *developer tools*.\n    *   **Key Indicators:** \"agent\", \"bash\", \"code coder\", \"edit file\", \"analyze\", \"API reference\".\n    *   **Hypothesis:** The user is likely looking for documentation for tools like **OpenAI's API (specifically Assistants API or Agents)**, **LangChain (Agents)**, **AutoGPT**, or perhaps a specific platform like **Replit Agent**, **Cursor**, or a generic \"Coding Agent\" framework.\n    *   **However**, the list looks like it might be a specific product's feature list or a search query string.\n    *   Let's look closer at the specific combination: \"access against agent agents allowed analyze bash check code coder compare config configuration each edit especially file find have implementation\".\n    *   This specific string looks suspiciously like it might be from a specific tool's internal structure or a prompt injection attempt *disguised* as a request for docs, or perhaps a very messy query for a specific library.\n    *   *Correction/Refinement:* Actually, looking at the phrasing \"access against agent agents allowed\", it reminds me of permissions or access control lists (ACLs) in coding environments.\n    *   *Alternative Hypothesis:* Is this related to **OpenAI Swarm**? Or **LlamaIndex**? Or a specific \"Code Interpreter\" tool?\n    *   Let's consider the most prominent \"Agent\" + \"Bash\" + \"Code\" tool right now. It's likely **OpenAI Assistants API (Code Interpreter/Function Calling)** or **LangChain Agents**.\n\n    *   *Wait, let's re-read the input string carefully.* It looks like a random word salad.\n    *   \"Find documentation for: access against agent agents allowed analyze bash check code coder compare config configuration each edit especially file find have implementation documentation API\n"
+        }
+      ],
       "source": "docs_search"
     }
   },
@@ -133,16 +137,16 @@
         "pattern": "# CONTINUITY_RALPH: 7b6ac9ca-f9d0-4188-a5d0-a2b77058c760 Generated: 2026-01-19T15:00:26.783952+00:00 Last Updated: 2026-01-19T15:00:26.783952+00:00  ## CURRENT GOAL Session state before"
       },
       {
-        "session": "273c13e9-7e01-4324-9d87-6519302251d2",
-        "pattern": "# CONTINUITY_RALPH: 273c13e9-7e01-4324-9d87-6519302251d2 Generated: 2026-01-16T18:00:14.702377+00:00 Last Updated: 2026-01-16T18:00:14.702377+00:00  ## CURRENT GOAL Session state before"
-      },
-      {
         "session": "6b4bcc30-b531-4590-8624-50051bbcca1c",
         "pattern": "# CONTINUITY_RALPH: 6b4bcc30-b531-4590-8624-50051bbcca1c Generated: 2026-01-19T13:44:37.285128+00:00 Last Updated: 2026-01-19T13:44:37.285128+00:00  ## CURRENT GOAL Session state before"
       },
       {
         "session": "c127e30d-3a35-4d64-bab9-7ba3dd44eec7",
         "pattern": "# CONTINUITY_RALPH: c127e30d-3a35-4d64-bab9-7ba3dd44eec7 Generated: 2026-01-27T21:56:01Z Last Updated: 2026-01-27T21:56:01Z  ## CURRENT GOAL No plan-state found"
+      },
+      {
+        "session": "f7dd1c19-7fd7-4a4e-8a43-8f06164bfb73",
+        "pattern": "# CONTINUITY_RALPH: f7dd1c19-7fd7-4a4e-8a43-8f06164bfb73 Generated: 2026-01-27T05:26:01Z Last Updated: 2026-01-27T05:26:01Z  ## CURRENT GOAL No goal set"
       }
     ],
     "past_errors": [
@@ -155,18 +159,18 @@
         "error": "# CONTINUITY_RALPH: 7b6ac9ca-f9d0-4188-a5d0-a2b77058c760 Generated: 2026-01-19T15:00:26.783952+00:00 Last Updated: 2026-01-19T15:00:26.783952+00:00  ##"
       },
       {
-        "session": "273c13e9-7e01-4324-9d87-6519302251d2",
-        "error": "# CONTINUITY_RALPH: 273c13e9-7e01-4324-9d87-6519302251d2 Generated: 2026-01-16T18:00:14.702377+00:00 Last Updated: 2026-01-16T18:00:14.702377+00:00  ##"
+        "session": "c127e30d-3a35-4d64-bab9-7ba3dd44eec7",
+        "error": "# CONTINUITY_RALPH: c127e30d-3a35-4d64-bab9-7ba3dd44eec7 Generated: 2026-01-27T21:56:01Z Last Updated: 2026-01-27T21:56:01Z  ##"
       }
     ],
-    "recommended_patterns": []
+    "recommended_patterns": [
+      {
+        "pattern": "# CONTINUITY_RALPH: c0bc1f09-7432-4fbc-af6b-dbc853328f07 Generated: 2026-01-24T17:29:24.913717+00:00 Last Updated: 2026-01-24T17:29:24.913717+00:00  ## CURRENT GOAL",
+        "source": "ledger"
+      }
+    ]
   },
   "fork_suggestions": [
-    {
-      "session": "a4dbfbe5-6788-4d35-89e8-374300017839",
-      "timestamp": "20260112-205958",
-      "relevance": "high"
-    },
     {
       "session": "a6b851d5-657d-4164-b59d-57ec897e201b",
       "timestamp": "20260123-222721",
@@ -186,7 +190,12 @@
       "session": "a6b851d5-657d-4164-b59d-57ec897e201b",
       "timestamp": "20260123-230742",
       "relevance": "high"
+    },
+    {
+      "session": "a6b851d5-657d-4164-b59d-57ec897e201b",
+      "timestamp": "20260123-221516",
+      "relevance": "high"
     }
   ],
-  "note": "Smart Memory Search v2.68.26 - 6 parallel sources (4 local + 2 GLM-4.7)"
+  "note": "Smart Memory Search v2.91.0 - 6 parallel sources (claude-mem MCP + 3 local + 2 GLM-4.7)"
 }

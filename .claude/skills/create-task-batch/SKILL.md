@@ -344,8 +344,8 @@ ralph create-batch --format json
 ralph create-batch --format prd
 ralph create-batch --format tasks
 
-# Save to specific location
-ralph create-batch --output docs/prd/auth.prq.md
+# Save to specific location (default: .claude/plans/ in project root)
+ralph create-batch --output .claude/plans/auth.prq.md
 ```
 
 ## Integration with /task-batch
@@ -357,13 +357,13 @@ After creating the task list:
 /create-task-batch "User authentication"
 
 # Step 2: Review generated PRD
-# File saved to: docs/prd/user-authentication.prq.md
+# File saved to: .claude/plans/user-authentication.prq.md
 
 # Step 3: Execute the batch
-/task-batch docs/prd/user-authentication.prq.md
+/task-batch .claude/plans/user-authentication.prq.md
 
 # Or with options
-/task-batch docs/prd/user-authentication.prq.md --priority
+/task-batch .claude/plans/user-authentication.prq.md --priority
 ```
 
 ## Example Session
@@ -412,10 +412,10 @@ Q: Acceptance criteria for "Create user profile data model":
 A: Schema exists, migrations run, validation works
 
 [OUTPUT]
-Created: docs/prd/user-profile-feature.prq.md
+Created: .claude/plans/user-profile-feature.prq.md
 
 Ready to execute with:
-/task-batch docs/prd/user-profile-feature.prq.md
+/task-batch .claude/plans/user-profile-feature.prq.md
 ```
 
 ## Anti-Patterns
