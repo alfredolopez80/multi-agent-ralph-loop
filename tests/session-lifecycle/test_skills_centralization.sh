@@ -110,7 +110,7 @@ if [[ $TESTS_FAILED -gt 0 ]]; then
     echo "2. Custom agents (ralph-*) exist in repo but not globally"
     echo ""
     echo "RECOMMENDED FIX:"
-    echo "  Run: .claude/scripts/centralize-skills.sh"
+    echo "  Run: ${REPO_ROOT}/.claude/scripts/centralize-skills.sh"
     exit 1
 else
     echo "All skills and agents properly centralized!"

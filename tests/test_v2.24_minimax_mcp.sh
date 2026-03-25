@@ -332,9 +332,11 @@ test_suite_version() {
         test_fail "ralph script version mismatch"
     fi
 
-    # Test 2: mmc script version
-    test_start "mmc script has VERSION=\"2.24.0\""
-    if grep -q '^VERSION="2.24.0"' "$PROJECT_ROOT/scripts/mmc" 2>/dev/null; then
+    # Test 2: mmc script version (skip if mmc doesn't exist — deprecated)
+    test_start "mmc script version (skip if absent)"
+    if [[ ! -f "$PROJECT_ROOT/scripts/mmc" ]]; then
+        echo "SKIPPED (mmc removed)"
+    elif grep -q '^VERSION="2.24.0"' "$PROJECT_ROOT/scripts/mmc" 2>/dev/null; then
         test_pass
     else
         test_fail "mmc script version mismatch"
@@ -346,14 +348,6 @@ test_suite_version() {
         test_pass
     else
         test_fail "ralph missing v2.24 comment"
-    fi
-
-    # Test 4: Version comment in mmc
-    test_start "mmc has v2.24 comment"
-    if grep -q "# Version 2.24" "$PROJECT_ROOT/scripts/mmc" 2>/dev/null; then
-        test_pass
-    else
-        test_fail "mmc missing v2.24 comment"
     fi
 }
 

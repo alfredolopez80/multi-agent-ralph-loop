@@ -307,7 +307,7 @@ EOF
 {
     "tool_name": "Bash",
     "tool_input": {
-        "command": "cd /tmp/some-external-repo && npm install",
+        "command": "cd $HOME/some-other-project && npm install",
         "description": "Install in external repo"
     }
 }

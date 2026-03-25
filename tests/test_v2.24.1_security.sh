@@ -52,8 +52,10 @@ test_suite_version() {
         test_fail "ralph script version mismatch"
     fi
 
-    test_start "mmc script has VERSION=\"2.24.1\""
-    if grep -q '^VERSION="2.24.1"' "$PROJECT_ROOT/scripts/mmc" 2>/dev/null; then
+    test_start "mmc script version (skip if absent)"
+    if [[ ! -f "$PROJECT_ROOT/scripts/mmc" ]]; then
+        echo "SKIPPED (mmc removed)"
+    elif grep -q '^VERSION="2.24.1"' "$PROJECT_ROOT/scripts/mmc" 2>/dev/null; then
         test_pass
     else
         test_fail "mmc script version mismatch"
