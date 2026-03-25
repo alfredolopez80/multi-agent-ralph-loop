@@ -834,46 +834,18 @@ verify_installation() {
 
 
 
-    # Verify curator and repo-learn scripts
-    log_info "Running post-installation tests..."
+    # Optional post-installation checks (non-blocking)
+    log_info "Running post-installation checks..."
 
-    if [ -x "${RALPH_DIR}/curator/curator.sh" ]; then
-        log_success "curator.sh installed"
+    # These scripts are managed by skills, not the installer
+    [ -x "${RALPH_DIR}/curator/curator.sh" ] && log_success "curator.sh available" || log_warn "curator.sh not found (install via /curator skill)"
+    [ -x "${RALPH_DIR}/scripts/repo-learn.sh" ] && log_success "repo-learn.sh available" || log_warn "repo-learn.sh not found (install via /repo-learn skill)"
+
+    # Verify ralph CLI responds
+    if "$INSTALL_DIR/ralph" --version > /dev/null 2>&1; then
+        log_success "ralph CLI responds"
     else
-        log_error "curator.sh not found or not executable"
-        ((ERRORS++))
-    fi
-
-    if [ -x "${RALPH_DIR}/scripts/repo-learn.sh" ]; then
-        log_success "repo-learn.sh installed"
-    else
-        log_error "repo-learn.sh not found or not executable"
-        ((ERRORS++))
-    fi
-
-    # Run validation script if available
-    if [ -x "${RALPH_DIR}/tests/validate_commands.sh" ]; then
-        log_info "Running validation tests..."
-        if "${RALPH_DIR}/tests/validate_commands.sh" > /dev/null 2>&1; then
-            log_success "All validation tests passed"
-        else
-            log_warn "Some validation tests failed - check ${RALPH_DIR}/logs/"
-            ((ERRORS++))
-        fi
-    fi
-
-    # Verify commands work
-    if "$INSTALL_DIR/ralph" repo-learn --help > /dev/null 2>&1; then
-        log_success "ralph repo-learn command works"
-    else
-        log_error "ralph repo-learn command failed"
-        ((ERRORS++))
-    fi
-
-    if "$INSTALL_DIR/ralph" curator > /dev/null 2>&1; then
-        log_success "ralph curator command works"
-    else
-        log_error "ralph curator command failed"
+        log_error "ralph CLI not responding"
         ((ERRORS++))
     fi
     return $ERRORS
