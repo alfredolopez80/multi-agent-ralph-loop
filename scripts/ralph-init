@@ -44,8 +44,8 @@ PROJECT_TYPE="unknown"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --name)   PROJECT_NAME="$2"; shift 2 ;;
-        --type)   PROJECT_TYPE="$2"; shift 2 ;;
+        --name)   [[ -n "${2:-}" ]] || { log_error "--name requires a value"; exit 1; }; PROJECT_NAME="$2"; shift 2 ;;
+        --type)   [[ -n "${2:-}" ]] || { log_error "--type requires a value"; exit 1; }; PROJECT_TYPE="$2"; shift 2 ;;
         --help|-h)
             echo "Usage: ralph-init [dir] [--name NAME] [--type TYPE]"
             echo ""
@@ -114,21 +114,25 @@ if [[ -z "$TEMPLATE" ]]; then
     exit 1
 fi
 
+# Sanitize project name/type for safe sed injection and shell sourcing
+SAFE_NAME=$(printf '%s' "$PROJECT_NAME" | tr -cd 'a-zA-Z0-9._-')
+SAFE_TYPE=$(printf '%s' "$PROJECT_TYPE" | tr -cd 'a-zA-Z0-9._-')
+
 # Generate .ralphrc from template with project-specific values
 sed \
-    -e "s|\${PROJECT_NAME:-my-project}|${PROJECT_NAME}|g" \
-    -e "s|\${PROJECT_TYPE:-unknown}|${PROJECT_TYPE}|g" \
+    -e "s|\${PROJECT_NAME:-my-project}|${SAFE_NAME}|g" \
+    -e "s|\${PROJECT_TYPE:-unknown}|${SAFE_TYPE}|g" \
     "$TEMPLATE" > "${PROJECT_DIR}/.ralphrc"
 
 chmod 600 "${PROJECT_DIR}/.ralphrc"
 
-# Add .ralph/ to .gitignore if not already there
-if [[ -f "${PROJECT_DIR}/.gitignore" ]]; then
-    if ! grep -q "^\.ralph/" "${PROJECT_DIR}/.gitignore" 2>/dev/null; then
-        echo "" >> "${PROJECT_DIR}/.gitignore"
-        echo "# Ralph local state" >> "${PROJECT_DIR}/.gitignore"
-        echo ".ralph/" >> "${PROJECT_DIR}/.gitignore"
-    fi
+# Ensure .gitignore exists and includes .ralph/
+GITIGNORE="${PROJECT_DIR}/.gitignore"
+[[ -f "$GITIGNORE" ]] || touch "$GITIGNORE"
+if ! grep -q "^\.ralph/" "$GITIGNORE" 2>/dev/null; then
+    echo "" >> "$GITIGNORE"
+    echo "# Ralph local state" >> "$GITIGNORE"
+    echo ".ralph/" >> "$GITIGNORE"
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════════

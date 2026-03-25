@@ -33,14 +33,20 @@ CB_SAME_ERROR_THRESHOLD="${CB_SAME_ERROR_THRESHOLD:-5}"
 CB_COOLDOWN_MINUTES="${CB_COOLDOWN_MINUTES:-30}"
 CB_AUTO_RESET="${CB_AUTO_RESET:-false}"
 
-# State storage
-CB_STATE_DIR="${RALPH_HOME:-${HOME}/.ralph}/state"
+# State storage — override CB_STATE_DIR for per-project state (e.g., .ralph/state)
+CB_STATE_DIR="${CB_STATE_DIR:-${RALPH_HOME:-${HOME}/.ralph}/state}"
 CB_STATE_FILE="${CB_STATE_DIR}/circuit_breaker.json"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # INITIALIZATION
 # ═══════════════════════════════════════════════════════════════════════════════
 cb_init() {
+    # Require jq for JSON state management
+    if ! command -v jq &>/dev/null; then
+        echo "ERROR: circuit_breaker requires jq. Install with: brew install jq (macOS) or apt install jq (Linux)" >&2
+        return 1
+    fi
+
     mkdir -p "$CB_STATE_DIR"
 
     if [[ ! -f "$CB_STATE_FILE" ]] || ! jq '.' "$CB_STATE_FILE" &>/dev/null; then
@@ -90,6 +96,11 @@ cb_record_result() {
     local loop_number="${1:-0}"
     local files_changed="${2:-0}"
     local has_errors="${3:-false}"
+
+    # Auto-init if state file is missing
+    if [[ ! -f "$CB_STATE_FILE" ]] || ! jq '.' "$CB_STATE_FILE" &>/dev/null; then
+        cb_init || return 1
+    fi
 
     local data
     data=$(cat "$CB_STATE_FILE")

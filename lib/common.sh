@@ -56,16 +56,10 @@ RALPH_INSTALL_DIR="${HOME}/.local/bin"
 load_ralphrc() {
     local project_dir="${1:-.}"
 
-    # Defaults
-    export RALPH_PROJECT_NAME="${RALPH_PROJECT_NAME:-$(basename "$(pwd)")}"
-    export RALPH_PROJECT_TYPE="${RALPH_PROJECT_TYPE:-unknown}"
-    export RALPH_MAX_CALLS_PER_HOUR="${RALPH_MAX_CALLS_PER_HOUR:-100}"
-    export RALPH_TIMEOUT_MINUTES="${RALPH_TIMEOUT_MINUTES:-15}"
-    export RALPH_SESSION_CONTINUITY="${RALPH_SESSION_CONTINUITY:-true}"
-    export RALPH_SESSION_EXPIRY_HOURS="${RALPH_SESSION_EXPIRY_HOURS:-24}"
-    export RALPH_VERBOSE="${RALPH_VERBOSE:-false}"
+    # Resolve project_dir to absolute path
+    project_dir=$(cd "$project_dir" 2>/dev/null && pwd) || project_dir="$(pwd)"
 
-    # Circuit breaker defaults
+    # Set defaults before sourcing .ralphrc
     export CB_NO_PROGRESS_THRESHOLD="${CB_NO_PROGRESS_THRESHOLD:-3}"
     export CB_SAME_ERROR_THRESHOLD="${CB_SAME_ERROR_THRESHOLD:-5}"
     export CB_COOLDOWN_MINUTES="${CB_COOLDOWN_MINUTES:-30}"
@@ -75,10 +69,20 @@ load_ralphrc() {
     if [[ -f "${project_dir}/.ralphrc" ]]; then
         # shellcheck disable=SC1091
         source "${project_dir}/.ralphrc"
-        return 0
     fi
 
-    return 1  # No .ralphrc found (using defaults)
+    # Map .ralphrc variable names to RALPH_* exports
+    # (.ralphrc uses PROJECT_NAME; lib/ uses RALPH_PROJECT_NAME)
+    export RALPH_PROJECT_NAME="${PROJECT_NAME:-${RALPH_PROJECT_NAME:-$(basename "$project_dir")}}"
+    export RALPH_PROJECT_TYPE="${PROJECT_TYPE:-${RALPH_PROJECT_TYPE:-unknown}}"
+    export RALPH_MAX_CALLS_PER_HOUR="${MAX_CALLS_PER_HOUR:-${RALPH_MAX_CALLS_PER_HOUR:-100}}"
+    export RALPH_TIMEOUT_MINUTES="${CLAUDE_TIMEOUT_MINUTES:-${RALPH_TIMEOUT_MINUTES:-15}}"
+    export RALPH_MAX_ITERATIONS="${MAX_ITERATIONS:-${RALPH_MAX_ITERATIONS:-25}}"
+    export RALPH_SESSION_CONTINUITY="${SESSION_CONTINUITY:-${RALPH_SESSION_CONTINUITY:-true}}"
+    export RALPH_SESSION_EXPIRY_HOURS="${SESSION_EXPIRY_HOURS:-${RALPH_SESSION_EXPIRY_HOURS:-24}}"
+    export RALPH_VERBOSE="${RALPH_VERBOSE:-false}"
+
+    [[ -f "${project_dir}/.ralphrc" ]]  # return 0 if .ralphrc was found
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════

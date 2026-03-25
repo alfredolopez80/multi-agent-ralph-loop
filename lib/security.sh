@@ -41,15 +41,15 @@ validate_path() {
         return 1
     fi
 
-    # Block path traversal (realpath -m is GNU-only; use -e or fallback)
-    local resolved
-    resolved=$(realpath "$input" 2>/dev/null || echo "$input")
-
-    if [[ "$resolved" == *".."* ]]; then
+    # Block path traversal — reject .. segments BEFORE normalization
+    if [[ "$input" == *"/.."* ]] || [[ "$input" == ".."* ]]; then
         log_security "BLOCKED" "Path traversal attempt" "$purpose" "$input"
         return 1
     fi
 
+    # Normalize and return
+    local resolved
+    resolved=$(realpath "$input" 2>/dev/null || echo "$input")
     echo "$resolved"
     return 0
 }
@@ -98,15 +98,30 @@ log_security() {
     local reason="$2"
     local context="${3:-}"
     local detail="${4:-}"
-    local log_file="${RALPH_HOME:-${HOME}/.ralph}/security-audit.log"
+    local log_dir="${RALPH_HOME:-${HOME}/.ralph}/logs"
+    local log_file="${log_dir}/security-audit.log"
 
-    local timestamp
-    timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    mkdir -p "$log_dir" 2>/dev/null || true
 
-    # Structured JSON log entry
+    # Use jq for safe JSON encoding (falls back to sanitized printf)
     local entry
-    entry=$(printf '{"timestamp":"%s","action":"%s","reason":"%s","context":"%s","detail":"%s","pid":%d}\n' \
-        "$timestamp" "$action" "$reason" "$context" "${detail:0:200}" "$$")
+    if command -v jq &>/dev/null; then
+        entry=$(jq -cn \
+            --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+            --arg action "$action" \
+            --arg reason "$reason" \
+            --arg context "$context" \
+            --arg detail "${detail:0:200}" \
+            --argjson pid "$$" \
+            '{timestamp: $ts, action: $action, reason: $reason, context: $context, detail: $detail, pid: $pid}')
+    else
+        # Fallback: strip quotes/backslashes from fields
+        local safe_reason safe_detail
+        safe_reason=$(printf '%s' "$reason" | tr -d '"\\')
+        safe_detail=$(printf '%s' "${detail:0:200}" | tr -d '"\\')
+        entry=$(printf '{"timestamp":"%s","action":"%s","reason":"%s","context":"%s","detail":"%s","pid":%d}' \
+            "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$action" "$safe_reason" "$context" "$safe_detail" "$$")
+    fi
 
     echo "$entry" >> "$log_file" 2>/dev/null || true
 }
