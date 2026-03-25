@@ -75,7 +75,8 @@ remove_scripts() {
     log_info "Removing CLI scripts..."
 
     [ -f "$INSTALL_DIR/ralph" ] && rm -f "$INSTALL_DIR/ralph" && log_success "Removed ralph"
-    [ -f "$INSTALL_DIR/mmc" ] && rm -f "$INSTALL_DIR/mmc" && log_success "Removed mmc"
+    # Clean up legacy mmc if it exists from older installs
+    [ -f "$INSTALL_DIR/mmc" ] && rm -f "$INSTALL_DIR/mmc" && log_success "Removed legacy mmc"
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -139,7 +140,7 @@ clean_settings_json() {
 
     # Define Ralph-specific patterns to remove
     # Permissions added by Ralph
-    RALPH_PERMISSIONS='["Bash(ralph:*)", "Bash(mmc:*)"]'
+    RALPH_PERMISSIONS='["Bash(ralph:*)"]'
 
     # Hook commands added by Ralph
     RALPH_HOOK_COMMANDS='["${HOME}/.claude/hooks/git-safety-guard.py", "${HOME}/.claude/hooks/quality-gates.sh"]'
@@ -361,7 +362,7 @@ main() {
     echo "═══════════════════════════════════════════════════════════════════════════════"
     echo ""
     echo "  This will remove:"
-    echo "    • ralph and mmc CLI from ~/.local/bin/"
+    echo "    • ralph CLI from ~/.local/bin/"
     echo "    • Ralph agents from ~/.claude/agents/"
     echo "    • Ralph commands from ~/.claude/commands/"
     echo "    • Ralph skills from ~/.claude/skills/"

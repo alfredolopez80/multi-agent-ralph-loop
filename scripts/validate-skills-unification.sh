@@ -5,7 +5,7 @@
 
 set -e
 
-REPO_PATH="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+REPO_PATH="$(cd "$(dirname "$0")/.." && pwd)"
 GLOBAL_SKILLS="$HOME/.claude/skills"
 GLOBAL_COMMANDS="$HOME/.claude/commands"
 

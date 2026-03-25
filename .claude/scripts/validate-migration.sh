@@ -110,7 +110,8 @@ echo ""
 # 4. Verificar alineación con repo
 echo -e "${BLUE}[4/5] Verificando alineación con repo...${NC}"
 
-REPO="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+REPO="${REPO_ROOT}/.claude"
 
 repo_agents=$(ls $REPO/agents/*.md 2>/dev/null | wc -l | tr -d ' ')
 link_agents=$(ls ~/.claude/agents 2>/dev/null | wc -l | tr -d ' ')
