@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+# ralph-init - Initialize Ralph for a project directory
+#
+# Creates .ralph/ project structure with per-project configuration.
+# Inspired by frankbria/ralph-claude-code's setup.sh pattern.
+#
+# Usage:
+#   ralph-init                    # Initialize current directory
+#   ralph-init /path/to/project   # Initialize specific directory
+#   ralph-init --type python      # Set project type
+#   ralph-init --name "my-app"    # Set project name
+#
+# This creates:
+#   .ralphrc                      # Per-project configuration
+#   .ralph/                       # Project-local Ralph state
+#   .ralph/logs/                  # Iteration logs
+#   .ralph/state/                 # Circuit breaker, checkpoints
+
+set -euo pipefail
+
+# Find our lib directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RALPH_LIB="${SCRIPT_DIR}/../lib"
+
+if [[ -f "${RALPH_LIB}/common.sh" ]]; then
+    source "${RALPH_LIB}/common.sh"
+else
+    # Fallback if lib isn't next to us (installed globally)
+    RALPH_LIB="${HOME}/.ralph/repo/lib"
+    if [[ -f "${RALPH_LIB}/common.sh" ]]; then
+        source "${RALPH_LIB}/common.sh"
+    else
+        echo "[ERROR] Cannot find Ralph lib directory"
+        exit 1
+    fi
+fi
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PARSE ARGUMENTS
+# ═══════════════════════════════════════════════════════════════════════════════
+PROJECT_DIR="."
+PROJECT_NAME=""
+PROJECT_TYPE="unknown"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --name)   [[ -n "${2:-}" ]] || { log_error "--name requires a value"; exit 1; }; PROJECT_NAME="$2"; shift 2 ;;
+        --type)   [[ -n "${2:-}" ]] || { log_error "--type requires a value"; exit 1; }; PROJECT_TYPE="$2"; shift 2 ;;
+        --help|-h)
+            echo "Usage: ralph-init [dir] [--name NAME] [--type TYPE]"
+            echo ""
+            echo "Types: javascript, typescript, python, rust, go, unknown"
+            exit 0
+            ;;
+        -*)       log_error "Unknown flag: $1"; exit 1 ;;
+        *)        PROJECT_DIR="$1"; shift ;;
+    esac
+done
+
+# Resolve project directory
+PROJECT_DIR=$(cd "$PROJECT_DIR" 2>/dev/null && pwd) || {
+    log_error "Directory not found: $PROJECT_DIR"
+    exit 1
+}
+
+# Default project name from directory
+PROJECT_NAME="${PROJECT_NAME:-$(basename "$PROJECT_DIR")}"
+
+# Auto-detect project type
+if [[ "$PROJECT_TYPE" == "unknown" ]]; then
+    if [[ -f "${PROJECT_DIR}/package.json" ]]; then
+        if [[ -f "${PROJECT_DIR}/tsconfig.json" ]]; then
+            PROJECT_TYPE="typescript"
+        else
+            PROJECT_TYPE="javascript"
+        fi
+    elif [[ -f "${PROJECT_DIR}/pyproject.toml" ]] || [[ -f "${PROJECT_DIR}/setup.py" ]]; then
+        PROJECT_TYPE="python"
+    elif [[ -f "${PROJECT_DIR}/Cargo.toml" ]]; then
+        PROJECT_TYPE="rust"
+    elif [[ -f "${PROJECT_DIR}/go.mod" ]]; then
+        PROJECT_TYPE="go"
+    fi
+fi
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CHECK FOR EXISTING INIT
+# ═══════════════════════════════════════════════════════════════════════════════
+if [[ -f "${PROJECT_DIR}/.ralphrc" ]]; then
+    log_warn "Project already initialized (found .ralphrc)"
+    echo "  To reinitialize, delete .ralphrc first"
+    exit 0
+fi
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CREATE PROJECT STRUCTURE
+# ═══════════════════════════════════════════════════════════════════════════════
+log_info "Initializing Ralph for: ${PROJECT_NAME} (${PROJECT_TYPE})"
+
+# Create .ralph/ local state directory
+mkdir -p "${PROJECT_DIR}/.ralph"/{logs,state,docs}
+
+# Find template
+TEMPLATE=""
+for t in "${SCRIPT_DIR}/../templates/ralphrc.template" "${HOME}/.ralph/repo/templates/ralphrc.template"; do
+    if [[ -f "$t" ]]; then
+        TEMPLATE="$t"
+        break
+    fi
+done
+
+if [[ -z "$TEMPLATE" ]]; then
+    log_error "Template not found. Run quick-install.sh first."
+    exit 1
+fi
+
+# Sanitize project name/type for safe sed injection and shell sourcing
+SAFE_NAME=$(printf '%s' "$PROJECT_NAME" | tr -cd 'a-zA-Z0-9._-')
+SAFE_TYPE=$(printf '%s' "$PROJECT_TYPE" | tr -cd 'a-zA-Z0-9._-')
+
+# Generate .ralphrc from template with project-specific values
+sed \
+    -e "s|\${PROJECT_NAME:-my-project}|${SAFE_NAME}|g" \
+    -e "s|\${PROJECT_TYPE:-unknown}|${SAFE_TYPE}|g" \
+    "$TEMPLATE" > "${PROJECT_DIR}/.ralphrc"
+
+chmod 600 "${PROJECT_DIR}/.ralphrc"
+
+# Ensure .gitignore exists and includes .ralph/
+GITIGNORE="${PROJECT_DIR}/.gitignore"
+[[ -f "$GITIGNORE" ]] || touch "$GITIGNORE"
+if ! grep -q "^\.ralph/" "$GITIGNORE" 2>/dev/null; then
+    echo "" >> "$GITIGNORE"
+    echo "# Ralph local state" >> "$GITIGNORE"
+    echo ".ralph/" >> "$GITIGNORE"
+fi
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DONE
+# ═══════════════════════════════════════════════════════════════════════════════
+log_success "Ralph initialized for ${PROJECT_NAME}"
+echo ""
+echo "  Created:"
+echo "    .ralphrc              — project configuration (edit this)"
+echo "    .ralph/logs/          — iteration logs"
+echo "    .ralph/state/         — circuit breaker state"
+echo ""
+echo "  Next steps:"
+echo "    1. Review .ralphrc and adjust settings"
+echo "    2. Use /iterate or /orchestrator in Claude Code"
+echo "    3. Circuit breaker will auto-protect against runaway loops"
