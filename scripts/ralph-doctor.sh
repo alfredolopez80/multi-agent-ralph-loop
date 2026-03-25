@@ -13,6 +13,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
 RALPH_DIR="${HOME}/.ralph"
+CLAUDE_DIR="${HOME}/.claude"
 VERSION="1.0.0"
 
 # Contadores globales

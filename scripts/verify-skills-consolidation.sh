@@ -14,7 +14,8 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-SKILLS_DIR="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/skills"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SKILLS_DIR="${REPO_ROOT}/.claude/skills"
 ERRORS=0
 WARNINGS=0
 
@@ -155,7 +156,7 @@ echo "  4. VERIFICANDO .gitignore"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-GITIGNORE="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.gitignore"
+GITIGNORE="${REPO_ROOT}/.gitignore"
 if grep -q "\.claude/skills/\*\.bak" "$GITIGNORE" 2>/dev/null; then
     echo -e "${GREEN}✓ OK${NC}: .gitignore contiene entrada para backups (.claude/skills/*.bak)"
 else

@@ -6,8 +6,9 @@
 set -e
 
 SETTINGS="$HOME/.claude/settings.json"
-REPO_HOOKS="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/hooks"
-PLUGIN_ROOT="/Users/alfredolopez/.claude-sneakpeek/zai/config/plugins/cache/thedotmack/claude-mem/10.0.6"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_HOOKS="${REPO_ROOT}/.claude/hooks"
+PLUGIN_ROOT="${HOME}/.claude-sneakpeek/zai/config/plugins/cache/thedotmack/claude-mem/10.0.6"
 RUN_TESTS="${1:-}"
 
 echo "=========================================="

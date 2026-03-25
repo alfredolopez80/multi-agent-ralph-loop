@@ -8,7 +8,7 @@
 set -e
 
 # Configuracion
-REPO_ROOT="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_CLAUDE="$REPO_ROOT/.claude"
 STD_CLAUDE="$HOME/.claude"
 BACKUP_DIR="$HOME/.claude-backup-$(date +%Y%m%d-%H%M%S)"

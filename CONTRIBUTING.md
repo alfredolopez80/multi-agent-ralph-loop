@@ -53,7 +53,7 @@ cd multi-agent-ralph-loop
 bats tests/
 
 # Check bash scripts
-shellcheck scripts/ralph scripts/mmc install.sh uninstall.sh
+shellcheck scripts/ralph install.sh uninstall.sh
 ```
 
 ## Project Structure
@@ -66,8 +66,7 @@ multi-agent-ralph-loop/
 │   ├── hooks/           # Git safety guard, quality gates
 │   └── skills/          # Reusable skills (deep-clarification, etc.)
 ├── scripts/
-│   ├── ralph            # Main CLI tool
-│   └── mmc              # MiniMax wrapper
+│   └── ralph            # Main CLI tool
 ├── tests/               # Bats test files
 ├── install.sh           # Global installer
 ├── uninstall.sh         # Uninstaller
@@ -152,7 +151,7 @@ All PRs must pass the automated CI pipeline before merging:
 # Run locally before submitting PR
 ./tests/run_tests.sh           # All tests
 ruff check .claude/hooks/*.py tests/*.py   # Python lint
-shellcheck scripts/ralph scripts/mmc       # Shell lint
+shellcheck scripts/ralph                   # Shell lint
 ```
 
 ## Branch Protection

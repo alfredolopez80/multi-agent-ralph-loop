@@ -4,9 +4,9 @@
 #
 # This script consolidates skills and agents from multiple locations into ~/.claude/
 # Locations:
-#   - /Users/alfredolopez/.claude-code-old/.claude-old/skills
-#   - /Users/alfredolopez/.claude-sneakpeek-old/zai/skills
-#   - /Users/alfredolopez/.config/agents/skills (kimi-cli shared)
+#   - ~/.claude-code-old/.claude-old/skills (legacy)
+#   - ~/.claude-sneakpeek-old/zai/skills (legacy)
+#   - ~/.config/agents/skills (kimi-cli shared)
 #   - Repository: multi-agent-ralph-loop/.claude/skills
 
 set -euo pipefail
@@ -14,14 +14,14 @@ set -euo pipefail
 DRY_RUN=false
 [[ "$1" == "--dry-run" ]] && DRY_RUN=true
 
-REPO_ROOT="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CLAUDE_DIR="$HOME/.claude"
 BACKUP_DIR="$HOME/.claude-backup-$(date +%Y%m%d-%H%M%S)"
 
-# Source locations
-OLD_CLAUDE_SKILLS="/Users/alfredolopez/.claude-code-old/.claude-old/skills"
-OLD_ZAI_SKILLS="/Users/alfredolopez/.claude-sneakpeek-old/zai/skills"
-KIMI_SKILLS="/Users/alfredolopez/.config/agents/skills"
+# Source locations (legacy — only used if they exist on this machine)
+OLD_CLAUDE_SKILLS="${HOME}/.claude-code-old/.claude-old/skills"
+OLD_ZAI_SKILLS="${HOME}/.claude-sneakpeek-old/zai/skills"
+KIMI_SKILLS="${HOME}/.config/agents/skills"
 REPO_SKILLS="$REPO_ROOT/.claude/skills"
 REPO_AGENTS="$REPO_ROOT/.claude/agents"
 

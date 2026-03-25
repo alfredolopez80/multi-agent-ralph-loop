@@ -211,13 +211,11 @@ create_directories() {
 install_scripts() {
     log_info "Installing CLI scripts..."
 
-    # Copy ralph and mmc
+    # Copy ralph CLI
     cp "${SCRIPT_DIR}/scripts/ralph" "$INSTALL_DIR/ralph"
-    cp "${SCRIPT_DIR}/scripts/mmc" "$INSTALL_DIR/mmc"
 
     # Make executable
     chmod +x "$INSTALL_DIR/ralph"
-    chmod +x "$INSTALL_DIR/mmc"
 
     log_success "CLI scripts installed to $INSTALL_DIR"
 }
@@ -813,11 +811,6 @@ alias rhl='ralph loop'
 alias rhc='ralph clarify'
 alias rhret='ralph retrospective'
 alias rhi='ralph improvements'
-
-# MiniMax aliases
-alias mm='mmc'
-alias mml='mmc --loop 30'
-alias mmlight='mmc --lightning'
 $END_MARKER
 RCEOF
     log_success "Shell aliases configured in $SHELL_RC"
@@ -832,7 +825,6 @@ verify_installation() {
     local ERRORS=0
 
     [ -x "$INSTALL_DIR/ralph" ] && log_success "ralph CLI installed" || { log_error "ralph not found"; ((ERRORS++)); }
-    [ -x "$INSTALL_DIR/mmc" ] && log_success "mmc CLI installed" || { log_error "mmc not found"; ((ERRORS++)); }
     [ -d "${CLAUDE_DIR}/agents" ] && log_success "Agents directory OK" || { log_error "Agents missing"; ((ERRORS++)); }
     [ -d "${CLAUDE_DIR}/commands" ] && log_success "Commands directory OK" || { log_error "Commands missing"; ((ERRORS++)); }
     [ -x "${CLAUDE_DIR}/hooks/git-safety-guard.py" ] && log_success "Git Safety Guard installed (ACTIVE)" || log_warn "Git Safety Guard may need chmod +x"
@@ -898,7 +890,6 @@ main() {
     echo ""
     echo "  This will install:"
     echo "    • ralph CLI to ~/.local/bin/"
-    echo "    • mmc (MiniMax wrapper) to ~/.local/bin/"
     echo "    • 9 agents to ~/.claude/agents/"
     echo "    • 15 commands to ~/.claude/commands/"
     echo "    • 5 skills to ~/.claude/skills/ (including React Best Practices from Vercel)"
@@ -943,21 +934,14 @@ main() {
         echo "  1. Reload your shell:"
         echo "     ${CYAN}source ~/.zshrc${NC}  (or ~/.bashrc)"
         echo ""
-        echo "  2. (Optional) Configure MiniMax for 2-4x iterations:"
-        echo "     ${CYAN}mmc --setup${NC}"
-        echo ""
-        echo "  3. Start using Ralph:"
+        echo "  2. Start using Ralph:"
         echo "     ${CYAN}ralph help${NC}"
         echo "     ${CYAN}ralph orch \"Your task here\"${NC}"
         echo ""
-        echo "  4. Run quality gates manually when needed:"
+        echo "  3. Run quality gates manually when needed:"
         echo "     ${CYAN}ralph gates${NC}"
         echo ""
-        echo "  5. View usage statistics (hybrid logging):"
-        echo "     ${CYAN}mmc --stats all${NC}      # Global + project"
-        echo "     ${CYAN}mmc --stats project${NC}  # This repo only"
-        echo ""
-        echo "  6. (v2.20) Install WorkTrunk for git worktree workflow:"
+        echo "  4. (v2.20) Install WorkTrunk for git worktree workflow:"
         echo "     ${CYAN}brew install max-sixty/worktrunk/wt${NC}"
         echo "     ${CYAN}wt config shell install${NC}"
         echo "     ${CYAN}ralph worktree \"your feature\"${NC}"
