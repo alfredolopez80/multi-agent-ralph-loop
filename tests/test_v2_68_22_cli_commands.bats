@@ -11,7 +11,7 @@
 # - ralph ledger (save, load, list, show)
 
 setup() {
-    export RALPH_CMD="/Users/alfredolopez/.local/bin/ralph"
+    export RALPH_CMD="${HOME}/.local/bin/ralph"
     export PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)"
     export TEST_TMP=$(mktemp -d)
 }

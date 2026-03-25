@@ -321,10 +321,8 @@ test_suite_version() {
     echo "═══════════════════════════════════════════════════════════════"
 
     # Find project root
-    local PROJECT_ROOT="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
-    if [ ! -d "$PROJECT_ROOT" ]; then
-        PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-    fi
+    local PROJECT_ROOT
+    PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
     # Test 1: ralph script version
     test_start "ralph script has VERSION=\"2.24.0\""

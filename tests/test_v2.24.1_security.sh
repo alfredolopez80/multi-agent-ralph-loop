@@ -17,10 +17,7 @@ TESTS_PASSED=0
 TESTS_FAILED=0
 
 # Find project root
-PROJECT_ROOT="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
-if [ ! -d "$PROJECT_ROOT" ]; then
-    PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}}")/.." && pwd)"
-fi
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Test helpers
 test_start() {

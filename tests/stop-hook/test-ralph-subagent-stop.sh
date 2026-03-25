@@ -15,7 +15,7 @@ set -euo pipefail
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 HOOK_PATH="$REPO_ROOT/.claude/hooks/ralph-subagent-stop.sh"
 STATE_DIR="$HOME/.ralph/state"
 TEST_SUBAGENT="test-subagent-stop-$$"
