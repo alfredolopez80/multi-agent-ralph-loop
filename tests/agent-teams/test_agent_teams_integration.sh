@@ -12,7 +12,7 @@
 set -e
 
 # Configuration
-REPO_ROOT="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SETTINGS_FILE="$HOME/.claude/settings.json"
 AGENTS_DIR="$HOME/.claude/agents"
 HOOKS_DIR="$REPO_ROOT/.claude/hooks"

@@ -3,7 +3,7 @@
 # VERSION: 2.89.1
 # Tests all 14 security findings from /security-loop audit (2026-02-15)
 
-REPO_ROOT="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+REPO_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
 SETTINGS="$HOME/.claude/settings.json"
 LOCAL_SETTINGS="$REPO_ROOT/.claude/settings.local.json"
 HOOKS_DIR="$REPO_ROOT/.claude/hooks"

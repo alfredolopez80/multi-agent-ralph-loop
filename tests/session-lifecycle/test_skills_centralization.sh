@@ -38,19 +38,19 @@ echo "Skills count by location:"
 echo ""
 
 # Old Claude Code
-old_claude="/Users/alfredolopez/.claude-code-old/.claude-old/skills"
+old_claude="${HOME}/.claude-code-old/.claude-old/skills"
 count=$(count_skills "$old_claude")
 count=$((count - 1))
 echo "  old_claude: $count skills"
 
 # Old Zai
-old_zai="/Users/alfredolopez/.claude-sneakpeek-old/zai/skills"
+old_zai="${HOME}/.claude-sneakpeek-old/zai/skills"
 count=$(count_skills "$old_zai")
 count=$((count - 1))
 echo "  old_zai: $count skills"
 
 # Kimi shared
-kimi="/Users/alfredolopez/.config/agents/skills"
+kimi="${HOME}/.config/agents/skills"
 count=$(count_skills "$kimi")
 count=$((count - 1))
 echo "  kimi_shared: $count skills"
@@ -110,7 +110,7 @@ if [[ $TESTS_FAILED -gt 0 ]]; then
     echo "2. Custom agents (ralph-*) exist in repo but not globally"
     echo ""
     echo "RECOMMENDED FIX:"
-    echo "  Run: /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/scripts/centralize-skills.sh"
+    echo "  Run: ${REPO_ROOT}/.claude/scripts/centralize-skills.sh"
     exit 1
 else
     echo "All skills and agents properly centralized!"
