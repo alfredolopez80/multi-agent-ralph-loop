@@ -20,6 +20,9 @@
 
 set -euo pipefail
 
+# SECURITY: Ensure all created files are user-only by default (VULN-008)
+umask 077
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -99,15 +102,23 @@ log_step "Preflight Checks"
 
 MISSING=()
 command -v git  &>/dev/null || MISSING+=("git")
-command -v jq   &>/dev/null || MISSING+=("jq")
 command -v curl &>/dev/null || MISSING+=("curl")
+
+# jq is needed by ralph CLI at runtime, not by this installer
+OPTIONAL_RUNTIME=()
+command -v jq &>/dev/null || OPTIONAL_RUNTIME+=("jq (used by ralph CLI at runtime)")
 
 if [ ${#MISSING[@]} -gt 0 ]; then
     log_error "Missing required tools: ${MISSING[*]}"
-    echo "  Install with: brew install ${MISSING[*]}"
+    echo "  Install with your system package manager (e.g., apt install, brew install, dnf install):"
+    echo "    ${MISSING[*]}"
     exit 1
 fi
-log_success "Required tools: git, jq, curl"
+log_success "Required tools: git, curl"
+
+if [ ${#OPTIONAL_RUNTIME[@]} -gt 0 ]; then
+    log_warn "Recommended: ${OPTIONAL_RUNTIME[*]}"
+fi
 
 # Check optional tools
 OPTIONAL_MISSING=()
@@ -127,10 +138,15 @@ run mkdir -p "${RALPH_HOME}"
 if [ -d "${RALPH_REPO}/.git" ]; then
     log_info "Repo exists at ${RALPH_REPO}, pulling latest..."
     if ! $DRY_RUN; then
-        git -C "${RALPH_REPO}" fetch origin main --quiet 2>/dev/null || true
-        git -C "${RALPH_REPO}" reset --hard origin/main --quiet 2>/dev/null || true
+        if git -C "${RALPH_REPO}" fetch origin main --quiet 2>/dev/null && \
+           git -C "${RALPH_REPO}" reset --hard origin/main --quiet 2>/dev/null; then
+            log_success "Updated to latest"
+        else
+            log_warn "Could not update from origin/main; continuing with existing checkout"
+        fi
+    else
+        log_info "[dry-run] Would fetch and reset repo to origin/main"
     fi
-    log_success "Updated to latest"
 else
     log_info "Cloning to ${RALPH_REPO}..."
     run git clone --depth 1 "${RALPH_REPO_URL}" "${RALPH_REPO}"
@@ -170,7 +186,7 @@ if [ "$MODE" != "skills-only" ]; then
     log_success "ralph CLI → ${INSTALL_DIR}/ralph"
 
     # Verify PATH
-    if ! echo "$PATH" | tr ':' '\n' | grep -q "${INSTALL_DIR}"; then
+    if ! echo "$PATH" | tr ':' '\n' | grep -Fxq "${INSTALL_DIR}"; then
         log_warn "${INSTALL_DIR} is not in PATH. Add to your shell profile:"
         echo "  export PATH=\"${INSTALL_DIR}:\$PATH\""
     fi
@@ -198,7 +214,8 @@ for skill_dir in "${RALPH_REPO}/.claude/skills"/*/; do
 
     if [ -L "$target" ]; then
         current=$(readlink "$target")
-        if [ "$current" = "$skill_dir" ]; then
+        # Normalize trailing slashes for comparison
+        if [ "${current%/}" = "${skill_dir%/}" ]; then
             ((SKIPPED++))
             continue
         fi
@@ -275,7 +292,9 @@ fi
 log_step "Verification"
 
 ERRORS=0
-[ -x "${INSTALL_DIR}/ralph" ] && log_success "ralph CLI installed" || { log_error "ralph CLI missing"; ((ERRORS++)); }
+if [ "$MODE" != "skills-only" ]; then
+    [ -x "${INSTALL_DIR}/ralph" ] && log_success "ralph CLI installed" || { log_error "ralph CLI missing"; ((ERRORS++)); }
+fi
 [ -d "${CLAUDE_DIR}/skills" ] && log_success "Skills directory exists" || { log_error "Skills dir missing"; ((ERRORS++)); }
 
 SKILL_COUNT=$(find "${CLAUDE_DIR}/skills" -maxdepth 1 -type l -exec readlink {} \; 2>/dev/null | grep -c "multi-agent-ralph-loop" || true)

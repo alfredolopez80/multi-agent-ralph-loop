@@ -12,7 +12,7 @@
 set -euo pipefail
 
 DRY_RUN=false
-[[ "$1" == "--dry-run" ]] && DRY_RUN=true
+[[ "${1:-}" == "--dry-run" ]] && DRY_RUN=true
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CLAUDE_DIR="$HOME/.claude"

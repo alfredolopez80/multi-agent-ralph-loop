@@ -50,6 +50,7 @@ jobs:
           for hook in .claude/hooks/*; do
             if [ -f "$hook" ]; then
               case "$hook" in
+                *.ARCHIVED|*.bak|*.old|*.backup|*.backup_*) ;; # Skip archived/backup files
                 *.sh|*.py|*.js) ;; # Valid hook extensions
                 *) echo "ERROR: Hook $hook has unrecognized extension (expected .sh, .py, or .js)"; exit 1 ;;
               esac
