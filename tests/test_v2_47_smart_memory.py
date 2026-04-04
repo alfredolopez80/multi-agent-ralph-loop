@@ -548,7 +548,9 @@ class TestV247GlobalSettings:
 class TestSmartMemoryDocumentation:
     """Test Smart Memory documentation (originally v2.47, now general).
 
-    v2.85: All documentation tests are advisory - skip if not present.
+    DEPRECATED (v2.85): All documentation tests are advisory. Most tests in
+    this class skip because documentation format has changed across versions
+    and historical CHANGELOG entries were lost in v2.69.0 restructuring.
     """
 
     def test_readme_has_smart_memory_section(self, project_root):

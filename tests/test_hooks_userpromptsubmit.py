@@ -239,7 +239,13 @@ class TestPeriodicReminderHook:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestPromptAnalyzerHook:
-    """Tests for prompt-analyzer.sh (SEC-031)"""
+    """Tests for prompt-analyzer.sh (SEC-031)
+
+    DEPRECATED (v3.0): prompt-analyzer.sh hook was removed. Tests that depend
+    on it skip with "Hook not found: prompt-analyzer". Additionally, 5 tests
+    were deprecated in v2.57.3 when the hook changed from model-centric to
+    action-centric classification.
+    """
 
     def setup_method(self):
         self.hook_path = get_hook_path("prompt-analyzer")

@@ -7,6 +7,12 @@ and procedural-enricher components.
 
 VERSION: 1.1.0
 UPDATED: 2026-02-13 - Added graceful skip when dependencies unavailable
+
+DEPRECATED (v3.0): The repository learner scripts (github-repo-loader.py,
+pattern-extractor.py, best-practices-analyzer.py, procedural-enricher.py)
+were removed from ~/.claude/scripts/. All tests in this module skip because
+the required dependencies are not available. The /repo-learn skill replaced
+these standalone scripts.
 """
 
 import json

@@ -17,7 +17,12 @@ import pytest
 
 
 class TestCodexNoYoloFlags:
-    """Test that --yolo is not used in Codex CLI invocations."""
+    """Test that --yolo is not used in Codex CLI invocations.
+
+    DEPRECATED (v2.87): Commands directory (~/.claude/commands/) was removed
+    when commands migrated to skills. Tests for bugs.md, security-loop.md,
+    and the commands directory skip because the files/directory no longer exist.
+    """
 
     def test_bugs_md_no_yolo(self, global_commands_dir):
         """Ensure --yolo is not used in bugs.md command."""
@@ -156,7 +161,8 @@ class TestMCPAutoConfiguration:
 class TestLSPExploreSkill:
     """Test LSP-Explore skill exists and is properly configured.
 
-    Note: lsp-explore skill removed in v2.84.2 - tests skipped.
+    DEPRECATED (v2.84.2): lsp-explore skill was removed in v2.84.2.
+    All tests in this class are deprecated and permanently skipped.
     """
 
     @pytest.mark.skip(reason="lsp-explore skill removed in v2.84.2")
@@ -289,8 +295,8 @@ class TestWorktreeDashboard:
 class TestGitignoreTldrEntry:
     """Test .tldr/ is handled by ralph tldr warm command.
 
-    v3.0: session-start-tldr.sh and tldr integration were removed.
-    Tests now skip gracefully.
+    DEPRECATED (v3.0): session-start-tldr.sh and tldr integration were removed
+    in v3.0 consolidation. All tests in this class are deprecated.
     """
 
     def test_ralph_tldr_warm_adds_gitignore(self, scripts_dir):
@@ -318,7 +324,9 @@ class TestGitignoreTldrEntry:
 class TestKeybindings:
     """Test keybindings.json exists with orchestration shortcuts.
 
-    Note: keybindings.json is optional user configuration - tests skipped.
+    DEPRECATED (v2.84.2): keybindings.json is optional user configuration
+    that was never required. All tests in this class are deprecated and
+    permanently skipped.
     """
 
     @pytest.mark.skip(reason="keybindings.json is optional user configuration")

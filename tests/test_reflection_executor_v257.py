@@ -8,9 +8,10 @@ content and filters out JSON metadata, tool calls, and system messages.
 VERSION: 2.57.0
 Part of v2.57.0 Memory System Reconstruction - Phase 2
 
-NOTE: These tests require the enhanced reflection-executor.py with
-JSONL parsing and _clean_extraction method. If the dependency is not
-found, tests will be skipped gracefully.
+DEPRECATED (v3.0): reflection-executor.py was removed from
+~/.claude/scripts/. All tests in this module skip because the script
+is no longer available. The JSONL parsing functionality was superseded
+by the claude-mem MCP plugin.
 """
 
 import json

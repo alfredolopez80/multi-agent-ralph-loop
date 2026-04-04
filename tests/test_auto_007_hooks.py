@@ -128,7 +128,12 @@ import time
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestAutoModeSetterHook:
-    """Tests for auto-mode-setter.sh hook."""
+    """Tests for auto-mode-setter.sh hook.
+
+    DEPRECATED (v3.0): auto-mode-setter.sh hook was removed. All tests in this
+    class skip because the hook file does not exist. The AUTO-007 automatic
+    execution mode was superseded by the agent teams system.
+    """
 
     HOOK_PATH = GLOBAL_HOOKS / "auto-mode-setter.sh"
 
@@ -400,7 +405,10 @@ class TestOrchestratorSkillIntegration:
 class TestLoopSkillIntegration:
     """Tests for loop/SKILL.md integration.
 
-    v2.89.2: AUTO-007 feature was removed from skills during v2.87+ refactor.
+    DEPRECATED (v2.94): loop skill was renamed to iterate in v2.94. The
+    OpenCode fallback path no longer exists. AUTO-007 feature was removed
+    from skills during v2.87+ refactor. Tests skip because loop/SKILL.md
+    is not found at the expected OpenCode location.
     """
 
     @pytest.fixture(autouse=True)
@@ -435,7 +443,11 @@ class TestLoopSkillIntegration:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestAutoModeSetterRegistration:
-    """Tests for auto-mode-setter.sh registration in settings.json."""
+    """Tests for auto-mode-setter.sh registration in settings.json.
+
+    DEPRECATED (v3.0): auto-mode-setter.sh hook was removed. Registration
+    tests skip because the hook is not registered.
+    """
 
     @pytest.fixture(scope="module")
     def settings_json(self):
@@ -477,7 +489,11 @@ class TestAutoModeSetterRegistration:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestAuto007Integration:
-    """Integration tests for complete AUTO-007 flow."""
+    """Integration tests for complete AUTO-007 flow.
+
+    DEPRECATED (v3.0): auto-mode-setter.sh hook was removed. All tests
+    in this class skip because the critical component is missing.
+    """
 
     @pytest.fixture(autouse=True)
     def setup(self):

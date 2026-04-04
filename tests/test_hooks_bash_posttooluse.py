@@ -19,6 +19,9 @@ from pathlib import Path
 GLOBAL_HOOKS_DIR = Path.home() / ".claude" / "hooks"
 LOCAL_HOOKS_DIR = Path(__file__).parent.parent / ".claude" / "hooks"
 
+# NOTE: auto-save-context.sh was removed in v3.0. Tests for it skip with
+# "Hook not found: auto-save-context.sh". This is a valid skip (TOOL MISSING /
+# FEATURE DEPRECATED).
 BASH_POSTTOOLUSE_HOOKS = [
     "progress-tracker.sh",
     "status-auto-check.sh",

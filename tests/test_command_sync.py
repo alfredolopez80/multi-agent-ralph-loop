@@ -50,7 +50,12 @@ def is_valid_command_file(cmd_file: Path) -> bool:
 
 
 class TestCommandSynchronization:
-    """Test suite for command synchronization verification."""
+    """Test suite for command synchronization verification.
+
+    DEPRECATED (v2.87): Commands were migrated to skills in v2.87. The
+    sync-commands.sh script was removed. Tests that depend on the script
+    or the ~/.claude/commands/ directory skip because these no longer exist.
+    """
 
     @pytest.fixture
     def sync_script_path(self):
@@ -330,7 +335,11 @@ class TestRalphScriptVersion:
 
 
 class TestAutoSyncIntegration:
-    """Integration tests for auto-sync functionality."""
+    """Integration tests for auto-sync functionality.
+
+    DEPRECATED (v2.87): sync-commands.sh was removed when commands migrated
+    to skills. All tests skip because the script no longer exists.
+    """
 
     @pytest.fixture
     def sync_script_path(self):
@@ -416,7 +425,12 @@ class TestCuratorCommandIntegration:
 
 
 class TestCommandFormatCompliance:
-    """Test that commands comply with Claude Code format."""
+    """Test that commands comply with Claude Code format.
+
+    DEPRECATED (v2.87): Commands were migrated to skills. The
+    ~/.claude/commands/ directory no longer exists. Tests skip because
+    the directory is not found.
+    """
 
     @pytest.fixture
     def claude_commands_dir(self):

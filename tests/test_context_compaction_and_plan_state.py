@@ -986,6 +986,9 @@ export function logout() {}
 
     # -------------------------------------------------------------------------
     # State Coordinator Tests
+    # DEPRECATED (v3.0): state-coordinator.sh was removed. All tests below
+    # that depend on state_coordinator_available skip because the script
+    # no longer exists at ~/.claude/scripts/state-coordinator.sh.
     # -------------------------------------------------------------------------
 
     @pytest.fixture
@@ -1613,11 +1616,9 @@ class TestTodoPlanSync:
     """
     v2.56.0: Test todo-plan-sync.sh functionality.
 
-    DEPRECATED v2.69.0: These tests are SKIPPED because TodoWrite does NOT
-    trigger hooks in Claude Code by design. See class-level skip marker.
-
-    Note: TodoWrite is NOT a valid PostToolUse matcher in Claude Code.
-    These tests verify the hook logic works when invoked directly.
+    DEPRECATED (v2.69.1): todo-plan-sync.sh was replaced by global-task-sync.sh
+    in v2.62. TodoWrite was replaced by Task Primitive. All tests in this class
+    are deprecated and permanently skipped via class-level pytestmark.
     """
 
     @pytest.fixture(autouse=True)

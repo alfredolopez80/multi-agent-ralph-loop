@@ -147,7 +147,12 @@ class TestMemoryConfiguration:
 
 
 class TestMemoryManagerScript:
-    """Tests for memory-manager.py script."""
+    """Tests for memory-manager.py script.
+
+    DEPRECATED (v3.0): memory-manager.py was removed from ~/.claude/scripts/.
+    All tests in this class skip because the script no longer exists.
+    Memory management is now handled by the claude-mem MCP plugin.
+    """
 
     @classmethod
     def teardown_class(cls):
@@ -239,7 +244,12 @@ class TestMemoryManagerScript:
 
 
 class TestReflectionExecutor:
-    """Tests for reflection-executor.py script."""
+    """Tests for reflection-executor.py script.
+
+    DEPRECATED (v3.0): reflection-executor.py was removed from
+    ~/.claude/scripts/. All tests in this class skip because the script
+    no longer exists. Functionality was superseded by the claude-mem MCP plugin.
+    """
 
     @pytest.mark.skipif(not REFLECTION_EXECUTOR.exists(), reason="reflection-executor.py not installed")
     def test_script_exists(self):

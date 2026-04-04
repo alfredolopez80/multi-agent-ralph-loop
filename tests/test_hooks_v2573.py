@@ -215,8 +215,9 @@ class TestPostToolUseHooks:
     def test_sentry_check_status(self):
         """Test sentry-check-status.sh returns valid JSON.
 
-        DEPRECATED v2.69.1: Archived to ~/.claude/hooks-archive/utilities/
+        DEPRECATED (v2.69.1): Archived to ~/.claude/hooks-archive/utilities/.
         Was a helper script that output text messages, not JSON.
+        This test is deprecated and permanently skipped.
         """
         hook = HOOKS_DIR / "sentry-check-status.sh"
         if not hook.exists():
@@ -227,8 +228,9 @@ class TestPostToolUseHooks:
     def test_sentry_correlation(self):
         """Test sentry-correlation.sh returns valid JSON.
 
-        DEPRECATED v2.69.1: Archived to ~/.claude/hooks-archive/utilities/
+        DEPRECATED (v2.69.1): Archived to ~/.claude/hooks-archive/utilities/.
         Was a helper script that output text messages, not JSON.
+        This test is deprecated and permanently skipped.
         """
         hook = HOOKS_DIR / "sentry-correlation.sh"
         if not hook.exists():
@@ -239,8 +241,8 @@ class TestPostToolUseHooks:
     def test_checkpoint_auto_save(self):
         """Test checkpoint-auto-save.sh returns valid JSON.
 
-        NOTE: This hook outputs text to stderr, not JSON to stdout.
-        Skipping as it's not a standard Claude Code hook.
+        DEPRECATED: This hook outputs text to stderr, not JSON to stdout.
+        It is not a standard Claude Code hook and this test is permanently skipped.
         """
         hook = HOOKS_DIR / "checkpoint-auto-save.sh"
         if not hook.exists():
@@ -292,8 +294,8 @@ class TestPreToolUseHooks:
     def test_lsa_pre_step(self):
         """Test lsa-pre-step.sh returns valid JSON.
 
-        NOTE: This hook outputs text, not JSON. Skipping as it's
-        not a standard Claude Code hook.
+        DEPRECATED: This hook outputs text, not JSON. It is not a standard
+        Claude Code hook and this test is permanently skipped.
         """
         hook = HOOKS_DIR / "lsa-pre-step.sh"
         if not hook.exists():
@@ -305,8 +307,8 @@ class TestPreToolUseHooks:
     def test_skill_validator(self):
         """Test skill-validator.sh returns valid JSON.
 
-        NOTE: This hook outputs text error messages, not JSON.
-        Skipping as it's not a standard Claude Code hook.
+        DEPRECATED: This hook outputs text error messages, not JSON.
+        It is not a standard Claude Code hook and this test is permanently skipped.
         """
         hook = HOOKS_DIR / "skill-validator.sh"
         if not hook.exists():

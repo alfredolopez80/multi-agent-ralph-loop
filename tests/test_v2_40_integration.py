@@ -60,8 +60,9 @@ class TestSkillFrontmatter:
 class TestTldrIntegration:
     """Test llm-tldr integration.
 
-    v3.0: session-start-tldr.sh was deleted in v3.0 consolidation.
-    Tests now skip gracefully if the hook is not found.
+    DEPRECATED (v3.0): session-start-tldr.sh was deleted in v3.0 consolidation.
+    All tests in this class are deprecated. The tldr hook was an optional cosmetic
+    feature that was removed. Tests skip gracefully if the hook is not found.
     """
 
     def test_tldr_installed(self, tldr_available):
@@ -118,7 +119,8 @@ class TestTldrIntegration:
 class TestUltrathinkIntegration:
     """Test ultrathink skill integration.
 
-    Note: ultrathink skill removed in v2.84.2 - skipped.
+    DEPRECATED (v2.84.2): ultrathink skill was removed in v2.84.2.
+    All tests in this class are deprecated and permanently skipped.
     """
 
     @pytest.mark.skip(reason="ultrathink skill removed in v2.84.2")

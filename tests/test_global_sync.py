@@ -520,13 +520,13 @@ class TestCLICommands:
         if (major, minor, patch) < (2, 35, 0):
             pytest.fail(f"ralph version too old: {version_line}, need v2.35.0+")
 
-    @pytest.mark.skip(reason="sync-global command removed in v2.50+ - sync handled via install.sh")
+    @pytest.mark.skip(reason="DEPRECATED (v2.50): sync-global command removed - sync handled via install.sh")
     def test_sync_global_command_exists(self):
         """ralph sync-global command must exist."""
         result = subprocess.run(["ralph", "help"], capture_output=True, text=True)
         assert "sync-global" in result.stdout, "sync-global command not in help"
 
-    @pytest.mark.skip(reason="sync-global command removed in v2.50+ - sync handled via install.sh")
+    @pytest.mark.skip(reason="DEPRECATED (v2.50): sync-global command removed - sync handled via install.sh")
     def test_sync_global_dry_run(self, repo_path):
         """ralph sync-global --dry-run must work."""
         result = subprocess.run(
@@ -737,7 +737,7 @@ class TestFeatureFlags:
 class TestFullSyncCycle:
     """Integration test for complete sync cycle."""
 
-    @pytest.mark.skip(reason="sync-global command removed in v2.50+ - sync handled via install.sh")
+    @pytest.mark.skip(reason="DEPRECATED (v2.50): sync-global command removed - sync handled via install.sh")
     def test_full_sync_cycle(self, repo_path, global_claude_dir):
         """
         Complete sync cycle test:
