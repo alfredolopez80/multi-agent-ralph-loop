@@ -127,80 +127,6 @@ import time
 # Category 1: AUTO-MODE-SETTER.HOOK Tests
 # ═══════════════════════════════════════════════════════════════════════════════
 
-class TestAutoModeSetterHook:
-    """Tests for auto-mode-setter.sh hook.
-
-    DEPRECATED (v3.0): auto-mode-setter.sh hook was removed. All tests in this
-    class skip because the hook file does not exist. The AUTO-007 automatic
-    execution mode was superseded by the agent teams system.
-    """
-
-    HOOK_PATH = GLOBAL_HOOKS / "auto-mode-setter.sh"
-
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        if not self.HOOK_PATH.exists():
-            pytest.skip(f"auto-mode-setter.sh not found: {self.HOOK_PATH}")
-
-    def test_hook_exists_and_executable(self):
-        """Hook should exist and be executable."""
-        assert self.HOOK_PATH.exists(), "auto-mode-setter.sh not found"
-        assert os.access(self.HOOK_PATH, os.X_OK), "auto-mode-setter.sh not executable"
-
-    def test_has_version_2_70_0(self):
-        """Hook should have VERSION >= 2.69.0 (AUTO-007 compatible)."""
-        import re
-        content = self.HOOK_PATH.read_text()
-        # Accept 2.69.0+ for AUTO-007 compatibility
-        version_match = re.search(r'VERSION:\s*(\d+)\.(\d+)\.(\d+)', content)
-        assert version_match, "No VERSION marker found"
-        major, minor, patch = map(int, version_match.groups())
-        # Accept v2.69.0 or higher
-        assert (major > 2) or (major == 2 and minor >= 69), \
-            f"VERSION should be >= 2.69.0, got {major}.{minor}.{patch}"
-
-    def test_detects_orchestrator_skill(self):
-        """Hook should detect orchestrator skill and set context."""
-        input_json = create_skill_input("orchestrator")
-        result = run_hook(self.HOOK_PATH, input_json)
-
-        assert result["is_valid_json"], f"Should return valid JSON: {result['stdout']}"
-        assert result["output"].get("decision") == "allow", "Should allow execution"
-
-        # Check that additionalContext mentions AUTO-007
-        context = result["output"].get("additionalContext", "")
-        assert "AUTO-007" in context or "automatic" in context.lower(), (
-            "Should set AUTO-007 context for orchestrator"
-        )
-
-    def test_detects_loop_skill(self):
-        """Hook should detect loop skill and set context."""
-        input_json = create_skill_input("loop")
-        result = run_hook(self.HOOK_PATH, input_json)
-
-        assert result["is_valid_json"], f"Should return valid JSON: {result['stdout']}"
-        assert result["output"].get("decision") == "allow", "Should allow execution"
-
-        # Check that additionalContext mentions AUTO-007
-        context = result["output"].get("additionalContext", "")
-        assert "AUTO-007" in context or "automatic" in context.lower(), (
-            "Should set AUTO-007 context for loop"
-        )
-
-    def test_ignores_non_auto_skills(self):
-        """Hook should ignore non-auto skills."""
-        input_json = create_skill_input("security")
-        result = run_hook(self.HOOK_PATH, input_json)
-
-        assert result["is_valid_json"]
-        assert result["output"].get("decision") == "allow"
-
-        # Should NOT set AUTO-007 context
-        context = result["output"].get("additionalContext", "")
-        if context:
-            # If context is set, it should not mention AUTO-007
-            assert "AUTO-007" not in context
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Category 2: SECURITY-FULL-AUDIT.HOOK Tests
@@ -402,154 +328,15 @@ class TestOrchestratorSkillIntegration:
             pytest.skip("Adversarial references not in current skill version")
 
 
-class TestLoopSkillIntegration:
-    """Tests for loop/SKILL.md integration.
-
-    DEPRECATED (v2.94): loop skill was renamed to iterate in v2.94. The
-    OpenCode fallback path no longer exists. AUTO-007 feature was removed
-    from skills during v2.87+ refactor. Tests skip because loop/SKILL.md
-    is not found at the expected OpenCode location.
-    """
-
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        if not LOOP_SKILL.exists():
-            pytest.skip(f"loop/SKILL.md not found: {LOOP_SKILL}")
-
-    def test_has_auto_007_section(self):
-        """Skill should have loop content (AUTO-007 removed in v2.87+)."""
-        content = LOOP_SKILL.read_text()
-        assert "loop" in content.lower() or "iterate" in content.lower(), (
-            "Should mention loop or iteration"
-        )
-
-    def test_validate_has_automatic_security_audits(self):
-        """Skill should reference quality validation."""
-        content = LOOP_SKILL.read_text()
-        has_quality = "quality" in content.lower() or "validate" in content.lower()
-        if not has_quality:
-            pytest.skip("Quality references not in current skill version")
-
-    def test_validate_has_automatic_adversarial_validation(self):
-        """Skill should reference validation patterns."""
-        content = LOOP_SKILL.read_text()
-        has_validation = "verified_done" in content.lower() or "validate" in content.lower()
-        if not has_validation:
-            pytest.skip("Validation references not in current skill version")
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Category 6: SETTINGS.JSON Registration Tests
 # ═══════════════════════════════════════════════════════════════════════════════
 
-class TestAutoModeSetterRegistration:
-    """Tests for auto-mode-setter.sh registration in settings.json.
-
-    DEPRECATED (v3.0): auto-mode-setter.sh hook was removed. Registration
-    tests skip because the hook is not registered.
-    """
-
-    @pytest.fixture(scope="module")
-    def settings_json(self):
-        """Load settings.json from zai config location."""
-        # v2.73.2: Real configuration is in zai config, not ~/.claude/settings.json
-        settings_path = Path.home() / ".claude-sneakpeek" / "zai" / "config" / "settings.json"
-        if not settings_path.exists():
-            # Fallback to legacy location
-            settings_path = Path.home() / ".claude" / "settings.json"
-        if not settings_path.exists():
-            pytest.skip(f"settings.json not found")
-
-        with open(settings_path) as f:
-            return json.load(f)
-
-    def test_registered_in_pretooluse_skill(self, settings_json):
-        """auto-mode-setter.sh should be registered in PreToolUse → Skill.
-
-        v2.84.1: Skip if hook is not present (not all installations have auto-mode-setter).
-        """
-        pre_tool_use = settings_json.get("hooks", {}).get("PreToolUse", [])
-
-        found = False
-        for hook_group in pre_tool_use:
-            if hook_group.get("matcher") == "Skill":
-                hooks = hook_group.get("hooks", [])
-                for hook in hooks:
-                    command = hook.get("command", "")
-                    if "auto-mode-setter.sh" in command:
-                        found = True
-                        break
-
-        if not found:
-            pytest.skip("auto-mode-setter.sh not registered (optional hook)")
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Category 7: INTEGRATION TESTS
 # ═══════════════════════════════════════════════════════════════════════════════
-
-class TestAuto007Integration:
-    """Integration tests for complete AUTO-007 flow.
-
-    DEPRECATED (v3.0): auto-mode-setter.sh hook was removed. All tests
-    in this class skip because the critical component is missing.
-    """
-
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        """Skip if critical components missing."""
-        if not (GLOBAL_HOOKS / "auto-mode-setter.sh").exists():
-            pytest.skip("auto-mode-setter.sh not found")
-        if not (GLOBAL_HOOKS / "security-full-audit.sh").exists():
-            pytest.skip("security-full-audit.sh not found")
-        if not (GLOBAL_HOOKS / "adversarial-auto-trigger.sh").exists():
-            pytest.skip("adversarial-auto-trigger.sh not found")
-
-    def test_complete_auto_flow_components_exist(self):
-        """All AUTO-007 components should exist."""
-        components = {
-            "auto-mode-setter.sh": GLOBAL_HOOKS / "auto-mode-setter.sh",
-            "security-full-audit.sh": GLOBAL_HOOKS / "security-full-audit.sh",
-            "adversarial-auto-trigger.sh": GLOBAL_HOOKS / "adversarial-auto-trigger.sh",
-            "orchestrator/SKILL.md": ORCHESTRATOR_SKILL,
-            "loop/SKILL.md": LOOP_SKILL,
-        }
-
-        missing = [name for name, path in components.items() if not path.exists()]
-        assert not missing, f"Missing components: {missing}"
-
-    def test_all_components_version_2_70_0(self):
-        """All components should have version 2.70.0."""
-        hooks = [
-            GLOBAL_HOOKS / "auto-mode-setter.sh",
-            GLOBAL_HOOKS / "security-full-audit.sh",
-            GLOBAL_HOOKS / "adversarial-auto-trigger.sh",
-        ]
-
-        wrong_version = []
-        for hook in hooks:
-            if hook.exists():
-                content = hook.read_text()
-                if "VERSION: 2.70.0" not in content:
-                    wrong_version.append(hook.name)
-
-        assert not wrong_version, f"Wrong version in: {wrong_version}"
-
-    def test_auto_007_pattern_consistent(self):
-        """AUTO-007 pattern should be consistent across all hooks."""
-        # Note: auto-mode-setter.sh doesn't need is_auto_mode() - it SETS the mode
-        hooks_with_is_auto_mode = [
-            GLOBAL_HOOKS / "security-full-audit.sh",
-            GLOBAL_HOOKS / "adversarial-auto-trigger.sh",
-        ]
-
-        for hook in hooks_with_is_auto_mode:
-            if hook.exists():
-                content = hook.read_text()
-                # All should have is_auto_mode function
-                assert "is_auto_mode()" in content, f"{hook.name} missing is_auto_mode()"
-                # All should have MARKERS_DIR
-                assert "MARKERS_DIR" in content, f"{hook.name} missing MARKERS_DIR"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -609,7 +396,7 @@ def test_auto_007_comprehensive_summary():
         },
         "Skill Integration": {
             "orchestrator/SKILL.md exists": ORCHESTRATOR_SKILL.exists(),
-            "iterate/SKILL.md exists": Path(".claude/skills/iterate/SKILL.md").exists(),: LOOP_SKILL.exists(),
+            "iterate/SKILL.md exists": Path(".claude/skills/iterate/SKILL.md").exists(),
         },
     }
 

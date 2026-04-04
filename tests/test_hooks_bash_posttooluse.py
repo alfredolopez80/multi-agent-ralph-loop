@@ -25,7 +25,6 @@ LOCAL_HOOKS_DIR = Path(__file__).parent.parent / ".claude" / "hooks"
 BASH_POSTTOOLUSE_HOOKS = [
     "progress-tracker.sh",
     "status-auto-check.sh",
-    "auto-save-context.sh",
 ]
 
 
@@ -272,22 +271,6 @@ class TestStatusAutoCheckSpecific:
         assert parsed.get("continue") is True
 
 
-class TestAutoSaveContextSpecific:
-    """Specific tests for auto-save-context.sh."""
-
-    def test_outputs_json_not_text(self):
-        """Auto-save must output JSON, not plain text."""
-        hook_path = get_hook_path("auto-save-context.sh")
-        output, _ = run_hook(hook_path, BASH_TOOL_INPUT)
-
-        # Should not start with "AUTO_SAVE:" (old format)
-        assert not output.startswith("AUTO_SAVE:"), \
-            f"auto-save-context.sh still outputs plain text: {output[:100]}"
-
-        # Should be valid JSON with correct format
-        parsed = json.loads(output.split('\n')[-1])
-        assert "continue" in parsed  # Uses correct format
-
 
 class TestVersionHeaders:
     """Test that hooks have correct version headers."""
@@ -300,7 +283,7 @@ class TestVersionHeaders:
 
         assert "VERSION:" in content, f"{hook_name} missing VERSION header"
 
-    @pytest.mark.parametrize("hook_name", ["status-auto-check.sh", "auto-save-context.sh"])
+    @pytest.mark.parametrize("hook_name", ["status-auto-check.sh"])
     def test_has_security_fix_marker(self, hook_name):
         """Fixed hooks should have SEC- marker."""
         hook_path = get_hook_path(hook_name)

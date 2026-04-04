@@ -238,135 +238,6 @@ class TestPeriodicReminderHook:
 # PROMPT-ANALYZER.SH TESTS (SEC-031)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-class TestPromptAnalyzerHook:
-    """Tests for prompt-analyzer.sh (SEC-031)
-
-    DEPRECATED (v3.0): prompt-analyzer.sh hook was removed. Tests that depend
-    on it skip with "Hook not found: prompt-analyzer". Additionally, 5 tests
-    were deprecated in v2.57.3 when the hook changed from model-centric to
-    action-centric classification.
-    """
-
-    def setup_method(self):
-        self.hook_path = get_hook_path("prompt-analyzer")
-
-    def test_always_returns_valid_json(self):
-        """SEC-031: Hook MUST always return valid JSON"""
-        result = run_hook(self.hook_path, "test prompt")
-
-        assert result["is_valid_json"], (
-            f"Hook returned invalid JSON:\n"
-            f"stdout: {result['stdout'][:500]}\n"
-            f"stderr: {result['stderr'][:500]}"
-        )
-
-    def test_no_timeout(self):
-        """Hook MUST complete within 5 seconds"""
-        result = run_hook(self.hook_path, "test prompt", timeout=5)
-
-        assert result["returncode"] != -1, "Hook timed out"
-        assert result["execution_time"] < 5, f"Hook took {result['execution_time']:.2f}s"
-
-    def test_returns_json_on_empty_input(self):
-        """Hook handles empty input gracefully"""
-        result = run_hook(self.hook_path, "")
-
-        assert result["is_valid_json"], "Hook did not return valid JSON on empty input"
-
-    @pytest.mark.skip(reason="v2.57.3+: prompt-analyzer.sh no longer returns 'model' field - uses action-based classification")
-    def test_classifies_simple_task_as_haiku(self):
-        """Simple tasks like 'fix typo' should use Haiku model.
-
-        DEPRECATED: v2.57.3 changed from model-centric to action-centric classification.
-        Hook now returns {"action": "ask_user"|"execute_direct", "type": "...", "options": [...]}
-        without a 'model' field. Model selection is handled by the orchestrator based on task type.
-        """
-        result = run_hook(self.hook_path, "fix typo in readme")
-
-        assert result["is_valid_json"]
-        assert result["output"]["model"] == "haiku"
-        assert result["output"]["action"] == "execute_direct"
-
-    @pytest.mark.skip(reason="v2.57.3+: prompt-analyzer.sh no longer returns 'model' field - uses action-based classification")
-    def test_classifies_read_task_as_haiku(self):
-        """Read commands should use Haiku model.
-
-        DEPRECATED: v2.57.3 changed to action-based classification.
-        """
-        result = run_hook(self.hook_path, "read the config file")
-
-        assert result["is_valid_json"]
-        assert result["output"]["model"] == "haiku"
-
-    @pytest.mark.skip(reason="v2.57.3+: prompt-analyzer.sh no longer returns 'model' field - uses action-based classification")
-    def test_classifies_simple_refactor_as_sonnet(self):
-        """Simple refactor tasks should use Sonnet model.
-
-        DEPRECATED: v2.57.3 changed to action-based classification.
-        """
-        result = run_hook(self.hook_path, "refactor small function")
-
-        assert result["is_valid_json"]
-        assert result["output"]["model"] == "sonnet"
-
-    @pytest.mark.skip(reason="v2.57.3+: prompt-analyzer.sh classifies all unknown patterns as 'unknown' type - keyword detection changed")
-    def test_classifies_security_as_complex(self):
-        """Security-related tasks should be classified as complex.
-
-        DEPRECATED: v2.57.3 hook now returns 'unknown' for most patterns,
-        delegating classification to the orchestrator's 3-dimension system.
-        """
-        result = run_hook(self.hook_path, "security audit of the codebase")
-
-        assert result["is_valid_json"]
-        assert result["output"]["action"] == "ask_user"
-        assert "complex" in result["output"]["type"]
-
-    @pytest.mark.skip(reason="v2.57.3+: prompt-analyzer.sh classifies all unknown patterns as 'unknown' type - keyword detection changed")
-    def test_classifies_architecture_as_strategic(self):
-        """Architecture tasks should be classified as complex/strategic.
-
-        DEPRECATED: v2.57.3 hook now returns 'unknown' for most patterns,
-        delegating classification to the orchestrator's 3-dimension system.
-        """
-        result = run_hook(self.hook_path, "design the architecture for the new module")
-
-        assert result["is_valid_json"]
-        assert result["output"]["action"] == "ask_user"
-        # Architecture tasks should be classified as complex (either strategic or technical)
-        assert "complex" in result["output"]["type"], f"Expected complex type, got: {result['output']['type']}"
-
-    def test_classifies_unknown_as_ask_user(self):
-        """Unknown tasks should ask the user"""
-        result = run_hook(self.hook_path, "something random without keywords")
-
-        assert result["is_valid_json"]
-        assert result["output"]["action"] == "ask_user"
-        assert result["output"]["type"] == "unknown"
-
-    def test_json_newlines_are_properly_escaped(self):
-        """JSON should contain properly escaped newlines, not literals"""
-        result = run_hook(self.hook_path, "complex task architecture")
-
-        assert result["is_valid_json"], "JSON with newlines should be valid"
-        # The message field should contain actual newlines (\n), not escaped \\n
-        if "message" in result["output"]:
-            # jq properly handles newlines in strings
-            assert isinstance(result["output"]["message"], str)
-
-    def test_handles_special_characters_in_prompt(self):
-        """Hook handles special characters without breaking JSON"""
-        special_prompts = [
-            'implement "feature" with $variable',
-            "test `backticks` handling",
-            "fix error: unexpected 'token'",
-            "analyze code with $(echo injection)",
-        ]
-
-        for prompt in special_prompts:
-            result = run_hook(self.hook_path, prompt)
-            assert result["is_valid_json"], f"Failed on prompt: {prompt}"
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # SECURITY TESTS (All UserPromptSubmit Hooks)
@@ -375,7 +246,7 @@ class TestPromptAnalyzerHook:
 class TestUserPromptSubmitSecurity:
     """Security tests for all UserPromptSubmit hooks"""
 
-    @pytest.mark.parametrize("hook_name", ["context-warning", "periodic-reminder", "prompt-analyzer"])
+    @pytest.mark.parametrize("hook_name", ["context-warning", "periodic-reminder"])
     def test_command_injection_via_prompt(self, hook_name):
         """Hooks should not execute commands from prompt input"""
         hook_path = get_hook_path(hook_name)
@@ -394,7 +265,7 @@ class TestUserPromptSubmitSecurity:
             # Should not have executed the command (no error output)
             assert "rm" not in result["stderr"].lower()
 
-    @pytest.mark.parametrize("hook_name", ["context-warning", "periodic-reminder", "prompt-analyzer"])
+    @pytest.mark.parametrize("hook_name", ["context-warning", "periodic-reminder"])
     def test_json_injection_via_prompt(self, hook_name):
         """Hooks should properly escape JSON special characters"""
         hook_path = get_hook_path(hook_name)
@@ -432,14 +303,6 @@ class TestUserPromptSubmitRegressions:
         assert result["stdout"].strip() != "", "Hook returned empty output"
         assert result["is_valid_json"], "Hook did not return valid JSON"
 
-    def test_prompt_analyzer_valid_json_with_newlines(self):
-        """Regression: prompt-analyzer.sh used to produce invalid JSON with \\n"""
-        hook_path = get_hook_path("prompt-analyzer")
-        result = run_hook(hook_path, "complex architecture design")
-
-        assert result["is_valid_json"], (
-            f"Hook returned invalid JSON (newline issue?):\n{result['stdout'][:200]}"
-        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

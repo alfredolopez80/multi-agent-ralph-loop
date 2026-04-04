@@ -182,15 +182,14 @@ class TestMainFunction:
         with patch("sys.stdin", StringIO(input_data)):
             with pytest.raises(SystemExit) as exc_info:
                 git_safety_guard.main()
-            assert exc_info.value.code == 0  # v3.0: allows on invalid JSON
+            assert exc_info.value.code == 1  # Destructive commands MUST be blocked
 
             captured = capsys.readouterr()
             response = json.loads(captured.out)
-            # v2.69.0+: Uses hookSpecificOutput format
             hook_output = response.get("hookSpecificOutput", response)
             decision = hook_output.get("permissionDecision", hook_output.get("decision"))
             reason = hook_output.get("permissionDecisionReason", hook_output.get("reason", ""))
-            assert decision == "allow"  # v3.0: graceful allow
+            assert decision == "block"
             assert "BLOCKED" in reason or "blocked" in reason.lower()
 
     def test_non_bash_tool_allowed(self):
@@ -295,15 +294,14 @@ class TestCoverageGaps:
         with patch("sys.stdin", StringIO(input_data)):
             with pytest.raises(SystemExit) as exc_info:
                 git_safety_guard.main()
-            assert exc_info.value.code == 0  # v3.0: allows on invalid JSON
+            assert exc_info.value.code == 1  # Force push MUST be blocked
 
             captured = capsys.readouterr()
             response = json.loads(captured.out)
-            # v2.69.0+: Uses hookSpecificOutput format
             hook_output = response.get("hookSpecificOutput", response)
             decision = hook_output.get("permissionDecision", hook_output.get("decision"))
             reason = hook_output.get("permissionDecisionReason", hook_output.get("reason", ""))
-            assert decision == "allow"  # v3.0: graceful allow
+            assert decision == "block"
             assert "BLOCKED" in reason or "force push" in reason.lower() or "CONFIRMATION" in reason
 
     def test_command_passes_all_checks_exits_zero(self):
@@ -331,15 +329,14 @@ class TestCoverageGaps:
             with patch("sys.stdin", StringIO(input_data)):
                 with pytest.raises(SystemExit) as exc_info:
                     git_safety_guard.main()
-                assert exc_info.value.code == 0  # v3.0: allows on invalid JSON
+                assert exc_info.value.code == 1  # Exceptions MUST fail-closed (block)
 
                 captured = capsys.readouterr()
                 response = json.loads(captured.out)
-                # v2.69.0+: Uses hookSpecificOutput format
                 hook_output = response.get("hookSpecificOutput", response)
                 decision = hook_output.get("permissionDecision", hook_output.get("decision"))
                 reason = hook_output.get("permissionDecisionReason", hook_output.get("reason", ""))
-                assert decision == "allow"  # v3.0: graceful allow
+                assert decision == "block"
                 assert "Internal error" in reason or "internal error" in reason.lower() or "error" in reason.lower()
 
     def test_non_blocked_non_safe_command_allowed(self):
