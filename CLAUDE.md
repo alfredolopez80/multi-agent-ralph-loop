@@ -1,4 +1,4 @@
-# Multi-Agent Ralph v2.94.0
+# Multi-Agent Ralph v3.0.0
 
 Orchestration system with memory-driven planning, multi-agent coordination, automatic learning, and quality validation.
 

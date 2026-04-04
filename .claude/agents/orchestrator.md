@@ -646,14 +646,14 @@ Based on Gap-Analyst findings:
 
 ```bash
 # Initialize plan state
-~/.claude/hooks/plan-state-init.sh init "Task description" [complexity] [model]
+~/.claude/hooks/auto-plan-state.sh init "Task description" [complexity] [model]
 
 # Add steps with verifiable specs
-~/.claude/hooks/plan-state-init.sh add-step "1" "Create auth service" "src/services/auth.ts" "create"
-~/.claude/hooks/plan-state-init.sh add-exports "1" "authService" "authenticate" "logout"
-~/.claude/hooks/plan-state-init.sh add-sig "1" "authenticate" "(creds: Credentials) => Promise<AuthResult>"
+~/.claude/hooks/auto-plan-state.sh add-step "1" "Create auth service" "src/services/auth.ts" "create"
+~/.claude/hooks/auto-plan-state.sh add-exports "1" "authService" "authenticate" "logout"
+~/.claude/hooks/auto-plan-state.sh add-sig "1" "authenticate" "(creds: Credentials) => Promise<AuthResult>"
 
-~/.claude/hooks/plan-state-init.sh add-step "2" "Create login endpoint" "src/api/auth-controller.ts" "create"
+~/.claude/hooks/auto-plan-state.sh add-step "2" "Create login endpoint" "src/api/auth-controller.ts" "create"
 # ... continue for all steps
 ```
 
@@ -824,7 +824,7 @@ Execute the step with standard subagents:
 
 ```yaml
 # Mark step as in_progress
-~/.claude/hooks/plan-state-init.sh start [step_id]
+~/.claude/hooks/auto-plan-state.sh start [step_id]
 
 # Implement with appropriate subagent
 Task:
