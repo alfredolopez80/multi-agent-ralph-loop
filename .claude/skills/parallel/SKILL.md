@@ -12,10 +12,6 @@ allowed-tools:
   - Edit
   - Write
   - Bash
-hooks:
-  PreToolUse:
-    - path: .claude/hooks/validate-lsp-servers.sh
-      match_tool: LSP
 ---
 
 # Parallel - Concurrent Execution (v2.88)

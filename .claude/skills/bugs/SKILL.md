@@ -10,10 +10,6 @@ allowed-tools:
   - Bash
   - Grep
   - Glob
-hooks:
-  PreToolUse:
-    - path: .claude/hooks/validate-lsp-servers.sh
-      match_tool: LSP
 ---
 
 # /bugs (v2.37)

@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 3.0.0
 name: orchestrator
 description: "Full orchestration workflow with swarm mode: evaluate -> clarify -> classify -> persist -> plan mode -> spawn teammates -> execute -> validate -> retrospective. Use when: (1) implementing features, (2) complex refactoring, (3) multi-file changes, (4) tasks requiring coordination. Triggers: /orchestrator, /orch, 'orchestrate', 'full workflow', 'implement feature'."
 argument-hint: "<task description>"
@@ -20,10 +20,6 @@ allowed-tools:
   - Glob
   - Grep
   - mcp__plugin_claude-mem_*
-hooks:
-  PreToolUse:
-    - path: .claude/hooks/validate-lsp-servers.sh
-      match_tool: LSP
 ---
 
 # Orchestrator - Multi-Agent Ralph v2.88

@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 3.0.0
 name: create-task-batch
 description: "Interactive wizard to create PRD or task lists for /task-batch. Uses /clarify and /ask-questions-if-underspecified for precise task definition. Use when: (1) preparing batch execution, (2) creating PRDs, (3) defining task lists with dependencies. Triggers: /create-task-batch, 'create tasks', 'new batch', 'prepare PRD'."
 argument-hint: "[feature-name|project-description]"

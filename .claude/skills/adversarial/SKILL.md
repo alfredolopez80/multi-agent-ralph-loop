@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 3.0.0
 name: adversarial
 description: Multi-Agent Adversarial Analysis System for code security
 ---

@@ -10,10 +10,6 @@ allowed-tools:
   - Bash
   - Grep
   - Glob
-hooks:
-  PreToolUse:
-    - path: .claude/hooks/validate-lsp-servers.sh
-      match_tool: LSP
 ---
 
 # /security - Multi-Agent Security Audit (v2.24)

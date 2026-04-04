@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 3.0.0
 name: task-batch
 description: "Autonomous batch task execution with PRD parsing, task decomposition, and continuous execution until all tasks complete. Uses /orchestrator internally. Stops only for major failures (no internet, token limit, system crash). Use when: (1) processing task lists autonomously, (2) PRD-driven development, (3) batch feature implementation. Triggers: /task-batch, 'batch tasks', 'process PRD', 'run task queue'."
 argument-hint: "<task-file.prq|prd-file.md|inline-tasks>"

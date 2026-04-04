@@ -11,10 +11,6 @@ allowed-tools:
   - Bash
   - Grep
   - Glob
-hooks:
-  PreToolUse:
-    - path: .claude/hooks/validate-lsp-servers.sh
-      match_tool: LSP
 ---
 
 # EDD (Eval-Driven Development) Framework v2.64

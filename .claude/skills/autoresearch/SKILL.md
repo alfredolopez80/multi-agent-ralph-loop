@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.95.0
+# VERSION: 3.0.0
 name: autoresearch
 description: "Autonomous experiment loop: modifies code, runs experiments, evaluates metrics, keeps improvements. Inspired by karpathy/autoresearch + pi-autoresearch + autoexp. Triggers: /autoresearch, 'auto research', 'optimize continuously', 'experiment loop', 'autonomous optimization'."
 argument-hint: "<target-path> <metric-command> [--checkpoint=infinity|5|10] [--budget=100|8h|$10]"

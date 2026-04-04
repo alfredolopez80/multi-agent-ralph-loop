@@ -3,10 +3,6 @@
 name: code-reviewer
 description: Automated code review using official Claude Code plugin with 4 parallel agents. Uses LSP for efficient code navigation.
 allowed-tools: LSP,Read,Write,Bash,Glob,Grep
-hooks:
-  PreToolUse:
-    - path: .claude/hooks/validate-lsp-servers.sh
-      match_tool: LSP
 ---
 
 # Code Reviewer (Official Plugin)

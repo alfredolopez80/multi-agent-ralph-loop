@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.94.0
+# VERSION: 3.0.0
 name: iterate
 description: "Ralph Loop pattern with swarm mode: iterative execution until VERIFIED_DONE with multi-agent coordination. Use when: (1) iterative refinement needed, (2) quality gates must pass, (3) automated validation required. Triggers: /iterate, 'iterate until done', 'keep trying', 'fix until passing', 'loop until done'."
 argument-hint: "<task>"
@@ -15,10 +15,6 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
-hooks:
-  PreToolUse:
-    - path: .claude/hooks/validate-lsp-servers.sh
-      match_tool: LSP
 ---
 
 # /iterate - Ralph Loop Pattern (v2.94)
