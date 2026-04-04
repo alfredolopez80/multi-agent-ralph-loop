@@ -86,9 +86,24 @@ ralph orch "Migrate database from MySQL to PostgreSQL"
 8. RETROSPECT   -> Analyze and improve
 ```
 
-## Step 0: EVALUATE (3-Dimension Classification)
+## Step 0: EVALUATE (Aristotle + 3-Dimension Classification)
 
-**Classification (RLM-inspired)**:
+**Phase A: Aristotle First Principles** (integrated, not pre-step):
+
+For complexity 1-3 (quick mode):
+1. **Assumption Autopsy** — What are we assuming without questioning?
+5. **Aristotelian Move** — What is the single highest-leverage action?
+
+For complexity 4+ (full mode):
+1. **Assumption Autopsy** — Identify all inherited assumptions
+2. **Irreducible Truths** — List only what survives when assumptions are removed
+3. **Reconstruction from Zero** — Generate 3 distinct approaches from truths only
+4. **Assumption vs Truth Map** — Where does conventional thinking deceive?
+5. **Aristotelian Move** — Identify the single action of maximum leverage
+
+Reference: `docs/reference/aristotle-first-principles.md`
+
+**Phase B: Classification (RLM-inspired)**:
 | Dimension | Values | Purpose |
 |-----------|--------|---------|
 | Complexity | 1-10 | Scope, risk, ambiguity |
@@ -543,3 +558,17 @@ El sistema de reportes del orchestrator se integra con:
 - [Skills/Commands Unification](docs/architecture/SKILLS_COMMANDS_UNIFICATION_v2.87.md)
 - [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills)
 - [Claude Code Agent Teams Documentation](https://code.claude.com/docs/en/agent-teams)
+
+## Anti-Rationalization
+
+See master table: `docs/reference/anti-rationalization.md`
+
+| Excuse | Rebuttal |
+|---|---|
+| "Step 0 is just classification, I can skip it" | Step 0 includes Aristotle analysis. Never skip. |
+| "Memory search is slow, I'll skip it" | Memory prevents repeated mistakes. Worth the wait. |
+| "Complexity is 2, no need for full workflow" | FAST_PATH still has 3 steps. Follow them. |
+| "The plan is obvious, no need for EnterPlanMode" | Plans catch assumptions you didn't question. |
+| "I already know the answer" | Memory is unreliable across sessions. Verify. |
+| "I'll add documentation later" | Documentation is part of the deliverable. |
+| "The user seems to want a quick fix" | Quick != sloppy. FAST_PATH exists for speed with quality. |

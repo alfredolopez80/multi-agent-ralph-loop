@@ -239,6 +239,15 @@ backend/
 *.py[cod]
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# PRIVATE VAULT DATA (per developer, NEVER committed)
+# ═══════════════════════════════════════════════════════════════════════════════
+.claude/vault/
+.claude/rules/learned/
+.claude/context-payload.md
+.claude/memory-context.json
+.claude/orchestrator-analysis.md
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # BACKUP FILES (SEC-2.6 v2.89.0)
 # ═══════════════════════════════════════════════════════════════════════════════
 *.bak

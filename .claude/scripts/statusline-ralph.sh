@@ -424,7 +424,7 @@ get_ralph_progress() {
             ;;
     esac
 
-    local current_phase phase_name active_agent
+    local current_phase phase_name active_agent current_step_name
     current_phase=$(echo "$plan_state" | jq -r '.current_phase // .loop_state.current_phase // empty' 2>/dev/null)
 
     if [[ -n "$current_phase" ]] && [[ "$current_phase" != "null" ]]; then
@@ -436,8 +436,21 @@ get_ralph_progress() {
 
     active_agent=$(echo "$plan_state" | jq -r '.active_agent // .loop_state.active_agent // empty' 2>/dev/null)
 
+    # v3.0: Extract current step name (first in_progress step)
+    current_step_name=$(echo "$plan_state" | jq -r '
+        if (.steps | type) == "array" then
+            [.steps[] | select(.status == "in_progress")][0] |
+            if . then ((.id // "") + " " + (.name // "")) else "" end
+        else
+            [.steps | to_entries[] | select(.value.status == "in_progress")][0] |
+            if . then ((.key // "") + " " + (.value.name // "")) else "" end
+        end
+    ' 2>/dev/null)
+
     local status_details=""
-    if [[ -n "$phase_name" ]] && [[ "$phase_name" != "null" ]]; then
+    if [[ -n "$current_step_name" ]] && [[ "$current_step_name" != "null" ]] && [[ "$current_step_name" != " " ]]; then
+        status_details="${status_details} ${CYAN}${current_step_name}${RESET}"
+    elif [[ -n "$phase_name" ]] && [[ "$phase_name" != "null" ]]; then
         status_details="${status_details} ${DIM}${phase_name}${RESET}"
     fi
     if [[ -n "$active_agent" ]] && [[ "$active_agent" != "null" ]]; then

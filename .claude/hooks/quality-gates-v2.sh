@@ -1,15 +1,20 @@
 #!/bin/bash
-# Quality Gates v2.83.1 - Quality Over Consistency + Security Scanning
-# Hook: PostToolUse (Edit, Write)
-# Purpose: Validate code changes with quality-first approach
-# VERSION: 2.83.1
-# Timestamp: 2026-01-30
+# Quality Gates v2.84.0 - Consolidated Quality, Security, Ralph Gates & Stop Verification
+# Hook: PostToolUse (Edit, Write) + Stop
+# Purpose: Unified quality validation hook combining:
+#   - quality-gates-v2.sh: syntax, types, semgrep/gitleaks, linting
+#   - ralph-quality-gates.sh: prompt quality validation via Ralph gates
+#   - security-real-audit.sh: regex-based security pattern matching
+#   - stop-verification.sh: session stop completeness checks
+# VERSION: 2.84.0
+# Timestamp: 2026-04-04
+# v2.84.0: Consolidated 4 hooks into one unified quality gate
 # v2.83.1: PERF-001 - Added result caching for tsc to avoid redundant executions
 # v2.69.1: FIX - PostToolUse hooks CANNOT block - changed continue:false to continue:true with warnings
-# v2.68.9: CRIT-002 FIX - Actually clear EXIT trap before explicit JSON output (was documented but not implemented)
+# v2.68.9: CRIT-002 FIX - Actually clear EXIT trap before explicit JSON output
 # v2.68.1: FIX CRIT-005 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
 #
-# Stage 2.5 SECURITY: semgrep (SAST) + gitleaks (secrets)
+# Stage 2.5 SECURITY: semgrep (SAST) + gitleaks (secrets) + regex pattern matching
 # Install tools: ~/.claude/scripts/install-security-tools.sh
 #
 # Key Change: Consistency issues are ADVISORY (warnings only)
@@ -22,14 +27,352 @@ INPUT=$(head -c 100000)
 
 set -euo pipefail
 
-# Error trap for guaranteed JSON output (v2.62.3)
-trap 'echo "{\"continue\": true}"' ERR EXIT
-
 umask 077
 
+# --- Detect hook type from input ---
+# Stop hooks have no tool_name; PostToolUse hooks have tool_name
+HOOK_TYPE="post_tool_use"
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
+if [[ -z "$TOOL_NAME" ]]; then
+    HOOK_TYPE="stop"
+fi
+
+# Error trap for guaranteed JSON output (v2.62.3)
+# Format depends on hook type: PostToolUse uses "continue", Stop uses "decision"
+if [[ "$HOOK_TYPE" == "stop" ]]; then
+    trap 'echo "{\"decision\": \"approve\"}"' ERR EXIT
+else
+    trap 'echo "{\"continue\": true}"' ERR EXIT
+fi
+
+# Setup logging (shared by all sections)
+LOG_DIR="$HOME/.ralph/logs"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/quality-gates-$(date +%Y%m%d).log"
+LOG_FILE_JSON="${LOG_FILE}.jsonl"
+
+# JSON structured logging function
+log_json() {
+    local level="$1"
+    local message="$2"
+    local hook_name="${0##*/}"
+    jq -n \
+        --arg ts "$(date -Iseconds)" \
+        --arg lvl "$level" \
+        --arg hook "$hook_name" \
+        --arg msg "$message" \
+        '{timestamp: $ts, level: $lvl, hook: $hook, message: $msg}' \
+        >> "$LOG_FILE_JSON" 2>/dev/null || true
+}
+
+log_check() {
+    local check_name="$1"
+    local status="$2"
+    local message="$3"
+    echo "  [$status] $check_name: $message" >> "$LOG_FILE"
+}
+
+# ============================================================================
+# SECTION: STOP VERIFICATION (from stop-verification.sh)
+# Hook: Stop - Verifies completeness before session termination
+# Uses {"decision": "approve|block"} format
+# ============================================================================
+run_stop_verification() {
+    local _hook_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    source "${_hook_dir}/lib/worktree-utils.sh" 2>/dev/null || {
+        get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+        get_main_repo() { get_project_root; }
+        get_claude_dir() { echo "$(get_main_repo)/.claude"; }
+    }
+    local project_dir="$(get_project_root)"
+    local stop_log_file="${HOME}/.ralph/logs/stop-verification.log"
+    mkdir -p "$(dirname "$stop_log_file")"
+
+    _stop_log() {
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$stop_log_file"
+    }
+
+    local warnings=()
+    local checks_passed=0
+    local total_checks=4
+
+    # 1. Check pending TODOs
+    if [ -f "${project_dir}/.claude/progress.md" ]; then
+        local pending_todos
+        pending_todos=$(grep -c "^\- \[ \]" "${project_dir}/.claude/progress.md" 2>/dev/null | tr -d ' \n') || pending_todos=0
+        pending_todos=${pending_todos:-0}
+        if ! [[ "$pending_todos" =~ ^[0-9]+$ ]]; then
+            pending_todos=0
+        fi
+        if [ "$pending_todos" -gt 0 ]; then
+            warnings+=("TODOs pendientes: ${pending_todos} items sin completar en progress.md")
+        else
+            checks_passed=$((checks_passed + 1))
+        fi
+    else
+        checks_passed=$((checks_passed + 1))
+    fi
+
+    # 2. Check uncommitted changes
+    if [ -d "${project_dir}/.git" ]; then
+        local uncommitted
+        uncommitted=$(git -C "$project_dir" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+        if [ "$uncommitted" -gt 0 ]; then
+            warnings+=("Cambios sin commit: ${uncommitted} archivos modificados")
+        else
+            checks_passed=$((checks_passed + 1))
+        fi
+    else
+        checks_passed=$((checks_passed + 1))
+    fi
+
+    # 3. Check recent lint errors
+    local lint_log="${HOME}/.ralph/logs/quality-gates.log"
+    if [ -f "$lint_log" ]; then
+        local today lint_errors
+        today=$(date '+%Y-%m-%d')
+        lint_errors=$(grep "$today" "$lint_log" 2>/dev/null | grep -c "ERROR\|FAILED" | tr -d ' \n') || lint_errors=0
+        lint_errors=${lint_errors:-0}
+        if ! [[ "$lint_errors" =~ ^[0-9]+$ ]]; then
+            lint_errors=0
+        fi
+        if [ "$lint_errors" -gt 0 ]; then
+            warnings+=("Errores de lint: ${lint_errors} errores en la ultima sesion")
+        else
+            checks_passed=$((checks_passed + 1))
+        fi
+    else
+        checks_passed=$((checks_passed + 1))
+    fi
+
+    # 4. Check recent test failures
+    local test_log="${HOME}/.ralph/logs/test-results.log"
+    if [ -f "$test_log" ]; then
+        local today test_failures
+        today=$(date '+%Y-%m-%d')
+        test_failures=$(grep "$today" "$test_log" 2>/dev/null | grep -c "FAILED\|ERROR" | tr -d ' \n') || test_failures=0
+        test_failures=${test_failures:-0}
+        if ! [[ "$test_failures" =~ ^[0-9]+$ ]]; then
+            test_failures=0
+        fi
+        if [ "$test_failures" -gt 0 ]; then
+            warnings+=("Tests fallidos: ${test_failures} tests fallaron")
+        else
+            checks_passed=$((checks_passed + 1))
+        fi
+    else
+        checks_passed=$((checks_passed + 1))
+    fi
+
+    # Generate output
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Stop verification: ${checks_passed}/${total_checks} checks passed" >> "$stop_log_file"
+
+    trap - EXIT
+
+    if [ ${#warnings[@]} -gt 0 ]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Warnings: ${warnings[*]}" >> "$stop_log_file"
+        local warning_msg="Stop Verification: ${checks_passed}/${total_checks} passed. Issues: "
+        for w in "${warnings[@]}"; do
+            warning_msg+="$w; "
+        done
+        echo "{\"decision\": \"approve\", \"reason\": \"$warning_msg\"}"
+    else
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] All checks passed" >> "$stop_log_file"
+        echo "{\"decision\": \"approve\", \"reason\": \"Stop Verification: All ${total_checks} checks passed\"}"
+    fi
+    exit 0
+}
+
+# ============================================================================
+# SECTION: RALPH PROMPT QUALITY GATES (from ralph-quality-gates.sh)
+# Library functions for prompt quality validation via Ralph gates CLI
+# ============================================================================
+
+# Check if Ralph gates command is available
+ralph_gates_command_exists() {
+    command -v ralph &>/dev/null && ralph gates --help &>/dev/null
+}
+
+# Validate prompt through quality gates
+ralph_validate_prompt_quality() {
+    local prompt="$1"
+    local prompt_type="${2:-general}"
+
+    if ! ralph_gates_command_exists; then
+        echo '{"valid": true, "score": 100, "reason": "Ralph gates not available, auto-passing"}'
+        return 0
+    fi
+
+    local temp_prompt
+    temp_prompt=$(mktemp)
+    echo "$prompt" > "$temp_prompt"
+
+    local validation_result=""
+    if ralph gates validate --prompt-file "$temp_prompt" --type "$prompt_type" --json 2>/dev/null; then
+        validation_result=$(ralph gates validate --prompt-file "$temp_prompt" --type "$prompt_type" --json 2>/dev/null || echo '{"valid": true, "score": 85}')
+    else
+        validation_result='{"valid": true, "score": 85, "reason": "Validation unavailable, using default"}'
+    fi
+
+    rm -f "$temp_prompt"
+    echo "$validation_result"
+}
+
+# Get quality suggestions for prompt improvement
+ralph_get_quality_suggestions() {
+    local prompt="$1"
+    local clarity_score="${2:-50}"
+
+    if [[ $clarity_score -ge 80 ]]; then
+        echo ""
+        return 0
+    fi
+
+    local suggestions=""
+    local prompt_lower
+    prompt_lower=$(echo "$prompt" | tr '[:upper:]' '[:lower:]')
+
+    if echo "$prompt_lower" | grep -qE "thing|stuff|something|anything"; then
+        suggestions+="- Replace vague words (thing, stuff) with specific terms\n"
+    fi
+    if ! echo "$prompt_lower" | grep -qE "you are|act as|role"; then
+        suggestions+="- Add a role definition (e.g., 'You are a backend engineer')\n"
+    fi
+    if ! echo "$prompt_lower" | grep -qE "must|should|require|constraint"; then
+        suggestions+="- Specify constraints and requirements\n"
+    fi
+    if ! echo "$prompt_lower" | grep -qE "output|format|return|result"; then
+        suggestions+="- Define the expected output format\n"
+    fi
+    local word_count
+    word_count=$(echo "$prompt" | wc -w | tr -d ' ')
+    if [[ $word_count -lt 10 ]]; then
+        suggestions+="- Add more detail and context (currently $word_count words)\n"
+    fi
+
+    echo -e "$suggestions"
+}
+
+# Validate with Ralph gates and get combined score
+ralph_validate_with_gates() {
+    local prompt="$1"
+    local prompt_type="${2:-general}"
+    local clarity_score="${3:-50}"
+
+    local gates_result
+    gates_result=$(ralph_validate_prompt_quality "$prompt" "$prompt_type")
+    local gates_valid
+    gates_valid=$(echo "$gates_result" | jq -r '.valid // true' 2>/dev/null || echo "true")
+    local gates_score
+    gates_score=$(echo "$gates_result" | jq -r '.score // 85' 2>/dev/null || echo "85")
+
+    local combined_score=$(( (clarity_score * 60 + gates_score * 40) / 100 ))
+    local suggestions
+    suggestions=$(ralph_get_quality_suggestions "$prompt" "$clarity_score")
+
+    jq -n \
+        --argjson valid "$gates_valid" \
+        --argjson score "$combined_score" \
+        --argjson clarity "$clarity_score" \
+        --argjson gates "$gates_score" \
+        --arg suggestions "$suggestions" \
+        '{
+            valid: $valid,
+            combined_score: $score,
+            clarity_score: $clarity,
+            gates_score: $gates,
+            suggestions: $suggestions
+        }'
+}
+
+# ============================================================================
+# SECTION: SECURITY PATTERN AUDIT (from security-real-audit.sh)
+# Regex-based security pattern matching on edited/written files
+# ============================================================================
+run_security_pattern_audit() {
+    local file_path="$1"
+    local sec_log_file="${RALPH_LOGS:-$HOME/.ralph/logs}/security-audit.log"
+    local sec_log_json="${sec_log_file}.jsonl"
+    mkdir -p "$(dirname "$sec_log_file")" 2>/dev/null || true
+
+    # Security patterns to check (P0, P1, P2)
+    local patterns=(
+        # P0 - Critical: secrets
+        "sk-[a-zA-Z0-9]{32}"
+        "sk_live_[a-zA-Z0-9]{32}"
+        "AKIA[0-9A-Z]{16}"
+        "password.*=.*['\"].*['\"]"
+        "api_key.*=.*['\"].*['\"]"
+        "secret.*=.*['\"].*['\"]"
+        "token.*=.*['\"].*['\"]"
+        # P0 - Injection
+        "SELECT.*WHERE.*\+"
+        "eval\("
+        "exec\("
+        "system\("
+        "innerHTML"
+        "document\.write"
+        # P1 - High: weak crypto
+        "md5\("
+        "sha1\("
+        "ecb"
+        "none"
+        # P2 - Medium: security debt
+        "TODO.*security"
+        "FIXME.*security"
+        "HACK.*security"
+    )
+
+    local findings=0
+    local matching_patterns=()
+
+    for pattern in "${patterns[@]}"; do
+        if grep -qiE "$pattern" "$file_path" 2>/dev/null; then
+            findings=$((findings + 1))
+            matching_patterns+=("$pattern")
+        fi
+    done
+
+    # Log findings (not stdout)
+    {
+        echo "[$(date -Iseconds)] Security Pattern Audit: $file_path"
+        if [[ $findings -gt 0 ]]; then
+            echo "  Found $findings potential security issues:"
+            for pattern in "${matching_patterns[@]}"; do
+                echo "    - Pattern: $pattern"
+            done
+        else
+            echo "  No obvious security issues found"
+        fi
+    } >> "$sec_log_file" 2>/dev/null || true
+
+    # Structured JSON logging
+    if [[ $findings -gt 0 ]]; then
+        log_json "WARN" "Security pattern audit found $findings issues in $file_path"
+        for pattern in "${matching_patterns[@]}"; do
+            log_json "WARN" "Security pattern match: $pattern"
+        done
+    else
+        log_json "INFO" "Security pattern audit passed for $file_path"
+    fi
+
+    # Return findings count via global variables for the caller
+    SECURITY_PATTERN_FINDINGS=$findings
+    SECURITY_PATTERN_MATCHES=("${matching_patterns[@]}")
+}
+
+# ============================================================================
+# MAIN: Route to Stop verification or PostToolUse quality gates
+# ============================================================================
+
+if [[ "$HOOK_TYPE" == "stop" ]]; then
+    run_stop_verification
+    # run_stop_verification exits internally
+fi
+
+# --- PostToolUse path continues below ---
+
 # Parse JSON input
-# CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
-TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 
@@ -72,29 +415,9 @@ fi
 # Use the validated path going forward
 FILE_PATH="$FILE_PATH_REAL"
 
-# Setup logging
-LOG_DIR="$HOME/.ralph/logs"
-mkdir -p "$LOG_DIR"
-LOG_FILE="$LOG_DIR/quality-gates-$(date +%Y%m%d).log"
-LOG_FILE_JSON="${LOG_FILE}.jsonl"
-
 # PERF-001: Cache setup for TypeScript results
 CACHE_DIR="${HOME}/.ralph/cache/quality-gates"
 mkdir -p "$CACHE_DIR"
-
-# JSON structured logging function
-log_json() {
-    local level="$1"
-    local message="$2"
-    local hook_name="${0##*/}"
-    jq -n \
-        --arg ts "$(date -Iseconds)" \
-        --arg lvl "$level" \
-        --arg hook "$hook_name" \
-        --arg msg "$message" \
-        '{timestamp: $ts, level: $lvl, hook: $hook, message: $msg}' \
-        >> "$LOG_FILE_JSON" 2>/dev/null || true
-}
 
 # PERF-001: Cache functions for TypeScript compilation results
 get_cache_key() {
@@ -110,7 +433,7 @@ check_cached() {
     local file="$1"
     local cache_key=$(get_cache_key "$file")
     local cache_file="${CACHE_DIR}/${cache_key}"
-    
+
     if [[ -f "$cache_file" ]]; then
         cat "$cache_file"
         return 0
@@ -137,16 +460,9 @@ ADVISORY_WARNINGS=""
 CHECKS_RUN=0
 CHECKS_PASSED=0
 
-log_check() {
-    local check_name="$1"
-    local status="$2"
-    local message="$3"
-    echo "  [$status] $check_name: $message" >> "$LOG_FILE"
-}
-
 {
     echo ""
-    echo "[$(date -Iseconds)] Quality Gates v2.83.1 - $FILE_PATH"
+    echo "[$(date -Iseconds)] Quality Gates v2.84.0 - $FILE_PATH"
     echo "  Session: $SESSION_ID"
     echo "  Extension: $EXT"
     echo ""
@@ -168,7 +484,7 @@ log_check() {
         ts|tsx)
             CHECKS_RUN=$((CHECKS_RUN + 1))
             if command -v npx &>/dev/null; then
-                # FASE 2: Optimización - Ejecutar tsc una sola vez y reusar resultado
+                # FASE 2: Optimizacion - Ejecutar tsc una sola vez y reusar resultado
                 TS_OUTPUT=$(npx tsc --noEmit --skipLibCheck "$FILE_PATH" 2>&1 || true)
                 if [[ -z "$TS_OUTPUT" ]]; then
                     # No errors
@@ -365,7 +681,7 @@ log_check() {
                 # Extract secret types found
                 SECRET_TYPES=$(echo "$GITLEAKS_OUTPUT" | jq -r '.[].RuleID' 2>/dev/null | sort -u | head -3 | tr '\n' ', ' || echo "secrets")
                 log_check "gitleaks secrets" "FAIL" "$SECRETS_FOUND secret(s) detected: ${SECRET_TYPES%, }"
-                BLOCKING_ERRORS+="⚠️  SECRETS DETECTED in $FILE_PATH ($SECRETS_FOUND found)\n    Types: ${SECRET_TYPES%, }\n    ACTION: Remove secrets immediately!\n"
+                BLOCKING_ERRORS+="SECRETS DETECTED in $FILE_PATH ($SECRETS_FOUND found)\n    Types: ${SECRET_TYPES%, }\n    ACTION: Remove secrets immediately!\n"
             else
                 log_check "gitleaks secrets" "PASS" "No secrets detected"
                 CHECKS_PASSED=$((CHECKS_PASSED + 1))
@@ -386,6 +702,28 @@ log_check() {
             log_check "gitleaks secrets" "FAIL" "Auto-install failed"
             BLOCKING_ERRORS+="gitleaks installation failed. Run manually: ~/.claude/scripts/install-security-tools.sh\n"
         fi
+    fi
+
+    echo ""
+    echo "  === STAGE 2.6: SECURITY PATTERN AUDIT (blocking) ==="
+
+    # Stage 2.6: SECURITY PATTERN AUDIT (from security-real-audit.sh)
+    # Regex-based pattern matching for secrets, injection, weak crypto
+    CHECKS_RUN=$((CHECKS_RUN + 1))
+    SECURITY_PATTERN_FINDINGS=0
+    SECURITY_PATTERN_MATCHES=()
+    run_security_pattern_audit "$FILE_PATH"
+
+    if [[ "$SECURITY_PATTERN_FINDINGS" -gt 0 ]]; then
+        log_check "Security patterns" "FAIL" "$SECURITY_PATTERN_FINDINGS patterns matched"
+        PATTERN_LIST=""
+        for p in "${SECURITY_PATTERN_MATCHES[@]}"; do
+            PATTERN_LIST+="    - $p\n"
+        done
+        BLOCKING_ERRORS+="Security pattern matches in $FILE_PATH ($SECURITY_PATTERN_FINDINGS found):\n$PATTERN_LIST"
+    else
+        log_check "Security patterns" "PASS" "No security patterns matched"
+        CHECKS_PASSED=$((CHECKS_PASSED + 1))
     fi
 
     echo ""
@@ -437,6 +775,17 @@ log_check() {
             fi
             ;;
     esac
+
+    echo ""
+    echo "  === STAGE 4: RALPH PROMPT QUALITY (advisory) ==="
+
+    # Stage 4: RALPH PROMPT QUALITY - Check if Ralph gates CLI is available
+    # This is informational only; prompt validation is available via functions above
+    if ralph_gates_command_exists; then
+        log_check "Ralph gates" "PASS" "Ralph gates CLI available"
+    else
+        log_check "Ralph gates" "INFO" "Ralph gates CLI not installed (prompt validation skipped)"
+    fi
 
     echo ""
     echo "  Summary: $CHECKS_PASSED/$CHECKS_RUN checks passed"

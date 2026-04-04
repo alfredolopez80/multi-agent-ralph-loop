@@ -2,13 +2,25 @@
 
 Orchestration system with memory-driven planning, multi-agent coordination, automatic learning, and quality validation.
 
+## Analysis Methodology
+
+**Aristotle First Principles** is the foundational methodology. Every task passes through these phases before execution:
+
+| Complexity | Phases | Duration |
+|---|---|---|
+| 1-3 | Phase 1 (Assumption Autopsy) + Phase 5 (Aristotelian Move) | 30s |
+| 4+ | All 5 phases (Autopsy, Truths, Reconstruction, Map, Move) | 2-10 min |
+
+Reference: `docs/reference/aristotle-first-principles.md`
+Rule: `.claude/rules/aristotle-methodology.md`
+
 ## Configuration Location
 
-**PRIMARY SETTINGS**: `~/.claude/settings.json`
+**PRIMARY SETTINGS**: `~/.cc-mirror/minimax/config/settings.json`
 
 This is the ONLY configuration file for Claude Code. All hooks, agents, and settings are here.
 
-> ⚠️ **NOT**: `~/.claude-sneakpeek/zai/config/settings.json` (Zai variant - legacy)
+> ⚠️ **NOT**: `~/.claude/settings.json` or `~/.claude-sneakpeek/zai/config/settings.json` (legacy locations)
 
 ## Batch Task Execution (v2.88.0)
 
@@ -123,6 +135,7 @@ Agent Teams permite múltiples Claude Code instances trabajando en paralelo con 
 | `ralph-reviewer` | Code review | Read, Grep, Glob |
 | `ralph-tester` | Testing & QA | Read, Edit, Write, Bash(test) |
 | `ralph-researcher` | Research & exploration | Read, Grep, Glob, WebSearch |
+| `ralph-frontend` | Frontend with DESIGN.md | LSP, Read, Edit, Write, Bash(npm/npx/bun/git) |
 
 ### Crear Team
 
@@ -137,7 +150,7 @@ Task(subagent_type="ralph-reviewer", team_name="my-project")
 
 ### Agent Teams Configuration
 
-Agent Teams está habilitado en `~/.claude/settings.json`:
+Agent Teams está habilitado en `~/.cc-mirror/minimax/config/settings.json`:
 ```json
 {
   "env": {

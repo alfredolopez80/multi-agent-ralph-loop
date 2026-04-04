@@ -75,6 +75,15 @@ When Agent Teams is active:
 - Task coordination tracks vulnerability findings
 - TeammateIdle triggers cross-validation of discoveries
 
+## Aristotle Integration (v3.0)
+
+Before adversarial analysis begins, apply Aristotle Phase 1 (Assumption Autopsy):
+- What security assumptions are we inheriting from the framework?
+- Are we testing the right attack surface, or the obvious one?
+- What would an attacker assume about our defenses?
+
+The Irreducible Truths (Phase 2) become the invariants that adversarial testing validates.
+
 ## Usage
 
 ```bash

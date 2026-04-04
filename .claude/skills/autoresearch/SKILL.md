@@ -493,3 +493,15 @@ To merge: git checkout main && git merge autoresearch/<tag>
 - `/orchestrator` - Full orchestration workflow
 - `/gates` - Quality validation
 - `/curator` - Learning from external sources
+
+## Anti-Rationalization
+
+See master table: `docs/reference/anti-rationalization.md`
+
+| Excuse | Rebuttal |
+|---|---|
+| "First experiment worked, stopping" | N=1 is not evidence. Run 3+ experiments. |
+| "The metric improved slightly, good enough" | Slight improvement may be noise. Validate. |
+| "I can't reproduce the improvement" | Non-reproducible results are not results. |
+| "The experiment takes too long" | Budget management, not experiment cancellation. |
+| "I modified too many variables" | One variable per experiment. Start over. |

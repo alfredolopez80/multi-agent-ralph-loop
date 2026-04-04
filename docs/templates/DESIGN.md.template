@@ -1,0 +1,128 @@
+# DESIGN.md — {{PROJECT_NAME}}
+
+## 1. Visual Theme
+
+**Style**: {{modern|minimal|playful|corporate|brutalist}}
+**Mood**: {{describe the overall feel: clean, warm, bold, etc.}}
+
+## 2. Color Palette
+
+| Role | Token | Value | Usage |
+|------|-------|-------|-------|
+| Primary | `--color-primary` | `#3B82F6` | CTAs, links, active states |
+| Primary Hover | `--color-primary-hover` | `#2563EB` | Hover on primary elements |
+| Secondary | `--color-secondary` | `#6B7280` | Secondary actions |
+| Background | `--color-bg` | `#FFFFFF` | Page background |
+| Surface | `--color-surface` | `#F9FAFB` | Card/panel backgrounds |
+| Text | `--color-text` | `#111827` | Body text |
+| Text Muted | `--color-text-muted` | `#6B7280` | Secondary text |
+| Border | `--color-border` | `#E5E7EB` | Dividers, input borders |
+| Error | `--color-error` | `#EF4444` | Error states |
+| Success | `--color-success` | `#10B981` | Success states |
+| Warning | `--color-warning` | `#F59E0B` | Warning states |
+
+## 3. Typography
+
+| Role | Font | Size | Weight | Line Height |
+|------|------|------|--------|-------------|
+| H1 | `--font-heading` | `2.25rem` | 700 | 1.2 |
+| H2 | `--font-heading` | `1.875rem` | 600 | 1.3 |
+| H3 | `--font-heading` | `1.5rem` | 600 | 1.4 |
+| Body | `--font-body` | `1rem` | 400 | 1.6 |
+| Small | `--font-body` | `0.875rem` | 400 | 1.5 |
+| Code | `--font-mono` | `0.875rem` | 400 | 1.5 |
+
+**Font Stack**:
+- Heading: `Inter, system-ui, -apple-system, sans-serif`
+- Body: `Inter, system-ui, -apple-system, sans-serif`
+- Mono: `JetBrains Mono, Fira Code, monospace`
+
+## 4. Components
+
+### Buttons
+
+| Variant | Background | Text | Border | Radius | Padding |
+|---------|------------|------|--------|--------|---------|
+| Primary | `--color-primary` | white | none | `8px` | `12px 24px` |
+| Secondary | transparent | `--color-text` | `--color-border` | `8px` | `12px 24px` |
+| Ghost | transparent | `--color-primary` | none | `8px` | `12px 24px` |
+| Danger | `--color-error` | white | none | `8px` | `12px 24px` |
+
+### Inputs
+
+- Border: `1px solid var(--color-border)`
+- Focus: `2px solid var(--color-primary)`, no outline
+- Border radius: `8px`
+- Padding: `10px 14px`
+- Error state: border color `var(--color-error)`
+
+### Cards
+
+- Background: `var(--color-surface)`
+- Border: `1px solid var(--color-border)`
+- Border radius: `12px`
+- Padding: `24px`
+- Shadow: `0 1px 3px rgba(0,0,0,0.1)`
+
+## 5. Layout
+
+| Property | Value |
+|----------|-------|
+| Max width | `1280px` |
+| Gutter | `24px` |
+| Grid | 12-column |
+| Breakpoints | `sm: 640px`, `md: 768px`, `lg: 1024px`, `xl: 1280px` |
+| Spacing scale | `4px` base (`4, 8, 12, 16, 24, 32, 48, 64, 96`) |
+
+## 6. Depth and Elevation
+
+| Level | Shadow | Usage |
+|-------|--------|-------|
+| 0 | none | Flat elements |
+| 1 | `0 1px 3px rgba(0,0,0,0.1)` | Cards, dropdowns |
+| 2 | `0 4px 6px rgba(0,0,0,0.1)` | Modals, popovers |
+| 3 | `0 10px 15px rgba(0,0,0,0.1)` | Toasts, floating actions |
+
+## 7. Do's and Don'ts
+
+### Do
+- Use design tokens instead of raw values
+- Maintain consistent spacing using the scale
+- Use semantic color names (error, success) not raw hex
+- Test all interactive elements in 8 states: default, hover, focus, active, disabled, loading, error, success
+
+### Don't
+- Don't use more than 3 font weights on a single page
+- Don't mix border-radius values (pick one: 8px or 12px)
+- Don't hardcode colors outside the palette
+- Don't create new spacing values outside the scale
+
+## 8. Responsive Behavior
+
+| Breakpoint | Layout Changes |
+|------------|----------------|
+| `< 640px` | Stack to single column, hamburger nav, full-width cards |
+| `640-1024px` | 2-column grid, collapsible sidebar |
+| `> 1024px` | Full layout with sidebar, 3-column grids |
+
+**Mobile-first**: Start with mobile styles, add complexity at larger breakpoints.
+
+## 9. Agent Prompt Guide
+
+When generating UI components, the agent MUST:
+
+1. **Read this file first** before generating any frontend code
+2. **Use design tokens** from sections 2-3 (e.g., `var(--color-primary)`, not `#3B82F6`)
+3. **Follow component specs** from section 4 for buttons, inputs, cards
+4. **Apply spacing scale** from section 5 (only use values from the scale)
+5. **Check all 8 states** for interactive elements (section 7)
+6. **Apply responsive rules** from section 8
+7. **Never invent new design values** — if something is not in this file, ask before creating it
+
+**Validation checklist** (run after generating any component):
+- [ ] Uses only colors from section 2
+- [ ] Uses only fonts from section 3
+- [ ] Follows component specs from section 4
+- [ ] Uses spacing scale from section 5
+- [ ] Handles all 8 interactive states
+- [ ] Works at all 3 breakpoints

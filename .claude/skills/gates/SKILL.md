@@ -429,3 +429,15 @@ exit 0
 - Never skip gates for "quick fixes"
 - Never ignore type errors
 - Never commit with lint warnings
+
+## Anti-Rationalization
+
+See master table: `docs/reference/anti-rationalization.md`
+
+| Excuse | Rebuttal |
+|---|---|
+| "It's just a warning, not an error" | Warnings become errors in production. Fix them. |
+| "Security scan is too strict" | Security scan catches what you missed. |
+| "Type errors are false positives" | Type errors are real until proven false. Investigate. |
+| "Linting is style, not substance" | Consistency IS substance in team projects. |
+| "I'll pass gates after the PR" | Gates run BEFORE completion, not after. |

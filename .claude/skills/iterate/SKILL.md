@@ -501,3 +501,17 @@ complete_action_report "success" "Summary" "Recommendations"
 - [Unified Architecture v2.88](docs/architecture/UNIFIED_ARCHITECTURE_v2.88.md)
 - [Skills/Commands Unification](docs/architecture/COMMANDS_TO_SKILLS_MIGRATION_v2.88.md)
 - [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills)
+
+## Anti-Rationalization
+
+See master table: `docs/reference/anti-rationalization.md`
+
+| Excuse | Rebuttal |
+|---|---|
+| "VERIFIED_DONE — all tests pass" | Did you run ALL tests or just the new ones? |
+| "The error is unrelated to my change" | Prove it. Run the full test suite. |
+| "3 iterations is enough" | Iteration count doesn't determine quality. Exit criteria do. |
+| "The fix works locally" | Local works is not verified. Run exit criteria. |
+| "I'm stuck, marking as done with notes" | Stuck means escalate, not declare victory. |
+| "The loop has been running too long" | Time is not a quality metric. Results are. |
+| "Minor regressions are acceptable" | No regressions. Fix them or document why they're acceptable. |

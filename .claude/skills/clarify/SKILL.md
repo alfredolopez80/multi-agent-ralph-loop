@@ -39,6 +39,16 @@ tldr structure . --lang "$PRIMARY_LANGUAGE"
 
 This helps formulate better questions based on what already exists in the codebase.
 
+## Aristotle-First Clarification (v3.0)
+
+Before asking structured questions, apply Aristotle Phase 1 (Assumption Autopsy):
+
+1. **What assumptions are embedded in the user's request?** Identify inherited framing.
+2. **What clarifications challenge assumptions vs confirm them?** Prioritize assumption-challenging questions.
+3. **What would change if the core assumption is wrong?** This identifies the highest-value clarification.
+
+Example: User says "optimize database queries". Assumption Autopsy reveals: "We assume queries are the bottleneck, not the schema design or the caching layer." The first MUST_HAVE question should challenge this assumption.
+
 ## Workflow
 
 ### MUST_HAVE Questions (Blocking)

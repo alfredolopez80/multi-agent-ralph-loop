@@ -273,6 +273,28 @@ Decomposition Rules:
   - Preserve original acceptance criteria
 ```
 
+#### Vertical Slices Mode (`--slices`) (v3.0)
+
+When invoked with `--slices`, decompose features into vertical slices instead of horizontal layers:
+
+```bash
+/task-batch tasks.md --slices
+```
+
+Each slice includes ALL layers for ONE feature:
+1. **API/Backend** — endpoint, handler, validation
+2. **UI/Frontend** — component, styling, design tokens
+3. **Tests** — unit + integration for that slice
+4. **Spec verification** — exit criteria from spec
+
+Example: "user login" becomes:
+- Slice 1: POST /login + login form + test
+- Slice 2: Session management + protected route + test
+- Slice 3: Error handling + a11y + test
+
+Each slice is independently deployable and testable.
+Invoke `/spec` for each slice if complexity > 6.
+
 ### Phase 4: EXECUTE (Main Loop)
 
 ```bash
@@ -728,3 +750,17 @@ complete_action_report "success" "Summary" "Recommendations"
 - [Awesome Agentic Patterns](https://github.com/nibzard/awesome-agentic-patterns)
 - [Unified Architecture v2.88](docs/architecture/UNIFIED_ARCHITECTURE_v2.88.md)
 - [Claude Code Agent Teams Documentation](https://code.claude.com/docs/en/agent-teams)
+
+## Anti-Rationalization (Extended v3.0)
+
+See master table: `docs/reference/anti-rationalization.md`
+
+| Excuse | Rebuttal |
+|---|---|
+| "Partial success is acceptable" | Each task has completion criteria. Meet them. |
+| "This task depends on another, skipping" | Document the dependency, don't skip. |
+| "The PRD doesn't have completion criteria" | No criteria = task rejected. Ask for them. |
+| "I'll batch-commit at the end" | Auto-commit after EACH completed task. |
+| "The context is too stale, starting fresh" | Fresh context per task is built in. Use it. |
+| "This task is a duplicate of a previous one" | Verify with the PRD before skipping. Duplicates have different scopes. |
+| "The batch is taking too long, trimming scope" | Scope is set by the PRD. Trim with user approval only. |
