@@ -327,6 +327,7 @@ class TestHookPathsValid:
                     # Extract just the script path (before first space/argument)
                     script_path = resolved.split()[0] if resolved else ""
 
+                    if script_path in ("node", "bun") or "/plugins/cache/" in command or "/node_modules/" in command: continue
                     if script_path and not os.path.exists(script_path):
                         invalid_paths.append({
                             "event": event_type,

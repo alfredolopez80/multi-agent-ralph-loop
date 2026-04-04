@@ -609,7 +609,7 @@ def test_auto_007_comprehensive_summary():
         },
         "Skill Integration": {
             "orchestrator/SKILL.md exists": ORCHESTRATOR_SKILL.exists(),
-            "loop/SKILL.md exists": LOOP_SKILL.exists(),
+            "iterate/SKILL.md exists": Path(".claude/skills/iterate/SKILL.md").exists(),: LOOP_SKILL.exists(),
         },
     }
 

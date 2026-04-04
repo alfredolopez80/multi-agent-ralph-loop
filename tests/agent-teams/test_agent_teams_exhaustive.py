@@ -48,7 +48,7 @@ AGENT_TEAMS_HOOKS = [
 SKILLS_THAT_SHOULD_USE_AGENT_TEAMS = [
     "orchestrator",
     "parallel",
-    "loop",
+    "iterate",
     "bugs",
     "security",
     "gates",
