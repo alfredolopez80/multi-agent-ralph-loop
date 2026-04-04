@@ -202,7 +202,7 @@ Agent Teams está habilitado en `~/.cc-mirror/minimax/config/settings.json`:
 All major commands support `--with-glm5` flag:
 ```bash
 /orchestrator "task" --with-glm5
-/loop "fix errors" --with-glm5
+/iterate "fix errors" --with-glm5
 /security src/ --with-glm5
 ```
 

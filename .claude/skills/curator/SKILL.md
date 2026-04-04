@@ -237,7 +237,7 @@ Rules now automatically categorized:
 | Hook | Trigger | Purpose |
 |------|---------|---------|
 | `orchestrator-auto-learn.sh` | PreToolUse (Task) | Detect learning gaps |
-| `curator-suggestion.sh` | UserPromptSubmit | Suggest learning |
+| *(removed in v3.0)* | UserPromptSubmit | *(curator-suggestion.sh deleted)* |
 | `continuous-learning.sh` | SessionEnd | Extract from session |
 
 

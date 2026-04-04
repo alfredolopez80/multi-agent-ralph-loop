@@ -17,7 +17,7 @@ allowed-tools:
   - Grep
 ---
 
-# /iterate - Ralph Loop Pattern (v2.94)
+# /iterate - Ralph Iterate Pattern (v3.0)
 
 Execute tasks iteratively with automatic quality validation until VERIFIED_DONE signal.
 
@@ -89,7 +89,7 @@ Use `/iterate` when:
 ### Default Mode (Claude)
 
 ```bash
-ralph loop "implement OAuth2 authentication"
+ralph iterate "implement OAuth2 authentication"
 ```
 
 Uses Claude Sonnet with **15 iteration limit**:
@@ -100,7 +100,7 @@ Uses Claude Sonnet with **15 iteration limit**:
 ### GLM-5 Mode (--with-glm5 flag)
 
 ```bash
-ralph loop "implement OAuth2 authentication" --with-glm5
+ralph iterate "implement OAuth2 authentication" --with-glm5
 ```
 
 Uses GLM-5 with **30 iteration limit**:
@@ -111,7 +111,7 @@ Uses GLM-5 with **30 iteration limit**:
 ### MiniMax Mode (--mmc flag)
 
 ```bash
-ralph loop --mmc "implement OAuth2 authentication"
+ralph iterate --mmc "implement OAuth2 authentication"
 ```
 
 Uses MiniMax M2.1 with **30 iteration limit**:
@@ -123,16 +123,16 @@ Uses MiniMax M2.1 with **30 iteration limit**:
 
 ```bash
 # Claude mode (15 iterations)
-ralph loop "implement user authentication with JWT"
+ralph iterate "implement user authentication with JWT"
 
 # GLM-5 mode (30 iterations)
-ralph loop "refactor database queries" --with-glm5
+ralph iterate "refactor database queries" --with-glm5
 
 # MiniMax mode (30 iterations)
-ralph loop --mmc "refactor database queries to use TypeORM"
+ralph iterate --mmc "refactor database queries to use TypeORM"
 
 # Complex task with specific requirements
-ralph loop "add rate limiting to API endpoints with Redis"
+ralph iterate "add rate limiting to API endpoints with Redis"
 ```
 
 ## Task Tool Invocation (Swarm Mode)
@@ -146,8 +146,8 @@ Task:
   run_in_background: true
   max_iterations: 15
   description: "Loop execution with swarm mode"
-  team_name: "loop-execution-team"
-  name: "loop-lead"
+  team_name: "iterate-execution-team"
+  name: "iterate-lead"
   mode: "delegate"
   prompt: |
     Execute the following task iteratively until VERIFIED_DONE:
@@ -178,8 +178,8 @@ This skill uses the INTEGRATED approach combining Agent Teams coordination with 
 - **Multi-phase iteration** (EXECUTE -> VALIDATE -> CHECK) benefits from team coordination
 
 ### Configuration
-1. **TeamCreate**: Create team "loop-{task-hash}" on loop invocation
-2. **TaskCreate**: Create iteration tasks for each loop cycle
+1. **TeamCreate**: Create team "iterate-{task-hash}" on iterate invocation
+2. **TaskCreate**: Create iteration tasks for each iterate cycle
 3. **Spawn**: Use ralph-coder for implementation, ralph-tester for validation
 4. **Hooks**: TeammateIdle + TaskCompleted for quality validation on each iteration
 5. **Coordination**: Shared task list at ~/.claude/tasks/{team}/
@@ -202,20 +202,20 @@ When `/iterate` is invoked, it automatically creates a dedicated team for the it
 ```bash
 # Automatic team creation
 TeamCreate(
-  team_name: "loop-{task-hash}",
+  team_name: "iterate-{task-hash}",
   description: "Iterative execution: {task}"
 )
 
 # Spawn implementation teammate
 Task(
   subagent_type: "ralph-coder",
-  team_name: "loop-{task-hash}"
+  team_name: "iterate-{task-hash}"
 )
 
 # Spawn validation teammate
 Task(
   subagent_type: "ralph-tester",
-  team_name: "loop-{task-hash}"
+  team_name: "iterate-{task-hash}"
 )
 ```
 
@@ -305,10 +305,10 @@ This creates a quality feedback loop that prevents completion until all standard
 
 ```bash
 # Logs saved to ~/.ralph/logs/
-ls ~/.ralph/logs/loop-*.log
+ls ~/.ralph/logs/iterate-*.log
 
-# View last loop execution
-tail -f ~/.ralph/logs/loop-latest.log
+# View last iterate execution
+tail -f ~/.ralph/logs/iterate-latest.log
 ```
 
 ## Pattern Details
@@ -358,13 +358,13 @@ The loop integrates with the Stop hook:
 
 ```bash
 # Initialize state
-.claude/scripts/ralph-state.sh init "$SESSION_ID" loop "$TASK"
+.claude/scripts/ralph-state.sh init "$SESSION_ID" iterate "$TASK"
 
 # On VERIFIED_DONE
-.claude/scripts/ralph-state.sh complete "$SESSION_ID" loop
+.claude/scripts/ralph-state.sh complete "$SESSION_ID" iterate
 
 # On failure
-.claude/scripts/ralph-state.sh fail "$SESSION_ID" loop "$ERROR"
+.claude/scripts/ralph-state.sh fail "$SESSION_ID" iterate "$ERROR"
 ```
 
 ## Anti-Patterns
@@ -456,7 +456,7 @@ Cuando esta skill completa, se genera automáticamente:
 
 1. **En la conversación de Claude**: Resultados visibles
 2. **En el repositorio**: `docs/actions/iterate/{timestamp}.md`
-3. **Metadatos JSON**: `.claude/metadata/actions/loop/{timestamp}.json`
+3. **Metadatos JSON**: `.claude/metadata/actions/iterate/{timestamp}.json`
 
 ### Contenido del Reporte
 
