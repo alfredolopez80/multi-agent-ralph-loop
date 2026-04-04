@@ -88,6 +88,16 @@ AskUserQuestion:
         - label: "Infrastructure"
         - label: "Full Stack"
 
+    - question: "Does the project have a DESIGN.md (design system)?"
+      header: "Design System"
+      options:
+        - label: "Yes, use existing DESIGN.md"
+          description: "Load design tokens for frontend consistency"
+        - label: "No, create one with /design-system init"
+          description: "Initialize a 9-section design system first"
+        - label: "Not applicable (backend only)"
+          description: "Skip design system for non-frontend work"
+
     - question: "What is the target timeframe?"
       header: "Timeframe"
       options:

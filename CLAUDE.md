@@ -136,6 +136,7 @@ Agent Teams permite múltiples Claude Code instances trabajando en paralelo con 
 | `ralph-tester` | Testing & QA | Read, Edit, Write, Bash(test) |
 | `ralph-researcher` | Research & exploration | Read, Grep, Glob, WebSearch |
 | `ralph-frontend` | Frontend with DESIGN.md | LSP, Read, Edit, Write, Bash(npm/npx/bun/git) |
+| `ralph-security` | Security specialist (6 pillars) | LSP, Read, Grep, Glob, Bash(audit/semgrep/gitleaks/git) |
 
 ### Crear Team
 
