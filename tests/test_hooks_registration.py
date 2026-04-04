@@ -124,12 +124,7 @@ HOOK_REGISTRY = {
         "version": "2.44",
         "cli_only": True,
     },
-    "plan-state-init.sh": {
-        "event": None,
-        "matchers": None,
-        "version": "2.45",
-        "cli_only": True,
-    },
+    # plan-state-init.sh — REMOVED in v3.0, consolidated into auto-plan-state.sh
 }
 
 
@@ -376,7 +371,7 @@ class TestVersionMarkers:
 class TestV245Hooks:
     """Test v2.45 specific hooks are properly configured."""
 
-    V245_HOOKS = ["lsa-pre-step.sh", "plan-sync-post-step.sh", "plan-state-init.sh", "auto-plan-state.sh"]
+    V245_HOOKS = ["lsa-pre-step.sh", "plan-sync-post-step.sh", "auto-plan-state.sh"]
 
     def test_v245_hooks_exist(self, global_hooks_dir):
         """v2.45 hooks should exist."""
