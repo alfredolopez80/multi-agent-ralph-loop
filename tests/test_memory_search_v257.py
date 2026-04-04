@@ -196,7 +196,11 @@ class TestInjectSessionContext:
 
 
 class TestPlanStateSchema:
-    """Tests for plan-state.json schema compatibility."""
+    """Tests for plan-state.json schema compatibility.
+
+    v3.0: Plan state uses array-of-objects format for steps with id/name/status/priority fields.
+    Previous versions used dict with step-X-Y or numeric keys.
+    """
 
     @pytest.fixture
     def plan_state_path(self):
@@ -215,22 +219,28 @@ class TestPlanStateSchema:
         data = json.loads(plan_state_path.read_text())
         assert "steps" in data
 
-    def test_steps_have_step_format_keys(self, plan_state_path):
-        """Steps should have step-X-Y format keys."""
+    def test_plan_state_has_version(self, plan_state_path):
+        """Plan state should have version field (v3.0+)."""
         data = json.loads(plan_state_path.read_text())
-        steps = data.get("steps", {})
+        assert "version" in data, "plan-state.json should have a version field"
+
+    def test_steps_are_array_of_objects(self, plan_state_path):
+        """v3.0: Steps should be an array of objects with id/name/status/priority fields."""
+        data = json.loads(plan_state_path.read_text())
+        steps = data.get("steps", [])
+
+        assert isinstance(steps, list), \
+            f"v3.0 steps should be a list, got: {type(steps).__name__}"
 
         if steps:
-            keys = list(steps.keys())
-            # Check if any key matches step-X-Y pattern
-            import re
-            step_pattern = re.compile(r'^step-\d+-\d+$')
-            step_format_keys = [k for k in keys if step_pattern.match(k)]
-            numeric_keys = [k for k in keys if k.isdigit()]
-
-            # Should have step-X-Y format (v2.54+) or numeric (v2.51-)
-            assert step_format_keys or numeric_keys, \
-                f"Steps should have step-X-Y or numeric keys, got: {keys}"
+            first_step = steps[0]
+            assert isinstance(first_step, dict), \
+                f"Each step should be a dict, got: {type(first_step).__name__}"
+            # v3.0 step objects have id, name, status, priority
+            assert "id" in first_step, \
+                f"Step missing 'id' field: {first_step}"
+            assert "status" in first_step, \
+                f"Step missing 'status' field: {first_step}"
 
 
 class TestClaudeMemDatabase:

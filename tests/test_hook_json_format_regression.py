@@ -102,23 +102,25 @@ def get_hook_type(hook_name: str, settings_json: dict = None) -> str:
 
     # Fallback to static classification (for missing hooks or offline testing)
     # Stop hooks (use {"decision": "approve/block"})
-    # NOTE: stop-slop-hook.sh is NOT a Stop hook - it's a PostToolUse quality check hook
-    if any(x in hook_name for x in ['stop-verification', 'sentry-report', 'reflection-engine',
-                                      'semantic-auto-extractor', 'continuous-learning',
-                                      'orchestrator-report', 'project-backup-metadata']):
+    # NOTE: stop-slop-hook.sh is registered as Stop in settings.json but uses
+    # {"continue": true} format (PostToolUse-style quality check). Exclude it here.
+    if any(x in hook_name for x in ['sentry-report', 'reflection-engine',
+                                      'continuous-learning',
+                                      'orchestrator-report', 'project-backup-metadata',
+                                      'ralph-stop-quality-gate']):
         return 'Stop'
 
     # UserPromptSubmit hooks (use {} or {"additionalContext": ...})
-    elif any(x in hook_name for x in ['context-warning', 'periodic-reminder', 'prompt-analyzer',
-                                       'memory-write-trigger', 'curator-suggestion',
+    elif any(x in hook_name for x in ['context-warning', 'periodic-reminder', 'command-router',
+                                       'memory-write-trigger',
                                        'plan-state-lifecycle', 'plan-state-adaptive',
                                        'statusline-health-monitor']):
         return 'UserPromptSubmit'
 
     # SessionStart hooks (plain text, no JSON required)
     elif any(x in hook_name for x in ['session-start', 'auto-sync', 'post-compact-restore',
-                                       'inject-context', 'context-injector', 'auto-migrate',
-                                       'orchestrator-init', 'skill-pre-warm', 'usage-consolidate']):
+                                       'inject-context', 'auto-migrate',
+                                       'orchestrator-init', 'skill-pre-warm']):
         return 'SessionStart'
 
     # PreCompact hooks (use {"continue": true})
@@ -221,12 +223,22 @@ class TestCriticalFormatRegression:
         )
 
     def test_stop_hooks_use_approve_or_block(self, all_hooks):
-        """Stop hooks must use {"decision": "approve"} or {"decision": "block"}."""
+        """Stop hooks must use {"decision": "approve"} or {"decision": "block"}.
+
+        v3.0: stop-slop-hook.sh is registered under Stop but intentionally uses
+        {"continue": true} format (PostToolUse-style quality checker). It is excluded.
+        """
+        # v3.0: Hooks registered under Stop that intentionally use continue format
+        STOP_CONTINUE_EXCEPTIONS = {"stop-slop-hook.sh"}
         violations = []
 
         for hook_path in all_hooks:
             hook_type = get_hook_type(hook_path.name)
             if hook_type != 'Stop':
+                continue
+
+            # v3.0: Skip known exceptions that use continue format under Stop
+            if hook_path.name in STOP_CONTINUE_EXCEPTIONS:
                 continue
 
             content = hook_path.read_text()
@@ -319,7 +331,6 @@ class TestRuntimeFormatValidation:
         # Only test ACTUAL PostToolUse hooks here:
         "quality-gates-v2.sh",
         "status-auto-check.sh",
-        "auto-save-context.sh",
         "progress-tracker.sh",
         "plan-sync-post-step.sh",
     ])
@@ -394,7 +405,7 @@ class TestRuntimeFormatValidation:
         )
 
     @pytest.mark.parametrize("hook_name", [
-        "stop-verification.sh",
+        "ralph-stop-quality-gate.sh",
         "sentry-report.sh",
     ])
     def test_stop_hooks_output_decision_format(self, hook_name, test_input_stop):

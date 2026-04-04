@@ -186,9 +186,9 @@ def github_projects_dir(home_dir):
 
 @pytest.fixture
 def critical_skills():
-    """List of critical skills that must exist for v2.84.2.
+    """List of critical skills that must exist for v3.0.
 
-    Updated: Removed 'ultrathink' (not in project).
+    v3.0: Renamed 'loop' -> 'iterate'. Removed 'ultrathink' (not in project).
     """
     return [
         "orchestrator",
@@ -196,7 +196,7 @@ def critical_skills():
         "gates",
         "adversarial",
         "retrospective",
-        "loop",
+        "iterate",  # v3.0: renamed from 'loop'
         "parallel",
         "bugs",
     ]
@@ -204,18 +204,22 @@ def critical_skills():
 
 @pytest.fixture
 def critical_hooks():
-    """List of critical hooks that must exist for v2.40+.
+    """List of critical hooks that must exist for v3.0.
 
     v2.69.0: Updated quality-gates.sh -> quality-gates-v2.sh (renamed in v2.46).
     v2.85: Updated session-start-ledger.sh -> session-start-restore-context.sh (archived redundant hook).
+    v3.0: Removed session-start-tldr.sh (deleted). Added session-accumulator.sh, vault-graduation.sh,
+           project-state.sh (new v3.0 hooks).
     """
     return [
         "session-start-restore-context.sh",  # v2.85: Replaces archived session-start-ledger.sh
-        "session-start-tldr.sh",
         "pre-compact-handoff.sh",
         "quality-gates-v2.sh",  # v2.46+: renamed from quality-gates.sh
         "git-safety-guard.py",
         "auto-sync-global.sh",
+        "session-accumulator.sh",  # v3.0: New hook
+        "vault-graduation.sh",  # v3.0: New hook
+        "project-state.sh",  # v3.0: Consolidated from skills-sync-validator + unified-context-tracker
     ]
 
 

@@ -595,7 +595,7 @@ class TestSettingsIntegration:
         assert found, "reflection-engine.sh not registered in Stop"
 
     def test_procedural_hook_registered(self):
-        """Procedural inject hook should be registered in PreToolUse Task."""
+        """Procedural inject hook should be registered in PreToolUse Agent|Task."""
         settings_file = CLAUDE_DIR / "settings.json"
         with open(settings_file) as f:
             settings = json.load(f)
@@ -605,13 +605,15 @@ class TestSettingsIntegration:
 
         found = False
         for hook_group in pre_tool_hooks:
-            if hook_group.get("matcher") == "Task":
+            matcher = hook_group.get("matcher", "")
+            # v3.0: matcher changed from "Task" to "Agent|Task"
+            if "Task" in matcher:
                 for hook in hook_group.get("hooks", []):
                     if "procedural-inject.sh" in hook.get("command", ""):
                         found = True
                         break
 
-        assert found, "procedural-inject.sh not registered in PreToolUse Task"
+        assert found, "procedural-inject.sh not registered in PreToolUse (Agent|Task)"
 
 
 class TestMemorySkill:

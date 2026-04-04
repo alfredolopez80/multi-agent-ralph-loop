@@ -111,6 +111,7 @@ class TestPreToolUseAdditionalContextHook:
         pretooluse = hooks.get("PreToolUse", [])
 
         # Find Task matcher with context injection hooks (v2.43+ pattern)
+        # v3.0: Matcher changed from "Task" to "Agent|Task"
         context_hook_found = False
         context_injection_hooks = [
             "inject-session-context.sh",
@@ -120,7 +121,8 @@ class TestPreToolUseAdditionalContextHook:
 
         for entry in pretooluse:
             matcher = entry.get("matcher", "")
-            if matcher == "Task":
+            # v3.0: Accept both "Task" and "Agent|Task" matchers
+            if "Task" in matcher:
                 hook_list = entry.get("hooks", [])
                 for hook in hook_list:
                     command = hook.get("command", "")
@@ -129,7 +131,7 @@ class TestPreToolUseAdditionalContextHook:
                         break
 
         assert context_hook_found, (
-            "No context injection hook found for PreToolUse:Task. "
+            "No context injection hook found for PreToolUse:Task (or Agent|Task). "
             "Hooks like inject-session-context.sh or smart-memory-search.sh should be registered."
         )
 
@@ -285,10 +287,17 @@ class TestWorktreeDashboard:
 
 
 class TestGitignoreTldrEntry:
-    """Test .tldr/ is handled by ralph tldr warm command."""
+    """Test .tldr/ is handled by ralph tldr warm command.
+
+    v3.0: session-start-tldr.sh and tldr integration were removed.
+    Tests now skip gracefully.
+    """
 
     def test_ralph_tldr_warm_adds_gitignore(self, scripts_dir):
-        """Verify ralph tldr warm includes .gitignore handling for .tldr/."""
+        """Verify ralph tldr warm includes .gitignore handling for .tldr/.
+
+        v3.0: tldr integration removed. Skip if ralph script has no .tldr references.
+        """
         ralph_script = os.path.join(scripts_dir, "ralph")
         if not os.path.exists(ralph_script):
             pytest.skip("ralph script not found")
@@ -296,10 +305,10 @@ class TestGitignoreTldrEntry:
         with open(ralph_script) as f:
             content = f.read()
 
-        # Check that tldr warm command handles .gitignore
-        assert ".tldr" in content, (
-            "ralph script should reference .tldr directory"
-        )
+        # v3.0: tldr integration was removed - skip if not present
+        if ".tldr" not in content:
+            pytest.skip("tldr integration removed in v3.0 (session-start-tldr.sh deleted)")
+
         # Check for gitignore handling logic
         assert ".gitignore" in content, (
             "ralph tldr warm should handle .gitignore for .tldr/ directory"

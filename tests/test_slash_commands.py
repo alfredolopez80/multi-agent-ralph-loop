@@ -19,33 +19,42 @@ import pytest
 
 SKILLS_DIR = Path(".claude/skills")
 
-# Core skills that must exist (v2.89.2+)
+# Core skills that must exist (v3.0 - Unified Herding Blanket)
 EXPECTED_SKILLS = [
+    "adr",
     "adversarial",
     "audit",
+    "browser-test",
     "bugs",
     "clarify",
     "code-reviewer",
     "codex-cli",
+    "context-engineer",
     "create-task-batch",
     "curator",
     "curator-repo-learn",
+    "design-system",
     "edd",
+    "exit-review",
     "gates",
     "gemini-cli",
     "glm5",
     "glm5-parallel",
-    "loop",
+    "iterate",
     "minimax",
     "orchestrator",
     "parallel",
+    "perf",
     "plan",
     "prd",
     "quality-gates-parallel",
     "research",
     "retrospective",
     "security",
+    "ship",
+    "spec",
     "task-batch",
+    "vault",
 ]
 
 
@@ -77,8 +86,8 @@ def test_expected_skills_present(skill_paths):
 
 def test_expected_skill_count():
     """Verify expected skills count."""
-    assert len(EXPECTED_SKILLS) >= 25, (
-        f"Expected at least 25 core skills, got {len(EXPECTED_SKILLS)}"
+    assert len(EXPECTED_SKILLS) >= 34, (
+        f"Expected at least 34 core skills, got {len(EXPECTED_SKILLS)}"
     )
 
 

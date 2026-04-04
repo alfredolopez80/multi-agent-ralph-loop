@@ -58,7 +58,11 @@ class TestSkillFrontmatter:
 
 
 class TestTldrIntegration:
-    """Test llm-tldr integration."""
+    """Test llm-tldr integration.
+
+    v3.0: session-start-tldr.sh was deleted in v3.0 consolidation.
+    Tests now skip gracefully if the hook is not found.
+    """
 
     def test_tldr_installed(self, tldr_available):
         """Verify llm-tldr is installed."""
@@ -75,22 +79,26 @@ class TestTldrIntegration:
         assert "tldr" in result.stdout.lower() or result.stderr.lower(), "Unexpected tldr output"
 
     def test_tldr_hook_exists(self, global_hooks_dir):
-        """Verify session-start-tldr.sh hook exists."""
+        """Verify session-start-tldr.sh hook exists.
+
+        v3.0: session-start-tldr.sh was deleted (optional cosmetic hook).
+        """
         hook_path = os.path.join(global_hooks_dir, "session-start-tldr.sh")
-        assert os.path.isfile(hook_path), f"tldr hook not found: {hook_path}"
+        if not os.path.isfile(hook_path):
+            pytest.skip("session-start-tldr.sh deleted in v3.0 (optional cosmetic hook)")
 
     def test_tldr_hook_executable(self, global_hooks_dir):
         """Verify tldr hook is executable."""
         hook_path = os.path.join(global_hooks_dir, "session-start-tldr.sh")
         if not os.path.exists(hook_path):
-            pytest.skip("tldr hook not found")
+            pytest.skip("session-start-tldr.sh not found (deleted in v3.0)")
 
         assert os.access(hook_path, os.X_OK), f"tldr hook not executable: {hook_path}"
 
     def test_tldr_hook_registered(self, load_settings_json):
         """Verify tldr hook is registered in settings.json.
 
-        v2.85: Optional hook - skip if not registered (cosmetic feature).
+        v3.0: session-start-tldr.sh was deleted. Skip if not registered.
         """
         settings = load_settings_json()
         hooks = settings.get("hooks", {})
@@ -104,7 +112,7 @@ class TestTldrIntegration:
                     break
 
         if not tldr_registered:
-            pytest.skip("session-start-tldr.sh not registered (optional cosmetic hook)")
+            pytest.skip("session-start-tldr.sh not registered (deleted in v3.0)")
 
 
 class TestUltrathinkIntegration:
