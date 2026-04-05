@@ -60,6 +60,7 @@ Agent Teams is enabled via `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.
 | `/task-batch` | Autonomous batch execution from PRD files |
 | `/gates` | 9-language quality gate validation |
 | `/security` | Multi-agent security audit (OWASP, semgrep, gitleaks) |
+| `/autoresearch` | Autonomous experimentation loop (Karpathy-inspired) with 3-phase Smart Setup |
 | `/adversarial` | Spec refinement with multi-model cross-validation |
 | `/bugs` | Systematic bug hunting |
 | `/ship` | Pre-launch checklist (gates + security + review) |
@@ -150,6 +151,37 @@ The system is **model-agnostic** (v2.88+). All skills and agents inherit the con
 ```
 
 Skills are symlinked to 6 platform directories. Source of truth: `.claude/skills/` in this repo.
+
+## Global Infrastructure
+
+All Ralph advantages (Plan Mode, Aristotle, Parallel-First, Agent Teams) work in **any project** — rules, skills, and agents are symlinked globally.
+
+```bash
+# Validate global infrastructure (33 checks)
+bash scripts/validate-global-infrastructure.sh
+
+# Auto-fix broken symlinks
+bash scripts/validate-global-infrastructure.sh --fix
+```
+
+## Autoresearch (v3.1.0)
+
+Autonomous experimentation loop inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch). Continuously modifies code, measures metrics, and keeps only improvements.
+
+**Smart Setup** reduces configuration from 14+ manual parameters to 2-3 guided questions:
+
+| Phase | Name | What it does |
+|---|---|---|
+| 0 | **SCOUT** | Silent auto-detection of project type, scripts, metrics |
+| 1 | **WIZARD** | 2-3 AskUserQuestion with pre-filled options and previews |
+| 2 | **VALIDATE** | Adversarial dry-run (eval works, metric extracts, git clean) |
+
+9 domain templates: ML Training, Node.js Tests, Bundle Size, Python Tests, Prompt Engineering, SQL, Rust, Lighthouse, Custom.
+
+```bash
+/autoresearch "optimize my tests"     # Smart mode (auto-detect)
+/autoresearch --manual                # Classic 14-parameter setup
+```
 
 ## Testing
 
