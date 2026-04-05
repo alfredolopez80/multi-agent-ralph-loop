@@ -2,6 +2,45 @@
 
 ---
 
+## [3.0.0] - 2026-04-05
+
+### Added - v3.0 Unified Release
+
+- **Parallel-First Execution Rule** — `.claude/rules/parallel-first.md` mandates Agent Teams + parallel execution for all tasks with complexity >= 3
+- **9 anti-rationalization entries (#38-#46)** for parallel execution excuses (46 total)
+- **2 New Agents** — `ralph-frontend` (WCAG 2.1 AA, 8 component states) + `ralph-security` (6 quality pillars, OWASP A01-A10)
+- **10 New Skills** — design-system, spec, context-engineer, browser-test, vault, exit-review, adr, perf, ship, autoresearch
+- **Aristotle First Principles** — Foundational 5-phase methodology integrated into orchestrator Step 0
+- **Vault System** — Living knowledge base: ingest → compile → query → graduate pipeline
+- **DESIGN.md System** — 9-section template for consistent frontend generation
+
+### Changed
+
+- **All 59 skills bumped to v3.0.0** — zero version drift across entire skill set
+- **All 7 ralph-* agents bumped to v3.0.0** — coder, reviewer, tester, researcher, frontend, security, autoresearch
+- **Orchestrator agent** v2.95 → v3.0.0 with Aristotle + 6-teammate coordination
+- **Orchestrator skill Step 5** — "PRIORITY: Parallel" (advisory) → "REQUIRED: Parallel" (mandatory)
+- **VERIFIED_DONE criteria expanded** — orchestrator (#10-#11) and iterate (#6-#7) now require parallel-first validation
+- **CLAUDE.md** — Parallel-First section added as #1 operational priority
+- **Teammate awareness** — All 4 original ralph-* agents now reference ralph-frontend and ralph-security
+- **15 cross-platform symlinks** fixed/created (codex, ralph, agents, minimax directories)
+- **Hook audit** — 106 → ~85 hooks (22 eliminated/consolidated), 14 new registered, 75% coverage
+
+### Fixed
+
+- **Version drift** — All agents/skills synchronized from mixed v2.43-v2.95 to uniform v3.0.0
+- **Orchestrator heading** — v2.88 → v3.0 in SKILL.md
+- **Security skill heading** — v2.24 → v3.0
+- **Parallel skill heading** — v2.88 → v3.0
+- **Test assertion** — `test_agent_has_version_2880` → `test_agent_has_version_300`
+
+### Tests
+
+- **1023 passed**, 0 failed, 4 xfailed, 1 xpassed
+- All pre-commit validations passing (skills unification, symlinks, model-agnostic, hook integration)
+
+---
+
 ## [2.92.0] - 2026-02-16
 
 ### Fixed - Memory System Optimization
