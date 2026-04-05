@@ -1,32 +1,36 @@
 # Multi-Agent Ralph Loop
 
-Orchestration system for Claude Code with memory-driven planning, multi-agent coordination, Agent Teams integration, and automatic learning.
+Maximally autonomous orchestration framework for Claude Code with Aristotle First Principles methodology, multi-agent coordination, living knowledge base (vault), and comprehensive quality gates.
 
 ## Overview
 
-Ralph extends Claude Code with intelligent orchestration capabilities. It classifies tasks, routes to appropriate models, coordinates multiple agents, and maintains persistent memory across sessions.
+Ralph v3.0 extends Claude Code into a full development framework. It analyzes problems from first principles, routes tasks to specialized agents, enforces quality through anti-rationalization tables, and compounds knowledge across sessions via an Obsidian-backed vault system.
 
 Key capabilities:
-- **Agent Teams Integration** - Multiple Claude Code instances working in parallel
-- Task classification and routing
-- Parallel memory search across multiple backends
-- Multi-agent coordination with swarm mode
-- Automatic learning from GitHub repositories
-- Quality validation with adversarial review
-- Session state management with checkpoints
+- **Aristotle First Principles** — Every task passes through 5 analysis phases before execution
+- **Agent Teams** — 6 specialized teammates: coder, reviewer, tester, researcher, frontend, security
+- **Living Knowledge Base** — Karpathy-inspired vault pipeline: ingest → compile → query → graduate
+- **Spec-Driven Development** — Verifiable specs with executable exit criteria before coding
+- **DESIGN.md System** — 9-section design system for consistent frontend generation
+- **Anti-Rationalization** — 37-entry master table preventing agents from cutting corners
+- **Quality Gates** — 4-stage validation (correctness, quality, security, consistency)
+- **Cross-Platform** — Synchronized across Claude, MiniMax, and Zai harnesses
 
 ## Version
 
-Current: **v2.93.0**
+Current: **v3.0.0** (Unified Herding Blanket)
 
-### What's New in v2.93.0
+### What's New in v3.0.0
 
-- **Memory System Optimization** — Smart memory search re-enabled + cleanup policies implemented
-  - Re-enabled `smart-memory-search.sh` hook (700+ lines of parallel memory search)
-  - Implemented episodic memory cleanup: 30-day TTL (previously: NO cleanup)
-  - Removed redundant storage: memvid.json (175KB) and semantic.json (62KB)
-  - Streamlined to primary memory storage: claude-mem + episodic + handoffs + ledgers
-  - Removed memvid integration from `ralph` CLI (tool definition + validation)
+- **Aristotle First Principles** — Foundational methodology integrated into orchestrator, adversarial, and clarify skills
+- **10 New Skills** — design-system, spec, context-engineer, browser-test, vault, exit-review, adr, perf, ship
+- **2 New Agents** — ralph-frontend (WCAG 2.1 AA, 8 component states) + ralph-security (6 quality pillars, 14 capabilities)
+- **Vault System** — Obsidian + GitHub private backup + weekly cron compile + knowledge graduation to rules
+- **Hook Audit** — 22 hooks eliminated/consolidated (106 → ~85), 14 new hooks registered, 75% coverage
+- **Anti-Rationalization Tables** — Master table (37 entries) + sections in 6 skills
+- **Security** — STRIDE threat model, sec-context-depth report, sanitize-secrets fix
+- **Test Suite** — 1023 tests, 0 failed, 0 skipped, 90%+ v3.0 feature coverage
+- **Cross-Platform Sync** — Hooks, MCPs (15 servers), skills, rules synced across 3 harnesses
 
 ### What's New in v2.92.0
 
