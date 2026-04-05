@@ -1,7 +1,7 @@
 ---
-# VERSION: 3.0.0
+# VERSION: 3.1.0
 name: curator-repo-learn
-description: "Learn patterns from a specific GitHub repository. Clones, analyzes code structure, extracts patterns, and populates procedural memory. Use for: targeted learning from known quality repos, quick knowledge acquisition, specific pattern extraction. Triggers: /repo-learn, /curator-repo-learn, 'learn from repo'."
+description: "Learn patterns from a specific GitHub repository. Clones, analyzes code structure, extracts patterns, populates procedural memory AND syncs to Obsidian vault for Graph View visualization. Use for: targeted learning from known quality repos, quick knowledge acquisition, specific pattern extraction. Triggers: /repo-learn, /curator-repo-learn, 'learn from repo'."
 argument-hint: "<github-url> [--domain <domain>]"
 user-invocable: true
 context: fork
@@ -12,7 +12,7 @@ allowed-tools:
   - Write
 ---
 
-# Curator Repo-Learn Skill (v2.88)
+# Curator Repo-Learn Skill (v3.1.0)
 
 **Single Repository Pattern Extraction** - Learn from a specific GitHub repository.
 

@@ -1,10 +1,12 @@
 #!/bin/bash
-# Repo Curator Learn Script v2.88.0
-# Executes learning on approved repositories and updates procedural memory
+# Repo Curator Learn Script v3.1.0
+# Executes learning on approved repositories and updates procedural memory + vault
 #
 # GAP FIXES:
 # - GAP-C01: Now populates manifest files[] with processed files
 # - GAP-C02: Now detects and assigns domain to extracted rules
+# - v3.1.0: Vault integration — learned patterns also written to Obsidian vault
+#   for Graph View visualization and graduation pipeline
 # - Pattern extraction works without external Python script
 #
 # Usage: curator-learn.sh [--type <type>] [--lang <lang>] [--repo <repo>] [--all]
@@ -18,6 +20,7 @@ CORPUS_DIR="${CURATOR_DIR}/corpus"
 APPROVED_DIR="${CORPUS_DIR}/approved"
 PROCEDURAL_FILE="${HOME}/.ralph/procedural/rules.json"
 PROCEDURAL_BACKUP="${HOME}/.ralph/procedural/rules.json.backup.$(date +%Y%m%d_%H%M%S)"
+VAULT_DIR="${VAULT_DIR:-$HOME/Documents/Obsidian/MiVault}"
 
 # Colors
 RED='\033[0;31m'
@@ -332,6 +335,63 @@ update_manifest() {
     fi
 }
 
+# v3.1.0: Sync learned patterns to Obsidian vault for Graph View and graduation
+sync_to_vault() {
+    local repo="$1"
+    local domain="$2"
+    local language="$3"
+    local rule_count="$4"
+
+    # Skip if vault doesn't exist
+    [[ -d "$VAULT_DIR" ]] || return 0
+
+    local wiki_dir="$VAULT_DIR/global/wiki/$domain"
+    mkdir -p "$wiki_dir" 2>/dev/null || return 0
+
+    # Sanitize repo name for filename
+    local safe_name
+    safe_name=$(echo "$repo" | tr '/' '-' | tr '[:upper:]' '[:lower:]' | tr -cd 'a-zA-Z0-9_-')
+    local article_file="$wiki_dir/curator-${safe_name}.md"
+
+    # Don't overwrite existing article — bump sessions_confirmed instead
+    if [[ -f "$article_file" ]]; then
+        local current_sessions
+        current_sessions=$(sed -n 's/^sessions_confirmed: *//p' "$article_file" 2>/dev/null | head -1 | tr -cd '0-9')
+        current_sessions=${current_sessions:-1}
+        local new_sessions=$((current_sessions + 1))
+        sed -i '' "s/^sessions_confirmed: .*/sessions_confirmed: $new_sessions/" "$article_file" 2>/dev/null || true
+        log_info "Vault: bumped sessions_confirmed to $new_sessions for $safe_name"
+        return 0
+    fi
+
+    # Create new vault article
+    cat > "$article_file" <<VAULT_EOF
+---
+type: learning
+classification: GREEN
+source: curator-learn-$(date +%Y-%m-%d)
+confidence: 0.75
+sessions_confirmed: 1
+category: $domain
+---
+
+# Patterns from $repo ($language)
+
+Extracted $rule_count patterns via curator pipeline.
+
+## Source
+- Repository: $repo
+- Domain: $domain
+- Language: $language
+- Extracted: $(date +%Y-%m-%d)
+
+## Links
+- [[procedural-rules-filtering]]
+VAULT_EOF
+
+    log_success "Vault: created wiki article for $safe_name in $domain/"
+}
+
 # Learn from a single repository
 learn_repo() {
     local repo_dir="$1"
@@ -361,6 +421,9 @@ learn_repo() {
     local manifest="${repo_dir}/manifest.json"
     update_manifest "$manifest" "$extraction_result" "$domain" "$language"
 
+    # v3.1.0: Sync to Obsidian vault for visualization and graduation
+    sync_to_vault "$repo" "$domain" "$language" "$rule_count"
+
     log_success "Completed learning from: $repo ($rule_count rules)"
 }
 
@@ -383,7 +446,7 @@ main() {
 
     echo ""
     echo "========================================"
-    echo -e "      ${BLUE}Repo Curator Learn v2.88${NC}"
+    echo -e "      ${BLUE}Repo Curator Learn v3.1.0${NC}"
     echo "========================================"
 
     local learned_count=0
@@ -425,9 +488,12 @@ main() {
     echo "  Procedural memory: $PROCEDURAL_FILE"
     echo "  Backup: $PROCEDURAL_BACKUP"
     echo ""
+    echo "  Vault: $VAULT_DIR"
+    echo ""
     echo "  GAP FIXES Applied:"
     echo "    - GAP-C01: Manifest files[] populated"
     echo "    - GAP-C02: Domain detection enabled"
+    echo "    - v3.1.0: Vault sync (Obsidian Graph View)"
     echo "========================================"
 }
 

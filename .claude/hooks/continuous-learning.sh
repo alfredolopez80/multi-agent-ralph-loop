@@ -1,11 +1,12 @@
 #!/bin/bash
 # continuous-learning.sh - Extract reusable patterns from session at end
-# VERSION: 2.69.0
+# VERSION: 3.1.0
 # Hook: Stop
-# Part of Multi-Agent Ralph Loop v2.68.2
+# Part of Multi-Agent Ralph Loop v3.1.0
 #
-# Inspired by everything-claude-code's continuous learning skill
-#
+# v3.1.0: Redirected output to vault pipeline (was ~/.claude/skills/learned/)
+#         Now writes to $VAULT_DIR/projects/{project}/lessons/ for vault graduation
+# v2.69.0: Inspired by everything-claude-code's continuous learning skill
 # v2.68.2: FIX CRIT-011 - Updated hook type declaration and trap pattern
 
 # SEC-111: Read input from stdin with length limit (100KB max)
@@ -14,6 +15,7 @@ INPUT=$(head -c 100000)
 
 
 set -euo pipefail
+umask 077
 
 # SEC-033: Guaranteed JSON output on any error
 # Stop hooks use {"decision": "approve"} format
@@ -25,8 +27,11 @@ trap 'output_json' ERR EXIT
 # Read stdin
 # CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 
-LEARNED_DIR="${HOME}/.claude/skills/learned"
-mkdir -p "$LEARNED_DIR"
+# v3.1.0: Write to vault instead of ~/.claude/skills/learned/
+VAULT_DIR="${VAULT_DIR:-$HOME/Documents/Obsidian/MiVault}"
+PROJECT_NAME=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo 'unknown')")
+LEARNED_DIR="$VAULT_DIR/projects/$PROJECT_NAME/lessons"
+mkdir -p "$LEARNED_DIR" 2>/dev/null || true
 
 # Get session transcript path if available
 SESSION_ID="${CLAUDE_SESSION_ID:-unknown}"
@@ -52,8 +57,8 @@ if [[ $MSG_COUNT -lt 10 ]]; then
     exit 0
 fi
 
-# Look for patterns to extract
-PATTERNS_FILE="${LEARNED_DIR}/session-${SESSION_ID}-patterns.md"
+# Look for patterns to extract — write to vault lessons directory
+PATTERNS_FILE="${LEARNED_DIR}/learning-${SESSION_ID}-$(date +%Y-%m-%d).md"
 
 # Check for user corrections (indicates learning opportunity)
 CORRECTIONS=$(grep -c '"role":"user".*"(no|wrong|actually|instead|should be|fix)"' "$TRANSCRIPT" 2>/dev/null || echo "0")

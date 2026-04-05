@@ -1,7 +1,7 @@
 ---
-# VERSION: 3.0.0
+# VERSION: 3.1.0
 name: curator
-description: "Full curator pipeline for autonomous learning from quality repositories. Executes: discovery → scoring → ranking → ingest → learn → inject. Use for: populating procedural memory with domain patterns, first-time domain learning, comprehensive knowledge building. Triggers: /curator full, 'learn patterns from repos', 'build knowledge base'."
+description: "Full curator pipeline for autonomous learning from quality repositories. Executes: discovery → scoring → ranking → ingest → learn → vault sync. Writes to procedural memory AND Obsidian vault for Graph View visualization and graduation pipeline. Use for: populating procedural memory with domain patterns, first-time domain learning, comprehensive knowledge building. Triggers: /curator full, 'learn patterns from repos', 'build knowledge base'."
 argument-hint: "[full|quick|status] --type <domain> --lang <language>"
 user-invocable: true
 context: fork
@@ -14,7 +14,7 @@ allowed-tools:
   - WebFetch
 ---
 
-# Curator Pipeline Skill (v2.88)
+# Curator Pipeline Skill (v3.1.0)
 
 **Full Autonomous Learning Pipeline** - Discovers, scores, and learns from quality repositories.
 
@@ -238,7 +238,8 @@ Rules now automatically categorized:
 |------|---------|---------|
 | `orchestrator-auto-learn.sh` | PreToolUse (Task) | Detect learning gaps |
 | *(removed in v3.0)* | UserPromptSubmit | *(curator-suggestion.sh deleted)* |
-| `continuous-learning.sh` | SessionEnd | Extract from session |
+| `continuous-learning.sh` | Stop | Extract from session → vault |
+| `vault-index-updater.sh` | SessionEnd | Update vault indices |
 
 
 ## Action Reporting (v2.93.0)
