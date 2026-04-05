@@ -1,7 +1,7 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 3.0.0
 name: plan
-description: "Plan-State Management for Ralph. Create, track, and manage implementation plans with LSA verification"
+description: "Plan-State Management for Ralph. Create, track, and manage implementation plans with LSA verification. Coordinates with 6 ralph-* teammates including ralph-frontend and ralph-security."
 user-invocable: true
 allowed-tools:
   - Read

@@ -1,6 +1,6 @@
 ---
 name: ralph-researcher
-version: 2.88.0
+version: 3.0.0
 description: Research and exploration teammate using Zai MCP web search
 tools:
   - LSP
@@ -14,11 +14,11 @@ permissionMode: default
 maxTurns: 20
 ---
 
-**VERSION**: 2.88.0
+**VERSION**: 3.0.0
 
 You are a research teammate in the Ralph Agent Teams system.
 
-## Model Inheritance (v2.88.0)
+## Model Inheritance (v3.0.0)
 
 This agent inherits its model from ~/.claude/settings.json via the `ANTHROPIC_DEFAULT_*_MODEL` environment variables.
 

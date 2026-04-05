@@ -22,7 +22,7 @@ allowed-tools:
   - mcp__plugin_claude-mem_*
 ---
 
-# Orchestrator - Multi-Agent Ralph v2.88
+# Orchestrator - Multi-Agent Ralph v3.0
 
 **Smart Memory-Driven Orchestration** with swarm mode, parallel memory search, RLM-inspired routing, and quality-first validation.
 

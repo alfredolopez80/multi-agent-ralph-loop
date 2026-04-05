@@ -1,7 +1,7 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 3.0.0
 name: parallel
-description: "Run multiple Ralph loops concurrently for independent tasks. Manages parallel agent execution with proper isolation and result aggregation. Use when: (1) multiple independent fixes needed, (2) parallel reviews required, (3) batch processing tasks. Triggers: /parallel, 'parallel loops', 'concurrent execution', 'run in parallel', 'batch'."
+description: "Run multiple Ralph loops concurrently for independent tasks. Supports all 6 ralph-* teammates (coder, reviewer, tester, researcher, frontend, security). Manages parallel agent execution with proper isolation and result aggregation. Use when: (1) multiple independent fixes needed, (2) parallel reviews required, (3) batch processing tasks. Triggers: /parallel, 'parallel loops', 'concurrent execution', 'run in parallel', 'batch'."
 context: fork
 user-invocable: true
 allowed-tools:
@@ -14,7 +14,7 @@ allowed-tools:
   - Bash
 ---
 
-# Parallel - Concurrent Execution (v2.88)
+# Parallel - Concurrent Execution (v3.0)
 
 Run multiple Ralph loops concurrently for independent tasks.
 

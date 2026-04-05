@@ -1,7 +1,7 @@
 ---
-# VERSION: 2.88.1
+# VERSION: 3.0.0
 name: security
-description: "Security audit with Codex + MiniMax second opinion. Uses LSP for code navigation during analysis. Use when: (1) /security is invoked, (2) task relates to security functionality."
+description: "Security audit with Codex + MiniMax second opinion. Integrates ralph-security agent (6 quality pillars, OWASP A01-A10). Uses LSP for code navigation during analysis. Use when: (1) /security is invoked, (2) task relates to security functionality."
 user-invocable: true
 context: fork
 allowed-tools:
@@ -12,7 +12,7 @@ allowed-tools:
   - Glob
 ---
 
-# /security - Multi-Agent Security Audit (v2.24)
+# /security - Multi-Agent Security Audit (v3.0)
 
 Comprehensive security audit using Codex GPT-5 for primary analysis and MiniMax for second opinion validation.
 

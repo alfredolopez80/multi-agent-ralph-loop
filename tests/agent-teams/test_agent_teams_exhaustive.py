@@ -122,15 +122,15 @@ class TestCustomSubagents:
         assert agent_path.exists(), f"Agent file missing: {agent_path}"
 
     @pytest.mark.parametrize("agent_name", CUSTOM_SUBAGENTS)
-    def test_agent_has_version_2880(self, agent_name: str):
-        """Verify each custom subagent has VERSION 2.88.0."""
+    def test_agent_has_version_300(self, agent_name: str):
+        """Verify each custom subagent has VERSION 3.0.0."""
         agent_path = AGENTS_DIR / f"{agent_name}.md"
         if not agent_path.exists():
             pytest.skip(f"Agent file missing: {agent_path}")
 
         content = agent_path.read_text()
-        assert "VERSION" in content and "2.88.0" in content, (
-            f"Agent {agent_name} missing VERSION 2.88.0"
+        assert "VERSION" in content and "3.0.0" in content, (
+            f"Agent {agent_name} missing VERSION 3.0.0"
         )
 
     @pytest.mark.parametrize("agent_name", CUSTOM_SUBAGENTS)

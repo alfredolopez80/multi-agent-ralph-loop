@@ -1,7 +1,7 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 3.0.0
 name: retrospective
-description: Analyze completed tasks to improve the Ralph system
+description: "Analyze completed tasks to improve the Ralph system. Saves learnings to living knowledge vault and coordinates insights across 6 ralph-* teammates."
 ---
 
 # Skill: Retrospective & Self-Improvement

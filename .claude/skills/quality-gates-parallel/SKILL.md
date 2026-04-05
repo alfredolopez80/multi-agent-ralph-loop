@@ -1,7 +1,7 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 3.0.0
 name: quality-gates-parallel
-description: Launch 4 quality subagents in parallel using Claude Code 2.1+ native Task tool. Reads results post-analysis for orchestrator decision-making.
+description: "Launch quality subagents in parallel using Claude Code 2.1+ native Task tool. Includes ralph-security for OWASP validation and ralph-frontend for WCAG checks. Reads results post-analysis for orchestrator decision-making."
 allowed-tools: TaskCreate, TaskUpdate, TaskList, TaskGet, Read, Write, Bash
 context: fork
 ---

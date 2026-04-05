@@ -1,7 +1,7 @@
 ---
-# VERSION: 2.88.1
+# VERSION: 3.0.0
 name: code-reviewer
-description: Automated code review using official Claude Code plugin with 4 parallel agents. Uses LSP for efficient code navigation.
+description: "Automated code review using official Claude Code plugin with parallel agents. Integrates ralph-security for OWASP validation and ralph-frontend for accessibility checks. Uses LSP for efficient code navigation."
 allowed-tools: LSP,Read,Write,Bash,Glob,Grep
 ---
 

@@ -1,7 +1,7 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 3.0.0
 name: task-classifier
-description: "Classify task complexity (1-10) to route to optimal model. Use when starting any non-trivial task to determine resources and approach. Triggers include: 'classify', 'complexity', 'what model', 'how complex'."
+description: "Classify task complexity (1-10) to route to optimal model and ralph-* teammates. Routes frontend tasks to ralph-frontend, security tasks to ralph-security. Use when starting any non-trivial task to determine resources and approach. Triggers include: 'classify', 'complexity', 'what model', 'how complex'."
 context: fork
 model: opus
 agent: orchestrator
