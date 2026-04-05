@@ -254,13 +254,13 @@ else
   fail "Domain examples missing"
 fi
 
-# Test 25: Version 2.95
+# Test 25: Version 3.1.0
 echo ""
-echo "--- Test 25: Version 2.95 ---"
-if grep -q "2.95" "$SKILL_PATH" && grep -q "2.95" "$AGENT_PATH"; then
-  pass "Version 2.95 in skill and agent"
+echo "--- Test 25: Version 3.1.0 ---"
+if grep -q "3.1.0" "$SKILL_PATH" && grep -q "3.1.0" "$AGENT_PATH"; then
+  pass "Version 3.1.0 in skill and agent"
 else
-  fail "Version 2.95 missing"
+  fail "Version 3.1.0 missing"
 fi
 
 # Test 26: Stagnation strategy in agent

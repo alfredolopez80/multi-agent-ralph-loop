@@ -17,7 +17,7 @@ allowed-tools:
   - AskUserQuestion
 ---
 
-# /autoresearch - Autonomous Experimentation Loop (v2.95)
+# /autoresearch - Autonomous Experimentation Loop (v3.1.0)
 
 Continuously modify code, run experiments, evaluate metrics, and keep improvements. The agent is a tireless researcher, not an assistant waiting for permission.
 
@@ -49,7 +49,404 @@ Inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch), [
 +------------------------------------------------------------------+
 ```
 
-## Setup Contract (MANDATORY before loop)
+## Invocation Modes
+
+### Smart Mode (Default) — `/autoresearch "optimize my tests"`
+
+Three-phase intelligent onboarding that auto-detects project configuration:
+
+| Phase | Name | Duration | User Interaction |
+|---|---|---|---|
+| 0 | SCOUT | ~5 sec | None (silent) |
+| 1 | WIZARD | ~30 sec | 2-3 AskUserQuestion |
+| 2 | VALIDATE | ~10 sec | None (automatic) |
+
+### Manual Mode — `/autoresearch --manual`
+
+Classic monolithic setup contract (full 14+ parameter form). Use when:
+- Auto-detection guesses wrong and you want full control
+- Advanced configurations (weighted metrics, custom thresholds)
+- Resuming an existing session with different parameters
+
+### Direct Mode — `/autoresearch src/model.py "uv run train.py" --checkpoint=5`
+
+When all required params are provided inline, skip SCOUT/WIZARD entirely. Still runs VALIDATE.
+
+---
+
+## Phase 0: SCOUT (Silent Auto-Detection)
+
+Before asking the user anything, silently analyze the project to pre-fill ~80% of configuration fields. Run these checks in parallel:
+
+### Project Type Detection
+
+| Check | Tool | Detects |
+|---|---|---|
+| `package.json` exists | Glob | Node.js (check `tsconfig.json` for TypeScript) |
+| `pyproject.toml` or `requirements.txt` | Glob | Python |
+| `Cargo.toml` | Glob | Rust |
+| `go.mod` | Glob | Go |
+| `pom.xml` or `build.gradle` | Glob | Java |
+| `Makefile` | Glob | C/C++ or generic |
+
+Reference: Reuse patterns from `detect_language()` in `.claude/scripts/curator-learn.sh` (lines 98-118).
+
+### Script Discovery
+
+| Project Type | Where to Look | What to Extract |
+|---|---|---|
+| Node.js | `scripts` in `package.json` | test, build, bench, lint commands |
+| Python | `[project.scripts]` in `pyproject.toml`, `Makefile` targets | test, train, bench commands |
+| Rust | `Cargo.toml` `[[bench]]` sections, `Makefile` | bench, test commands |
+| Generic | `Makefile`, `*.sh` scripts in root | Any runnable targets |
+
+### Metric Pattern Detection
+
+Grep target files and scripts for common metric output patterns:
+
+| Pattern | Likely Metric | Direction |
+|---|---|---|
+| `loss`, `val_loss`, `bpb`, `val_bpb` | ML training loss | lower_is_better |
+| `accuracy`, `acc`, `f1`, `precision`, `recall` | ML evaluation | higher_is_better |
+| `duration`, `time`, `seconds`, `elapsed` | Speed/performance | lower_is_better |
+| `size`, `bytes`, `kb`, `bundle` | Size reduction | lower_is_better |
+| `score`, `perf`, `lighthouse` | Quality score | higher_is_better |
+| `latency`, `p50`, `p95`, `p99` | API latency | lower_is_better |
+
+### File Structure Analysis
+
+| What | How | Purpose |
+|---|---|---|
+| Source directories | Glob `src/`, `lib/`, `app/`, `pkg/` | Pre-fill `target` |
+| Config files | Glob `*.config.*`, `tsconfig.*`, `vite.*`, `webpack.*` | Pre-fill `target` (optional) |
+| Test directories | Glob `tests/`, `test/`, `__tests__/`, `spec/` | Pre-fill `checks_script` |
+| Sensitive files | Glob `.env*`, `config/`, `migrations/`, `*.key` | Pre-fill `off_limits` |
+
+### SCOUT Output
+
+The SCOUT phase produces a `scout_result` object used by WIZARD and VALIDATE:
+
+```yaml
+scout_result:
+  project_type: "typescript"       # detected language/framework
+  package_manager: "pnpm"          # npm/yarn/pnpm/bun/pip/cargo
+  available_scripts:               # discovered runnable commands
+    - name: "test"
+      command: "pnpm test --run"
+    - name: "build"
+      command: "pnpm build"
+    - name: "typecheck"
+      command: "pnpm typecheck"
+  source_dirs: ["src/", "lib/"]
+  test_dirs: ["tests/"]
+  config_files: ["vite.config.ts", "tsconfig.json"]
+  sensitive_files: [".env", ".env.local"]
+  detected_metrics: []
+  domain_match: "node_tests"       # matched domain template (or "custom")
+```
+
+---
+
+## Domain Templates
+
+Templates pre-fill ALL 14 fields based on detected project type + user intent. The user only needs to confirm or override.
+
+### Template: ML Training
+**Detection**: `train.py` OR (`.py` files with `import torch|tensorflow|jax`)
+```yaml
+target: "train.py"
+eval_harness: "python train.py"
+primary_metric: "val_loss"
+metric_direction: "lower_is_better"
+secondary_metrics: {"peak_vram_mb": "lower_is_better"}
+metric_mode: "primary_secondary"
+checkpoint_mode: "5"
+time_budget: "10m"
+budget_max_experiments: 50
+off_limits: ".git/, .claude/, tests/, data/"
+constraints: "No new dependencies. No modifying evaluation logic."
+tag: "ml-training"
+```
+
+### Template: Node.js Test Speed
+**Detection**: `package.json` + (`vitest` OR `jest` in devDependencies)
+```yaml
+target: "src/"
+eval_harness: "{pkg_manager} test --run"
+primary_metric: "duration_seconds"
+metric_direction: "lower_is_better"
+metric_mode: "single"
+checkpoint_mode: "infinity"
+time_budget: "2m"
+budget_max_experiments: 30
+checks_script: "{pkg_manager} typecheck"
+off_limits: ".git/, .claude/, node_modules/"
+constraints: "All tests must still pass. No removing test cases."
+tag: "test-speed"
+```
+
+### Template: Bundle Size Reduction
+**Detection**: `package.json` + (`vite` OR `webpack` OR `esbuild` in deps)
+```yaml
+target: "src/"
+eval_harness: "{pkg_manager} build"
+primary_metric: "bundle_kb"
+metric_direction: "lower_is_better"
+secondary_metrics: {"build_seconds": "lower_is_better"}
+metric_mode: "primary_secondary"
+checkpoint_mode: "10"
+time_budget: "3m"
+budget_max_experiments: 30
+checks_script: "{pkg_manager} test --run"
+off_limits: ".git/, .claude/, node_modules/, public/"
+constraints: "No removing features. No changing public API."
+tag: "bundle-size"
+```
+
+### Template: Python Test Speed
+**Detection**: `pyproject.toml` + `pytest` in dependencies
+```yaml
+target: "src/"
+eval_harness: "pytest -q --tb=no"
+primary_metric: "duration_seconds"
+metric_direction: "lower_is_better"
+metric_mode: "single"
+time_budget: "3m"
+budget_max_experiments: 30
+off_limits: ".git/, .claude/, migrations/"
+constraints: "All tests must still pass."
+tag: "pytest-speed"
+```
+
+### Template: Prompt Engineering
+**Detection**: `.txt` or `.md` prompt files + eval script detected
+```yaml
+target: "prompt.txt"
+eval_harness: "./eval_prompt.sh"
+primary_metric: "accuracy"
+metric_direction: "higher_is_better"
+secondary_metrics: {"cost_usd": "lower_is_better"}
+metric_mode: "primary_secondary"
+budget_max_experiments: 50
+budget_max_cost_usd: 10.00
+off_limits: ".git/, .claude/, eval_prompt.sh"
+constraints: "Do not modify the evaluation script."
+tag: "prompt-engineering"
+```
+
+### Template: SQL Query Optimization
+**Detection**: `.sql` files in target + bench script detected
+```yaml
+target: "queries/"
+eval_harness: "./bench_query.sh"
+primary_metric: "exec_time_ms"
+metric_direction: "lower_is_better"
+metric_mode: "single"
+budget_max_experiments: 20
+off_limits: ".git/, .claude/, schema/"
+constraints: "Query results must be identical. No schema changes."
+tag: "sql-optimization"
+```
+
+### Template: Rust Performance
+**Detection**: `Cargo.toml` + `[[bench]]` or `criterion` in deps
+```yaml
+target: "src/"
+eval_harness: "cargo bench"
+primary_metric: "time_ns"
+metric_direction: "lower_is_better"
+metric_mode: "single"
+time_budget: "5m"
+budget_max_experiments: 30
+off_limits: ".git/, .claude/, tests/, benches/"
+constraints: "No unsafe code unless already present."
+tag: "rust-perf"
+```
+
+### Template: Lighthouse / Web Performance
+**Detection**: Next.js or SPA detected (`next.config.*` or `index.html`)
+```yaml
+target: "src/"
+eval_harness: "npx lighthouse http://localhost:3000 --output=json --quiet"
+primary_metric: "perf_score"
+metric_direction: "higher_is_better"
+secondary_metrics: {"lcp_ms": "lower_is_better", "cls": "lower_is_better"}
+metric_mode: "primary_secondary"
+budget_max_experiments: 20
+off_limits: ".git/, .claude/, public/, node_modules/"
+tag: "lighthouse"
+```
+
+### Template: Custom (Fallback)
+**Detection**: No domain template matches.
+**Action**: Fall through to full WIZARD with all questions (no pre-fill). Equivalent to `--manual` mode.
+
+---
+
+## Intent Parsing
+
+Parse the user's natural language to determine optimization goal:
+
+| User Input Pattern | Parsed Intent | Domain Template |
+|---|---|---|
+| "optimize tests", "speed up tests", "faster tests" | test_speed | Node.js Tests / Python Tests |
+| "reduce bundle", "smaller bundle", "bundle size" | bundle_size | Bundle Size Reduction |
+| "improve accuracy", "better model", "train" | ml_training | ML Training |
+| "optimize prompts", "better prompts" | prompt_quality | Prompt Engineering |
+| "faster queries", "optimize SQL" | sql_speed | SQL Query Optimization |
+| "lighthouse score", "web performance" | web_perf | Lighthouse |
+| "cargo bench", "rust performance" | rust_perf | Rust Performance |
+| "speed up build", "faster build" | build_speed | Bundle Size (build variant) |
+
+Keywords that signal direction:
+- **lower_is_better**: "reduce", "minimize", "speed up", "faster", "smaller", "less", "lower"
+- **higher_is_better**: "improve", "maximize", "increase", "better", "higher", "more"
+
+---
+
+## Phase 1: WIZARD (Smart Questions)
+
+Present 2-3 AskUserQuestion calls with pre-filled options from SCOUT + Domain Template. Follows the `/clarify` MUST_HAVE/NICE_TO_HAVE pattern.
+
+### Question 1 — Objective (MUST_HAVE, always asked)
+
+Based on SCOUT results, present detected optimization opportunities with previews:
+
+```yaml
+AskUserQuestion:
+  questions:
+    - question: "I analyzed your project. What should I optimize?"
+      header: "Objective"
+      multiSelect: false
+      options:
+        # Options generated dynamically from SCOUT results
+        # Each option shows a preview with the full pre-filled config
+        - label: "{detected_option_1} (Recommended)"
+          description: "Detected: {command} -> {current_value}. Goal: {direction}"
+          preview: |
+            Target:     {target}
+            Eval:       {eval_harness}
+            Metric:     {metric} ({direction})
+            Checks:     {checks_script}
+            Budget:     {budget} experiments
+        - label: "{detected_option_2}"
+          description: "Detected: {command} -> {current_value}"
+          preview: |
+            Target:     {target}
+            Eval:       {eval_harness}
+            Metric:     {metric} ({direction})
+        # "Other" is always available via AskUserQuestion default behavior
+```
+
+### Question 2 — Budget (NICE_TO_HAVE, always asked, has recommended default)
+
+```yaml
+AskUserQuestion:
+  questions:
+    - question: "Experimentation budget?"
+      header: "Budget"
+      multiSelect: false
+      options:
+        - label: "Quick - 10 experiments (~30 min) (Recommended)"
+          description: "Good for parameter tweaks and small optimizations"
+        - label: "Standard - 50 experiments (~2h)"
+          description: "Structural changes and algorithm exploration"
+        - label: "Deep - 100+ experiments (~4h+)"
+          description: "Radical approaches and comprehensive exploration"
+        - label: "Unlimited - I'll stop you manually"
+          description: "Run indefinitely until interrupted"
+```
+
+### Question 3 — Scope (MUST_HAVE, only if ambiguous)
+
+Only ask this if SCOUT found multiple candidate target directories or the intent is unclear:
+
+```yaml
+AskUserQuestion:
+  questions:
+    - question: "Which files can I modify?"
+      header: "Scope"
+      multiSelect: true
+      options:
+        # Generated from SCOUT file structure analysis
+        - label: "{dir_1} ({n1} files)"
+          description: "{dir_description}"
+        - label: "{dir_2} ({n2} files)"
+          description: "{dir_description}"
+        - label: "Config files ({list})"
+          description: "Warning: may affect project setup"
+```
+
+### Wizard Output
+
+Merge user answers with SCOUT data and domain template to produce the full configuration:
+
+```
+full_config = domain_template
+  .override(scout_result)      # Auto-detected values
+  .override(user_answers)      # User's explicit choices
+  .apply_defaults()            # Fill remaining with defaults from Optional Parameters table
+```
+
+---
+
+## Phase 2: VALIDATE (Adversarial Dry-Run)
+
+Before starting the loop, validate the configuration with a quick dry-run. Inspired by `/adversarial` graduated escalation pattern.
+
+### Validation Checks
+
+| # | Check | How | On Failure | Severity |
+|---|---|---|---|---|
+| V1 | Git is clean | `git status --porcelain` | Ask user to commit/stash | CRITICAL |
+| V2 | Target files exist | `ls $TARGET` | Correct path, re-ask | CRITICAL |
+| V3 | Eval harness executes | `timeout 120 bash -c "$EVAL_HARNESS" > run.log 2>&1` | Show error, ask for correct command | CRITICAL |
+| V4 | Metric extracts | `grep "^METRIC" run.log` | Auto-adjust extraction pattern OR ask user | CRITICAL |
+| V5 | Checks script works | `timeout 60 $CHECKS_SCRIPT 2>&1` (if configured) | Warn, offer to disable | WARNING |
+| V6 | Baseline is stable | Run eval_harness 2nd time, compare metrics | Warn about non-determinism, suggest higher threshold | WARNING |
+
+### Auto-Fix for Metric Extraction (V4)
+
+If `METRIC name=value` not found in eval output, attempt automatic fixes:
+
+1. Search for `name: value` pattern → transform to `METRIC name=value` in autoresearch.sh
+2. Search for `name = value` pattern → transform to `METRIC name=value`
+3. Search for JSON output → extract with `jq` or `python -c`
+4. If no pattern found, show last 20 lines of output and ask user which line contains the metric
+
+### Final Confirmation
+
+After all checks pass, present the complete configuration for user approval:
+
+```yaml
+AskUserQuestion:
+  questions:
+    - question: "Configuration validated. Ready to start?"
+      header: "Confirm"
+      multiSelect: false
+      options:
+        - label: "Start experimenting (Recommended)"
+          description: "Begin the autonomous optimization loop"
+          preview: |
+            Branch:     autoresearch/{tag}
+            Target:     {target} ({n} files)
+            Eval:       {eval_harness}
+            Metric:     {primary_metric} ({metric_direction})
+            Baseline:   {baseline_value}
+            Budget:     {budget_description}
+            Checks:     {checks_script | "none"}
+            Off-limits: {off_limits}
+        - label: "Adjust configuration"
+          description: "Go back and change settings"
+        - label: "Switch to manual mode"
+          description: "Use the full 14-parameter setup form"
+```
+
+---
+
+## Setup Contract — Manual Mode
+
+> **Note**: This section describes the manual setup flow (`--manual` flag or "Adjust configuration" from VALIDATE). For the default smart setup, see [Phase 0: SCOUT](#phase-0-scout-silent-auto-detection), [Phase 1: WIZARD](#phase-1-wizard-smart-questions), and [Phase 2: VALIDATE](#phase-2-validate-adversarial-dry-run) above.
 
 Every autoresearch run needs these components defined upfront. Use `AskUserQuestion` to collect them interactively.
 

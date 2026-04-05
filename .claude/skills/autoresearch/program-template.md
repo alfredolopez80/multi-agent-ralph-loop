@@ -1,8 +1,68 @@
-# Autoresearch Program Template v2.95
+# Autoresearch Program Template v3.1.0
 
 This template defines the execution program for an autoresearch session.
 
+## Smart Setup (Default — skip with `--manual`)
+
+Before filling the configuration template, run the 3-phase intelligent onboarding:
+
+### Phase 0: SCOUT (Silent, ~5 sec)
+```
+# Run in parallel (no user interaction):
+1. PROJECT_TYPE  = detect from package.json / pyproject.toml / Cargo.toml / go.mod
+2. PKG_MANAGER   = detect pnpm / npm / yarn / bun / pip / cargo
+3. SCRIPTS       = discover from package.json scripts / Makefile / pyproject.toml
+4. SOURCE_DIRS   = Glob for src/, lib/, app/, pkg/
+5. TEST_DIRS     = Glob for tests/, test/, __tests__/, spec/
+6. SENSITIVE     = Glob for .env*, config/, migrations/, *.key
+7. DOMAIN        = match template from USER_INTENT + PROJECT_TYPE + SCRIPTS
+8. TEMPLATE      = load domain template (see SKILL.md Domain Templates)
+```
+
+### Phase 1: WIZARD (2-3 AskUserQuestion)
+```
+# Q1 (MUST_HAVE): Confirm objective from SCOUT + intent parsing
+#   Show preview with full pre-filled config for each option
+# Q2 (NICE_TO_HAVE): Budget selection (Quick/Standard/Deep/Unlimited)
+# Q3 (MUST_HAVE, conditional): Scope — only if target is ambiguous
+
+# Merge answers:
+CONFIG = merge(TEMPLATE, SCOUT_DATA, USER_ANSWERS, DEFAULTS)
+```
+
+### Phase 2: VALIDATE (Adversarial Dry-Run, ~10 sec)
+```bash
+# V1: Check git is clean
+[[ -n $(git status --porcelain) ]] && ask_user_to_commit_or_stash
+
+# V2: Verify target exists
+[[ ! -e "$TARGET" ]] && ask_for_correct_path
+
+# V3: Dry-run eval harness
+timeout 120 bash -c "$EVAL_HARNESS" > run.log 2>&1
+[[ $? -ne 0 ]] && show_error_and_ask_for_correct_command
+
+# V4: Verify metric extraction (with auto-fix)
+METRIC_LINE=$(grep "^METRIC" run.log | head -1)
+[[ -z "$METRIC_LINE" ]] && try_auto_fix_patterns_or_ask_user
+
+# V5: Extract baseline from dry-run
+BASELINE=$(echo "$METRIC_LINE" | cut -d= -f2)
+
+# V6 (optional): Run eval a 2nd time to check determinism
+# If delta > 5%, warn about non-determinism
+
+# Show final confirmation with AskUserQuestion
+```
+
+### Skip to Manual Mode
+If `--manual` flag is set, skip directly to the Configuration section below.
+
+---
+
 ## Configuration
+
+> Values below are filled by Smart Setup (Phase 0-2) or manually by the user.
 
 ```yaml
 target: "{{TARGET}}"
