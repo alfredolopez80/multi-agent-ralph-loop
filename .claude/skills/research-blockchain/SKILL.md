@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 3.0.0
 name: research-blockchain
 description: "Senior Blockchain Architect research agent using Zai MCP for comprehensive analysis of EVM chains, perpetual DEX architectures, CEX integrations, and DeFi-TradFi bridges. Use for: blockchain research, protocol comparisons, technical feasibility studies, security audits, compliance analysis, architecture blueprints. Triggers: /research-blockchain, 'blockchain research', protocol comparisons."
 argument-hint: "<blockchain topic>"

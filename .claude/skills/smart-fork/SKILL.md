@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 3.0.0
 name: smart-fork
 description: Smart Forking - Find and fork from relevant historical sessions using parallel memory search across claude-mem, memvid, handoffs, and ledgers
 author: Multi-Agent Ralph

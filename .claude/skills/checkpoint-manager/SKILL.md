@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 3.0.0
 name: checkpoint-manager
 description: "Session checkpoint management: save, restore, list, clear state snapshots"
 user-invocable: true

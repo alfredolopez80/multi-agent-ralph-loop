@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.87.0
+# VERSION: 3.0.0
 name: glm5
 description: GLM-5 Agent Teams skill for spawning teammates with thinking mode
 allowed-tools:

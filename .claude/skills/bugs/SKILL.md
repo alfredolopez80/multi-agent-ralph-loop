@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 3.0.0
 name: bugs
 description: "Bug hunting with Codex CLI Use when: (1) /bugs is invoked, (2) task relates to bugs functionality."
 context: fork

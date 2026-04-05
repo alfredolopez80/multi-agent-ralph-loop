@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 3.0.0
 name: ask-questions-if-underspecified
 description: "Ask clarifying questions when requirements are underspecified"
 user-invocable: true

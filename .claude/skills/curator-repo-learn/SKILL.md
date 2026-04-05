@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 3.0.0
 name: curator-repo-learn
 description: "Learn patterns from a specific GitHub repository. Clones, analyzes code structure, extracts patterns, and populates procedural memory. Use for: targeted learning from known quality repos, quick knowledge acquisition, specific pattern extraction. Triggers: /repo-learn, /curator-repo-learn, 'learn from repo'."
 argument-hint: "<github-url> [--domain <domain>]"

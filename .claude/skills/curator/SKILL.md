@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 3.0.0
 name: curator
 description: "Full curator pipeline for autonomous learning from quality repositories. Executes: discovery → scoring → ranking → ingest → learn → inject. Use for: populating procedural memory with domain patterns, first-time domain learning, comprehensive knowledge building. Triggers: /curator full, 'learn patterns from repos', 'build knowledge base'."
 argument-hint: "[full|quick|status] --type <domain> --lang <language>"

@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 3.0.0
 name: crafting-effective-readmes
 description: Use when writing or improving README files. Not all READMEs are the same — provides templates and guidance matched to your audience and project type.
 ---

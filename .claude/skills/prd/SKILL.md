@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 3.0.0
 name: prd
 description: "Product Requirements Document generation and management with INVEST-compliant user stories"
 user-invocable: true

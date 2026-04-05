@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.87.0
+# VERSION: 3.0.0
 name: minimax
 description: Custom skill for minimax
 ---

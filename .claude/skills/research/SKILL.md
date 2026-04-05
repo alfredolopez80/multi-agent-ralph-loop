@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 3.0.0
 name: research
 description: "Comprehensive research skill using Zai MCP web search and native Claude Code tools"
 ---

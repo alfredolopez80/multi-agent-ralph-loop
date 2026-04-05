@@ -1,6 +1,6 @@
 ---
 name: autoresearch
-version: 2.95.0
+version: 3.0.0
 description: Autonomous researcher - iteratively modifies code, runs experiments, evaluates metrics, keeps improvements. Never stops unless budget exhausted or manually interrupted.
 tools:
   - Read

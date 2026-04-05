@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 3.0.0
 name: senior-software-engineer
 description: "Global skill enforcing senior software engineering best practices"
 user-invocable: true

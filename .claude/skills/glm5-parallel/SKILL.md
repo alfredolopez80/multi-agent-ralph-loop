@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 3.0.0
 name: glm5-parallel
 description: Model-agnostic parallel execution with Agent Teams coordination
 allowed-tools:

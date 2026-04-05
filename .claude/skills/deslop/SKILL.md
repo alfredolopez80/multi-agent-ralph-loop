@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.89.0
+# VERSION: 3.0.0
 name: deslop
 description: Code quality analyzer that identifies "slop" - code violating established coding principles - and suggests concrete improvements. Analyzes code against principles like KISS, YAGNI, SOLID, DRY, and provides before/after fix examples.
 ---

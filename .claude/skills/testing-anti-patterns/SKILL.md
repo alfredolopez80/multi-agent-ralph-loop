@@ -1,5 +1,5 @@
 ---
-# VERSION: 2.88.0
+# VERSION: 3.0.0
 name: testing-anti-patterns
 description: Custom skill for testing-anti-patterns
 ---
