@@ -382,6 +382,8 @@ The loop integrates with the Stop hook:
 3. No ESLint errors
 4. Tests passing
 5. Security scan clean (no P0/P1 findings)
+6. Parallel execution used for independent work (Agent Teams for complexity >= 3)
+7. At least 2 teammates spawned when task involves code + tests
 
 ## Autoresearch Delegation (v2.95)
 

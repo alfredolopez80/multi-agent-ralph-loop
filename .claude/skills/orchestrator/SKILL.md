@@ -158,7 +158,9 @@ Exit with `ExitPlanMode` when approved.
 
 ## Step 5: DELEGATE (Parallel-First with Swarm)
 
-**PRIORITY: Parallel execution when possible**
+**REQUIRED: Parallel execution for ALL independent tasks. Sequential only with documented dependency.**
+
+See rule: `.claude/rules/parallel-first.md`
 
 ```yaml
 # With swarm mode (v2.81+)
@@ -300,6 +302,8 @@ cat .ralph/teammates/$TASK_ID-*/status.json
 7. QUALITY passed (blocking)
 8. Adversarial passed (if complexity >= 7)
 9. Retrospective done + learnings saved to memory
+10. **Parallel-first validated**: Agent Teams used for complexity >= 3, independent tasks parallelized
+11. **Teammates spawned**: At least 2 ralph-* teammates for non-trivial tasks
 
 ## CLI Commands
 

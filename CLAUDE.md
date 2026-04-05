@@ -2,6 +2,29 @@
 
 Orchestration system with memory-driven planning, multi-agent coordination, automatic learning, and quality validation.
 
+## Parallel-First Execution (MANDATORY)
+
+**All independent tasks MUST be executed in parallel using Agent Teams.** This is the #1 operational priority.
+
+| Complexity | Execution Mode | Agent Teams |
+|---|---|---|
+| 1-2 | Direct execution (no team) | Optional |
+| 3+ | **Parallel with Agent Teams** | **REQUIRED** |
+
+**6 Ralph Teammates available for parallel spawning:**
+
+| Teammate | Role | Spawn When |
+|---|---|---|
+| `ralph-coder` | Implementation | Code changes needed |
+| `ralph-reviewer` | Code review | Post-implementation |
+| `ralph-tester` | Testing & QA | Tests needed (always with coder) |
+| `ralph-researcher` | Research | Unknown patterns |
+| `ralph-frontend` | Frontend (WCAG 2.1 AA) | UI/component changes |
+| `ralph-security` | Security (6 pillars) | Auth, crypto, user input |
+
+**Rule**: `.claude/rules/parallel-first.md`
+**Anti-rationalization**: entries #38-#46 in `docs/reference/anti-rationalization.md`
+
 ## Analysis Methodology
 
 **Aristotle First Principles** is the foundational methodology. Every task passes through these phases before execution:

@@ -76,6 +76,20 @@ Excuses agents make to cut corners, and why they must not.
 | 36 | "Hardcoded colors are faster" | Use design tokens. Consistency > speed. | MEDIUM |
 | 37 | "I only need to handle the happy path" | 8 states: default, hover, focus, active, disabled, loading, error, success. | HIGH |
 
+### Parallel-First / Agent Teams-Specific
+
+| # | Excuse | Rebuttal | Severity |
+|---|--------|----------|----------|
+| 38 | "Sequential is simpler to implement" | Simplicity is not a license to ignore parallelization. Agent Teams handles coordination. | CRITICAL |
+| 39 | "These tasks might have hidden dependencies" | Prove the dependency exists. Run dependency analysis before claiming sequential is needed. | HIGH |
+| 40 | "I'll parallelize in the next iteration" | Next iteration may never come. Parallelize NOW. | HIGH |
+| 41 | "Parallel adds coordination overhead" | Agent Teams hooks (TeammateIdle, TaskCompleted) handle coordination automatically. Overhead < sequential delay. | HIGH |
+| 42 | "It's faster to do it myself sequentially" | Faster for you != faster for the user. Parallel reduces wall-clock time. | CRITICAL |
+| 43 | "The task is too small for Agent Teams" | If complexity >= 3, it's not too small. Use Agent Teams. | HIGH |
+| 44 | "I already started sequentially" | Stop. Create the team. Spawn teammates. Resume in parallel. | HIGH |
+| 45 | "Only one file needs changing" | Does the task also need tests? Review? Security check? Those are parallel opportunities. | MEDIUM |
+| 46 | "I don't know which teammates to spawn" | Check the Teammate Selection Matrix in parallel-first.md. It tells you exactly who. | HIGH |
+
 ## Usage
 
 Each SKILL.md should reference this table and include skill-specific entries.
