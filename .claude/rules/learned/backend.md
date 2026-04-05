@@ -19,4 +19,4 @@ Rules from procedural memory. Confidence >= 0.7, usage >= 3.
 
 ---
 
-*Generated: 2026-02-15 22:58. Source: procedural memory (4 rules)*
+*Generated: 2026-04-05 17:53. Source: procedural memory (4 rules)*

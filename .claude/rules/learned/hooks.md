@@ -18,4 +18,6 @@ Rules from procedural memory. Confidence >= 0.7, usage >= 3.
 
 ---
 
-*Generated: 2026-02-15 22:58. Source: procedural memory (2 rules)*
+*Generated: 2026-04-05 17:53. Source: procedural memory (2 rules)*
+
+- Hook Stdin Protocol: INPUT=$(cat) + jq parsing (confidence: 0.9, sessions: 8, source: /Users/alfredolopez/Documents/Obsidian/MiVault/global/wiki/hooks/stdin-protocol-pattern.md)
