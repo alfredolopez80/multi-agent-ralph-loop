@@ -23,6 +23,12 @@ minimax.json
 .mmc.json
 api_keys.json
 
+# Agent Browser (security state, encryption keys)
+.env.agent-browser
+*.agent-browser-state
+.agent-browser/
+agent-browser-session/
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # OPERATING SYSTEM
 # ═══════════════════════════════════════════════════════════════════════════════

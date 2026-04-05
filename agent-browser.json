@@ -1,0 +1,12 @@
+{
+  "headed": true,
+  "contentBoundaries": true,
+  "maxOutput": 50000,
+  "allowedDomains": [
+    "localhost",
+    "*.localhost",
+    "127.0.0.1"
+  ],
+  "confirmActions": "eval,download,navigate",
+  "confirmInteractive": true
+}

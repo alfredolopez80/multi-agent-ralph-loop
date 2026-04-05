@@ -1,0 +1,40 @@
+{
+  "rules": [
+    {
+      "action": "navigate",
+      "match": { "url_pattern": "*.google.com/accounts/*" },
+      "decision": "deny",
+      "reason": "No navegar a login de Google"
+    },
+    {
+      "action": "navigate",
+      "match": { "url_pattern": "*wallet*" },
+      "decision": "deny",
+      "reason": "No acceder a wallets"
+    },
+    {
+      "action": "navigate",
+      "match": { "url_pattern": "*mail.google.com*" },
+      "decision": "deny",
+      "reason": "No acceder a Gmail"
+    },
+    {
+      "action": "fill",
+      "match": { "selector_pattern": "*password*" },
+      "decision": "deny",
+      "reason": "No llenar campos de password"
+    },
+    {
+      "action": "fill",
+      "match": { "selector_pattern": "*seed*" },
+      "decision": "deny",
+      "reason": "No llenar campos de seed phrases"
+    },
+    {
+      "action": "fill",
+      "match": { "selector_pattern": "*private*key*" },
+      "decision": "deny",
+      "reason": "No llenar campos de private keys"
+    }
+  ]
+}

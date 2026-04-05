@@ -107,7 +107,18 @@ for dir in ~/.claude/skills ~/.codex/skills ~/.ralph/skills \
 done
 ```
 
-## Security (v2.89.2)
+## Browser Automation (v3.0)
+
+**Primary tool**: `agent-browser` (Vercel Labs) — isolated Chrome for Testing with domain allowlist and action policies.
+
+| Config File | Purpose |
+|---|---|
+| `agent-browser.json` | Domain allowlist (localhost only by default) |
+| `agent-browser-policy.json` | Action deny rules (passwords, wallets, seed phrases) |
+
+Rule: `.claude/rules/browser-automation.md`
+
+## Security (v3.0)
 
 ### Security Hooks
 
@@ -116,8 +127,9 @@ done
 | `git-safety-guard.py` | Blocks rm -rf, git reset --hard, command chaining | PreToolUse (Bash) |
 | `repo-boundary-guard.sh` | Prevents operations outside current repo | PreToolUse (Bash) |
 | `sanitize-secrets.js` | Redacts 20+ secret patterns before saving | PostToolUse |
+| `teammate-idle-quality-gate.sh` | Blocks idle with secrets/debug code (CWE-798, CWE-321) | TeammateIdle |
+| `task-completed-quality-gate.sh` | 7 quality gates including hardcoded secrets + SQL injection | TaskCompleted |
 | `cleanup-secrets-db.js` | Scans DB for exposed secrets | Manual |
-| `procedural-forget.sh` | Removes obsolete patterns from memory | Manual |
 
 ### v2.89.2 Fixes
 
