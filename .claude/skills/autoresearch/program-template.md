@@ -35,10 +35,15 @@ CONFIG = merge(TEMPLATE, SCOUT_DATA, USER_ANSWERS, DEFAULTS)
 # V1: Check git is clean
 [[ -n $(git status --porcelain) ]] && ask_user_to_commit_or_stash
 
-# V2: Verify target exists
+# V2: Verify target exists (quoted, repo-boundary check)
 [[ ! -e "$TARGET" ]] && ask_for_correct_path
+[[ "$TARGET" == ..* ]] && reject_path_traversal
 
-# V3: Dry-run eval harness
+# V2.5: Show configuration and ask confirmation BEFORE executing anything
+# AskUserQuestion: "This command will run: [$EVAL_HARNESS]. Proceed?"
+# CRITICAL: User must confirm before V3 executes eval_harness
+
+# V3: Dry-run eval harness (after user confirmation)
 timeout 120 bash -c "$EVAL_HARNESS" > run.log 2>&1
 [[ $? -ne 0 ]] && show_error_and_ask_for_correct_command
 
@@ -46,13 +51,20 @@ timeout 120 bash -c "$EVAL_HARNESS" > run.log 2>&1
 METRIC_LINE=$(grep "^METRIC" run.log | head -1)
 [[ -z "$METRIC_LINE" ]] && try_auto_fix_patterns_or_ask_user
 
-# V5: Extract baseline from dry-run
+# V5: Extract baseline from dry-run (validate numeric)
 BASELINE=$(echo "$METRIC_LINE" | cut -d= -f2)
+[[ ! "$BASELINE" =~ ^[0-9]+\.?[0-9]*$ ]] && reject_non_numeric_baseline
 
-# V6 (optional): Run eval a 2nd time to check determinism
+# V5.5: Run checks_script if configured (quoted, with timeout)
+if [[ -n "$CHECKS_SCRIPT" ]]; then
+  timeout 60 bash -c "$CHECKS_SCRIPT" > checks.log 2>&1
+fi
+
+# V6 (optional): Run eval a 2nd time to check determinism (with timeout)
+# timeout 120 bash -c "$EVAL_HARNESS" > run2.log 2>&1
 # If delta > 5%, warn about non-determinism
 
-# Show final confirmation with AskUserQuestion
+# Show final confirmation with AskUserQuestion (results summary)
 ```
 
 ### Skip to Manual Mode
