@@ -129,77 +129,78 @@ else
   fail "Node.js Test Speed template missing"
 fi
 
-# T12: Bundle Size template exists
+# T12: Bundle Size in domain templates table
 echo ""
 echo "--- T12: Bundle Size template ---"
-if grep -q "Template: Bundle Size" "$SKILL_PATH"; then
+if grep -q "Bundle Size" "$SKILL_PATH"; then
   pass "Bundle Size template found"
 else
   fail "Bundle Size template missing"
 fi
 
-# T13: Python Test Speed template exists
+# T13: Python Test Speed in domain templates table
 echo ""
 echo "--- T13: Python Test Speed template ---"
-if grep -q "Template: Python Test Speed" "$SKILL_PATH"; then
+if grep -q "Python Test Speed" "$SKILL_PATH"; then
   pass "Python Test Speed template found"
 else
   fail "Python Test Speed template missing"
 fi
 
-# T14: Prompt Engineering template exists
+# T14: Prompt Engineering in domain templates table
 echo ""
 echo "--- T14: Prompt Engineering template ---"
-if grep -q "Template: Prompt Engineering" "$SKILL_PATH"; then
+if grep -q "Prompt Engineering" "$SKILL_PATH"; then
   pass "Prompt Engineering template found"
 else
   fail "Prompt Engineering template missing"
 fi
 
-# T15: SQL Query Optimization template exists
+# T15: SQL Optimization in domain templates table
 echo ""
-echo "--- T15: SQL Query Optimization template ---"
-if grep -q "Template: SQL Query Optimization" "$SKILL_PATH"; then
-  pass "SQL Query Optimization template found"
+echo "--- T15: SQL Optimization template ---"
+if grep -q "SQL Optimization" "$SKILL_PATH"; then
+  pass "SQL Optimization template found"
 else
-  fail "SQL Query Optimization template missing"
+  fail "SQL Optimization template missing"
 fi
 
-# T16: Rust Performance template exists
+# T16: Rust Performance in domain templates table
 echo ""
 echo "--- T16: Rust Performance template ---"
-if grep -q "Template: Rust Performance" "$SKILL_PATH"; then
+if grep -q "Rust Performance" "$SKILL_PATH"; then
   pass "Rust Performance template found"
 else
   fail "Rust Performance template missing"
 fi
 
-# T17: Lighthouse template exists
+# T17: Lighthouse in domain templates table
 echo ""
 echo "--- T17: Lighthouse template ---"
-if grep -q "Template: Lighthouse" "$SKILL_PATH"; then
+if grep -q "Lighthouse" "$SKILL_PATH"; then
   pass "Lighthouse template found"
 else
   fail "Lighthouse template missing"
 fi
 
-# T18: Custom fallback template exists
+# T18: Custom/fallback behavior documented
 echo ""
 echo "--- T18: Custom fallback template ---"
-if grep -q "Template: Custom" "$SKILL_PATH"; then
+if grep -q "fall through" "$SKILL_PATH" || grep -q "Custom" "$SKILL_PATH"; then
   pass "Custom fallback template found"
 else
   fail "Custom fallback template missing"
 fi
 
-# T19: All templates have metric_direction
+# T19: Domain templates table has direction column
 echo ""
-echo "--- T19: Templates include metric_direction ---"
+echo "--- T19: Templates include metric direction ---"
 TEMPLATE_COUNT=$(grep -c "metric_direction:" "$SKILL_PATH" || true)
-if [[ "$TEMPLATE_COUNT" -ge 8 ]]; then
-  pass "All templates have metric_direction ($TEMPLATE_COUNT found)"
+DIRECTION_COL=$(grep -c "| Direction |" "$SKILL_PATH" || true)
+if [[ "$TEMPLATE_COUNT" -ge 2 ]] || [[ "$DIRECTION_COL" -ge 1 ]]; then
+  pass "Templates include metric direction info"
 else
-  fail "Not all templates have metric_direction (only $TEMPLATE_COUNT found)"
+  fail "Templates missing metric direction"
 fi
 
 # =============================================

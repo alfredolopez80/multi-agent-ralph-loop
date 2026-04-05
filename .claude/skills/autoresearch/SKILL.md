@@ -1,8 +1,8 @@
 ---
-# VERSION: 3.0.0
+# VERSION: 3.1.0
 name: autoresearch
 description: "Autonomous experiment loop: modifies code, runs experiments, evaluates metrics, keeps improvements. Inspired by karpathy/autoresearch + pi-autoresearch + autoexp. Triggers: /autoresearch, 'auto research', 'optimize continuously', 'experiment loop', 'autonomous optimization'."
-argument-hint: "<target-path> <metric-command> [--checkpoint=infinity|5|10] [--budget=100|8h|$10]"
+argument-hint: "[\"<goal>\"] [<target-path>] [--manual] [--budget=quick|standard|deep|unlimited] [--checkpoint=5|10|infinity]"
 user-invocable: true
 context: fork
 agent: autoresearch
@@ -71,6 +71,10 @@ Classic monolithic setup contract (full 14+ parameter form). Use when:
 ### Direct Mode — `/autoresearch src/model.py "uv run train.py" --checkpoint=5`
 
 When all required params are provided inline, skip SCOUT/WIZARD entirely. Still runs VALIDATE.
+
+### Resume Mode — automatic on `autoresearch/<tag>` branch
+
+If `autoresearch.md` exists on the current branch, skip ALL setup phases (SCOUT, WIZARD, VALIDATE) and resume the experiment loop immediately. See [Resumability](#resumability) for details.
 
 ---
 
@@ -149,13 +153,23 @@ scout_result:
 
 ## Domain Templates
 
-Templates pre-fill ALL 14 fields based on detected project type + user intent. The user only needs to confirm or override.
+Templates pre-fill ALL 14 fields based on detected project type + user intent. The user only needs to confirm or override. If no template matches, fall through to full WIZARD (equivalent to `--manual` mode).
 
-### Template: ML Training
-**Detection**: `train.py` OR (`.py` files with `import torch|tensorflow|jax`)
+| Template | Detection | Metric | Direction | Budget | Tag |
+|---|---|---|---|---|---|
+| ML Training | `train.py` or `import torch\|tensorflow\|jax` | `val_loss` | lower | 50 | `ml-training` |
+| Node.js Test Speed | `package.json` + `vitest\|jest` in devDeps | `duration_seconds` | lower | 30 | `test-speed` |
+| Bundle Size | `package.json` + `vite\|webpack\|esbuild` | `bundle_kb` | lower | 30 | `bundle-size` |
+| Python Test Speed | `pyproject.toml` + `pytest` | `duration_seconds` | lower | 30 | `pytest-speed` |
+| Prompt Engineering | `.txt`/`.md` prompt files + eval script | `accuracy` | higher | 50 | `prompt-engineering` |
+| SQL Optimization | `.sql` files + bench script | `exec_time_ms` | lower | 20 | `sql-optimization` |
+| Rust Performance | `Cargo.toml` + `[[bench]]`/`criterion` | `time_ns` | lower | 30 | `rust-perf` |
+| Lighthouse | `next.config.*` or `index.html` | `perf_score` | higher | 20 | `lighthouse` |
+
+### Representative Template: ML Training (multi-metric)
 ```yaml
 target: "train.py"
-eval_harness: "python train.py"
+eval_harness: "uv run train.py"
 primary_metric: "val_loss"
 metric_direction: "lower_is_better"
 secondary_metrics: {"peak_vram_mb": "lower_is_better"}
@@ -168,8 +182,7 @@ constraints: "No new dependencies. No modifying evaluation logic."
 tag: "ml-training"
 ```
 
-### Template: Node.js Test Speed
-**Detection**: `package.json` + (`vitest` OR `jest` in devDependencies)
+### Representative Template: Node.js Test Speed (single metric)
 ```yaml
 target: "src/"
 eval_harness: "{pkg_manager} test --run"
@@ -185,101 +198,9 @@ constraints: "All tests must still pass. No removing test cases."
 tag: "test-speed"
 ```
 
-### Template: Bundle Size Reduction
-**Detection**: `package.json` + (`vite` OR `webpack` OR `esbuild` in deps)
-```yaml
-target: "src/"
-eval_harness: "{pkg_manager} build"
-primary_metric: "bundle_kb"
-metric_direction: "lower_is_better"
-secondary_metrics: {"build_seconds": "lower_is_better"}
-metric_mode: "primary_secondary"
-checkpoint_mode: "10"
-time_budget: "3m"
-budget_max_experiments: 30
-checks_script: "{pkg_manager} test --run"
-off_limits: ".git/, .claude/, node_modules/, public/"
-constraints: "No removing features. No changing public API."
-tag: "bundle-size"
-```
+All templates share: `off_limits` always includes `.git/, .claude/`; `metric_mode` defaults to `single` unless secondary metrics are configured.
 
-### Template: Python Test Speed
-**Detection**: `pyproject.toml` + `pytest` in dependencies
-```yaml
-target: "src/"
-eval_harness: "pytest -q --tb=no"
-primary_metric: "duration_seconds"
-metric_direction: "lower_is_better"
-metric_mode: "single"
-time_budget: "3m"
-budget_max_experiments: 30
-off_limits: ".git/, .claude/, migrations/"
-constraints: "All tests must still pass."
-tag: "pytest-speed"
-```
 
-### Template: Prompt Engineering
-**Detection**: `.txt` or `.md` prompt files + eval script detected
-```yaml
-target: "prompt.txt"
-eval_harness: "./eval_prompt.sh"
-primary_metric: "accuracy"
-metric_direction: "higher_is_better"
-secondary_metrics: {"cost_usd": "lower_is_better"}
-metric_mode: "primary_secondary"
-budget_max_experiments: 50
-budget_max_cost_usd: 10.00
-off_limits: ".git/, .claude/, eval_prompt.sh"
-constraints: "Do not modify the evaluation script."
-tag: "prompt-engineering"
-```
-
-### Template: SQL Query Optimization
-**Detection**: `.sql` files in target + bench script detected
-```yaml
-target: "queries/"
-eval_harness: "./bench_query.sh"
-primary_metric: "exec_time_ms"
-metric_direction: "lower_is_better"
-metric_mode: "single"
-budget_max_experiments: 20
-off_limits: ".git/, .claude/, schema/"
-constraints: "Query results must be identical. No schema changes."
-tag: "sql-optimization"
-```
-
-### Template: Rust Performance
-**Detection**: `Cargo.toml` + `[[bench]]` or `criterion` in deps
-```yaml
-target: "src/"
-eval_harness: "cargo bench"
-primary_metric: "time_ns"
-metric_direction: "lower_is_better"
-metric_mode: "single"
-time_budget: "5m"
-budget_max_experiments: 30
-off_limits: ".git/, .claude/, tests/, benches/"
-constraints: "No unsafe code unless already present."
-tag: "rust-perf"
-```
-
-### Template: Lighthouse / Web Performance
-**Detection**: Next.js or SPA detected (`next.config.*` or `index.html`)
-```yaml
-target: "src/"
-eval_harness: "npx lighthouse http://localhost:3000 --output=json --quiet"
-primary_metric: "perf_score"
-metric_direction: "higher_is_better"
-secondary_metrics: {"lcp_ms": "lower_is_better", "cls": "lower_is_better"}
-metric_mode: "primary_secondary"
-budget_max_experiments: 20
-off_limits: ".git/, .claude/, public/, node_modules/"
-tag: "lighthouse"
-```
-
-### Template: Custom (Fallback)
-**Detection**: No domain template matches.
-**Action**: Fall through to full WIZARD with all questions (no pre-fill). Equivalent to `--manual` mode.
 
 ---
 
