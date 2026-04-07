@@ -66,6 +66,14 @@ L2_DIR = LAYERS_DIR / "L2_wings"
 PROCEDURAL_RULES_JSON = Path.home() / ".ralph" / "procedural" / "rules.json"
 VAULT_DIR = Path.home() / "Documents" / "Obsidian" / "MiVault"
 
+# Graduation: proven rules directory (promoted from rules.json to always-on)
+PROVEN_RULES_DIR = Path.home() / ".claude" / "rules" / "proven"
+
+# Graduation thresholds — rules must meet ALL criteria
+GRADUATE_MIN_CONFIDENCE = 0.9
+GRADUATE_MIN_USAGE = 20          # max(usage_count, applied_count)
+GRADUATE_MIN_BEHAVIOR_LEN = 50  # chars — reject trivial one-liners
+
 # Number of top rules to include in L1
 L1_RULE_COUNT = 25
 
@@ -767,6 +775,106 @@ def load_wake_up_context() -> str:
 
 
 # ---------------------------------------------------------------------------
+# Rule Graduation: promote proven rules to ~/.claude/rules/proven/
+# ---------------------------------------------------------------------------
+
+def graduate_rules(dry_run: bool = False) -> tuple[list[Path], list[str]]:
+    """
+    Graduate high-quality rules from rules.json to always-on ~/.claude/rules/proven/.
+
+    A rule qualifies when it meets ALL of:
+      - confidence >= 0.9
+      - max(usage_count, applied_count) >= 20
+      - behavior text >= 50 chars (substantive, not trivial)
+      - NOT a mechanical auto-extraction (ep-auto-*, ep-rule-*)
+      - domain is defined
+
+    Each graduated rule becomes a standalone .md file:
+      ~/.claude/rules/proven/{domain}-{rule_id}.md
+
+    Returns:
+      (promoted_paths, skipped_reasons) for reporting.
+    """
+    layer1 = Layer1()
+    try:
+        all_rules = layer1._load_source_rules()
+    except FileNotFoundError:
+        return [], ["No rules.json found"]
+
+    promoted: list[Path] = []
+    skipped: list[str] = []
+    proven_dir = PROVEN_RULES_DIR
+
+    if not dry_run:
+        proven_dir.mkdir(parents=True, exist_ok=True)
+
+    for rule in all_rules:
+        rule_id = str(rule.get("rule_id", "")).strip()
+        if not rule_id:
+            continue
+
+        # --- Filters ---
+        if layer1._is_mechanical(rule):
+            continue
+
+        confidence = float(rule.get("confidence", 0))
+        if confidence < GRADUATE_MIN_CONFIDENCE:
+            continue
+
+        usage = max(
+            int(rule.get("usage_count", 0)),
+            int(rule.get("applied_count", 0)),
+        )
+        if usage < GRADUATE_MIN_USAGE:
+            continue
+
+        behavior = str(rule.get("behavior", rule.get("description", ""))).strip()
+        if len(behavior) < GRADUATE_MIN_BEHAVIOR_LEN:
+            skipped.append(f"{rule_id}: behavior too short ({len(behavior)} chars)")
+            continue
+
+        domain = str(rule.get("domain", "")).strip().lower() or "general"
+
+        # --- Generate file ---
+        safe_id = rule_id.replace("/", "-").replace(" ", "-")
+        filename = f"{domain}-{safe_id}.md"
+        filepath = proven_dir / filename
+
+        trigger = str(rule.get("trigger", "")).strip()
+
+        content = (
+            f"# {rule_id}\n"
+            f"\n"
+            f"{behavior}\n"
+            f"\n"
+            f"**Trigger**: {trigger or 'N/A'}  \n"
+            f"**Domain**: {domain}  \n"
+            f"**Confidence**: {confidence}  \n"
+            f"**Usage**: {usage}  \n"
+        )
+
+        if dry_run:
+            promoted.append(filepath)
+        else:
+            existing = filepath.read_text(encoding="utf-8") if filepath.exists() else ""
+            if existing == content:
+                skipped.append(f"{rule_id}: unchanged (already graduated)")
+                continue
+            filepath.write_text(content, encoding="utf-8")
+            promoted.append(filepath)
+
+    # Clean stale files (rules that no longer qualify but still have files)
+    if not dry_run and proven_dir.is_dir():
+        promoted_ids = {p.name for p in promoted}
+        for existing_file in proven_dir.glob("*.md"):
+            if existing_file.name not in promoted_ids:
+                skipped.append(f"CLEANUP: removed {existing_file.name}")
+                existing_file.unlink()
+
+    return promoted, skipped
+
+
+# ---------------------------------------------------------------------------
 # CLI entry point
 # ---------------------------------------------------------------------------
 
@@ -840,6 +948,20 @@ if __name__ == "__main__":
                 print("Failed to remove cron job.", file=sys.stderr)
                 sys.exit(1)
 
+    elif "--graduate" in args:
+        dry_run = "--dry-run" in args
+        promoted, skipped = graduate_rules(dry_run=dry_run)
+        if dry_run:
+            print(f"[DRY RUN] {len(promoted)} rules would be promoted:")
+        else:
+            print(f"Graduated {len(promoted)} rules to {PROVEN_RULES_DIR}/")
+        for p in promoted:
+            print(f"  + {p.name}")
+        if skipped:
+            print(f"\nSkipped ({len(skipped)}):")
+            for s in skipped:
+                print(f"  - {s}")
+
     else:
         print("Usage:")
         print("  python3 layers.py --build-l1       Build L1 essential rules from procedural store")
@@ -849,3 +971,5 @@ if __name__ == "__main__":
         print("  python3 layers.py --query <q>      Query vault (Layer3)")
         print("  python3 layers.py --install-cron   Install daily L1 rebuild cron at 6:00 AM")
         print("  python3 layers.py --remove-cron    Remove L1 rebuild cron")
+        print("  python3 layers.py --graduate       Promote proven rules to ~/.claude/rules/proven/")
+        print("  python3 layers.py --graduate --dry-run  Preview what would be promoted")

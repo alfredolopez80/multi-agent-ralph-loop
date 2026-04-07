@@ -27,7 +27,7 @@ REPO_ROOT = Path(__file__).parent.parent.parent
 LIB_DIR = REPO_ROOT / ".claude" / "lib"
 sys.path.insert(0, str(LIB_DIR))
 
-from layers import Layer0, Layer1, Layer2, Layer3, load_wake_up_context  # noqa: E402
+from layers import Layer0, Layer1, Layer2, Layer3, load_wake_up_context, graduate_rules  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -669,3 +669,212 @@ class TestAutoRebuild:
         assert first_content == second_content, (
             "Building L1 twice should produce identical output"
         )
+
+
+# ---------------------------------------------------------------------------
+# Rule Graduation Tests
+# ---------------------------------------------------------------------------
+
+@pytest.fixture()
+def proven_rules_dir(tmp_path: Path, monkeypatch) -> Path:
+    """Override PROVEN_RULES_DIR to a temp directory for testing."""
+    import layers as layers_module
+    proven = tmp_path / "proven"
+    proven.mkdir()
+    monkeypatch.setattr(layers_module, "PROVEN_RULES_DIR", proven)
+    return proven
+
+
+@pytest.fixture()
+def rules_with_proven_candidates(tmp_path: Path) -> Path:
+    """Create rules.json with 3 candidates that qualify for graduation + 3 that don't."""
+    rules = [
+        # QUALIFIES: confidence 0.95, usage 50, behavior 60+ chars
+        {
+            "rule_id": "hook-json-format",
+            "trigger": "When writing hook responses",
+            "behavior": "CRITICAL: Always use the correct JSON response format per hook event type. Never use continue as decision value.",
+            "confidence": 0.95,
+            "usage_count": 50,
+            "applied_count": 50,
+            "domain": "hooks",
+        },
+        # QUALIFIES: confidence 0.9, applied_count 25 (field mismatch)
+        {
+            "rule_id": "sec-input-validation",
+            "trigger": "On API boundary operations",
+            "behavior": "MUST validate all inputs at API boundaries using parameterized queries and HTML sanitization to prevent injection attacks.",
+            "confidence": 0.9,
+            "usage_count": 0,
+            "applied_count": 25,
+            "domain": "security",
+        },
+        # QUALIFIES: confidence 0.92, usage 100, long behavior
+        {
+            "rule_id": "test-verify-expectations",
+            "trigger": "When tests fail after changes",
+            "behavior": "FIRST verify test expectations are correct against official documentation. Tests can be corrupted with wrong expectations that mask real bugs.",
+            "confidence": 0.92,
+            "usage_count": 100,
+            "domain": "testing",
+        },
+        # FAILS: confidence 0.7 (below 0.9)
+        {
+            "rule_id": "low-confidence-rule",
+            "trigger": "Sometimes",
+            "behavior": "This rule has low confidence but decent usage count and a very long behavior description.",
+            "confidence": 0.7,
+            "usage_count": 50,
+            "domain": "general",
+        },
+        # FAILS: usage 5 (below 20)
+        {
+            "rule_id": "new-untested-rule",
+            "trigger": "On new features",
+            "behavior": "This rule has high confidence but barely any usage yet so it should not graduate.",
+            "confidence": 0.95,
+            "usage_count": 5,
+            "domain": "backend",
+        },
+        # FAILS: behavior too short (30 chars < 50)
+        {
+            "rule_id": "short-behavior-rule",
+            "trigger": "On commits",
+            "behavior": "Short rule text",
+            "confidence": 0.95,
+            "usage_count": 100,
+            "domain": "general",
+        },
+    ]
+    data = {
+        "version": "test-graduate-1.0",
+        "updated": "2026-04-08",
+        "rules": rules,
+        "curator_metadata": {},
+    }
+    p = tmp_path / "rules.json"
+    p.write_text(json.dumps(data), encoding="utf-8")
+    return p
+
+
+class TestGraduation:
+    """Tests for the rule graduation pipeline (rules.json → ~/.claude/rules/proven/)."""
+
+    def test_graduate_promotes_qualified_rules(
+        self, tmp_path: Path, proven_rules_dir: Path,
+        rules_with_proven_candidates: Path, monkeypatch,
+    ):
+        """graduate_rules() creates .md files for rules meeting all thresholds."""
+        import layers as layers_module
+        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", rules_with_proven_candidates)
+
+        promoted, skipped = graduate_rules(dry_run=False)
+
+        # 3 rules qualify (hook-json-format, sec-input-validation, test-verify-expectations)
+        assert len(promoted) == 3, f"Expected 3 promoted, got {len(promoted)}: {[p.name for p in promoted]}"
+        assert proven_rules_dir.is_dir()
+
+        # Check file content has rule behavior
+        files = list(proven_rules_dir.glob("*.md"))
+        assert len(files) == 3
+        for f in files:
+            content = f.read_text(encoding="utf-8")
+            assert "Confidence" in content
+            assert "Domain" in content
+
+    def test_dry_run_does_not_create_files(
+        self, tmp_path: Path, proven_rules_dir: Path,
+        rules_with_proven_candidates: Path, monkeypatch,
+    ):
+        """graduate_rules(dry_run=True) reports but does not write files."""
+        import layers as layers_module
+        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", rules_with_proven_candidates)
+
+        promoted, skipped = graduate_rules(dry_run=True)
+
+        assert len(promoted) == 3
+        # No files should be created in dry run
+        files = list(proven_rules_dir.glob("*.md"))
+        assert len(files) == 0
+
+    def test_graduate_skips_low_confidence(
+        self, tmp_path: Path, proven_rules_dir: Path,
+        rules_with_proven_candidates: Path, monkeypatch,
+    ):
+        """Rules with confidence < 0.9 are not promoted."""
+        import layers as layers_module
+        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", rules_with_proven_candidates)
+
+        promoted, _ = graduate_rules(dry_run=True)
+        names = [p.name for p in promoted]
+        assert not any("low-confidence" in n for n in names)
+
+    def test_graduate_skips_low_usage(
+        self, tmp_path: Path, proven_rules_dir: Path,
+        rules_with_proven_candidates: Path, monkeypatch,
+    ):
+        """Rules with usage < 20 are not promoted."""
+        import layers as layers_module
+        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", rules_with_proven_candidates)
+
+        promoted, _ = graduate_rules(dry_run=True)
+        names = [p.name for p in promoted]
+        assert not any("new-untested" in n for n in names)
+
+    def test_graduate_skips_short_behavior(
+        self, tmp_path: Path, proven_rules_dir: Path,
+        rules_with_proven_candidates: Path, monkeypatch,
+    ):
+        """Rules with behavior < 50 chars are not promoted."""
+        import layers as layers_module
+        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", rules_with_proven_candidates)
+
+        promoted, skipped = graduate_rules(dry_run=True)
+        names = [p.name for p in promoted]
+        assert not any("short-behavior" in n for n in names)
+        # Should have a skip reason mentioning "too short"
+        assert any("too short" in s for s in skipped)
+
+    def test_graduate_cleans_stale_files(
+        self, tmp_path: Path, proven_rules_dir: Path,
+        rules_with_proven_candidates: Path, monkeypatch,
+    ):
+        """graduate_rules() removes files for rules that no longer qualify."""
+        import layers as layers_module
+        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", rules_with_proven_candidates)
+
+        # Create a stale file that won't match any graduated rule
+        stale = proven_rules_dir / "general-stale-old-rule.md"
+        stale.write_text("# stale", encoding="utf-8")
+
+        promoted, skipped = graduate_rules(dry_run=False)
+
+        # Stale file should be cleaned up
+        assert not stale.exists(), "Stale proven rule file should be removed"
+        assert any("CLEANUP" in s for s in skipped)
+
+    def test_graduate_idempotent(
+        self, tmp_path: Path, proven_rules_dir: Path,
+        rules_with_proven_candidates: Path, monkeypatch,
+    ):
+        """Running graduate_rules() twice produces same result."""
+        import layers as layers_module
+        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", rules_with_proven_candidates)
+
+        promoted1, _ = graduate_rules(dry_run=False)
+        promoted2, skipped2 = graduate_rules(dry_run=False)
+
+        assert len(promoted2) == 0, "Second run should find no new files to write"
+        assert any("unchanged" in s for s in skipped2)
+
+    def test_graduate_with_no_rules_json(
+        self, tmp_path: Path, proven_rules_dir: Path, monkeypatch,
+    ):
+        """graduate_rules() handles missing rules.json gracefully."""
+        import layers as layers_module
+        missing = tmp_path / "nonexistent" / "rules.json"
+        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", missing)
+
+        promoted, skipped = graduate_rules(dry_run=False)
+        assert len(promoted) == 0
+        assert any("No rules.json" in s for s in skipped)
