@@ -19,7 +19,7 @@ Identify what context sources are relevant:
 1. Parse task description for domain keywords
 2. Check for DESIGN.md (frontend tasks)
 3. Check for .spec.md files (spec-driven tasks)
-4. Check memory sources (claude-mem, handoffs, vault)
+4. Check memory sources (vault, handoffs, ledgers)
 5. Check codebase files (Glob/Grep for related code)
 6. Output: ranked list of context sources with estimated tokens
 
@@ -57,7 +57,7 @@ Write packaged context to `.claude/context-payload.md`:
 | .spec.md | Task has a spec | ~500-2000 |
 | DESIGN.md | Frontend task | ~1000-3000 |
 | Related code files | Always | ~500-5000 |
-| Memory (claude-mem) | Prior work exists | ~200-500 |
+| Memory (vault)      | Prior work exists | ~200-500 |
 | Handoffs | Cross-session | ~300-800 |
 | Vault (future) | Curated knowledge | ~200-1000 |
 

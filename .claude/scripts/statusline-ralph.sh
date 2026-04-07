@@ -613,16 +613,17 @@ if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
         fi
     fi
 
-    if [[ -n "$ralph_progress" ]]; then
-        if [[ -n "$combined_segment" ]]; then
-            combined_segment="${combined_segment} │ ${ralph_progress}"
-        else
-            combined_segment="${ralph_progress}"
-        fi
-    fi
+    # Note: ralph_progress is intentionally NOT concatenated into combined_segment.
+    # It gets its OWN line below to avoid truncation in narrow terminals (~80 cols).
+    # The statusline can have 3 lines: combined_segment, ralph_progress, hud_output.
 
     if [[ -n "$combined_segment" ]]; then
         printf '%b\n' "$combined_segment"
+
+        # Plan progress on its own line (avoids 80-col truncation)
+        if [[ -n "$ralph_progress" ]]; then
+            printf '%b\n' "$ralph_progress"
+        fi
 
         # Output remaining claude-hud lines
         first_line=$(echo "$hud_output" | head -1)
@@ -634,6 +635,10 @@ if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
         if [[ -n "$rest" ]]; then
             echo "$rest"
         fi
+    elif [[ -n "$ralph_progress" ]]; then
+        # No combined_segment but plan exists — print plan + hud
+        printf '%b\n' "$ralph_progress"
+        echo "$hud_output"
     else
         echo "$hud_output"
     fi
@@ -658,11 +663,11 @@ else
             fallback="${fallback}${glm_plan_usage}"
         fi
 
-        if [[ -n "$ralph_progress" ]]; then
-            [[ -n "$fallback" ]] && fallback="${fallback} │ "
-            fallback="${fallback}${ralph_progress}"
-        fi
+        # Plan progress on its OWN line (no concat, avoids 80-col truncation)
         printf '%b\n' "$fallback"
+        if [[ -n "$ralph_progress" ]]; then
+            printf '%b\n' "$ralph_progress"
+        fi
     else
         echo "[statusline] Initializing..."
     fi

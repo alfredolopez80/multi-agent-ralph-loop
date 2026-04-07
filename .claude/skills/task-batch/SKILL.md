@@ -22,7 +22,6 @@ allowed-tools:
   - Glob
   - Grep
   - AskUserQuestion
-  - mcp__plugin_claude-mem_*
 ---
 
 # /task-batch - Autonomous Batch Task Execution (v2.88)

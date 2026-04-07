@@ -1,6 +1,7 @@
 #!/bin/bash
-# NOTE: Ralph memory system deprecated - using claude-mem MCP only
-# This hook is temporarily disabled pending migration to claude-mem
+# NOTE: Disabled 2026-04-07 — pending migration of body code to Obsidian vault backend.
+# claude-mem was removed; this hook's body code (lines 6+) needs review before re-enabling.
+# TODO(W4.2): Refactor body to write semantic facts to ~/Documents/Obsidian/MiVault/ instead.
 echo '{"continue": true}'
 exit 0
 # Semantic Realtime Extractor (v2.57.4)
