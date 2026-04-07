@@ -1,0 +1,65 @@
+{
+  "benchmark": "memory_retrieval_baseline",
+  "version": "1.0.0",
+  "plan_wave": "W1.4",
+  "plan_file": ".ralph/plans/cheeky-dazzling-catmull.md",
+  "generated_at": "2026-04-07T14:39:48Z",
+  "host": "MacBook-Pro",
+  "n_runs": 20,
+  "memory_system": {
+    "type": "obsidian_vault_post_wave0",
+    "vault_root": "/Users/alfredolopez/Documents/Obsidian/MiVault",
+    "decisions_json": "/Users/alfredolopez/Documents/Obsidian/MiVault/migrated-from-claude-mem/decisions.json",
+    "wiki_dir": "/Users/alfredolopez/Documents/Obsidian/MiVault/global/wiki"
+  },
+  "A_retrieval_latency_ms": {
+    "description": "Time to return at least one result for a known query",
+    "a1_decisions_json_grep": {
+      "query": "MemPalace",
+      "target": "decisions.json",
+      "median_ms": 3.5,
+      "p95_ms": 4
+    },
+    "a2_wiki_grep": {
+      "query": "hook",
+      "target": "global/wiki/ (recursive)",
+      "median_ms": 4.0,
+      "p95_ms": 5
+    },
+    "a3_smart_memory_search": {
+      "description": "smart-memory-search.sh hook end-to-end",
+      "status": "ok",
+      "median_ms": 36,
+      "p95_ms": 38
+    }
+  },
+  "B_token_cost": {
+    "description": "Estimated tokens injected by session-start-restore-context.sh",
+    "status": "ok",
+    "context_words": 244,
+    "estimated_tokens": 325,
+    "raw_output_bytes": 2364,
+    "method": "wc -w output / 0.75 words_per_token",
+    "baseline_target_tokens": 1500,
+    "current_vs_target_pct": 21.7
+  },
+  "C_hit_rate": {
+    "description": "Fraction of 10 representative queries returning >= 1 result",
+    "total_queries": 10,
+    "hits": 4,
+    "hit_rate_pct": 40.0,
+    "details": [{"query":"MemPalace migration plan","hit":true},{"query":"claude-mem RCE vulnerability","hit":false},{"query":"Obsidian vault single source of truth","hit":false},{"query":"AAAK compression codec","hit":true},{"query":"wake-up token reduction","hit":true},{"query":"Wave 0 security gate","hit":true},{"query":"forensic backup SHA-256","hit":false},{"query":"execSync curl bash install","hit":false},{"query":"localhost HTTP worker authentication","hit":false},{"query":"console hijacking audit logs","hit":false}]
+  },
+  "D_vault_size": {
+    "vault_root": "/Users/alfredolopez/Documents/Obsidian/MiVault",
+    "md_files_total": 29,
+    "json_files_total": 9,
+    "all_files_total": 123,
+    "total_bytes": 10147344,
+    "md_files_bytes_total": 1002457,
+    "avg_md_file_bytes": 34567,
+    "wiki_md_count": 9,
+    "migrated_json_count": 3,
+    "decisions_json_lines": 1283
+  }
+}
