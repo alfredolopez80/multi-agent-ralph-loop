@@ -89,6 +89,28 @@ for rule_file in "${RULE_FILES[@]}"; do
 done
 
 echo ""
+
+# ──────────────────────────────────────────────
+# Sync learned/ taxonomy (24 files in halls/rooms/wings)
+# MemPalace v3.2: Propagates local learned rules to global scope
+# Security: taxonomy was filtered in W3.1 (46% noise excluded, no secrets)
+# ──────────────────────────────────────────────
+LEARNED_SOURCE="${REPO}/.claude/rules/learned"
+LEARNED_TARGET="${HOME}/.claude/rules/learned"
+
+if [[ -d "$LEARNED_SOURCE" ]]; then
+  if [ "$DRY_RUN" = true ]; then
+    echo "WOULD: Sync learned/ taxonomy (halls/rooms/wings) to global"
+  else
+    mkdir -p "$LEARNED_TARGET"
+    rsync -a --delete "$LEARNED_SOURCE/" "$LEARNED_TARGET/" 2>/dev/null
+    echo "SYNCED: learned/ taxonomy to global (halls/rooms/wings)"
+  fi
+else
+  echo "SKIP: No learned/ taxonomy found at $LEARNED_SOURCE"
+fi
+
+echo ""
 echo "Summary: $UPDATED updated, $SKIPPED skipped"
 if [ "$DRY_RUN" = true ]; then
   echo "(dry run — no changes applied)"

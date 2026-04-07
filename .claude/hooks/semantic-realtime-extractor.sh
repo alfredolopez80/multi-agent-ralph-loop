@@ -1,10 +1,5 @@
 #!/bin/bash
-# NOTE: Disabled 2026-04-07 — pending migration of body code to Obsidian vault backend.
-# claude-mem was removed; this hook's body code (lines 6+) needs review before re-enabling.
-# TODO(W4.2): Refactor body to write semantic facts to ~/Documents/Obsidian/MiVault/ instead.
-echo '{"continue": true}'
-exit 0
-# Semantic Realtime Extractor (v2.57.4)
+# Semantic Realtime Extractor (v2.57.4 → v3.2.0)
 # Hook: PostToolUse (Edit|Write)
 # Purpose: Extract semantic facts in real-time after code changes
 #
@@ -108,22 +103,30 @@ fi
 
     FACTS_ADDED=0
 
-    # Helper to add fact using atomic write helper (v2.57.4 - GAP-003 fix)
+    # Helper to add fact directly to Obsidian vault (v3.2.0)
+    # Replaces semantic-write-helper.sh which depended on removed semantic.json
     add_fact() {
         local content="$1"
         local category="$2"
         local file="$3"
 
-        # Use atomic write helper with flock
-        local result
-        result=$("${HOME}/.claude/hooks/semantic-write-helper.sh" --add \
-            "$(jq -n --arg c "$content" --arg cat "$category" --arg f "$file" \
-                '{content: $c, category: $cat, file: $f, source: "realtime-extract"}')" 2>&1)
+        # Sanitize content — no file contents, no absolute paths, no secrets
+        content=$(echo "$content" | tr -cd ' a-zA-Z0-9_.:/-()[]{}' | head -c 200)
+        # Strip absolute user paths
+        file=$(echo "$file" | sed "s|${HOME}/||g; s|/Users/[^/]*/||g")
 
-        if echo "$result" | grep -q "^ADDED:"; then
-            FACTS_ADDED=$((FACTS_ADDED + 1))
-            echo "  Added: $content"
-        fi
+        # Write to vault facts directory
+        VAULT_FACTS_DIR="${HOME}/Documents/Obsidian/MiVault/projects/$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo 'unknown')")/facts"
+        mkdir -p "$VAULT_FACTS_DIR" 2>/dev/null || return 0
+
+        local today=$(date +%Y%m%d)
+        local fact_file="$VAULT_FACTS_DIR/facts-${today}.md"
+
+        # Append fact (atomic append, one line per fact)
+        echo "- [$category] $content ($file)" >> "$fact_file" 2>/dev/null || return 0
+
+        FACTS_ADDED=$((FACTS_ADDED + 1))
+        echo "  Added: $content"
     }
 
     # Extract based on file type
