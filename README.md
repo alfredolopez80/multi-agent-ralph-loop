@@ -114,6 +114,9 @@ python3 -m pytest tests/ -q
 | `/security` | Multi-agent security audit (OWASP, semgrep, gitleaks) |
 | `/autoresearch` | Autonomous experimentation loop with Smart Setup |
 | `/adversarial` | Spec refinement with multi-model cross-validation |
+| `/bugs` | Systematic bug hunting |
+| `/ship` | Pre-launch checklist (gates + security + review) |
+| `/spec` | Verifiable technical specification before coding |
 
 ## Architecture
 
