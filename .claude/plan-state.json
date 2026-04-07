@@ -1,0 +1,62 @@
+{
+  "version": "3.0.0",
+  "plan_name": "MemPalace-Inspired Memory & Hooks Overhaul",
+  "plan_file": ".ralph/plans/cheeky-dazzling-catmull.md",
+  "current_phase": "wave_4",
+  "active_agent": "",
+  "last_updated": "2026-04-07T19:30:00Z",
+  "classification": {
+    "workflow_route": "COMPLEX",
+    "adaptive_mode": "PARALLEL_WAVES"
+  },
+  "phases": [
+    {"phase_id": "wave_0", "phase_name": "Security Gate (sequential)"},
+    {"phase_id": "wave_1", "phase_name": "Foundation (parallel x6)"},
+    {"phase_id": "wave_2", "phase_name": "AAAK + Layer Stack"},
+    {"phase_id": "wave_3", "phase_name": "Restructure"},
+    {"phase_id": "wave_4", "phase_name": "Integration"},
+    {"phase_id": "wave_5", "phase_name": "Global Distribution"}
+  ],
+  "barriers": {
+    "wave0_security_passed": true,
+    "claude_mem_removed": true,
+    "tests_passing": true,
+    "pr_opened": true
+  },
+  "steps": [
+    {"id": "W0.1", "phase": "wave_0", "name": "security-snapshot", "status": "completed", "priority": "P0", "owner": "ralph-security-alpha", "evidence": "~/.security-archive/claude-mem-data-20260407-135943.tar.gz + sha256-manifest + observations-sample"},
+    {"id": "W0.2", "phase": "wave_0", "name": "migrate-unique-data", "status": "completed", "priority": "P0", "owner": "ralph-coder-alpha-sec", "evidence": "~/Documents/Obsidian/MiVault/migrated-from-claude-mem/ with bugfixs.json (5.6MB) + decisions.json + refactors.json"},
+    {"id": "W0.3", "phase": "wave_0", "name": "remove-claude-mem (12 atomic steps)", "status": "completed", "priority": "P0", "owner": "ralph-coder-beta-sec", "evidence": "~/.claude-mem removed, plugin cache only .bak remains, residuals tar 14:31"},
+    {"id": "W0.4", "phase": "wave_0", "name": "refactor-affected-hooks", "status": "completed", "priority": "P0", "owner": "ralph-coder-gamma-sec", "evidence": "3 hooks refactored + 9 skills + 2 agents cleaned + cleanup-secrets-db.js deleted"},
+    {"id": "W0.5", "phase": "wave_0", "name": "global-uninstall-validation", "status": "completed", "priority": "P0", "owner": "ralph-tester-alpha-sec", "evidence": "tests/security/test-claude-mem-removed.sh — 19/19 PASS"},
+    {"id": "W0.6", "phase": "wave_0", "name": "anti-leakage-sweep (10 surfaces)", "status": "completed", "priority": "P0", "owner": "ralph-security-beta", "evidence": "docs/security/CLAUDE_MEM_LEAKAGE_SWEEP_2026-04-07.md"},
+
+    {"id": "W1.1", "phase": "wave_1", "name": "delete-dead-hooks", "status": "completed", "priority": "P1", "owner": "ralph-coder-alpha", "evidence": "7 dead hooks deleted, docs/architecture/HOOKS_INVENTORY_2026-04-07.md"},
+    {"id": "W1.2", "phase": "wave_1", "name": "aaak-codec", "status": "completed", "priority": "P1", "owner": "ralph-coder-beta", "evidence": ".claude/lib/aaak.py + aaak_cli.py + tests/aaak/test_aaak_codec.py — 57/57 tests, 52.7x compression (target 20x)"},
+    {"id": "W1.3", "phase": "wave_1", "name": "obsidian-as-kg", "status": "completed", "priority": "P1", "owner": "ralph-coder-gamma", "evidence": "commit 57f3415 refactor(memory): migrate memory backend to Obsidian vault"},
+    {"id": "W1.4", "phase": "wave_1", "name": "benchmark-baseline", "status": "completed", "priority": "P1", "owner": "ralph-tester-alpha", "evidence": "tests/benchmark/baseline_memory_retrieval.sh + docs/benchmark/MEMORY_BASELINE_2026-04-07.md — latency 4ms, hit rate 40% (false-neg)"},
+    {"id": "W1.5", "phase": "wave_1", "name": "drift-correction", "status": "completed", "priority": "P1", "owner": "ralph-reviewer-alpha", "evidence": "docs/audit/CLAUDE_MD_DRIFT_2026-04-07.md — 18 drifts (6 high) across 5 CLAUDE.md + 3 memory files"},
+    {"id": "W1.6", "phase": "wave_1", "name": "curator-refactor-prep", "status": "completed", "priority": "P1", "owner": "ralph-coder-delta", "evidence": "docs/refactor/CURATOR_AI_DRIVEN_PRD_2026-04-07.md — 511 lines, 9 scripts audited, 7 reusable funcs"},
+
+    {"id": "W2.1", "phase": "wave_2", "name": "aaak-migrate-rules", "status": "completed", "priority": "P1", "owner": "ralph-coder-epsilon", "evidence": "REVERTED — AAAK measured +19.8% token increase via tiktoken cl100k_base (agent used wc -w heuristic). See docs/architecture/AAAK_LIMITATIONS_ADR_2026-04-07.md"},
+    {"id": "W2.2", "phase": "wave_2", "name": "layer-stack", "status": "completed", "priority": "P1", "owner": "ralph-coder-zeta", "evidence": "layers.py + L0_identity.md + L1_essential.md (plain markdown, 9 actionable rules, 579 real cl100k_base tokens) + wake-up hook (not registered yet, W4.2) + 38/38 tests"},
+    {"id": "W2.3", "phase": "wave_2", "name": "ai-driven-save (vault graduation)", "status": "completed", "priority": "P1", "owner": "ralph-coder-eta", "evidence": "commit 13b0943 feat(vault): unify 3 learning pipelines + d6de57c fix(vault): graduation+health"},
+
+    {"id": "W3.1", "phase": "wave_3", "name": "taxonomy-restructure", "status": "completed", "priority": "P2", "owner": "ralph-coder-theta", "evidence": "14 taxonomy files (4 halls + 5 rooms + 3 wings + 2 README) + MIGRATION_MAP_2026-04-07.md + 13/28 noise excluded (46%)"},
+    {"id": "W3.2", "phase": "wave_3", "name": "specialist-diaries", "status": "completed", "priority": "P2", "owner": "ralph-coder-iota", "evidence": "6 agent diaries in Obsidian vault + diary_path frontmatter in all 6 ralph agents"},
+
+    {"id": "W4.1", "phase": "wave_4", "name": "unified-mcp-server", "status": "pending", "priority": "P1", "owner": "ralph-coder-kappa", "note": "DEFERRED — significant scope, better suited for dedicated PR after core architecture lands"},
+    {"id": "W4.2", "phase": "wave_4", "name": "hook-consolidation", "status": "completed", "priority": "P1", "owner": "ralph-coder-lambda", "evidence": "wake-up-layer-stack.sh registered as SessionStart hook + 3 consolidation candidates identified in docs/refactor/HOOK_CONSOLIDATION_W4.2_2026-04-07.md"},
+    {"id": "W4.3", "phase": "wave_4", "name": "full-test-suite", "status": "in_progress", "priority": "P1", "owner": "ralph-tester-beta", "evidence": "vault health test added (d6de57c) but full suite pending"},
+    {"id": "W4.4", "phase": "wave_4", "name": "docs-update", "status": "completed", "priority": "P2", "owner": "ralph-reviewer-beta", "evidence": "CLAUDE.md updated with MemPalace v3.0 Memory System (layer stack, taxonomy, agent diaries, key decisions)"},
+
+    {"id": "W5.0", "phase": "wave_5", "name": "diagnose-symlinks", "status": "pending", "priority": "P2", "owner": "ralph-researcher-zeta"},
+    {"id": "W5.1", "phase": "wave_5", "name": "promote-rules-standalone", "status": "pending", "priority": "P2", "owner": "ralph-coder-mu"},
+    {"id": "W5.2", "phase": "wave_5", "name": "universal-hooks", "status": "pending", "priority": "P2", "owner": "ralph-coder-nu"},
+    {"id": "W5.3", "phase": "wave_5", "name": "register-universal-hooks", "status": "pending", "priority": "P2", "owner": "ralph-coder-xi"},
+    {"id": "W5.4", "phase": "wave_5", "name": "task-classifier-skill", "status": "pending", "priority": "P2", "owner": "ralph-coder-omicron"},
+    {"id": "W5.5", "phase": "wave_5", "name": "package-as-plugin", "status": "pending", "priority": "P2", "owner": "ralph-coder-pi"},
+    {"id": "W5.6", "phase": "wave_5", "name": "global-rollout-validation", "status": "pending", "priority": "P2", "owner": "ralph-tester-gamma"},
+    {"id": "W5.7", "phase": "wave_5", "name": "symlink-vs-copy-policy", "status": "pending", "priority": "P2", "owner": "ralph-reviewer-gamma"}
+  ]
+}

@@ -288,18 +288,49 @@ Language Server Protocol for efficient code navigation:
 | 5-6 | Claude Sonnet |
 | 7-10 | Claude Opus |
 
-## Memory System
+## Memory System (MemPalace v3.0)
 
-```bash
-ralph memory-search "query"    # Search memory
-ralph health                   # System check
-ralph agent-memory init <agent>
-```
+### Layer Stack (SessionStart wake-up)
 
-Storage locations:
-- Semantic: `~/.ralph/memory/semantic.json`
-- Episodic: `~/.ralph/episodes/`
-- Procedural: `~/.ralph/procedural/rules.json`
+| Layer | File | Tokens (cl100k) | Purpose |
+|-------|------|-----------------|---------|
+| L0 | `~/.ralph/layers/L0_identity.md` | ~239 | Agent identity + principles |
+| L1 | `~/.ralph/layers/L1_essential.md` | ~579 | 9 actionable rules (filtered from 1003) |
+| L2 | `.claude/rules/learned/{halls,rooms,wings}/` | on-demand | Project-specific taxonomy |
+| L3 | Obsidian vault grep | on-demand | Full knowledge base queries |
+
+**Wake-up hook**: `.claude/hooks/wake-up-layer-stack.sh` loads L0+L1 at session start (~1050 tokens).
+
+### Learned Rules Taxonomy
+
+Rules organized in 3 dimensions for flexible retrieval:
+
+| Dimension | Directory | Organization |
+|-----------|-----------|--------------|
+| **Halls** (by type) | `.claude/rules/learned/halls/` | decisions, patterns, anti-patterns, fixes |
+| **Rooms** (by topic) | `.claude/rules/learned/rooms/` | hooks, memory, agents, security, testing |
+| **Wings** (by scope) | `.claude/rules/learned/wings/` | `_global/`, `multi-agent-ralph-loop/` |
+
+**L1 Filter**: Mechanical noise excluded (`ep-auto-*`, `ep-rule-*`), substantive filter (behavior >= 20 chars), criticality bonus (1.5x for CRITICAL/MUST/NEVER).
+
+### Agent Diaries
+
+Each ralph agent has a diary in Obsidian vault:
+- Location: `~/Documents/Obsidian/MiVault/agents/{agent-name}/diary/`
+- 6 agents: ralph-coder, ralph-reviewer, ralph-tester, ralph-researcher, ralph-frontend, ralph-security
+
+### Storage Locations
+
+- Knowledge graph: `~/Documents/Obsidian/MiVault/` (primary)
+- Layer files: `~/.ralph/layers/`
+- Session ledgers: `~/.ralph/ledgers/`
+- Session handoffs: `~/.ralph/handoffs/`
+
+### Key Decisions
+
+- **AAAK rejected** for LLM context (see `docs/architecture/AAAK_LIMITATIONS_ADR_2026-04-07.md`): PUA encoding increases cl100k_base tokens by +19.8%. Selection beats encoding.
+- **claude-mem removed**: Full forensic removal (Wave 0). Data migrated to Obsidian vault.
+- **Drift audit**: 18 findings documented in `docs/audit/CLAUDE_MD_DRIFT_2026-04-07.md`
 
 ## Quality Gates
 
@@ -325,6 +356,12 @@ Use `/repo-learn` to extract patterns from external repos.
 Tests in `tests/` at project root:
 ```
 tests/
+├── layers/               # Layer stack tests (v3.0 MemPalace)
+│   └── test_layer_stack.py
+├── aaak/                 # AAAK codec tests (utility, not for context)
+│   └── test_aaak_codec.py
+├── security/             # Security validation (v2.89)
+│   └── test-claude-mem-removed.sh
 ├── skills/               # Skill unit tests (v2.88)
 │   ├── test-task-batch.sh
 │   ├── test-create-task-batch.sh
@@ -339,10 +376,13 @@ Do not place tests in `.claude/tests/` (deprecated).
 ## Documentation
 
 All documentation in `docs/`:
-- `docs/architecture/` - Design documents
+- `docs/architecture/` - Design documents (incl. AAAK_LIMITATIONS_ADR)
+- `docs/audit/` - Drift audits (CLAUDE_MD_DRIFT_2026-04-07.md)
 - `docs/batch-execution/` - Batch task execution (v2.88)
-- `docs/swarm-mode/` - Swarm mode guides
+- `docs/benchmark/` - Memory baselines + wake-up cost metrics
+- `docs/refactor/` - Taxonomy migration map + curator PRD
 - `docs/security/` - Security documentation
+- `docs/swarm-mode/` - Swarm mode guides
 - `docs/hooks/` - Hook reference
 - `docs/prd/` - Example PRD files
 
