@@ -13,6 +13,7 @@ Ralph extends Claude Code into a multi-agent development framework with a struct
 | **6 Teammates** | ralph-coder, ralph-reviewer, ralph-tester, ralph-researcher, ralph-frontend, ralph-security |
 | **22 Active Hooks** | Pre/post tool validation, quality gates, secret sanitization, security guards |
 | **Aristotle Analysis** | 5-phase first principles deconstruction before every non-trivial task |
+| **Anti-Rationalization** | 46-entry table preventing agents from cutting corners |
 | **Quality Gates** | 4-stage blocking validation: correctness, quality, security, consistency |
 | **925+ Tests** | Full test suite covering layers, hooks, security, skills, and pipeline |
 
@@ -97,10 +98,12 @@ python3 -m pytest tests/ -q
 |---|---|---|
 | `ralph-coder` | Implementation | Read, Edit, Write, Bash |
 | `ralph-reviewer` | Code review (OWASP) | Read, Grep, Glob |
-| `ralph-tester` | Testing & QA | Read, Edit, Write, Bash(test) |
+| `ralph-tester` | Testing (80% coverage) | Read, Edit, Write, Bash(test) |
 | `ralph-researcher` | Research (Zai MCP) | Read, Grep, Glob, WebSearch |
 | `ralph-frontend` | Frontend (WCAG 2.1 AA) | LSP, Read, Edit, Write, Bash |
 | `ralph-security` | Security (6 pillars) | LSP, Read, Grep, Glob, Bash |
+
+Agent Teams is enabled via `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json. Teammates are spawned in parallel by the orchestrator, iterate, parallel, security, and task-batch skills.
 
 ## Core Skills
 
@@ -117,6 +120,28 @@ python3 -m pytest tests/ -q
 | `/bugs` | Systematic bug hunting |
 | `/ship` | Pre-launch checklist (gates + security + review) |
 | `/spec` | Verifiable technical specification before coding |
+
+## Quality Gates
+
+4-stage validation, all blocking except consistency:
+
+1. **CORRECTNESS** — Syntax valid, logic sound
+2. **QUALITY** — Types, no console.log/TODO/debugger
+3. **SECURITY** — semgrep + gitleaks + OWASP validation
+4. **CONSISTENCY** — Linting and style (advisory)
+
+Hook enforcement: `TeammateIdle` (exit 2 = keep working) and `TaskCompleted` (exit 2 = block completion) ensure no agent completes without passing gates.
+
+## Parallel-First Rule
+
+All independent tasks MUST execute in parallel. Sequential execution requires documented dependency.
+
+```
+Complexity 1-2: Direct execution (no team required)
+Complexity 3+:  Agent Teams with parallel teammates (MANDATORY)
+```
+
+See: `.claude/rules/parallel-first.md` and anti-rationalization entries #38-#46.
 
 ## Architecture
 
@@ -165,6 +190,9 @@ User Request --> Claude Code
 | git | 2.0+ | Yes |
 | python3 | 3.8+ | Yes (for tests) |
 | Obsidian | Any | Optional (for vault KG) |
+| GitHub CLI | Any | Optional |
+| semgrep | Any | Optional (security) |
+| gitleaks | Any | Optional (secrets) |
 
 ## Testing
 
@@ -181,9 +209,43 @@ The system is **model-agnostic** — all skills and agents inherit the configure
 ```json
 {
   "env": {
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "your-model",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   }
 }
+```
+
+Skills are symlinked to 6 platform directories. Source of truth: `.claude/skills/` in this repo.
+
+## Global Infrastructure
+
+All Ralph advantages (Plan Mode, Aristotle, Parallel-First, Agent Teams) work in **any project** — rules, skills, and agents are symlinked globally.
+
+```bash
+# Validate global infrastructure (36 checks)
+bash scripts/validate-global-infrastructure.sh
+
+# Auto-fix broken symlinks
+bash scripts/validate-global-infrastructure.sh --fix
+```
+
+## Autoresearch
+
+Autonomous experimentation loop inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch). Continuously modifies code, measures metrics, and keeps only improvements.
+
+**Smart Setup** reduces configuration from 14+ manual parameters to 2-3 guided questions:
+
+| Phase | Name | What it does |
+|---|---|---|
+| 0 | **SCOUT** | Silent auto-detection of project type, scripts, metrics |
+| 1 | **WIZARD** | 2-3 AskUserQuestion with pre-filled options and previews |
+| 2 | **VALIDATE** | Adversarial dry-run (eval works, metric extracts, git clean) |
+
+9 domain templates: ML Training, Node.js Tests, Bundle Size, Python Tests, Prompt Engineering, SQL, Rust, Lighthouse, Custom.
+
+```bash
+/autoresearch "optimize my tests"     # Smart mode (auto-detect)
+/autoresearch --manual                # Classic 14-parameter setup
 ```
 
 ## Documentation
@@ -198,6 +260,7 @@ The system is **model-agnostic** — all skills and agents inherit the configure
 | Security | `docs/security/` |
 | Hooks Reference | `docs/hooks/` |
 | Benchmarks | `docs/benchmark/` |
+| Batch Execution | `docs/batch-execution/` |
 
 ## Acknowledgments
 
@@ -208,3 +271,9 @@ The system is **model-agnostic** — all skills and agents inherit the configure
 ## License
 
 MIT License - see LICENSE file.
+
+## References
+
+- [Claude Code Agent Teams](https://code.claude.com/docs/en/agent-teams)
+- [Claude Code Hooks Guide](https://code.claude.com/docs/en/hooks-guide)
+- [Claude Code Skills](https://code.claude.com/docs/en/skills)

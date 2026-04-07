@@ -47,7 +47,7 @@ Each of the 6 Ralph agents has a diary in the Obsidian vault for tracking behavi
 |---|---|---|
 | `ralph-coder` | Implementation | Code changes with quality gates |
 | `ralph-reviewer` | Code review | OWASP, anti-patterns |
-| `ralph-tester` | Testing & QA | Unit, integration, coverage |
+| `ralph-tester` | Testing (80% coverage) | Unit, integration, coverage |
 | `ralph-researcher` | Research | Codebase exploration, web search |
 | `ralph-frontend` | Frontend | WCAG 2.1 AA, DESIGN.md compliance |
 | `ralph-security` | Security | 6 pillars: input, auth, crypto, logging, config, deps |
@@ -65,6 +65,23 @@ All independent tasks execute in **parallel** (mandatory for complexity >= 3). S
 
 Hook enforcement via `TeammateIdle` and `TaskCompleted` events ensures no agent completes without passing all gates.
 
+## Parallel-First Rule
+
+All independent tasks MUST execute in parallel using Agent Teams. Sequential execution requires documented data dependency.
+
+```
+Complexity 1-2: Direct execution (no team required)
+Complexity 3+:  Agent Teams with parallel teammates (MANDATORY)
+```
+
+See: `.claude/rules/parallel-first.md` and anti-rationalization entries #38-#46.
+
+## Anti-Rationalization
+
+46-entry table preventing agents from rationalizing suboptimal decisions. Integrated into the orchestrator and iterate skills to ensure agents follow the plan rather than cutting corners.
+
+Reference: `docs/reference/anti-rationalization.md`
+
 ## Statistics
 
 | Metric | Value |
@@ -77,6 +94,7 @@ Hook enforcement via `TeammateIdle` and `TaskCompleted` events ensures no agent 
 | **Learned Rules** | 14 taxonomy files (46% noise filtered) |
 | **Agent Diaries** | 6 (Obsidian vault) |
 | **Security Tests** | 19 (claude-mem removal + pipeline) |
+| **Anti-Rationalization** | 46 entries |
 | **Version** | 3.0.0 |
 
 ## Core Skills
@@ -91,6 +109,9 @@ Hook enforcement via `TeammateIdle` and `TaskCompleted` events ensures no agent 
 | `/security` | Multi-agent security audit |
 | `/autoresearch` | Autonomous experimentation loop |
 | `/adversarial` | Spec refinement with cross-validation |
+| `/bugs` | Systematic bug hunting |
+| `/ship` | Pre-launch checklist (gates + security + review) |
+| `/spec` | Verifiable technical specification before coding |
 
 ## Use Cases
 
@@ -166,8 +187,11 @@ python3 -m pytest tests/ -q
 | [README.md](../../README.md) | Project overview and quick start |
 | [AAAK Limitations ADR](AAAK_LIMITATIONS_ADR_2026-04-07.md) | Why encoding fails for LLM tokens |
 | [Memory Migration Map](MEMORY_LEARNING_MIGRATION_MAP_2026-04-07.md) | Full migration from claude-mem |
+| [Anti-Rationalization](../reference/anti-rationalization.md) | 46-entry table against agent corner-cutting |
+| [Aristotle Methodology](../reference/aristotle-first-principles.md) | First principles analysis framework |
 | [Security Reports](../security/) | Security audit documentation |
 | [Benchmark Results](../benchmark/) | Memory baselines and wake-up cost |
+| [Batch Execution](../batch-execution/) | Batch task execution documentation |
 
 ## Acknowledgments
 
