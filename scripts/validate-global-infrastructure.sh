@@ -116,20 +116,37 @@ for hook in "${UNIVERSAL_HOOKS[@]}"; do
   fi
 done
 
-# === 3. KEY SKILLS (must be symlinked in 6 directories) ===
+# === 3. KEY SKILLS (standalone copies or symlinks — W5.4 copy strategy) ===
 echo ""
-echo "=== Key Skills (global symlinks) ==="
+echo "=== Key Skills (standalone copies or symlinks) ==="
 SKILLS=(orchestrator iterate clarify adversarial autoresearch plan gates security parallel)
-SKILL_DIRS=(~/.claude/skills ~/.codex/skills ~/.ralph/skills ~/.config/agents/skills)
 for skill in "${SKILLS[@]}"; do
-  if [[ -L ~/.claude/skills/"$skill" ]]; then
-    pass "$skill → ~/.claude/skills/"
-  elif [[ "$FIX_MODE" == "--fix" ]]; then
-    for dir in "${SKILL_DIRS[@]}"; do
-      mkdir -p "$dir"
-      ln -sfn "$REPO/.claude/skills/$skill" "$dir/$skill"
-    done
-    fixed "$skill → symlinked to all directories"
+  SKILL_PATH=~/.claude/skills/"$skill"
+  REPO_SKILL="$REPO/.claude/skills/$skill"
+  if [[ -L "$SKILL_PATH" ]]; then
+    # Symlink — verify target exists
+    TARGET=$(readlink "$SKILL_PATH")
+    if [[ -e "$SKILL_PATH" ]]; then
+      pass "$skill → symlink (valid)"
+    else
+      if [[ "$FIX_MODE" == "--fix" ]] && [[ -d "$REPO_SKILL" ]]; then
+        rm -f "$SKILL_PATH"
+        cp -R "$REPO_SKILL" "$SKILL_PATH"
+        fixed "$skill → broken symlink replaced with copy"
+      else
+        fail "$skill → broken symlink (target missing)"
+      fi
+    fi
+  elif [[ -d "$SKILL_PATH" ]]; then
+    # Standalone copy — verify SKILL.md exists inside
+    if [[ -f "$SKILL_PATH/SKILL.md" ]]; then
+      pass "$skill → standalone copy"
+    else
+      fail "$skill → directory exists but no SKILL.md"
+    fi
+  elif [[ "$FIX_MODE" == "--fix" ]] && [[ -d "$REPO_SKILL" ]]; then
+    cp -R "$REPO_SKILL" "$SKILL_PATH"
+    fixed "$skill → created from repo"
   else
     fail "$skill missing from ~/.claude/skills/"
   fi

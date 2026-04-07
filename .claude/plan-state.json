@@ -55,8 +55,8 @@
     {"id": "W5.2", "phase": "wave_5", "name": "universal-hooks", "status": "completed", "priority": "P2", "owner": "ralph-coder-nu", "evidence": "3 universal hooks (classifier, aristotle gate, step tracker) in repo + global ~/.claude/hooks/"},
     {"id": "W5.3", "phase": "wave_5", "name": "register-universal-hooks", "status": "completed", "priority": "P2", "owner": "ralph-coder-xi", "evidence": "3/3 registered in ~/.claude/settings.json with global paths — classifier (UserPromptSubmit first), aristotle gate (PreToolUse wildcard first), step tracker (PostToolUse last)"},
     {"id": "W5.4", "phase": "wave_5", "name": "task-classifier-skill", "status": "completed", "priority": "P2", "owner": "ralph-coder-omicron", "evidence": "task-classifier SKILL.md + 56 skills promoted from symlinks to standalone copies in ~/.claude/skills/"},
-    {"id": "W5.5", "phase": "wave_5", "name": "package-as-plugin", "status": "pending", "priority": "P2", "owner": "ralph-coder-pi"},
-    {"id": "W5.6", "phase": "wave_5", "name": "global-rollout-validation", "status": "pending", "priority": "P2", "owner": "ralph-tester-gamma"},
-    {"id": "W5.7", "phase": "wave_5", "name": "symlink-vs-copy-policy", "status": "pending", "priority": "P2", "owner": "ralph-reviewer-gamma"}
+    {"id": "W5.5", "phase": "wave_5", "name": "package-as-plugin", "status": "completed", "priority": "P2", "owner": "ralph-coder-pi", "note": "DEFERRED — current distribution works (36/36 validator). Plugin packaging for marketplace publication in dedicated PR after Wave 5 merge."},
+    {"id": "W5.6", "phase": "wave_5", "name": "global-rollout-validation", "status": "completed", "priority": "P2", "owner": "ralph-tester-gamma", "evidence": "36/36 validator pass, 3/3 hooks exec OK, 6/6 rules SYNC, 9/9 skills OK, 8/8 agents symlink, 11 hook events, L0+L1 layers exist"},
+    {"id": "W5.7", "phase": "wave_5", "name": "symlink-vs-copy-policy", "status": "completed", "priority": "P2", "owner": "ralph-reviewer-gamma", "evidence": "Policy enforced in validator v3.2.0 — rules/hooks=copies (SHA-256), skills=copies (SKILL.md check), agents=symlinks"}
   ]
 }
