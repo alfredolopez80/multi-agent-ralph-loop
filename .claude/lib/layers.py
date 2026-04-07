@@ -1,0 +1,696 @@
+#!/usr/bin/env python3
+"""
+4-Layer Memory Stack for Ralph Multi-Agent System
+=================================================
+
+Inspired by mempalace/layers.py (https://github.com/milla-jovovich/mempalace).
+Adapted for the Ralph vault-first architecture with Obsidian KG backend.
+
+Layers:
+    Layer0  — Identity layer. Manual file at ~/.ralph/layers/L0_identity.md (~100 tokens).
+               Loaded at every session start. Static, human-maintained.
+
+    Layer1  — Essential layer. Auto-generated top-15 high-value procedural rules,
+               stored as plain markdown at ~/.ralph/layers/L1_essential.md.
+               Rebuilt by build() from ~/.ralph/procedural/rules.json.
+               (Original plan used AAAK encoding, but tiktoken cl100k_base
+               measurement showed AAAK INCREASES tokens by ~20% — see
+               docs/architecture/AAAK_LIMITATIONS_ADR_2026-04-07.md.)
+
+    Layer2  — Project wings. On-demand per-project context stored under
+               ~/.ralph/layers/L2_wings/<project_name>/context.md.
+               Loaded only when a project is explicitly requested.
+
+    Layer3  — Vault queries. Direct Obsidian vault queries via grep + frontmatter.
+               NOTE: claude-mem MCP was removed in Wave 0. All queries use
+               ~/Documents/Obsidian/MiVault/ via grep (corrected from original plan).
+
+Wake-up cost target: <1500 tokens for L0+L1 combined.
+
+Usage:
+    from layers import Layer0, Layer1, Layer2, Layer3
+
+    # Load identity at session start
+    ctx = Layer0().load()
+
+    # Build L1 from procedural rules (call once to refresh)
+    Layer1().build()
+
+    # Load L1 essentials
+    essentials = Layer1().load()
+
+    # Check if project wing exists
+    if Layer2().has("my-project"):
+        wing = Layer2().load("my-project")
+
+    # Query vault
+    results = Layer3().query("hook json format")
+"""
+
+import json
+import re
+import subprocess
+from pathlib import Path
+from typing import Optional
+
+# ---------------------------------------------------------------------------
+# Path constants
+# ---------------------------------------------------------------------------
+
+LAYERS_DIR = Path.home() / ".ralph" / "layers"
+L0_PATH = LAYERS_DIR / "L0_identity.md"
+L1_PATH = LAYERS_DIR / "L1_essential.md"
+L2_DIR = LAYERS_DIR / "L2_wings"
+PROCEDURAL_RULES_JSON = Path.home() / ".ralph" / "procedural" / "rules.json"
+VAULT_DIR = Path.home() / "Documents" / "Obsidian" / "MiVault"
+
+# Number of top rules to include in L1
+L1_RULE_COUNT = 15
+
+# Max snippet length returned by Layer3
+L3_SNIPPET_MAX = 200
+
+
+# ---------------------------------------------------------------------------
+# Layer 0 — Identity
+# ---------------------------------------------------------------------------
+
+class Layer0:
+    """
+    Identity layer. Manual file at ~/.ralph/layers/L0_identity.md.
+
+    This file is ~100 tokens of minimal identity context: who we are,
+    what we do, and the 5 core principles. It is loaded at every session
+    start and never auto-generated.
+    """
+
+    def __init__(self, path: Optional[Path] = None):
+        self.path = path or L0_PATH
+
+    def exists(self) -> bool:
+        """Return True if the L0 identity file exists."""
+        return self.path.is_file()
+
+    def load(self) -> str:
+        """
+        Load and return the identity content.
+
+        Returns:
+            Contents of L0_identity.md as a string.
+
+        Raises:
+            FileNotFoundError: If the identity file does not exist.
+        """
+        if not self.exists():
+            raise FileNotFoundError(
+                f"L0 identity file not found at {self.path}. "
+                "Create it manually with the system identity content."
+            )
+        return self.path.read_text(encoding="utf-8")
+
+    def token_estimate(self) -> int:
+        """Rough token estimate for L0 content (1 token ~ 4 chars)."""
+        if not self.exists():
+            return 0
+        return max(1, len(self.path.read_text(encoding="utf-8")) // 4)
+
+
+# ---------------------------------------------------------------------------
+# Layer 1 — Essential rules (AAAK-encoded)
+# ---------------------------------------------------------------------------
+
+class Layer1:
+    """
+    Essential layer. Auto-generated from top-15 high-value procedural rules.
+
+    Source: ~/.ralph/procedural/rules.json
+    Output: ~/.ralph/layers/L1_essential.md  (plain markdown, not AAAK)
+
+    Rules are scored by: confidence * usage_count (descending).
+    The top 15 are written as plain markdown — measured 690 tokens
+    cl100k_base, vs 825+ tokens if AAAK-encoded.
+    See docs/architecture/AAAK_LIMITATIONS_ADR_2026-04-07.md for the
+    full analysis of why AAAK was abandoned for L1.
+    """
+
+    def __init__(self, path: Optional[Path] = None, rule_count: int = L1_RULE_COUNT):
+        self.path = path or L1_PATH
+        self.rule_count = rule_count
+
+    def _load_rules_from_json(self) -> list[dict]:
+        """Load rules from rules.json."""
+        with PROCEDURAL_RULES_JSON.open(encoding="utf-8") as f:
+            data = json.load(f)
+        rules = data.get("rules", [])
+        if not isinstance(rules, list):
+            raise ValueError(
+                f"Expected 'rules' to be a list in {PROCEDURAL_RULES_JSON}, "
+                f"got {type(rules).__name__}"
+            )
+        return rules
+
+    def _load_source_rules(self) -> list[dict]:
+        """Load rules from rules.json."""
+        if not PROCEDURAL_RULES_JSON.is_file():
+            raise FileNotFoundError(
+                f"No procedural rules source found at {PROCEDURAL_RULES_JSON}."
+            )
+        return self._load_rules_from_json()
+
+    # Rules matching these id prefixes are mechanical auto-extractions
+    # from curator-learn.sh regex patterns. They have high usage_count
+    # (fire on every file scan) but ZERO actionable leverage at wake-up.
+    # Examples: "Implements caching strategy", "Uses async/await".
+    # These are excluded from L1 selection until W2.3 (ai-driven-save)
+    # refactors curator to filter them at the source.
+    _MECHANICAL_ID_PREFIXES = ("ep-auto-", "ep-rule-")
+
+    # Keywords that indicate an actionable, critical rule (earn scoring bonus).
+    _CRITICALITY_KEYWORDS = (
+        "CRITICAL", "MUST", "NEVER", "ALWAYS", "REQUIRED",
+        "Never", "Always", "Must",
+    )
+
+    def _is_mechanical(self, rule: dict) -> bool:
+        """Return True if rule_id matches a known mechanical auto-extraction prefix."""
+        rule_id = str(rule.get("rule_id", rule.get("rule", rule.get("name", "")))).lower()
+        return any(rule_id.startswith(p) for p in self._MECHANICAL_ID_PREFIXES)
+
+    def _is_substantive(self, rule: dict) -> bool:
+        """
+        Return True if the rule has enough substance to be useful at wake-up.
+
+        Rejects rules with no meaningful behavior text (less than 20 chars)
+        since they provide zero actionable signal.
+        """
+        behavior = str(rule.get("behavior", rule.get("description", ""))).strip()
+        return len(behavior) >= 20
+
+    def _score_rule(self, rule: dict) -> float:
+        """
+        Score a rule by (confidence * usage_count) with criticality bonus.
+
+        Mechanical auto-extracted rules are excluded at selection time
+        (see build()), not scored down — filtering is cleaner than demotion.
+
+        Criticality bonus: 1.5x multiplier if the behavior text contains
+        any of the keywords in _CRITICALITY_KEYWORDS. Reason: critical
+        rules are often applied rarely (low usage_count) but deserve
+        priority in the wake-up context.
+        """
+        confidence = float(rule.get("confidence", 0.5))
+        usage = int(rule.get("usage_count", 0))
+        base = confidence * usage
+
+        # Criticality bonus
+        behavior = str(rule.get("behavior", rule.get("description", "")))
+        if any(kw in behavior for kw in self._CRITICALITY_KEYWORDS):
+            return base * 1.5
+        return base
+
+    def _format_rule_as_markdown(self, rule: dict, idx: int) -> str:
+        """Format a single rule as a markdown section."""
+        rule_id = rule.get("rule_id", rule.get("rule", rule.get("name", f"rule_{idx}")))
+        behavior = rule.get("behavior", rule.get("description", rule.get("content", "")))
+        confidence = rule.get("confidence", 0.0)
+        usage = rule.get("usage_count", rule.get("usage", rule.get("sessions", 0)))
+        out = [f"## {idx}. {rule_id}"]
+        if behavior:
+            out.append(behavior)
+        out.append(f"_confidence: {confidence} · usage: {usage}_")
+        out.append("")
+        return "\n".join(out)
+
+    def build(self) -> Path:
+        """
+        Build L1_essential.md from the top rules in the procedural store.
+
+        Steps:
+          1. Load all rules from rules.json.
+          2. Score each rule by confidence * usage_count.
+          3. Take top self.rule_count rules (default 15).
+          4. Write as plain markdown to self.path (L1_essential.md).
+
+        Plain markdown was chosen over AAAK encoding after measuring
+        actual cl100k_base tokens: AAAK INCREASED tokens by ~20% on this
+        content. See docs/architecture/AAAK_LIMITATIONS_ADR_2026-04-07.md.
+
+        Returns:
+            Path to the written L1_essential.md file.
+        """
+        LAYERS_DIR.mkdir(parents=True, exist_ok=True)
+        all_rules = self._load_source_rules()
+
+        # Filter out mechanical auto-extracted rules (curator regex patterns)
+        # AND empty-behavior rules. Both have zero wake-up leverage.
+        # Keep manual rules + AI-evaluated rules with substantive text only.
+        actionable_rules = [
+            r for r in all_rules
+            if not self._is_mechanical(r) and self._is_substantive(r)
+        ]
+
+        # Score with criticality bonus and rank
+        scored = sorted(
+            actionable_rules,
+            key=lambda r: self._score_rule(r),
+            reverse=True,
+        )
+        top_rules = scored[: self.rule_count]
+
+        total_input = len(all_rules)
+        total_actionable = len(actionable_rules)
+        lines = [
+            f"# L1 Essential Rules ({len(top_rules)} actionable, top by criticality × usage)",
+            "",
+            "**Generated**: 2026-04-07",
+            "**Source**: ~/.ralph/procedural/rules.json",
+            f"**Pipeline**: {total_input} total rules → "
+            f"{total_actionable} actionable (excl. mechanical+empty) → "
+            f"top {len(top_rules)} (max: {self.rule_count})",
+            "**Scoring**: confidence × usage_count, ×1.5 bonus if behavior contains CRITICAL/MUST/NEVER/ALWAYS",
+            "",
+        ]
+        for i, rule in enumerate(top_rules, 1):
+            lines.append(self._format_rule_as_markdown(rule, i))
+
+        content = "\n".join(lines)
+        self.path.write_text(content, encoding="utf-8")
+        return self.path
+
+    def exists(self) -> bool:
+        """Return True if L1_essential.md has been built."""
+        return self.path.is_file()
+
+    def load(self) -> str:
+        """
+        Read and return the essential rules content.
+
+        Returns:
+            Plain markdown text of the L1 essentials block.
+
+        Raises:
+            FileNotFoundError: If L1 has not been built yet (call build() first).
+        """
+        if not self.exists():
+            raise FileNotFoundError(
+                f"L1 essential file not found at {self.path}. "
+                "Call Layer1().build() first."
+            )
+        return self.path.read_text(encoding="utf-8")
+
+    def token_estimate(self) -> int:
+        """Rough token estimate for L1 content (1 token ~ 4 chars)."""
+        if not self.exists():
+            return 0
+        return max(1, len(self.path.read_text(encoding="utf-8")) // 4)
+
+
+# ---------------------------------------------------------------------------
+# Layer 2 — Project wings (on-demand)
+# ---------------------------------------------------------------------------
+
+class Layer2:
+    """
+    Project wings layer. On-demand per-project context.
+
+    Context files live at: ~/.ralph/layers/L2_wings/<project_name>/context.md
+
+    These files are written externally (by the learning pipeline or manually)
+    and loaded here when a specific project is active.
+    """
+
+    def __init__(self, wings_dir: Optional[Path] = None):
+        self.wings_dir = wings_dir or L2_DIR
+
+    def _wing_path(self, project_name: str) -> Path:
+        """Return the context.md path for a project wing."""
+        safe_name = re.sub(r"[^a-zA-Z0-9_\-]", "_", project_name)
+        return self.wings_dir / safe_name / "context.md"
+
+    def has(self, project_name: str) -> bool:
+        """Return True if a wing context file exists for the given project."""
+        return self._wing_path(project_name).is_file()
+
+    def load(self, project_name: str) -> str:
+        """
+        Load and return the project wing context.
+
+        Args:
+            project_name: Project name (used as directory name).
+
+        Returns:
+            Content of the project context.md.
+
+        Raises:
+            FileNotFoundError: If no wing exists for the project.
+        """
+        wing_path = self._wing_path(project_name)
+        if not wing_path.is_file():
+            raise FileNotFoundError(
+                f"No L2 wing found for project '{project_name}' at {wing_path}. "
+                "Create the wing directory and context.md manually or via the learning pipeline."
+            )
+        return wing_path.read_text(encoding="utf-8")
+
+    def list_projects(self) -> list[str]:
+        """Return a list of project names that have wing context files."""
+        if not self.wings_dir.is_dir():
+            return []
+        return [
+            d.name
+            for d in self.wings_dir.iterdir()
+            if d.is_dir() and (d / "context.md").is_file()
+        ]
+
+    def write(self, project_name: str, content: str) -> Path:
+        """
+        Write or overwrite a project wing context file.
+
+        Args:
+            project_name: Project name.
+            content: Context content to write.
+
+        Returns:
+            Path to the written context.md file.
+        """
+        wing_path = self._wing_path(project_name)
+        wing_path.parent.mkdir(parents=True, exist_ok=True)
+        wing_path.write_text(content, encoding="utf-8")
+        return wing_path
+
+
+# ---------------------------------------------------------------------------
+# Layer 3 — Vault queries (Obsidian grep-based)
+# ---------------------------------------------------------------------------
+
+class Layer3:
+    """
+    Vault queries layer. Direct Obsidian vault queries via grep + frontmatter.
+
+    NOTE: claude-mem MCP was removed in Wave 0 for security reasons.
+    All queries use ~/Documents/Obsidian/MiVault/ via filesystem grep.
+    This is the corrected implementation per the W2.2 critical correction.
+
+    Returns structured results with file path, matched line, and snippet context.
+    """
+
+    def __init__(self, vault_dir: Optional[Path] = None):
+        self.vault_dir = vault_dir or VAULT_DIR
+
+    def _vault_exists(self) -> bool:
+        return self.vault_dir.is_dir()
+
+    def _grep_vault(self, pattern: str, file_glob: str = "*.md") -> list[dict]:
+        """
+        Run grep recursively over the vault directory.
+
+        Args:
+            pattern: Grep pattern (case-insensitive).
+            file_glob: File pattern to search (default: *.md).
+
+        Returns:
+            List of match dicts with keys: file, line_number, line, snippet.
+        """
+        if not self._vault_exists():
+            return []
+
+        try:
+            result = subprocess.run(
+                [
+                    "grep",
+                    "--include=" + file_glob,
+                    "-r",
+                    "-i",
+                    "-n",
+                    "--with-filename",
+                    "-m", "5",  # Max 5 matches per file
+                    pattern,
+                    str(self.vault_dir),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode not in (0, 1):
+                return []
+
+            matches = []
+            for raw_line in result.stdout.splitlines():
+                # Format: /path/to/file.md:42:matched line content
+                parts = raw_line.split(":", 2)
+                if len(parts) < 3:
+                    continue
+                file_path = parts[0]
+                try:
+                    line_number = int(parts[1])
+                except ValueError:
+                    continue
+                matched_text = parts[2]
+
+                snippet = matched_text.strip()
+                if len(snippet) > L3_SNIPPET_MAX:
+                    snippet = snippet[:L3_SNIPPET_MAX] + "..."
+
+                matches.append(
+                    {
+                        "file": file_path,
+                        "line_number": line_number,
+                        "line": matched_text.strip(),
+                        "snippet": snippet,
+                    }
+                )
+            return matches
+
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            return []
+
+    def _grep_json(self, pattern: str) -> list[dict]:
+        """
+        Grep JSON files in the migrated-from-claude-mem directory.
+
+        Args:
+            pattern: Case-insensitive grep pattern.
+
+        Returns:
+            List of match dicts.
+        """
+        json_dir = self.vault_dir / "migrated-from-claude-mem"
+        if not json_dir.is_dir():
+            return []
+
+        try:
+            result = subprocess.run(
+                [
+                    "grep",
+                    "--include=*.json",
+                    "-r",
+                    "-i",
+                    "-n",
+                    "--with-filename",
+                    "-m", "3",
+                    pattern,
+                    str(json_dir),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode not in (0, 1):
+                return []
+
+            matches = []
+            for raw_line in result.stdout.splitlines():
+                parts = raw_line.split(":", 2)
+                if len(parts) < 3:
+                    continue
+                file_path = parts[0]
+                try:
+                    line_number = int(parts[1])
+                except ValueError:
+                    continue
+                matched_text = parts[2]
+
+                snippet = matched_text.strip()
+                if len(snippet) > L3_SNIPPET_MAX:
+                    snippet = snippet[:L3_SNIPPET_MAX] + "..."
+
+                matches.append(
+                    {
+                        "file": file_path,
+                        "line_number": line_number,
+                        "line": matched_text.strip(),
+                        "snippet": snippet,
+                    }
+                )
+            return matches
+
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            return []
+
+    def query(self, question: str, max_results: int = 10) -> list[dict]:
+        """
+        Query the Obsidian vault for relevant content.
+
+        Implementation: grep over ~/Documents/Obsidian/MiVault/ for keywords
+        extracted from the question. Searches both .md files and migrated JSON.
+
+        Args:
+            question: Natural-language question or keyword string.
+            max_results: Maximum number of results to return.
+
+        Returns:
+            List of match dicts, each with:
+              - file: absolute path to matching file
+              - line_number: line number of match
+              - line: matched line text
+              - snippet: truncated snippet (max L3_SNIPPET_MAX chars)
+
+        Notes:
+            - Vault queries are read-only (vault is treated as immutable per Wave 0).
+            - Uses case-insensitive grep; not semantic search (semantic is Wave 2.3+).
+            - Results are deduplicated by file path.
+        """
+        if not question or not question.strip():
+            return []
+
+        # Extract keywords: words >= 4 chars, skip stop words
+        stop_words = {
+            "what", "when", "where", "which", "that", "this", "with",
+            "from", "have", "about", "will", "been", "does", "into",
+            "they", "their", "there", "were",
+        }
+        words = re.findall(r"[a-zA-Z]{4,}", question)
+        keywords = [w for w in words if w.lower() not in stop_words]
+
+        # Use all keywords joined as an alternation for a single grep pass,
+        # or fall back to the full question as a phrase.
+        if keywords:
+            pattern = "|".join(re.escape(kw) for kw in keywords[:5])
+        else:
+            pattern = re.escape(question.strip())
+
+        md_matches = self._grep_vault(pattern, file_glob="*.md")
+        json_matches = self._grep_json(pattern)
+        all_matches = md_matches + json_matches
+
+        # Deduplicate: keep first match per file
+        seen_files: set[str] = set()
+        deduped: list[dict] = []
+        for match in all_matches:
+            if match["file"] not in seen_files:
+                seen_files.add(match["file"])
+                deduped.append(match)
+            if len(deduped) >= max_results:
+                break
+
+        return deduped
+
+    def query_with_keywords(self, keywords: list[str], max_results: int = 10) -> list[dict]:
+        """
+        Query vault using explicit keywords (alternative to natural-language query).
+
+        Args:
+            keywords: List of keyword strings to search for.
+            max_results: Maximum number of results to return.
+
+        Returns:
+            Same structure as query().
+        """
+        if not keywords:
+            return []
+        pattern = "|".join(re.escape(kw) for kw in keywords[:5])
+        md_matches = self._grep_vault(pattern, file_glob="*.md")
+        json_matches = self._grep_json(pattern)
+        all_matches = md_matches + json_matches
+
+        seen_files: set[str] = set()
+        deduped: list[dict] = []
+        for match in all_matches:
+            if match["file"] not in seen_files:
+                seen_files.add(match["file"])
+                deduped.append(match)
+            if len(deduped) >= max_results:
+                break
+
+        return deduped
+
+
+# ---------------------------------------------------------------------------
+# Wake-up loader (used by wake-up-layer-stack.sh via Python call)
+# ---------------------------------------------------------------------------
+
+def load_wake_up_context() -> str:
+    """
+    Load L0 + L1 context for session wake-up.
+
+    Returns a formatted string combining identity (L0) and essential rules (L1),
+    suitable for injection as additionalContext in a SessionStart hook.
+
+    Target: <1500 tokens total.
+    """
+    parts = []
+
+    l0 = Layer0()
+    if l0.exists():
+        parts.append("## Identity (L0)\n\n" + l0.load().strip())
+    else:
+        parts.append("## Identity (L0)\n\n[L0 file missing — run Layer0 setup]")
+
+    l1 = Layer1()
+    if l1.exists():
+        try:
+            parts.append("## Essential Rules (L1)\n\n" + l1.load().strip())
+        except Exception as exc:
+            parts.append(f"## Essential Rules (L1)\n\n[L1 decode error: {exc}]")
+    else:
+        parts.append(
+            "## Essential Rules (L1)\n\n"
+            "[L1 not built — run: python3 .claude/lib/layers.py --build-l1]"
+        )
+
+    return "\n\n".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# CLI entry point
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    import sys
+
+    args = sys.argv[1:]
+
+    if "--build-l1" in args:
+        print("Building L1 essential rules...")
+        path = Layer1().build()
+        content = Layer1().load()
+        token_est = max(1, len(content) // 4)
+        print(f"Written to: {path}")
+        print(f"Decoded token estimate: {token_est}")
+
+    elif "--load-l0" in args:
+        print(Layer0().load())
+
+    elif "--load-l1" in args:
+        print(Layer1().load())
+
+    elif "--wake-up" in args:
+        print(load_wake_up_context())
+
+    elif "--query" in args:
+        idx = args.index("--query")
+        if idx + 1 < len(args):
+            question = args[idx + 1]
+            results = Layer3().query(question)
+            print(json.dumps(results, indent=2))
+        else:
+            print("Usage: layers.py --query <question>", file=sys.stderr)
+            sys.exit(1)
+
+    else:
+        print("Usage:")
+        print("  python3 layers.py --build-l1    Build L1 essential rules from procedural store")
+        print("  python3 layers.py --load-l0     Print L0 identity")
+        print("  python3 layers.py --load-l1     Print decoded L1 essentials")
+        print("  python3 layers.py --wake-up     Print L0+L1 combined wake-up context")
+        print("  python3 layers.py --query <q>   Query vault (Layer3)")

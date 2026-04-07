@@ -29,16 +29,33 @@ umask 077
 
 # Paths - Initialize all variables before use
 RALPH_DIR="${HOME}/.ralph"
-MEMORY_DIR="${RALPH_DIR}/agent-memory"
-PROCEDURAL_DIR="${RALPH_DIR}/procedural"
-STATE_DIR="${RALPH_DIR}/state"
 LOG_DIR="${RALPH_DIR}/logs"
-PLAN_STATE="${RALPH_DIR}/plan-state/plan-state.json"
+
+# MemPalace v3.0: plan-state is LOCAL (repo-specific), always
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."' 2>/dev/null || echo ".")
+PLAN_STATE="${CWD}/.claude/plan-state.json"
+# If local doesn't exist, create a clean empty plan-state
+if [[ ! -f "$PLAN_STATE" ]]; then
+    mkdir -p "$(dirname "$PLAN_STATE")"
+    cat > "$PLAN_STATE" << 'PLANEOF'
+{
+  "version": "3.0.0",
+  "plan_name": null,
+  "plan_file": null,
+  "current_phase": null,
+  "active_agent": "",
+  "classification": { "workflow_route": null, "adaptive_mode": null },
+  "phases": [], "barriers": {}, "steps": [],
+  "metadata": { "session_id": null, "started_at": null }
+}
+PLANEOF
+fi
+
 SESSION_ID=""
 START_TIME=""
 
 # Create directories FIRST (critical for set -e)
-mkdir -p "$MEMORY_DIR" "$PROCEDURAL_DIR" "$STATE_DIR" "$LOG_DIR"
+mkdir -p "$LOG_DIR"
 
 # Logging function
 log() {
@@ -47,48 +64,14 @@ log() {
 
 log "=== Orchestrator Session Initialization ==="
 
-# 1. Initialize agent memory buffers for default agents
-DEFAULT_AGENTS=(
-    "orchestrator"
-    "security-auditor"
-    "debugger"
-    "code-reviewer"
-    "test-architect"
-    "refactorer"
-    "frontend-reviewer"
-    "docs-writer"
-    "minimax-reviewer"
-    "repository-learner"
-    "repo-curator"
-)
+# 1. [MemPalace v3.0] Agent memory is now in Obsidian Vault:
+#    ~/Documents/Obsidian/MiVault/agents/{agent-name}/diary/
+#    No local buffer creation needed — removed in Wave 5 cleanup.
 
-log "Initializing agent memory buffers..."
-for agent in "${DEFAULT_AGENTS[@]}"; do
-    agent_dir="${MEMORY_DIR}/${agent}"
-    if [[ ! -d "$agent_dir" ]]; then
-        mkdir -p "$agent_dir/semantic" "$agent_dir/episodic" "$agent_dir/working"
-        # Initialize semantic memory with empty array
-        echo '{"entries": []}' > "$agent_dir/semantic/memory.json"
-        log "  Created memory buffer for: $agent"
-    else
-        log "  Already exists: $agent"
-    fi
-done
+# 2. [MemPalace v3.0] Procedural memory is now in .claude/rules/learned/
+#    (halls/rooms/wings taxonomy). No separate init needed — removed in Wave 5 cleanup.
 
-# 2. Initialize procedural memory if not exists
-PROCEDURAL_FILE="${PROCEDURAL_DIR}/rules.json"
-if [[ ! -f "$PROCEDURAL_FILE" ]]; then
-    cat > "$PROCEDURAL_FILE" << 'EOF'
-{
-  "version": "2.55.0",
-  "last_updated": null,
-  "rules": []
-}
-EOF
-    log "Initialized procedural memory: $PROCEDURAL_FILE"
-fi
-
-# 3. Initialize or migrate plan-state
+# 3. Initialize or migrate plan-state (LOCAL path — MemPalace v3.0)
 if [[ ! -f "$PLAN_STATE" ]]; then
     log "Creating new plan-state at: $PLAN_STATE"
     mkdir -p "$(dirname "$PLAN_STATE")"
@@ -102,28 +85,18 @@ if [[ ! -f "$PLAN_STATE" ]]; then
     done
     cat > "$PLAN_STATE" << 'EOF'
 {
-  "version": "2.57.0",
-  "plan_id": null,
-  "task": null,
+  "version": "3.0.0",
+  "plan_name": null,
+  "plan_file": null,
+  "current_phase": null,
+  "active_agent": "",
   "classification": {
-    "complexity": null,
-    "information_density": null,
-    "context_requirement": null,
-    "workflow_route": null
+    "workflow_route": null,
+    "adaptive_mode": null
   },
+  "phases": [],
+  "barriers": {},
   "steps": [],
-  "loop_state": {
-    "current_iteration": 0,
-    "max_iterations": 25,
-    "status": "not_started"
-  },
-  "learning_state": {
-    "recommended": false,
-    "reason": null,
-    "curator_invoked": false,
-    "rules_learned": 0,
-    "last_recommendation_timestamp": null
-  },
   "metadata": {
     "session_id": null,
     "started_at": null

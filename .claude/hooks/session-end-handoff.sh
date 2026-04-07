@@ -281,15 +281,7 @@ if [[ -x "$HANDOFF_SCRIPT" ]]; then
     }
 fi
 
-# Clean up old episodic memory (30-day TTL, v2.91.0)
-EPISODES_DIR="${HOME}/.ralph/episodes"
-if [[ -d "$EPISODES_DIR" ]]; then
-    # Find and delete episode files older than 30 days
-    DELETED_COUNT=$(find "$EPISODES_DIR" -name "*.json" -type f -mtime +30 -delete -print | wc -l | tr -d ' ')
-    if [[ $DELETED_COUNT -gt 0 ]]; then
-        log "INFO" "Episodic cleanup: deleted $DELETED_COUNT episodes older than 30 days"
-    fi
-fi
+# MemPalace v3.0: episodic cleanup removed — episodes now in Obsidian Vault (no TTL needed)
 
 log "INFO" "SessionEnd hook completed successfully"
 

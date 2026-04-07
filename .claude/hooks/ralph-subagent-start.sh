@@ -41,8 +41,10 @@ source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
 REPO_ROOT="$(get_project_root)"
 STATE_DIR="$HOME/.ralph/state"
 LOG_DIR="$HOME/.ralph/logs"
-MEMORY_DIR="$HOME/.ralph/memory"
-PROCEDURAL_MEMORY="$HOME/.ralph/procedural/rules.json"
+# MemPalace v3.0: Memory is now in Obsidian Vault + .claude/rules/learned/
+# MEMORY_DIR and PROCEDURAL_MEMORY kept as empty fallbacks (old paths no longer used)
+MEMORY_DIR=""  # Deprecated: was ~/.ralph/memory — now Obsidian Vault
+PROCEDURAL_MEMORY=""  # Deprecated: was ~/.ralph/procedural/rules.json — now .claude/rules/learned/
 PROMPTIFY_CONFIG="$HOME/.ralph/config/promptify.json"
 mkdir -p "$LOG_DIR" "$STATE_DIR"
 
@@ -438,12 +440,18 @@ case "$subagent_type" in
         ;;
 esac
 
-# Add recent memory context if available (semantic memory)
-if [[ -f "$MEMORY_DIR/semantic.json" ]]; then
-    recent_entries=$(jq -r '.observations[:3][] | "- " + .title' "$MEMORY_DIR/semantic.json" 2>/dev/null || echo "")
-    if [[ -n "$recent_entries" ]]; then
-        CONTEXT+="## Recent Learnings\n"
-        CONTEXT+="$recent_entries\n\n"
+# Add recent learned rules context if available (MemPalace v3.0 taxonomy)
+# Check .claude/rules/learned/halls/ for learned patterns
+LEARNED_DIR="${REPO_ROOT}/.claude/rules/learned/halls"
+if [[ -d "$LEARNED_DIR" ]]; then
+    patterns_file="$LEARNED_DIR/patterns.md"
+    if [[ -f "$patterns_file" ]]; then
+        # Extract pattern titles (## headings)
+        recent_entries=$(grep '^## ' "$patterns_file" | head -3 | sed 's/^## /- /' 2>/dev/null || echo "")
+        if [[ -n "$recent_entries" ]]; then
+            CONTEXT+="## Learned Patterns (MemPalace)\n"
+            CONTEXT+="$recent_entries\n\n"
+        fi
     fi
 fi
 

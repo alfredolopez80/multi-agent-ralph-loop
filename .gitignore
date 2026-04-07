@@ -217,6 +217,7 @@ tmp-review/
 .playwright-mcp/
 .claude/quality-results
 .claude/progress.md
+.claude/plan-state.json
 
 # External project directories
 apps/
@@ -261,3 +262,5 @@ backend/
 .claude/hooks/*.bak
 .claude/hooks/*.backup.*
 .claude/skills/*.bak
+data-gym-cache/
+pytest-of-*/

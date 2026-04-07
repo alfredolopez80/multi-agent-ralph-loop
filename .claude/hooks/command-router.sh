@@ -39,6 +39,7 @@ readonly CONFIG_FILE="$HOME/.ralph/config/command-router.json"
 readonly PROMPTIFY_CONFIG_FILE="$HOME/.ralph/config/promptify.json"
 readonly LOG_DIR="$HOME/.ralph/logs"
 readonly LOG_FILE="$LOG_DIR/command-router.log"
+readonly REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}")"
 
 # Create directories if needed
 mkdir -p "$LOG_DIR"
@@ -239,13 +240,13 @@ run_curator_suggestion() {
         corpus_count=$(find "$corpus_dir" -type f -name "*.json" 2>/dev/null | wc -l | tr -d ' ')
     fi
 
-    # Check procedural rules
-    local rules_file="${HOME}/.ralph/procedural/rules.json"
+    # Check learned rules (MemPalace v3.0 taxonomy)
+    local learned_dir="${REPO_ROOT}/.claude/rules/learned/halls"
     local rules_count=0
     local learned_count=0
-    if [[ -f "$rules_file" ]]; then
-        rules_count=$(jq -r '.rules | length // 0' "$rules_file" 2>/dev/null || echo "0")
-        learned_count=$(jq -r '[.rules[] | select(.source_repo != null)] | length // 0' "$rules_file" 2>/dev/null || echo "0")
+    if [[ -d "$learned_dir" ]]; then
+        rules_count=$(find "$learned_dir" -name "*.md" ! -name "README.md" -type f 2>/dev/null | wc -l | tr -d ' ')
+        learned_count=$rules_count  # In new taxonomy, all rules are curated = learned
     fi
 
     # If corpus is empty and few learned rules, suggest curator

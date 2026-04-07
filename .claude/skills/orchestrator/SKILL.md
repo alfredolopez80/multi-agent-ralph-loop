@@ -19,7 +19,6 @@ allowed-tools:
   - Bash
   - Glob
   - Grep
-  - mcp__plugin_claude-mem_*
 ---
 
 # Orchestrator - Multi-Agent Ralph v3.0

@@ -140,6 +140,17 @@ log "Updating vault indices..."
 
 log "Indices updated"
 
+# ──────────────────────────────────────────────
+# Sync learned rules to global (MemPalace v3.2)
+# Ensures Friday cron propagates local learnings to ~/.claude/rules/learned/
+# ──────────────────────────────────────────────
+REPO_ROOT="~/Documents/GitHub/multi-agent-ralph-loop"
+if [[ -f "${REPO_ROOT}/.claude/scripts/sync-rules-from-source.sh" ]]; then
+    log "Syncing learned rules to global..."
+    bash "${REPO_ROOT}/.claude/scripts/sync-rules-from-source.sh" 2>/dev/null || true
+    log "Rules sync complete"
+fi
+
 # Git commit + push
 if [ -d ".git" ]; then
     git add -A

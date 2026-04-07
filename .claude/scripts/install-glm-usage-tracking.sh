@@ -148,7 +148,7 @@ get_api_key() {
     local api_key="${Z_AI_API_KEY:-}"
 
     if [[ -z "$api_key" ]]; then
-        local settings_file="${HOME}/.claude-sneakpeek/zai/config/settings.json"
+        local settings_file="${HOME}/.claude/settings.json"
 
         if [[ -f "$settings_file" ]]; then
             api_key=$(jq -r '.env.Z_AI_API_KEY // .env.ANTHROPIC_API_KEY // ""' "$settings_file" 2>/dev/null || echo "")

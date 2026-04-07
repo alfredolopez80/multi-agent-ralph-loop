@@ -1,22 +1,20 @@
 #!/bin/bash
-# smart-memory-search.sh - v2.83.1 Smart Memory-Driven Orchestration (GLM-4.7 Enhanced)
-# v2.91.0: Re-enabled with MCP tool integration
+# smart-memory-search.sh - v3.2.0 Smart Memory-Driven Orchestration (Obsidian-first)
 # Hook: PreToolUse (Task - before orchestration)
 # Purpose: PARALLEL search across all memory sources for relevant context
-# VERSION: 2.84.3
-# Timestamp: 2026-01-30
-# v2.83.1: PERF-002 - Added API rate limiting for GLM-4.7 calls
+# VERSION: 3.2.0
+# UPDATED: 2026-04-07 (vault-first architecture, Obsidian as single source of truth)
+# Timestamp: 2026-04-07
 #
 # Based on @PerceptualPeak Smart Forking concept:
 # "Why not utilize the knowledge gained from your hundreds/thousands
 #  of other Claude code sessions? Don't let that valuable context go to waste!!"
 #
-# Memory Sources (searched in PARALLEL):
-#   1. claude-mem MCP - Semantic observations
-#   2. memvid - Video-encoded vector storage
-#   3. handoffs - Recent session context
-#   4. ledgers - Session continuity data
-#   5. web_search - GLM-4.7 webSearchPrime (v2.68.26 NEW)
+# Memory Sources (searched in PARALLEL, v3.2.0):
+#   1. vault - Obsidian MiVault + migrated-from-claude-mem JSONs
+#   2. handoffs - Recent session context (~/.ralph/handoffs/)
+#   3. ledgers - Session continuity data (~/.ralph/ledgers/)
+#   4. web_search - GLM-4.7 webSearchPrime
 #
 # Output: .claude/memory-context.json with:
 #   - past_successes: Successful implementation patterns
@@ -25,7 +23,7 @@
 #   - fork_suggestions: Top 5 sessions to fork from
 #   - web_search: External best practices (GLM-4.7)
 #
-# VERSION: 2.84.3
+# VERSION: 3.2.0
 # v2.69.0: FIX CRIT-003 - Added guaranteed JSON output trap
 # v2.68.26: GLM-4.7 web search integration - 5th parallel source via webSearchPrime API
 # v2.68.25: FIX CRIT-001 - Removed duplicate stdin read (SEC-111 already reads at top)
@@ -214,7 +212,7 @@ cleanup_and_json() {
 }
 trap 'cleanup_and_json' EXIT ERR INT TERM
 
-CLAUDE_MEM_FILE="$TEMP_DIR/claude-mem.json"
+VAULT_FILE="$TEMP_DIR/vault.json"
 MEMVID_FILE="$TEMP_DIR/memvid.json"
 HANDOFFS_FILE="$TEMP_DIR/handoffs.json"
 LEDGERS_FILE="$TEMP_DIR/ledgers.json"
@@ -222,7 +220,7 @@ WEB_SEARCH_FILE="$TEMP_DIR/web-search.json"  # v2.68.26: GLM-4.7 Integration
 DOCS_SEARCH_FILE="$TEMP_DIR/docs-search.json"  # v2.68.26: GLM-4.7 Phase 4
 
 # Initialize with defaults using atomic file creation (SECURITY-003 fix)
-create_initial_file "$CLAUDE_MEM_FILE" '{"results": [], "source": "claude-mem"}'
+create_initial_file "$VAULT_FILE" '{"results": [], "source": "vault"}'
 create_initial_file "$MEMVID_FILE" '{"results": [], "source": "memvid"}'
 create_initial_file "$HANDOFFS_FILE" '{"results": [], "source": "handoffs"}'
 create_initial_file "$LEDGERS_FILE" '{"results": [], "source": "ledgers"}'
@@ -233,46 +231,48 @@ create_initial_file "$DOCS_SEARCH_FILE" '{"results": [], "source": "docs_search"
 # PARALLEL MEMORY SEARCH
 # ===============================================================================
 
-# Task 1: claude-mem MCP search (if available)
+# Task 1: Obsidian vault + migrated observations search (v3.2.0)
 (
     # GAP-MEM-001 FIX v2.57.7: Disable set -e inside subshell to prevent premature exit
     set +e
 
-    echo "  [1/6] Searching claude-mem..." >> "$LOG_FILE"
+    echo "  [1/6] Searching vault..." >> "$LOG_FILE"
 
-    # v2.91.0: Use claude-mem MCP tool instead of direct file access
-    # The MCP server provides mcp__plugin_claude-mem_mcp-search__search tool
-    # Since we're in a bash hook, we'll use a hybrid approach:
-    # 1. Check if MCP is available via the claude-mem data directory
-    # 2. If available, search via the stored observations (MCP-backed)
-    # Note: Direct MCP tool calls require Claude Code execution context
-    # This hook prepares the context; actual MCP searches happen when available
+    VAULT_DIR="$HOME/Documents/Obsidian/MiVault"
+    VAULT_WIKI_DIR="$VAULT_DIR/global/wiki"
+    MIGRATED_DIR="$VAULT_DIR/migrated-from-claude-mem"
+    VAULT_RESULTS="[]"
 
-    CLAUDE_MEM_DATA_DIR="$HOME/.claude-mem"
-    if [[ -d "$CLAUDE_MEM_DATA_DIR" ]]; then
-        # MCP stores data in ~/.claude-mem/ - search via file system
-        # The MCP server maintains this database; we query it for results
-        # ADV-003: Use find -exec instead of xargs (safer with spaces, 20-30% faster)
-        # SECURITY-001 fix: use grep -F for fixed strings
-        MATCHES=$(find "$CLAUDE_MEM_DATA_DIR" -name "*.json" -type f \
+    # Source A: Search Obsidian wiki markdown for keyword matches
+    if [[ -d "$VAULT_WIKI_DIR" ]]; then
+        WIKI_MATCHES=$(find "$VAULT_WIKI_DIR" -name "*.md" -type f \
             -exec grep -l -i -F "$KEYWORDS_SAFE" {} \; 2>/dev/null | head -5 || echo "")
-
-        if [[ -n "$MATCHES" ]]; then
-            # SECURITY-002 fix: Validate file paths before reading
-            while read -r file; do
-                # GAP-MEM-001 FIX: Add || true to prevent set -e from killing subshell
-                validated=$(validate_file_path "$file" "$CLAUDE_MEM_DATA_DIR" 2>/dev/null) || validated=""
-                if [[ -n "$validated" ]]; then
-                    cat "$validated" 2>/dev/null || true
-                fi
-            done <<< "$MATCHES" | jq -s '{results: ., source: "claude-mem"}' > "$CLAUDE_MEM_FILE" 2>/dev/null || \
-                echo '{"results": [], "source": "claude-mem"}' > "$CLAUDE_MEM_FILE"
+        if [[ -n "$WIKI_MATCHES" ]]; then
+            WIKI_JSON=$(echo "$WIKI_MATCHES" | jq -R -s 'split("\n") | map(select(length > 0)) | map({source_type: "wiki", path: .})')
+            VAULT_RESULTS=$(echo "$VAULT_RESULTS" "$WIKI_JSON" | jq -s '.[0] + .[1]')
         fi
-    else
-        echo "  [1/6] claude-mem: MCP data directory not found ($CLAUDE_MEM_DATA_DIR)" >> "$LOG_FILE"
     fi
 
-    echo "  [1/6] claude-mem search complete" >> "$LOG_FILE"
+    # Source B: Search migrated observation JSONs (decisions, refactors, bugfixes)
+    if [[ -d "$MIGRATED_DIR" ]] && command -v jq &>/dev/null; then
+        for jsontype in decisions refactors bugfixs; do
+            jf="$MIGRATED_DIR/${jsontype}.json"
+            if [[ -f "$jf" ]]; then
+                MIG_MATCHES=$(jq --arg kw "$KEYWORDS_SAFE" \
+                    '[.[] | select((.title // "" | ascii_downcase) | contains($kw | ascii_downcase) or (.narrative // "" | ascii_downcase) | contains($kw | ascii_downcase))] | .[0:5]' \
+                    "$jf" 2>/dev/null || echo "[]")
+                if [[ "$MIG_MATCHES" != "[]" && -n "$MIG_MATCHES" ]]; then
+                    VAULT_RESULTS=$(echo "$VAULT_RESULTS" "$MIG_MATCHES" | jq -s '.[0] + .[1]')
+                fi
+            fi
+        done
+    fi
+
+    # Write aggregated vault results
+    echo "{\"results\": $VAULT_RESULTS, \"source\": \"vault\"}" | jq '.' > "$VAULT_FILE" 2>/dev/null || \
+        echo '{"results": [], "source": "vault"}' > "$VAULT_FILE"
+
+    echo "  [1/6] vault search complete" >> "$LOG_FILE"
 ) &
 PID1=$!
 
@@ -583,7 +583,7 @@ validate_json() {
     fi
 }
 
-CLAUDE_MEM_RESULT=$(validate_json "$CLAUDE_MEM_FILE" '{"results": [], "source": "claude-mem"}')
+VAULT_RESULT=$(validate_json "$VAULT_FILE" '{"results": [], "source": "vault"}')
 MEMVID_RESULT=$(validate_json "$MEMVID_FILE" '{"results": [], "source": "memvid"}')
 HANDOFFS_RESULT=$(validate_json "$HANDOFFS_FILE" '{"results": [], "source": "handoffs"}')
 LEDGERS_RESULT=$(validate_json "$LEDGERS_FILE" '{"results": [], "source": "ledgers"}')
@@ -591,15 +591,15 @@ WEB_SEARCH_RESULT=$(validate_json "$WEB_SEARCH_FILE" '{"results": [], "source": 
 DOCS_SEARCH_RESULT=$(validate_json "$DOCS_SEARCH_FILE" '{"results": [], "source": "docs_search"}')  # v2.68.26 Phase 4
 
 # Count results per source
-CLAUDE_MEM_COUNT=$(echo "$CLAUDE_MEM_RESULT" | jq '.results | length' 2>/dev/null || echo 0)
+VAULT_COUNT=$(echo "$VAULT_RESULT" | jq '.results | length' 2>/dev/null || echo 0)
 MEMVID_COUNT=$(echo "$MEMVID_RESULT" | jq '.results | length' 2>/dev/null || echo 0)
 HANDOFFS_COUNT=$(echo "$HANDOFFS_RESULT" | jq '.results | length' 2>/dev/null || echo 0)
 LEDGERS_COUNT=$(echo "$LEDGERS_RESULT" | jq '.results | length' 2>/dev/null || echo 0)
 WEB_SEARCH_COUNT=$(echo "$WEB_SEARCH_RESULT" | jq '.results | length' 2>/dev/null || echo 0)  # v2.68.26
 DOCS_SEARCH_COUNT=$(echo "$DOCS_SEARCH_RESULT" | jq '.results | length' 2>/dev/null || echo 0)  # v2.68.26 Phase 4
-TOTAL_COUNT=$((CLAUDE_MEM_COUNT + MEMVID_COUNT + HANDOFFS_COUNT + LEDGERS_COUNT + WEB_SEARCH_COUNT + DOCS_SEARCH_COUNT))
+TOTAL_COUNT=$((VAULT_COUNT + MEMVID_COUNT + HANDOFFS_COUNT + LEDGERS_COUNT + WEB_SEARCH_COUNT + DOCS_SEARCH_COUNT))
 
-echo "  Results: claude-mem=$CLAUDE_MEM_COUNT, memvid=$MEMVID_COUNT, handoffs=$HANDOFFS_COUNT, ledgers=$LEDGERS_COUNT, web=$WEB_SEARCH_COUNT, docs=$DOCS_SEARCH_COUNT" >> "$LOG_FILE"
+echo "  Results: vault=$VAULT_COUNT, memvid=$MEMVID_COUNT, handoffs=$HANDOFFS_COUNT, ledgers=$LEDGERS_COUNT, web=$WEB_SEARCH_COUNT, docs=$DOCS_SEARCH_COUNT" >> "$LOG_FILE"
 
 # Generate fork suggestions (top 5 sessions by relevance)
 FORK_SUGGESTIONS="[]"
@@ -674,14 +674,14 @@ fi
 
 echo "  Insights extracted: successes=$(echo "$PAST_SUCCESSES" | jq 'length'), errors=$(echo "$PAST_ERRORS" | jq 'length'), patterns=$(echo "$RECOMMENDED_PATTERNS" | jq 'length')" >> "$LOG_FILE"
 
-# Build aggregated memory context (v2.91.0 - MCP tool integration complete)
+# Build aggregated memory context (v3.2.0 - Obsidian vault as single source of truth)
 jq -n \
-    --arg version "2.91.0" \
+    --arg version "3.2.0" \
     --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
     --arg session_id "$SESSION_ID" \
     --arg keywords "$KEYWORDS_SAFE" \
     --argjson total_results "$TOTAL_COUNT" \
-    --argjson claude_mem "$CLAUDE_MEM_RESULT" \
+    --argjson vault "$VAULT_RESULT" \
     --argjson memvid "$MEMVID_RESULT" \
     --argjson handoffs "$HANDOFFS_RESULT" \
     --argjson ledgers "$LEDGERS_RESULT" \
@@ -698,7 +698,7 @@ jq -n \
         search_keywords: $keywords,
         total_results: $total_results,
         sources: {
-            claude_mem: $claude_mem,
+            vault: $vault,
             memvid: $memvid,
             handoffs: $handoffs,
             ledgers: $ledgers,
@@ -711,16 +711,16 @@ jq -n \
             recommended_patterns: $recommended_patterns
         },
         fork_suggestions: $fork_suggestions,
-        note: "Smart Memory Search v2.91.0 - 6 parallel sources (claude-mem MCP + 3 local + 2 GLM-4.7)"
+        note: "Smart Memory Search v3.2.0 - 6 parallel sources (Obsidian vault + ralph local + GLM-4.7)"
     }' > "$MEMORY_CONTEXT"
 
 echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] Memory context written to: $MEMORY_CONTEXT" >> "$LOG_FILE"
 echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] Total results found: $TOTAL_COUNT" >> "$LOG_FILE"
 
 # Build context message for injection
-CONTEXT_MSG="SMART_MEMORY_SEARCH v2.91.0 complete:
-- Found $TOTAL_COUNT relevant results across 6 memory sources (claude-mem MCP + GLM-4.7 Coding API)
-- claude-mem: $CLAUDE_MEM_COUNT | memvid: $MEMVID_COUNT | handoffs: $HANDOFFS_COUNT | ledgers: $LEDGERS_COUNT | web: $WEB_SEARCH_COUNT | docs: $DOCS_SEARCH_COUNT
+CONTEXT_MSG="SMART_MEMORY_SEARCH v3.2.0 complete:
+- Found $TOTAL_COUNT relevant results across 6 memory sources (vault + ralph local + GLM-4.7 Coding API)
+- vault: $VAULT_COUNT | memvid: $MEMVID_COUNT | handoffs: $HANDOFFS_COUNT | ledgers: $LEDGERS_COUNT | web: $WEB_SEARCH_COUNT | docs: $DOCS_SEARCH_COUNT
 - Results saved to .claude/memory-context.json
 - Use this historical context to inform implementation decisions"
 

@@ -65,7 +65,7 @@ Analyze repository ${REPO_URL}:
    - confidence: 0.75-0.95
    - source_repo: ${REPO_URL}
    - source_file: <path>
-5. Update ~/.ralph/procedural/rules.json
+5. Update .claude/rules/learned/ (MemPalace taxonomy)
 6. Create manifest with files[] array
 
 Return: patterns extracted, rules added, domain detected
@@ -105,7 +105,7 @@ Return: patterns extracted, rules added, domain detected
 │                                                              │
 │  2. CLONE REPOSITORY                                         │
 │     ├── Shallow clone (--depth 1)                           │
-│     └── Store in ~/.ralph/curator/corpus/learning/          │
+│     └── Store in .claude/corpus/learning/                  │
 │                                                              │
 │  3. DETECT METADATA                                          │
 │     ├── Domain (backend, frontend, etc.)                    │
@@ -227,7 +227,7 @@ general:    config, util, helper, common, shared
 | `.claude/scripts/curator-learn.sh` | Pattern extraction (GAP-C01, GAP-C02 fixed) |
 | `.claude/scripts/curator-ingest.sh` | Repository cloning |
 | `.claude/scripts/backfill-domains.sh` | Domain backfill for existing rules |
-| `~/.ralph/procedural/rules.json` | Procedural memory |
+| `.claude/rules/learned/` | Procedural memory (MemPalace taxonomy) |
 
 
 ## Action Reporting (v2.93.0)

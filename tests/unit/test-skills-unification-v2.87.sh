@@ -282,28 +282,40 @@ test_global_symlinks() {
             continue
         fi
 
-        print_test "Global skill '$skill' is a symlink"
+        # W5.1: Skills can be symlinks OR standalone copies (promoted)
+        print_test "Global skill '$skill' is valid (symlink or copy)"
         if [[ -L "$global_skill" ]]; then
             pass
+        elif [[ -d "$global_skill" ]]; then
+            pass
         else
-            fail "Not a symlink: $global_skill (should point to repo)"
+            fail "Not a symlink or directory: $global_skill"
             continue
         fi
 
-        print_test "Symlink '$skill' points to repo"
-        local target
-        target=$(readlink "$global_skill" 2>/dev/null || echo "")
-        if [[ "$target" == "$repo_skill" ]]; then
-            pass
-        else
-            fail "Wrong target: $target (expected: $repo_skill)"
-        fi
+        if [[ -L "$global_skill" ]]; then
+            print_test "Symlink '$skill' points to repo"
+            local target
+            target=$(readlink "$global_skill" 2>/dev/null || echo "")
+            if [[ "$target" == "$repo_skill" ]]; then
+                pass
+            else
+                fail "Wrong target: $target (expected: $repo_skill)"
+            fi
 
-        print_test "Symlink '$skill' target exists"
-        if [[ -d "$target" ]]; then
-            pass
+            print_test "Symlink '$skill' target exists"
+            if [[ -d "$target" ]]; then
+                pass
+            else
+                fail "Broken symlink: target does not exist"
+            fi
         else
-            fail "Broken symlink: target does not exist"
+            print_test "Copy '$skill' has SKILL.md"
+            if [[ -f "$global_skill/SKILL.md" ]]; then
+                pass
+            else
+                fail "Standalone copy missing SKILL.md: $global_skill"
+            fi
         fi
     done
 }

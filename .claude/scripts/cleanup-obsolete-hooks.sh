@@ -54,7 +54,7 @@ log_error() {
 # Check if hook is registered in settings.json
 is_hook_registered() {
     local hook_name="$1"
-    local settings_file="${HOME}/.claude-sneakpeek/zai/config/settings.json"
+    local settings_file="${HOME}/.claude/settings.json"
 
     if [[ -f "$settings_file" ]]; then
         if grep -q "$hook_name" "$settings_file" 2>/dev/null; then

@@ -88,16 +88,16 @@ if [[ -f "$CONFIG_FILE" ]]; then
     fi
 fi
 
-# Paths
-EPISODES_DIR="${HOME}/.ralph/episodes"
-SEMANTIC_FILE="${HOME}/.ralph/memory/semantic.json"
+# Paths (MemPalace v3.0: episodes moved to Obsidian Vault, semantic.json removed)
+VAULT_DIR="${HOME}/Documents/Obsidian/MiVault"
+# v3.2 FIX: EPISODES_DIR was undefined — decisions now go to vault
+PROJECT_NAME=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo 'unknown')")
+EPISODES_DIR="$VAULT_DIR/projects/$PROJECT_NAME/decisions"
+mkdir -p "$EPISODES_DIR" 2>/dev/null || true
 LOG_DIR="${HOME}/.ralph/logs"
-mkdir -p "$EPISODES_DIR" "$LOG_DIR" "${HOME}/.ralph/memory"
+mkdir -p "$LOG_DIR"
 
-# Initialize semantic.json if missing (v2.57.0)
-if [[ ! -f "$SEMANTIC_FILE" ]]; then
-    echo '{"facts": [], "version": "2.57.0"}' > "$SEMANTIC_FILE"
-fi
+# Semantic memory is now in Obsidian Vault — no separate semantic.json needed
 
 # Get the content that was written/edited
 CONTENT=""
@@ -252,42 +252,30 @@ trap release_lock EXIT
 
         echo "[$(date -Iseconds)] Created episode: $EPISODE_ID with $TOTAL_DECISIONS decisions"
 
-        # v2.62.3: Use semantic-write-helper.sh for atomic writes (P0 FIX)
-        SEMANTIC_WRITE_HELPER="${HOME}/.claude/hooks/semantic-write-helper.sh"
-        SEMANTIC_ADDED=0
+        # v3.2: Write decisions directly to vault (semantic-write-helper.sh removed)
+        DECISIONS_ADDED=0
+        VAULT_DECISIONS_FACTS_DIR="$VAULT_DIR/projects/$PROJECT_NAME/facts"
+        mkdir -p "$VAULT_DECISIONS_FACTS_DIR" 2>/dev/null || true
+        today=$(date +%Y%m%d)
+        decisions_fact_file="$VAULT_DECISIONS_FACTS_DIR/facts-${today}.md"
 
-        # Helper function to add semantic fact using atomic write helper
-        add_semantic_fact() {
-            local content="$1"
-            local category="$2"
-
-            if [[ -x "$SEMANTIC_WRITE_HELPER" ]]; then
-                local result
-                result=$("$SEMANTIC_WRITE_HELPER" --add \
-                    "$(jq -n --arg c "$content" --arg cat "$category" --arg f "$FILE_PATH" \
-                        '{content: $c, category: $cat, file: $f, source: "decision-extract"}')" 2>&1)
-
-                if echo "$result" | grep -q "^ADDED:"; then
-                    SEMANTIC_ADDED=$((SEMANTIC_ADDED + 1))
-                fi
-            else
-                echo "[$(date -Iseconds)] WARNING: semantic-write-helper.sh not found, skipping semantic write"
-            fi
-        }
-
-        # Add design patterns to semantic memory
+        # Add design patterns to vault facts
         for pattern in "${PATTERNS[@]:-}"; do
             [[ -z "$pattern" ]] && continue
-            add_semantic_fact "$pattern" "design_patterns"
+            safe_pattern=$(echo "$pattern" | tr -cd ' a-zA-Z0-9_.:/-()[]{}' | head -c 200)
+            echo "- [design_patterns] $safe_pattern ($FILE_PATH)" >> "$decisions_fact_file" 2>/dev/null || true
+            DECISIONS_ADDED=$((DECISIONS_ADDED + 1))
         done
 
-        # Add architectural decisions to semantic memory
+        # Add architectural decisions to vault facts
         for decision in "${ARCH_DECISIONS[@]:-}"; do
             [[ -z "$decision" ]] && continue
-            add_semantic_fact "$decision" "architectural_decisions"
+            safe_decision=$(echo "$decision" | tr -cd ' a-zA-Z0-9_.:/-()[]{}' | head -c 200)
+            echo "- [architectural_decisions] $safe_decision ($FILE_PATH)" >> "$decisions_fact_file" 2>/dev/null || true
+            DECISIONS_ADDED=$((DECISIONS_ADDED + 1))
         done
 
-        echo "[$(date -Iseconds)] Also added $SEMANTIC_ADDED facts to semantic memory (via atomic helper)"
+        echo "[$(date -Iseconds)] Also added $DECISIONS_ADDED facts to vault"
     else
         echo "[$(date -Iseconds)] No architectural decisions detected"
     fi

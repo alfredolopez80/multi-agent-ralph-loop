@@ -96,6 +96,36 @@ EOF
     LOG_FILE="${HOME}/.ralph/logs/continuous-learning.log"
     mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
     echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Learning opportunity detected - Review: ${PATTERNS_FILE}" >> "$LOG_FILE" 2>/dev/null || true
+
+    # ──────────────────────────────────────────────
+    # v3.2: Feed session learnings back to procedural memory
+    # Only writes metadata (counts, IDs) — never file contents or code
+    # Marked needs_review: true — vault graduation requires sessions_confirmed >= 3
+    # ──────────────────────────────────────────────
+    PROCEDURAL_FILE="${HOME}/.ralph/procedural/rules.json"
+    if [[ -f "$PROCEDURAL_FILE" ]]; then
+        RULE_ID="session-$(date +%s)-$RANDOM"
+        # Sanitize inputs to prevent JSON injection
+        SAFE_PROJECT=$(echo "$PROJECT_NAME" | tr -cd 'a-zA-Z0-9_-' | head -c 64)
+        SAFE_SESSION=$(echo "$SESSION_ID" | tr -cd 'a-zA-Z0-9_-' | head -c 64)
+        jq --arg id "$RULE_ID" \
+           --arg project "$SAFE_PROJECT" \
+           --arg session "$SAFE_SESSION" \
+           --argjson corrections "${CORRECTIONS}" \
+           --argjson errors "${ERRORS}" \
+           '. + {($id): {
+               type: "session-learning",
+               source: "continuous-learning",
+               project: $project,
+               session: $session,
+               corrections: $corrections,
+               errors: $errors,
+               created_at: now | floor,
+               confidence: 0.5,
+               needs_review: true
+           }}' "$PROCEDURAL_FILE" > "${PROCEDURAL_FILE}.tmp" \
+           && mv "${PROCEDURAL_FILE}.tmp" "$PROCEDURAL_FILE"
+    fi
 fi
 
 trap - EXIT

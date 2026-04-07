@@ -1,7 +1,14 @@
 #!/bin/bash
 # statusline-ralph.sh - Enhanced StatusLine with Git + Ralph Progress + GLM Usage + Context Info
 #
-# VERSION: 2.81.2
+# VERSION: 2.82.0
+#
+# CHANGELOG v2.82.0:
+# - Model-adaptive display: detects active model via stdin JSON (.model.display_name)
+# - Provider badge: ZAI (glm-*), MMX (MiniMax*), CLD (Claude native)
+# - Each provider gets distinct color + icon for instant identification
+# - Claude-hud output adapted per provider (suppressed when unavailable)
+# - Detection: .model.display_name > ANTHROPIC_MODEL env > fallback
 #
 # CHANGELOG v2.81.2:
 # - CRITICAL FIX: Use remaining_percentage from stdin JSON (matches /context exactly)
@@ -83,6 +90,50 @@ MAGENTA=$(ansi_magenta)
 BLUE=$(ansi_blue)
 DIM=$(ansi_dim)
 RESET=$(ansi_reset)
+
+# ============================================
+# Model / Provider Detection (v2.82.0)
+# ============================================
+
+# Detect active provider from model display name
+# Returns: provider_id (zai|mmx|cld), provider_label, provider_color
+detect_provider() {
+    local model_name="$1"
+    local provider_id="cld"
+    local provider_label="CLD"
+    local provider_icon="◆"
+    local provider_color="$GREEN"
+
+    if [[ "$model_name" == glm* ]]; then
+        provider_id="zai"
+        provider_label="ZAI"
+        provider_icon="◆"
+        provider_color="$CYAN"
+    elif [[ "$model_name" == MiniMax* ]] || [[ "$model_name" == minimax* ]]; then
+        provider_id="mmx"
+        provider_label="MMX"
+        provider_icon="◇"
+        provider_color="$MAGENTA"
+    elif [[ "$model_name" == claude* ]]; then
+        # Claude native models — always CLD provider
+        provider_id="cld"
+        provider_label="CLD"
+        provider_icon="◆"
+        provider_color="$GREEN"
+    elif [[ -n "${ANTHROPIC_MODEL:-}" ]] && [[ "${ANTHROPIC_MODEL}" == glm* ]]; then
+        provider_id="zai"
+        provider_label="ZAI"
+        provider_icon="◆"
+        provider_color="$CYAN"
+    elif [[ -n "${ANTHROPIC_MODEL:-}" ]] && [[ "${ANTHROPIC_MODEL}" == MiniMax* ]]; then
+        provider_id="mmx"
+        provider_label="MMX"
+        provider_icon="◇"
+        provider_color="$MAGENTA"
+    fi
+
+    printf '%s\t%s\t%s\t%s' "$provider_id" "$provider_label" "$provider_icon" "$provider_color"
+}
 
 # ============================================
 # Context Display Functions (v2.77.0)
@@ -271,44 +322,12 @@ get_ralph_progress() {
     local cwd="${1:-.}"
     local plan_state_file=""
 
+    # MemPalace v3.0: ONLY read LOCAL plan-state (per-repo isolation)
     if [[ -f "${cwd}/.claude/plan-state.json" ]]; then
         plan_state_file="${cwd}/.claude/plan-state.json"
     fi
 
-    if [[ -z "$plan_state_file" ]] && [[ -f "${HOME}/.ralph/metadata/current-project.json" ]]; then
-        local active_project_path
-        active_project_path=$(jq -r '.project.path // ""' "${HOME}/.ralph/metadata/current-project.json" 2>/dev/null || echo "")
-
-        if [[ -n "$active_project_path" ]]; then
-            if [[ "$active_project_path" =~ \.\. ]] || [[ "$active_project_path" != /* ]]; then
-                active_project_path=""
-            else
-                active_project_path=$(realpath "$active_project_path" 2>/dev/null || echo "")
-            fi
-        fi
-
-        if [[ -n "$active_project_path" ]] && [[ -f "${active_project_path}/.claude/plan-state.json" ]]; then
-            plan_state_file="${active_project_path}/.claude/plan-state.json"
-        fi
-    fi
-
-    if [[ -z "$plan_state_file" ]]; then
-        if [[ -n "${PROJECT_ID:-}" ]] && [[ -f "${HOME}/.ralph/active-plan/${PROJECT_ID}.json" ]]; then
-            plan_state_file="${HOME}/.ralph/active-plan/${PROJECT_ID}.json"
-        else
-            if git -C "$cwd" rev-parse --is-inside-work-tree &>/dev/null; then
-                local repo_remote
-                repo_remote=$(git -C "$cwd" remote get-url origin 2>/dev/null || echo "")
-                if [[ -n "$repo_remote" ]]; then
-                    local project_id
-                    project_id=$(basename "$repo_remote" .git 2>/dev/null | sed 's|.*/||')
-                    if [[ -f "${HOME}/.ralph/active-plan/${project_id}.json" ]]; then
-                        plan_state_file="${HOME}/.ralph/active-plan/${project_id}.json"
-                    fi
-                fi
-            fi
-        fi
-    fi
+    # No global fallbacks — plans must never cross repo boundaries
 
     if [[ -z "$plan_state_file" ]] || [[ ! -f "$plan_state_file" ]]; then
         return
@@ -490,6 +509,24 @@ stdin_data=$(cat)
 cwd=$(echo "$stdin_data" | jq -r '.cwd // "."' 2>/dev/null || echo ".")
 
 # ============================================
+# v2.82.0: Detect active model/provider
+# ============================================
+model_display_name=$(echo "$stdin_data" | jq -r '.model.display_name // ""' 2>/dev/null)
+provider_info=$(detect_provider "$model_display_name")
+provider_id=$(echo "$provider_info" | cut -f1)
+provider_label=$(echo "$provider_info" | cut -f2)
+provider_icon=$(echo "$provider_info" | cut -f3)
+provider_color=$(echo "$provider_info" | cut -f4)
+
+# Build provider badge: ◆ ZAI glm-5.1
+provider_badge=""
+if [[ -n "$model_display_name" ]]; then
+    provider_badge="${provider_color}${provider_icon} ${provider_label}${RESET} ${DIM}${model_display_name}${RESET}"
+else
+    provider_badge="${provider_color}${provider_icon} ${provider_label}${RESET}"
+fi
+
+# ============================================
 # v2.78.0: Extract context window directly from stdin JSON
 # ============================================
 # No cache needed - used_percentage comes directly from Claude Code's native tracking
@@ -519,7 +556,8 @@ if [[ -n "$context_info" ]] && [[ "$context_info" != "null" ]] && [[ "$context_i
     cumulative_tokens=$((total_input + total_output))
 
     # Calculate used tokens - PRIORITY: remaining_percentage > used_percentage > cumulative
-    local remaining_pct=$(echo "$context_info" | jq -r '.remaining_percentage // null')
+    # BUG-003 FIX: removed 'local' keyword — this block is in main script body, not a function
+    remaining_pct=$(echo "$context_info" | jq -r '.remaining_percentage // null')
 
     if [[ -n "$remaining_pct" ]] && [[ "$remaining_pct" != "null" ]] && [[ "$remaining_pct" =~ ^[0-9]+$ ]]; then
         # Use remaining_percentage (matches /context exactly)
@@ -568,23 +606,45 @@ glm_plan_usage=$(get_glm_plan_usage)
 # Get ralph progress
 ralph_progress=$(get_ralph_progress "$cwd")
 
-# Find and run claude-hud
-claude_hud_dir=$(ls -td ~/.claude-sneakpeek/zai/config/plugins/cache/claude-hud/claude-hud/*/ ~/.claude/plugins/cache/claude-hud/claude-hud/*/ ~/.claude-code-old/plugins/cache/claude-hud/claude-hud/*/ 2>/dev/null | head -1)
+# Find and run claude-hud (v2.82.0: fixed zsh nomatch bug — search each path individually)
+claude_hud_dir=""
+for search_path in \
+    "$HOME/.claude/plugins/cache/claude-hud/claude-hud/"* \
+    "$HOME/.cc-mirror/minimax/config/plugins/cache/claude-hud/claude-hud/"* \
+    "$HOME/.cc-mirror/zai/config/plugins/cache/claude-hud/claude-hud/"* \
+    "$HOME/.claude-code-old/plugins/cache/claude-hud/claude-hud/"*; do
+    if [[ -d "$search_path" ]] && [[ -f "${search_path}/dist/index.js" ]]; then
+        claude_hud_dir="${search_path}/"
+        break
+    fi
+done 2>/dev/null
 
 if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
     # Run claude-hud and capture output
     hud_output=$(echo "$stdin_data" | node "${claude_hud_dir}dist/index.js" 2>/dev/null)
 
-    # Filter out claude-hud's [model] progress line and git:(...) lines
+    # Strip claude-hud's [model] prefix and progress bar from stats line,
+    # and filter git:(...) lines (we show our own git info).
+    # v2.82.1 FIX: Previously grep -vF removed the ENTIRE stats line
+    # because it started with [model_name]. Now we strip only the prefix.
     model_name=$(echo "$stdin_data" | jq -r '.model.display_name // "model"')
-    hud_output=$(echo "$hud_output" | grep -vF "[${model_name}]" || echo "$hud_output")
+    hud_output=$(echo "$hud_output" | sed "s/^\[${model_name}\] [░█]* [0-9]*% //" || echo "$hud_output")
     hud_output=$(echo "$hud_output" | grep -v "git:(" || echo "$hud_output")
 
-    # Build combined segment
+    # Build combined segment — start with provider badge (v2.82.0)
     combined_segment=""
 
+    # Provider badge always goes first
+    if [[ -n "$provider_badge" ]]; then
+        combined_segment="${provider_badge}"
+    fi
+
     if [[ -n "$git_info" ]]; then
-        combined_segment="${git_info}"
+        if [[ -n "$combined_segment" ]]; then
+            combined_segment="${combined_segment} │ ${git_info}"
+        else
+            combined_segment="${git_info}"
+        fi
     fi
 
     # Add cumulative context display (claude-hud style)
@@ -613,16 +673,17 @@ if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
         fi
     fi
 
-    if [[ -n "$ralph_progress" ]]; then
-        if [[ -n "$combined_segment" ]]; then
-            combined_segment="${combined_segment} │ ${ralph_progress}"
-        else
-            combined_segment="${ralph_progress}"
-        fi
-    fi
+    # Note: ralph_progress is intentionally NOT concatenated into combined_segment.
+    # It gets its OWN line below to avoid truncation in narrow terminals (~80 cols).
+    # The statusline can have 3 lines: combined_segment, ralph_progress, hud_output.
 
     if [[ -n "$combined_segment" ]]; then
         printf '%b\n' "$combined_segment"
+
+        # Plan progress on its own line (avoids 80-col truncation)
+        if [[ -n "$ralph_progress" ]]; then
+            printf '%b\n' "$ralph_progress"
+        fi
 
         # Output remaining claude-hud lines
         first_line=$(echo "$hud_output" | head -1)
@@ -634,14 +695,24 @@ if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
         if [[ -n "$rest" ]]; then
             echo "$rest"
         fi
+    elif [[ -n "$ralph_progress" ]]; then
+        # No combined_segment but plan exists — print plan + hud
+        printf '%b\n' "$ralph_progress"
+        echo "$hud_output"
     else
         echo "$hud_output"
     fi
 else
-    # Fallback: show git info, context, GLM usage, and progress
-    if [[ -n "$git_info" ]] || [[ -n "$context_cumulative_display" ]] || [[ -n "$context_current_display" ]] || [[ -n "$glm_plan_usage" ]] || [[ -n "$ralph_progress" ]]; then
+    # Fallback: show provider badge, git info, context, GLM usage, and progress
+    if [[ -n "$provider_badge" ]] || [[ -n "$git_info" ]] || [[ -n "$context_cumulative_display" ]] || [[ -n "$context_current_display" ]] || [[ -n "$glm_plan_usage" ]] || [[ -n "$ralph_progress" ]]; then
         fallback=""
-        [[ -n "$git_info" ]] && fallback="$git_info"
+        # Provider badge first (v2.82.0)
+        [[ -n "$provider_badge" ]] && fallback="$provider_badge"
+        if [[ -n "$git_info" ]] && [[ -n "$fallback" ]]; then
+            fallback="${fallback} │ ${git_info}"
+        elif [[ -n "$git_info" ]]; then
+            fallback="$git_info"
+        fi
 
         if [[ -n "$context_cumulative_display" ]]; then
             [[ -n "$fallback" ]] && fallback="${fallback} │ "
@@ -658,11 +729,11 @@ else
             fallback="${fallback}${glm_plan_usage}"
         fi
 
-        if [[ -n "$ralph_progress" ]]; then
-            [[ -n "$fallback" ]] && fallback="${fallback} │ "
-            fallback="${fallback}${ralph_progress}"
-        fi
+        # Plan progress on its OWN line (no concat, avoids 80-col truncation)
         printf '%b\n' "$fallback"
+        if [[ -n "$ralph_progress" ]]; then
+            printf '%b\n' "$ralph_progress"
+        fi
     else
         echo "[statusline] Initializing..."
     fi

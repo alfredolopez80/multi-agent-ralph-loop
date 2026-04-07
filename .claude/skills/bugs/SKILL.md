@@ -162,7 +162,7 @@ Task:
     Dependencies: $(tldr deps $ARGUMENTS .)
 
     Execute Codex bug hunting via CLI:
-    cd /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop && \
+    cd ~/Documents/GitHub/multi-agent-ralph-loop && \
     codex exec --yolo --enable-skills -m gpt-5.2-codex \
     "Use bug-hunter skill. Find bugs in: $ARGUMENTS
 
@@ -345,7 +345,7 @@ Full bug hunting and remediation workflow:
 ralph bugs src/
 
 # 2. Review report
-cat ~/.ralph/tmp/codex_bugs.json | jq '.summary'
+cat .claude/tmp/codex_bugs.json | jq '.summary'
 
 # 3. Fix HIGH severity bugs
 # (manual or via /refactor)

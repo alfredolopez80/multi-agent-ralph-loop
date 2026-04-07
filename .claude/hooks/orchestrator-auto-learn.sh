@@ -76,10 +76,28 @@ if [[ "$SUBAGENT_TYPE" != "orchestrator" ]] && [[ "$SUBAGENT_TYPE" != "Plan" ]];
     fi
 fi
 
-# Paths
-PLAN_STATE="${HOME}/.ralph/plan-state/plan-state.json"
+# Paths — MemPalace v3.0: plan-state is LOCAL (repo-specific), always
+CWD_FROM_INPUT=$(echo "$INPUT" | jq -r '.cwd // "."' 2>/dev/null || echo ".")
+PLAN_STATE="${CWD_FROM_INPUT}/.claude/plan-state.json"
+# If local doesn't exist, create a clean empty plan-state
+if [[ ! -f "$PLAN_STATE" ]]; then
+    mkdir -p "$(dirname "$PLAN_STATE")"
+    cat > "$PLAN_STATE" << 'PLANEOF'
+{
+  "version": "3.0.0",
+  "plan_name": null,
+  "plan_file": null,
+  "current_phase": null,
+  "active_agent": "",
+  "classification": { "workflow_route": null, "adaptive_mode": null },
+  "phases": [], "barriers": {}, "steps": [],
+  "metadata": { "session_id": null, "started_at": null }
+}
+PLANEOF
+fi
 PLAN_STATE_LOCK="${PLAN_STATE}.lock"
-RULES_FILE="${HOME}/.ralph/procedural/rules.json"
+# MemPalace v3.0: Procedural memory is now in .claude/rules/learned/
+RULES_FILE="${CWD_FROM_INPUT}/.claude/rules/learned"
 
 # LOCK-001: File locking functions for atomic plan-state operations
 acquire_plan_state_lock() {
@@ -214,30 +232,29 @@ else
     fi
 fi
 
-# Check procedural memory for relevant rules
-# v2.60.1: FIXED - Search by domain FIRST, then by category/trigger as fallback
+# Check learned rules in MemPalace v3.0 taxonomy
 RULES_COUNT=0
 RELEVANT_COUNT=0
 DOMAIN_MATCH_COUNT=0
 KEYWORD_MATCH_COUNT=0
 
-if [[ -f "$RULES_FILE" ]]; then
-    RULES_COUNT=$(jq -r '.rules | length // 0' "$RULES_FILE" 2>/dev/null || echo "0")
+if [[ -d "$RULES_FILE" ]]; then
+    # Count total rule files in taxonomy (halls/ + rooms/ subdirectories)
+    RULES_COUNT=$(find "$RULES_FILE" -name "*.md" ! -name "README.md" -type f 2>/dev/null | wc -l | tr -d ' ')
 
-    # v2.60.1: First count rules matching the detected domain
+    # Check for domain-specific rules by grepping for domain keywords in files
     if [[ "$DOMAIN" != "general" ]]; then
-        DOMAIN_MATCH_COUNT=$(jq -r --arg domain "$DOMAIN" '[.rules[] | select(.domain == $domain)] | length' "$RULES_FILE" 2>/dev/null || echo "0")
+        DOMAIN_MATCH_COUNT=$(grep -rl "$DOMAIN" "$RULES_FILE/halls/" "$RULES_FILE/rooms/" 2>/dev/null | wc -l | tr -d ' ')
     fi
 
-    # Then count rules matching keywords (category or trigger) for additional context
+    # Count keyword matches across taxonomy files
     IFS='|' read -ra KEYWORDS <<< "$DOMAIN_KEYWORDS"
     for kw in "${KEYWORDS[@]}"; do
-        COUNT=$(jq -r --arg kw "$kw" '[.rules[] | select(.category == $kw or (.trigger | ascii_downcase | contains($kw)))] | length' "$RULES_FILE" 2>/dev/null || echo "0")
+        COUNT=$(grep -rl "$kw" "$RULES_FILE/halls/" "$RULES_FILE/rooms/" 2>/dev/null | wc -l | tr -d ' ')
         KEYWORD_MATCH_COUNT=$((KEYWORD_MATCH_COUNT + COUNT))
     done
 
-    # v2.60.1: Use domain matches as primary, add keyword matches as secondary
-    # This ensures backfilled domains are recognized
+    # Use domain matches as primary, add keyword matches as secondary
     RELEVANT_COUNT=$((DOMAIN_MATCH_COUNT + KEYWORD_MATCH_COUNT))
 
     # Log the breakdown
