@@ -1,13 +1,14 @@
 #!/bin/bash
 # session-start-repo-summary.sh - SessionStart Hook for Repo History Summary
 # Hook: SessionStart
-# Purpose: Display recent project history from claude-mem at session start
+# Purpose: Display recent project history from Obsidian vault + ralph stores
 #
 # When: Triggered at session start
-# What: Queries claude-mem for recent observations about this project
+# What: Reads from ~/.ralph/memory/, ~/.ralph/ledgers/, and Obsidian vault
 #
-# VERSION: 1.0.0
+# VERSION: 3.2.0
 # CREATED: 2026-02-13
+# UPDATED: 2026-04-07 (vault-first: reads from Obsidian + ralph stores)
 # SECURITY: SEC-006 compliant
 
 # SEC-111: Read input from stdin with length limit (100KB max)
@@ -46,15 +47,12 @@ log "Project: $PROJECT_NAME"
 # Initialize summary
 SUMMARY=""
 
-# Check if claude-mem MCP is available
-# We'll try to read from the MCP via cached data or direct query
-CACHE_FILE="${RALPH_DIR}/cache/claude-mem-recent-${PROJECT_NAME}.json"
+# v3.2.0: claude-mem removed. Sources: semantic.json + ledgers + Obsidian vault + migrated JSONs.
+VAULT_DIR="${HOME}/Documents/Obsidian/MiVault"
+MIGRATED_DIR="${VAULT_DIR}/migrated-from-claude-mem"
 
-# Try to get recent observations from cache or generate summary
 if command -v jq &>/dev/null; then
-    # Check for Ralph's semantic memory as fallback
     SEMANTIC_FILE="${RALPH_DIR}/memory/semantic.json"
-    MEMVID_FILE="${RALPH_DIR}/memory/memvid.json"
 
     # Build summary from available sources
     SUMMARY_PARTS=()
@@ -63,7 +61,6 @@ if command -v jq &>/dev/null; then
     if [[ -f "$SEMANTIC_FILE" ]]; then
         FACT_COUNT=$(jq '.facts | length // 0' "$SEMANTIC_FILE" 2>/dev/null || echo "0")
         if [[ "$FACT_COUNT" -gt 0 ]]; then
-            # Get last 3 facts
             RECENT_FACTS=$(jq -r '.facts[-3:][] | "- \(.content[:80])..."' "$SEMANTIC_FILE" 2>/dev/null | head -3 || true)
             if [[ -n "$RECENT_FACTS" ]]; then
                 SUMMARY_PARTS+=("## Recent Semantic Memory ($FACT_COUNT facts)\n$RECENT_FACTS")
@@ -71,18 +68,7 @@ if command -v jq &>/dev/null; then
         fi
     fi
 
-    # 2. Check memvid
-    if [[ -f "$MEMVID_FILE" ]]; then
-        ENTRY_COUNT=$(jq '.entries | length // 0' "$MEMVID_FILE" 2>/dev/null || echo "0")
-        if [[ "$ENTRY_COUNT" -gt 0 ]]; then
-            RECENT_ENTRIES=$(jq -r '.entries[-3:][] | "- \(.title // .content[:60])"' "$MEMVID_FILE" 2>/dev/null | head -3 || true)
-            if [[ -n "$RECENT_ENTRIES" ]]; then
-                SUMMARY_PARTS+=("## Recent Memvid Entries ($ENTRY_COUNT total)\n$RECENT_ENTRIES")
-            fi
-        fi
-    fi
-
-    # 3. Check ledgers
+    # 2. Check ledgers
     LEDGER_DIR="${RALPH_DIR}/ledgers"
     if [[ -d "$LEDGER_DIR" ]]; then
         LEDGER_COUNT=$(find "$LEDGER_DIR" -name "*.json" -type f 2>/dev/null | wc -l | tr -d ' ')
@@ -95,13 +81,35 @@ if command -v jq &>/dev/null; then
         fi
     fi
 
+    # 3. Check migrated observations for this project
+    if [[ -f "${MIGRATED_DIR}/decisions.json" ]]; then
+        MIGRATED_DECISIONS=$(jq -r --arg proj "$PROJECT_NAME" '[.[] | select(.project == $proj)] | length' "${MIGRATED_DIR}/decisions.json" 2>/dev/null || echo "0")
+        if [[ "$MIGRATED_DECISIONS" -gt 0 ]]; then
+            RECENT_DECISIONS=$(jq -r --arg proj "$PROJECT_NAME" '[.[] | select(.project == $proj)] | .[0:3][] | "- \(.title // .subtitle // "(no title)")"' "${MIGRATED_DIR}/decisions.json" 2>/dev/null | head -3 || true)
+            if [[ -n "$RECENT_DECISIONS" ]]; then
+                SUMMARY_PARTS+=("## Historical Decisions ($MIGRATED_DECISIONS for $PROJECT_NAME)\n$RECENT_DECISIONS")
+            fi
+        fi
+    fi
+
+    # 4. Check Obsidian vault wiki articles (recent)
+    if [[ -d "${VAULT_DIR}/global/wiki" ]]; then
+        WIKI_COUNT=$(find "${VAULT_DIR}/global/wiki" -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
+        if [[ "$WIKI_COUNT" -gt 0 ]]; then
+            RECENT_WIKI=$(find "${VAULT_DIR}/global/wiki" -name "*.md" -type f -mtime -14 2>/dev/null | head -3 | xargs -I{} basename {} .md 2>/dev/null | awk '{print "- "$0}' || true)
+            if [[ -n "$RECENT_WIKI" ]]; then
+                SUMMARY_PARTS+=("## Recent Vault Articles ($WIKI_COUNT total)\n$RECENT_WIKI")
+            fi
+        fi
+    fi
+
     # Combine all parts
     if [[ ${#SUMMARY_PARTS[@]} -gt 0 ]]; then
         SUMMARY="## 📊 Project History Summary: $PROJECT_NAME\n\n"
         for part in "${SUMMARY_PARTS[@]}"; do
             SUMMARY="${SUMMARY}${part}\n\n"
         done
-        SUMMARY="${SUMMARY}💡 Use \`mcp__plugin_claude-mem_mcp-search__search\` to search full history"
+        SUMMARY="${SUMMARY}💡 Search Obsidian vault directly or use grep on ~/.ralph/ stores"
     else
         SUMMARY="## 📊 Project: $PROJECT_NAME\n\nNo recent history found in local memory.\n\n💡 Start working to build up project memory!"
     fi

@@ -1,5 +1,5 @@
 #!/bin/bash
-# session-start-restore-context.sh - SessionStart Hook for Ralph v2.84.2
+# session-start-restore-context.sh - SessionStart Hook for Ralph v3.2.0
 # Hook: SessionStart
 # Restores context and plan state when a new session starts
 #
@@ -17,7 +17,8 @@
 # 3. Restoring plan state if exists
 # 4. Injecting context into the new session
 
-# VERSION: 2.84.2
+# VERSION: 3.2.0
+# UPDATED: 2026-04-07 (vault-first architecture, reads from Obsidian migrated data)
 set -euo pipefail
 
 # Configuration
@@ -65,46 +66,38 @@ truncate_context() {
     fi
 }
 
-# Get claude-mem hints for session context (v2.43 integration)
-# Queries claude-mem SQLite database directly for relevant observations
-get_claude_mem_hints() {
+# Get vault hints from Obsidian migrated observations (v3.2.0)
+# Reads from ~/Documents/Obsidian/MiVault/migrated-from-claude-mem/decisions.json
+get_vault_hints() {
     local project_name="$1"
     local hints=""
     local max_hints=5
+    local vault_dir="${HOME}/Documents/Obsidian/MiVault/migrated-from-claude-mem"
 
-    # Path to claude-mem SQLite database
-    local claude_mem_db="${HOME}/.claude-mem/claude-mem.db"
+    # Try decisions.json first (1283 entries for multi-agent-ralph-loop)
+    if [[ -f "${vault_dir}/decisions.json" ]] && command -v jq &>/dev/null; then
+        hints=$(jq -r --arg proj "$project_name" \
+            '[.[] | select(.project == $proj)] | .[0:'"$max_hints"'][] | "- [decision] \(.title // .subtitle // "(untitled)")"' \
+            "${vault_dir}/decisions.json" 2>/dev/null || echo "")
 
-    # Try SQLite query first (direct database access - most reliable)
-    if [[ -f "$claude_mem_db" ]]; then
-        # Extract project identifier from project name (handle various formats)
-        # e.g., "multi-agent-ralph-loop" matches "multi-agent" or "ralph"
-        local project_pattern=$(echo "$project_name" | sed 's/-/ /g' | awk '{print $1}')
-
-        # Query recent observations for this project
-        # Search in both project column and title for matches
-        hints=$(sqlite3 "$claude_mem_db" \
-            "SELECT '- [' || type || '] ' || title
-             FROM observations
-             WHERE project LIKE '%${project_pattern}%'
-                OR title LIKE '%${project_pattern}%'
-                OR narrative LIKE '%${project_pattern}%'
-             ORDER BY created_at_epoch DESC
-             LIMIT ${max_hints}" 2>/dev/null || echo "")
-
-        # If no exact match, get most recent observations overall
-        if [[ -z "$hints" ]]; then
-            hints=$(sqlite3 "$claude_mem_db" \
-                "SELECT '- [' || type || '] ' || title
-                 FROM observations
-                 ORDER BY created_at_epoch DESC
-                 LIMIT ${max_hints}" 2>/dev/null || echo "")
+        # Fallback to refactors if no decisions for this project
+        if [[ -z "$hints" ]] && [[ -f "${vault_dir}/refactors.json" ]]; then
+            hints=$(jq -r --arg proj "$project_name" \
+                '[.[] | select(.project == $proj)] | .[0:'"$max_hints"'][] | "- [refactor] \(.title // .subtitle // "(untitled)")"' \
+                "${vault_dir}/refactors.json" 2>/dev/null || echo "")
         fi
+    fi
+
+    # If no hints from migrated data, try Obsidian vault wiki directly
+    if [[ -z "$hints" ]] && [[ -d "${HOME}/Documents/Obsidian/MiVault/global/wiki" ]]; then
+        hints=$(find "${HOME}/Documents/Obsidian/MiVault/global/wiki" -name "*.md" -type f -mtime -30 2>/dev/null | \
+            head -$max_hints | xargs -I{} basename {} .md 2>/dev/null | \
+            awk '{print "- [wiki] "$0}' || echo "")
     fi
 
     # If still no hints, return a helpful message
     if [[ -z "$hints" ]]; then
-        hints="No recent claude-mem observations found. Use /memory to search semantic memory."
+        hints="No recent observations found. Search ~/Documents/Obsidian/MiVault/ directly."
     fi
 
     echo "$hints"
@@ -234,14 +227,14 @@ if [[ -d "$SESSION_HANDOFF_DIR" ]]; then
     fi
 fi
 
-# 4. Get claude-mem hints for this project (v2.43 integration)
-CLAUDE_MEM_HINTS=$(get_claude_mem_hints "$PROJECT_NAME")
-if [[ -n "$CLAUDE_MEM_HINTS" && "$CLAUDE_MEM_HINTS" != "Use /memory search to find relevant past context" ]]; then
-    CONTEXT+="### Claude-Mem Context\n\n"
-    CONTEXT+="Recent observations from semantic memory:\n\n"
-    CONTEXT+="${CLAUDE_MEM_HINTS}\n\n"
+# 4. Get vault hints for this project (v3.2.0: Obsidian-backed)
+VAULT_HINTS=$(get_vault_hints "$PROJECT_NAME")
+if [[ -n "$VAULT_HINTS" ]] && [[ "$VAULT_HINTS" != "No recent observations found. Search ~/Documents/Obsidian/MiVault/ directly." ]]; then
+    CONTEXT+="### Vault Context\n\n"
+    CONTEXT+="Recent observations from Obsidian vault:\n\n"
+    CONTEXT+="${VAULT_HINTS}\n\n"
     FOUND_CONTEXT=true
-    log "INFO" "Claude-mem hints added"
+    log "INFO" "Vault hints added"
 fi
 
 # 5. Add continuity guidance if context was found
