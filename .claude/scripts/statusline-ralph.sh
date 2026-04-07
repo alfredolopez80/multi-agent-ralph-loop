@@ -1,7 +1,14 @@
 #!/bin/bash
 # statusline-ralph.sh - Enhanced StatusLine with Git + Ralph Progress + GLM Usage + Context Info
 #
-# VERSION: 2.81.2
+# VERSION: 2.82.0
+#
+# CHANGELOG v2.82.0:
+# - Model-adaptive display: detects active model via stdin JSON (.model.display_name)
+# - Provider badge: ZAI (glm-*), MMX (MiniMax*), CLD (Claude native)
+# - Each provider gets distinct color + icon for instant identification
+# - Claude-hud output adapted per provider (suppressed when unavailable)
+# - Detection: .model.display_name > ANTHROPIC_MODEL env > fallback
 #
 # CHANGELOG v2.81.2:
 # - CRITICAL FIX: Use remaining_percentage from stdin JSON (matches /context exactly)
@@ -83,6 +90,50 @@ MAGENTA=$(ansi_magenta)
 BLUE=$(ansi_blue)
 DIM=$(ansi_dim)
 RESET=$(ansi_reset)
+
+# ============================================
+# Model / Provider Detection (v2.82.0)
+# ============================================
+
+# Detect active provider from model display name
+# Returns: provider_id (zai|mmx|cld), provider_label, provider_color
+detect_provider() {
+    local model_name="$1"
+    local provider_id="cld"
+    local provider_label="CLD"
+    local provider_icon="◆"
+    local provider_color="$GREEN"
+
+    if [[ "$model_name" == glm* ]]; then
+        provider_id="zai"
+        provider_label="ZAI"
+        provider_icon="◆"
+        provider_color="$CYAN"
+    elif [[ "$model_name" == MiniMax* ]] || [[ "$model_name" == minimax* ]]; then
+        provider_id="mmx"
+        provider_label="MMX"
+        provider_icon="◇"
+        provider_color="$MAGENTA"
+    elif [[ "$model_name" == claude* ]]; then
+        # Claude native models — always CLD provider
+        provider_id="cld"
+        provider_label="CLD"
+        provider_icon="◆"
+        provider_color="$GREEN"
+    elif [[ -n "${ANTHROPIC_MODEL:-}" ]] && [[ "${ANTHROPIC_MODEL}" == glm* ]]; then
+        provider_id="zai"
+        provider_label="ZAI"
+        provider_icon="◆"
+        provider_color="$CYAN"
+    elif [[ -n "${ANTHROPIC_MODEL:-}" ]] && [[ "${ANTHROPIC_MODEL}" == MiniMax* ]]; then
+        provider_id="mmx"
+        provider_label="MMX"
+        provider_icon="◇"
+        provider_color="$MAGENTA"
+    fi
+
+    printf '%s\t%s\t%s\t%s' "$provider_id" "$provider_label" "$provider_icon" "$provider_color"
+}
 
 # ============================================
 # Context Display Functions (v2.77.0)
@@ -490,6 +541,24 @@ stdin_data=$(cat)
 cwd=$(echo "$stdin_data" | jq -r '.cwd // "."' 2>/dev/null || echo ".")
 
 # ============================================
+# v2.82.0: Detect active model/provider
+# ============================================
+model_display_name=$(echo "$stdin_data" | jq -r '.model.display_name // ""' 2>/dev/null)
+provider_info=$(detect_provider "$model_display_name")
+provider_id=$(echo "$provider_info" | cut -f1)
+provider_label=$(echo "$provider_info" | cut -f2)
+provider_icon=$(echo "$provider_info" | cut -f3)
+provider_color=$(echo "$provider_info" | cut -f4)
+
+# Build provider badge: ◆ ZAI glm-5.1
+provider_badge=""
+if [[ -n "$model_display_name" ]]; then
+    provider_badge="${provider_color}${provider_icon} ${provider_label}${RESET} ${DIM}${model_display_name}${RESET}"
+else
+    provider_badge="${provider_color}${provider_icon} ${provider_label}${RESET}"
+fi
+
+# ============================================
 # v2.78.0: Extract context window directly from stdin JSON
 # ============================================
 # No cache needed - used_percentage comes directly from Claude Code's native tracking
@@ -519,7 +588,8 @@ if [[ -n "$context_info" ]] && [[ "$context_info" != "null" ]] && [[ "$context_i
     cumulative_tokens=$((total_input + total_output))
 
     # Calculate used tokens - PRIORITY: remaining_percentage > used_percentage > cumulative
-    local remaining_pct=$(echo "$context_info" | jq -r '.remaining_percentage // null')
+    # BUG-003 FIX: removed 'local' keyword — this block is in main script body, not a function
+    remaining_pct=$(echo "$context_info" | jq -r '.remaining_percentage // null')
 
     if [[ -n "$remaining_pct" ]] && [[ "$remaining_pct" != "null" ]] && [[ "$remaining_pct" =~ ^[0-9]+$ ]]; then
         # Use remaining_percentage (matches /context exactly)
@@ -568,8 +638,18 @@ glm_plan_usage=$(get_glm_plan_usage)
 # Get ralph progress
 ralph_progress=$(get_ralph_progress "$cwd")
 
-# Find and run claude-hud
-claude_hud_dir=$(ls -td ~/.claude-sneakpeek/zai/config/plugins/cache/claude-hud/claude-hud/*/ ~/.claude/plugins/cache/claude-hud/claude-hud/*/ ~/.claude-code-old/plugins/cache/claude-hud/claude-hud/*/ 2>/dev/null | head -1)
+# Find and run claude-hud (v2.82.0: fixed zsh nomatch bug — search each path individually)
+claude_hud_dir=""
+for search_path in \
+    "$HOME/.claude/plugins/cache/claude-hud/claude-hud/"* \
+    "$HOME/.cc-mirror/minimax/config/plugins/cache/claude-hud/claude-hud/"* \
+    "$HOME/.cc-mirror/zai/config/plugins/cache/claude-hud/claude-hud/"* \
+    "$HOME/.claude-code-old/plugins/cache/claude-hud/claude-hud/"*; do
+    if [[ -d "$search_path" ]] && [[ -f "${search_path}/dist/index.js" ]]; then
+        claude_hud_dir="${search_path}/"
+        break
+    fi
+done 2>/dev/null
 
 if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
     # Run claude-hud and capture output
@@ -580,11 +660,20 @@ if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
     hud_output=$(echo "$hud_output" | grep -vF "[${model_name}]" || echo "$hud_output")
     hud_output=$(echo "$hud_output" | grep -v "git:(" || echo "$hud_output")
 
-    # Build combined segment
+    # Build combined segment — start with provider badge (v2.82.0)
     combined_segment=""
 
+    # Provider badge always goes first
+    if [[ -n "$provider_badge" ]]; then
+        combined_segment="${provider_badge}"
+    fi
+
     if [[ -n "$git_info" ]]; then
-        combined_segment="${git_info}"
+        if [[ -n "$combined_segment" ]]; then
+            combined_segment="${combined_segment} │ ${git_info}"
+        else
+            combined_segment="${git_info}"
+        fi
     fi
 
     # Add cumulative context display (claude-hud style)
@@ -643,10 +732,16 @@ if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
         echo "$hud_output"
     fi
 else
-    # Fallback: show git info, context, GLM usage, and progress
-    if [[ -n "$git_info" ]] || [[ -n "$context_cumulative_display" ]] || [[ -n "$context_current_display" ]] || [[ -n "$glm_plan_usage" ]] || [[ -n "$ralph_progress" ]]; then
+    # Fallback: show provider badge, git info, context, GLM usage, and progress
+    if [[ -n "$provider_badge" ]] || [[ -n "$git_info" ]] || [[ -n "$context_cumulative_display" ]] || [[ -n "$context_current_display" ]] || [[ -n "$glm_plan_usage" ]] || [[ -n "$ralph_progress" ]]; then
         fallback=""
-        [[ -n "$git_info" ]] && fallback="$git_info"
+        # Provider badge first (v2.82.0)
+        [[ -n "$provider_badge" ]] && fallback="$provider_badge"
+        if [[ -n "$git_info" ]] && [[ -n "$fallback" ]]; then
+            fallback="${fallback} │ ${git_info}"
+        elif [[ -n "$git_info" ]]; then
+            fallback="$git_info"
+        fi
 
         if [[ -n "$context_cumulative_display" ]]; then
             [[ -n "$fallback" ]] && fallback="${fallback} │ "

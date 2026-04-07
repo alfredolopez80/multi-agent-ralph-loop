@@ -2,9 +2,9 @@
   "version": "3.0.0",
   "plan_name": "MemPalace-Inspired Memory & Hooks Overhaul",
   "plan_file": ".ralph/plans/cheeky-dazzling-catmull.md",
-  "current_phase": "wave_4",
+  "current_phase": "wave_5",
   "active_agent": "",
-  "last_updated": "2026-04-07T19:30:00Z",
+  "last_updated": "2026-04-07T20:30:00Z",
   "classification": {
     "workflow_route": "COMPLEX",
     "adaptive_mode": "PARALLEL_WAVES"
@@ -47,14 +47,14 @@
 
     {"id": "W4.1", "phase": "wave_4", "name": "unified-mcp-server", "status": "pending", "priority": "P1", "owner": "ralph-coder-kappa", "note": "DEFERRED — significant scope, better suited for dedicated PR after core architecture lands"},
     {"id": "W4.2", "phase": "wave_4", "name": "hook-consolidation", "status": "completed", "priority": "P1", "owner": "ralph-coder-lambda", "evidence": "wake-up-layer-stack.sh registered as SessionStart hook + 3 consolidation candidates identified in docs/refactor/HOOK_CONSOLIDATION_W4.2_2026-04-07.md"},
-    {"id": "W4.3", "phase": "wave_4", "name": "full-test-suite", "status": "in_progress", "priority": "P1", "owner": "ralph-tester-beta", "evidence": "vault health test added (d6de57c) but full suite pending"},
+    {"id": "W4.3", "phase": "wave_4", "name": "full-test-suite", "status": "completed", "priority": "P1", "owner": "ralph-tester-beta", "evidence": "925/932 pass (99.2%), 7 stale expectations (not regressions), wake-up hook 627 tokens"},
     {"id": "W4.4", "phase": "wave_4", "name": "docs-update", "status": "completed", "priority": "P2", "owner": "ralph-reviewer-beta", "evidence": "CLAUDE.md updated with MemPalace v3.0 Memory System (layer stack, taxonomy, agent diaries, key decisions)"},
 
-    {"id": "W5.0", "phase": "wave_5", "name": "diagnose-symlinks", "status": "pending", "priority": "P2", "owner": "ralph-researcher-zeta"},
-    {"id": "W5.1", "phase": "wave_5", "name": "promote-rules-standalone", "status": "pending", "priority": "P2", "owner": "ralph-coder-mu"},
-    {"id": "W5.2", "phase": "wave_5", "name": "universal-hooks", "status": "pending", "priority": "P2", "owner": "ralph-coder-nu"},
-    {"id": "W5.3", "phase": "wave_5", "name": "register-universal-hooks", "status": "pending", "priority": "P2", "owner": "ralph-coder-xi"},
-    {"id": "W5.4", "phase": "wave_5", "name": "task-classifier-skill", "status": "pending", "priority": "P2", "owner": "ralph-coder-omicron"},
+    {"id": "W5.0", "phase": "wave_5", "name": "diagnose-symlinks", "status": "completed", "priority": "P2", "owner": "ralph-researcher-zeta", "evidence": "Symlink audit complete — 6 rules, 87 hooks, 60 skills mapped"},
+    {"id": "W5.1", "phase": "wave_5", "name": "promote-rules-standalone", "status": "completed", "priority": "P2", "owner": "ralph-coder-mu", "evidence": "6 rules promoted to ~/.claude/rules/ as real files + sync-rules-from-source.sh + check-rules-staleness.sh"},
+    {"id": "W5.2", "phase": "wave_5", "name": "universal-hooks", "status": "completed", "priority": "P2", "owner": "ralph-coder-nu", "evidence": "3 universal hooks (classifier, aristotle gate, step tracker) in repo + global ~/.claude/hooks/"},
+    {"id": "W5.3", "phase": "wave_5", "name": "register-universal-hooks", "status": "completed", "priority": "P2", "owner": "ralph-coder-xi", "evidence": "3/3 registered in ~/.claude/settings.json with global paths — classifier (UserPromptSubmit first), aristotle gate (PreToolUse wildcard first), step tracker (PostToolUse last)"},
+    {"id": "W5.4", "phase": "wave_5", "name": "task-classifier-skill", "status": "completed", "priority": "P2", "owner": "ralph-coder-omicron", "evidence": "task-classifier SKILL.md + 56 skills promoted from symlinks to standalone copies in ~/.claude/skills/"},
     {"id": "W5.5", "phase": "wave_5", "name": "package-as-plugin", "status": "pending", "priority": "P2", "owner": "ralph-coder-pi"},
     {"id": "W5.6", "phase": "wave_5", "name": "global-rollout-validation", "status": "pending", "priority": "P2", "owner": "ralph-tester-gamma"},
     {"id": "W5.7", "phase": "wave_5", "name": "symlink-vs-copy-policy", "status": "pending", "priority": "P2", "owner": "ralph-reviewer-gamma"}
