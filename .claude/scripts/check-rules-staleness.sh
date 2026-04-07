@@ -7,7 +7,7 @@ umask 077
 
 set -euo pipefail
 
-REPO="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+REPO="~/Documents/GitHub/multi-agent-ralph-loop"
 RULES_DIR="$HOME/.claude/rules"
 STALE=0
 FRESH=0

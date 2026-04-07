@@ -38,7 +38,7 @@
 Set `umask 077` at the top of every hook script.
 
 **Source**: (confidence: 0.9, sessions: 6)
-**Vault**: `/Users/alfredolopez/Documents/Obsidian/MiVault/global/wiki/security/umask-077-defense.md`
+**Vault**: `~/Documents/Obsidian/MiVault/global/wiki/security/umask-077-defense.md`
 **Wing**: multi-agent-ralph-loop (hook system specific)
 
 ---
@@ -48,4 +48,4 @@ Set `umask 077` at the top of every hook script.
 Reference library of 27 security anti-patterns with CWE mappings.
 
 **Source**: (confidence: 0.95, sessions: 10)
-**Vault**: `/Users/alfredolopez/Documents/Obsidian/MiVault/global/wiki/security/27-anti-patterns.md`
+**Vault**: `~/Documents/Obsidian/MiVault/global/wiki/security/27-anti-patterns.md`

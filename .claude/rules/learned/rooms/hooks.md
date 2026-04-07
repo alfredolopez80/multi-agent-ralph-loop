@@ -30,7 +30,7 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 ```
 
 **Source**: hooks.md (confidence: 0.9, sessions: 8)
-**Vault**: `/Users/alfredolopez/Documents/Obsidian/MiVault/global/wiki/hooks/stdin-protocol-pattern.md`
+**Vault**: `~/Documents/Obsidian/MiVault/global/wiki/hooks/stdin-protocol-pattern.md`
 
 ---
 
@@ -43,7 +43,7 @@ INPUT=$(cat)
 ```
 
 **Source**: security.md (confidence: 0.9, sessions: 6)
-**Vault**: `/Users/alfredolopez/Documents/Obsidian/MiVault/global/wiki/security/umask-077-defense.md`
+**Vault**: `~/Documents/Obsidian/MiVault/global/wiki/security/umask-077-defense.md`
 
 ---
 

@@ -11,7 +11,7 @@
 Only 27 of 1003 procedural rules meet the High-Value threshold (confidence >= 0.8, sessions >= 3). Loading the full corpus degrades retrieval quality.
 
 **Source**: architecture.md (confidence: 0.8, sessions: 4)
-**Vault**: `/Users/alfredolopez/Documents/Obsidian/MiVault/global/wiki/architecture/procedural-rules-filtering.md`
+**Vault**: `~/Documents/Obsidian/MiVault/global/wiki/architecture/procedural-rules-filtering.md`
 **Wing**: _global
 
 ---

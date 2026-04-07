@@ -11,7 +11,7 @@
 Continuous improvement framework for AI agent systems.
 
 **Source**: (confidence: 0.85, sessions: 5)
-**Vault**: `/Users/alfredolopez/Documents/Obsidian/MiVault/global/wiki/agent-engineering/kaizen-4-pillars.md`
+**Vault**: `~/Documents/Obsidian/MiVault/global/wiki/agent-engineering/kaizen-4-pillars.md`
 
 ---
 
@@ -20,4 +20,4 @@ Continuous improvement framework for AI agent systems.
 Reference tables for recognizing rationalized decisions vs. first-principles reasoning.
 
 **Source**: (confidence: 0.8, sessions: 3)
-**Vault**: `/Users/alfredolopez/Documents/Obsidian/MiVault/global/wiki/agent-engineering/anti-rationalization.md`
+**Vault**: `~/Documents/Obsidian/MiVault/global/wiki/agent-engineering/anti-rationalization.md`

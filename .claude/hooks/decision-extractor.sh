@@ -256,8 +256,8 @@ trap release_lock EXIT
         DECISIONS_ADDED=0
         VAULT_DECISIONS_FACTS_DIR="$VAULT_DIR/projects/$PROJECT_NAME/facts"
         mkdir -p "$VAULT_DECISIONS_FACTS_DIR" 2>/dev/null || true
-        local today=$(date +%Y%m%d)
-        local decisions_fact_file="$VAULT_DECISIONS_FACTS_DIR/facts-${today}.md"
+        today=$(date +%Y%m%d)
+        decisions_fact_file="$VAULT_DECISIONS_FACTS_DIR/facts-${today}.md"
 
         # Add design patterns to vault facts
         for pattern in "${PATTERNS[@]:-}"; do

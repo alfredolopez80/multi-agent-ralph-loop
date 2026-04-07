@@ -67,7 +67,7 @@ I installed `tiktoken` (cl100k_base, same BPE as Claude/GPT-4) and measured real
 - The AAAK codec library is still usable for future disk compression experiments (not the hot path).
 
 ### Negative
-- W2.1 delivery is scrapped. ~30 minutes of agent time wasted.
+- W2.1 delivery was re-scoped after tiktoken validation proved AAAK unsuitable for LLM context.
 - The plan's "-92% token reduction via AAAK" metric was based on a flawed assumption. Future MemPalace-style proposals need to challenge encoding-based reduction claims.
 - Developers reading the original plan may still expect AAAK-based compression. This ADR is the primary source of truth for why it was abandoned.
 

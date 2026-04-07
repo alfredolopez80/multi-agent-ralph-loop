@@ -35,7 +35,7 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-REPO_DIR="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+REPO_DIR="~/Documents/GitHub/multi-agent-ralph-loop"
 LIB_DIR="${REPO_DIR}/.claude/lib"
 LOG_FILE="${HOME}/.ralph/logs/wake-up-layer-stack.log"
 L0_PATH="${HOME}/.ralph/layers/L0_identity.md"

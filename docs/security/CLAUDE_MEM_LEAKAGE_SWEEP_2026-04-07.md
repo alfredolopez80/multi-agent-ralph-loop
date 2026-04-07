@@ -39,16 +39,16 @@ Filesystem residue, log files, temp dirs, clipboard, swap files, and trash all r
 Spotlight returned 10 hits, **all** within `~/Documents/GitHub/claude-mem/`:
 
 ```
-/Users/alfredolopez/Documents/GitHub/claude-mem/src/ui/claude-mem-logo-for-dark-mode.webp
-/Users/alfredolopez/Documents/GitHub/claude-mem/src/ui/claude-mem-logomark.webp
-/Users/alfredolopez/Documents/GitHub/claude-mem/docs/public/claude-mem-logo-for-light-mode.webp
-/Users/alfredolopez/Documents/GitHub/claude-mem/docs/public/claude-mem-logomark.webp
-/Users/alfredolopez/Documents/GitHub/claude-mem/plugin/ui/claude-mem-logo-for-dark-mode.webp
-/Users/alfredolopez/Documents/GitHub/claude-mem/plugin/ui/claude-mem-logomark.webp
-/Users/alfredolopez/Documents/GitHub/claude-mem/plugin/scripts/claude-mem-wrapper.sh
-/Users/alfredolopez/Documents/GitHub/claude-mem/plugin/bin/claude-mem
-/Users/alfredolopez/Documents/GitHub/claude-mem/docs/public/claude-mem-logo-for-dark-mode.webp
-/Users/alfredolopez/Documents/GitHub/claude-mem
+~/Documents/GitHub/claude-mem/src/ui/claude-mem-logo-for-dark-mode.webp
+~/Documents/GitHub/claude-mem/src/ui/claude-mem-logomark.webp
+~/Documents/GitHub/claude-mem/docs/public/claude-mem-logo-for-light-mode.webp
+~/Documents/GitHub/claude-mem/docs/public/claude-mem-logomark.webp
+~/Documents/GitHub/claude-mem/plugin/ui/claude-mem-logo-for-dark-mode.webp
+~/Documents/GitHub/claude-mem/plugin/ui/claude-mem-logomark.webp
+~/Documents/GitHub/claude-mem/plugin/scripts/claude-mem-wrapper.sh
+~/Documents/GitHub/claude-mem/plugin/bin/claude-mem
+~/Documents/GitHub/claude-mem/docs/public/claude-mem-logo-for-dark-mode.webp
+~/Documents/GitHub/claude-mem
 ```
 
 **Classification**: This is the **upstream source code clone** (89 MB git repo), NOT an installation. It does not affect runtime — none of these files execute, are referenced by hooks, or are loaded by Claude Code.

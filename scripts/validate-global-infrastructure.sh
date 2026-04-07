@@ -10,7 +10,7 @@
 # Usage: bash scripts/validate-global-infrastructure.sh [--fix]
 set -euo pipefail
 
-REPO="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+REPO="~/Documents/GitHub/multi-agent-ralph-loop"
 FIX_MODE="${1:-}"
 PASS=0
 FAIL=0

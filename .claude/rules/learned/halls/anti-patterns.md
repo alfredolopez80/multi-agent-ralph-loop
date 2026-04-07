@@ -20,7 +20,7 @@ Never log passwords, tokens, or PII. Use environment variables for secrets. Encr
 Reference library of 27 security anti-patterns with CWE mappings.
 
 **Source**: security.md (confidence: 0.95, sessions: 10)
-**Vault**: `/Users/alfredolopez/Documents/Obsidian/MiVault/global/wiki/security/27-anti-patterns.md`
+**Vault**: `~/Documents/Obsidian/MiVault/global/wiki/security/27-anti-patterns.md`
 **Wing**: _global
 
 ---
@@ -30,7 +30,7 @@ Reference library of 27 security anti-patterns with CWE mappings.
 Reference tables for recognizing when an agent or developer is rationalizing a bad decision instead of applying first principles.
 
 **Source**: agent-engineering.md (confidence: 0.8, sessions: 3)
-**Vault**: `/Users/alfredolopez/Documents/Obsidian/MiVault/global/wiki/agent-engineering/anti-rationalization.md`
+**Vault**: `~/Documents/Obsidian/MiVault/global/wiki/agent-engineering/anti-rationalization.md`
 **Wing**: _global
 
 ---

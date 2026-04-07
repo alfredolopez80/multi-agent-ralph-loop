@@ -98,7 +98,7 @@ When creating or modifying skills in `.claude/skills/<name>/`, symlinks **MUST**
 **Create symlinks**:
 ```bash
 SKILL_NAME="my-skill"
-REPO="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+REPO="$(git rev-parse --show-toplevel 2>/dev/null || echo ~/Documents/GitHub/multi-agent-ralph-loop)"
 for dir in ~/.claude/skills ~/.codex/skills ~/.ralph/skills \
            ~/.cc-mirror/zai/config/skills ~/.cc-mirror/minimax/config/skills \
            ~/.config/agents/skills; do

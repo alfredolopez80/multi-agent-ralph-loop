@@ -162,7 +162,7 @@ Task:
     Dependencies: $(tldr deps $ARGUMENTS .)
 
     Execute Codex bug hunting via CLI:
-    cd /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop && \
+    cd ~/Documents/GitHub/multi-agent-ralph-loop && \
     codex exec --yolo --enable-skills -m gpt-5.2-codex \
     "Use bug-hunter skill. Find bugs in: $ARGUMENTS
 

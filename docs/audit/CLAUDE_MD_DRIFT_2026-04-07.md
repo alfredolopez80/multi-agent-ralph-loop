@@ -47,7 +47,7 @@
 ## Top 5 Most Critical Drifts
 
 ### 1. `~/CLAUDE.md` — Zai config path points to non-existent directory
-- **File**: `/Users/alfredolopez/CLAUDE.md`
+- **File**: `~/CLAUDE.md`
 - **Claim**: `~/.claude-sneakpeek/zai/config/settings.json` is the REAL primary settings
 - **Reality**: Directory `~/.claude-sneakpeek/` does not exist
 - **Impact**: Any developer following this instruction will get "no such file" errors. Hooks changes made there go nowhere.

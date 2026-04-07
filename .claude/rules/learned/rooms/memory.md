@@ -11,7 +11,7 @@
 Only ~2.7% of procedural rules (27 of 1003) meet the High-Value threshold (confidence >= 0.8, sessions >= 3). Apply this filter at L1_essential.md construction time.
 
 **Source**: architecture.md (confidence: 0.8, sessions: 4)
-**Vault**: `/Users/alfredolopez/Documents/Obsidian/MiVault/global/wiki/architecture/procedural-rules-filtering.md`
+**Vault**: `~/Documents/Obsidian/MiVault/global/wiki/architecture/procedural-rules-filtering.md`
 
 ---
 

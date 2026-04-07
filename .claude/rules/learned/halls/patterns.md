@@ -88,7 +88,7 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 ```
 
 **Source**: hooks.md (confidence: 0.9, sessions: 8)
-**Vault**: `/Users/alfredolopez/Documents/Obsidian/MiVault/global/wiki/hooks/stdin-protocol-pattern.md`
+**Vault**: `~/Documents/Obsidian/MiVault/global/wiki/hooks/stdin-protocol-pattern.md`
 **Wing**: multi-agent-ralph-loop
 
 ---
@@ -98,7 +98,7 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 Set `umask 077` at the top of every hook script as defense in depth.
 
 **Source**: security.md (confidence: 0.9, sessions: 6)
-**Vault**: `/Users/alfredolopez/Documents/Obsidian/MiVault/global/wiki/security/umask-077-defense.md`
+**Vault**: `~/Documents/Obsidian/MiVault/global/wiki/security/umask-077-defense.md`
 **Wing**: multi-agent-ralph-loop
 
 ---
@@ -108,5 +108,5 @@ Set `umask 077` at the top of every hook script as defense in depth.
 Continuous improvement framework for AI agent systems. Apply all 4 pillars to agent design decisions.
 
 **Source**: agent-engineering.md (confidence: 0.85, sessions: 5)
-**Vault**: `/Users/alfredolopez/Documents/Obsidian/MiVault/global/wiki/agent-engineering/kaizen-4-pillars.md`
+**Vault**: `~/Documents/Obsidian/MiVault/global/wiki/agent-engineering/kaizen-4-pillars.md`
 **Wing**: _global

@@ -8,9 +8,9 @@
   "n_runs": 20,
   "memory_system": {
     "type": "obsidian_vault_post_wave0",
-    "vault_root": "/Users/alfredolopez/Documents/Obsidian/MiVault",
-    "decisions_json": "/Users/alfredolopez/Documents/Obsidian/MiVault/migrated-from-claude-mem/decisions.json",
-    "wiki_dir": "/Users/alfredolopez/Documents/Obsidian/MiVault/global/wiki"
+    "vault_root": "~/Documents/Obsidian/MiVault",
+    "decisions_json": "~/Documents/Obsidian/MiVault/migrated-from-claude-mem/decisions.json",
+    "wiki_dir": "~/Documents/Obsidian/MiVault/global/wiki"
   },
   "A_retrieval_latency_ms": {
     "description": "Time to return at least one result for a known query",
@@ -51,7 +51,7 @@
     "details": [{"query":"MemPalace migration plan","hit":true},{"query":"claude-mem RCE vulnerability","hit":false},{"query":"Obsidian vault single source of truth","hit":false},{"query":"AAAK compression codec","hit":true},{"query":"wake-up token reduction","hit":true},{"query":"Wave 0 security gate","hit":true},{"query":"forensic backup SHA-256","hit":false},{"query":"execSync curl bash install","hit":false},{"query":"localhost HTTP worker authentication","hit":false},{"query":"console hijacking audit logs","hit":false}]
   },
   "D_vault_size": {
-    "vault_root": "/Users/alfredolopez/Documents/Obsidian/MiVault",
+    "vault_root": "~/Documents/Obsidian/MiVault",
     "md_files_total": 29,
     "json_files_total": 9,
     "all_files_total": 123,
