@@ -11,6 +11,7 @@ allowed-tools:
   - Bash(npm:*, npx:*, bun:*, git:*)
   - Glob
   - Grep
+diary_path: ~/Documents/Obsidian/MiVault/agents/ralph-frontend/diary/
 ---
 
 # ralph-frontend — Frontend Specialist v3.0

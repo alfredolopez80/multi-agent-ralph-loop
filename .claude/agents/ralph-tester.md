@@ -11,6 +11,7 @@ tools:
 # Model is inherited from ~/.claude/settings.json (ANTHROPIC_DEFAULT_*_MODEL)
 permissionMode: acceptEdits
 maxTurns: 30
+diary_path: ~/Documents/Obsidian/MiVault/agents/ralph-tester/diary/
 ---
 
 **VERSION**: 3.0.0

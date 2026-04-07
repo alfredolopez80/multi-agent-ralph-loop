@@ -9,6 +9,7 @@ allowed-tools:
   - Grep
   - Glob
   - Bash(npm audit:*, pip-audit:*, semgrep:*, gitleaks:*, git:*)
+diary_path: ~/Documents/Obsidian/MiVault/agents/ralph-security/diary/
 ---
 
 # ralph-security — Security Specialist v3.0
