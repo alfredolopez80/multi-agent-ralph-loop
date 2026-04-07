@@ -3,16 +3,20 @@
 AAAK CLI -- Command-line interface for the AAAK Dialect codec.
 
 Commands:
-    aaak encode <file>   -- Compress a text file to AAAK format
-    aaak decode <file>   -- Decompress an AAAK file back to original text
-    aaak stats <dir>     -- Show compression statistics for all .md files in dir
-    aaak summarize <file> -- Produce a lossy AAAK summary (no round-trip)
-    aaak zettel          -- Format a zettel from stdin JSON
+    aaak encode <file>                   -- Compress a text file to AAAK format
+    aaak decode <file>                   -- Decompress an AAAK file back to original text
+    aaak stats <dir>                     -- Show compression statistics for all .md files in dir
+    aaak summarize <file>                -- Produce a lossy AAAK summary (no round-trip)
+    aaak zettel                          -- Format a zettel from stdin JSON
+    aaak migrate --from md --to aaak <input> [<output>]
+                                         -- Migrate a single file or batch directory
 
 Usage:
     python -m .claude.lib.aaak_cli encode path/to/notes.md
     python -m .claude.lib.aaak_cli decode path/to/notes.aaak
     python -m .claude.lib.aaak_cli stats .claude/rules/learned/
+    python -m .claude.lib.aaak_cli migrate --from md --to aaak .claude/rules/learned/
+    python -m .claude.lib.aaak_cli migrate --from md --to aaak rules.md rules.aaak
 """
 
 import json
@@ -201,6 +205,126 @@ def cmd_zettel(args: list) -> int:
     return 0
 
 
+def cmd_migrate(args: list) -> int:
+    """
+    Migrate files from one format to another.
+
+    Supported conversions:
+        --from md --to aaak <input> [<output>]
+            Compress a .md file or all .md files in a directory to .aaak.
+            Output defaults to <input>.aaak (or same dir for batch).
+
+    Batch mode (directory input):
+        - Processes all .md files in the directory
+        - Writes <name>.aaak alongside original
+        - Renames original to <name>.md.legacy
+        - Verifies lossless round-trip for each file
+
+    Single file mode:
+        - Writes <output> (or <input>.aaak if output omitted)
+        - Renames original to <input>.md.legacy
+        - Verifies lossless round-trip
+
+    Examples:
+        aaak migrate --from md --to aaak .claude/rules/learned/
+        aaak migrate --from md --to aaak notes.md
+        aaak migrate --from md --to aaak notes.md notes.aaak
+    """
+    # Parse --from and --to flags
+    from_fmt = None
+    to_fmt = None
+    positional = []
+
+    i = 0
+    while i < len(args):
+        if args[i] == "--from" and i + 1 < len(args):
+            from_fmt = args[i + 1]
+            i += 2
+        elif args[i] == "--to" and i + 1 < len(args):
+            to_fmt = args[i + 1]
+            i += 2
+        else:
+            positional.append(args[i])
+            i += 1
+
+    if from_fmt != "md" or to_fmt != "aaak":
+        print(
+            f"Error: only --from md --to aaak is supported (got --from {from_fmt} --to {to_fmt})",
+            file=sys.stderr,
+        )
+        return 1
+
+    if not positional:
+        print("Usage: aaak migrate --from md --to aaak <input> [<output>]", file=sys.stderr)
+        return 1
+
+    input_path = Path(positional[0])
+    output_arg = Path(positional[1]) if len(positional) > 1 else None
+
+    codec = AAAK()
+    errors = 0
+    processed = 0
+
+    if input_path.is_dir():
+        # Batch mode
+        md_files = sorted(input_path.glob("*.md"))
+        if not md_files:
+            print(f"No .md files found in {input_path}", file=sys.stderr)
+            return 1
+
+        print(f"Batch migrating {len(md_files)} files in {input_path}")
+        for md_path in md_files:
+            aaak_path = md_path.with_suffix(".aaak")
+            legacy_path = md_path.with_suffix(".md.legacy")
+            try:
+                text = md_path.read_text(encoding="utf-8")
+                compressed = codec.compress(text)
+                # Verify round-trip
+                recovered = codec.decompress(compressed)
+                if recovered != text:
+                    print(f"  [FAIL] {md_path.name}: round-trip verification failed", file=sys.stderr)
+                    errors += 1
+                    continue
+                aaak_path.write_text(compressed, encoding="utf-8")
+                md_path.rename(legacy_path)
+                stats = codec.compression_stats(text)
+                print(f"  [OK] {md_path.name} -> {aaak_path.name} ({stats['ratio']:.1f}x summary ratio)")
+                processed += 1
+            except Exception as exc:
+                print(f"  [ERROR] {md_path.name}: {exc}", file=sys.stderr)
+                errors += 1
+
+        print(f"\nProcessed: {processed}/{len(md_files)}, Errors: {errors}")
+    else:
+        # Single file mode
+        if not input_path.exists():
+            print(f"Error: file not found: {input_path}", file=sys.stderr)
+            return 1
+
+        aaak_path = output_arg if output_arg else input_path.with_suffix(".aaak")
+        legacy_path = input_path.with_suffix(input_path.suffix + ".legacy")
+
+        try:
+            text = input_path.read_text(encoding="utf-8")
+            compressed = codec.compress(text)
+            recovered = codec.decompress(compressed)
+            if recovered != text:
+                print(f"Error: round-trip verification failed for {input_path}", file=sys.stderr)
+                return 1
+            aaak_path.write_text(compressed, encoding="utf-8")
+            input_path.rename(legacy_path)
+            stats = codec.compression_stats(text)
+            print(f"Migrated: {input_path} -> {aaak_path}")
+            print(f"  Summary ratio: {stats['ratio']:.1f}x")
+            print(f"  Round-trip: OK")
+            processed = 1
+        except Exception as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            errors += 1
+
+    return 0 if errors == 0 else 1
+
+
 def main(argv: list = None) -> int:
     argv = argv or sys.argv[1:]
 
@@ -217,6 +341,7 @@ def main(argv: list = None) -> int:
         "stats": cmd_stats,
         "summarize": cmd_summarize,
         "zettel": cmd_zettel,
+        "migrate": cmd_migrate,
     }
 
     if command not in commands:

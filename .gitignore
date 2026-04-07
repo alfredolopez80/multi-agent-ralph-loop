@@ -262,3 +262,5 @@ backend/
 .claude/hooks/*.bak
 .claude/hooks/*.backup.*
 .claude/skills/*.bak
+data-gym-cache/
+pytest-of-*/
