@@ -10,9 +10,11 @@ Layers:
     Layer0  — Identity layer. Manual file at ~/.ralph/layers/L0_identity.md (~100 tokens).
                Loaded at every session start. Static, human-maintained.
 
-    Layer1  — Essential layer. Auto-generated top-15 high-value procedural rules,
+    Layer1  — Essential layer. Auto-generated top-25 high-value procedural rules,
                stored as plain markdown at ~/.ralph/layers/L1_essential.md.
                Rebuilt by build() from ~/.ralph/procedural/rules.json.
+               Scoring uses confidence × usage, recency bonus (14d decay),
+               criticality floor, and domain diversity (max 3 per domain).
                (Original plan used AAAK encoding, but tiktoken cl100k_base
                measurement showed AAAK INCREASES tokens by ~20% — see
                docs/architecture/AAAK_LIMITATIONS_ADR_2026-04-07.md.)
@@ -65,7 +67,7 @@ PROCEDURAL_RULES_JSON = Path.home() / ".ralph" / "procedural" / "rules.json"
 VAULT_DIR = Path.home() / "Documents" / "Obsidian" / "MiVault"
 
 # Number of top rules to include in L1
-L1_RULE_COUNT = 15
+L1_RULE_COUNT = 25
 
 # Max snippet length returned by Layer3
 L3_SNIPPET_MAX = 200
@@ -121,17 +123,25 @@ class Layer0:
 
 class Layer1:
     """
-    Essential layer. Auto-generated from top-15 high-value procedural rules.
+    Essential layer. Auto-generated from top-25 high-value procedural rules.
 
     Source: ~/.ralph/procedural/rules.json
     Output: ~/.ralph/layers/L1_essential.md  (plain markdown, not AAAK)
 
-    Rules are scored by: confidence * usage_count (descending).
-    The top 15 are written as plain markdown — measured 690 tokens
-    cl100k_base, vs 825+ tokens if AAAK-encoded.
+    Rules are scored by: confidence * usage (max of usage_count, applied_count)
+    with criticality bonus (1.5x), score floor (50 for critical rules),
+    and recency bonus (2.0x linear decay over 14 days).
+    Domain diversity caps at 3 rules per domain.
+    The top 25 are written as plain markdown.
     See docs/architecture/AAAK_LIMITATIONS_ADR_2026-04-07.md for the
     full analysis of why AAAK was abandoned for L1.
     """
+
+    # Max rules per domain in L1 output (prevents domain saturation)
+    _MAX_RULES_PER_DOMAIN = 3
+
+    # Curated sources with lower substantive threshold (trusted sources)
+    _CURATED_SOURCES = ("seed-rule", "learned-from-incident", "claude-code-official-docs")
 
     def __init__(self, path: Optional[Path] = None, rule_count: int = L1_RULE_COUNT):
         self.path = path or L1_PATH
@@ -180,46 +190,109 @@ class Layer1:
         """
         Return True if the rule has enough substance to be useful at wake-up.
 
-        Rejects rules with no meaningful behavior text (less than 20 chars)
-        since they provide zero actionable signal.
+        Rejects rules with no meaningful behavior text.
+        Default threshold: 20 chars. Lowered to 10 chars for curated sources
+        (seed-rule, learned-from-incident, claude-code-official-docs) since
+        these are pre-validated and even short rules carry actionable signal.
         """
         behavior = str(rule.get("behavior", rule.get("description", ""))).strip()
-        return len(behavior) >= 20
+        source = str(rule.get("source_repo", ""))
+        threshold = 10 if source in self._CURATED_SOURCES else 20
+        return len(behavior) >= threshold
 
-    def _score_rule(self, rule: dict) -> float:
+    def _score_rule(self, rule: dict, newest_created: Optional[str] = None) -> float:
         """
-        Score a rule by (confidence * usage_count) with criticality bonus.
+        Score a rule with improved multi-factor ranking.
 
-        Mechanical auto-extracted rules are excluded at selection time
-        (see build()), not scored down — filtering is cleaner than demotion.
+        Factors:
+          1. Base score: confidence × max(usage_count, applied_count)
+             applied_count fix: usage tracking writes 'applied_count' but
+             old scoring only read 'usage_count' — 93% of rules had 0.
+          2. Criticality bonus: 1.5x if behavior contains CRITICAL/MUST/NEVER.
+          3. Score floor: min 50.0 for rules with confidence>=0.9 + critical
+             keywords + severity=critical. Ensures new critical rules enter L1
+             even with zero usage.
+          4. Recency bonus: 2.0x for newest rules, linear decay to 1.0x over
+             14 days. Prevents old high-usage rules from permanently blocking
+             newer, more relevant entries.
 
-        Criticality bonus: 1.5x multiplier if the behavior text contains
-        any of the keywords in _CRITICALITY_KEYWORDS. Reason: critical
-        rules are often applied rarely (low usage_count) but deserve
-        priority in the wake-up context.
+        Args:
+            rule: Rule dict from rules.json.
+            newest_created: ISO timestamp of the newest rule's created_at field,
+                           used to calculate recency relative age. None = no bonus.
         """
+        # Use max of usage_count and applied_count (field mismatch fix)
+        usage = max(
+            int(rule.get("usage_count", 0)),
+            int(rule.get("applied_count", 0))
+        )
         confidence = float(rule.get("confidence", 0.5))
-        usage = int(rule.get("usage_count", 0))
         base = confidence * usage
 
-        # Criticality bonus
+        # Criticality bonus (1.5x)
         behavior = str(rule.get("behavior", rule.get("description", "")))
-        if any(kw in behavior for kw in self._CRITICALITY_KEYWORDS):
-            return base * 1.5
+        has_critical = any(kw in behavior for kw in self._CRITICALITY_KEYWORDS)
+        if has_critical:
+            base *= 1.5
+
+        # Minimum score floor: confidence >= 0.9 + critical keywords + severity
+        severity = str(rule.get("severity", "")).lower()
+        if confidence >= 0.9 and has_critical and severity == "critical":
+            base = max(base, 50.0)
+
+        # Recency bonus: linear decay from 2.0x (newest) to 1.0x (14 days old)
+        if newest_created:
+            created = rule.get("created_at", "")
+            if created:
+                try:
+                    from datetime import datetime, timezone
+                    created_dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
+                    newest_dt = datetime.fromisoformat(newest_created.replace("Z", "+00:00"))
+                    age_days = (newest_dt - created_dt).days
+                    if age_days < 14:
+                        recency = 2.0 - (age_days / 14.0)  # 2.0 -> 1.0 over 14 days
+                        base *= recency
+                except (ValueError, TypeError):
+                    pass
+
         return base
 
     def _format_rule_as_markdown(self, rule: dict, idx: int) -> str:
-        """Format a single rule as a markdown section."""
+        """Format a single rule as a markdown section with domain tag."""
         rule_id = rule.get("rule_id", rule.get("rule", rule.get("name", f"rule_{idx}")))
         behavior = rule.get("behavior", rule.get("description", rule.get("content", "")))
         confidence = rule.get("confidence", 0.0)
         usage = rule.get("usage_count", rule.get("usage", rule.get("sessions", 0)))
-        out = [f"## {idx}. {rule_id}"]
+        domain = rule.get("domain", "uncategorized") or "uncategorized"
+        out = [f"## {idx}. {rule_id} [{domain}]"]
         if behavior:
             out.append(behavior)
         out.append(f"_confidence: {confidence} · usage: {usage}_")
         out.append("")
         return "\n".join(out)
+
+    def _apply_domain_diversity(self, scored_rules: list[dict], max_rules: int) -> list[dict]:
+        """
+        Apply domain diversity cap: max _MAX_RULES_PER_DOMAIN rules per domain.
+
+        After scoring and sorting, ensures no single domain saturates the L1
+        output. Missing domains are grouped as 'uncategorized'.
+        """
+        domain_counts: dict[str, int] = {}
+        selected: list[dict] = []
+        for rule in scored_rules:
+            domain = rule.get("domain", "uncategorized") or "uncategorized"
+            if domain_counts.get(domain, 0) >= self._MAX_RULES_PER_DOMAIN:
+                continue
+            selected.append(rule)
+            domain_counts[domain] = domain_counts.get(domain, 0) + 1
+            if len(selected) >= max_rules:
+                break
+        return selected
+
+    def _exceeds_token_budget(self, content: str, budget: int) -> bool:
+        """Check if content exceeds token budget (rough: 1 token ~ 4 chars)."""
+        return len(content) // 4 > budget
 
     def build(self) -> Path:
         """
@@ -227,13 +300,12 @@ class Layer1:
 
         Steps:
           1. Load all rules from rules.json.
-          2. Score each rule by confidence * usage_count.
-          3. Take top self.rule_count rules (default 15).
-          4. Write as plain markdown to self.path (L1_essential.md).
-
-        Plain markdown was chosen over AAAK encoding after measuring
-        actual cl100k_base tokens: AAAK INCREASED tokens by ~20% on this
-        content. See docs/architecture/AAAK_LIMITATIONS_ADR_2026-04-07.md.
+          2. Filter out mechanical + non-substantive rules.
+          3. Compute newest_created timestamp for recency scoring.
+          4. Score each rule with improved multi-factor ranking.
+          5. Apply domain diversity (max 3 per domain).
+          6. Apply token budget safety trim if L0+L1 > 1400 tokens.
+          7. Write as plain markdown to self.path (L1_essential.md).
 
         Returns:
             Path to the written L1_essential.md file.
@@ -243,39 +315,82 @@ class Layer1:
 
         # Filter out mechanical auto-extracted rules (curator regex patterns)
         # AND empty-behavior rules. Both have zero wake-up leverage.
-        # Keep manual rules + AI-evaluated rules with substantive text only.
         actionable_rules = [
             r for r in all_rules
             if not self._is_mechanical(r) and self._is_substantive(r)
         ]
 
-        # Score with criticality bonus and rank
+        # Compute newest created_at for recency bonus calculation
+        newest_created: Optional[str] = None
+        created_dates: list[str] = []
+        for r in actionable_rules:
+            created = r.get("created_at", "")
+            if created:
+                created_dates.append(created)
+        if created_dates:
+            newest_created = max(created_dates)
+
+        # Score with improved multi-factor ranking
         scored = sorted(
             actionable_rules,
-            key=lambda r: self._score_rule(r),
+            key=lambda r: self._score_rule(r, newest_created),
             reverse=True,
         )
-        top_rules = scored[: self.rule_count]
+
+        # Apply domain diversity (max 3 per domain)
+        top_rules = self._apply_domain_diversity(scored, self.rule_count)
 
         total_input = len(all_rules)
         total_actionable = len(actionable_rules)
+
+        # Compose header
         lines = [
-            f"# L1 Essential Rules ({len(top_rules)} actionable, top by criticality × usage)",
+            f"# L1 Essential Rules ({len(top_rules)} actionable, top by scoring)",
             "",
-            "**Generated**: 2026-04-07",
+            f"**Generated**: {self._today_iso()}",
             "**Source**: ~/.ralph/procedural/rules.json",
-            f"**Pipeline**: {total_input} total rules → "
-            f"{total_actionable} actionable (excl. mechanical+empty) → "
-            f"top {len(top_rules)} (max: {self.rule_count})",
-            "**Scoring**: confidence × usage_count, ×1.5 bonus if behavior contains CRITICAL/MUST/NEVER/ALWAYS",
+            f"**Pipeline**: {total_input} total rules -> "
+            f"{total_actionable} actionable (excl. mechanical+empty) -> "
+            f"top {len(top_rules)} (max: {self.rule_count}, domain cap: {self._MAX_RULES_PER_DOMAIN})",
+            "**Scoring**: confidence x max(usage_count, applied_count), x1.5 criticality, "
+            "score floor 50 for critical, recency 2.0x->1.0x (14d), domain diversity",
             "",
         ]
         for i, rule in enumerate(top_rules, 1):
             lines.append(self._format_rule_as_markdown(rule, i))
 
         content = "\n".join(lines)
+
+        # Token budget safety: check L0+L1 combined budget
+        l0_tokens = Layer0().token_estimate()
+        l1_tokens = len(content) // 4
+        while (l0_tokens + l1_tokens) > 1400 and len(top_rules) > 5:
+            top_rules = top_rules[:-1]
+            lines = [
+                f"# L1 Essential Rules ({len(top_rules)} actionable, top by scoring)",
+                "",
+                f"**Generated**: {self._today_iso()}",
+                "**Source**: ~/.ralph/procedural/rules.json",
+                f"**Pipeline**: {total_input} total rules -> "
+                f"{total_actionable} actionable (excl. mechanical+empty) -> "
+                f"top {len(top_rules)} (trimmed for token budget)",
+                "**Scoring**: confidence x max(usage_count, applied_count), x1.5 criticality, "
+                "score floor 50 for critical, recency 2.0x->1.0x (14d), domain diversity",
+                "",
+            ]
+            for i, rule in enumerate(top_rules, 1):
+                lines.append(self._format_rule_as_markdown(rule, i))
+            content = "\n".join(lines)
+            l1_tokens = len(content) // 4
+
         self.path.write_text(content, encoding="utf-8")
         return self.path
+
+    @staticmethod
+    def _today_iso() -> str:
+        """Return today's date in ISO format."""
+        from datetime import date
+        return date.today().isoformat()
 
     def exists(self) -> bool:
         """Return True if L1_essential.md has been built."""
@@ -687,10 +802,50 @@ if __name__ == "__main__":
             print("Usage: layers.py --query <question>", file=sys.stderr)
             sys.exit(1)
 
+    elif "--install-cron" in args:
+        # Install daily L1 rebuild cron job at 6:00 AM
+        script_path = Path(__file__).resolve().parent.parent.parent / "scripts" / "l1-rebuild.sh"
+        cron_entry = f"0 6 * * * {script_path} >> ~/.ralph/logs/l1-rebuild.log 2>&1  # ralph-l1-rebuild"
+        # Check if already installed
+        result = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
+        current_cron = result.stdout if result.returncode == 0 else ""
+        if "ralph-l1-rebuild" in current_cron:
+            print("L1 rebuild cron already installed.")
+        else:
+            new_cron = current_cron.rstrip("\n") + "\n" + cron_entry + "\n"
+            process = subprocess.run(["crontab", "-"], input=new_cron, text=True)
+            if process.returncode == 0:
+                print(f"L1 rebuild cron installed: daily at 6:00 AM")
+                print(f"  Script: {script_path}")
+            else:
+                print("Failed to install cron job.", file=sys.stderr)
+                sys.exit(1)
+
+    elif "--remove-cron" in args:
+        # Remove L1 rebuild cron job
+        result = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
+        current_cron = result.stdout if result.returncode == 0 else ""
+        if "ralph-l1-rebuild" not in current_cron:
+            print("No L1 rebuild cron found.")
+        else:
+            new_lines = [
+                line for line in current_cron.splitlines()
+                if "ralph-l1-rebuild" not in line
+            ]
+            new_cron = "\n".join(new_lines) + "\n" if new_lines else ""
+            process = subprocess.run(["crontab", "-"], input=new_cron, text=True)
+            if process.returncode == 0:
+                print("L1 rebuild cron removed.")
+            else:
+                print("Failed to remove cron job.", file=sys.stderr)
+                sys.exit(1)
+
     else:
         print("Usage:")
-        print("  python3 layers.py --build-l1    Build L1 essential rules from procedural store")
-        print("  python3 layers.py --load-l0     Print L0 identity")
-        print("  python3 layers.py --load-l1     Print decoded L1 essentials")
-        print("  python3 layers.py --wake-up     Print L0+L1 combined wake-up context")
-        print("  python3 layers.py --query <q>   Query vault (Layer3)")
+        print("  python3 layers.py --build-l1       Build L1 essential rules from procedural store")
+        print("  python3 layers.py --load-l0        Print L0 identity")
+        print("  python3 layers.py --load-l1        Print decoded L1 essentials")
+        print("  python3 layers.py --wake-up        Print L0+L1 combined wake-up context")
+        print("  python3 layers.py --query <q>      Query vault (Layer3)")
+        print("  python3 layers.py --install-cron   Install daily L1 rebuild cron at 6:00 AM")
+        print("  python3 layers.py --remove-cron    Remove L1 rebuild cron")
