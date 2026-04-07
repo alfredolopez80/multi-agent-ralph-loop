@@ -80,15 +80,11 @@ if [[ -f "$CONFIG_FILE" ]]; then
     fi
 fi
 
-# Paths
-SEMANTIC_FILE="${HOME}/.ralph/memory/semantic.json"
+# Paths (MemPalace v3.0: semantic.json removed — facts now in Obsidian Vault)
 LOG_DIR="${HOME}/.ralph/logs"
-mkdir -p "$LOG_DIR" "${HOME}/.ralph/memory"
+mkdir -p "$LOG_DIR"
 
-# Initialize semantic.json if missing
-if [[ ! -f "$SEMANTIC_FILE" ]]; then
-    echo '{"facts": [], "version": "2.57.0"}' > "$SEMANTIC_FILE"
-fi
+# Semantic memory is now in Obsidian Vault — no separate semantic.json needed
 
 # Get content based on tool type
 CONTENT=""

@@ -322,44 +322,12 @@ get_ralph_progress() {
     local cwd="${1:-.}"
     local plan_state_file=""
 
+    # MemPalace v3.0: ONLY read LOCAL plan-state (per-repo isolation)
     if [[ -f "${cwd}/.claude/plan-state.json" ]]; then
         plan_state_file="${cwd}/.claude/plan-state.json"
     fi
 
-    if [[ -z "$plan_state_file" ]] && [[ -f "${HOME}/.ralph/metadata/current-project.json" ]]; then
-        local active_project_path
-        active_project_path=$(jq -r '.project.path // ""' "${HOME}/.ralph/metadata/current-project.json" 2>/dev/null || echo "")
-
-        if [[ -n "$active_project_path" ]]; then
-            if [[ "$active_project_path" =~ \.\. ]] || [[ "$active_project_path" != /* ]]; then
-                active_project_path=""
-            else
-                active_project_path=$(realpath "$active_project_path" 2>/dev/null || echo "")
-            fi
-        fi
-
-        if [[ -n "$active_project_path" ]] && [[ -f "${active_project_path}/.claude/plan-state.json" ]]; then
-            plan_state_file="${active_project_path}/.claude/plan-state.json"
-        fi
-    fi
-
-    if [[ -z "$plan_state_file" ]]; then
-        if [[ -n "${PROJECT_ID:-}" ]] && [[ -f "${HOME}/.ralph/active-plan/${PROJECT_ID}.json" ]]; then
-            plan_state_file="${HOME}/.ralph/active-plan/${PROJECT_ID}.json"
-        else
-            if git -C "$cwd" rev-parse --is-inside-work-tree &>/dev/null; then
-                local repo_remote
-                repo_remote=$(git -C "$cwd" remote get-url origin 2>/dev/null || echo "")
-                if [[ -n "$repo_remote" ]]; then
-                    local project_id
-                    project_id=$(basename "$repo_remote" .git 2>/dev/null | sed 's|.*/||')
-                    if [[ -f "${HOME}/.ralph/active-plan/${project_id}.json" ]]; then
-                        plan_state_file="${HOME}/.ralph/active-plan/${project_id}.json"
-                    fi
-                fi
-            fi
-        fi
-    fi
+    # No global fallbacks — plans must never cross repo boundaries
 
     if [[ -z "$plan_state_file" ]] || [[ ! -f "$plan_state_file" ]]; then
         return
@@ -655,9 +623,12 @@ if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
     # Run claude-hud and capture output
     hud_output=$(echo "$stdin_data" | node "${claude_hud_dir}dist/index.js" 2>/dev/null)
 
-    # Filter out claude-hud's [model] progress line and git:(...) lines
+    # Strip claude-hud's [model] prefix and progress bar from stats line,
+    # and filter git:(...) lines (we show our own git info).
+    # v2.82.1 FIX: Previously grep -vF removed the ENTIRE stats line
+    # because it started with [model_name]. Now we strip only the prefix.
     model_name=$(echo "$stdin_data" | jq -r '.model.display_name // "model"')
-    hud_output=$(echo "$hud_output" | grep -vF "[${model_name}]" || echo "$hud_output")
+    hud_output=$(echo "$hud_output" | sed "s/^\[${model_name}\] [░█]* [0-9]*% //" || echo "$hud_output")
     hud_output=$(echo "$hud_output" | grep -v "git:(" || echo "$hud_output")
 
     # Build combined segment — start with provider badge (v2.82.0)

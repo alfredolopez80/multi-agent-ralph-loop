@@ -4,7 +4,7 @@
 # Purpose: Display recent project history from Obsidian vault + ralph stores
 #
 # When: Triggered at session start
-# What: Reads from ~/.ralph/memory/, ~/.ralph/ledgers/, and Obsidian vault
+# What: Reads from Obsidian vault, ledgers, and learned taxonomy (MemPalace v3.0)
 #
 # VERSION: 3.2.0
 # CREATED: 2026-02-13
@@ -47,24 +47,23 @@ log "Project: $PROJECT_NAME"
 # Initialize summary
 SUMMARY=""
 
-# v3.2.0: claude-mem removed. Sources: semantic.json + ledgers + Obsidian vault + migrated JSONs.
+# v3.2.0: claude-mem removed. Sources: Obsidian vault + ledgers + learned taxonomy.
 VAULT_DIR="${HOME}/Documents/Obsidian/MiVault"
-MIGRATED_DIR="${VAULT_DIR}/migrated-from-claude-mem"
 
 if command -v jq &>/dev/null; then
-    SEMANTIC_FILE="${RALPH_DIR}/memory/semantic.json"
-
     # Build summary from available sources
     SUMMARY_PARTS=()
 
-    # 1. Check semantic memory
-    if [[ -f "$SEMANTIC_FILE" ]]; then
-        FACT_COUNT=$(jq '.facts | length // 0' "$SEMANTIC_FILE" 2>/dev/null || echo "0")
-        if [[ "$FACT_COUNT" -gt 0 ]]; then
-            RECENT_FACTS=$(jq -r '.facts[-3:][] | "- \(.content[:80])..."' "$SEMANTIC_FILE" 2>/dev/null | head -3 || true)
-            if [[ -n "$RECENT_FACTS" ]]; then
-                SUMMARY_PARTS+=("## Recent Semantic Memory ($FACT_COUNT facts)\n$RECENT_FACTS")
-            fi
+    # 1. Check learned rules taxonomy (MemPalace v3.0)
+    LEARNED_DIR="${RALPH_DIR}/../../.claude/rules/learned/halls"
+    # Fallback to local project
+    if [[ ! -d "$LEARNED_DIR" ]]; then
+        LEARNED_DIR=".claude/rules/learned/halls"
+    fi
+    if [[ -d "$LEARNED_DIR" ]]; then
+        RULE_COUNT=$(find "$LEARNED_DIR" -name "*.md" ! -name "README.md" -type f 2>/dev/null | wc -l | tr -d ' ')
+        if [[ "$RULE_COUNT" -gt 0 ]]; then
+            SUMMARY_PARTS+=("## Learned Rules ($RULE_COUNT files in taxonomy)")
         fi
     fi
 

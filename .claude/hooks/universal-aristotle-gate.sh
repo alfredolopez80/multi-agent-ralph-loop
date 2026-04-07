@@ -26,7 +26,7 @@ if [[ "$TOOL" == "EnterPlanMode" ]]; then
 fi
 
 # Check if plan exists (plan mode was used)
-if compgen -G "${CWD}/.ralph/plans/*.md" > /dev/null 2>&1 || [[ -f "${CWD}/.claude/plan-state.json" ]]; then
+if [[ -f "${CWD}/.claude/plan-state.json" ]]; then
   echo '{"continue": true}'
   exit 0
 fi

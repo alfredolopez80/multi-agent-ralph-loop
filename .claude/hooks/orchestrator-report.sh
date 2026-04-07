@@ -33,8 +33,29 @@ umask 077
 
 # Paths - Initialize all variables before use
 RALPH_DIR="${HOME}/.ralph"
-PLAN_STATE="${RALPH_DIR}/plan-state/plan-state.json"
-PROCEDURAL_FILE="${RALPH_DIR}/procedural/rules.json"
+
+# MemPalace v3.0: plan-state is LOCAL (repo-specific), always
+CWD=$(echo "$INPUT" | jq -r '.cwd // "."' 2>/dev/null || echo ".")
+PLAN_STATE="${CWD}/.claude/plan-state.json"
+# If local doesn't exist, create a clean empty plan-state
+if [[ ! -f "$PLAN_STATE" ]]; then
+    mkdir -p "$(dirname "$PLAN_STATE")"
+    cat > "$PLAN_STATE" << 'PLANEOF'
+{
+  "version": "3.0.0",
+  "plan_name": null,
+  "plan_file": null,
+  "current_phase": null,
+  "active_agent": "",
+  "classification": { "workflow_route": null, "adaptive_mode": null },
+  "phases": [], "barriers": {}, "steps": [],
+  "metadata": { "session_id": null, "started_at": null }
+}
+PLANEOF
+fi
+
+# MemPalace v3.0: Procedural memory is now in .claude/rules/learned/
+PROCEDURAL_FILE="${CWD}/.claude/rules/learned"
 LOG_DIR="${RALPH_DIR}/logs"
 REPORT_DIR="${RALPH_DIR}/reports"
 SESSION_DIR="${RALPH_DIR}/sessions"
@@ -107,31 +128,21 @@ if [[ "$TOTAL_STEPS" -gt 0 ]]; then
     PROGRESS_PCT=$((COMPLETED_STEPS * 100 / TOTAL_STEPS))
 fi
 
-# 2. Analyze learning outcomes
+# 2. Analyze learning outcomes (MemPalace v3.0: count rules in taxonomy)
 TOTAL_RULES=0
 EFFECTIVENESS_METRICS="{}"
-if [[ -f "$PROCEDURAL_FILE" ]]; then
-    TOTAL_RULES=$(jq -r '.rules | length // 0' "$PROCEDURAL_FILE" 2>/dev/null || echo "0")
-    log "Learning: $TOTAL_RULES rules in procedural memory"
+if [[ -d "$PROCEDURAL_FILE" ]]; then
+    # Count .md files in learned/ taxonomy (halls/ + rooms/ subdirectories)
+    TOTAL_RULES=$(find "$PROCEDURAL_FILE" -name "*.md" ! -name "README.md" -type f 2>/dev/null | wc -l | tr -d ' ')
+    log "Learning: $TOTAL_RULES learned rule files in taxonomy"
 
-    # Calculate effectiveness metrics (v2.59.0)
-    TOTAL_USAGE=$(jq -r '[.rules[].usage_count // 0] | add // 0' "$PROCEDURAL_FILE" 2>/dev/null || echo "0")
-    RULES_WITH_USAGE=$(jq -r '[.rules[] | select(.usage_count > 0)] | length // 0' "$PROCEDURAL_FILE" 2>/dev/null || echo "0")
-    UTILIZATION_PCT=0
-    if [[ "$TOTAL_RULES" -gt 0 ]]; then
-        UTILIZATION_PCT=$((RULES_WITH_USAGE * 100 / TOTAL_RULES))
-    fi
-
+    # Effectiveness metrics (simplified for directory-based storage)
     EFFECTIVENESS_METRICS=$(jq -n \
         --argjson total_rules "$TOTAL_RULES" \
-        --argjson rules_with_usage "$RULES_WITH_USAGE" \
-        --argjson total_usage "$TOTAL_USAGE" \
-        --argjson utilization "$UTILIZATION_PCT" \
         '{
             total_rules: $total_rules,
-            rules_with_usage: $rules_with_usage,
-            total_usage_count: $total_usage,
-            utilization_percent: $utilization
+            source: "mempalace_taxonomy",
+            location: ".claude/rules/learned/"
         }')
     log "Effectiveness metrics: $EFFECTIVENESS_METRICS"
 fi

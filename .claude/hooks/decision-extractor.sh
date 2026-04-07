@@ -88,16 +88,12 @@ if [[ -f "$CONFIG_FILE" ]]; then
     fi
 fi
 
-# Paths
-EPISODES_DIR="${HOME}/.ralph/episodes"
-SEMANTIC_FILE="${HOME}/.ralph/memory/semantic.json"
+# Paths (MemPalace v3.0: episodes moved to Obsidian Vault, semantic.json removed)
+VAULT_DIR="${HOME}/Documents/Obsidian/MiVault"
 LOG_DIR="${HOME}/.ralph/logs"
-mkdir -p "$EPISODES_DIR" "$LOG_DIR" "${HOME}/.ralph/memory"
+mkdir -p "$LOG_DIR"
 
-# Initialize semantic.json if missing (v2.57.0)
-if [[ ! -f "$SEMANTIC_FILE" ]]; then
-    echo '{"facts": [], "version": "2.57.0"}' > "$SEMANTIC_FILE"
-fi
+# Semantic memory is now in Obsidian Vault — no separate semantic.json needed
 
 # Get the content that was written/edited
 CONTENT=""

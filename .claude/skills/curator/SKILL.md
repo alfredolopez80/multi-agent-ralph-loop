@@ -138,7 +138,7 @@ Quality metrics:
 ```
 
 **Output**:
-- Updated `~/.ralph/procedural/rules.json`
+- Updated `.claude/rules/learned/` (MemPalace taxonomy)
 - Manifest with `files[]` array
 - Domain-categorized rules
 

@@ -345,7 +345,7 @@ Full bug hunting and remediation workflow:
 ralph bugs src/
 
 # 2. Review report
-cat ~/.ralph/tmp/codex_bugs.json | jq '.summary'
+cat .claude/tmp/codex_bugs.json | jq '.summary'
 
 # 3. Fix HIGH severity bugs
 # (manual or via /refactor)
