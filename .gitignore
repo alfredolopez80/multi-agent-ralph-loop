@@ -217,6 +217,7 @@ tmp-review/
 .playwright-mcp/
 .claude/quality-results
 .claude/progress.md
+.claude/plan-state.json
 
 # External project directories
 apps/
