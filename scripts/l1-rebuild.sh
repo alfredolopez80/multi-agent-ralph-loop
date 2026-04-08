@@ -17,7 +17,6 @@
 set -euo pipefail
 
 # --- Configuration ---
-LOCK_FILE="/tmp/l1-rebuild.lock"
 LOG_DIR="${HOME}/.ralph/logs"
 LOG_FILE="${LOG_DIR}/l1-rebuild.log"
 RULES_JSON="${HOME}/.ralph/procedural/rules.json"
@@ -34,24 +33,14 @@ log() {
 # --- Setup ---
 mkdir -p "$LOG_DIR" "${HOME}/.ralph/layers"
 
-# --- Lock file ---
-if [ -f "$LOCK_FILE" ]; then
-    # Check if lock is stale (>10 minutes old)
-    if [ "$(uname)" = "Darwin" ]; then
-        lock_age=$(( $(date +%s) - $(stat -f %m "$LOCK_FILE" 2>/dev/null || echo 0) ))
-    else
-        lock_age=$(( $(date +%s) - $(stat -c %Y "$LOCK_FILE" 2>/dev/null || echo 0) ))
-    fi
-    if [ "$lock_age" -gt 600 ]; then
-        log "WARN: Stale lock file (${lock_age}s old), removing"
-        rm -f "$LOCK_FILE"
-    else
-        log "INFO: Another rebuild running (lock file ${lock_age}s old), exiting"
-        exit 0
-    fi
+# --- Lock file (atomic mkdir prevents TOCTOU race) ---
+LOCK_DIR="/tmp/l1-rebuild.lock"
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+    log "INFO: Another rebuild running, exiting"
+    exit 0
 fi
-trap 'rm -f "$LOCK_FILE"' EXIT
-echo $$ > "$LOCK_FILE"
+# Cleanup on exit
+trap 'rmdir "$LOCK_DIR" 2>/dev/null' EXIT
 
 # --- Idempotency check ---
 if [ -f "$RULES_JSON" ] && [ -f "$STATE_FILE" ] && [ -f "$L1_OUTPUT" ]; then

@@ -52,6 +52,7 @@ Usage:
 import json
 import re
 import subprocess
+import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -282,7 +283,7 @@ class Layer1:
             if age_days < 14:
                 return score * (2.0 - age_days / 14.0)
         except (ValueError, TypeError):
-            pass
+            pass  # Silently skip recency bonus for malformed dates (non-critical)
         return score
 
     def _format_rule_as_markdown(self, rule: dict, idx: int) -> str:
@@ -397,6 +398,7 @@ class Layer1:
                 "trimmed for token budget",
             )
             l1_tokens = len(content) // 4
+            print(f"  L1 token budget trim: {l0_tokens + l1_tokens} tokens, {len(top_rules)} rules remaining", file=sys.stderr)
 
         self.path.write_text(content, encoding="utf-8")
         return self.path
@@ -806,6 +808,8 @@ def graduate_rules(dry_run: bool = False) -> tuple[list[Path], list[str]]:
         all_rules = layer1._load_source_rules()
     except FileNotFoundError:
         return [], ["No rules.json found"]
+    except json.JSONDecodeError as e:
+        return [], [f"rules.json corrupt: {e}"]
 
     promoted: list[Path] = []
     skipped: list[str] = []
@@ -859,22 +863,33 @@ def graduate_rules(dry_run: bool = False) -> tuple[list[Path], list[str]]:
         if dry_run:
             promoted.append(filepath)
         else:
-            existing = filepath.read_text(encoding="utf-8") if filepath.exists() else ""
+            try:
+                existing = filepath.read_text(encoding="utf-8") if filepath.exists() else ""
+            except (PermissionError, OSError) as e:
+                skipped.append(f"{rule_id}: read failed ({e})")
+                continue
             if existing == content:
                 skipped.append(f"{rule_id}: unchanged (already graduated)")
                 # Still track as qualifying — don't let cleanup delete it
                 promoted.append(filepath)
                 continue
-            filepath.write_text(content, encoding="utf-8")
-            promoted.append(filepath)
+            try:
+                filepath.write_text(content, encoding="utf-8")
+                promoted.append(filepath)
+            except (PermissionError, OSError) as e:
+                skipped.append(f"{rule_id}: write failed ({e})")
+                continue
 
     # Clean stale files (rules that no longer qualify but still have files)
     if not dry_run and proven_dir.is_dir():
         promoted_ids = {p.name for p in promoted}
         for existing_file in proven_dir.glob("*.md"):
             if existing_file.name not in promoted_ids:
-                skipped.append(f"CLEANUP: removed {existing_file.name}")
-                existing_file.unlink()
+                try:
+                    existing_file.unlink()
+                    skipped.append(f"CLEANUP: removed {existing_file.name}")
+                except (PermissionError, OSError) as e:
+                    skipped.append(f"CLEANUP FAILED: {existing_file.name}: {e}")
 
     return promoted, skipped
 
@@ -921,7 +936,13 @@ if __name__ == "__main__":
         cron_entry = f"0 6 * * * {script_path} >> ~/.ralph/logs/l1-rebuild.log 2>&1  # ralph-l1-rebuild"
         # Check if already installed
         result = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
-        current_cron = result.stdout if result.returncode == 0 else ""
+        if result.returncode == 0:
+            current_cron = result.stdout
+        elif "no crontab" in result.stderr.lower() or "not found" in result.stderr.lower():
+            current_cron = ""  # No crontab exists yet — safe to proceed
+        else:
+            print(f"Warning: crontab -l failed: {result.stderr.strip()}", file=sys.stderr)
+            current_cron = ""  # Fallback: don't destroy, start fresh
         if "ralph-l1-rebuild" in current_cron:
             print("L1 rebuild cron already installed.")
         else:
@@ -937,7 +958,13 @@ if __name__ == "__main__":
     elif "--remove-cron" in args:
         # Remove L1 rebuild cron job
         result = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
-        current_cron = result.stdout if result.returncode == 0 else ""
+        if result.returncode == 0:
+            current_cron = result.stdout
+        elif "no crontab" in result.stderr.lower() or "not found" in result.stderr.lower():
+            current_cron = ""  # No crontab exists yet — safe to proceed
+        else:
+            print(f"Warning: crontab -l failed: {result.stderr.strip()}", file=sys.stderr)
+            current_cron = ""  # Fallback: don't destroy, start fresh
         if "ralph-l1-rebuild" not in current_cron:
             print("No L1 rebuild cron found.")
         else:
