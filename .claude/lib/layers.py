@@ -52,6 +52,7 @@ Usage:
 import json
 import re
 import subprocess
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -194,6 +195,35 @@ class Layer1:
         rule_id = str(rule.get("rule_id", rule.get("rule", rule.get("name", "")))).lower()
         return any(rule_id.startswith(p) for p in self._MECHANICAL_ID_PREFIXES)
 
+    @staticmethod
+    def _get_behavior(rule: dict) -> str:
+        """Extract behavior text from a rule, falling back to description."""
+        return str(rule.get("behavior", rule.get("description", ""))).strip()
+
+    @staticmethod
+    def _safe_int(val, default: int = 0) -> int:
+        """Safely convert to int, returning default on failure."""
+        try:
+            return int(val)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _safe_float(val, default: float = 0.5) -> float:
+        """Safely convert to float, returning default on failure."""
+        try:
+            return float(val)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _get_usage(rule: dict) -> int:
+        """Extract effective usage count (max of usage_count and applied_count)."""
+        return max(
+            Layer1._safe_int(rule.get("usage_count", 0)),
+            Layer1._safe_int(rule.get("applied_count", 0)),
+        )
+
     def _is_substantive(self, rule: dict) -> bool:
         """
         Return True if the rule has enough substance to be useful at wake-up.
@@ -203,7 +233,7 @@ class Layer1:
         (seed-rule, learned-from-incident, claude-code-official-docs) since
         these are pre-validated and even short rules carry actionable signal.
         """
-        behavior = str(rule.get("behavior", rule.get("description", ""))).strip()
+        behavior = self._get_behavior(rule)
         source = str(rule.get("source_repo", ""))
         threshold = 10 if source in self._CURATED_SOURCES else 20
         return len(behavior) >= threshold
@@ -213,64 +243,54 @@ class Layer1:
         Score a rule with improved multi-factor ranking.
 
         Factors:
-          1. Base score: confidence × max(usage_count, applied_count)
-             applied_count fix: usage tracking writes 'applied_count' but
-             old scoring only read 'usage_count' — 93% of rules had 0.
+          1. Base score: confidence x max(usage_count, applied_count)
           2. Criticality bonus: 1.5x if behavior contains CRITICAL/MUST/NEVER.
-          3. Score floor: min 50.0 for rules with confidence>=0.9 + critical
-             keywords + severity=critical. Ensures new critical rules enter L1
-             even with zero usage.
-          4. Recency bonus: 2.0x for newest rules, linear decay to 1.0x over
-             14 days. Prevents old high-usage rules from permanently blocking
-             newer, more relevant entries.
-
-        Args:
-            rule: Rule dict from rules.json.
-            newest_created: ISO timestamp of the newest rule's created_at field,
-                           used to calculate recency relative age. None = no bonus.
+          3. Score floor: min 50.0 for critical rules (confidence>=0.9 + severity=critical).
+          4. Recency bonus: 2.0x for newest, linear decay to 1.0x over 14 days.
         """
-        # Use max of usage_count and applied_count (field mismatch fix)
-        usage = max(
-            int(rule.get("usage_count", 0)),
-            int(rule.get("applied_count", 0))
-        )
-        confidence = float(rule.get("confidence", 0.5))
+        usage = self._get_usage(rule)
+        confidence = self._safe_float(rule.get("confidence", 0.5))
         base = confidence * usage
 
         # Criticality bonus (1.5x)
-        behavior = str(rule.get("behavior", rule.get("description", "")))
+        behavior = self._get_behavior(rule)
         has_critical = any(kw in behavior for kw in self._CRITICALITY_KEYWORDS)
         if has_critical:
             base *= 1.5
 
-        # Minimum score floor: confidence >= 0.9 + critical keywords + severity
+        # Score floor: confidence >= 0.9 + critical keywords + severity=critical
         severity = str(rule.get("severity", "")).lower()
         if confidence >= 0.9 and has_critical and severity == "critical":
             base = max(base, 50.0)
 
         # Recency bonus: linear decay from 2.0x (newest) to 1.0x (14 days old)
         if newest_created:
-            created = rule.get("created_at", "")
-            if created:
-                try:
-                    from datetime import datetime, timezone
-                    created_dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
-                    newest_dt = datetime.fromisoformat(newest_created.replace("Z", "+00:00"))
-                    age_days = (newest_dt - created_dt).days
-                    if age_days < 14:
-                        recency = 2.0 - (age_days / 14.0)  # 2.0 -> 1.0 over 14 days
-                        base *= recency
-                except (ValueError, TypeError):
-                    pass
+            base = self._apply_recency_bonus(rule, newest_created, base)
 
         return base
+
+    @staticmethod
+    def _apply_recency_bonus(rule: dict, newest_created: str, score: float) -> float:
+        """Apply linear recency decay: 2.0x for newest, 1.0x after 14 days."""
+        created = rule.get("created_at", "")
+        if not created:
+            return score
+        try:
+            created_dt = datetime.fromisoformat(created.replace("Z", "+00:00"))
+            newest_dt = datetime.fromisoformat(newest_created.replace("Z", "+00:00"))
+            age_days = max(0, (newest_dt - created_dt).days)
+            if age_days < 14:
+                return score * (2.0 - age_days / 14.0)
+        except (ValueError, TypeError):
+            pass
+        return score
 
     def _format_rule_as_markdown(self, rule: dict, idx: int) -> str:
         """Format a single rule as a markdown section with domain tag."""
         rule_id = rule.get("rule_id", rule.get("rule", rule.get("name", f"rule_{idx}")))
-        behavior = rule.get("behavior", rule.get("description", rule.get("content", "")))
+        behavior = self._get_behavior(rule)
         confidence = rule.get("confidence", 0.0)
-        usage = rule.get("usage_count", rule.get("usage", rule.get("sessions", 0)))
+        usage = self._get_usage(rule)
         domain = rule.get("domain", "uncategorized") or "uncategorized"
         out = [f"## {idx}. {rule_id} [{domain}]"]
         if behavior:
@@ -298,9 +318,26 @@ class Layer1:
                 break
         return selected
 
-    def _exceeds_token_budget(self, content: str, budget: int) -> bool:
-        """Check if content exceeds token budget (rough: 1 token ~ 4 chars)."""
-        return len(content) // 4 > budget
+    def _compose_content(
+        self, top_rules: list[dict], total_input: int, total_actionable: int,
+        pipeline_suffix: str,
+    ) -> str:
+        """Compose the full L1 markdown content from rules and header metadata."""
+        lines = [
+            f"# L1 Essential Rules ({len(top_rules)} actionable, top by scoring)",
+            "",
+            f"**Generated**: {self._today_iso()}",
+            "**Source**: ~/.ralph/procedural/rules.json",
+            f"**Pipeline**: {total_input} total rules -> "
+            f"{total_actionable} actionable (excl. mechanical+empty) -> "
+            f"top {len(top_rules)} ({pipeline_suffix})",
+            "**Scoring**: confidence x max(usage_count, applied_count), x1.5 criticality, "
+            "score floor 50 for critical, recency 2.0x->1.0x (14d), domain diversity",
+            "",
+        ]
+        for i, rule in enumerate(top_rules, 1):
+            lines.append(self._format_rule_as_markdown(rule, i))
+        return "\n".join(lines)
 
     def build(self) -> Path:
         """
@@ -329,14 +366,8 @@ class Layer1:
         ]
 
         # Compute newest created_at for recency bonus calculation
-        newest_created: Optional[str] = None
-        created_dates: list[str] = []
-        for r in actionable_rules:
-            created = r.get("created_at", "")
-            if created:
-                created_dates.append(created)
-        if created_dates:
-            newest_created = max(created_dates)
+        created_dates = [r["created_at"] for r in actionable_rules if r.get("created_at")]
+        newest_created: Optional[str] = max(created_dates) if created_dates else None
 
         # Score with improved multi-factor ranking
         scored = sorted(
@@ -351,44 +382,20 @@ class Layer1:
         total_input = len(all_rules)
         total_actionable = len(actionable_rules)
 
-        # Compose header
-        lines = [
-            f"# L1 Essential Rules ({len(top_rules)} actionable, top by scoring)",
-            "",
-            f"**Generated**: {self._today_iso()}",
-            "**Source**: ~/.ralph/procedural/rules.json",
-            f"**Pipeline**: {total_input} total rules -> "
-            f"{total_actionable} actionable (excl. mechanical+empty) -> "
-            f"top {len(top_rules)} (max: {self.rule_count}, domain cap: {self._MAX_RULES_PER_DOMAIN})",
-            "**Scoring**: confidence x max(usage_count, applied_count), x1.5 criticality, "
-            "score floor 50 for critical, recency 2.0x->1.0x (14d), domain diversity",
-            "",
-        ]
-        for i, rule in enumerate(top_rules, 1):
-            lines.append(self._format_rule_as_markdown(rule, i))
+        content = self._compose_content(
+            top_rules, total_input, total_actionable,
+            f"max: {self.rule_count}, domain cap: {self._MAX_RULES_PER_DOMAIN}",
+        )
 
-        content = "\n".join(lines)
-
-        # Token budget safety: check L0+L1 combined budget
+        # Token budget safety: trim rules if L0+L1 exceeds 1400 tokens
         l0_tokens = Layer0().token_estimate()
         l1_tokens = len(content) // 4
         while (l0_tokens + l1_tokens) > 1400 and len(top_rules) > 5:
             top_rules = top_rules[:-1]
-            lines = [
-                f"# L1 Essential Rules ({len(top_rules)} actionable, top by scoring)",
-                "",
-                f"**Generated**: {self._today_iso()}",
-                "**Source**: ~/.ralph/procedural/rules.json",
-                f"**Pipeline**: {total_input} total rules -> "
-                f"{total_actionable} actionable (excl. mechanical+empty) -> "
-                f"top {len(top_rules)} (trimmed for token budget)",
-                "**Scoring**: confidence x max(usage_count, applied_count), x1.5 criticality, "
-                "score floor 50 for critical, recency 2.0x->1.0x (14d), domain diversity",
-                "",
-            ]
-            for i, rule in enumerate(top_rules, 1):
-                lines.append(self._format_rule_as_markdown(rule, i))
-            content = "\n".join(lines)
+            content = self._compose_content(
+                top_rules, total_input, total_actionable,
+                "trimmed for token budget",
+            )
             l1_tokens = len(content) // 4
 
         self.path.write_text(content, encoding="utf-8")
@@ -397,7 +404,6 @@ class Layer1:
     @staticmethod
     def _today_iso() -> str:
         """Return today's date in ISO format."""
-        from datetime import date
         return date.today().isoformat()
 
     def exists(self) -> bool:
@@ -817,18 +823,15 @@ def graduate_rules(dry_run: bool = False) -> tuple[list[Path], list[str]]:
         if layer1._is_mechanical(rule):
             continue
 
-        confidence = float(rule.get("confidence", 0))
+        confidence = Layer1._safe_float(rule.get("confidence", 0), default=0.0)
         if confidence < GRADUATE_MIN_CONFIDENCE:
             continue
 
-        usage = max(
-            int(rule.get("usage_count", 0)),
-            int(rule.get("applied_count", 0)),
-        )
+        usage = Layer1._get_usage(rule)
         if usage < GRADUATE_MIN_USAGE:
             continue
 
-        behavior = str(rule.get("behavior", rule.get("description", ""))).strip()
+        behavior = Layer1._get_behavior(rule)
         if len(behavior) < GRADUATE_MIN_BEHAVIOR_LEN:
             skipped.append(f"{rule_id}: behavior too short ({len(behavior)} chars)")
             continue
@@ -859,6 +862,8 @@ def graduate_rules(dry_run: bool = False) -> tuple[list[Path], list[str]]:
             existing = filepath.read_text(encoding="utf-8") if filepath.exists() else ""
             if existing == content:
                 skipped.append(f"{rule_id}: unchanged (already graduated)")
+                # Still track as qualifying — don't let cleanup delete it
+                promoted.append(filepath)
                 continue
             filepath.write_text(content, encoding="utf-8")
             promoted.append(filepath)

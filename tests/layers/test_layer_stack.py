@@ -14,7 +14,6 @@ Tests verify:
 import json
 import os
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -28,6 +27,16 @@ LIB_DIR = REPO_ROOT / ".claude" / "lib"
 sys.path.insert(0, str(LIB_DIR))
 
 from layers import Layer0, Layer1, Layer2, Layer3, load_wake_up_context, graduate_rules  # noqa: E402
+
+
+# ---------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------
+
+def _patch_rules_json(monkeypatch, rules_path: Path) -> None:
+    """Monkeypatch layers.PROCEDURAL_RULES_JSON to the given test fixture path."""
+    import layers as layers_module
+    monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", rules_path)
 
 
 # ---------------------------------------------------------------------------
@@ -161,9 +170,7 @@ class TestLayer1:
         output_path = tmp_path / "L1_essential.md"
         layer = Layer1(path=output_path, rule_count=15)
 
-        # Monkeypatch the source rules path
-        import layers as layers_module
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", sample_rules_json)
+        _patch_rules_json(monkeypatch, sample_rules_json)
 
         result = layer.build()
 
@@ -176,8 +183,7 @@ class TestLayer1:
         output_path = tmp_path / "L1_essential.md"
         layer = Layer1(path=output_path, rule_count=25)
 
-        import layers as layers_module
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", sample_rules_json)
+        _patch_rules_json(monkeypatch, sample_rules_json)
 
         layer.build()
         content = layer.load()
@@ -193,8 +199,7 @@ class TestLayer1:
         output_path = tmp_path / "L1_essential.md"
         layer = Layer1(path=output_path, rule_count=25)
 
-        import layers as layers_module
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", sample_rules_json)
+        _patch_rules_json(monkeypatch, sample_rules_json)
 
         layer.build()
         content = layer.load()
@@ -208,8 +213,7 @@ class TestLayer1:
         output_path = tmp_path / "L1_essential.md"
         layer = Layer1(path=output_path, rule_count=15)
 
-        import layers as layers_module
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", sample_rules_json)
+        _patch_rules_json(monkeypatch, sample_rules_json)
 
         layer.build()
         decoded = layer.load()
@@ -265,8 +269,7 @@ class TestLayer1:
         output_path = tmp_path / "L1_custom.md"
         layer = Layer1(path=output_path, rule_count=5)
 
-        import layers as layers_module
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", sample_rules_json)
+        _patch_rules_json(monkeypatch, sample_rules_json)
 
         layer.build()
         content = layer.load()
@@ -567,8 +570,7 @@ class TestScoringImprovements:
 
     def test_recency_bonus_new_rules(self, tmp_path: Path, sample_rules_with_metadata: Path, monkeypatch):
         """Rule created today scores higher than identical rule from 30 days ago."""
-        import layers as layers_module
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", sample_rules_with_metadata)
+        _patch_rules_json(monkeypatch, sample_rules_with_metadata)
 
         output_path = tmp_path / "L1_test.md"
         layer = Layer1(path=output_path, rule_count=10)
@@ -583,8 +585,7 @@ class TestScoringImprovements:
 
     def test_score_floor_critical_rules(self, tmp_path: Path, sample_rules_with_metadata: Path, monkeypatch):
         """Rule with confidence>=0.9 + CRITICAL + severity=critical gets min score 50."""
-        import layers as layers_module
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", sample_rules_with_metadata)
+        _patch_rules_json(monkeypatch, sample_rules_with_metadata)
 
         output_path = tmp_path / "L1_test.md"
         layer = Layer1(path=output_path, rule_count=10)
@@ -599,8 +600,7 @@ class TestScoringImprovements:
 
     def test_domain_diversity_max_3(self, tmp_path: Path, sample_rules_with_metadata: Path, monkeypatch):
         """No more than 3 rules from same domain in output."""
-        import layers as layers_module
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", sample_rules_with_metadata)
+        _patch_rules_json(monkeypatch, sample_rules_with_metadata)
 
         output_path = tmp_path / "L1_test.md"
         layer = Layer1(path=output_path, rule_count=10)
@@ -624,8 +624,7 @@ class TestScoringImprovements:
 
     def test_applied_count_field_used(self, tmp_path: Path, sample_rules_with_metadata: Path, monkeypatch):
         """Rule with applied_count=100 but usage_count=0 still scores high."""
-        import layers as layers_module
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", sample_rules_with_metadata)
+        _patch_rules_json(monkeypatch, sample_rules_with_metadata)
 
         output_path = tmp_path / "L1_test.md"
         layer = Layer1(path=output_path, rule_count=10)
@@ -654,8 +653,7 @@ class TestAutoRebuild:
 
     def test_rebuild_idempotent(self, tmp_path: Path, sample_rules_json: Path, monkeypatch):
         """Running build() twice produces the same output."""
-        import layers as layers_module
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", sample_rules_json)
+        _patch_rules_json(monkeypatch, sample_rules_json)
 
         output_path = tmp_path / "L1_idempotent.md"
         layer = Layer1(path=output_path, rule_count=15)
@@ -765,8 +763,7 @@ class TestGraduation:
         rules_with_proven_candidates: Path, monkeypatch,
     ):
         """graduate_rules() creates .md files for rules meeting all thresholds."""
-        import layers as layers_module
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", rules_with_proven_candidates)
+        _patch_rules_json(monkeypatch, rules_with_proven_candidates)
 
         promoted, skipped = graduate_rules(dry_run=False)
 
@@ -787,8 +784,7 @@ class TestGraduation:
         rules_with_proven_candidates: Path, monkeypatch,
     ):
         """graduate_rules(dry_run=True) reports but does not write files."""
-        import layers as layers_module
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", rules_with_proven_candidates)
+        _patch_rules_json(monkeypatch, rules_with_proven_candidates)
 
         promoted, skipped = graduate_rules(dry_run=True)
 
@@ -802,8 +798,7 @@ class TestGraduation:
         rules_with_proven_candidates: Path, monkeypatch,
     ):
         """Rules with confidence < 0.9 are not promoted."""
-        import layers as layers_module
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", rules_with_proven_candidates)
+        _patch_rules_json(monkeypatch, rules_with_proven_candidates)
 
         promoted, _ = graduate_rules(dry_run=True)
         names = [p.name for p in promoted]
@@ -814,8 +809,7 @@ class TestGraduation:
         rules_with_proven_candidates: Path, monkeypatch,
     ):
         """Rules with usage < 20 are not promoted."""
-        import layers as layers_module
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", rules_with_proven_candidates)
+        _patch_rules_json(monkeypatch, rules_with_proven_candidates)
 
         promoted, _ = graduate_rules(dry_run=True)
         names = [p.name for p in promoted]
@@ -826,8 +820,7 @@ class TestGraduation:
         rules_with_proven_candidates: Path, monkeypatch,
     ):
         """Rules with behavior < 50 chars are not promoted."""
-        import layers as layers_module
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", rules_with_proven_candidates)
+        _patch_rules_json(monkeypatch, rules_with_proven_candidates)
 
         promoted, skipped = graduate_rules(dry_run=True)
         names = [p.name for p in promoted]
@@ -840,8 +833,7 @@ class TestGraduation:
         rules_with_proven_candidates: Path, monkeypatch,
     ):
         """graduate_rules() removes files for rules that no longer qualify."""
-        import layers as layers_module
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", rules_with_proven_candidates)
+        _patch_rules_json(monkeypatch, rules_with_proven_candidates)
 
         # Create a stale file that won't match any graduated rule
         stale = proven_rules_dir / "general-stale-old-rule.md"
@@ -858,22 +850,26 @@ class TestGraduation:
         rules_with_proven_candidates: Path, monkeypatch,
     ):
         """Running graduate_rules() twice produces same result."""
-        import layers as layers_module
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", rules_with_proven_candidates)
+        _patch_rules_json(monkeypatch, rules_with_proven_candidates)
 
         promoted1, _ = graduate_rules(dry_run=False)
         promoted2, skipped2 = graduate_rules(dry_run=False)
 
-        assert len(promoted2) == 0, "Second run should find no new files to write"
+        # Second run should report unchanged (not re-written)
         assert any("unchanged" in s for s in skipped2)
+        # CRITICAL: All 3 files must still exist on disk (stale cleanup must NOT delete them)
+        files_after = list(proven_rules_dir.glob("*.md"))
+        assert len(files_after) == 3, (
+            f"Idempotent run deleted files! Expected 3, found {len(files_after)}: "
+            f"{[f.name for f in files_after]}"
+        )
 
     def test_graduate_with_no_rules_json(
         self, tmp_path: Path, proven_rules_dir: Path, monkeypatch,
     ):
         """graduate_rules() handles missing rules.json gracefully."""
-        import layers as layers_module
         missing = tmp_path / "nonexistent" / "rules.json"
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", missing)
+        _patch_rules_json(monkeypatch, missing)
 
         promoted, skipped = graduate_rules(dry_run=False)
         assert len(promoted) == 0

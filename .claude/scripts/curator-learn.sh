@@ -502,5 +502,5 @@ main "$@"
 # Rebuild L1 after new rules are added by curator
 REPO_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 if [ -f "${REPO_DIR}/.claude/lib/layers.py" ]; then
-    python3 "${REPO_DIR}/.claude/lib/layers.py" --build-l1 2>/dev/null || true
+    python3 "${REPO_DIR}/.claude/lib/layers.py" --build-l1 2>&1 || log_warn "L1 rebuild failed (exit $?)"
 fi
