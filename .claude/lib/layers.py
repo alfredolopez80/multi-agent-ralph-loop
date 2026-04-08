@@ -127,7 +127,7 @@ class Layer0:
 
 
 # ---------------------------------------------------------------------------
-# Layer 1 — Essential rules (AAAK-encoded)
+# Layer 1 — Essential rules (plain markdown)
 # ---------------------------------------------------------------------------
 
 class Layer1:

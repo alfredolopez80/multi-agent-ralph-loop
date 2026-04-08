@@ -6,7 +6,7 @@ Unit tests for the W2.2 4-Layer Memory Stack (.claude/lib/layers.py).
 
 Tests verify:
   - Layer0: identity load and exists()
-  - Layer1: build() creates L1_essential.md with 15 rules, load() round-trip
+  - Layer1: build() creates L1_essential.md with up to 25 rules, load() round-trip
   - Layer2: has() returns False for missing projects
   - Layer3: query() returns correct structure (list of dicts)
 """
