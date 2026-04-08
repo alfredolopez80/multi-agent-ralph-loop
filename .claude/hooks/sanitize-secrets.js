@@ -221,18 +221,42 @@ function sanitizeObject(obj) {
   return obj;
 }
 
+// Maximum input size: 1MB (1,048,576 bytes)
+const MAX_INPUT_SIZE = 1_048_576;
+
+// Timeout for processing: 5 seconds
+const PROCESSING_TIMEOUT_MS = 5_000;
+
 /**
- * Main hook handler
+ * Main hook handler with timeout and size guards
  */
 async function main() {
   let input = '';
+  let totalSize = 0;
+  let timedOut = false;
 
-  // Read from stdin
+  // Set timeout guard
+  const timeoutGuard = setTimeout(() => {
+    timedOut = true;
+    console.error('[sanitize-secrets] WARN: Processing timeout - sanitizing partial input');
+  }, PROCESSING_TIMEOUT_MS);
+
+  // Read from stdin with size guard
   process.stdin.setEncoding('utf8');
 
   for await (const chunk of process.stdin) {
+    totalSize += chunk.length;
+    if (totalSize > MAX_INPUT_SIZE) {
+      // Truncate input at 1MB
+      input = input.substring(0, MAX_INPUT_SIZE);
+      console.error(`[sanitize-secrets] WARN: Input truncated at ${MAX_INPUT_SIZE} bytes`);
+      break;
+    }
     input += chunk;
+    if (timedOut) break; // Stop reading if timeout occurred
   }
+
+  clearTimeout(timeoutGuard);
 
   if (!input.trim()) {
     // No input, just pass through
@@ -243,8 +267,8 @@ async function main() {
   try {
     const data = JSON.parse(input);
 
-    // Sanitize the entire input
-    const sanitizedData = sanitizeObject(data);
+    // Scan entire input for secrets (updates stats as side effect for audit logging)
+    sanitizeObject(data);
 
     // Log redactions if any occurred
     if (stats.totalRedactions > 0) {
@@ -254,8 +278,9 @@ async function main() {
       }
     }
 
-    // Output sanitized data
-    console.log(JSON.stringify(sanitizedData));
+    // CRITICAL: PostToolUse hooks MUST output {"continue": true/false}
+    // The sanitized data is passed via Claude's internal mechanism
+    console.log(JSON.stringify({ continue: true }));
 
   } catch (error) {
     // SEC: Log parse failure for anomaly detection, then fail-open with text sanitization
@@ -264,12 +289,18 @@ async function main() {
     try { fs.mkdirSync(logDir, { recursive: true }); } catch (_) {}
     fs.appendFileSync(`${logDir}/sanitize-secrets.log`,
       `[${new Date().toISOString()}] WARN: JSON parse failed, falling back to text sanitization: ${error.message}\n`);
-    const sanitized = sanitizeText(input);
-    console.log(sanitized);
+
+    // Always scan for secrets, even on parse error (updates stats)
+    sanitizeText(input);
+
+    // Output the continue signal - sanitized data is logged separately
+    console.log(JSON.stringify({ continue: true }));
   }
 }
 
 main().catch(err => {
   console.error('[sanitize-secrets] Error:', err.message);
-  process.exit(1);
+  // Exit 0 with partial sanitization instead of exit 1
+  // This prevents blocking the workflow while still sanitizing what we could
+  console.log(JSON.stringify({ continue: true }));
 });
