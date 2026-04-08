@@ -8,14 +8,13 @@ Ralph extends Claude Code into a multi-agent development framework with a struct
 
 | Capability | Description |
 |---|---|
-| **MemPalace Memory** | 4-layer memory stack (L0-L3) with 818-token wake-up, Obsidian vault KG, learned rules taxonomy |
+| **MemPalace Memory** | 4-layer memory stack (L0-L3) with Obsidian vault knowledge graph and learned rules taxonomy |
 | **Parallel-First** | All independent tasks execute in parallel via Agent Teams (mandatory for complexity >= 3) |
 | **6 Teammates** | ralph-coder, ralph-reviewer, ralph-tester, ralph-researcher, ralph-frontend, ralph-security |
-| **22 Active Hooks** | Pre/post tool validation, quality gates, secret sanitization, security guards |
+| **Hook System** | Lifecycle hooks for validation, quality gates, security guards, and automatic learning |
 | **Aristotle Analysis** | 5-phase first principles deconstruction before every non-trivial task |
-| **Anti-Rationalization** | 46-entry table preventing agents from cutting corners |
 | **Quality Gates** | 4-stage blocking validation: correctness, quality, security, consistency |
-| **925+ Tests** | Full test suite covering layers, hooks, security, skills, and pipeline |
+| **Comprehensive Tests** | Full test suite covering layers, hooks, security, skills, and pipeline |
 
 ## MemPalace Memory System
 
@@ -23,14 +22,12 @@ Inspired by the [MemPalace repository](https://github.com/tcsenpai/mempalace) (M
 
 ### Layer Stack (Session Wake-up)
 
-| Layer | File | Tokens (cl100k) | Purpose |
-|-------|------|-----------------|---------|
-| L0 | `~/.ralph/layers/L0_identity.md` | ~239 | Agent identity + principles |
-| L1 | `~/.ralph/layers/L1_essential.md` | ~579 | 9 actionable rules (filtered from 1003) |
-| L2 | `.claude/rules/learned/{halls,rooms,wings}/` | on-demand | Project-specific taxonomy |
-| L3 | Obsidian vault grep | on-demand | Full knowledge base queries |
-
-**Wake-up cost**: ~818 real BPE tokens (tiktoken cl100k_base), not the 19K pathological baseline.
+| Layer | File | Purpose |
+|-------|------|---------|
+| L0 | `~/.ralph/layers/L0_identity.md` | Agent identity + principles |
+| L1 | `~/.ralph/layers/L1_essential.md` | Actionable rules (filtered from corpus) |
+| L2 | `.claude/rules/learned/{halls,rooms,wings}/` | Project-specific taxonomy (on-demand) |
+| L3 | Obsidian vault grep | Full knowledge base queries (on-demand) |
 
 ### Learned Rules Taxonomy
 
@@ -46,31 +43,26 @@ Rules organized in 3 dimensions for flexible retrieval:
 
 These findings emerged during our MemPalace implementation and may be relevant to others building LLM memory systems:
 
-| Finding | Detail | ADR |
-|---------|--------|-----|
-| **Encoding doesn't reduce tokens** | AAAK (Unicode PUA encoding) increased cl100k_base tokens by +19.8%. `wc -w` falsely reported -86% reduction. | [AAAK_LIMITATIONS_ADR](docs/architecture/AAAK_LIMITATIONS_ADR_2026-04-07.md) |
-| **Selection beats encoding** | Choosing fewer rules (27/1003) achieved the target; compressing the same rules did not. | Same ADR |
-| **BPE splits unknown codepoints** | Unicode PUA characters (U+E000-U+F8FF) not in GPT-4/Claude vocabulary are split into 2-3 byte tokens each. | Same ADR |
-| **Lossless codecs grow, never shrink** | Storing `symbolic + separator + original` means total size >= original. Only lossy compression reduces size. | Same ADR |
-| **Taxonomy needs noise filtering** | 46% of auto-learned rules were noise (cross-domain repeats, vague bundles). Filtering is essential. | [TAXONOMY_RESTRUCTURE](docs/refactor/TAXONOMY_RESTRUCTURE_2026-04-07.md) |
+| Finding | Detail |
+|---------|--------|
+| **Encoding doesn't reduce tokens** | Unicode PUA encoding increased BPE tokens. Word count metrics falsely reported reduction. |
+| **Selection beats encoding** | Choosing fewer rules achieved the target; compressing the same rules did not. |
+| **Taxonomy needs noise filtering** | 46% of auto-learned rules were noise (cross-domain repeats, vague bundles). Filtering is essential. |
+
+Full analysis: [AAAK_LIMITATIONS_ADR](docs/architecture/AAAK_LIMITATIONS_ADR_2026-04-07.md)
 
 ### Learning Pipeline (Automatic)
 
 ```
 SESSION (any repo)
   |
-  +-- Stop --> continuous-learning.sh --> vault + procedural memory
-  +-- PostToolUse --> semantic-realtime-extractor.sh --> vault facts
-  +-- PostToolUse --> decision-extractor.sh --> vault decisions
+  +-- Stop      --> continuous-learning.sh --> vault + procedural memory
+  +-- PostToolUse --> semantic extractors  --> vault facts & decisions
   +-- SessionStart --> vault-graduation.sh --> promote to local rules
-  +-- SessionEnd --> vault-index-updater.sh --> update indices
-  |
-FRIDAY CRON (6PM)
-  |
-  +-- vault-weekly-compile.sh --> sync to global + git commit
+  +-- SessionEnd   --> vault-index-updater  --> update indices
 ```
 
-All learning flows project -> global -> vault without leaking repo-specific sensitive data. Only GREEN-classified (universal) patterns graduate to global scope.
+All learning flows project -> global -> vault. Only universal patterns graduate to global scope.
 
 ## Quick Start
 
@@ -78,7 +70,7 @@ All learning flows project -> global -> vault without leaking repo-specific sens
 git clone https://github.com/alfredolopez80/multi-agent-ralph-loop.git
 cd multi-agent-ralph-loop
 
-# Validate global infrastructure (36 checks)
+# Validate global infrastructure
 bash scripts/validate-global-infrastructure.sh
 
 # Run tests
@@ -98,7 +90,7 @@ python3 -m pytest tests/ -q
 |---|---|---|
 | `ralph-coder` | Implementation | Read, Edit, Write, Bash |
 | `ralph-reviewer` | Code review (OWASP) | Read, Grep, Glob |
-| `ralph-tester` | Testing (80% coverage) | Read, Edit, Write, Bash(test) |
+| `ralph-tester` | Testing | Read, Edit, Write, Bash(test) |
 | `ralph-researcher` | Research (Zai MCP) | Read, Grep, Glob, WebSearch |
 | `ralph-frontend` | Frontend (WCAG 2.1 AA) | LSP, Read, Edit, Write, Bash |
 | `ralph-security` | Security (6 pillars) | LSP, Read, Grep, Glob, Bash |
@@ -110,7 +102,7 @@ Agent Teams is enabled via `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.
 | Skill | Purpose |
 |---|---|
 | `/orchestrator` | Full 10-step workflow: evaluate, clarify, classify, plan, execute, validate, retrospect |
-| `/iterate` | Iterative execution until VERIFIED_DONE (max 15/30 iterations) |
+| `/iterate` | Iterative execution until VERIFIED_DONE |
 | `/parallel` | Run multiple independent tasks concurrently |
 | `/task-batch` | Autonomous batch execution from PRD files |
 | `/gates` | Multi-language quality gate validation |
@@ -125,12 +117,12 @@ Agent Teams is enabled via `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.
 
 4-stage validation, all blocking except consistency:
 
-1. **CORRECTNESS** — Syntax valid, logic sound
-2. **QUALITY** — Types, no console.log/TODO/debugger
-3. **SECURITY** — semgrep + gitleaks + OWASP validation
-4. **CONSISTENCY** — Linting and style (advisory)
+1. **CORRECTNESS** -- Syntax valid, logic sound
+2. **QUALITY** -- Types, no debug artifacts
+3. **SECURITY** -- semgrep + gitleaks + OWASP validation
+4. **CONSISTENCY** -- Linting and style (advisory)
 
-Hook enforcement: `TeammateIdle` (exit 2 = keep working) and `TaskCompleted` (exit 2 = block completion) ensure no agent completes without passing gates.
+Hook enforcement via `TeammateIdle` and `TaskCompleted` events ensures no agent completes without passing gates.
 
 ## Parallel-First Rule
 
@@ -141,7 +133,7 @@ Complexity 1-2: Direct execution (no team required)
 Complexity 3+:  Agent Teams with parallel teammates (MANDATORY)
 ```
 
-See: `.claude/rules/parallel-first.md` and anti-rationalization entries #38-#46.
+See: `.claude/rules/parallel-first.md`
 
 ## Architecture
 
@@ -172,13 +164,15 @@ User Request --> Claude Code
 
 ## Security
 
-| Hook | Trigger | Purpose |
+The framework includes multiple layers of security enforcement:
+
+| Layer | Trigger | Purpose |
 |---|---|---|
-| `git-safety-guard.py` | PreToolUse (Bash) | Blocks rm -rf, git reset --hard, command chaining |
+| `git-safety-guard.py` | PreToolUse (Bash) | Blocks destructive git operations and command chaining |
 | `repo-boundary-guard.sh` | PreToolUse (Bash) | Prevents operations outside current repo |
-| `sanitize-secrets.js` | PostToolUse | Redacts 20+ secret patterns |
-| `teammate-idle-quality-gate.sh` | TeammateIdle | Blocks idle with secrets/debug code |
-| `task-completed-quality-gate.sh` | TaskCompleted | 7 quality gates before completion |
+| `audit-secrets.js` | PostToolUse | Audit logging for 20+ secret patterns |
+| `teammate-idle-quality-gate.sh` | TeammateIdle | Quality gates before teammate goes idle |
+| `task-completed-quality-gate.sh` | TaskCompleted | Multi-gate validation before task completion |
 
 ## Requirements
 
@@ -197,14 +191,13 @@ User Request --> Claude Code
 ## Testing
 
 ```bash
-python3 -m pytest tests/ -q                           # 925+ tests
-bash tests/unit/test-skills-unification-v2.87.sh      # 327 skills tests
-bash scripts/validate-global-infrastructure.sh         # 36 infra checks
+python3 -m pytest tests/ -q                    # Full test suite
+bash scripts/validate-global-infrastructure.sh  # Infrastructure checks
 ```
 
 ## Configuration
 
-The system is **model-agnostic** — all skills and agents inherit the configured model from settings, no per-command flags required.
+The system is **model-agnostic** -- all skills and agents inherit the configured model from settings, no per-command flags required.
 
 ```json
 {
@@ -215,14 +208,14 @@ The system is **model-agnostic** — all skills and agents inherit the configure
 }
 ```
 
-Skills are symlinked to 6 platform directories. Source of truth: `.claude/skills/` in this repo.
+Skills are symlinked to multiple platform directories. Source of truth: `.claude/skills/` in this repo.
 
 ## Global Infrastructure
 
-All Ralph advantages (Plan Mode, Aristotle, Parallel-First, Agent Teams) work in **any project** — rules, skills, and agents are symlinked globally.
+All Ralph advantages (Plan Mode, Aristotle, Parallel-First, Agent Teams) work in **any project** -- rules, skills, and agents are symlinked globally.
 
 ```bash
-# Validate global infrastructure (36 checks)
+# Validate global infrastructure
 bash scripts/validate-global-infrastructure.sh
 
 # Auto-fix broken symlinks
@@ -239,13 +232,13 @@ Autonomous experimentation loop inspired by [karpathy/autoresearch](https://gith
 |---|---|---|
 | 0 | **SCOUT** | Silent auto-detection of project type, scripts, metrics |
 | 1 | **WIZARD** | 2-3 AskUserQuestion with pre-filled options and previews |
-| 2 | **VALIDATE** | Adversarial dry-run (eval works, metric extracts, git clean) |
+| 2 | **VALIDATE** | Dry-run verification (eval works, metric extracts, git clean) |
 
 9 domain templates: ML Training, Node.js Tests, Bundle Size, Python Tests, Prompt Engineering, SQL, Rust, Lighthouse, Custom.
 
 ```bash
 /autoresearch "optimize my tests"     # Smart mode (auto-detect)
-/autoresearch --manual                # Classic 14-parameter setup
+/autoresearch --manual                # Classic setup
 ```
 
 ## Documentation
@@ -254,7 +247,6 @@ Autonomous experimentation loop inspired by [karpathy/autoresearch](https://gith
 |---|---|
 | Architecture | `docs/architecture/` |
 | AAAK Limitations ADR | `docs/architecture/AAAK_LIMITATIONS_ADR_2026-04-07.md` |
-| Memory Migration Map | `docs/architecture/MEMORY_LEARNING_MIGRATION_MAP_2026-04-07.md` |
 | Anti-Rationalization | `docs/reference/anti-rationalization.md` |
 | Aristotle Methodology | `docs/reference/aristotle-first-principles.md` |
 | Security | `docs/security/` |
@@ -264,9 +256,9 @@ Autonomous experimentation loop inspired by [karpathy/autoresearch](https://gith
 
 ## Acknowledgments
 
-- **[MemPalace](https://github.com/tcsenpai/mempalace)** — Original Memory Palace technique research for LLM agents that inspired our layered memory architecture. Our implementation diverges in key areas (encoding strategy, token measurement methodology, taxonomy filtering) documented in [AAAK_LIMITATIONS_ADR](docs/architecture/AAAK_LIMITATIONS_ADR_2026-04-07.md).
-- **[Claude Code](https://code.claude.com)** — Base orchestration platform with hooks, skills, and Agent Teams APIs.
-- **[karpathy/autoresearch](https://github.com/karpathy/autoresearch)** — Inspiration for the autonomous experimentation loop.
+- **[MemPalace](https://github.com/tcsenpai/mempalace)** -- Original Memory Palace technique research for LLM agents that inspired our layered memory architecture. Our implementation diverges in key areas documented in [AAAK_LIMITATIONS_ADR](docs/architecture/AAAK_LIMITATIONS_ADR_2026-04-07.md).
+- **[Claude Code](https://code.claude.com)** -- Base orchestration platform with hooks, skills, and Agent Teams APIs.
+- **[karpathy/autoresearch](https://github.com/karpathy/autoresearch)** -- Inspiration for the autonomous experimentation loop.
 
 ## License
 
