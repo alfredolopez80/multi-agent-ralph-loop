@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 /**
- * Secret Detection Hook (PostToolUse)
+ * Secret Audit Hook (PostToolUse) — AUDIT ONLY, NOT REDACTION
  *
- * Detects and logs secrets in tool outputs for audit purposes.
+ * IMPORTANT: This hook DETECTS secrets but DOES NOT and CANNOT redact them.
+ * PostToolUse hooks can only output {"continue": true/false}. Tool output
+ * passes through to Claude's context UNMODIFIED regardless of detection results.
  *
- * ARCHITECTURE NOTE: PostToolUse hooks can only output {"continue": true/false}.
- * They CANNOT modify tool output. This hook detects secrets and logs redaction
- * counts to stderr for audit, but the actual data passes through unchanged.
- * For true redaction, a different mechanism is needed.
+ * What this hook DOES:   Log detection counts to stderr for audit trail.
+ * What this hook CANNOT: Block, redact, or modify tool output in any way.
+ *
+ * If true secret redaction is needed, a PreToolUse or different mechanism
+ * would be required (not currently supported by Claude Code hooks).
  *
  * Patrones detectados (20+):
  * - GitHub PAT (ghp_*, github_pat_*)
@@ -252,7 +255,7 @@ async function main() {
   // Set timeout guard — destroy stdin to force loop exit
   const timeoutGuard = setTimeout(() => {
     timedOut = true;
-    console.error('[sanitize-secrets] WARN: Processing timeout (5s) - scanning partial input');
+    console.error('[audit-secrets] WARN: Processing timeout (5s) - scanning partial input');
     process.stdin.destroy();
   }, PROCESSING_TIMEOUT_MS);
 
@@ -265,7 +268,7 @@ async function main() {
     if (totalSize > MAX_INPUT_SIZE) {
       // Truncate input at 1MB (include current chunk before truncating)
       input = input.substring(0, MAX_INPUT_SIZE);
-      console.error(`[sanitize-secrets] WARN: Input truncated at ${MAX_INPUT_SIZE} bytes`);
+      console.error(`[audit-secrets] WARN: Input truncated at ${MAX_INPUT_SIZE} bytes`);
       break;
     }
     if (timedOut) break; // Stop reading if timeout occurred
@@ -287,7 +290,7 @@ async function main() {
 
     // Log redactions if any occurred
     if (stats.totalRedactions > 0) {
-      console.error(`[sanitize-secrets] Redacted ${stats.totalRedactions} secret(s):`);
+      console.error(`[audit-secrets] Redacted ${stats.totalRedactions} secret(s):`);
       for (const [type, count] of Object.entries(stats.byType)) {
         console.error(`  - ${type}: ${count}`);
       }
@@ -316,7 +319,7 @@ async function main() {
 }
 
 main().catch(err => {
-  console.error('[sanitize-secrets] Error:', err.message);
+  console.error('[audit-secrets] Error:', err.message);
   // Exit 0 with partial sanitization instead of exit 1
   // This prevents blocking the workflow while still sanitizing what we could
   console.log(JSON.stringify({ continue: true }));
