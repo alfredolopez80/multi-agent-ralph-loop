@@ -22,8 +22,8 @@ estimate_complexity() {
     local complexity=1
     local lower_prompt
 
-    # Convert to lowercase for pattern matching
-    lower_prompt=$(echo "$prompt" | tr '[:upper:]' '[:lower:]')
+    # Convert to lowercase (Bash 4+ native, no subprocess)
+    lower_prompt="${prompt,,}"
 
     # High complexity indicators (4+)
     if [[ "$lower_prompt" =~ refactor ]]; then ((complexity+=4)); fi
@@ -38,8 +38,9 @@ estimate_complexity() {
     if [[ "$lower_prompt" =~ comprehensive|complete.*solution ]]; then ((complexity+=2)); fi
     if [[ "$lower_prompt" =~ analyze.*and.*implement|investigate.*and.*fix ]]; then ((complexity+=2)); fi
 
-    # Moderate complexity indicators (3)
-    if [[ "$lower_prompt" =~ implement|add.*feature|create.*function ]]; then ((complexity+=2)); fi
+    # Moderate complexity indicators (3) — avoid overlap with high-level patterns above
+    if [[ "$lower_prompt" =~ implement ]] && [[ ! "$lower_prompt" =~ implement.*system ]]; then ((complexity+=2)); fi
+    if [[ "$lower_prompt" =~ add.*feature|create.*function ]]; then ((complexity+=2)); fi
     if [[ "$lower_prompt" =~ modify.*file|update.*code|change.*function ]]; then ((complexity+=1)); fi
     if [[ "$lower_prompt" =~ fix.*bug|debug|troubleshoot ]]; then ((complexity+=1)); fi
     if [[ "$lower_prompt" =~ test.*coverage|write.*test|create.*test ]]; then ((complexity+=1)); fi

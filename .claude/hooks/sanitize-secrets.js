@@ -1,18 +1,22 @@
 #!/usr/bin/env node
 /**
- * Hook de Sanitización de Secretos para Claude-Mem
+ * Secret Detection Hook (PostToolUse)
  *
- * Este hook intercepta datos antes de ser guardados y redacta
- * cualquier información sensible detectada.
+ * Detects and logs secrets in tool outputs for audit purposes.
  *
- * Patrones detectados:
+ * ARCHITECTURE NOTE: PostToolUse hooks can only output {"continue": true/false}.
+ * They CANNOT modify tool output. This hook detects secrets and logs redaction
+ * counts to stderr for audit, but the actual data passes through unchanged.
+ * For true redaction, a different mechanism is needed.
+ *
+ * Patrones detectados (20+):
  * - GitHub PAT (ghp_*, github_pat_*)
  * - OpenAI API Keys (sk-*)
  * - AWS Keys (AKIA*, aws_secret_*)
  * - Ethereum Private Keys (0x + 64 hex chars)
- * - Generic API Keys y Tokens
- * - JWT Tokens
- * - Passwords en config
+ * - JWT Tokens, SSH Keys, DB connection strings
+ * - Stripe, Slack, Discord, SendGrid, Twilio keys
+ * - Web3 provider keys, Base64 secrets
  */
 
 const SECRET_PATTERNS = [
@@ -185,11 +189,15 @@ function sanitizeText(text) {
   let sanitized = text;
 
   for (const { pattern, replacement, name } of SECRET_PATTERNS) {
-    const matches = sanitized.match(pattern);
-    if (matches) {
-      stats.totalRedactions += matches.length;
-      stats.byType[name] = (stats.byType[name] || 0) + matches.length;
-      sanitized = sanitized.replace(pattern, replacement);
+    // Single-pass: replace and count in one regex execution
+    let count = 0;
+    sanitized = sanitized.replace(pattern, () => {
+      count++;
+      return replacement;
+    });
+    if (count > 0) {
+      stats.totalRedactions += count;
+      stats.byType[name] = (stats.byType[name] || 0) + count;
     }
   }
 
@@ -235,10 +243,11 @@ async function main() {
   let totalSize = 0;
   let timedOut = false;
 
-  // Set timeout guard
+  // Set timeout guard — destroy stdin to force loop exit
   const timeoutGuard = setTimeout(() => {
     timedOut = true;
-    console.error('[sanitize-secrets] WARN: Processing timeout - sanitizing partial input');
+    console.error('[sanitize-secrets] WARN: Processing timeout (5s) - scanning partial input');
+    process.stdin.destroy();
   }, PROCESSING_TIMEOUT_MS);
 
   // Read from stdin with size guard
