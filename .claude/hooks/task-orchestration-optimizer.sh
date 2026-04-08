@@ -21,8 +21,10 @@
 set -euo pipefail
 
 # SEC-033: Guaranteed JSON output on any error
+# NOTE: This hook is registered as PostToolUse but was written for PreToolUse.
+# PostToolUse hooks MUST output {"continue": true/false}.
 output_json() {
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+    echo '{"continue": true}'
 }
 trap 'output_json' ERR EXIT
 
@@ -43,7 +45,7 @@ INPUT=$(head -c 100000)
 if ! echo "$INPUT" | jq empty 2>/dev/null; then
     log "Invalid JSON input, skipping hook"
     trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -53,7 +55,7 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null || echo "")
 # Only process Task tool
 if [[ "$TOOL_NAME" != "Task" ]]; then
     trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -68,7 +70,7 @@ PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // ""' 2>/dev/null || echo ""
 if [[ ! -f "$PLAN_STATE" ]]; then
     log "No plan-state.json, allowing Task without optimization"
     trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+    echo '{"continue": true}'
     exit 0
 fi
 
@@ -85,8 +87,8 @@ if [[ -n "$CURRENT_PHASE" ]]; then
         .phases[] | select(.phase_id == $phase) | .execution_mode // "sequential"
     ')
     PHASE_STEP_IDS=$(echo "$PLAN_STATE_CONTENT" | jq -r --arg phase "$CURRENT_PHASE" '
-        .phases[] | select(.phase_id == $phase) | .step_ids // []
-    ')
+        (.phases[] | select(.phase_id == $phase) | .step_ids) // []
+    ' 2>/dev/null || echo '[]')
 fi
 
 # Count pending steps in current phase
@@ -168,8 +170,8 @@ trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
 if [[ "$OPTIMIZATION_APPLIED" == "true" ]]; then
     # Escape suggestions for JSON
     ESCAPED_SUGGESTIONS=$(echo "$SUGGESTIONS" | jq -Rs '.')
-    echo "{\"decision\": \"allow\", \"systemMessage\": $ESCAPED_SUGGESTIONS}"
+    echo "{\"continue\": true, \"systemMessage\": $ESCAPED_SUGGESTIONS}"
 else
     log "No optimization opportunities found"
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+    echo '{"continue": true}'
 fi
