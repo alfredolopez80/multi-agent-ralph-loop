@@ -48,7 +48,7 @@ estimate_complexity() {
     # Low complexity indicators (reduce)
     if [[ "$lower_prompt" =~ ^(what\ is|show\ me|list\ |read\ |explain\ |describe\ ) ]]; then ((complexity-=1)); fi
     if [[ "$lower_prompt" =~ fix.*typo|small.*change|minor.*edit ]]; then ((complexity-=1)); fi
-    if [[ "$lower_prompt" =~ quick|simple|just ]]; then ((complexity-=1)); fi
+    if [[ "$lower_prompt" =~ [[:space:]]quick[[:space:]]|quickly$|^[[:space:]]*just[[:space:]]|[[:space:]]simple[[:space:]] ]]; then ((complexity-=1)); fi
 
     # Ensure minimum complexity of 1
     if [[ $complexity -lt 1 ]]; then

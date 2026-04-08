@@ -19,6 +19,11 @@
  * - Web3 provider keys, Base64 secrets
  */
 
+const fs = require('fs');
+
+// SEC-F-SS-04: Set restrictive umask (like bash hooks set umask 077)
+process.umask(0o077);
+
 const SECRET_PATTERNS = [
   // GitHub Personal Access Tokens
   {
@@ -93,21 +98,21 @@ const SECRET_PATTERNS = [
 
   // JWT Tokens
   {
-    pattern: /eyJ[a-zA-Z0-9\-_]+\.eyJ[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+/g,
+    pattern: /eyJ[a-zA-Z0-9\-_]{1,512}\.eyJ[a-zA-Z0-9\-_]{1,512}\.[a-zA-Z0-9\-_]{1,512}/g,
     replacement: '[REDACTED:JWT_TOKEN]',
     name: 'JWT Token'
   },
 
   // Password patterns in config
   {
-    pattern: /(?:password|passwd|pwd|secret)\s*[=:]\s*["'][^"'\n]{8,}["']/gi,
+    pattern: /(?:password|passwd|pwd|secret)\s*[=:]\s*["'][^"'\n]{8,128}["']/gi,
     replacement: '[REDACTED:PASSWORD]',
     name: 'Password'
   },
 
   // Database connection strings with credentials
   {
-    pattern: /(?:mongodb|postgres|mysql|redis):\/\/[^:]+:[^@]+@[^\s"']+/gi,
+    pattern: /(?:mongodb|postgres|mysql|redis):\/\/[^:]{1,64}:[^@]{1,128}@[^\s"']{1,256}/gi,
     replacement: '[REDACTED:DB_CONNECTION_STRING]',
     name: 'Database Connection String'
   },
@@ -161,7 +166,7 @@ const SECRET_PATTERNS = [
 
   // SSH Private Keys
   {
-    pattern: /-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/g,
+    pattern: /-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----[\s\S]{0,16384}?-----END (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/g,
     replacement: '[REDACTED:SSH_PRIVATE_KEY]',
     name: 'SSH Private Key'
   },
@@ -221,7 +226,8 @@ function sanitizeObject(obj) {
   if (typeof obj === 'object') {
     const sanitized = {};
     for (const [key, value] of Object.entries(obj)) {
-      sanitized[key] = sanitizeObject(value);
+      // SEC-F-SS-05: Only sanitize values, not keys (avoids false positives on property names)
+      sanitized[key] = typeof value === 'string' ? sanitizeText(value) : sanitizeObject(value);
     }
     return sanitized;
   }
@@ -254,14 +260,14 @@ async function main() {
   process.stdin.setEncoding('utf8');
 
   for await (const chunk of process.stdin) {
+    input += chunk;
     totalSize += chunk.length;
     if (totalSize > MAX_INPUT_SIZE) {
-      // Truncate input at 1MB
+      // Truncate input at 1MB (include current chunk before truncating)
       input = input.substring(0, MAX_INPUT_SIZE);
       console.error(`[sanitize-secrets] WARN: Input truncated at ${MAX_INPUT_SIZE} bytes`);
       break;
     }
-    input += chunk;
     if (timedOut) break; // Stop reading if timeout occurred
   }
 
@@ -293,10 +299,12 @@ async function main() {
 
   } catch (error) {
     // SEC: Log parse failure for anomaly detection, then fail-open with text sanitization
-    const fs = require('fs');
-    const logDir = `${process.env.HOME}/.ralph/logs`;
-    try { fs.mkdirSync(logDir, { recursive: true }); } catch (_) {}
-    fs.appendFileSync(`${logDir}/sanitize-secrets.log`,
+    const logDir = `${process.env.XDG_RUNTIME_DIR || process.env.HOME}/.ralph/logs`;
+    try { fs.mkdirSync(logDir, { recursive: true, mode: 0o700 }); } catch (_) {}
+    const logPath = `${logDir}/sanitize-secrets.log`;
+    // Rotate log if >5MB to prevent unbounded growth
+    try { const st = fs.statSync(logPath); if (st.size > 5 * 1024 * 1024) fs.unlinkSync(logPath); } catch (_) {}
+    fs.appendFileSync(logPath,
       `[${new Date().toISOString()}] WARN: JSON parse failed, falling back to text sanitization: ${error.message}\n`);
 
     // Always scan for secrets, even on parse error (updates stats)
