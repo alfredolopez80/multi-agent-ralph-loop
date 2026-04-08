@@ -1,62 +1,182 @@
 {
-  "version": "3.0.0",
-  "plan_name": "MemPalace-Inspired Memory & Hooks Overhaul",
-  "plan_file": ".ralph/plans/cheeky-dazzling-catmull.md",
-  "current_phase": "wave_5",
+  "version": "3.1.0",
+  "plan_name": "L1 Scoring & Scope Improvement + Auto-Rebuild",
+  "plan_file": ".ralph/plans/peppy-plotting-hartmanis.md",
+  "status": "completed",
+  "completed_at": "2026-04-08T02:30:00+02:00",
+  "previous_plan": {
+    "name": "MemPalace-Inspired Memory & Hooks Overhaul",
+    "file": ".ralph/plans/cheeky-dazzling-catmull.md",
+    "status": "completed",
+    "completed_at": "2026-04-07T20:30:00Z"
+  },
+  "current_phase": "completed",
   "active_agent": "",
-  "last_updated": "2026-04-07T20:30:00Z",
+  "last_updated": "2026-04-08T02:30:00+02:00",
   "classification": {
     "workflow_route": "COMPLEX",
     "adaptive_mode": "PARALLEL_WAVES"
   },
   "phases": [
-    {"phase_id": "wave_0", "phase_name": "Security Gate (sequential)"},
-    {"phase_id": "wave_1", "phase_name": "Foundation (parallel x6)"},
-    {"phase_id": "wave_2", "phase_name": "AAAK + Layer Stack"},
-    {"phase_id": "wave_3", "phase_name": "Restructure"},
-    {"phase_id": "wave_4", "phase_name": "Integration"},
-    {"phase_id": "wave_5", "phase_name": "Global Distribution"}
+    {
+      "phase_id": "phase_1",
+      "phase_name": "Improved Scoring (layers.py)",
+      "status": "completed"
+    },
+    {
+      "phase_id": "phase_2",
+      "phase_name": "Expanded Scope (layers.py)",
+      "status": "completed"
+    },
+    {
+      "phase_id": "phase_3",
+      "phase_name": "Auto-Rebuild via Cron",
+      "status": "completed"
+    },
+    {
+      "phase_id": "phase_4",
+      "phase_name": "Test Updates",
+      "status": "completed"
+    }
   ],
   "barriers": {
     "wave0_security_passed": true,
     "claude_mem_removed": true,
     "tests_passing": true,
-    "pr_opened": true
+    "pr_opened": true,
+    "pr_merged": false
   },
   "steps": [
-    {"id": "W0.1", "phase": "wave_0", "name": "security-snapshot", "status": "completed", "priority": "P0", "owner": "ralph-security-alpha", "evidence": "~/.security-archive/claude-mem-data-20260407-135943.tar.gz + sha256-manifest + observations-sample"},
-    {"id": "W0.2", "phase": "wave_0", "name": "migrate-unique-data", "status": "completed", "priority": "P0", "owner": "ralph-coder-alpha-sec", "evidence": "~/Documents/Obsidian/MiVault/migrated-from-claude-mem/ with bugfixs.json (5.6MB) + decisions.json + refactors.json"},
-    {"id": "W0.3", "phase": "wave_0", "name": "remove-claude-mem (12 atomic steps)", "status": "completed", "priority": "P0", "owner": "ralph-coder-beta-sec", "evidence": "~/.claude-mem removed, plugin cache only .bak remains, residuals tar 14:31"},
-    {"id": "W0.4", "phase": "wave_0", "name": "refactor-affected-hooks", "status": "completed", "priority": "P0", "owner": "ralph-coder-gamma-sec", "evidence": "3 hooks refactored + 9 skills + 2 agents cleaned + cleanup-secrets-db.js deleted"},
-    {"id": "W0.5", "phase": "wave_0", "name": "global-uninstall-validation", "status": "completed", "priority": "P0", "owner": "ralph-tester-alpha-sec", "evidence": "tests/security/test-claude-mem-removed.sh — 19/19 PASS"},
-    {"id": "W0.6", "phase": "wave_0", "name": "anti-leakage-sweep (10 surfaces)", "status": "completed", "priority": "P0", "owner": "ralph-security-beta", "evidence": "docs/security/CLAUDE_MEM_LEAKAGE_SWEEP_2026-04-07.md"},
-
-    {"id": "W1.1", "phase": "wave_1", "name": "delete-dead-hooks", "status": "completed", "priority": "P1", "owner": "ralph-coder-alpha", "evidence": "7 dead hooks deleted, docs/architecture/HOOKS_INVENTORY_2026-04-07.md"},
-    {"id": "W1.2", "phase": "wave_1", "name": "aaak-codec", "status": "completed", "priority": "P1", "owner": "ralph-coder-beta", "evidence": ".claude/lib/aaak.py + aaak_cli.py + tests/aaak/test_aaak_codec.py — 57/57 tests, 52.7x compression (target 20x)"},
-    {"id": "W1.3", "phase": "wave_1", "name": "obsidian-as-kg", "status": "completed", "priority": "P1", "owner": "ralph-coder-gamma", "evidence": "commit 57f3415 refactor(memory): migrate memory backend to Obsidian vault"},
-    {"id": "W1.4", "phase": "wave_1", "name": "benchmark-baseline", "status": "completed", "priority": "P1", "owner": "ralph-tester-alpha", "evidence": "tests/benchmark/baseline_memory_retrieval.sh + docs/benchmark/MEMORY_BASELINE_2026-04-07.md — latency 4ms, hit rate 40% (false-neg)"},
-    {"id": "W1.5", "phase": "wave_1", "name": "drift-correction", "status": "completed", "priority": "P1", "owner": "ralph-reviewer-alpha", "evidence": "docs/audit/CLAUDE_MD_DRIFT_2026-04-07.md — 18 drifts (6 high) across 5 CLAUDE.md + 3 memory files"},
-    {"id": "W1.6", "phase": "wave_1", "name": "curator-refactor-prep", "status": "completed", "priority": "P1", "owner": "ralph-coder-delta", "evidence": "docs/refactor/CURATOR_AI_DRIVEN_PRD_2026-04-07.md — 511 lines, 9 scripts audited, 7 reusable funcs"},
-
-    {"id": "W2.1", "phase": "wave_2", "name": "aaak-migrate-rules", "status": "completed", "priority": "P1", "owner": "ralph-coder-epsilon", "evidence": "REVERTED — AAAK measured +19.8% token increase via tiktoken cl100k_base (agent used wc -w heuristic). See docs/architecture/AAAK_LIMITATIONS_ADR_2026-04-07.md"},
-    {"id": "W2.2", "phase": "wave_2", "name": "layer-stack", "status": "completed", "priority": "P1", "owner": "ralph-coder-zeta", "evidence": "layers.py + L0_identity.md + L1_essential.md (plain markdown, 9 actionable rules, 579 real cl100k_base tokens) + wake-up hook (not registered yet, W4.2) + 38/38 tests"},
-    {"id": "W2.3", "phase": "wave_2", "name": "ai-driven-save (vault graduation)", "status": "completed", "priority": "P1", "owner": "ralph-coder-eta", "evidence": "commit 13b0943 feat(vault): unify 3 learning pipelines + d6de57c fix(vault): graduation+health"},
-
-    {"id": "W3.1", "phase": "wave_3", "name": "taxonomy-restructure", "status": "completed", "priority": "P2", "owner": "ralph-coder-theta", "evidence": "14 taxonomy files (4 halls + 5 rooms + 3 wings + 2 README) + MIGRATION_MAP_2026-04-07.md + 13/28 noise excluded (46%)"},
-    {"id": "W3.2", "phase": "wave_3", "name": "specialist-diaries", "status": "completed", "priority": "P2", "owner": "ralph-coder-iota", "evidence": "6 agent diaries in Obsidian vault + diary_path frontmatter in all 6 ralph agents"},
-
-    {"id": "W4.1", "phase": "wave_4", "name": "unified-mcp-server", "status": "pending", "priority": "P1", "owner": "ralph-coder-kappa", "note": "DEFERRED — significant scope, better suited for dedicated PR after core architecture lands"},
-    {"id": "W4.2", "phase": "wave_4", "name": "hook-consolidation", "status": "completed", "priority": "P1", "owner": "ralph-coder-lambda", "evidence": "wake-up-layer-stack.sh registered as SessionStart hook + 3 consolidation candidates identified in docs/refactor/HOOK_CONSOLIDATION_W4.2_2026-04-07.md"},
-    {"id": "W4.3", "phase": "wave_4", "name": "full-test-suite", "status": "completed", "priority": "P1", "owner": "ralph-tester-beta", "evidence": "925/932 pass (99.2%), 7 stale expectations (not regressions), wake-up hook 627 tokens"},
-    {"id": "W4.4", "phase": "wave_4", "name": "docs-update", "status": "completed", "priority": "P2", "owner": "ralph-reviewer-beta", "evidence": "CLAUDE.md updated with MemPalace v3.0 Memory System (layer stack, taxonomy, agent diaries, key decisions)"},
-
-    {"id": "W5.0", "phase": "wave_5", "name": "diagnose-symlinks", "status": "completed", "priority": "P2", "owner": "ralph-researcher-zeta", "evidence": "Symlink audit complete — 6 rules, 87 hooks, 60 skills mapped"},
-    {"id": "W5.1", "phase": "wave_5", "name": "promote-rules-standalone", "status": "completed", "priority": "P2", "owner": "ralph-coder-mu", "evidence": "6 rules promoted to ~/.claude/rules/ as real files + sync-rules-from-source.sh + check-rules-staleness.sh"},
-    {"id": "W5.2", "phase": "wave_5", "name": "universal-hooks", "status": "completed", "priority": "P2", "owner": "ralph-coder-nu", "evidence": "3 universal hooks (classifier, aristotle gate, step tracker) in repo + global ~/.claude/hooks/"},
-    {"id": "W5.3", "phase": "wave_5", "name": "register-universal-hooks", "status": "completed", "priority": "P2", "owner": "ralph-coder-xi", "evidence": "3/3 registered in ~/.claude/settings.json with global paths — classifier (UserPromptSubmit first), aristotle gate (PreToolUse wildcard first), step tracker (PostToolUse last)"},
-    {"id": "W5.4", "phase": "wave_5", "name": "task-classifier-skill", "status": "completed", "priority": "P2", "owner": "ralph-coder-omicron", "evidence": "task-classifier SKILL.md + 56 skills promoted from symlinks to standalone copies in ~/.claude/skills/"},
-    {"id": "W5.5", "phase": "wave_5", "name": "package-as-plugin", "status": "completed", "priority": "P2", "owner": "ralph-coder-pi", "note": "DEFERRED — current distribution works (36/36 validator). Plugin packaging for marketplace publication in dedicated PR after Wave 5 merge."},
-    {"id": "W5.6", "phase": "wave_5", "name": "global-rollout-validation", "status": "completed", "priority": "P2", "owner": "ralph-tester-gamma", "evidence": "36/36 validator pass, 3/3 hooks exec OK, 6/6 rules SYNC, 9/9 skills OK, 8/8 agents symlink, 11 hook events, L0+L1 layers exist"},
-    {"id": "W5.7", "phase": "wave_5", "name": "symlink-vs-copy-policy", "status": "completed", "priority": "P2", "owner": "ralph-reviewer-gamma", "evidence": "Policy enforced in validator v3.2.0 — rules/hooks=copies (SHA-256), skills=copies (SKILL.md check), agents=symlinks"}
-  ]
+    {
+      "id": "P1.1",
+      "phase": "phase_1",
+      "name": "redesign-score-rule",
+      "status": "completed",
+      "priority": "P0",
+      "owner": "",
+      "description": "Redesign _score_rule() with recency bonus, score floor, applied_count fix"
+    },
+    {
+      "id": "P1.2",
+      "phase": "phase_1",
+      "name": "domain-diversity",
+      "status": "completed",
+      "priority": "P0",
+      "owner": "",
+      "description": "Add _apply_domain_diversity() — max 3 rules per domain"
+    },
+    {
+      "id": "P1.3",
+      "phase": "phase_1",
+      "name": "update-build-method",
+      "status": "completed",
+      "priority": "P0",
+      "owner": "",
+      "description": "Update build() to use new scoring + domain diversity + domain tag output"
+    },
+    {
+      "id": "P1.4",
+      "phase": "phase_1",
+      "name": "lower-substantive-threshold",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "",
+      "description": "Lower _is_substantive() to 10 chars for curated sources"
+    },
+    {
+      "id": "P2.1",
+      "phase": "phase_2",
+      "name": "increase-rule-count",
+      "status": "completed",
+      "priority": "P0",
+      "owner": "",
+      "description": "Set L1_RULE_COUNT = 25 (was 15)"
+    },
+    {
+      "id": "P2.2",
+      "phase": "phase_2",
+      "name": "token-budget-safety",
+      "status": "completed",
+      "priority": "P0",
+      "owner": "",
+      "description": "Add token budget safety trim in build() if L0+L1 > 1400 tokens"
+    },
+    {
+      "id": "P2.3",
+      "phase": "phase_2",
+      "name": "domain-column-markdown",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "",
+      "description": "Add domain tag to L1 markdown output"
+    },
+    {
+      "id": "P3.1",
+      "phase": "phase_3",
+      "name": "create-rebuild-script",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "",
+      "description": "Create scripts/l1-rebuild.sh with lock file, logging, idempotent rebuild"
+    },
+    {
+      "id": "P3.2",
+      "phase": "phase_3",
+      "name": "cli-cron-commands",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "",
+      "description": "Add --install-cron / --remove-cron to layers.py CLI"
+    },
+    {
+      "id": "P3.3",
+      "phase": "phase_3",
+      "name": "curator-rebuild-trigger",
+      "status": "completed",
+      "priority": "P2",
+      "owner": "",
+      "description": "Add rebuild trigger to end of curator-learn.sh"
+    },
+    {
+      "id": "P4.1",
+      "phase": "phase_4",
+      "name": "update-existing-tests",
+      "status": "completed",
+      "priority": "P0",
+      "owner": "",
+      "description": "Update assertions from 15→25 rules"
+    },
+    {
+      "id": "P4.2",
+      "phase": "phase_4",
+      "name": "new-scoring-tests",
+      "status": "completed",
+      "priority": "P0",
+      "owner": "",
+      "description": "TestScoringImprovements: 4 tests (recency, score floor, domain diversity, applied_count)"
+    },
+    {
+      "id": "P4.3",
+      "phase": "phase_4",
+      "name": "new-rebuild-tests",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "",
+      "description": "TestAutoRebuild: 2 tests (script exists, idempotency)"
+    },
+    {
+      "id": "P4.4",
+      "phase": "phase_4",
+      "name": "metadata-fixture",
+      "status": "completed",
+      "priority": "P1",
+      "owner": "",
+      "description": "Add sample_rules_with_metadata fixture with created_at, severity, domain, applied_count"
+    }
+  ],
+  "metadata": {
+    "session_id": "session_46030",
+    "started_at": "2026-04-08T02:47:12+02:00",
+    "plan_updated_reason": "All phases completed — syncing plan-state to reflect actual implementation status"
+  }
 }

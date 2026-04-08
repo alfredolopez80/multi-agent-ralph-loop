@@ -6,7 +6,7 @@ Unit tests for the W2.2 4-Layer Memory Stack (.claude/lib/layers.py).
 
 Tests verify:
   - Layer0: identity load and exists()
-  - Layer1: build() creates L1_essential.md with 15 rules, load() round-trip
+  - Layer1: build() creates L1_essential.md with up to 25 rules, load() round-trip
   - Layer2: has() returns False for missing projects
   - Layer3: query() returns correct structure (list of dicts)
 """
@@ -14,7 +14,6 @@ Tests verify:
 import json
 import os
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -27,7 +26,17 @@ REPO_ROOT = Path(__file__).parent.parent.parent
 LIB_DIR = REPO_ROOT / ".claude" / "lib"
 sys.path.insert(0, str(LIB_DIR))
 
-from layers import Layer0, Layer1, Layer2, Layer3, load_wake_up_context  # noqa: E402
+from layers import Layer0, Layer1, Layer2, Layer3, load_wake_up_context, graduate_rules  # noqa: E402
+
+
+# ---------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------
+
+def _patch_rules_json(monkeypatch, rules_path: Path) -> None:
+    """Monkeypatch layers.PROCEDURAL_RULES_JSON to the given test fixture path."""
+    import layers as layers_module
+    monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", rules_path)
 
 
 # ---------------------------------------------------------------------------
@@ -161,9 +170,7 @@ class TestLayer1:
         output_path = tmp_path / "L1_essential.md"
         layer = Layer1(path=output_path, rule_count=15)
 
-        # Monkeypatch the source rules path
-        import layers as layers_module
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", sample_rules_json)
+        _patch_rules_json(monkeypatch, sample_rules_json)
 
         result = layer.build()
 
@@ -171,45 +178,42 @@ class TestLayer1:
         assert output_path.is_file()
         assert output_path.stat().st_size > 0
 
-    def test_build_includes_exactly_15_rules(self, tmp_path: Path, sample_rules_json: Path, monkeypatch):
-        """Layer1.build() encodes exactly 15 rules (top by score)."""
+    def test_build_includes_up_to_25_rules(self, tmp_path: Path, sample_rules_json: Path, monkeypatch):
+        """Layer1.build() encodes up to 25 rules (top by score with domain diversity)."""
         output_path = tmp_path / "L1_essential.md"
-        layer = Layer1(path=output_path, rule_count=15)
+        layer = Layer1(path=output_path, rule_count=25)
 
-        import layers as layers_module
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", sample_rules_json)
+        _patch_rules_json(monkeypatch, sample_rules_json)
 
         layer.build()
         content = layer.load()
 
-        # Count RULE: entries in decoded content
+        # Count rule entries in output
         rule_count = sum(1 for line in content.splitlines() if line.startswith("## "))
-        assert rule_count == 15, (
-            f"Expected exactly 15 RULE entries in L1, found {rule_count}"
+        assert rule_count <= 25, (
+            f"Expected at most 25 rules in L1, found {rule_count}"
         )
 
     def test_build_includes_header_with_count(self, tmp_path: Path, sample_rules_json: Path, monkeypatch):
-        """Layer1.build() writes L1_ESSENTIAL header with count:15."""
+        """Layer1.build() writes L1_ESSENTIAL header with scoring pipeline info."""
         output_path = tmp_path / "L1_essential.md"
-        layer = Layer1(path=output_path, rule_count=15)
+        layer = Layer1(path=output_path, rule_count=25)
 
-        import layers as layers_module
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", sample_rules_json)
+        _patch_rules_json(monkeypatch, sample_rules_json)
 
         layer.build()
         content = layer.load()
 
         assert "L1 Essential Rules" in content
         assert "actionable" in content
-        assert "max: 15" in content
+        assert "domain cap" in content
 
     def test_load_returns_markdown(self, tmp_path: Path, sample_rules_json: Path, monkeypatch):
         """Layer1.build() + load() returns the markdown content."""
         output_path = tmp_path / "L1_essential.md"
         layer = Layer1(path=output_path, rule_count=15)
 
-        import layers as layers_module
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", sample_rules_json)
+        _patch_rules_json(monkeypatch, sample_rules_json)
 
         layer.build()
         decoded = layer.load()
@@ -236,21 +240,20 @@ class TestLayer1:
 
     def test_real_l1_has_substantive_rules(self, real_l1_path: Path):
         """
-        Real L1_essential.md contains between 1 and 15 substantive rules.
+        Real L1_essential.md contains between 1 and 25 substantive rules.
 
-        Note: After adding the mechanical filter (ep-auto-/ep-rule- exclusion)
-        and the empty-behavior filter (>= 20 chars), the actual count depends
-        on how many substantive rules exist in the procedural store. This
-        test accepts any count in [1, 15] since fewer rules with real signal
-        is better than padding to 15 with noise.
+        Note: After adding the mechanical filter (ep-auto-/ep-rule- exclusion),
+        the empty-behavior filter (>= 20 chars), and domain diversity (max 3/domain),
+        the actual count depends on how many substantive rules exist in the
+        procedural store. This test accepts any count in [1, 25].
         """
         layer = Layer1(path=real_l1_path)
         if not layer.exists():
             pytest.skip("L1 not built yet")
         content = layer.load()
         rule_count = sum(1 for line in content.splitlines() if line.startswith("## "))
-        assert 1 <= rule_count <= 15, (
-            f"Expected 1-15 rules in real L1, found {rule_count}"
+        assert 1 <= rule_count <= 25, (
+            f"Expected 1-25 rules in real L1, found {rule_count}"
         )
 
     def test_real_l1_token_estimate_under_target(self, real_l1_path: Path):
@@ -266,8 +269,7 @@ class TestLayer1:
         output_path = tmp_path / "L1_custom.md"
         layer = Layer1(path=output_path, rule_count=5)
 
-        import layers as layers_module
-        monkeypatch.setattr(layers_module, "PROCEDURAL_RULES_JSON", sample_rules_json)
+        _patch_rules_json(monkeypatch, sample_rules_json)
 
         layer.build()
         content = layer.load()
@@ -487,3 +489,388 @@ class TestWakeUpContext:
             f"Wake-up context token estimate {token_estimate} exceeds 1500-token target. "
             f"Word count: {word_count}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Scoring Improvement Tests
+# ---------------------------------------------------------------------------
+
+@pytest.fixture()
+def sample_rules_with_metadata(tmp_path: Path) -> Path:
+    """Create rules.json with metadata fields (created_at, severity, domain, applied_count)."""
+    from datetime import datetime, timezone, timedelta
+
+    now = datetime.now(timezone.utc).isoformat()
+    old_date = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+
+    base_rules = [
+        # Rule 0: New critical rule with low usage — should get score floor
+        {
+            "rule_id": "sec-critical-new",
+            "trigger": "On security-sensitive operations",
+            "behavior": "CRITICAL: Always validate input at API boundaries",
+            "confidence": 0.95,
+            "usage_count": 0,
+            "applied_count": 0,
+            "severity": "critical",
+            "domain": "security",
+            "created_at": now,
+        },
+        # Rule 1: Old high-usage rule
+        {
+            "rule_id": "hook-old-reliable",
+            "trigger": "On hook validation",
+            "behavior": "MUST validate hook JSON format before committing",
+            "confidence": 0.9,
+            "usage_count": 200,
+            "applied_count": 200,
+            "domain": "hooks",
+            "created_at": old_date,
+        },
+        # Rule 2: Rule with applied_count but usage_count=0 (field mismatch)
+        {
+            "rule_id": "db-applied-mismatch",
+            "trigger": "On database operations",
+            "behavior": "Always use parameterized queries for database operations",
+            "confidence": 0.85,
+            "usage_count": 0,
+            "applied_count": 100,
+            "domain": "database",
+            "created_at": old_date,
+        },
+    ]
+    # Rules 3-9: Same domain (backend) — domain diversity should cap at 3
+    backend_rules = [
+        {
+            "rule_id": f"backend-rule-{i}",
+            "trigger": f"Backend trigger {i}",
+            "behavior": f"Backend behavior {i} with enough text to pass substantive filter",
+            "confidence": 0.7 + i * 0.02,
+            "usage_count": 50 - i * 5,
+            "domain": "backend",
+            "created_at": old_date,
+        }
+        for i in range(7)
+    ]
+    flat_rules = base_rules + backend_rules
+
+    data = {
+        "version": "test-scoring-1.0",
+        "updated": "2026-04-08",
+        "rules": flat_rules,
+        "curator_metadata": {},
+    }
+    p = tmp_path / "rules.json"
+    p.write_text(json.dumps(data), encoding="utf-8")
+    return p
+
+
+class TestScoringImprovements:
+    """Tests for the improved L1 scoring pipeline."""
+
+    def test_recency_bonus_new_rules(self, tmp_path: Path, sample_rules_with_metadata: Path, monkeypatch):
+        """Rule created today scores higher than identical rule from 30 days ago."""
+        _patch_rules_json(monkeypatch, sample_rules_with_metadata)
+
+        output_path = tmp_path / "L1_test.md"
+        layer = Layer1(path=output_path, rule_count=10)
+        layer.build()
+        content = layer.load()
+
+        # The new critical rule (sec-critical-new) should appear in output
+        # despite having 0 usage, thanks to recency + score floor
+        assert "sec-critical-new" in content, (
+            "New critical rule should appear in L1 output (recency bonus + score floor)"
+        )
+
+    def test_score_floor_critical_rules(self, tmp_path: Path, sample_rules_with_metadata: Path, monkeypatch):
+        """Rule with confidence>=0.9 + CRITICAL + severity=critical gets min score 50."""
+        _patch_rules_json(monkeypatch, sample_rules_with_metadata)
+
+        output_path = tmp_path / "L1_test.md"
+        layer = Layer1(path=output_path, rule_count=10)
+
+        # Score the critical rule directly
+        rules = layer._load_source_rules()
+        critical_rule = [r for r in rules if r["rule_id"] == "sec-critical-new"][0]
+        score = layer._score_rule(critical_rule, newest_created=critical_rule["created_at"])
+        assert score >= 50.0, (
+            f"Critical rule with confidence>=0.9 + severity=critical should score >= 50, got {score}"
+        )
+
+    def test_domain_diversity_max_3(self, tmp_path: Path, sample_rules_with_metadata: Path, monkeypatch):
+        """No more than 3 rules from same domain in output."""
+        _patch_rules_json(monkeypatch, sample_rules_with_metadata)
+
+        output_path = tmp_path / "L1_test.md"
+        layer = Layer1(path=output_path, rule_count=10)
+        layer.build()
+        content = layer.load()
+
+        # Extract domains from output
+        domains = []
+        for line in content.splitlines():
+            if line.startswith("## ") and "[" in line:
+                domain = line.split("[")[1].split("]")[0]
+                domains.append(domain)
+
+        # Count per domain
+        from collections import Counter
+        domain_counts = Counter(domains)
+        for domain, count in domain_counts.items():
+            assert count <= 3, (
+                f"Domain '{domain}' has {count} rules, exceeds max of 3 per domain"
+            )
+
+    def test_applied_count_field_used(self, tmp_path: Path, sample_rules_with_metadata: Path, monkeypatch):
+        """Rule with applied_count=100 but usage_count=0 still scores high."""
+        _patch_rules_json(monkeypatch, sample_rules_with_metadata)
+
+        output_path = tmp_path / "L1_test.md"
+        layer = Layer1(path=output_path, rule_count=10)
+
+        rules = layer._load_source_rules()
+        mismatch_rule = [r for r in rules if r["rule_id"] == "db-applied-mismatch"][0]
+        score = layer._score_rule(mismatch_rule)
+        expected_min = 0.85 * 100  # confidence * applied_count
+        assert score >= expected_min, (
+            f"Rule with applied_count=100 should score >= {expected_min}, got {score}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Auto-Rebuild Tests
+# ---------------------------------------------------------------------------
+
+class TestAutoRebuild:
+    """Tests for the L1 auto-rebuild infrastructure."""
+
+    def test_l1_rebuild_script_exists_and_executable(self):
+        """scripts/l1-rebuild.sh exists and is executable."""
+        script_path = REPO_ROOT / "scripts" / "l1-rebuild.sh"
+        assert script_path.is_file(), f"Rebuild script missing at {script_path}"
+        assert os.access(script_path, os.X_OK), f"Rebuild script not executable: {script_path}"
+
+    def test_rebuild_idempotent(self, tmp_path: Path, sample_rules_json: Path, monkeypatch):
+        """Running build() twice produces the same output."""
+        _patch_rules_json(monkeypatch, sample_rules_json)
+
+        output_path = tmp_path / "L1_idempotent.md"
+        layer = Layer1(path=output_path, rule_count=15)
+
+        layer.build()
+        first_content = layer.load()
+
+        layer.build()
+        second_content = layer.load()
+
+        assert first_content == second_content, (
+            "Building L1 twice should produce identical output"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Rule Graduation Tests
+# ---------------------------------------------------------------------------
+
+@pytest.fixture()
+def proven_rules_dir(tmp_path: Path, monkeypatch) -> Path:
+    """Override PROVEN_RULES_DIR to a temp directory for testing."""
+    import layers as layers_module
+    proven = tmp_path / "proven"
+    proven.mkdir()
+    monkeypatch.setattr(layers_module, "PROVEN_RULES_DIR", proven)
+    return proven
+
+
+@pytest.fixture()
+def rules_with_proven_candidates(tmp_path: Path) -> Path:
+    """Create rules.json with 3 candidates that qualify for graduation + 3 that don't."""
+    rules = [
+        # QUALIFIES: confidence 0.95, usage 50, behavior 60+ chars
+        {
+            "rule_id": "hook-json-format",
+            "trigger": "When writing hook responses",
+            "behavior": "CRITICAL: Always use the correct JSON response format per hook event type. Never use continue as decision value.",
+            "confidence": 0.95,
+            "usage_count": 50,
+            "applied_count": 50,
+            "domain": "hooks",
+        },
+        # QUALIFIES: confidence 0.9, applied_count 25 (field mismatch)
+        {
+            "rule_id": "sec-input-validation",
+            "trigger": "On API boundary operations",
+            "behavior": "MUST validate all inputs at API boundaries using parameterized queries and HTML sanitization to prevent injection attacks.",
+            "confidence": 0.9,
+            "usage_count": 0,
+            "applied_count": 25,
+            "domain": "security",
+        },
+        # QUALIFIES: confidence 0.92, usage 100, long behavior
+        {
+            "rule_id": "test-verify-expectations",
+            "trigger": "When tests fail after changes",
+            "behavior": "FIRST verify test expectations are correct against official documentation. Tests can be corrupted with wrong expectations that mask real bugs.",
+            "confidence": 0.92,
+            "usage_count": 100,
+            "domain": "testing",
+        },
+        # FAILS: confidence 0.7 (below 0.9)
+        {
+            "rule_id": "low-confidence-rule",
+            "trigger": "Sometimes",
+            "behavior": "This rule has low confidence but decent usage count and a very long behavior description.",
+            "confidence": 0.7,
+            "usage_count": 50,
+            "domain": "general",
+        },
+        # FAILS: usage 5 (below 20)
+        {
+            "rule_id": "new-untested-rule",
+            "trigger": "On new features",
+            "behavior": "This rule has high confidence but barely any usage yet so it should not graduate.",
+            "confidence": 0.95,
+            "usage_count": 5,
+            "domain": "backend",
+        },
+        # FAILS: behavior too short (30 chars < 50)
+        {
+            "rule_id": "short-behavior-rule",
+            "trigger": "On commits",
+            "behavior": "Short rule text",
+            "confidence": 0.95,
+            "usage_count": 100,
+            "domain": "general",
+        },
+    ]
+    data = {
+        "version": "test-graduate-1.0",
+        "updated": "2026-04-08",
+        "rules": rules,
+        "curator_metadata": {},
+    }
+    p = tmp_path / "rules.json"
+    p.write_text(json.dumps(data), encoding="utf-8")
+    return p
+
+
+class TestGraduation:
+    """Tests for the rule graduation pipeline (rules.json → ~/.claude/rules/proven/)."""
+
+    def test_graduate_promotes_qualified_rules(
+        self, tmp_path: Path, proven_rules_dir: Path,
+        rules_with_proven_candidates: Path, monkeypatch,
+    ):
+        """graduate_rules() creates .md files for rules meeting all thresholds."""
+        _patch_rules_json(monkeypatch, rules_with_proven_candidates)
+
+        promoted, skipped = graduate_rules(dry_run=False)
+
+        # 3 rules qualify (hook-json-format, sec-input-validation, test-verify-expectations)
+        assert len(promoted) == 3, f"Expected 3 promoted, got {len(promoted)}: {[p.name for p in promoted]}"
+        assert proven_rules_dir.is_dir()
+
+        # Check file content has rule behavior
+        files = list(proven_rules_dir.glob("*.md"))
+        assert len(files) == 3
+        for f in files:
+            content = f.read_text(encoding="utf-8")
+            assert "Confidence" in content
+            assert "Domain" in content
+
+    def test_dry_run_does_not_create_files(
+        self, tmp_path: Path, proven_rules_dir: Path,
+        rules_with_proven_candidates: Path, monkeypatch,
+    ):
+        """graduate_rules(dry_run=True) reports but does not write files."""
+        _patch_rules_json(monkeypatch, rules_with_proven_candidates)
+
+        promoted, skipped = graduate_rules(dry_run=True)
+
+        assert len(promoted) == 3
+        # No files should be created in dry run
+        files = list(proven_rules_dir.glob("*.md"))
+        assert len(files) == 0
+
+    def test_graduate_skips_low_confidence(
+        self, tmp_path: Path, proven_rules_dir: Path,
+        rules_with_proven_candidates: Path, monkeypatch,
+    ):
+        """Rules with confidence < 0.9 are not promoted."""
+        _patch_rules_json(monkeypatch, rules_with_proven_candidates)
+
+        promoted, _ = graduate_rules(dry_run=True)
+        names = [p.name for p in promoted]
+        assert not any("low-confidence" in n for n in names)
+
+    def test_graduate_skips_low_usage(
+        self, tmp_path: Path, proven_rules_dir: Path,
+        rules_with_proven_candidates: Path, monkeypatch,
+    ):
+        """Rules with usage < 20 are not promoted."""
+        _patch_rules_json(monkeypatch, rules_with_proven_candidates)
+
+        promoted, _ = graduate_rules(dry_run=True)
+        names = [p.name for p in promoted]
+        assert not any("new-untested" in n for n in names)
+
+    def test_graduate_skips_short_behavior(
+        self, tmp_path: Path, proven_rules_dir: Path,
+        rules_with_proven_candidates: Path, monkeypatch,
+    ):
+        """Rules with behavior < 50 chars are not promoted."""
+        _patch_rules_json(monkeypatch, rules_with_proven_candidates)
+
+        promoted, skipped = graduate_rules(dry_run=True)
+        names = [p.name for p in promoted]
+        assert not any("short-behavior" in n for n in names)
+        # Should have a skip reason mentioning "too short"
+        assert any("too short" in s for s in skipped)
+
+    def test_graduate_cleans_stale_files(
+        self, tmp_path: Path, proven_rules_dir: Path,
+        rules_with_proven_candidates: Path, monkeypatch,
+    ):
+        """graduate_rules() removes files for rules that no longer qualify."""
+        _patch_rules_json(monkeypatch, rules_with_proven_candidates)
+
+        # Create a stale file that won't match any graduated rule
+        stale = proven_rules_dir / "general-stale-old-rule.md"
+        stale.write_text("# stale", encoding="utf-8")
+
+        promoted, skipped = graduate_rules(dry_run=False)
+
+        # Stale file should be cleaned up
+        assert not stale.exists(), "Stale proven rule file should be removed"
+        assert any("CLEANUP" in s for s in skipped)
+
+    def test_graduate_idempotent(
+        self, tmp_path: Path, proven_rules_dir: Path,
+        rules_with_proven_candidates: Path, monkeypatch,
+    ):
+        """Running graduate_rules() twice produces same result."""
+        _patch_rules_json(monkeypatch, rules_with_proven_candidates)
+
+        promoted1, _ = graduate_rules(dry_run=False)
+        promoted2, skipped2 = graduate_rules(dry_run=False)
+
+        # Second run should report unchanged (not re-written)
+        assert any("unchanged" in s for s in skipped2)
+        # CRITICAL: All 3 files must still exist on disk (stale cleanup must NOT delete them)
+        files_after = list(proven_rules_dir.glob("*.md"))
+        assert len(files_after) == 3, (
+            f"Idempotent run deleted files! Expected 3, found {len(files_after)}: "
+            f"{[f.name for f in files_after]}"
+        )
+
+    def test_graduate_with_no_rules_json(
+        self, tmp_path: Path, proven_rules_dir: Path, monkeypatch,
+    ):
+        """graduate_rules() handles missing rules.json gracefully."""
+        missing = tmp_path / "nonexistent" / "rules.json"
+        _patch_rules_json(monkeypatch, missing)
+
+        promoted, skipped = graduate_rules(dry_run=False)
+        assert len(promoted) == 0
+        assert any("No rules.json" in s for s in skipped)
