@@ -80,16 +80,8 @@ if command -v jq &>/dev/null; then
         fi
     fi
 
-    # 3. Check migrated observations for this project
-    if [[ -f "${MIGRATED_DIR}/decisions.json" ]]; then
-        MIGRATED_DECISIONS=$(jq -r --arg proj "$PROJECT_NAME" '[.[] | select(.project == $proj)] | length' "${MIGRATED_DIR}/decisions.json" 2>/dev/null || echo "0")
-        if [[ "$MIGRATED_DECISIONS" -gt 0 ]]; then
-            RECENT_DECISIONS=$(jq -r --arg proj "$PROJECT_NAME" '[.[] | select(.project == $proj)] | .[0:3][] | "- \(.title // .subtitle // "(no title)")"' "${MIGRATED_DIR}/decisions.json" 2>/dev/null | head -3 || true)
-            if [[ -n "$RECENT_DECISIONS" ]]; then
-                SUMMARY_PARTS+=("## Historical Decisions ($MIGRATED_DECISIONS for $PROJECT_NAME)\n$RECENT_DECISIONS")
-            fi
-        fi
-    fi
+    # 3. [REMOVED v3.2.0] migrated observations block deleted (claude-mem removed in Wave 0)
+    #    Historical decisions now live in Obsidian vault: ~/Documents/Obsidian/MiVault/
 
     # 4. Check Obsidian vault wiki articles (recent)
     if [[ -d "${VAULT_DIR}/global/wiki" ]]; then

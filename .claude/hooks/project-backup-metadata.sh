@@ -26,7 +26,7 @@ set -euo pipefail
 output_json_stop() {
     echo '{"decision": "approve"}'
 }
-trap 'output_json_stop' ERR EXIT
+trap 'output_json_stop' ERR
 
 # Configuration
 METADATA_DIR="${HOME}/.ralph/metadata"

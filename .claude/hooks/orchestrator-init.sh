@@ -21,9 +21,8 @@ INPUT=$(head -c 100000)
 
 set -euo pipefail
 
-# v2.69.0: Error trap for SessionStart hooks (plain text OK, no JSON required)
-# Removed stderr which causes hook error warnings
-trap 'echo "SessionStart orchestrator-init recovery"' ERR EXIT
+# Error trap: only on ERR, not EXIT (EXIT would print text after JSON output)
+trap 'echo "SessionStart orchestrator-init recovery"' ERR
 
 umask 077
 
@@ -116,7 +115,7 @@ else
 fi
 
 # 4. Record session start
-SESSION_ID=$(cat /dev/urandom | tr -dc 'a-f0-9' | head -32 2>/dev/null || echo "session_$$")
+SESSION_ID=$(openssl rand -hex 16 2>/dev/null || echo "session_$$")
 START_TIME=$(date -Iseconds)
 
 log "Session ID: $SESSION_ID"
