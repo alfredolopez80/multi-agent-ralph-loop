@@ -72,7 +72,8 @@ main() {
     local batch_dir=$(find_active_batch)
 
     if [[ -z "$batch_dir" ]]; then
-        # No active batch, exit normally
+        # No active batch — must output valid JSON for PostToolUse
+        echo '{"continue": true}'
         exit 0
     fi
 
@@ -94,11 +95,12 @@ main() {
         local total=$(jq '.total_tasks // 0' "$batch_dir/progress.json" 2>/dev/null)
         local current=$(jq -r '.current_task // "none"' "$batch_dir/progress.json" 2>/dev/null)
 
-        echo "{\"hookSpecificOutput\": {\"progress\": \"Batch progress: $completed/$total tasks completed. Current: $current\", \"tasks_remain\": true}}"
-        exit 2  # Continue execution
+        # PostToolUse hooks MUST output {"continue": true/false}
+        echo '{"continue": true}'
+        exit 0
     else
         # All tasks complete
-        echo "{\"hookSpecificOutput\": {\"progress\": \"Batch complete! All tasks finished.\", \"tasks_remain\": false}}"
+        echo '{"continue": true}'
         exit 0
     fi
 }
