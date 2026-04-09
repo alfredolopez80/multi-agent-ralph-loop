@@ -28,7 +28,7 @@ readonly RESULTS_DIR="${PROJECT_ROOT}/.claude/quality-results"
 readonly QUALITY_LOG="${PROJECT_ROOT}/.claude/logs/quality-parallel.log"
 
 # LOW-002 FIX: Configurable timeout via environment variable (default: 300s = 5 min)
-readonly QUALITY_CHECK_TIMEOUT="${QUALITY_CHECK_TIMEOUT:-300}"
+readonly QUALITY_CHECK_TIMEOUT="${QUALITY_CHECK_TIMEOUT:-30}"
 
 # Ensure results directory exists
 mkdir -p "${RESULTS_DIR}"
@@ -181,7 +181,7 @@ INPUT_JSON=$(jq -n \
 # v2.90.1 FIX: Check names now match actual script purpose (FINDING-002)
 run_quality_check "sec-context" ".claude/hooks/sec-context-validate.sh" "$SECURITY_RESULT" "$INPUT_JSON" &
 run_quality_check "quality-gates" ".claude/hooks/quality-gates-v2.sh" "$REVIEW_RESULT" "$INPUT_JSON" &
-run_quality_check "security-audit" ".claude/hooks/security-real-audit.sh" "$DESLOP_RESULT" "$INPUT_JSON" &
+run_quality_check "deslop-clean" ".claude/hooks/deslop-auto-clean.sh" "$DESLOP_RESULT" "$INPUT_JSON" &
 run_quality_check "stop-slop" ".claude/hooks/stop-slop-hook.sh" "$STOPSLOP_RESULT" "$INPUT_JSON" &
 
 # Wait for all background processes to complete
@@ -202,7 +202,7 @@ cat <<EOF
   "continue": true,
   "hookSpecificOutput": {
     "hookEventName": "QualityParallelAsync",
-    "checks": ["sec-context", "quality-gates", "security-audit", "stop-slop"],
+    "checks": ["sec-context", "quality-gates", "deslop-clean", "stop-slop"],
     "runId": "${RUN_ID}",
     "resultsDir": "${RESULTS_DIR}",
     "message": "4 quality checks completed using validated bash scripts"
