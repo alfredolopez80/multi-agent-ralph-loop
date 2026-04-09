@@ -109,7 +109,8 @@ echo "" | tee -a "$LOG_FILE"
 echo "=== 5. Test Hook Execution ===" | tee -a "$LOG_FILE"
 
 # Test a simple hook
-TEST_HOOK="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/hooks/session-start-restore-context.sh"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+TEST_HOOK="${REPO_ROOT}/.claude/hooks/session-start-restore-context.sh"
 if [ -x "$TEST_HOOK" ]; then
     echo "Testing: $TEST_HOOK" | tee -a "$LOG_FILE"
     OUTPUT=$("$TEST_HOOK" 2>&1 | head -5)
@@ -127,7 +128,7 @@ echo "" | tee -a "$LOG_FILE"
 echo "=== 6. Claude-mem Worker Test ===" | tee -a "$LOG_FILE"
 
 export CLAUDE_PLUGIN_ROOT="$PLUGIN_ROOT"
-cd /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop 2>/dev/null || true
+cd "${REPO_ROOT}" 2>/dev/null || true
 
 if [ -f "$PLUGIN_ROOT/scripts/worker-service.cjs" ]; then
     echo "Testing worker status..." | tee -a "$LOG_FILE"

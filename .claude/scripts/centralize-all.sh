@@ -9,13 +9,13 @@
 #
 # Locations:
 #   Skills:
-#     - /Users/alfredolopez/.claude-code-old/.claude-old/skills
-#     - /Users/alfredolopez/.claude-sneakpeek-old/zai/skills
-#     - /Users/alfredolopez/.config/agents/skills (kimi-cli shared)
+#     - ~/.claude-code-old/.claude-old/skills (legacy)
+#     - ~/.claude-sneakpeek-old/zai/skills (legacy)
+#     - ~/.config/agents/skills (kimi-cli shared)
 #     - Repository: multi-agent-ralph-loop/.claude/skills
 #
 #   Plugins:
-#     - /Users/alfredolopez/.claude-code-old/.claude-old/plugins
+#     - ~/.claude-code-old/.claude-old/plugins (legacy)
 #     - Repository enabledPlugins
 
 set -euo pipefail
@@ -23,14 +23,14 @@ set -euo pipefail
 DRY_RUN=false
 [[ "${1:-}" == "--dry-run" ]] && DRY_RUN=true
 
-REPO_ROOT="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CLAUDE_DIR="$HOME/.claude"
 BACKUP_DIR="$HOME/.claude-backup-$(date +%Y%m%d-%H%M%S)"
 
-# Source locations
-OLD_CLAUDE_DIR="/Users/alfredolopez/.claude-code-old/.claude-old"
-OLD_ZAI_DIR="/Users/alfredolopez/.claude-sneakpeek-old/zai"
-KIMI_SKILLS="/Users/alfredolopez/.config/agents/skills"
+# Source locations (legacy — only used if they exist on this machine)
+OLD_CLAUDE_DIR="${HOME}/.claude-code-old/.claude-old"
+OLD_ZAI_DIR="${HOME}/.claude-sneakpeek-old/zai"
+KIMI_SKILLS="${HOME}/.config/agents/skills"
 REPO_SKILLS="$REPO_ROOT/.claude/skills"
 REPO_AGENTS="$REPO_ROOT/.claude/agents"
 

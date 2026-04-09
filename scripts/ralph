@@ -431,16 +431,11 @@ startup_validation() {
             log_info "Feature tools not installed: ${MISSING_FEATURE[*]}"
         fi
 
-        # v2.31: Show Memvid status
-        if [ "$MEMVID_STATUS" = "missing" ]; then
-            log_info "Memvid (v2.31) not installed: $MEMVID_INSTALL"
-        fi
-
         if [ ${#MISSING_QUALITY[@]} -gt 0 ]; then
             log_info "Quality gate tools missing (${#MISSING_QUALITY[@]}/11): some language checks may be skipped"
         fi
 
-        if [ ${#MISSING_FEATURE[@]} -gt 0 ] || [ ${#MISSING_QUALITY[@]} -gt 0 ] || [ "$MEMVID_STATUS" = "missing" ]; then
+        if [ ${#MISSING_FEATURE[@]} -gt 0 ] || [ ${#MISSING_QUALITY[@]} -gt 0 ]; then
             log_info "Run 'ralph integrations' for details"
             echo ""
         fi
@@ -8213,9 +8208,6 @@ main() {
             ;;
 
         # Utility
-        status)
-            cmd_status "$@"
-            ;;
         health)
             # v2.55: Memory system health check
             cmd_health "$@"

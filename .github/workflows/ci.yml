@@ -46,11 +46,14 @@ jobs:
         run: |
           # Check hooks exist
           test -d .claude/hooks
-          # Verify all hooks have .sh extension
+          # Verify all hooks have a recognized script extension
           for hook in .claude/hooks/*; do
-            if [ -f "$hook" ] && [[ ! "$hook" == *.sh ]]; then
-              echo "ERROR: Hook $hook missing .sh extension"
-              exit 1
+            if [ -f "$hook" ]; then
+              case "$hook" in
+                *.ARCHIVED|*.bak|*.old|*.backup|*.backup_*) ;; # Skip archived/backup files
+                *.sh|*.py|*.js) ;; # Valid hook extensions
+                *) echo "ERROR: Hook $hook has unrecognized extension (expected .sh, .py, or .js)"; exit 1 ;;
+              esac
             fi
           done
       
