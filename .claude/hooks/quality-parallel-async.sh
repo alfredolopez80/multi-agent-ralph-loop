@@ -27,7 +27,7 @@ readonly PROJECT_ROOT="$(get_project_root)"
 readonly RESULTS_DIR="${PROJECT_ROOT}/.claude/quality-results"
 readonly QUALITY_LOG="${PROJECT_ROOT}/.claude/logs/quality-parallel.log"
 
-# LOW-002 FIX: Configurable timeout via environment variable (default: 300s = 5 min)
+# LOW-002 FIX: Configurable timeout via environment variable (default: 30s)
 readonly QUALITY_CHECK_TIMEOUT="${QUALITY_CHECK_TIMEOUT:-30}"
 
 # Ensure results directory exists
