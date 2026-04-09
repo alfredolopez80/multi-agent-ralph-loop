@@ -391,6 +391,26 @@ jq -n \
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Subagent state registered: $SUBAGENT_STATE" >> "$LOG_DIR/agent-teams.log"
 
 # ============================================
+# System Gap Fix #2: Auto-initialize team-status.json
+# ============================================
+TEAM_STATUS_FILE="$HOME/.ralph/team-status.json"
+TEAM_STATUS_DIR=$(dirname "$TEAM_STATUS_FILE")
+
+if [[ ! -f "$TEAM_STATUS_FILE" ]]; then
+    mkdir -p "$TEAM_STATUS_DIR"
+    jq -n \
+        --arg version "1.0.0" \
+        --arg updated "$(date -Iseconds)" \
+        '{
+            version: $version,
+            teams: {},
+            teammates: {},
+            last_updated: $updated
+        }' > "$TEAM_STATUS_FILE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Team status file initialized: $TEAM_STATUS_FILE" >> "$LOG_DIR/agent-teams.log"
+fi
+
+# ============================================
 # Build context based on subagent type
 # ============================================
 CONTEXT=""

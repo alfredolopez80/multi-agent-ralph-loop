@@ -39,11 +39,9 @@ Rule: `.claude/rules/aristotle-methodology.md`
 
 ## Configuration Location
 
-**PRIMARY SETTINGS**: `~/.cc-mirror/minimax/config/settings.json`
+**PRIMARY SETTINGS**: `~/.claude/settings.json`
 
-This is the ONLY configuration file for Claude Code. All hooks, agents, and settings are here.
-
-> ⚠️ **NOT**: `~/.claude/settings.json` or `~/.claude-sneakpeek/zai/config/settings.json` (legacy locations)
+This is the ONLY configuration file for Claude Code (all models: Claude, Zai, Minimax). All hooks, agents, and settings are configured here.
 
 ## Batch Task Execution (v2.88.0)
 
@@ -126,7 +124,7 @@ Rule: `.claude/rules/browser-automation.md`
 |------|---------|---------|
 | `git-safety-guard.py` | Blocks rm -rf, git reset --hard, command chaining | PreToolUse (Bash) |
 | `repo-boundary-guard.sh` | Prevents operations outside current repo | PreToolUse (Bash) |
-| `sanitize-secrets.js` | Redacts 20+ secret patterns before saving | PostToolUse |
+| `audit-secrets.js` | Audit logging for 20+ secret patterns | PostToolUse |
 | `teammate-idle-quality-gate.sh` | Blocks idle with secrets/debug code (CWE-798, CWE-321) | TeammateIdle |
 | `task-completed-quality-gate.sh` | 7 quality gates including hardcoded secrets + SQL injection | TaskCompleted |
 | `cleanup-secrets-db.js` | Scans DB for exposed secrets | Manual |
@@ -186,7 +184,7 @@ Task(subagent_type="ralph-reviewer", team_name="my-project")
 
 ### Agent Teams Configuration
 
-Agent Teams está habilitado en `~/.cc-mirror/minimax/config/settings.json`:
+Agent Teams está habilitado en `~/.claude/settings.json`:
 ```json
 {
   "env": {
@@ -257,9 +255,9 @@ These hooks must be registered in settings.json:
 
 Validation: `./scripts/validate-hooks-registration.sh`
 
-### Hook Events (11 configured)
+### Hook Events (12 configured)
 
-`SessionStart`, `SessionEnd`, `Stop`, `PreToolUse`, `PostToolUse`, `PreCompact`, `UserPromptSubmit`, `TeammateIdle`, `TaskCompleted`, `SubagentStart`, `SubagentStop`
+`SessionStart`, `SessionEnd`, `Stop`, `PreToolUse`, `PostToolUse`, `PreCompact`, `UserPromptSubmit`, `TeammateIdle`, `TaskCompleted`, `SubagentStart`, `SubagentStop`, `TaskCreated`
 
 ## LSP Integration (v2.88.1)
 
@@ -331,6 +329,8 @@ Each ralph agent has a diary in Obsidian vault:
 - **AAAK rejected** for LLM context (see `docs/architecture/AAAK_LIMITATIONS_ADR_2026-04-07.md`): PUA encoding increases cl100k_base tokens by +19.8%. Selection beats encoding.
 - **claude-mem removed**: Full forensic removal (Wave 0). Data migrated to Obsidian vault.
 - **Drift audit**: 18 findings documented in `docs/audit/CLAUDE_MD_DRIFT_2026-04-07.md`
+- **Context deduplication**: Global rules are symlinks to repo (not copies), reducing context overhead by 29% (~10K tokens saved). Run `scripts/sync-rules.sh` to maintain.
+- **Distribution policy**: See `docs/architecture/DISTRIBUTION_POLICY.md` for symlink vs copy strategy per component type.
 
 ## Quality Gates
 

@@ -36,7 +36,11 @@ set -euo pipefail
 
 _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
-  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_project_root() {
+    if [[ -n "${CLAUDE_PROJECT_DIR:-}" ]]; then echo "$CLAUDE_PROJECT_DIR"
+    else git rev-parse --show-toplevel 2>/dev/null || echo "."
+    fi
+  }
   get_main_repo() { get_project_root; }
   get_claude_dir() { echo "$(get_main_repo)/.claude"; }
 }

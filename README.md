@@ -173,6 +173,21 @@ The framework includes multiple layers of security enforcement:
 | `audit-secrets.js` | PostToolUse | Audit logging for 20+ secret patterns |
 | `teammate-idle-quality-gate.sh` | TeammateIdle | Quality gates before teammate goes idle |
 | `task-completed-quality-gate.sh` | TaskCompleted | Multi-gate validation before task completion |
+| `task-plan-sync.sh` | TaskCreated | Syncs task creation to plan-state.json |
+
+## Context Optimization
+
+Ralph uses symlinks (not copies) for all global rules, skills, and agents. This eliminates content duplication and reduces context overhead by ~29% (~10K tokens saved per session).
+
+```bash
+# Sync rules from repo to global (creates symlinks)
+bash scripts/sync-rules.sh
+
+# Preview changes without executing
+bash scripts/sync-rules.sh --dry-run
+```
+
+Distribution policy: See `docs/architecture/DISTRIBUTION_POLICY.md` for the symlink vs copy strategy per component type (Rules=COPY, Hooks=COPY, Agents=SYMLINK, Skills=MIXED).
 
 ## Requirements
 

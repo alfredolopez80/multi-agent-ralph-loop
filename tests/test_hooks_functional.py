@@ -146,14 +146,18 @@ Write unit and integration tests.
             }
         })
 
-        # Run hook
+        # Run hook with CLAUDE_PROJECT_DIR override so it writes to temp dir
+        import os
+        test_env = os.environ.copy()
+        test_env["CLAUDE_PROJECT_DIR"] = str(temp_project_dir)
         result = subprocess.run(
             ["bash", str(hook_path)],
             input=hook_input,
             capture_output=True,
             text=True,
             cwd=str(temp_project_dir),
-            timeout=30
+            timeout=30,
+            env=test_env
         )
 
         # Verify hook executed
@@ -194,13 +198,17 @@ Write unit and integration tests.
             "tool_input": {"file_path": str(analysis_file)}
         })
 
+        import os
+        test_env = os.environ.copy()
+        test_env["CLAUDE_PROJECT_DIR"] = str(temp_project_dir)
         result = subprocess.run(
             ["bash", str(hook_path)],
             input=hook_input,
             capture_output=True,
             text=True,
             cwd=str(temp_project_dir),
-            timeout=30
+            timeout=30,
+            env=test_env
         )
 
         # Should not crash

@@ -1,182 +1,20 @@
 {
   "version": "3.1.0",
-  "plan_name": "L1 Scoring & Scope Improvement + Auto-Rebuild",
-  "plan_file": ".ralph/plans/peppy-plotting-hartmanis.md",
-  "status": "completed",
-  "completed_at": "2026-04-08T02:30:00+02:00",
-  "previous_plan": {
-    "name": "MemPalace-Inspired Memory & Hooks Overhaul",
-    "file": ".ralph/plans/cheeky-dazzling-catmull.md",
-    "status": "completed",
-    "completed_at": "2026-04-07T20:30:00Z"
-  },
-  "current_phase": "completed",
-  "active_agent": "",
-  "last_updated": "2026-04-08T02:30:00+02:00",
-  "classification": {
-    "workflow_route": "COMPLEX",
-    "adaptive_mode": "PARALLEL_WAVES"
-  },
-  "phases": [
-    {
-      "phase_id": "phase_1",
-      "phase_name": "Improved Scoring (layers.py)",
-      "status": "completed"
-    },
-    {
-      "phase_id": "phase_2",
-      "phase_name": "Expanded Scope (layers.py)",
-      "status": "completed"
-    },
-    {
-      "phase_id": "phase_3",
-      "phase_name": "Auto-Rebuild via Cron",
-      "status": "completed"
-    },
-    {
-      "phase_id": "phase_4",
-      "phase_name": "Test Updates",
-      "status": "completed"
-    }
-  ],
-  "barriers": {
-    "wave0_security_passed": true,
-    "claude_mem_removed": true,
-    "tests_passing": true,
-    "pr_opened": true,
-    "pr_merged": false
-  },
   "steps": [
     {
-      "id": "P1.1",
-      "phase": "phase_1",
-      "name": "redesign-score-rule",
-      "status": "completed",
-      "priority": "P0",
+      "id": "step-task-long",
+      "phase": "ad_hoc",
+      "name": "Implement feature xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "status": "pending",
       "owner": "",
-      "description": "Redesign _score_rule() with recency bonus, score floor, applied_count fix"
-    },
-    {
-      "id": "P1.2",
-      "phase": "phase_1",
-      "name": "domain-diversity",
-      "status": "completed",
-      "priority": "P0",
-      "owner": "",
-      "description": "Add _apply_domain_diversity() — max 3 rules per domain"
-    },
-    {
-      "id": "P1.3",
-      "phase": "phase_1",
-      "name": "update-build-method",
-      "status": "completed",
-      "priority": "P0",
-      "owner": "",
-      "description": "Update build() to use new scoring + domain diversity + domain tag output"
-    },
-    {
-      "id": "P1.4",
-      "phase": "phase_1",
-      "name": "lower-substantive-threshold",
-      "status": "completed",
-      "priority": "P1",
-      "owner": "",
-      "description": "Lower _is_substantive() to 10 chars for curated sources"
-    },
-    {
-      "id": "P2.1",
-      "phase": "phase_2",
-      "name": "increase-rule-count",
-      "status": "completed",
-      "priority": "P0",
-      "owner": "",
-      "description": "Set L1_RULE_COUNT = 25 (was 15)"
-    },
-    {
-      "id": "P2.2",
-      "phase": "phase_2",
-      "name": "token-budget-safety",
-      "status": "completed",
-      "priority": "P0",
-      "owner": "",
-      "description": "Add token budget safety trim in build() if L0+L1 > 1400 tokens"
-    },
-    {
-      "id": "P2.3",
-      "phase": "phase_2",
-      "name": "domain-column-markdown",
-      "status": "completed",
-      "priority": "P1",
-      "owner": "",
-      "description": "Add domain tag to L1 markdown output"
-    },
-    {
-      "id": "P3.1",
-      "phase": "phase_3",
-      "name": "create-rebuild-script",
-      "status": "completed",
-      "priority": "P1",
-      "owner": "",
-      "description": "Create scripts/l1-rebuild.sh with lock file, logging, idempotent rebuild"
-    },
-    {
-      "id": "P3.2",
-      "phase": "phase_3",
-      "name": "cli-cron-commands",
-      "status": "completed",
-      "priority": "P1",
-      "owner": "",
-      "description": "Add --install-cron / --remove-cron to layers.py CLI"
-    },
-    {
-      "id": "P3.3",
-      "phase": "phase_3",
-      "name": "curator-rebuild-trigger",
-      "status": "completed",
-      "priority": "P2",
-      "owner": "",
-      "description": "Add rebuild trigger to end of curator-learn.sh"
-    },
-    {
-      "id": "P4.1",
-      "phase": "phase_4",
-      "name": "update-existing-tests",
-      "status": "completed",
-      "priority": "P0",
-      "owner": "",
-      "description": "Update assertions from 15→25 rules"
-    },
-    {
-      "id": "P4.2",
-      "phase": "phase_4",
-      "name": "new-scoring-tests",
-      "status": "completed",
-      "priority": "P0",
-      "owner": "",
-      "description": "TestScoringImprovements: 4 tests (recency, score floor, domain diversity, applied_count)"
-    },
-    {
-      "id": "P4.3",
-      "phase": "phase_4",
-      "name": "new-rebuild-tests",
-      "status": "completed",
-      "priority": "P1",
-      "owner": "",
-      "description": "TestAutoRebuild: 2 tests (script exists, idempotency)"
-    },
-    {
-      "id": "P4.4",
-      "phase": "phase_4",
-      "name": "metadata-fixture",
-      "status": "completed",
-      "priority": "P1",
-      "owner": "",
-      "description": "Add sample_rules_with_metadata fixture with created_at, severity, domain, applied_count"
+      "task_id": "task-long",
+      "created_at": "2026-04-09T15:43:25+02:00",
+      "last_updated": "2026-04-09T15:43:25+02:00"
     }
   ],
+  "last_updated": "2026-04-09T15:43:25+02:00",
   "metadata": {
-    "session_id": "11ae0165dc71dd85ebc1af4e73791865",
-    "started_at": "2026-04-08T03:13:04+02:00",
-    "plan_updated_reason": "All phases completed — syncing plan-state to reflect actual implementation status"
+    "session_id": "ae36eacb1a34fcb5d98fe7885e14ed41",
+    "started_at": "2026-04-09T16:28:01+02:00"
   }
 }

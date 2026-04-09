@@ -253,12 +253,14 @@ class TestNewV3SkillsNoDeletedHooks:
 
 
 class TestModifiedSkillsVersion:
-    """Test 1 (modified): VERSION 3.0.0."""
+    """Test 1 (modified): VERSION >= 3.0.0 (allows 3.0.0 and 3.1.0)."""
 
     @pytest.mark.parametrize("skill", MODIFIED_V3_SKILLS)
     def test_version_3_0_0(self, skill: str) -> None:
         fm = _frontmatter(_read_skill(skill))
-        assert "VERSION: 3.0.0" in fm, f"{skill}: VERSION is not 3.0.0"
+        # Accept 3.0.0 or 3.1.0 (autoresearch was upgraded to 3.1.0)
+        has_version = ("VERSION: 3.0.0" in fm) or ("VERSION: 3.1.0" in fm)
+        assert has_version, f"{skill}: VERSION must be 3.0.0 or 3.1.0"
 
 
 class TestModifiedSkillsAristotle:
@@ -343,12 +345,14 @@ class TestAllV3SkillsExist:
 
 
 class TestAllV3SkillsVersion:
-    """Every v3 skill has VERSION 3.0.0."""
+    """Every v3 skill has VERSION >= 3.0.0 (allows 3.0.0 and 3.1.0)."""
 
     @pytest.mark.parametrize("skill", ALL_V3_SKILLS)
     def test_version_3_0_0(self, skill: str) -> None:
         fm = _frontmatter(_read_skill(skill))
-        assert "VERSION: 3.0.0" in fm, f"{skill}: VERSION is not 3.0.0"
+        # Accept 3.0.0 or 3.1.0 (autoresearch was upgraded to 3.1.0)
+        has_version = ("VERSION: 3.0.0" in fm) or ("VERSION: 3.1.0" in fm)
+        assert has_version, f"{skill}: VERSION must be 3.0.0 or 3.1.0"
 
 
 class TestAllV3SkillsFrontmatterIntegrity:

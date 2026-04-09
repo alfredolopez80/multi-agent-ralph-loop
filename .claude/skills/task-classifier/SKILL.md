@@ -1,101 +1,102 @@
 ---
-# VERSION: 3.0.0
 name: task-classifier
-description: "Classify task complexity (1-10) to route to optimal model and ralph-* teammates. Routes frontend tasks to ralph-frontend, security tasks to ralph-security. Use when starting any non-trivial task to determine resources and approach. Triggers include: 'classify', 'complexity', 'what model', 'how complex'."
-context: fork
-model: opus
-agent: orchestrator
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
+version: 3.1.0
+description: Classifies task complexity (1-10) for model and agent routing
+user_invocable: false
 ---
-# Skill: Task Classifier
 
-**ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.
+# Task Classifier
 
-## v2.88 Key Changes (MODEL-AGNOSTIC)
+Classifies task complexity (1-10) to route to the correct model and agent.
 
-- **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
-- **No flags required**: Works with the configured default model
-- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
-- **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
+## Complexity Scale
 
-## The Vision
-Classification should make the path forward feel inevitable.
-
-## Your Work, Step by Step
-1. **Assess scope**: Files, modules, and integrations.
-2. **Assess risk**: Security, breakage, rollback.
-3. **Assess ambiguity**: Unknowns and trade-offs.
-4. **Assign complexity**: Recommend models and iterations.
-
-## Ultrathink Principles in Practice
-- **Think Different**: Avoid defaulting to mid complexity.
-- **Obsess Over Details**: Map true blast radius.
-- **Plan Like Da Vinci**: Evaluate before judging.
-- **Craft, Don't Code**: Keep reasoning concise.
-- **Iterate Relentlessly**: Reclassify as scope changes.
-- **Simplify Ruthlessly**: Choose the simplest valid path.
-
-## Purpose
-Classify task complexity (1-10) to route to optimal model.
-
-## Complexity Matrix
-
-| Score | Complexity | Examples | Recommended Model |
-|-------|------------|----------|-------------------|
-| 1-2 | Trivial | Typo fix, comment update | MiniMax-lightning |
-| 3-4 | Simple | Add field, simple function | MiniMax M2.1 |
-| 5-6 | Medium | New API endpoint, refactor | Sonnet → Codex/Gemini |
-| 7-8 | High | Multi-file feature, migration | Opus → Sonnet → CLIs |
-| 9-10 | Exceptional | Architecture redesign, security fix | Opus (thinking) |
+| Level | Description | Model | Agent |
+|-------|-------------|-------|-------|
+| 1-2 | Trivial (typos, renames, single-line fixes) | GLM-4.7 | Direct (no team) |
+| 3-4 | Simple (single function, known pattern) | GLM-5 | ralph-coder |
+| 5-6 | Moderate (multi-file, some unknowns) | Claude Sonnet | ralph-coder + ralph-tester |
+| 7-8 | Complex (architecture, security-sensitive) | Claude Opus | ralph-coder + ralph-reviewer + ralph-security |
+| 9-10 | Critical (system redesign, multi-agent coordination) | Claude Opus | Full team (6 agents) |
 
 ## Classification Criteria
 
-### Technical Factors
-- Files affected (1 = trivial, 10+ = exceptional)
-- Cross-module dependencies
-- Database schema changes
-- External API integrations
+### Complexity 1-2 (Trivial)
+- Single file change
+- Known pattern with no unknowns
+- No tests needed
+- No security implications
 
-### Risk Factors
-- Security implications (auth, payments, data)
-- Breaking change potential
-- Rollback difficulty
+### Complexity 3-4 (Simple)
+- 1-2 files to modify
+- Standard patterns apply
+- Tests recommended but not required
+- No architectural decisions
 
-### Cognitive Factors
-- Novel problem (no existing patterns)
-- Ambiguity in requirements
-- Trade-off decisions required
+### Complexity 5-6 (Moderate)
+- 3+ files to modify
+- Some unknown patterns
+- Tests required
+- Minor architectural decisions
+- Frontend OR backend (not both)
 
-## Output Format
+### Complexity 7-8 (Complex)
+- 5+ files across multiple domains
+- Significant unknowns
+- Security-sensitive code
+- Architectural decisions required
+- Frontend AND backend changes
 
-```json
-{
-  "complexity": 7,
-  "reasoning": "Multi-file feature with database changes and auth integration",
-  "recommended_model": "opus",
-  "delegation": ["codex:security", "gemini:integration-tests"],
-  "estimated_iterations": 12,
-  "risk_level": "medium"
-}
-```
+### Complexity 9-10 (Critical)
+- System-wide changes
+- Multi-agent coordination needed
+- Security architecture decisions
+- Breaking changes
+- Performance-critical paths
 
 ## Model Routing
 
-| Complexity | Primary | Secondary | Fallback |
-|------------|---------|-----------|----------|
-| 1-2 | MiniMax-lightning | - | - |
-| 3-4 | MiniMax M2.1 | - | - |
-| 5-6 | Sonnet | Codex/Gemini | MiniMax |
-| 7-8 | Opus | Sonnet + CLIs | MiniMax |
-| 9-10 | Opus (thinking) | Codex | Gemini |
+| Complexity | Default Model | Fallback |
+|-----------|---------------|----------|
+| 1-4 | GLM-4.7 / GLM-5 | Claude Haiku |
+| 5-6 | Claude Sonnet | GLM-5 |
+| 7-10 | Claude Opus | Claude Sonnet |
 
-## Iteration Limits
+## Agent Routing
 
-| Model | Max Iterations |
-|-------|----------------|
-| Claude (Sonnet/Opus) | 15 |
-| MiniMax M2.1 | 30 |
-| MiniMax-lightning | 60 |
+| Complexity | Required Agents | Optional |
+|-----------|----------------|----------|
+| 1-2 | None (direct execution) | - |
+| 3-4 | ralph-coder | ralph-tester |
+| 5-6 | ralph-coder + ralph-tester | ralph-reviewer |
+| 7-8 | ralph-coder + ralph-tester + ralph-security | ralph-frontend |
+| 9-10 | All 6 agents (coder, reviewer, tester, researcher, frontend, security) | - |
+
+## Execution Mode
+
+| Complexity | Plan Mode | Agent Teams | Aristotle |
+|-----------|-----------|-------------|-----------|
+| 1-3 | No | No | Quick |
+| 4-6 | Recommended | Yes | Quick |
+| 7-10 | Mandatory | Mandatory | Full 5-phase |
+
+## Usage
+
+Invoke this skill to classify a task before execution:
+
+```
+/task-classifier "Add user authentication to the API"
+```
+
+The skill will output:
+- Complexity level (1-10)
+- Recommended model
+- Required agents
+- Execution mode
+
+## Integration
+
+This skill integrates with:
+- `/orchestrator` - Uses classification for routing
+- Agent Teams - Spawns appropriate teammates
+- Model routing - Selects correct model per complexity

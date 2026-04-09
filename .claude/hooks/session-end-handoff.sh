@@ -283,6 +283,83 @@ fi
 
 # MemPalace v3.0: episodic cleanup removed — episodes now in Obsidian Vault (no TTL needed)
 
+# ============================================
+# System Gap Fix #3: GC Cleanup for stale resources
+# ============================================
+gc_cleanup() {
+    log "INFO" "Starting GC cleanup"
+
+    local gc_log="${HOME}/.ralph/logs/gc.log"
+    mkdir -p "$(dirname "$gc_log")"
+
+    local cleaned_teams=0
+    local cleaned_tasks=0
+    local cleaned_handoffs=0
+
+    # 1. Find team dirs in ~/.claude/teams/ with 0 member files → remove
+    local teams_dir="${HOME}/.claude/teams"
+    if [[ -d "$teams_dir" ]]; then
+        while IFS= read -r -d '' team_dir; do
+            local member_count
+            member_count=$(find "$team_dir" -type f -name "member-*.json" 2>/dev/null | wc -l | tr -d ' ')
+            if [[ "$member_count" -eq 0 ]]; then
+                rm -rf "$team_dir" 2>/dev/null && {
+                    ((cleaned_teams++))
+                    log "GC: Removed empty team dir: $team_dir" >> "$gc_log"
+                }
+            fi
+        done < <(find "$teams_dir" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+    fi
+
+    # 2. Find task dirs in ~/.claude/tasks/ older than 7 days → remove
+    local tasks_dir="${HOME}/.claude/tasks"
+    if [[ -d "$tasks_dir" ]]; then
+        local cutoff_date
+        cutoff_date=$(date -v-7d +%Y%m%d 2>/dev/null || date -d "7 days ago" +%Y%m%d 2>/dev/null)
+        while IFS= read -r -d '' task_dir; do
+            local dir_date
+            dir_date=$(basename "$task_dir" | grep -oE '[0-9]{8}' || echo "")
+            if [[ -n "$dir_date" ]] && [[ "$dir_date" -lt "$cutoff_date" ]]; then
+                rm -rf "$task_dir" 2>/dev/null && {
+                    ((cleaned_tasks++))
+                    log "GC: Removed old task dir: $task_dir" >> "$gc_log"
+                }
+            fi
+        done < <(find "$tasks_dir" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+    fi
+
+    # 3. If ~/.ralph/handoffs/ has >50 files → delete oldest until 50 remain
+    if [[ -d "$HANDOFF_DIR" ]]; then
+        local handoff_count
+        handoff_count=$(find "$HANDOFF_DIR" -type f | wc -l | tr -d ' ')
+        if [[ "$handoff_count" -gt 50 ]]; then
+            local to_delete=$((handoff_count - 50))
+            find "$HANDOFF_DIR" -type f -printf '%T@ %p\n' 2>/dev/null | \
+                sort -n | head -n "$to_delete" | cut -d' ' -f2- | \
+                while IFS= read -r file; do
+                    rm -f "$file" 2>/dev/null && {
+                        ((cleaned_handoffs++))
+                        log "GC: Removed old handoff: $file" >> "$gc_log"
+                    }
+                done
+        fi
+    fi
+
+    # Log summary
+    {
+        echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] GC Cleanup Summary"
+        echo "  Teams cleaned: $cleaned_teams"
+        echo "  Tasks cleaned: $cleaned_tasks"
+        echo "  Handoffs cleaned: $cleaned_handoffs"
+        echo "---"
+    } >> "$gc_log"
+
+    log "INFO" "GC cleanup complete: teams=$cleaned_teams, tasks=$cleaned_tasks, handoffs=$cleaned_handoffs"
+}
+
+# Run GC cleanup before final output
+gc_cleanup
+
 log "INFO" "SessionEnd hook completed successfully"
 
 # Output JSON with additionalContext for SessionStart to pick up

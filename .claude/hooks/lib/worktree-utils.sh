@@ -14,10 +14,13 @@
 #   resolve_claude_path <relative> - Full path to a file under .claude/
 
 get_project_root() {
-  git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"
+  if [[ -n "${CLAUDE_PROJECT_DIR:-}" ]]; then echo "$CLAUDE_PROJECT_DIR"
+  else git rev-parse --show-toplevel 2>/dev/null || echo "."
+  fi
 }
 
 get_main_repo() {
+  if [[ -n "${CLAUDE_PROJECT_DIR:-}" ]]; then echo "$CLAUDE_PROJECT_DIR"; return; fi
   local toplevel
   toplevel="$(git rev-parse --show-toplevel 2>/dev/null || echo ".")"
   if [[ -f "$toplevel/.git" ]]; then

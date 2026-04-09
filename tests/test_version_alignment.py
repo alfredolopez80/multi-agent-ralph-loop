@@ -185,7 +185,7 @@ class TestHookConsistency:
     CRITICAL_HOOKS = [
         "auto-plan-state.sh",
         "plan-analysis-cleanup.sh",
-        "sanitize-secrets.js",
+        "audit-secrets.js",
         "session-accumulator.sh",
         "vault-graduation.sh",
     ]
@@ -205,18 +205,43 @@ class TestHookConsistency:
         assert not missing, f"Critical hooks missing from Claude settings: {missing}"
 
     def test_critical_hooks_in_minimax(self):
-        """Critical hooks must be in minimax settings."""
+        """Critical hooks must be in minimax settings. Accepts both old and new names for renamed hooks."""
         if not self.MINIMAX_SETTINGS.exists():
             pytest.skip("MiniMax settings not found")
-        missing = [h for h in self.CRITICAL_HOOKS if not self._hook_registered(self.MINIMAX_SETTINGS, h)]
+        # Allow both sanitize-secrets.js (old) and audit-secrets.js (new)
+        alternative_hooks = {
+            "audit-secrets.js": "sanitize-secrets.js",
+        }
+        missing = []
+        for h in self.CRITICAL_HOOKS:
+            if not self._hook_registered(self.MINIMAX_SETTINGS, h):
+                # Check if there's an acceptable alternative name
+                alt = alternative_hooks.get(h)
+                if alt and self._hook_registered(self.MINIMAX_SETTINGS, alt):
+                    continue  # Alternative name found, acceptable
+                missing.append(h)
         assert not missing, f"Critical hooks missing from MiniMax settings: {missing}"
 
     def test_security_hooks_parity(self):
-        """Security hooks should exist in both settings."""
+        """Security hooks should exist in both settings. Accepts both old and new names for renamed hooks."""
         if not self.CLAUDE_SETTINGS.exists() or not self.MINIMAX_SETTINGS.exists():
             pytest.skip("Both settings required")
-        security_hooks = ["sanitize-secrets.js", "git-safety-guard.py", "repo-boundary-guard.sh"]
-        for hook in security_hooks:
-            claude = self._hook_registered(self.CLAUDE_SETTINGS, hook)
-            minimax = self._hook_registered(self.MINIMAX_SETTINGS, hook)
-            assert claude and minimax, f"Security hook {hook} not in both settings (claude={claude}, minimax={minimax})"
+        security_hooks = [
+            ("audit-secrets.js", "sanitize-secrets.js"),  # (new_name, old_name) pairs
+            "git-safety-guard.py",
+            "repo-boundary-guard.sh",
+        ]
+        for hook_spec in security_hooks:
+            if isinstance(hook_spec, tuple):
+                new_name, old_name = hook_spec
+                # Check both settings have either new or old name
+                claude = (self._hook_registered(self.CLAUDE_SETTINGS, new_name) or
+                         self._hook_registered(self.CLAUDE_SETTINGS, old_name))
+                minimax = (self._hook_registered(self.MINIMAX_SETTINGS, new_name) or
+                          self._hook_registered(self.MINIMAX_SETTINGS, old_name))
+                assert claude and minimax, f"Security hook {new_name}/{old_name} not in both settings (claude={claude}, minimax={minimax})"
+            else:
+                # Single name hook
+                claude = self._hook_registered(self.CLAUDE_SETTINGS, hook_spec)
+                minimax = self._hook_registered(self.MINIMAX_SETTINGS, hook_spec)
+                assert claude and minimax, f"Security hook {hook_spec} not in both settings (claude={claude}, minimax={minimax})"
