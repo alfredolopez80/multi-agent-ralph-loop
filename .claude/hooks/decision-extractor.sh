@@ -276,6 +276,28 @@ trap release_lock EXIT
         done
 
         echo "[$(date -Iseconds)] Also added $DECISIONS_ADDED facts to vault"
+
+        # W3.3: Global decisions filter — only infrastructure files with CRITICAL/MUST/NEVER keywords
+        IS_INFRASTRUCTURE=false
+        case "$FILE_PATH" in
+            */.claude/hooks/*|*/src/*|*/lib/*|.claude/hooks/*|src/*|lib/*)
+                IS_INFRASTRUCTURE=true
+                ;;
+        esac
+
+        if [[ "$IS_INFRASTRUCTURE" == "true" ]]; then
+            # Check for high-severity keywords in content
+            CONTENT_UPPER=$(echo "$CONTENT" | tr '[:lower:]' '[:upper:]')
+            if echo "$CONTENT_UPPER" | grep -qE 'CRITICAL|MUST( NOT)? |NEVER|ALWAYS|SEC-|SECURITY|VULNERABILITY'; then
+                GLOBAL_DECISIONS_DIR="$VAULT_DIR/global/decisions"
+                mkdir -p "$GLOBAL_DECISIONS_DIR" 2>/dev/null || true
+                GLOBAL_DECISION_FILE="${GLOBAL_DECISIONS_DIR}/${EPISODE_ID}.json"
+
+                # Add global marker to the episode and copy to global decisions
+                jq --arg scope "global" '. + {scope: $scope}' "$EPISODE_FILE" > "$GLOBAL_DECISION_FILE" 2>/dev/null || true
+                echo "[$(date -Iseconds)] Promoted infrastructure decision to global: $EPISODE_ID"
+            fi
+        fi
     else
         echo "[$(date -Iseconds)] No architectural decisions detected"
     fi

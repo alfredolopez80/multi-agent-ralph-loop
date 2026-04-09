@@ -268,6 +268,22 @@ create_initial_file "$DOCS_SEARCH_FILE" '{"results": [], "source": "docs_search"
         done
     fi
 
+    # Source C: L3 vault query via layers.py (Wave 1.2)
+    LAYERS_PY="${HOME}/Documents/GitHub/multi-agent-ralph-loop/.claude/lib/layers.py"
+    if [[ -f "$LAYERS_PY" ]] && command -v python3 &>/dev/null; then
+        L3_RESULTS=$(timeout 5 python3 "$LAYERS_PY" --query "$KEYWORDS_SAFE" 2>/dev/null || echo "[]")
+        if [[ -n "$L3_RESULTS" && "$L3_RESULTS" != "[]" && "$L3_RESULTS" != "null" ]]; then
+            L3_JSON=$(echo "$L3_RESULTS" | jq '[.[] | {source_type: "l3_query", path: .path, title: .title, confidence: .confidence}]' 2>/dev/null || echo "[]")
+            VAULT_RESULTS=$(echo "$VAULT_RESULTS" "$L3_JSON" | jq -s '.[0] + .[1]' 2>/dev/null || echo "$VAULT_RESULTS")
+
+            # Record query hits for vault-promotion.sh (sessions_confirmed increment)
+            HIT_SLUGS=$(echo "$L3_RESULTS" | jq -r '.[].slug // empty' 2>/dev/null | head -10 || echo "")
+            if [[ -n "$HIT_SLUGS" ]]; then
+                echo "$HIT_SLUGS" > "${HOME}/.ralph/.last-query-hits"
+            fi
+        fi
+    fi
+
     # Write aggregated vault results
     echo "{\"results\": $VAULT_RESULTS, \"source\": \"vault\"}" | jq '.' > "$VAULT_FILE" 2>/dev/null || \
         echo '{"results": [], "source": "vault"}' > "$VAULT_FILE"

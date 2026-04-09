@@ -35,11 +35,15 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-REPO_DIR="~/Documents/GitHub/multi-agent-ralph-loop"
+REPO_DIR="${HOME}/Documents/GitHub/multi-agent-ralph-loop"
 LIB_DIR="${REPO_DIR}/.claude/lib"
 LOG_FILE="${HOME}/.ralph/logs/wake-up-layer-stack.log"
 L0_PATH="${HOME}/.ralph/layers/L0_identity.md"
 L1_PATH="${HOME}/.ralph/layers/L1_essential.md"
+VAULT_DIR="${HOME}/Documents/Obsidian/MiVault"
+VAULT_INDEX="${VAULT_DIR}/_vault-index.md"
+L2_DIR="${HOME}/.ralph/layers/L2_wings"
+LINT_REPORT_DIR="${VAULT_DIR}/global/output/reports"
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -89,8 +93,82 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Compose context (L0 + L1)
+# Load Vault Stats (from _vault-index.md)
+# W1.1: Karpathy-style vault context at wake-up
 # ---------------------------------------------------------------------------
+VAULT_STATS=""
+if [[ -f "$VAULT_INDEX" ]]; then
+    # Extract only the ## Statistics section (first 8 lines after that header)
+    VAULT_STATS=$(sed -n '/^## Statistics/,/^## /{ /^## Statistics/p; /^## /!p; }' "$VAULT_INDEX" 2>/dev/null | head -8 || echo "")
+    if [[ -n "$VAULT_STATS" ]]; then
+        log "INFO vault stats loaded chars=${#VAULT_STATS}"
+    fi
+else
+    log "WARN vault index not found at ${VAULT_INDEX}"
+fi
+
+# ---------------------------------------------------------------------------
+# Load L2 Wing Summary (project-specific context, if exists)
+# W2.2: Auto-compiled project context from facts/decisions
+# ---------------------------------------------------------------------------
+WING_SUMMARY=""
+PROJECT_NAME=""
+if command -v git &>/dev/null; then
+    PROJECT_NAME=$(basename "$(git -C "${REPO_DIR}" rev-parse --show-toplevel 2>/dev/null || echo "")" 2>/dev/null || echo "")
+fi
+if [[ -n "$PROJECT_NAME" && -f "${L2_DIR}/${PROJECT_NAME}/context.md" ]]; then
+    WING_SUMMARY=$(head -20 "${L2_DIR}/${PROJECT_NAME}/context.md" 2>/dev/null || echo "")
+    if [[ -n "$WING_SUMMARY" ]]; then
+        log "INFO L2 wing loaded project=${PROJECT_NAME} chars=${#WING_SUMMARY}"
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# Load Lint Summary (if vault lint ran yesterday)
+# W5.3: One-line lint health check
+# ---------------------------------------------------------------------------
+LINT_SUMMARY=""
+YESTERDAY=$(date -u -v-1d +"%Y-%m-%d" 2>/dev/null || date -u -d "yesterday" +"%Y-%m-%d" 2>/dev/null || echo "")
+if [[ -n "$YESTERDAY" && -f "${LINT_REPORT_DIR}/vault-lint-${YESTERDAY}.md" ]]; then
+    LINT_ORPHANS=$(grep -c "orphan" "${LINT_REPORT_DIR}/vault-lint-${YESTERDAY}.md" 2>/dev/null || echo "0")
+    LINT_STALE=$(grep -c "stale" "${LINT_REPORT_DIR}/vault-lint-${YESTERDAY}.md" 2>/dev/null || echo "0")
+    LINT_CONFLICTS=$(grep -c "contradiction" "${LINT_REPORT_DIR}/vault-lint-${YESTERDAY}.md" 2>/dev/null || echo "0")
+    LINT_SUMMARY="Vault lint (${YESTERDAY}): ${LINT_ORPHANS} orphans, ${LINT_STALE} stale, ${LINT_CONFLICTS} contradictions"
+    log "INFO lint summary loaded: ${LINT_SUMMARY}"
+fi
+
+# ---------------------------------------------------------------------------
+# Compose context (L0 + L1 + Vault Stats + Wing + Lint)
+# ---------------------------------------------------------------------------
+EXTRA_SECTIONS=""
+
+if [[ -n "$VAULT_STATS" ]]; then
+    EXTRA_SECTIONS="${EXTRA_SECTIONS}
+
+### Vault Stats
+${VAULT_STATS}
+
+"
+fi
+
+if [[ -n "$WING_SUMMARY" ]]; then
+    EXTRA_SECTIONS="${EXTRA_SECTIONS}
+
+### Project Wing (L2): ${PROJECT_NAME}
+${WING_SUMMARY}
+
+"
+fi
+
+if [[ -n "$LINT_SUMMARY" ]]; then
+    EXTRA_SECTIONS="${EXTRA_SECTIONS}
+
+### Vault Health
+${LINT_SUMMARY}
+
+"
+fi
+
 CONTEXT="## Ralph Layer Stack — Session Wake-Up
 
 ### Identity (L0)
@@ -102,10 +180,10 @@ ${L0_CONTENT}
 ### Essential Rules (L1)
 
 ${L1_CONTENT}
-
+${EXTRA_SECTIONS}
 ---
 
-*Layer stack loaded at $(date -u +"%Y-%m-%dT%H:%M:%SZ") | L2/L3 available on-demand*"
+*Layer stack loaded at $(date -u +"%Y-%m-%dT%H:%M:%SZ") | Living Wiki v4.0 | Karpathy cycle: INGEST→QUERY→WRITEBACK→LINT*"
 
 log "INFO context composed chars=${#CONTEXT}"
 
