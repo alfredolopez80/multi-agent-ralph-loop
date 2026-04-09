@@ -219,6 +219,7 @@ tmp-review/
 .claude/progress.md
 .claude/plan-state.json
 .claude/snapshots/
+.claude/backups/
 .claude/rules/.sync-checksums
 
 # External project directories
