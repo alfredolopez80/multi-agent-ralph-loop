@@ -222,6 +222,12 @@ tmp-review/
 .claude/backups/
 .claude/rules/.sync-checksums
 
+# External tool configs (platform-specific, not project-critical)
+.codex/
+.gemini/
+.git-hooks/
+.github/
+
 # External project directories
 apps/
 src/
