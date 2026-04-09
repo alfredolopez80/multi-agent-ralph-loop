@@ -18,6 +18,7 @@
 set -euo pipefail
 
 SCRIPT_VERSION="1.0.0"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 TEST_DATE=$(date +%Y%m%d)
 TEST_LOG="tests/integration/test-results-${TEST_DATE}.log"
 
@@ -164,8 +165,8 @@ main() {
 
     # Test 6: Documentation
     log_test "=== Documentation ==="
-    assert_file_exists "/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/docs/implementation/FASE_1_COMPLETADA_v2.81.1.md" "Fase 1 documentation exists"
-    assert_file_exists "/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/docs/implementation/FASE_2_COMPLETADA_v2.81.2.md" "Fase 2 documentation exists"
+    assert_file_exists "${REPO_ROOT}/docs/implementation/FASE_1_COMPLETADA_v2.81.1.md" "Fase 1 documentation exists"
+    assert_file_exists "${REPO_ROOT}/docs/implementation/FASE_2_COMPLETADA_v2.81.2.md" "Fase 2 documentation exists"
     echo ""
 
     # Summary

@@ -4,7 +4,7 @@
 # DATE: 2026-02-16
 # Tests BUG-001 through BUG-012 fixes
 
-REPO_ROOT="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+REPO_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
 HOOKS_DIR="$REPO_ROOT/.claude/hooks"
 SCRIPTS_DIR="$REPO_ROOT/scripts"
 
