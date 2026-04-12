@@ -129,66 +129,10 @@ import time
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Category 2: SECURITY-FULL-AUDIT.HOOK Tests
+# Category 2: SECURITY-FULL-AUDIT.HOOK Tests — REMOVED
 # ═══════════════════════════════════════════════════════════════════════════════
-
-class TestSecurityFullAuditHook:
-    """Tests for security-full-audit.sh hook AUTO-007 mode."""
-
-    HOOK_PATH = GLOBAL_HOOKS / "security-full-audit.sh"
-
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        if not self.HOOK_PATH.exists():
-            pytest.skip(f"security-full-audit.sh not found: {self.HOOK_PATH}")
-
-    def test_has_version_2_70_0(self):
-        """Hook should have VERSION >= 2.69.0 (AUTO-007 compatible)."""
-        import re
-        content = self.HOOK_PATH.read_text()
-        # Accept 2.69.0+ for AUTO-007 compatibility
-        version_match = re.search(r'VERSION:\s*(\d+)\.(\d+)\.(\d+)', content)
-        assert version_match, "No VERSION marker found"
-        major, minor, patch = map(int, version_match.groups())
-        # Accept v2.69.0 or higher
-        assert (major > 2) or (major == 2 and minor >= 69), \
-            f"VERSION should be >= 2.69.0, got {major}.{minor}.{patch}"
-
-    def test_has_is_auto_mode_function(self):
-        """Hook should have is_auto_mode() function."""
-        content = self.HOOK_PATH.read_text()
-        assert "is_auto_mode()" in content, "is_auto_mode() function required"
-
-    def test_auto_mode_check_logic(self):
-        """Hook should check RALPH_AUTO_MODE environment variable."""
-        content = self.HOOK_PATH.read_text()
-        assert 'RALPH_AUTO_MODE' in content, "Should check RALPH_AUTO_MODE"
-        assert '[[ "${RALPH_AUTO_MODE:-false}" == "true" ]]' in content, (
-            "Should check if RALPH_AUTO_MODE equals true"
-        )
-
-    def test_stores_marker_in_auto_mode(self):
-        """Hook should store marker file in auto mode."""
-        content = self.HOOK_PATH.read_text()
-        assert 'MARKERS_DIR' in content, "Should define MARKERS_DIR"
-        assert 'security-pending-' in content, "Should create security-pending marker"
-        assert '$(get_session_id)' in content, "Should use get_session_id function"
-        assert 'security-pending-$(get_session_id).txt' in content, (
-            "Should use session ID in marker filename"
-        )
-
-    def test_silent_in_auto_mode(self):
-        """Hook should be completely silent in auto mode (no systemMessage)."""
-        content = self.HOOK_PATH.read_text()
-
-        # In auto mode, should only output {"continue": true}
-        # Look for the pattern where trap is cleared before output
-        assert 'trap - ERR EXIT' in content, "Should clear trap before final output"
-        assert 'echo \'{"continue": true}\'' in content or \
-               r'echo "{\"continue\": true}"' in content, (
-            "Should output only {'continue': true} in auto mode"
-        )
-
+# security-full-audit.sh was deleted in H1 consolidation.
+# All tests removed (were skipping).
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Category 3: ADVERSARIAL-AUTO-TRIGGER.HOOK Tests
@@ -281,13 +225,14 @@ class TestMarkerFilesystem:
 
     def test_marker_files_use_session_id(self):
         """Marker files should include session ID in filename."""
-        # Check that hooks use $(get_session_id) or get_session_id()
-        security_hook = GLOBAL_HOOKS / "security-full-audit.sh"
-        if security_hook.exists():
-            content = security_hook.read_text()
-            assert "$(get_session_id)" in content or "get_session_id()" in content, (
-                "Marker filename should include session ID via get_session_id()"
-            )
+        # Check adversarial-auto-trigger.sh (security-full-audit.sh deleted in H1)
+        adversarial_hook = GLOBAL_HOOKS / "adversarial-auto-trigger.sh"
+        if not adversarial_hook.exists():
+            pytest.skip("adversarial-auto-trigger.sh not found")
+        content = adversarial_hook.read_text()
+        assert "$(get_session_id)" in content or "get_session_id()" in content, (
+            "Marker filename should include session ID via get_session_id()"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -365,21 +310,16 @@ def test_auto_007_comprehensive_summary():
     auto_mode_setter_exists = (GLOBAL_HOOKS / "auto-mode-setter.sh").exists()
 
     # Build Hook Files category - auto-mode-setter.sh is optional
-    hook_files_checks = {
-        "security-full-audit.sh (v2.69+)": check_version(GLOBAL_HOOKS / "security-full-audit.sh"),
-        "adversarial-auto-trigger.sh (v2.69+)": check_version(GLOBAL_HOOKS / "adversarial-auto-trigger.sh"),
-    }
+    # security-full-audit.sh deleted in H1 consolidation — not checked
+
+    hook_files_checks = {}
+    hook_files_checks["adversarial-auto-trigger.sh (v2.69+)"] = check_version(GLOBAL_HOOKS / "adversarial-auto-trigger.sh")
     if auto_mode_setter_exists:
         hook_files_checks["auto-mode-setter.sh"] = True
 
     components = {
         "Hook Files": hook_files_checks,
         "AUTO-007 Functions": {
-            "is_auto_mode() or get_session_id() in security-full-audit.sh": (
-                "is_auto_mode()" in (GLOBAL_HOOKS / "security-full-audit.sh").read_text() if (GLOBAL_HOOKS / "security-full-audit.sh").exists() else False
-            ) or (
-                "get_session_id()" in (GLOBAL_HOOKS / "security-full-audit.sh").read_text() if (GLOBAL_HOOKS / "security-full-audit.sh").exists() else False
-            ),
             "Session tracking in adversarial-auto-trigger.sh": (
                 "get_session_id()" in (GLOBAL_HOOKS / "adversarial-auto-trigger.sh").read_text() if (GLOBAL_HOOKS / "adversarial-auto-trigger.sh").exists() else False
             ) or (
@@ -389,8 +329,6 @@ def test_auto_007_comprehensive_summary():
         "Marker System": {
             "~/.ralph/markers/ directory": MARKERS_DIR.exists(),
             "Uses get_session_id() in markers": (
-                (GLOBAL_HOOKS / "security-full-audit.sh").exists() and "get_session_id()" in (GLOBAL_HOOKS / "security-full-audit.sh").read_text()
-            ) or (
                 (GLOBAL_HOOKS / "adversarial-auto-trigger.sh").exists() and "get_session_id()" in (GLOBAL_HOOKS / "adversarial-auto-trigger.sh").read_text()
             ),
         },

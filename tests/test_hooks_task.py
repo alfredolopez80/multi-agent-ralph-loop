@@ -9,13 +9,14 @@ PreToolUse:Task:
 2. fast-path-check.sh - Trivial task fast-path
 3. inject-session-context.sh - Context injection
 4. smart-memory-search.sh - Parallel memory search
-5. procedural-inject.sh - Learned behaviors injection
-6. agent-memory-auto-init.sh - Agent memory initialization
 
 PostToolUse:Task:
 1. parallel-explore.sh - Parallel exploration
 2. recursive-decompose.sh - Task decomposition
-3. global-task-sync.sh - Task synchronization (v2.62+, replaces todo-plan-sync.sh)
+
+Deleted in H1 consolidation:
+- procedural-inject.sh, agent-memory-auto-init.sh (PreToolUse)
+- global-task-sync.sh (PostToolUse)
 
 All tests validate:
 - JSON output is ALWAYS valid
@@ -51,21 +52,19 @@ GLOBAL_HOOKS_DIR = Path.home() / ".claude" / "hooks"
 PROJECT_HOOKS_DIR = PROJECT_ROOT / ".claude" / "hooks"
 
 # PreToolUse:Task hooks
+# v2.87+: procedural-inject.sh and agent-memory-auto-init.sh deleted in H1 consolidation
 PRE_TOOLUSE_TASK_HOOKS = [
     "orchestrator-auto-learn.sh",
     "fast-path-check.sh",
     "inject-session-context.sh",
     "smart-memory-search.sh",
-    "procedural-inject.sh",
-    "agent-memory-auto-init.sh",
 ]
 
 # PostToolUse:Task hooks
-# NOTE: todo-plan-sync.sh was replaced by global-task-sync.sh in v2.62
+# v2.87+: global-task-sync.sh deleted in H1 consolidation
 POST_TOOLUSE_TASK_HOOKS = [
     "parallel-explore.sh",
     "recursive-decompose.sh",
-    "global-task-sync.sh",
 ]
 
 # Default timeout
@@ -401,64 +400,8 @@ class TestPostToolUseTaskHooks:
 # SPECIFIC HOOK TESTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-class TestProceduralInjectHook:
-    """Tests for procedural-inject.sh (SEC-032)"""
-
-    def test_json_newlines_properly_escaped(self):
-        """SEC-032: JSON should have properly escaped newlines"""
-        input_json = make_pretooluse_input(prompt="implement feature with patterns")
-        result = run_hook("procedural-inject.sh", input_json)
-
-        if result["returncode"] == -2:
-            pytest.skip("Hook not found")
-
-        assert result["is_valid_json"], (
-            f"Invalid JSON (newline issue?):\n{result['stdout'][:300]}"
-        )
-
-    def test_additionalcontext_is_string(self):
-        """additionalContext should be a string, not object"""
-        input_json = make_pretooluse_input(prompt="implement patterns learned")
-        result = run_hook("procedural-inject.sh", input_json)
-
-        if result["returncode"] == -2:
-            pytest.skip("Hook not found")
-
-        if result["is_valid_json"] and result["output"]:
-            if "additionalContext" in result["output"]:
-                assert isinstance(result["output"]["additionalContext"], str), (
-                    "additionalContext must be a string"
-                )
-
-
-class TestGlobalTaskSyncHook:
-    """Tests for global-task-sync.sh (v2.62+, replaces todo-plan-sync.sh)"""
-
-    def test_uses_continue_not_decision(self):
-        """Must use 'continue: true' not 'decision: continue' (per official docs)"""
-        input_json = {
-            "tool_name": "TaskUpdate",
-            "tool_input": {"taskId": "1", "status": "completed"},
-            "tool_result": "success"
-        }
-        result = run_hook("global-task-sync.sh", input_json)
-
-        if result["returncode"] == -2:
-            pytest.skip("Hook not found")
-
-        assert result["is_valid_json"], "Invalid JSON output"
-
-        # Empty {} is acceptable
-        if result["output"] == {}:
-            return
-
-        # SEC-038: PostToolUse hooks use {"continue": true} per official docs
-        assert "continue" in result["output"], (
-            f"Expected 'continue' key, got: {result['output']}"
-        )
-        assert result["output"]["continue"] is True, (
-            f"'continue' must be boolean true, got: {result['output']['continue']}"
-        )
+# procedural-inject.sh: deleted in H1 consolidation
+# global-task-sync.sh: deleted in H1 consolidation
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -500,46 +443,14 @@ class TestTaskHooksSecurity:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TestTaskHooksRegressions:
-    """Regression tests for previously fixed bugs"""
+    """Regression tests for previously fixed bugs.
 
-    def test_procedural_inject_no_literal_newlines(self):
-        """Regression: procedural-inject.sh had literal newlines in JSON"""
-        input_json = make_pretooluse_input(prompt="implement with learned patterns")
-        result = run_hook("procedural-inject.sh", input_json)
+    Note: procedural-inject.sh and global-task-sync.sh regression tests
+    removed — both hooks deleted in H1 consolidation.
+    """
 
-        if result["returncode"] == -2:
-            pytest.skip("Hook not found")
+    # Future regression tests for active hooks go here
 
-        # The raw stdout should be valid JSON
-        assert result["is_valid_json"], (
-            f"JSON parsing failed (literal newlines?):\n{result['stdout'][:200]}"
-        )
-
-    def test_global_task_sync_correct_format(self):
-        """v2.62+: global-task-sync.sh must use {"continue": true} (per official docs)"""
-        input_json = {
-            "tool_name": "TaskUpdate",
-            "tool_input": {"taskId": "1", "status": "completed"},
-            "tool_result": "success"
-        }
-        result = run_hook("global-task-sync.sh", input_json)
-
-        if result["returncode"] == -2:
-            pytest.skip("Hook not found")
-
-        assert result["is_valid_json"], "Invalid JSON"
-
-        # Empty {} is acceptable
-        if result["output"] == {}:
-            return
-
-        # SEC-038: PostToolUse hooks use {"continue": true} per official docs
-        # The string "decision": "continue" is NEVER valid
-        assert "decision" not in result["output"] or result["output"].get("decision") not in ("continue",), (
-            f"Wrong format - 'decision: continue' is NEVER valid.\n"
-            f"PostToolUse hooks must use {{'continue': true}}.\n"
-            f"Got: {result['output']}"
-        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

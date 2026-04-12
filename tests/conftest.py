@@ -214,7 +214,7 @@ def critical_hooks():
     return [
         "session-start-restore-context.sh",  # v2.85: Replaces archived session-start-ledger.sh
         "pre-compact-handoff.sh",
-        "quality-gates-v2.sh",  # v2.46+: renamed from quality-gates.sh
+        # quality-gates-v2.sh: deleted in H1 consolidation (split into separate guards)
         "git-safety-guard.py",
         "auto-sync-global.sh",
         "session-accumulator.sh",  # v3.0: New hook

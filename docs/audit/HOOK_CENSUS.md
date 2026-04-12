@@ -9,13 +9,13 @@
 
 | Metric | Count |
 |--------|-------|
-| Total files on disk (`.claude/hooks/`, excl. `lib/`, `__pycache__`) | 86 |
-| WIRED (registered in settings.json, repo path) | 71 unique files (72 refs, `repo-boundary-guard.sh` wired twice) |
-| WIRED (registered in settings.json, `~/.claude/hooks/` path) | 3 (universal-aristotle-gate.sh, universal-prompt-classifier.sh, universal-step-tracker.sh) |
+| Total files on disk (`.claude/hooks/`, excl. `lib/`, `__pycache__`) | 83 |
+| WIRED (registered in settings.json, repo path) | 68 unique files (69 refs, `repo-boundary-guard.sh` wired twice) |
+| WIRED (registered in settings.json, `~/.claude/hooks/` path) | 2 (universal-aristotle-gate.sh, universal-prompt-classifier.sh) |
 | WIRED (external, non-repo) | 2 (context-mode plugin hooks) |
-| ORPHANED (on disk, NOT wired) | 11 |
+| ORPHANED (on disk, NOT wired) | 11 (original) + 3 (H1.6) = 14 |
 | DEAD (.bak, .ARCHIVED) | 4 |
-| **Post-cleanup remaining in `.claude/hooks/`** | **71 (all wired)** |
+| **Total wired** | **72 (68 repo + 2 global + 2 external)** |
 
 ---
 
@@ -23,9 +23,9 @@
 
 | Event | Count | Target |
 |-------|-------|--------|
-| PostToolUse | 23 repo + 1 global | <=4 |
+| PostToolUse | 20 repo + 0 global | <=4 |
 | PreToolUse | 13 repo + 1 global + 1 external | <=3 |
-| SessionStart | 11 repo + 1 external | <=2 |
+| SessionStart | 10 repo + 1 external | <=2 |
 | UserPromptSubmit | 6 repo + 1 global | <=3 |
 | Stop | 6 | <=2 |
 | SessionEnd | 4 | <=2 |
@@ -41,34 +41,32 @@
 
 ## Full File Census
 
-### PostToolUse — 23 wired (22 repo + 1 global)
+### PostToolUse — 20 wired (20 repo + 0 global)
 
 | # | File | Status | Matcher | Async | Timestamp Output |
 |---|------|--------|---------|-------|-----------------|
 | 1 | `audit-secrets.js` | WIRED | `*` | no (timeout:30) | unknown |
-| 2 | `decision-extractor.sh` | WIRED | `Edit\|Write\|Bash` | yes | unknown |
-| 3 | `semantic-realtime-extractor.sh` | WIRED | `Edit\|Write\|Bash` | yes | unknown |
-| 4 | `plan-sync-post-step.sh` | WIRED | `Edit\|Write\|Bash` | yes | unknown |
-| 5 | `glm-context-update.sh` | WIRED | `Edit\|Write\|Bash` | yes | unknown |
-| 6 | `progress-tracker.sh` | WIRED | `Edit\|Write\|Bash` | yes | unknown |
-| 7 | `quality-parallel-async.sh` | WIRED | `Edit\|Write\|Bash` | yes (timeout:60) | unknown |
-| 8 | `status-auto-check.sh` | WIRED | `Edit\|Write\|Bash` | yes | unknown |
-| 9 | `console-log-detector.sh` | WIRED | `Edit\|Write\|Bash` | yes | unknown |
-| 10 | `ai-code-audit.sh` | WIRED | `Edit\|Write\|Bash` | yes | unknown |
-| 11 | `auto-format-prettier.sh` | WIRED | `Edit\|Write\|Bash` | yes | unknown |
-| 12 | `session-accumulator.sh` | WIRED | `Edit\|Write\|Bash` | yes | unknown |
-| 13 | `auto-background-swarm.sh` | WIRED | `Task` | no | unknown |
-| 14 | `parallel-explore.sh` | WIRED | `Task` | no | unknown |
-| 15 | `recursive-decompose.sh` | WIRED | `Task` | no | unknown |
-| 16 | `adversarial-auto-trigger.sh` | WIRED | `Task` | no | unknown |
-| 17 | `action-report-tracker.sh` | WIRED | `Task` | no | unknown |
-| 18 | `batch-progress-tracker.sh` | WIRED | `Task` | no | unknown |
-| 19 | `task-orchestration-optimizer.sh` | WIRED | `Task` | no | unknown |
-| 20 | `task-project-tracker.sh` | WIRED | `Task` | no | unknown |
-| 21 | `code-review-auto.sh` | WIRED | `TaskUpdate` | no | unknown |
-| 22 | `plan-analysis-cleanup.sh` | WIRED | `ExitPlanMode` | no | unknown |
-| 23 | `todo-plan-sync.sh` | WIRED | `TodoWrite` | no | unknown |
-| G1 | `~/.claude/hooks/universal-step-tracker.sh` | WIRED (global) | `*` | no | unknown |
+| 2 | `vault-fact-extractor.sh` | WIRED | `Edit\|Write\|Bash` | yes | unknown |
+| 3 | `plan-sync-post-step.sh` | WIRED | `Edit\|Write\|Bash` | yes | unknown |
+| 4 | `glm-context-update.sh` | WIRED | `Edit\|Write\|Bash` | yes | unknown |
+| 5 | `progress-tracker.sh` | WIRED | `Edit\|Write\|Bash` | yes | unknown |
+| 6 | `quality-parallel-async.sh` | WIRED | `Edit\|Write\|Bash` | yes (timeout:60) | unknown |
+| 7 | `status-auto-check.sh` | WIRED | `Edit\|Write\|Bash` | yes | unknown |
+| 8 | `console-log-detector.sh` | WIRED | `Edit\|Write\|Bash` | yes | unknown |
+| 9 | `ai-code-audit.sh` | WIRED | `Edit\|Write\|Bash` | yes | unknown |
+| 10 | `auto-format-prettier.sh` | WIRED | `Edit\|Write\|Bash` | yes | unknown |
+| 11 | `session-accumulator.sh` | WIRED | `Edit\|Write\|Bash` | yes | unknown |
+| 12 | `parallel-explore.sh` | WIRED | `Task` | no | unknown |
+| 13 | `recursive-decompose.sh` | WIRED | `Task` | no | unknown |
+| 14 | `adversarial-auto-trigger.sh` | WIRED | `Task` | no | unknown |
+| 15 | `action-report-tracker.sh` | WIRED | `Task` | no | unknown |
+| 16 | `batch-progress-tracker.sh` | WIRED | `Task` | no | unknown |
+| 17 | `task-orchestration-optimizer.sh` | WIRED | `Task` | no | unknown |
+| 18 | `code-review-auto.sh` | WIRED | `TaskUpdate` | no | unknown |
+| 19 | `plan-analysis-cleanup.sh` | WIRED | `ExitPlanMode` | no | unknown |
+| 20 | `todo-plan-sync.sh` | WIRED | `TodoWrite` | no | unknown |
+
+**H1.6 Changes**: `decision-extractor.sh` + `semantic-realtime-extractor.sh` → merged into `vault-fact-extractor.sh` (thin wrapper). `auto-background-swarm.sh` + `task-project-tracker.sh` → archived. `universal-step-tracker.sh` (global) → archived.
 
 ### PreToolUse — 14 wired (12 repo + 1 global + 1 external)
 
@@ -190,7 +188,7 @@
 
 ---
 
-## ORPHANED Files (11) — ARCHIVED
+## ORPHANED Files (14) — ARCHIVED
 
 All orphaned files have been moved to `.claude/archive/` via `git mv`.
 
@@ -206,7 +204,10 @@ All orphaned files have been moved to `.claude/archive/` via `git mv`.
 | 8 | `vault-lint.sh` | Vault linting — not wired | Archived |
 | 9 | `universal-aristotle-gate.sh` | Repo copy — global `~/.claude/hooks/` copy is wired | Archived |
 | 10 | `universal-prompt-classifier.sh` | Repo copy — global `~/.claude/hooks/` copy is wired | Archived |
-| 11 | `universal-step-tracker.sh` | Repo copy — global `~/.claude/hooks/` copy is wired | Archived |
+| 11 | `universal-step-tracker.sh` | Global copy removed in H1.6 — was PostToolUse(*) | Archived (H1.6) |
+| 12 | `auto-background-swarm.sh` | Broken $1 args — was PostToolUse(Task) | Archived (H1.6) |
+| 13 | `task-project-tracker.sh` | Matcher mismatch — was PostToolUse(Task) | Archived (H1.6) |
+| 14 | `decision-extractor.sh` + `semantic-realtime-extractor.sh` | Merged into vault-fact-extractor.sh — kept on disk as internal modules | Preserved (H1.6) |
 
 ---
 
@@ -216,9 +217,9 @@ All orphaned files have been moved to `.claude/archive/` via `git mv`.
 
 | Event | Current (repo) | Current (total) | Target | Reduction Needed |
 |-------|---------------|-----------------|--------|-----------------|
-| PostToolUse | 23 | 24 | <=4 | -20 |
+| PostToolUse | 20 | 20 | <=4 | -16 |
 | PreToolUse | 13 | 15 | <=3 | -12 |
-| SessionStart | 11 | 12 | <=2 | -10 |
+| SessionStart | 10 | 11 | <=2 | -9 |
 | UserPromptSubmit | 6 | 7 | <=3 | -4 |
 | Stop | 6 | 6 | <=2 | -4 |
 | SessionEnd | 4 | 4 | <=2 | -2 |
@@ -231,13 +232,13 @@ All orphaned files have been moved to `.claude/archive/` via `git mv`.
 
 ### Proposed Merges
 
-#### PostToolUse: 23 -> 4
+#### PostToolUse: 20 -> 4
 
 1. **`post-quality-gate.sh`** (merge of: quality-parallel-async, ai-code-audit, console-log-detector, auto-format-prettier, status-auto-check)
    - Unified quality/lint/format gate, async, runs on `Edit|Write|Bash`
-2. **`post-memory-sync.sh`** (merge of: decision-extractor, semantic-realtime-extractor, plan-sync-post-step, glm-context-update, session-accumulator, progress-tracker)
+2. **`post-memory-sync.sh`** (merge of: vault-fact-extractor, plan-sync-post-step, glm-context-update, session-accumulator, progress-tracker)
    - Unified memory/context/plan synchronization, async, runs on `Edit|Write|Bash`
-3. **`post-task-orchestration.sh`** (merge of: auto-background-swarm, parallel-explore, recursive-decompose, adversarial-auto-trigger, action-report-tracker, batch-progress-tracker, task-orchestration-optimizer, task-project-tracker, code-review-auto, plan-analysis-cleanup, todo-plan-sync)
+3. **`post-task-orchestration.sh`** (merge of: parallel-explore, recursive-decompose, adversarial-auto-trigger, action-report-tracker, batch-progress-tracker, task-orchestration-optimizer, code-review-auto, plan-analysis-cleanup, todo-plan-sync)
    - Unified task orchestration/tracking, runs on `Task|TaskUpdate|ExitPlanMode|TodoWrite`
 4. **`audit-secrets.js`** (keep as-is)
    - Security audit must remain isolated, runs on `*`

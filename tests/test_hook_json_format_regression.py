@@ -132,7 +132,7 @@ def get_hook_type(hook_name: str, settings_json: dict = None) -> str:
     elif any(x in hook_name for x in [
         'repo-boundary-guard', 'git-safety-guard', 'skill-validator',
         'orchestrator-auto-learn', 'fast-path-check', 'inject-session-context',
-        'smart-memory-search', 'procedural-inject', 'agent-memory-auto-init',
+        'smart-memory-search',  # procedural-inject.sh, agent-memory-auto-init.sh: deleted in H1
         'lsa-pre-step', 'checkpoint-smart-save', 'checkpoint-auto-save',
         'smart-skill-reminder', 'task-orchestration-optimizer', 'claude-docs-helper',
         'auto-mode-setter'  # v2.70.0: AUTO-007 pattern - PreToolUse for Skill
@@ -329,7 +329,7 @@ class TestRuntimeFormatValidation:
         # NOTE: inject-session-context.sh and procedural-inject.sh are PreToolUse hooks
         # (registered under PreToolUse:Task) - they correctly use {"permissionDecision": "allow"}
         # Only test ACTUAL PostToolUse hooks here:
-        "quality-gates-v2.sh",
+        # quality-gates-v2.sh: deleted in H1 consolidation
         "status-auto-check.sh",
         "progress-tracker.sh",
         "plan-sync-post-step.sh",

@@ -300,34 +300,7 @@ class TestAgentDiaryWriter:
 # W5: Vault Lint + Log Writer
 # ---------------------------------------------------------------------------
 
-class TestVaultLint:
-    """W5.1: Vault lint cron script."""
-
-    def test_lint_script_exists(self):
-        assert os.path.exists(os.path.join(HOOKS_DIR, "vault-lint.sh"))
-
-    def test_lint_script_syntax(self):
-        result = subprocess.run(
-            ["bash", "-n", os.path.join(HOOKS_DIR, "vault-lint.sh")],
-            capture_output=True, text=True,
-        )
-        assert result.returncode == 0, f"Syntax error: {result.stderr}"
-
-    def test_lint_produces_report_on_empty_vault(self):
-        """Lint should produce a valid report even with no articles.
-        May fail if bc is not installed."""
-        stdout, rc = run_hook("vault-lint.sh", timeout=15)
-        assert rc in (0, 1), f"Unexpected return code: {rc}"
-
-    def test_lint_has_required_checks(self):
-        """Verify all 5 lint checks are in the script."""
-        with open(os.path.join(HOOKS_DIR, "vault-lint.sh")) as f:
-            content = f.read()
-        assert "ORPHANS" in content
-        assert "STALE" in content
-        assert "CONTRADICTIONS" in content
-        assert "MISSING_FM" in content
-        assert "OLD_DRAFTS" in content
+# vault-lint.sh deleted in H1 consolidation — all lint tests removed
 
 
 class TestVaultLogWriter:
@@ -422,8 +395,7 @@ class TestKarpathyCycle:
         assert os.path.exists(os.path.join(HOOKS_DIR, "vault-wing-compiler.sh"))
 
     def test_lint_components_exist(self):
-        """Lint + log pipeline."""
-        assert os.path.exists(os.path.join(HOOKS_DIR, "vault-lint.sh"))
+        """Lint + log pipeline. vault-lint.sh deferred — log writer is the active component."""
         assert os.path.exists(os.path.join(HOOKS_DIR, "vault-log-writer.sh"))
 
     def test_all_scripts_pass_bash_syntax_check(self):
@@ -434,7 +406,6 @@ class TestKarpathyCycle:
             "vault-wing-compiler.sh",
             "vault-log-writer.sh",
             "agent-diary-writer.sh",
-            "vault-lint.sh",
         ]
         for script in scripts:
             result = subprocess.run(

@@ -42,12 +42,7 @@ HOOK_REGISTRY = {
         "version": "2.35",
         "cli_only": False,
     },
-    "quality-gates-v2.sh": {
-        "event": "PostToolUse",
-        "matchers": ["Edit", "Write"],
-        "version": "2.46",
-        "cli_only": False,
-    },
+    # quality-gates-v2.sh: deleted in H1 consolidation (split into separate guards)
     "git-safety-guard.py": {
         "event": "PreToolUse",
         "matchers": ["Bash"],

@@ -411,6 +411,46 @@ if [[ ! -f "$TEAM_STATUS_FILE" ]]; then
 fi
 
 # ============================================
+# v2.95.0: Worktree isolation for write-capable agents
+# ============================================
+WORKTREE_SLUG=""
+WORKTREE_PATH=""
+WORKTREE_JSON=""
+
+is_write_agent() {
+  case "$subagent_type" in
+    ralph-coder|ralph-frontend|ralph-tester) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+if is_write_agent; then
+  # Generate slug from subagent ID (sanitized)
+  WORKTREE_SLUG=$(echo "$subagent_id" | sed "s/[^a-zA-Z0-9_-]//g" | cut -c1-64)
+  if [[ -z "$WORKTREE_SLUG" ]]; then
+    WORKTREE_SLUG="wt-$(date +%s)"
+  fi
+
+  WORKTREE_JSON=$(getOrCreateWorktree "$WORKTREE_SLUG" 2>/dev/null || echo "{\"error\": \"worktree creation failed\"}")
+  WORKTREE_ERROR=$(echo "$WORKTREE_JSON" | jq -r ".error // empty" 2>/dev/null || echo "parse_error")
+
+  if [[ -z "$WORKTREE_ERROR" ]]; then
+    WORKTREE_PATH=$(echo "$WORKTREE_JSON" | jq -r ".path // empty" 2>/dev/null || echo "")
+
+    if [[ -n "$WORKTREE_PATH" && -d "$WORKTREE_PATH" ]]; then
+      # Set up environment (symlinks + config copies)
+      setupWorktreeEnv "$WORKTREE_SLUG" >/dev/null 2>&1 || true
+
+      echo "[$(date "+%Y-%m-%d %H:%M:%S")] Worktree created: $WORKTREE_PATH for $subagent_id ($subagent_type)" >> "$LOG_DIR/agent-teams.log"
+    fi
+  else
+    echo "[$(date "+%Y-%m-%d %H:%M:%S")] Worktree FAILED for $subagent_id: $WORKTREE_ERROR" >> "$LOG_DIR/agent-teams.log"
+    # Non-fatal: agent continues in main cwd
+    WORKTREE_PATH=""
+  fi
+fi
+
+# ============================================
 # Build context based on subagent type
 # ============================================
 CONTEXT=""
@@ -543,9 +583,15 @@ fi
 # Output context
 # v2.87.0 FIX: SubagentStart uses {"continue": true} format
 # Context is passed via hookSpecificOutput.additionalContext
+# v2.95.0: Include worktree env vars if available
 CONTEXT_ESCAPED=$(echo -e "$CONTEXT" | jq -Rs '.')
-cat <<EOF
-{"continue": true, "hookSpecificOutput": {"hookEventName": "SubagentStart", "additionalContext": $CONTEXT_ESCAPED}}
-EOF
+
+if [[ -n "$WORKTREE_PATH" ]]; then
+  jq -n --arg ctx "$CONTEXT_ESCAPED" --arg wp "$WORKTREE_PATH" --arg ws "$WORKTREE_SLUG" \
+    '{"continue": true, "hookSpecificOutput": {"hookEventName": "SubagentStart", "additionalContext": ($ctx | fromjson), "envUpdates": {"CLAUDE_WORKTREE_PATH": $wp, "CLAUDE_WORKTREE_SLUG": $ws}}}'
+else
+  jq -n --arg ctx "$CONTEXT_ESCAPED" \
+    '{"continue": true, "hookSpecificOutput": {"hookEventName": "SubagentStart", "additionalContext": ($ctx | fromjson)}}'
+fi
 
 exit 0

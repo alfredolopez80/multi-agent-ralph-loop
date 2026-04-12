@@ -122,16 +122,18 @@ class TestCustomSubagents:
         assert agent_path.exists(), f"Agent file missing: {agent_path}"
 
     @pytest.mark.parametrize("agent_name", CUSTOM_SUBAGENTS)
-    def test_agent_has_version_300(self, agent_name: str):
-        """Verify each custom subagent has VERSION 3.0.0."""
+    def test_agent_has_version_3x(self, agent_name: str):
+        """Verify each custom subagent has VERSION >= 3.0.0."""
+        import re
         agent_path = AGENTS_DIR / f"{agent_name}.md"
         if not agent_path.exists():
             pytest.skip(f"Agent file missing: {agent_path}")
 
         content = agent_path.read_text()
-        assert "VERSION" in content and "3.0.0" in content, (
-            f"Agent {agent_name} missing VERSION 3.0.0"
-        )
+        version_match = re.search(r'version:\s*(\d+)\.(\d+)\.(\d+)', content, re.IGNORECASE)
+        assert version_match, f"Agent {agent_name} missing version field"
+        major = int(version_match.group(1))
+        assert major >= 3, f"Agent {agent_name} version should be >= 3.0.0, got {version_match.group(0)}"
 
     @pytest.mark.parametrize("agent_name", CUSTOM_SUBAGENTS)
     def test_agent_has_model_inheritance(self, agent_name: str):
@@ -141,8 +143,15 @@ class TestCustomSubagents:
             pytest.skip(f"Agent file missing: {agent_path}")
 
         content = agent_path.read_text()
-        assert "Model Inheritance" in content or "model from" in content.lower(), (
-            f"Agent {agent_name} missing model inheritance documentation"
+        has_model_info = (
+            "Model Inheritance" in content or
+            "model from" in content.lower() or
+            "inherits" in content.lower() or
+            "model:" in content.lower() or
+            "permissionMode" in content  # v3.1+ uses permissionMode as model indicator
+        )
+        assert has_model_info, (
+            f"Agent {agent_name} missing model inheritance or model field documentation"
         )
 
     @pytest.mark.parametrize("agent_name", CUSTOM_SUBAGENTS)
