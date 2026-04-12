@@ -2,7 +2,22 @@
 # VERSION: 3.0.0
 model: default
 name: ralph-frontend
-description: "Frontend specialist teammate for Agent Teams. Loads DESIGN.md for design consistency, enforces WCAG 2.1 AA, tests 8 component states. Use when implementing frontend features, UI components, or visual elements."
+description: |
+  Frontend specialist teammate for Agent Teams. Loads DESIGN.md for design consistency, enforces WCAG 2.1 AA, tests 8 component states. Use when implementing frontend features, UI components, or visual elements.
+
+  <example>
+  Context: User needs a new UI component
+  user: "Create a pagination component for the dashboard"
+  assistant: "I'll spawn ralph-frontend to implement the pagination component with WCAG 2.1 AA compliance and all 8 states."
+  <commentary>UI component creation requires frontend expertise with accessibility standards.</commentary>
+  </example>
+
+  <example>
+  Context: Accessibility audit needed
+  user: "Check if the settings page meets WCAG standards"
+  assistant: "I'll use ralph-frontend to audit the settings page for WCAG 2.1 AA compliance."
+  <commentary>Accessibility audits are ralph-frontend's domain, not ralph-reviewer's.</commentary>
+  </example>
 allowed-tools:
   - LSP
   - Read

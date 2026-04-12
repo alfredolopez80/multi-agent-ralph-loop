@@ -2,7 +2,22 @@
 # VERSION: 3.0.0
 model: default
 name: ralph-security
-description: "Security specialist teammate for Agent Teams. Combines threat modeling, code audit, secrets scanning, dependency CVE checks, plan security review, and hooks integrity verification. Use when: security review, vulnerability assessment, threat modeling, pre-deployment audit."
+description: |
+  Security specialist teammate for Agent Teams. Combines threat modeling, code audit, secrets scanning, dependency CVE checks, plan security review, and hooks integrity verification. Use when: security review, vulnerability assessment, threat modeling, pre-deployment audit.
+
+  <example>
+  Context: New auth endpoint added
+  user: "Review the new OAuth flow for security vulnerabilities"
+  assistant: "I'll spawn ralph-security to run STRIDE analysis and OWASP Top 10 checks on the OAuth implementation."
+  <commentary>Auth changes require security specialist review, not just code review.</commentary>
+  </example>
+
+  <example>
+  Context: Pre-deployment check
+  user: "Run a security audit before we ship this release"
+  assistant: "I'll use ralph-security to run all 6 quality pillars: threat model, code audit, secrets scan, dependency CVEs, plan review, and hooks integrity."
+  <commentary>Pre-deployment security is ralph-security's primary use case.</commentary>
+  </example>
 allowed-tools:
   - LSP
   - Read

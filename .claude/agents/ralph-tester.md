@@ -1,7 +1,22 @@
 ---
 name: ralph-tester
-version: 3.0.0
-description: Testing teammate for unit and integration tests
+version: 3.1.0
+description: |
+  Testing teammate for unit and integration tests. Use this agent when tests need to be written, run, or validated.
+
+  <example>
+  Context: New feature implemented by ralph-coder
+  user: "Add tests for the new worktree isolation feature"
+  assistant: "I'll spawn ralph-tester to create unit and integration tests for worktree isolation."
+  <commentary>New code needs test coverage — ralph-tester is the testing specialist.</commentary>
+  </example>
+
+  <example>
+  Context: CI is failing with test errors
+  user: "Tests are broken after the last merge, can you fix them?"
+  assistant: "I'll use ralph-tester to diagnose and fix the failing tests."
+  <commentary>Test failures require test expertise, not code changes.</commentary>
+  </example>
 tools:
   - LSP
   - Read

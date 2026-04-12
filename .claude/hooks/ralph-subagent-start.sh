@@ -435,28 +435,46 @@ CONTEXT+="- CONSISTENCY: Follow project style\n\n"
 # Add type-specific context
 case "$subagent_type" in
     ralph-coder)
+        CONTEXT+="goal: Implement the assigned code changes with all quality gates passing\n"
         CONTEXT+="## Coder Guidelines\n"
         CONTEXT+="- Run quality gates before marking work complete\n"
         CONTEXT+="- Use /gates command to verify\n"
         CONTEXT+="- Follow YAGNI principles\n\n"
         ;;
     ralph-reviewer)
+        CONTEXT+="goal: Review code for correctness, security, and adherence to project patterns\n"
         CONTEXT+="## Reviewer Guidelines\n"
         CONTEXT+="- Check for OWASP Top 10 vulnerabilities\n"
         CONTEXT+="- Verify proper error handling\n"
         CONTEXT+="- Ensure code follows project patterns\n\n"
         ;;
     ralph-tester)
+        CONTEXT+="goal: Achieve >=80% test coverage with all tests passing\n"
         CONTEXT+="## Tester Guidelines\n"
         CONTEXT+="- Target 80% coverage for new code\n"
         CONTEXT+="- Use Arrange-Act-Assert pattern\n"
         CONTEXT+="- Name tests: test_<feature>_<scenario>_<expected>\n\n"
         ;;
     ralph-researcher)
+        CONTEXT+="goal: Deliver actionable research findings with sources and recommendations\n"
         CONTEXT+="## Researcher Guidelines\n"
         CONTEXT+="- Find existing patterns to reuse\n"
         CONTEXT+="- Identify required dependencies\n"
         CONTEXT+="- Document findings clearly\n\n"
+        ;;
+    ralph-frontend)
+        CONTEXT+="goal: Implement frontend features with WCAG 2.1 AA compliance and all 8 component states\n"
+        CONTEXT+="## Frontend Guidelines\n"
+        CONTEXT+="- Load DESIGN.md for design token consistency\n"
+        CONTEXT+="- Enforce WCAG 2.1 AA: semantic HTML, ARIA, keyboard nav, contrast\n"
+        CONTEXT+="- Test all 8 component states: default, hover, focus, active, disabled, loading, error, success\n\n"
+        ;;
+    ralph-security)
+        CONTEXT+="goal: Complete all 6 security quality pillars with zero critical/high findings unresolved\n"
+        CONTEXT+="## Security Guidelines\n"
+        CONTEXT+="- Run STRIDE threat model for new trust boundaries\n"
+        CONTEXT+="- Check 27 security anti-patterns (CWE-mapped)\n"
+        CONTEXT+="- Verify secrets scan clean on all modified files\n\n"
         ;;
 esac
 

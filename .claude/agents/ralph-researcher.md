@@ -1,7 +1,22 @@
 ---
 name: ralph-researcher
-version: 3.0.0
-description: Research and exploration teammate using Zai MCP web search
+version: 3.1.0
+description: |
+  Research and exploration teammate using Zai MCP web search. Use this agent when codebase exploration, documentation lookup, or external research is needed.
+
+  <example>
+  Context: Team needs to understand an unfamiliar library
+  user: "How does the flock file-locking mechanism work on macOS?"
+  assistant: "I'll spawn ralph-researcher to investigate flock behavior and alternatives on macOS."
+  <commentary>External research about system APIs — ralph-researcher's domain.</commentary>
+  </example>
+
+  <example>
+  Context: Implementing a new feature with unknown patterns
+  user: "Find examples of git worktree usage in other agent frameworks"
+  assistant: "I'll use ralph-researcher to search for worktree patterns in similar projects."
+  <commentary>Pattern discovery across codebases requires research, not implementation.</commentary>
+  </example>
 tools:
   - LSP
   - Read
