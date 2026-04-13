@@ -65,7 +65,7 @@ done
 # === 2. UNIVERSAL HOOKS (standalone copies — W5.2) ===
 echo ""
 echo "=== Universal Hooks (standalone copies, registered in settings.json) ==="
-UNIVERSAL_HOOKS=(universal-prompt-classifier.sh universal-aristotle-gate.sh universal-step-tracker.sh)
+UNIVERSAL_HOOKS=(universal-prompt-classifier.sh universal-aristotle-gate.sh)
 for hook in "${UNIVERSAL_HOOKS[@]}"; do
   GLOBAL_HOOK=~/.claude/hooks/"$hook"
   REPO_HOOK="$REPO/.claude/hooks/$hook"

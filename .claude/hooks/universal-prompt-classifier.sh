@@ -28,10 +28,6 @@ if echo "$PROMPT" | grep -qiE '(implement|build|create|develop) .*(system|framew
 mkdir -p ~/.claude/state
 echo "{\"complexity\": $COMPLEXITY, \"timestamp\": $(date +%s)}" > ~/.claude/state/current-complexity.json
 
-# If complexity >= 4, inject reminder
-if [[ $COMPLEXITY -ge 4 ]]; then
-  MSG="Complexity $COMPLEXITY detected. Apply Aristotle First Principles + EnterPlanMode for complexity >= 4."
-  echo "{\"continue\": true, \"hookSpecificOutput\": {\"hookEventName\": \"UserPromptSubmit\", \"additionalContext\": \"$MSG\"}}"
-else
-  echo '{"continue": true}'
-fi
+# Complexity message delegated to aristotle-analysis-display.sh (last in chain)
+# This hook only scores + saves state — the aristotle hook generates the 5-phase message
+echo '{"continue": true}'
