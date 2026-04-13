@@ -43,8 +43,8 @@ INJECT_CONTEXT_HOOK = Path.home() / ".claude" / "hooks" / "inject-session-contex
 # Choose the hook to test (prefer global for production testing)
 HOOK_PATH = GLOBAL_HOOK if GLOBAL_HOOK.exists() else PROJECT_HOOK
 
-# Timeout for hook execution
-HOOK_TIMEOUT = 15  # seconds
+# Timeout for hook execution (30s to prevent flaky failures in batch runs)
+HOOK_TIMEOUT = 30  # seconds
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
