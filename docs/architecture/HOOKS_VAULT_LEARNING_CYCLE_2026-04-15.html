@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Hooks → MiVault Learning Cycle · multi-agent-ralph-loop</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #020617;
+    color: #e2e8f0;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 32px 40px 48px;
+  }
+  header { margin-bottom: 24px; }
+  h1 {
+    font-size: 20px; font-weight: 700; margin: 0 0 6px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .pulse {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #34d399; box-shadow: 0 0 12px #34d399;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .subtitle { color: #94a3b8; font-size: 12px; margin: 0; }
+  .diagram-card {
+    border: 1px solid #1e293b; border-radius: 12px;
+    background: linear-gradient(180deg,#0b1220 0%,#020617 100%);
+    padding: 16px; margin-bottom: 24px;
+  }
+  svg { display: block; width: 100%; height: auto; }
+  .cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+  .card {
+    border: 1px solid #1e293b; border-radius: 10px; padding: 14px 16px;
+    background: rgba(15,23,42,0.6);
+  }
+  .card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .card-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .card-dot.emerald { background: #34d399; box-shadow: 0 0 8px #34d399; }
+  .card-dot.amber   { background: #fbbf24; box-shadow: 0 0 8px #fbbf24; }
+  .card-dot.orange  { background: #fb923c; box-shadow: 0 0 8px #fb923c; }
+  .card-dot.violet  { background: #a78bfa; box-shadow: 0 0 8px #a78bfa; }
+  .card h3 { margin: 0; font-size: 12px; font-weight: 600; color: #e2e8f0; }
+  .card ul { margin: 0; padding: 0; list-style: none; font-size: 11px; color: #94a3b8; line-height: 1.6; }
+  footer {
+    margin-top: 24px; font-size: 10px; color: #475569;
+    border-top: 1px solid #1e293b; padding-top: 12px;
+  }
+  footer code { color: #64748b; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="pulse"></span>Hooks → MiVault Learning Cycle</h1>
+  <p class="subtitle">multi-agent-ralph-loop · 17 hooks across 6 events · Karpathy cycle (INGEST → QUERY → WRITEBACK → LINT) · 2026-04-15</p>
+</header>
+
+<div class="diagram-card">
+<svg viewBox="0 0 1200 760" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+    </pattern>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+    </marker>
+    <marker id="arrowread" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#fbbf24"/>
+    </marker>
+    <marker id="arrowwrite" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#fb923c"/>
+    </marker>
+    <marker id="arrowloop" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee"/>
+    </marker>
+  </defs>
+
+  <!-- Background grid -->
+  <rect width="1200" height="760" fill="url(#grid)"/>
+
+  <!-- ============ ARROWS FIRST (z-order: behind boxes) ============ -->
+
+  <!-- READ flows: vault → INGEST + QUERY columns (amber, dashed) -->
+  <line x1="170"  y1="450" x2="170"  y2="395" stroke="#fbbf24" stroke-width="1.3" stroke-dasharray="5,3" marker-end="url(#arrowread)"/>
+  <line x1="460"  y1="450" x2="460"  y2="395" stroke="#fbbf24" stroke-width="1.3" stroke-dasharray="5,3" marker-end="url(#arrowread)"/>
+  <text x="180" y="430" fill="#fbbf24" font-family="JetBrains Mono" font-size="8">READ ctx</text>
+  <text x="470" y="430" fill="#fbbf24" font-family="JetBrains Mono" font-size="8">grep + memvid</text>
+
+  <!-- WRITE flows: WRITEBACK + LINT columns → vault (orange, solid) -->
+  <line x1="750"  y1="395" x2="750"  y2="450" stroke="#fb923c" stroke-width="1.5" marker-end="url(#arrowwrite)"/>
+  <line x1="1045" y1="395" x2="1045" y2="450" stroke="#fb923c" stroke-width="1.5" marker-end="url(#arrowwrite)"/>
+  <text x="760"  y="430" fill="#fb923c" font-family="JetBrains Mono" font-size="8">facts + diary</text>
+  <text x="1055" y="430" fill="#fb923c" font-family="JetBrains Mono" font-size="8">indices + wings</text>
+
+  <!-- Claude session ↔ phase columns (slate connectors) -->
+  <line x1="170"  y1="80" x2="170"  y2="110" stroke="#475569" stroke-width="1" marker-end="url(#arrowhead)"/>
+  <line x1="460"  y1="80" x2="460"  y2="110" stroke="#475569" stroke-width="1" marker-end="url(#arrowhead)"/>
+  <line x1="750"  y1="80" x2="750"  y2="110" stroke="#475569" stroke-width="1" marker-end="url(#arrowhead)"/>
+  <line x1="1045" y1="80" x2="1045" y2="110" stroke="#475569" stroke-width="1" marker-end="url(#arrowhead)"/>
+
+  <!-- Karpathy feedback loop: LINT → next session INGEST (cyan curve at top) -->
+  <path d="M 1045 18 C 1045 4, 170 4, 170 18" fill="none" stroke="#22d3ee"
+        stroke-width="1.3" stroke-dasharray="4,3" marker-end="url(#arrowloop)"/>
+  <text x="600" y="12" fill="#22d3ee" font-family="JetBrains Mono" font-size="9"
+        text-anchor="middle" font-weight="600">↻ next-session feedback (Karpathy cycle)</text>
+
+  <!-- ============ CLAUDE SESSION STRIP ============ -->
+  <rect x="200" y="30" width="800" height="50" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+  <text x="600" y="52" fill="white" font-family="JetBrains Mono" font-size="13" font-weight="700" text-anchor="middle">
+    Claude Code Session  ·  L0+L1 = ~1050 tokens
+  </text>
+  <text x="600" y="68" fill="#22d3ee" font-family="JetBrains Mono" font-size="9" text-anchor="middle">
+    ralph-coder · ralph-reviewer · ralph-tester · ralph-researcher · ralph-frontend · ralph-security
+  </text>
+
+  <!-- ============ PHASE COLUMN CONTAINERS (4) ============ -->
+
+  <!-- Col 1: INGEST / SessionStart -->
+  <rect x="40" y="110" width="260" height="285" rx="8" fill="rgba(2,6,23,0.4)" stroke="#34d399" stroke-width="1" stroke-dasharray="3,3"/>
+  <text x="170" y="130" fill="#34d399" font-family="JetBrains Mono" font-size="11" font-weight="700" text-anchor="middle">① INGEST · SessionStart</text>
+  <text x="170" y="144" fill="#94a3b8" font-family="JetBrains Mono" font-size="8" text-anchor="middle">load context from vault → session</text>
+
+  <!-- Col 2: QUERY / PreToolUse -->
+  <rect x="330" y="110" width="260" height="285" rx="8" fill="rgba(2,6,23,0.4)" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,3"/>
+  <text x="460" y="130" fill="#fbbf24" font-family="JetBrains Mono" font-size="11" font-weight="700" text-anchor="middle">② QUERY · PreToolUse</text>
+  <text x="460" y="144" fill="#94a3b8" font-family="JetBrains Mono" font-size="8" text-anchor="middle">retrieve relevant memory before tool use</text>
+
+  <!-- Col 3: WRITEBACK / PostToolUse + TeammateIdle + Stop -->
+  <rect x="620" y="110" width="260" height="285" rx="8" fill="rgba(2,6,23,0.4)" stroke="#fb923c" stroke-width="1" stroke-dasharray="3,3"/>
+  <text x="750" y="130" fill="#fb923c" font-family="JetBrains Mono" font-size="11" font-weight="700" text-anchor="middle">③ WRITEBACK · mid + Stop</text>
+  <text x="750" y="144" fill="#94a3b8" font-family="JetBrains Mono" font-size="8" text-anchor="middle">extract facts · accumulate · persist</text>
+
+  <!-- Col 4: LINT / SessionEnd -->
+  <rect x="910" y="110" width="270" height="285" rx="8" fill="rgba(2,6,23,0.4)" stroke="#a78bfa" stroke-width="1" stroke-dasharray="3,3"/>
+  <text x="1045" y="130" fill="#a78bfa" font-family="JetBrains Mono" font-size="11" font-weight="700" text-anchor="middle">④ LINT · SessionEnd</text>
+  <text x="1045" y="144" fill="#94a3b8" font-family="JetBrains Mono" font-size="8" text-anchor="middle">compile indices · graduate · log</text>
+
+  <!-- ============ HOOK BOXES — Col 1 (6 hooks) ============ -->
+  <g font-family="JetBrains Mono" font-size="10">
+    <rect x="55" y="160" width="230" height="32" rx="4" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.2"/>
+    <text x="170" y="174" fill="white" text-anchor="middle" font-weight="600">post-compact-restore.sh</text>
+    <text x="170" y="186" fill="#94a3b8" font-size="8" text-anchor="middle">restore state after compaction</text>
+
+    <rect x="55" y="200" width="230" height="32" rx="4" fill="rgba(6,78,59,0.55)" stroke="#34d399" stroke-width="2"/>
+    <text x="170" y="214" fill="white" text-anchor="middle" font-weight="700">★ wake-up-layer-stack.sh</text>
+    <text x="170" y="226" fill="#34d399" font-size="8" text-anchor="middle">load L0 (239t) + L1 (579t)</text>
+
+    <rect x="55" y="240" width="230" height="32" rx="4" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.2"/>
+    <text x="170" y="254" fill="white" text-anchor="middle" font-weight="600">session-start-restore-context.sh</text>
+    <text x="170" y="266" fill="#94a3b8" font-size="8" text-anchor="middle">replay last ledger</text>
+
+    <rect x="55" y="280" width="230" height="32" rx="4" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.2"/>
+    <text x="170" y="294" fill="white" text-anchor="middle" font-weight="600">vault-promotion.sh</text>
+    <text x="170" y="306" fill="#94a3b8" font-size="8" text-anchor="middle">surface ready facts → L1</text>
+
+    <rect x="55" y="320" width="230" height="32" rx="4" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.2"/>
+    <text x="170" y="334" fill="white" text-anchor="middle" font-weight="600">vault-graduation.sh</text>
+    <text x="170" y="346" fill="#94a3b8" font-size="8" text-anchor="middle">project → global wiki</text>
+
+    <rect x="55" y="360" width="230" height="32" rx="4" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.2"/>
+    <text x="170" y="374" fill="white" text-anchor="middle" font-weight="600">orchestrator-init.sh</text>
+    <text x="170" y="386" fill="#94a3b8" font-size="8" text-anchor="middle">spin up Aristotle gates</text>
+  </g>
+
+  <!-- ============ HOOK BOXES — Col 2 (2 hooks) ============ -->
+  <g font-family="JetBrains Mono" font-size="10">
+    <rect x="345" y="160" width="230" height="32" rx="4" fill="rgba(120,53,15,0.4)" stroke="#fbbf24" stroke-width="2"/>
+    <text x="460" y="174" fill="white" text-anchor="middle" font-weight="700">★ smart-memory-search.sh</text>
+    <text x="460" y="186" fill="#fbbf24" font-size="8" text-anchor="middle">parallel grep · memvid · handoffs</text>
+
+    <rect x="345" y="200" width="230" height="32" rx="4" fill="rgba(120,53,15,0.4)" stroke="#fbbf24" stroke-width="1.2"/>
+    <text x="460" y="214" fill="white" text-anchor="middle" font-weight="600">orchestrator-auto-learn.sh</text>
+    <text x="460" y="226" fill="#94a3b8" font-size="8" text-anchor="middle">trigger curator on Task tool</text>
+
+    <text x="460" y="270" fill="#475569" font-family="JetBrains Mono" font-size="9" text-anchor="middle" font-style="italic">
+      (RLM-style retrieval before
+    </text>
+    <text x="460" y="284" fill="#475569" font-family="JetBrains Mono" font-size="9" text-anchor="middle" font-style="italic">
+      every non-trivial tool call)
+    </text>
+  </g>
+
+  <!-- ============ HOOK BOXES — Col 3 (6 hooks across 3 events) ============ -->
+  <g font-family="JetBrains Mono" font-size="10">
+    <rect x="635" y="160" width="230" height="32" rx="4" fill="rgba(251,146,60,0.4)" stroke="#fb923c" stroke-width="2"/>
+    <text x="750" y="174" fill="white" text-anchor="middle" font-weight="700">★ vault-fact-extractor.sh</text>
+    <text x="750" y="186" fill="#fb923c" font-size="8" text-anchor="middle">PostToolUse · NLP → markdown</text>
+
+    <rect x="635" y="200" width="230" height="32" rx="4" fill="rgba(251,146,60,0.3)" stroke="#fb923c" stroke-width="1.2"/>
+    <text x="750" y="214" fill="white" text-anchor="middle" font-weight="600">session-accumulator.sh</text>
+    <text x="750" y="226" fill="#94a3b8" font-size="8" text-anchor="middle">PostToolUse · append ledger</text>
+
+    <rect x="635" y="240" width="230" height="32" rx="4" fill="rgba(251,146,60,0.4)" stroke="#fb923c" stroke-width="2"/>
+    <text x="750" y="254" fill="white" text-anchor="middle" font-weight="700">★ agent-diary-writer.sh</text>
+    <text x="750" y="266" fill="#fb923c" font-size="8" text-anchor="middle">TeammateIdle · per-agent diary</text>
+
+    <rect x="635" y="280" width="230" height="32" rx="4" fill="rgba(251,146,60,0.3)" stroke="#fb923c" stroke-width="1.2"/>
+    <text x="750" y="294" fill="white" text-anchor="middle" font-weight="600">continuous-learning.sh</text>
+    <text x="750" y="306" fill="#94a3b8" font-size="8" text-anchor="middle">Stop · score new facts</text>
+
+    <rect x="635" y="320" width="230" height="32" rx="4" fill="rgba(251,146,60,0.4)" stroke="#fb923c" stroke-width="2"/>
+    <text x="750" y="334" fill="white" text-anchor="middle" font-weight="700">★ vault-writeback.sh</text>
+    <text x="750" y="346" fill="#fb923c" font-size="8" text-anchor="middle">Stop · persist facts → vault</text>
+
+    <rect x="635" y="360" width="230" height="32" rx="4" fill="rgba(251,146,60,0.3)" stroke="#fb923c" stroke-width="1.2"/>
+    <text x="750" y="374" fill="white" text-anchor="middle" font-weight="600">orchestrator-report.sh</text>
+    <text x="750" y="386" fill="#94a3b8" font-size="8" text-anchor="middle">Stop · summary handoff</text>
+  </g>
+
+  <!-- ============ HOOK BOXES — Col 4 (3 hooks) ============ -->
+  <g font-family="JetBrains Mono" font-size="10">
+    <rect x="925" y="160" width="240" height="32" rx="4" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="2"/>
+    <text x="1045" y="174" fill="white" text-anchor="middle" font-weight="700">★ vault-wing-compiler.sh</text>
+    <text x="1045" y="186" fill="#a78bfa" font-size="8" text-anchor="middle">project wing → L2 markdown</text>
+
+    <rect x="925" y="200" width="240" height="32" rx="4" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.2"/>
+    <text x="1045" y="214" fill="white" text-anchor="middle" font-weight="600">vault-index-updater.sh</text>
+    <text x="1045" y="226" fill="#94a3b8" font-size="8" text-anchor="middle">refresh halls / rooms / wings</text>
+
+    <rect x="925" y="240" width="240" height="32" rx="4" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.2"/>
+    <text x="1045" y="254" fill="white" text-anchor="middle" font-weight="600">vault-log-writer.sh</text>
+    <text x="1045" y="266" fill="#94a3b8" font-size="8" text-anchor="middle">final session ledger entry</text>
+
+    <text x="1045" y="305" fill="#475569" font-family="JetBrains Mono" font-size="9" text-anchor="middle" font-style="italic">(Karpathy LINT phase:</text>
+    <text x="1045" y="319" fill="#475569" font-family="JetBrains Mono" font-size="9" text-anchor="middle" font-style="italic">consolidate &amp; clean before</text>
+    <text x="1045" y="333" fill="#475569" font-family="JetBrains Mono" font-size="9" text-anchor="middle" font-style="italic">next session boots)</text>
+  </g>
+
+  <!-- ============ MIVAULT REGION (opaque mask first) ============ -->
+  <rect x="40" y="450" width="850" height="270" rx="12" fill="#0f172a"/>
+  <rect x="40" y="450" width="850" height="270" rx="12" fill="rgba(76,29,149,0.25)" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="8,4"/>
+  <text x="60" y="475" fill="#a78bfa" font-family="JetBrains Mono" font-size="13" font-weight="700">~/Documents/Obsidian/MiVault/</text>
+  <text x="60" y="490" fill="#94a3b8" font-family="JetBrains Mono" font-size="9">single source of truth · knowledge graph (KG) · 40 lessons · 9 global wikis · 6 project wikis</text>
+
+  <!-- Vault sub-regions -->
+  <g font-family="JetBrains Mono">
+    <!-- global/wiki -->
+    <rect x="60" y="510" width="250" height="90" rx="6" fill="#0f172a"/>
+    <rect x="60" y="510" width="250" height="90" rx="6" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.2"/>
+    <text x="185" y="528" fill="white" font-size="11" font-weight="600" text-anchor="middle">global/wiki/</text>
+    <text x="185" y="544" fill="#a78bfa" font-size="8" text-anchor="middle">cross-project knowledge</text>
+    <text x="75"  y="562" fill="#94a3b8" font-size="8.5">• architecture/  • security/</text>
+    <text x="75"  y="576" fill="#94a3b8" font-size="8.5">• hooks/         • agent-engineering/</text>
+    <text x="75"  y="590" fill="#94a3b8" font-size="8.5">→ 27-anti-patterns · umask-077 · MPC</text>
+
+    <!-- projects/<this> -->
+    <rect x="320" y="510" width="250" height="90" rx="6" fill="#0f172a"/>
+    <rect x="320" y="510" width="250" height="90" rx="6" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.2"/>
+    <text x="445" y="528" fill="white" font-size="11" font-weight="600" text-anchor="middle">projects/multi-agent-ralph-loop/</text>
+    <text x="445" y="544" fill="#a78bfa" font-size="8" text-anchor="middle">project wiki + ledgers</text>
+    <text x="335" y="562" fill="#94a3b8" font-size="8.5">• mempalace-wave4 (current)</text>
+    <text x="335" y="576" fill="#94a3b8" font-size="8.5">• 4 halls · 5 rooms · 2 wings</text>
+    <text x="335" y="590" fill="#94a3b8" font-size="8.5">→ wing compiled by SessionEnd</text>
+
+    <!-- agents/<name>/diary -->
+    <rect x="580" y="510" width="290" height="90" rx="6" fill="#0f172a"/>
+    <rect x="580" y="510" width="290" height="90" rx="6" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.2"/>
+    <text x="725" y="528" fill="white" font-size="11" font-weight="600" text-anchor="middle">agents/{ralph-*}/diary/</text>
+    <text x="725" y="544" fill="#a78bfa" font-size="8" text-anchor="middle">per-agent learning trace · 6 agents</text>
+    <text x="595" y="562" fill="#94a3b8" font-size="8.5">coder · reviewer · tester · researcher</text>
+    <text x="595" y="576" fill="#94a3b8" font-size="8.5">frontend · security</text>
+    <text x="595" y="590" fill="#94a3b8" font-size="8.5">→ written by agent-diary-writer.sh</text>
+
+    <!-- Vault stats footer strip -->
+    <rect x="60" y="615" width="810" height="22" rx="4" fill="rgba(251,146,60,0.2)" stroke="#fb923c" stroke-width="1"/>
+    <text x="465" y="630" fill="#fb923c" font-size="9" text-anchor="middle">
+      filter: 27/1003 procedural rules survive (confidence ≥ 0.8 · sessions ≥ 3)
+    </text>
+
+    <!-- Karpathy line -->
+    <text x="60" y="660" fill="#64748b" font-size="9">pipeline (Karpathy):</text>
+    <text x="60" y="676" fill="#a78bfa" font-size="10" font-weight="600">INGEST → QUERY → WRITEBACK → LINT  ↻</text>
+    <text x="60" y="692" fill="#475569" font-size="8.5" font-style="italic">selection > encoding · AAAK rejected (+19.8% tokens, see ADR 2026-04-07)</text>
+  </g>
+
+  <!-- ============ ~/.ralph/ LOCAL CACHE (sibling) ============ -->
+  <rect x="910" y="450" width="270" height="270" rx="12" fill="#0f172a"/>
+  <rect x="910" y="450" width="270" height="270" rx="12" fill="rgba(76,29,149,0.18)" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="8,4"/>
+  <text x="1045" y="475" fill="#a78bfa" font-family="JetBrains Mono" font-size="12" font-weight="700" text-anchor="middle">~/.ralph/</text>
+  <text x="1045" y="489" fill="#94a3b8" font-family="JetBrains Mono" font-size="8" text-anchor="middle">local cache + control plane</text>
+
+  <g font-family="JetBrains Mono">
+    <rect x="925" y="505" width="240" height="40" rx="4" fill="rgba(76,29,149,0.45)" stroke="#a78bfa" stroke-width="1.2"/>
+    <text x="1045" y="520" fill="white" font-size="10.5" font-weight="600" text-anchor="middle">layers/L0_identity.md</text>
+    <text x="1045" y="535" fill="#a78bfa" font-size="8.5" text-anchor="middle">+ L1_essential.md (9 rules · 579t)</text>
+
+    <rect x="925" y="555" width="240" height="32" rx="4" fill="rgba(76,29,149,0.35)" stroke="#a78bfa" stroke-width="1"/>
+    <text x="1045" y="568" fill="white" font-size="10" font-weight="500" text-anchor="middle">ledgers/</text>
+    <text x="1045" y="580" fill="#94a3b8" font-size="8" text-anchor="middle">session continuity records</text>
+
+    <rect x="925" y="597" width="240" height="32" rx="4" fill="rgba(76,29,149,0.35)" stroke="#a78bfa" stroke-width="1"/>
+    <text x="1045" y="610" fill="white" font-size="10" font-weight="500" text-anchor="middle">handoffs/</text>
+    <text x="1045" y="622" fill="#94a3b8" font-size="8" text-anchor="middle">PreCompact + SessionEnd</text>
+
+    <rect x="925" y="639" width="240" height="32" rx="4" fill="rgba(76,29,149,0.35)" stroke="#a78bfa" stroke-width="1"/>
+    <text x="1045" y="652" fill="white" font-size="10" font-weight="500" text-anchor="middle">procedural/rules.json</text>
+    <text x="1045" y="664" fill="#94a3b8" font-size="8" text-anchor="middle">2028 raw → 9 actionable</text>
+
+    <text x="1045" y="690" fill="#475569" font-size="8" text-anchor="middle" font-style="italic">(distilled from MiVault</text>
+    <text x="1045" y="702" fill="#475569" font-size="8" text-anchor="middle" font-style="italic">on every SessionStart)</text>
+  </g>
+
+  <!-- ============ LEGEND (outside all boundaries) ============ -->
+  <g font-family="JetBrains Mono" font-size="9">
+    <rect x="40"  y="735" width="14" height="10" rx="2" fill="rgba(6,78,59,0.5)" stroke="#34d399"/>
+    <text x="60"  y="744" fill="#94a3b8">INGEST hooks</text>
+    <rect x="180" y="735" width="14" height="10" rx="2" fill="rgba(120,53,15,0.5)" stroke="#fbbf24"/>
+    <text x="200" y="744" fill="#94a3b8">QUERY hooks</text>
+    <rect x="320" y="735" width="14" height="10" rx="2" fill="rgba(251,146,60,0.4)" stroke="#fb923c"/>
+    <text x="340" y="744" fill="#94a3b8">WRITEBACK hooks</text>
+    <rect x="490" y="735" width="14" height="10" rx="2" fill="rgba(76,29,149,0.5)" stroke="#a78bfa"/>
+    <text x="510" y="744" fill="#94a3b8">LINT + Vault storage</text>
+    <line x1="660" y1="740" x2="690" y2="740" stroke="#fbbf24" stroke-width="1.3" stroke-dasharray="5,3"/>
+    <text x="700" y="744" fill="#94a3b8">read</text>
+    <line x1="745" y1="740" x2="775" y2="740" stroke="#fb923c" stroke-width="1.5"/>
+    <text x="785" y="744" fill="#94a3b8">write</text>
+    <line x1="830" y1="740" x2="860" y2="740" stroke="#22d3ee" stroke-width="1.3" stroke-dasharray="4,3"/>
+    <text x="870" y="744" fill="#94a3b8">cycle ↻</text>
+    <text x="940" y="744" fill="#475569">★ = critical hook (load-bearing)</text>
+  </g>
+</svg>
+</div>
+
+<div class="cards">
+  <div class="card">
+    <div class="card-header"><div class="card-dot emerald"></div><h3>① INGEST · how Claude wakes up</h3></div>
+    <ul>
+      <li>• <code>wake-up-layer-stack.sh</code> emits L0+L1 (~1050 tokens) into the SessionStart context — what you saw at the top of this conversation</li>
+      <li>• <code>session-start-restore-context.sh</code> replays the last ledger so prior wave/branch/PR state is recoverable</li>
+      <li>• <code>vault-promotion.sh</code> + <code>vault-graduation.sh</code> surface project-wing rules and graduate stable lessons to global wiki before user prompt arrives</li>
+      <li>• Source of truth = <code>~/Documents/Obsidian/MiVault/</code>; <code>~/.ralph/layers/</code> is a precomputed cache (selection > encoding)</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-dot orange"></div><h3>② QUERY + ③ WRITEBACK · the working loop</h3></div>
+    <ul>
+      <li>• Every non-trivial Bash/Task triggers <code>smart-memory-search.sh</code> (parallel grep + memvid + handoffs) — RLM-style retrieval BEFORE the action</li>
+      <li>• After tools run, <code>vault-fact-extractor.sh</code> + <code>session-accumulator.sh</code> capture the delta into the running ledger</li>
+      <li>• Each ralph-* teammate writes its own diary on <code>TeammateIdle</code> via <code>agent-diary-writer.sh</code> → keeps per-agent learning isolated</li>
+      <li>• On Stop: <code>continuous-learning.sh</code> scores facts, <code>vault-writeback.sh</code> persists them, <code>orchestrator-report.sh</code> emits handoff summary</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-dot violet"></div><h3>④ LINT · what makes next session smarter</h3></div>
+    <ul>
+      <li>• <code>vault-wing-compiler.sh</code> rebuilds the project wing (L2 markdown the next SessionStart will load)</li>
+      <li>• <code>vault-index-updater.sh</code> refreshes halls / rooms / wings indices — the 3-dimensional taxonomy</li>
+      <li>• <code>vault-log-writer.sh</code> closes the session ledger; promotion/graduation will pick it up next boot</li>
+      <li>• Net effect: the cycle <em>compounds</em>. Each session writes facts → next session ingests filtered facts via L1 (only 27 of 1003 rules survive the confidence filter)</li>
+    </ul>
+  </div>
+</div>
+
+<footer>
+  <code>docs/architecture/HOOKS_VAULT_LEARNING_CYCLE_2026-04-15.html</code>  ·
+  generated with <code>.claude/skills/architecture-diagram</code> (Cocoon-AI, MIT)  ·
+  branch <code>claude/elated-clarke</code>  ·
+  source: <code>~/.claude/settings.json</code> + <code>.claude/hooks/*vault*</code>
+</footer>
+
+</body>
+</html>
