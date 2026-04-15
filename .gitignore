@@ -273,3 +273,4 @@ backend/
 .claude/skills/*.bak
 data-gym-cache/
 pytest-of-*/
+.claude/agents/_archived/

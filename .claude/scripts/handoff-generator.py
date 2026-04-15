@@ -37,7 +37,8 @@ class HandoffGenerator:
         important_files: Optional[list] = None,
         agents_used: Optional[list] = None,
         notes: Optional[str] = None,
-        output: Optional[str] = None
+        output: Optional[str] = None,
+        project_dir: Optional[str] = None
     ) -> Path:
         """Create a handoff document."""
         # Create session-specific subdirectory
@@ -66,7 +67,8 @@ class HandoffGenerator:
             next_steps=next_steps or [],
             important_files=important_files or [],
             agents_used=agents_used or [],
-            notes=notes
+            notes=notes,
+            project_dir=project_dir
         )
 
         # Write with secure permissions
@@ -289,7 +291,8 @@ class HandoffGenerator:
         next_steps: list,
         important_files: list,
         agents_used: list,
-        notes: Optional[str]
+        notes: Optional[str],
+        project_dir: Optional[str] = None
     ) -> str:
         """Build handoff document content."""
         timestamp = datetime.now(timezone.utc).isoformat()
@@ -301,6 +304,10 @@ class HandoffGenerator:
             f"Trigger: {trigger}",
             "",
         ]
+
+        # Include project dir if provided (from --project flag via main())
+        if project_dir:
+            lines.insert(3, f"Project: {project_dir}")
 
         if recent_changes:
             lines.append("## RECENT CHANGES")
@@ -374,6 +381,7 @@ def main():
     parser.add_argument("--trigger", default="manual", help="Handoff trigger")
     parser.add_argument("--handoff-dir", help="Handoff directory")
     parser.add_argument("--output", "-o", help="Output file path")
+    parser.add_argument("--project", help="Project directory (for context)")
 
     args = parser.parse_args()
 
@@ -384,7 +392,8 @@ def main():
         path = generator.create(
             session_id=args.session or "unknown",
             trigger=args.trigger,
-            output=args.output
+            output=args.output,
+            project_dir=args.project
         )
         print(f"Created: {path}")
     elif args.command == "load":
