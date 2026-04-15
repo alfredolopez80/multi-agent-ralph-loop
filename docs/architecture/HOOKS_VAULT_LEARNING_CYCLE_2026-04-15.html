@@ -87,7 +87,7 @@
   <line x1="170"  y1="450" x2="170"  y2="395" stroke="#fbbf24" stroke-width="1.3" stroke-dasharray="5,3" marker-end="url(#arrowread)"/>
   <line x1="460"  y1="450" x2="460"  y2="395" stroke="#fbbf24" stroke-width="1.3" stroke-dasharray="5,3" marker-end="url(#arrowread)"/>
   <text x="180" y="430" fill="#fbbf24" font-family="JetBrains Mono" font-size="8">READ ctx</text>
-  <text x="470" y="430" fill="#fbbf24" font-family="JetBrains Mono" font-size="8">grep + memvid</text>
+  <text x="470" y="430" fill="#fbbf24" font-family="JetBrains Mono" font-size="8">vault · ledgers · web · docs</text>
 
   <!-- WRITE flows: WRITEBACK + LINT columns → vault (orange, solid) -->
   <line x1="750"  y1="395" x2="750"  y2="450" stroke="#fb923c" stroke-width="1.5" marker-end="url(#arrowwrite)"/>
@@ -169,7 +169,7 @@
   <g font-family="JetBrains Mono" font-size="10">
     <rect x="345" y="160" width="230" height="32" rx="4" fill="rgba(120,53,15,0.4)" stroke="#fbbf24" stroke-width="2"/>
     <text x="460" y="174" fill="white" text-anchor="middle" font-weight="700">★ smart-memory-search.sh</text>
-    <text x="460" y="186" fill="#fbbf24" font-size="8" text-anchor="middle">parallel grep · memvid · handoffs</text>
+    <text x="460" y="186" fill="#fbbf24" font-size="8" text-anchor="middle">vault · ledgers · web_search · docs_search</text>
 
     <rect x="345" y="200" width="230" height="32" rx="4" fill="rgba(120,53,15,0.4)" stroke="#fbbf24" stroke-width="1.2"/>
     <text x="460" y="214" fill="white" text-anchor="middle" font-weight="600">orchestrator-auto-learn.sh</text>
@@ -291,9 +291,9 @@
     <text x="1045" y="568" fill="white" font-size="10" font-weight="500" text-anchor="middle">ledgers/</text>
     <text x="1045" y="580" fill="#94a3b8" font-size="8" text-anchor="middle">session continuity records</text>
 
-    <rect x="925" y="597" width="240" height="32" rx="4" fill="rgba(76,29,149,0.35)" stroke="#a78bfa" stroke-width="1"/>
-    <text x="1045" y="610" fill="white" font-size="10" font-weight="500" text-anchor="middle">handoffs/</text>
-    <text x="1045" y="622" fill="#94a3b8" font-size="8" text-anchor="middle">PreCompact + SessionEnd</text>
+    <rect x="925" y="597" width="240" height="32" rx="4" fill="rgba(76,29,149,0.2)" stroke="#475569" stroke-width="1" stroke-dasharray="3,3"/>
+    <text x="1045" y="610" fill="#64748b" font-size="10" font-weight="500" text-anchor="middle">handoffs/</text>
+    <text x="1045" y="622" fill="#475569" font-size="8" text-anchor="middle">writer-only (not memory source)</text>
 
     <rect x="925" y="639" width="240" height="32" rx="4" fill="rgba(76,29,149,0.35)" stroke="#a78bfa" stroke-width="1"/>
     <text x="1045" y="652" fill="white" font-size="10" font-weight="500" text-anchor="middle">procedural/rules.json</text>
@@ -337,7 +337,7 @@
   <div class="card">
     <div class="card-header"><div class="card-dot orange"></div><h3>② QUERY + ③ WRITEBACK · the working loop</h3></div>
     <ul>
-      <li>• Every non-trivial Bash/Task triggers <code>smart-memory-search.sh</code> (parallel grep + memvid + handoffs) — RLM-style retrieval BEFORE the action</li>
+      <li>• Every non-trivial Bash/Task triggers <code>smart-memory-search.sh</code> v3.4.0 (vault · ledgers · web_search · docs_search) — RLM-style retrieval BEFORE the action</li>
       <li>• After tools run, <code>vault-fact-extractor.sh</code> + <code>session-accumulator.sh</code> capture the delta into the running ledger</li>
       <li>• Each ralph-* teammate writes its own diary on <code>TeammateIdle</code> via <code>agent-diary-writer.sh</code> → keeps per-agent learning isolated</li>
       <li>• On Stop: <code>continuous-learning.sh</code> scores facts, <code>vault-writeback.sh</code> persists them, <code>orchestrator-report.sh</code> emits handoff summary</li>
