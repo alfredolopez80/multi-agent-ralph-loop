@@ -50,7 +50,9 @@ source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
 # Configuration
 LEDGER_DIR="${HOME}/.ralph/ledgers"
 HANDOFF_DIR="${HOME}/.ralph/handoffs"
-SCRIPTS_DIR="${HOME}/.claude/scripts"
+# v2.91.0: Resolve SCRIPTS_DIR relative to hook location (works in repo,
+# worktrees, and global symlinks). Bug: ${HOME}/.claude/scripts doesn't exist.
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../scripts" && pwd)"
 HOOKS_DIR="${HOME}/.claude/hooks"
 FEATURES_FILE="${HOME}/.ralph/config/features.json"
 LOG_FILE="${HOME}/.ralph/logs/session-end.log"
