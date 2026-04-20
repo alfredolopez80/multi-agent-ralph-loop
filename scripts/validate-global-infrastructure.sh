@@ -157,24 +157,50 @@ echo ""
 echo "=== Key Agents (global symlinks) ==="
 AGENTS=(orchestrator ralph-coder ralph-reviewer ralph-tester ralph-researcher ralph-frontend ralph-security autoresearch)
 for agent in "${AGENTS[@]}"; do
-  if [[ -L ~/.claude/agents/"$agent".md ]]; then
-    pass "$agent.md → symlink"
-  elif [[ -f ~/.claude/agents/"$agent".md ]]; then
+  target=~/.claude/agents/"$agent".md
+  if [[ -L "$target" && -f "$target" ]]; then
+    pass "$agent.md → symlink (resolves)"
+  elif [[ -L "$target" && ! -f "$target" ]]; then
     if [[ "$FIX_MODE" == "--fix" ]]; then
-      ln -sfn "$REPO/.claude/agents/$agent.md" ~/.claude/agents/"$agent.md"
+      rm "$target"
+      ln -sfn "$REPO/.claude/agents/$agent.md" "$target"
+      fixed "$agent.md → replaced broken symlink"
+    else
+      fail "$agent.md is a BROKEN symlink (target missing). Run with --fix"
+    fi
+  elif [[ -f "$target" ]]; then
+    if [[ "$FIX_MODE" == "--fix" ]]; then
+      ln -sfn "$REPO/.claude/agents/$agent.md" "$target"
       fixed "$agent.md → converted copy to symlink"
     else
       fail "$agent.md is a copy (not symlink). Run with --fix"
     fi
   else
     if [[ "$FIX_MODE" == "--fix" ]]; then
-      ln -sfn "$REPO/.claude/agents/$agent.md" ~/.claude/agents/"$agent.md"
+      ln -sfn "$REPO/.claude/agents/$agent.md" "$target"
       fixed "$agent.md → created symlink"
     else
       fail "$agent.md missing from ~/.claude/agents/"
     fi
   fi
 done
+
+# Sweep for ANY broken symlink in ~/.claude/agents (beyond hardcoded list)
+echo ""
+echo "=== Broken symlink sweep (all of ~/.claude/agents/) ==="
+broken_count=0
+while IFS= read -r -d '' link; do
+  if [[ ! -f "$link" ]]; then
+    broken_count=$((broken_count+1))
+    if [[ "$FIX_MODE" == "--fix" ]]; then
+      rm "$link"
+      fixed "removed broken symlink: $(basename "$link")"
+    else
+      fail "broken symlink: $(basename "$link") -> $(readlink "$link")"
+    fi
+  fi
+done < <(find ~/.claude/agents -maxdepth 1 -type l -print0 2>/dev/null)
+[[ $broken_count -eq 0 ]] && pass "no broken symlinks in ~/.claude/agents/"
 
 # === 5. INFRASTRUCTURE DIRECTORIES ===
 echo ""
