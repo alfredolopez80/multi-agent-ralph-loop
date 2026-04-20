@@ -274,3 +274,6 @@ backend/
 data-gym-cache/
 pytest-of-*/
 .claude/agents/_archived/
+
+# Local archive dirs (never committed)
+.claude/**/_archived/

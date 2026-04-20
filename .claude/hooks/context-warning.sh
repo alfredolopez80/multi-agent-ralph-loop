@@ -47,12 +47,13 @@ FEATURES_FILE="${HOME}/.ralph/config/features.json"
 # Ensure directories exist (ignore errors)
 mkdir -p "$RALPH_DIR" "$(dirname "$LOG_FILE" 2>/dev/null)" || true
 
-# Source environment detection (v2.44)
+# Source environment detection (v3.0.1: library moved to .claude/lib/)
 ENV_TYPE="unknown"
 CAPABILITIES="limited"
-if [[ -f "${HOOKS_DIR}/detect-environment.sh" ]]; then
+_ENV_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" 2>/dev/null && pwd)/detect-environment.sh"
+if [[ -f "$_ENV_LIB" ]]; then
     # shellcheck source=/dev/null
-    source "${HOOKS_DIR}/detect-environment.sh"
+    source "$_ENV_LIB"
     ENV_TYPE=$(get_env_type 2>/dev/null || echo "unknown")
     CAPABILITIES=$(get_capabilities 2>/dev/null || echo "limited")
 fi

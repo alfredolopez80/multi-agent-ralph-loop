@@ -21,6 +21,12 @@ set -euo pipefail
 # CONFIGURATION
 # =============================================================================
 
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() { get_project_root; }
+}
+
 HOOKS_DIR="${HOME}/.claude/hooks"
 GLM_TRACKER="${HOOKS_DIR}/glm-context-update.sh"
 STATE_DIR="${RALPH_DIR:-${HOME}/.ralph}/state"
@@ -51,8 +57,8 @@ log() {
 # Get project-specific state directory based on git root
 get_state_dir() {
     local git_root
-    git_root=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
-    if [[ -n "$git_root" ]]; then
+    git_root=$(get_main_repo 2>/dev/null || echo "")
+    if [[ -n "$git_root" && "$git_root" != "." ]]; then
         local project_hash
         project_hash=$(echo "$git_root" | shasum -a 256 2>/dev/null | cut -c1-12 || echo "default")
         local project_state_dir="${STATE_DIR}/projects/${project_hash}"
@@ -110,13 +116,19 @@ GLM_MARKER="${STATE_DIR}/glm-active"
 
 # Detect which model is currently active
 detect_model() {
-    # Method 1: Check environment detection
-    if [[ -f "${HOOKS_DIR}/detect-environment.sh" ]]; then
-        local env_json caps
-        env_json=$("${HOOKS_DIR}/detect-environment.sh" 2>/dev/null || echo '{}')
+    # Method 1: Check environment detection (v3.0.1: library in .claude/lib/)
+    local env_lib
+    env_lib="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" 2>/dev/null && pwd)/detect-environment.sh"
+    if [[ -f "$env_lib" ]]; then
+        local env_json caps env_type
+        env_json=$("$env_lib" 2>/dev/null || echo '{}')
         caps=$(echo "$env_json" | jq -r '.capabilities // ""' 2>/dev/null || echo "")
+        env_type=$(echo "$env_json" | jq -r '.type // ""' 2>/dev/null || echo "")
         if [[ "$caps" == "api" ]]; then
-            echo "glm"
+            case "$env_type" in
+                minimax-api) echo "minimax" ;;
+                glm-api|*)   echo "glm" ;;
+            esac
             return 0
         fi
     fi
