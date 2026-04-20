@@ -190,6 +190,10 @@ temp/
 .worktrees/
 .claude/worktrees/
 
+# Claude Code per-user local settings (convention: *.local.json is user-scoped)
+# Contains user-specific permissions allowlist — regenerated per user by Claude Code
+.claude/settings.local.json
+
 # Improvement proposals (generated)
 improvements/pending.md
 improvements/backups/
