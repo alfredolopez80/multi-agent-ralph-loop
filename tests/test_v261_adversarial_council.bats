@@ -79,7 +79,7 @@ EOF
 
     # Hook should detect high complexity
     cd "$TEST_TMP_DIR"
-    output=$(echo '{"tool_name": "Task", "tool_input": {"subagent_type": "code-reviewer"}}' | "$HOOKS_DIR/adversarial-auto-trigger.sh")
+    output=$(echo '{"tool_name": "Task", "tool_input": {"subagent_type": "codex-reviewer"}}' | "$HOOKS_DIR/adversarial-auto-trigger.sh")
 
     # Should return valid JSON (systemMessage optional)
     echo "$output" | jq -e '.continue'

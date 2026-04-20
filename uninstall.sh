@@ -33,7 +33,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 RALPH_AGENTS=(
     "orchestrator.md"
     "security-auditor.md"
-    "code-reviewer.md"
+    "codex-reviewer.md"
     "test-architect.md"
     "debugger.md"
     "refactorer.md"

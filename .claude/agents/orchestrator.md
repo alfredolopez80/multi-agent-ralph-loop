@@ -430,7 +430,7 @@ WORKTREE_CONTEXT:
   isolated: true
   # v2.21: Per-agent commit prefix for consistent commit messages
   COMMIT_PREFIX:
-    code-reviewer: "review:"
+    codex-reviewer: "review:"
     security-auditor: "security:"
     test-architect: "test:"
     frontend-reviewer: "ui:"
@@ -491,8 +491,7 @@ When launching subagents for a worktree task:
 
 ```yaml
 Task:
-  subagent_type: "code-reviewer"
-  model: "sonnet"
+  subagent_type: "codex-reviewer"
   run_in_background: true
   prompt: |
     WORKTREE_CONTEXT:
@@ -726,8 +725,7 @@ Task:
   prompt: "Audit for security vulnerabilities: $FILES"
 
 Task:
-  subagent_type: "code-reviewer"
-  model: "sonnet"
+  subagent_type: "codex-reviewer"
   run_in_background: true
   prompt: "Review code quality: $FILES"
 
@@ -828,8 +826,7 @@ Execute the step with standard subagents:
 
 # Implement with appropriate subagent
 Task:
-  subagent_type: "code-reviewer"  # or security-auditor, test-architect, etc.
-  model: "sonnet"
+  subagent_type: "codex-reviewer"  # or security-auditor, test-architect, etc.
   run_in_background: true
   prompt: |
     STEP_SPEC: [spec from plan-state]
@@ -1305,7 +1302,7 @@ Auxiliary agents integrate at specific points in the 8-step workflow:
 
 ```
 Step 5: EXECUTE
-  └── Standard subagents (code-reviewer, test-architect, etc.)
+  └── Standard subagents (codex-reviewer, test-architect, etc.)
   └── Language-specific reviewer (if Python/TypeScript detected)
       ├── kieran-python-reviewer (for .py files)
       └── kieran-typescript-reviewer (for .ts/.tsx files)

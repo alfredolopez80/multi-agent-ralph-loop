@@ -284,8 +284,7 @@ Removes: Extra comments, defensive checks, \`any\` casts, inline imports
 **Option 2 - Code Review with Factorization:**
 \`\`\`yaml
 Task:
-  subagent_type: "code-reviewer"
-  model: "sonnet"
+  subagent_type: "codex-reviewer"
   prompt: |
     Review recent changes for AI code anti-patterns:
     - Dead code and unused imports

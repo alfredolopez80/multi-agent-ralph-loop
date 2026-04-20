@@ -165,7 +165,7 @@ Task:
 
 ## Worktree Awareness
 
-Same as code-reviewer: respect WORKTREE_CONTEXT if provided.
+Same as codex-reviewer: respect WORKTREE_CONTEXT if provided.
 
 ---
 

@@ -67,7 +67,7 @@ declare -A SKILL_MAPPING=(
     ["general-purpose"]="loop"
     ["security-scanner"]="security"
     ["bug-scanner"]="bugs"
-    ["code-reviewer"]="code-reviewer"
+    ["codex-reviewer"]="code-reviewer"
 )
 
 # Determine skill name

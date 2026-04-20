@@ -188,6 +188,7 @@ temp/
 
 # Git worktrees (v2.20 - isolated feature development)
 .worktrees/
+.claude/worktrees/
 
 # Improvement proposals (generated)
 improvements/pending.md

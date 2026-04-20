@@ -659,9 +659,9 @@ agent_memory() {
             echo "Examples:"
             echo "  agent_memory init security-auditor"
             echo "  agent_memory write security-auditor semantic 'Found SQL injection in auth.py'"
-            echo "  agent_memory transfer security-auditor code-reviewer relevant hoff_20260119_001"
+            echo "  agent_memory transfer security-auditor codex-reviewer relevant hoff_20260119_001"
             echo "  agent_memory find-handoff hoff_20260119_001"
-            echo "  agent_memory read code-reviewer"
+            echo "  agent_memory read codex-reviewer"
             ;;
         *)
             echo "Unknown command: $cmd"

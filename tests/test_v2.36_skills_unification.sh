@@ -185,7 +185,7 @@ test_agent_hooks() {
 
     # Test 2.1: Priority agents have hooks in frontmatter
     echo "Test 2.1: Priority agents have hooks in frontmatter"
-    local PRIORITY_AGENTS=("security-auditor" "orchestrator" "code-reviewer" "test-architect" "debugger")
+    local PRIORITY_AGENTS=("security-auditor" "orchestrator" "codex-reviewer" "test-architect" "debugger")
     local AGENTS_WITHOUT_HOOKS=()
 
     for agent in "${PRIORITY_AGENTS[@]}"; do

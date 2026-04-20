@@ -76,7 +76,7 @@ echo "  → Found $GLOBAL_AGENTS global agents"
 # Core agents
 check "@orchestrator agent exists" "[ -f ~/.claude/agents/orchestrator.md ]"
 check "@security-auditor agent exists" "[ -f ~/.claude/agents/security-auditor.md ]"
-check "@code-reviewer agent exists" "[ -f ~/.claude/agents/code-reviewer.md ]"
+check "@codex-reviewer agent exists" "[ -f ~/.claude/agents/codex-reviewer.md ]"
 check "@test-architect agent exists" "[ -f ~/.claude/agents/test-architect.md ]"
 check "@debugger agent exists" "[ -f ~/.claude/agents/debugger.md ]"
 

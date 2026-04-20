@@ -162,7 +162,7 @@
               },
               "agent": {
                 "type": ["string", "null"],
-                "description": "Agent to perform verification (e.g., test-architect, code-reviewer)"
+                "description": "Agent to perform verification (e.g., test-architect, codex-reviewer)"
               },
               "status": {
                 "type": "string",

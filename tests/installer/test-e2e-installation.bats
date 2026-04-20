@@ -533,7 +533,7 @@ EOF
 
     # Check for specific Ralph agent removal
     [[ ! -f "$E2E_HOME/.claude/agents/orchestrator.md" ]]
-    [[ ! -f "$E2E_HOME/.claude/agents/code-reviewer.md" ]]
+    [[ ! -f "$E2E_HOME/.claude/agents/codex-reviewer.md" ]]
 }
 
 @test "uninstall removes Ralph commands" {

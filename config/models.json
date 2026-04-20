@@ -50,7 +50,7 @@
   "subagent_models": {
     "orchestrator": "kimi-k2.5",
     "security-auditor": "kimi-k2.5",
-    "code-reviewer": "kimi-k2.5",
+    "codex-reviewer": "kimi-k2.5",
     "test-architect": "kimi-k2.5",
     "debugger": "kimi-k2.5",
     "refactorer": "kimi-k2.5",

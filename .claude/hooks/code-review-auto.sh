@@ -158,11 +158,10 @@ $changed_files
 
 **YOU MUST NOW EXECUTE ONE OF:**
 
-Option 1 - Use code-reviewer agent (RECOMMENDED):
+Option 1 - Use codex-reviewer agent (RECOMMENDED):
 \`\`\`yaml
 Task:
-  subagent_type: "code-reviewer"
-  model: "sonnet"
+  subagent_type: "codex-reviewer"
   prompt: |
     Review the recent changes for quality issues:
     - Runtime errors (exceptions, null checks)

@@ -60,7 +60,7 @@ ralph orch "Migrate database from MySQL to PostgreSQL"
 **Swarm mode is now ENABLED by default** using native Claude Code multi-agent features:
 
 1. **Team Creation**: Orchestrator creates team "orchestration-team" with identity
-2. **Teammate Spawning**: ExitPlanMode spawns 3 teammates (code-reviewer, test-architect, security-auditor)
+2. **Teammate Spawning**: ExitPlanMode spawns 3 teammates (codex-reviewer, test-architect, security-auditor)
 3. **Shared Task List**: All teammates see same tasks via TeammateTool
 4. **Inter-Agent Messaging**: Teammates can communicate via mailbox
 5. **Plan Approval**: Leader can approve/reject teammate plans

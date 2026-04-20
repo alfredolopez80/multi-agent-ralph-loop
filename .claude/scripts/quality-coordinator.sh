@@ -61,7 +61,7 @@ launch_quality_subagents() {
 
     # Create 4 quality tasks
     local security_task=$(create_quality_task "security" "sec-context-depth" "$target_file")
-    local review_task=$(create_quality_task "code-review" "code-reviewer" "$target_file")
+    local review_task=$(create_quality_task "code-review" "codex-reviewer" "$target_file")
     local deslop_task=$(create_quality_task "deslop" "code-cleanup" "$target_file")
     local stopslop_task=$(create_quality_task "stop-slop" "prose-cleanup" "$target_file")
 
@@ -70,7 +70,7 @@ launch_quality_subagents() {
 {
   "parallel_tasks": [
     {"task_file": "$security_task", "agent": "security-auditor"},
-    {"task_file": "$review_task", "agent": "code-reviewer"},
+    {"task_file": "$review_task", "agent": "codex-reviewer"},
     {"task_file": "$deslop_task", "agent": "refactorer"},
     {"task_file": "$stopslop_task", "agent": "docs-writer"}
   ],
