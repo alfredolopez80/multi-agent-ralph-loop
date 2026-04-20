@@ -1,0 +1,29 @@
+{
+  "version": "3.1.0",
+  "steps": [
+    {
+      "id": "1",
+      "name": "Analyze",
+      "status": "completed"
+    },
+    {
+      "id": "2",
+      "name": "Design",
+      "status": "completed"
+    },
+    {
+      "id": "3",
+      "name": "Implement",
+      "status": "in_progress"
+    },
+    {
+      "id": "4",
+      "name": "Test",
+      "status": "pending"
+    }
+  ],
+  "metadata": {
+    "session_id": "79d648f704205f53ec9fecb3ad3eab80",
+    "started_at": "2026-04-20T23:47:47+02:00"
+  }
+}

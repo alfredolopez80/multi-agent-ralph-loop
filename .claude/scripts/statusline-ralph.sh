@@ -322,7 +322,30 @@ get_ralph_progress() {
     local cwd="${1:-.}"
     local plan_state_file=""
 
-    # MemPalace v3.0: ONLY read LOCAL plan-state (per-repo isolation)
+    # TaskList projection (primary source for TaskList progress %).
+    # Written by .claude/hooks/task-list-projection.sh on TaskCreated/TaskCompleted.
+    local tasks_file="${cwd}/.claude/tasks.json"
+    if [[ -f "$tasks_file" ]]; then
+        local t_total t_done t_pct t_subj
+        t_total=$(jq -r '.total // 0' "$tasks_file" 2>/dev/null)
+        if [[ "$t_total" =~ ^[0-9]+$ ]] && [[ "$t_total" -gt 0 ]]; then
+            t_done=$(jq -r '.completed // 0' "$tasks_file" 2>/dev/null)
+            t_pct=$(jq -r '.pct // 0'       "$tasks_file" 2>/dev/null)
+            t_subj=$(jq -r 'first(.tasks[]? | select(.status != "completed") | .subject) // ""' "$tasks_file" 2>/dev/null)
+            local icon="📋"
+            [[ "$t_pct" -ge 100 ]] && icon="✅"
+            local details=""
+            [[ -n "$t_subj" ]] && details=" ${CYAN}${t_subj}${RESET}"
+            if [[ "$t_pct" -ge 100 ]]; then
+                printf '%b\n' "${BLUE}${icon}${RESET} ${GREEN}done${RESET}${details}"
+            else
+                printf '%b\n' "${BLUE}${icon}${RESET} ${DIM}${t_done}/${t_total}${RESET} ${CYAN}${t_pct}%${RESET}${details}"
+            fi
+            return
+        fi
+    fi
+
+    # Fallback: orchestrator plan-state (MemPalace v3.0 per-repo isolation)
     if [[ -f "${cwd}/.claude/plan-state.json" ]]; then
         plan_state_file="${cwd}/.claude/plan-state.json"
     fi
