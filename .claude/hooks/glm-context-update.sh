@@ -61,19 +61,21 @@ acquire_lock() {
     local timeout=5
     local count=0
 
-    # Check for stale lock (older than 10 seconds)
-    if [[ -f "$LOCK_FILE" ]]; then
+    # Check for stale lock (older than 10 seconds).
+    # Why: SIGKILL/crash mid-hook leaves $LOCK_FILE.dir orphaned with no $LOCK_FILE inside.
+    # We must inspect the DIR's mtime (the lock marker), not $LOCK_FILE which may never exist.
+    if [[ -d "$LOCK_FILE.dir" ]]; then
         local current_time lock_time lock_age
         current_time=$(date +%s)
         if [[ "$(uname)" == "Darwin" ]]; then
-            lock_time=$(stat -f%m "$LOCK_FILE" 2>/dev/null || echo 0)
+            lock_time=$(stat -f%m "$LOCK_FILE.dir" 2>/dev/null || echo 0)
         else
-            lock_time=$(stat -c%Y "$LOCK_FILE" 2>/dev/null || echo 0)
+            lock_time=$(stat -c%Y "$LOCK_FILE.dir" 2>/dev/null || echo 0)
         fi
         lock_age=$((current_time - lock_time))
 
         if [[ $lock_age -gt 10 ]]; then
-            echo "WARN: Removing stale lock (${lock_age}s old)" >&2
+            echo "WARN: Stealing stale lock (${lock_age}s old)" >&2
             rm -f "$LOCK_FILE" 2>/dev/null || true
             rmdir "$LOCK_FILE.dir" 2>/dev/null || true
         fi
