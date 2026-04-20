@@ -249,7 +249,8 @@ create_plan_state() {
     "source": "UserPromptSubmit"
   },
   "version": "2.57.0",
-  "updated_at": "$timestamp"
+  "updated_at": "$timestamp",
+  "last_updated": "$timestamp"
 }
 PLANEOF
 

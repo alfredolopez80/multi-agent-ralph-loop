@@ -102,7 +102,13 @@ atomic_jq_update() {
         return 1
     }
 
-    if jq "$@" "$filter" "$PLAN_STATE" > "$temp_file"; then
+    # v2.0: Dual-write freshness fields so Stop-chain gates and lifecycle
+    # archival never see a stale plan. Both .last_updated (v1 schema, read by
+    # anti-rationalization-gate.sh) and .updated_at (v2 schema, read by
+    # plan-state-lifecycle.sh) are overwritten with current ISO-UTC.
+    local full_filter="(${filter}) | .last_updated = (now | todate) | .updated_at = (now | todate)"
+
+    if jq "$@" "$full_filter" "$PLAN_STATE" > "$temp_file"; then
         mv "$temp_file" "$PLAN_STATE"
         return 0
     else

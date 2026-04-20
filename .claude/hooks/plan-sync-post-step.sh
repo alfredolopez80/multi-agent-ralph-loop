@@ -155,23 +155,13 @@ if [ "$SPEC_EXPORTS" != "[]" ] && [ "$ACTUAL_EXPORTS" != "[]" ]; then
     fi
 fi
 
-# Update plan-state with actual values and drift
+# Update plan-state with actual values and drift (v2.0: via lib/plan-state-writer.sh)
 TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-# SECURITY: Atomic update using mktemp to prevent race conditions (v2.45.1)
-TEMP_FILE=$(mktemp "${PLAN_STATE}.XXXXXX") || {
-    log "ERROR: Failed to create temp file for atomic update"
-    exit 1
-}
+# shellcheck disable=SC1091
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/plan-state-writer.sh"
 
-# Ensure temp file is cleaned up on exit
-trap 'rm -f "$TEMP_FILE"' EXIT
-
-if jq --arg step "$STEP_ID" \
-   --arg ts "$TIMESTAMP" \
-   --argjson actual_exports "$ACTUAL_EXPORTS" \
-   --argjson drift_detected "$DRIFT_DETECTED" \
-   --argjson drift_items "$DRIFT_ITEMS" '
+if ! plan_state_update "$PLAN_STATE" '
   .steps |= map(
     if .id == $step then
       .actual.exports = $actual_exports |
@@ -181,12 +171,13 @@ if jq --arg step "$STEP_ID" \
       (if $drift_detected then .drift.needs_sync = true else . end)
     else . end
   )
-' "$PLAN_STATE" > "$TEMP_FILE"; then
-    mv "$TEMP_FILE" "$PLAN_STATE"
-    trap - EXIT  # Clear trap on success
-else
-    log "ERROR: jq failed to update plan-state"
-    rm -f "$TEMP_FILE"
+' \
+    --arg step "$STEP_ID" \
+    --arg ts "$TIMESTAMP" \
+    --argjson actual_exports "$ACTUAL_EXPORTS" \
+    --argjson drift_detected "$DRIFT_DETECTED" \
+    --argjson drift_items "$DRIFT_ITEMS"; then
+    log "ERROR: plan_state_update failed"
     exit 1
 fi
 

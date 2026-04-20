@@ -134,19 +134,18 @@ LOG_FILE="$LOG_DIR/recursive-decompose-$(date +%Y%m%d).log"
 # Generate response with decomposition guidance (PostToolUse schema: "continue" not "decision")
 # v2.57.0 FIX: Use jq for proper JSON encoding to avoid invalid newlines
 if [[ "$NEEDS_DECOMPOSITION" == "true" ]]; then
-    # Update plan-state with recursion info (using --arg for safe escaping, with lock)
+    # v2.0: atomic update + dual-write freshness via lib/plan-state-writer.sh
     if [[ -f "$PLAN_STATE_FILE" ]]; then
-        TMP_FILE=$(mktemp)
+        # shellcheck disable=SC1091
+        source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/plan-state-writer.sh"
         acquire_plan_state_lock || true
-        trap 'release_plan_state_lock; rm -f "$TMP_FILE"' ERR EXIT
-        jq --arg reason "$DECOMPOSITION_REASON" \
-            '.recursion.needs_decomposition = true |
-            .recursion.decomposition_triggered = true |
-            .recursion.triggered_at = now |
-            .recursion.reason = $reason' \
-            "$PLAN_STATE_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$PLAN_STATE_FILE"
+        plan_state_update "$PLAN_STATE_FILE" '
+            .recursion.needs_decomposition = true
+            | .recursion.decomposition_triggered = true
+            | .recursion.triggered_at = now
+            | .recursion.reason = $reason
+        ' --arg reason "$DECOMPOSITION_REASON" || true
         release_plan_state_lock
-        trap 'rm -f "$TMP_FILE"' ERR EXIT
     fi
 
     # Build additionalContext with proper newline escaping

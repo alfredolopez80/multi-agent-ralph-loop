@@ -104,16 +104,11 @@ mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
 # Create additionalContext message for Claude
 LSA_CONTEXT="🔍 LSA Pre-Step: Verifying step '$CURRENT_STEP' - check spec compliance before implementing"
 
-# SECURITY: Atomic update using mktemp to prevent race conditions (v2.45.1)
-TEMP_FILE=$(mktemp "${PLAN_STATE}.XXXXXX") || {
-    log "ERROR: Failed to create temp file for atomic update"
-    exit 1
-}
+# v2.0: atomic update + dual-write freshness via lib/plan-state-writer.sh
+# shellcheck disable=SC1091
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/plan-state-writer.sh"
 
-trap 'rm -f "$TEMP_FILE"' EXIT
-
-# v2.62.3: Update plan-state with LSA pre-check (handles both formats)
-if jq --arg step "$CURRENT_STEP" --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '
+if ! plan_state_update "$PLAN_STATE" '
   if (.steps | type) == "array" then
     # v1 array format
     .steps |= map(
@@ -132,12 +127,10 @@ if jq --arg step "$CURRENT_STEP" --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '
       "spec_loaded": true
     }
   end
-' "$PLAN_STATE" > "$TEMP_FILE"; then
-    mv "$TEMP_FILE" "$PLAN_STATE"
-    trap - EXIT
-else
-    log "ERROR: jq failed to update plan-state"
-    rm -f "$TEMP_FILE"
+' \
+    --arg step "$CURRENT_STEP" \
+    --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)"; then
+    log "ERROR: plan_state_update failed"
     exit 1
 fi
 
