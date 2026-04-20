@@ -114,6 +114,16 @@ COUNTER=$(cat "$P/.claude/state/anti-rat-blocks.json")
 assert_output "counter resets to 0" '"blocks": 0' "$COUNTER"
 rm -rf "$P"
 
+echo "=== Test 8: plan-state with last_updated=null but fresh mtime → block confirmation ==="
+P=$(new_project)
+cat > "$P/.claude/plan-state.json" <<'EOF'
+{"version":"1.0","last_updated":null,"steps":[{"id":"s1","name":"step","status":"in_progress"}]}
+EOF
+# mtime is "now" by construction — the defensive fallback must catch it
+OUT=$(run_hook "$P" "{\"stop_hook_active\": false, \"cwd\": \"$P\", \"transcript\": \"Should I continue?\"}")
+assert_output "fallback to mtime when last_updated is null" 'Plan-immutability gate' "$OUT"
+rm -rf "$P"
+
 echo "=== Test 7: project isolation — global ~/.ralph/active-plan is IGNORED ==="
 P=$(new_project)
 # Simulate a polluted HOME with an active plan that the hook must IGNORE.

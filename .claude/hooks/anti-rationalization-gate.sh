@@ -77,6 +77,7 @@ FRESH_WINDOW=1800  # 30 minutes
 # 1) Project-level plan-state.json
 PROJECT_PLAN_STATE="$CWD/.claude/plan-state.json"
 if [[ -f "$PROJECT_PLAN_STATE" ]]; then
+  UPDATED_EPOCH=0
   LAST_UPDATED=$(jq -r '.last_updated // ""' "$PROJECT_PLAN_STATE" 2>/dev/null)
   if [[ -n "$LAST_UPDATED" && "$LAST_UPDATED" != "null" ]]; then
     TS="${LAST_UPDATED%%+*}"; TS="${TS%Z}"
@@ -84,15 +85,23 @@ if [[ -f "$PROJECT_PLAN_STATE" ]]; then
     UPDATED_EPOCH=$(TZ=UTC date -j -f "%Y-%m-%dT%H:%M:%S" "$TS" "+%s" 2>/dev/null \
       || date -d "$LAST_UPDATED" "+%s" 2>/dev/null \
       || echo 0)
-    NOW_EPOCH=$(date "+%s")
-    AGE_SEC=$((NOW_EPOCH - UPDATED_EPOCH))
-    if [[ "$UPDATED_EPOCH" -gt 0 && "$AGE_SEC" -ge 0 && "$AGE_SEC" -lt "$FRESH_WINDOW" ]]; then
-      IN_PROGRESS=$(jq -r '[.steps[]? | select(.status == "in_progress")] | length' "$PROJECT_PLAN_STATE" 2>/dev/null || echo 0)
-      if [[ "${IN_PROGRESS:-0}" -gt 0 ]]; then
-        HAS_ACTIVE_PLAN=true
-        NEXT=$(jq -r '[.steps[]? | select(.status == "in_progress")][0].name // "unnamed"' "$PROJECT_PLAN_STATE" 2>/dev/null | head -c 120)
-        ACTIVE_PLAN_DETAIL="plan-state.json step: $NEXT"
-      fi
+  fi
+  # Defensive fallback: several updater hooks (plan-sync-post-step, auto-plan-state,
+  # plan-state-adaptive, ...) mutate .steps[] without rewriting .last_updated.
+  # When that happens, file mtime is the best proxy for freshness.
+  if [[ "$UPDATED_EPOCH" -eq 0 ]]; then
+    UPDATED_EPOCH=$(stat -f %m "$PROJECT_PLAN_STATE" 2>/dev/null \
+      || stat -c %Y "$PROJECT_PLAN_STATE" 2>/dev/null \
+      || echo 0)
+  fi
+  NOW_EPOCH=$(date "+%s")
+  AGE_SEC=$((NOW_EPOCH - UPDATED_EPOCH))
+  if [[ "$UPDATED_EPOCH" -gt 0 && "$AGE_SEC" -ge 0 && "$AGE_SEC" -lt "$FRESH_WINDOW" ]]; then
+    IN_PROGRESS=$(jq -r '[.steps[]? | select(.status == "in_progress")] | length' "$PROJECT_PLAN_STATE" 2>/dev/null || echo 0)
+    if [[ "${IN_PROGRESS:-0}" -gt 0 ]]; then
+      HAS_ACTIVE_PLAN=true
+      NEXT=$(jq -r '[.steps[]? | select(.status == "in_progress")][0].name // "unnamed"' "$PROJECT_PLAN_STATE" 2>/dev/null | head -c 120)
+      ACTIVE_PLAN_DETAIL="plan-state.json step: $NEXT"
     fi
   fi
 fi
