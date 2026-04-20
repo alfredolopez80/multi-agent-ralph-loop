@@ -78,32 +78,21 @@ See: `docs/batch-execution/BATCH_SKILLS_v2.88.0.md`
 
 See: `docs/architecture/UNIFIED_ARCHITECTURE_v2.87.md`
 
-### Skills Distribution Directories (v2.90.1)
+### Skills Distribution (single-source)
 
-When creating or modifying skills in `.claude/skills/<name>/`, symlinks **MUST** be created in all 6 platform directories:
-
-| Directory | Platform |
-|-----------|----------|
-| `~/.claude/skills/<name>` | Claude Code (primary) |
-| `~/.codex/skills/<name>` | Codex |
-| `~/.ralph/skills/<name>` | Ralph |
-| `~/.cc-mirror/zai/config/skills/<name>` | Zai (cc-mirror) |
-| `~/.cc-mirror/minimax/config/skills/<name>` | Minimax (cc-mirror) |
-| `~/.config/agents/skills/<name>` | Agents (generic) |
+Skills live in the repo at `.claude/skills/<name>/`. Claude Code picks them up via the `~/.claude/skills/<name>` symlink created by `auto-sync-global.sh` at SessionStart.
 
 **Source of truth**: `.claude/skills/<name>/` in this repo.
 
-**Create symlinks**:
+**Create symlink** (only needed for new skills):
 ```bash
 SKILL_NAME="my-skill"
-REPO="$(git rev-parse --show-toplevel 2>/dev/null || echo ~/Documents/GitHub/multi-agent-ralph-loop)"
-for dir in ~/.claude/skills ~/.codex/skills ~/.ralph/skills \
-           ~/.cc-mirror/zai/config/skills ~/.cc-mirror/minimax/config/skills \
-           ~/.config/agents/skills; do
-  mkdir -p "$dir"
-  ln -sfn "$REPO/.claude/skills/$SKILL_NAME" "$dir/$SKILL_NAME"
-done
+REPO="$(git rev-parse --show-toplevel)"
+mkdir -p ~/.claude/skills
+ln -sfn "$REPO/.claude/skills/$SKILL_NAME" ~/.claude/skills/$SKILL_NAME
 ```
+
+Legacy multi-platform distribution (cc-mirror, codex, ralph, agents) was removed in v3.x — the project is single-user, single-target (Claude Code), with model selection via CLI env var injection.
 
 ## Browser Automation (v3.0)
 
@@ -388,6 +377,4 @@ All documentation in `docs/`:
 
 ## References
 
-- [claude-sneakpeek](https://github.com/mikekelly/claude-sneakpeek) - Zai variant
-- [cc-mirror](https://github.com/numman-ali/cc-mirror) - Documentation patterns
 - [Claude Code Docs](https://github.com/ericbuess/claude-code-docs) - Official docs mirror

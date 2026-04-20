@@ -65,12 +65,29 @@ case "$TOOL_NAME" in
         ;;
 esac
 
-# Get current working directory (project)
-PROJECT_DIR=$(pwd 2>/dev/null || echo "$HOME")
+# Resolve project root via worktree-utils (CLAUDE_PROJECT_DIR + git toplevel
+# + guard against CWDs nested in .claude/). Prevents contaminating skill
+# directories with nested .claude/progress.md when session CWD is
+# .claude/skills/<name>/.
+# shellcheck source=./lib/worktree-utils.sh
+HOOK_DIR="$(dirname "${BASH_SOURCE[0]}")"
+if [[ -f "${HOOK_DIR}/lib/worktree-utils.sh" ]]; then
+    # shellcheck disable=SC1091
+    source "${HOOK_DIR}/lib/worktree-utils.sh"
+    PROJECT_DIR="$(get_safe_project_root 2>/dev/null || pwd)"
+else
+    PROJECT_DIR=$(pwd 2>/dev/null || echo "$HOME")
+fi
 PROGRESS_FILE="${PROJECT_DIR}/.claude/progress.md"
 
-# Ensure .claude directory exists in project
-mkdir -p "${PROJECT_DIR}/.claude" 2>/dev/null || true
+# Only create .claude/ if project already has one (never auto-create in
+# random CWDs like skill subdirs — prevents contamination).
+if [[ ! -d "${PROJECT_DIR}/.claude" ]]; then
+    log "INFO" "Skipping progress tracking: no .claude/ at $PROJECT_DIR"
+    trap - EXIT
+    echo '{"continue": true}'
+    exit 0
+fi
 
 # Extract relevant info based on tool type
 extract_tool_info() {

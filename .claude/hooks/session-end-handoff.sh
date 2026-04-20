@@ -69,13 +69,10 @@ log() {
     echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] [$level] $*" >> "$LOG_FILE" 2>/dev/null || true
 }
 
-# Source environment detection
-if [[ -f "${HOOKS_DIR}/detect-environment.sh" ]]; then
-    source "${HOOKS_DIR}/detect-environment.sh" 2>/dev/null || true
-fi
-
 # SEC-2.1: Source integrity library for checksum creation
-INTEGRITY_LIB="${HOOKS_DIR}/handoff-integrity.sh"
+# v3.0.1: Library lives under .claude/lib/, not .claude/hooks/. Resolved
+# via the hook's own directory so it works in the main repo and worktrees.
+INTEGRITY_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" 2>/dev/null && pwd)/handoff-integrity.sh"
 if [[ -f "$INTEGRITY_LIB" ]]; then
     source "$INTEGRITY_LIB" 2>/dev/null || true
 fi

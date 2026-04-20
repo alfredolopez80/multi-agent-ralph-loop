@@ -17,13 +17,17 @@
 #   removeWorktree <slug> - Force-remove a worktree and its branch
 
 get_project_root() {
-  if [[ -n "${CLAUDE_PROJECT_DIR:-}" ]]; then echo "$CLAUDE_PROJECT_DIR"
-  else git rev-parse --show-toplevel 2>/dev/null || echo "."
+  if [[ -n "${CLAUDE_PROJECT_DIR:-}" && -d "${CLAUDE_PROJECT_DIR}" ]]; then echo "$CLAUDE_PROJECT_DIR"
+  elif [[ -d "${PWD:-}" ]]; then git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"
+  else echo "${CLAUDE_PROJECT_DIR:-.}"
   fi
 }
 
 get_main_repo() {
-  if [[ -n "${CLAUDE_PROJECT_DIR:-}" ]]; then echo "$CLAUDE_PROJECT_DIR"; return; fi
+  # Fast path: CLAUDE_PROJECT_DIR is always the main repo root (set by Claude Code)
+  if [[ -n "${CLAUDE_PROJECT_DIR:-}" && -d "${CLAUDE_PROJECT_DIR}" ]]; then echo "$CLAUDE_PROJECT_DIR"; return; fi
+  # Guard: if CWD doesn't exist (deleted worktree), git commands will fail
+  if [[ ! -d "${PWD:-}" ]]; then echo "${CLAUDE_PROJECT_DIR:-.}"; return; fi
   local toplevel
   toplevel="$(git rev-parse --show-toplevel 2>/dev/null || echo ".")"
   if [[ -f "$toplevel/.git" ]]; then
@@ -42,6 +46,21 @@ get_main_repo() {
 
 get_claude_dir() {
   echo "$(get_main_repo)/.claude"
+}
+
+# get_safe_project_root — like get_project_root, but refuses paths that
+# live *inside* a .claude/ tree (e.g., CWD=.claude/skills/X). Prevents
+# hooks from materializing nested .claude/{progress.md,plan-state.json,
+# agents/,hooks/} inside skill or subcomponent directories.
+get_safe_project_root() {
+  local root
+  root="$(get_project_root)"
+  # Strip at the first /.claude/ segment so a CWD like
+  # /repo/.claude/skills/foo returns /repo.
+  if [[ "$root" == *"/.claude/"* ]]; then
+    root="${root%%/.claude/*}"
+  fi
+  echo "$root"
 }
 
 is_worktree() {

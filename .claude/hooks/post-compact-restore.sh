@@ -47,8 +47,9 @@ log() {
 }
 
 # SEC-2.1: Source integrity library for checksum verification
+# v3.0.1: Library lives under .claude/lib/, not .claude/hooks/
 HOOKS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INTEGRITY_LIB="${HOOKS_DIR}/handoff-integrity.sh"
+INTEGRITY_LIB="${HOOKS_DIR}/../lib/handoff-integrity.sh"
 if [[ -f "$INTEGRITY_LIB" ]]; then
     source "$INTEGRITY_LIB" 2>/dev/null || true
 fi
