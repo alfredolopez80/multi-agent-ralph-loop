@@ -26,12 +26,23 @@ trap 'echo "SessionStart orchestrator-init recovery"' ERR
 
 umask 077
 
+# Worktree-safe path resolution
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() { get_project_root; }
+}
+
 # Paths - Initialize all variables before use
 RALPH_DIR="${HOME}/.ralph"
 LOG_DIR="${RALPH_DIR}/logs"
 
 # MemPalace v3.0: plan-state is LOCAL (repo-specific), always
-CWD=$(echo "$INPUT" | jq -r '.cwd // "."' 2>/dev/null || echo ".")
+# v2.70.0: Use worktree-safe resolution instead of raw CWD
+CWD=$(echo "$INPUT" | jq -r '.cwd // ""' 2>/dev/null || echo "")
+if [[ -z "$CWD" || "$CWD" == "." || ! -d "$CWD" ]]; then
+    CWD="$(get_main_repo 2>/dev/null || echo ".")"
+fi
 PLAN_STATE="${CWD}/.claude/plan-state.json"
 # If local doesn't exist, create a clean empty plan-state
 if [[ ! -f "$PLAN_STATE" ]]; then

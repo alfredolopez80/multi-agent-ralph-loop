@@ -135,7 +135,7 @@ for agent in $KNOWN_AGENTS; do
     for diary_file in "${diary_dir}"/*.md; do
         [[ ! -f "$diary_file" ]] && continue
         while IFS= read -r line; do
-            cat_name=$(echo "$line" | grep -oE 'Task category.*:.*' | sed 's/Task category.*: *//' | tr -d '*' | head -c 30)
+            cat_name=$(echo "$line" | grep -oE 'Task category.*:.*' 2>/dev/null | sed 's/Task category.*: *//' | tr -d '*' | head -c 30 || true)
             [[ -z "$cat_name" ]] && continue
             category_counts["$cat_name"]=$(( ${category_counts["$cat_name"]:-0} + 1 ))
         done < "$diary_file"

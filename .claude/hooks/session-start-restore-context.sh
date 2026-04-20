@@ -17,9 +17,16 @@
 # 3. Restoring plan state if exists
 # 4. Injecting context into the new session
 
-# VERSION: 3.2.0
-# UPDATED: 2026-04-07 (vault-first architecture, reads from Obsidian migrated data)
+# VERSION: 3.3.0
+# UPDATED: 2026-04-17 (worktree-safe path resolution via worktree-utils.sh)
 set -euo pipefail
+
+# Worktree-safe path resolution
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() { get_project_root; }
+}
 
 # Configuration
 LOG_FILE="${HOME}/.ralph/logs/session-start-restore.log"
@@ -128,8 +135,8 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"' 2>/dev/null || ech
 SESSION_ID=$(echo "$SESSION_ID" | tr -cd 'a-zA-Z0-9_-' | head -c 64)
 [[ -z "$SESSION_ID" ]] && SESSION_ID="unknown"
 
-# Get project directory
-PROJECT_DIR="$(pwd)"
+# Get project directory (worktree-safe: resolves to main repo root)
+PROJECT_DIR="$(get_main_repo 2>/dev/null || pwd)"
 PROJECT_NAME="$(basename "$PROJECT_DIR")"
 
 log "INFO" "SessionStart hook triggered - session: $SESSION_ID, project: $PROJECT_NAME"

@@ -1,11 +1,11 @@
-#!/bin/bash
 #!/usr/bin/env bash
-# VERSION: 2.69.0
+# VERSION: 2.70.0
 # Hook: Plan-Sync Post-Step
 # Trigger: PostToolUse (after Edit or Write completes in orchestrated context)
 # Purpose: Detect drift and trigger Plan-Sync agent for downstream patching
 # Security: v2.45.1 - Fixed race condition, path traversal, atomic updates
 # SEC-047: Added guaranteed JSON output for PostToolUse hooks
+# v2.70.0: Worktree-safe path resolution via worktree-utils.sh
 
 # SEC-111: Read input from stdin with length limit (100KB max)
 # Prevents DoS from malicious input
@@ -17,8 +17,16 @@ set -euo pipefail
 # SEC-047: Error trap for guaranteed JSON output (PostToolUse format)
 trap 'echo "{\"continue\": true}"' ERR EXIT
 
-# Configuration
-PLAN_STATE=".claude/plan-state.json"
+# Worktree-safe path resolution
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() { get_project_root; }
+}
+
+# Configuration — absolute path via get_main_repo (worktree-safe)
+_PROJECT_ROOT="$(get_main_repo 2>/dev/null || pwd)"
+PLAN_STATE="${_PROJECT_ROOT}/.claude/plan-state.json"
 LOG_FILE="${HOME}/.ralph/logs/plan-sync.log"
 SYNC_LOG="${HOME}/.ralph/logs/drift-history.jsonl"
 
@@ -46,12 +54,12 @@ validate_file_path() {
         return 1
     fi
 
-    # Resolve to absolute path and verify it's under current directory
+    # Resolve to absolute path and verify it's under project root
     resolved=$(realpath -m "$path" 2>/dev/null || echo "")
-    local cwd
-    cwd=$(pwd)
+    local project_root
+    project_root="$(get_main_repo 2>/dev/null || pwd)"
 
-    if [[ ! "$resolved" == "$cwd"* ]]; then
+    if [[ ! "$resolved" == "$project_root"* ]]; then
         log "SECURITY: Path traversal attempt blocked: $path"
         return 1
     fi

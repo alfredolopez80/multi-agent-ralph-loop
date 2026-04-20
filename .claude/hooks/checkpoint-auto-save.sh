@@ -15,9 +15,17 @@ INPUT=$(head -c 100000)
 set -euo pipefail
 umask 077
 
-# VERSION: 2.84.3
+# VERSION: 2.85.0
+# v2.85.0: Worktree-safe $(pwd) replacement
 # v2.81.2: FIX JSON schema - use hookSpecificOutput for PreToolUse
 # v2.66.6: SEC-049 - Fixed registration (was PostToolUse, now PreToolUse)
+
+# Worktree-safe path resolution
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() { get_project_root; }
+}
 
 # Error trap: Always output valid JSON for PreToolUse
 trap 'echo "{\"decision\": \"allow\"}"' ERR EXIT
@@ -67,7 +75,7 @@ create_checkpoint() {
         --arg ts "$(date -u +"%Y-%m-%d %H:%M:%S")" \
         --arg trig "$trigger" \
         --arg desc "$description" \
-        --arg cwd "$(pwd)" \
+        --arg cwd "$(get_main_repo 2>/dev/null || pwd)" \
         '{
             id: $id,
             timestamp: $ts,

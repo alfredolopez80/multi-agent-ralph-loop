@@ -41,8 +41,15 @@ set -euo pipefail
 # v2.87.0 FIX: UserPromptSubmit uses {"continue": true} format, not {}
 trap 'echo "{\"continue\": true}"' ERR EXIT
 
+# Worktree-safe path resolution
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() { get_project_root; }
+}
 
-PLAN_STATE=".claude/plan-state.json"
+_PROJECT_ROOT="$(get_main_repo 2>/dev/null || pwd)"
+PLAN_STATE="${_PROJECT_ROOT}/.claude/plan-state.json"
 LOG_FILE="${HOME}/.ralph/logs/plan-state-lifecycle.log"
 ARCHIVE_DIR="${HOME}/.ralph/archive/plans"
 AUTO_ARCHIVE="${PLAN_STATE_AUTO_ARCHIVE:-true}"  # Enable auto-archive by default

@@ -72,7 +72,7 @@ if command -v jq &>/dev/null; then
     if [[ -d "$LEDGER_DIR" ]]; then
         LEDGER_COUNT=$(find "$LEDGER_DIR" -name "*.json" -type f 2>/dev/null | wc -l | tr -d ' ')
         if [[ "$LEDGER_COUNT" -gt 0 ]]; then
-            LATEST_LEDGER=$(find "$LEDGER_DIR" -name "*.json" -type f -mtime -7 2>/dev/null | head -1)
+            LATEST_LEDGER=$(find "$LEDGER_DIR" -name "*.json" -type f -mtime -7 2>/dev/null | head -1 || true)
             if [[ -n "$LATEST_LEDGER" ]]; then
                 LEDGER_GOAL=$(jq -r '.goal // "No goal recorded"' "$LATEST_LEDGER" 2>/dev/null | head -1 || echo "No goal")
                 SUMMARY_PARTS+=("## Latest Session Ledger\nGoal: ${LEDGER_GOAL:0:100}")
