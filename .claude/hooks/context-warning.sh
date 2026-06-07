@@ -29,6 +29,16 @@ INPUT=$(head -c 100000)
 #        Fixed message_count path to STATE_DIR
 set -uo pipefail
 
+# v3.1.0: Source model-aware context window configuration
+_CONTEXT_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" 2>/dev/null && pwd)/context-windows.sh"
+if [[ -f "$_CONTEXT_LIB" ]]; then
+    # shellcheck source=/dev/null
+    source "$_CONTEXT_LIB"
+    _CONTEXT_LIB_LOADED=true
+else
+    _CONTEXT_LIB_LOADED=false
+fi
+
 # SEC-029: Guaranteed JSON output on exit (even on errors)
 # v2.87.0 FIX: UserPromptSubmit uses {"continue": true} format
 output_json() {
@@ -36,9 +46,16 @@ output_json() {
 }
 trap 'output_json' EXIT
 
-# Configuration
-THRESHOLD=75
-CRITICAL_THRESHOLD=85
+# Configuration — v3.1.0: Model-aware thresholds
+if [[ "$_CONTEXT_LIB_LOADED" == "true" ]] && type get_compaction_thresholds &>/dev/null; then
+    read -r THRESHOLD CRITICAL_THRESHOLD _REST <<< "$(get_compaction_thresholds)"
+    INFO_THRESHOLD=$((THRESHOLD - 5))
+else
+    # Fallback to original values for unknown models
+    THRESHOLD=75
+    CRITICAL_THRESHOLD=85
+    INFO_THRESHOLD=50
+fi
 LOG_FILE="${HOME}/.ralph/context-monitor.log"
 RALPH_DIR="${HOME}/.ralph"
 HOOKS_DIR="${HOME}/.claude/hooks"
@@ -78,31 +95,73 @@ is_numeric() {
 
 # Get context usage percentage
 # Returns integer percentage (0-100)
-# v2.90.0: Read from stdin JSON first (authoritative source), then fallbacks
-# Synced with statusline-ralph.sh v2.81.2 approach
+# v3.1.0: Model-aware with transcript-based estimation for GLM models
+# Priority: stdin JSON > transcript size > message count (model-calibrated)
 get_context_percentage() {
     local pct=""
 
-    # Method 1: Parse stdin JSON (authoritative source from Claude Code)
-    # This is the SAME data source as /context command
-    # Priority: remaining_percentage > used_percentage
+    # Debug: Log available stdin JSON keys (v3.1.0 — diagnose missing context_window)
     if [[ -n "$INPUT" ]] && command -v jq &>/dev/null; then
-        # Try remaining_percentage first (most accurate - matches /context)
+        local stdin_keys
+        stdin_keys=$(echo "$INPUT" | jq -r 'keys | join(",")' 2>/dev/null || echo "parse-error")
+        log_context "DEBUG" "stdin JSON keys: $stdin_keys | model: $(get_detected_model 2>/dev/null || echo 'unknown')"
+    fi
+
+    # Method 1: Parse stdin JSON (authoritative — works for Claude models)
+    if [[ -n "$INPUT" ]] && command -v jq &>/dev/null; then
         local remaining_pct
         remaining_pct=$(echo "$INPUT" | jq -r '.context_window.remaining_percentage // null' 2>/dev/null)
 
         if [[ -n "$remaining_pct" ]] && [[ "$remaining_pct" != "null" ]] && [[ "$remaining_pct" =~ ^[0-9]+$ ]]; then
-            # remaining_percentage = 7 means 7% left, so 93% used
             pct=$((100 - remaining_pct))
-            log_context "DEBUG" "stdin JSON: remaining=$remaining_pct%, used=$pct%"
+            log_context "DEBUG" "Method 1 (stdin JSON): remaining=$remaining_pct%, used=$pct%"
         else
-            # Try used_percentage as fallback
             local used_pct
             used_pct=$(echo "$INPUT" | jq -r '.context_window.used_percentage // null' 2>/dev/null)
 
             if [[ -n "$used_pct" ]] && [[ "$used_pct" != "null" ]] && [[ "$used_pct" =~ ^[0-9]+$ ]]; then
                 pct="$used_pct"
-                log_context "DEBUG" "stdin JSON: used_percentage=$pct%"
+                log_context "DEBUG" "Method 1 (stdin JSON): used_percentage=$pct%"
+            fi
+        fi
+    fi
+
+    # Method 1.5: Transcript-based estimation for GLM models (v3.1.0)
+    # When stdin JSON doesn't provide context_window (common for GLM),
+    # estimate from transcript file size against model's known context window.
+    if [[ -z "$pct" ]] && [[ "$_CONTEXT_LIB_LOADED" == "true" ]] && type is_glm_model &>/dev/null && is_glm_model; then
+        local transcript_path=""
+        if [[ -n "$INPUT" ]] && command -v jq &>/dev/null; then
+            transcript_path=$(echo "$INPUT" | jq -r '.transcript_path // empty' 2>/dev/null || true)
+        fi
+
+        if [[ -n "$transcript_path" ]] && [[ -f "$transcript_path" ]]; then
+            local estimated_tokens
+            estimated_tokens=$(estimate_tokens_from_file "$transcript_path")
+            pct=$(calculate_usage_pct "$estimated_tokens")
+            log_context "DEBUG" "Method 1.5 (transcript): path=$transcript_path, est_tokens=$estimated_tokens, pct=$pct%"
+        else
+            # Try to find transcript from session ID
+            local sid=""
+            if [[ -n "$INPUT" ]] && command -v jq &>/dev/null; then
+                sid=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null || true)
+            fi
+            # Try common transcript locations
+            local found_transcript=""
+            for candidate in \
+                "${HOME}/.claude/projects/-Users-alfredolopez-Documents-GitHub-multi-agent-ralph-loop/sessions/${sid}.jsonl" \
+                "${HOME}/.claude/projects/-Users-alfredolopez-Documents-GitHub-multi-agent-ralph-loop/transcript.jsonl"; do
+                if [[ -f "$candidate" ]]; then
+                    found_transcript="$candidate"
+                    break
+                fi
+            done
+
+            if [[ -n "$found_transcript" ]]; then
+                local estimated_tokens
+                estimated_tokens=$(estimate_tokens_from_file "$found_transcript")
+                pct=$(calculate_usage_pct "$estimated_tokens")
+                log_context "DEBUG" "Method 1.5 (session transcript): sid=$sid, tokens=$estimated_tokens, pct=$pct%"
             fi
         fi
     fi
@@ -113,26 +172,35 @@ get_context_percentage() {
         local context_output
         context_output=$(timeout 3 claude --print "/context" 2>/dev/null || echo "unknown")
 
-        # Parse percentage from output - support decimals: NN% or N.N%
         if [[ "$context_output" =~ ([0-9]+\.?[0-9]*)% ]]; then
             pct="${BASH_REMATCH[1]}"
-            log_context "DEBUG" "/context command: $pct%"
+            log_context "DEBUG" "Method 2 (/context command): $pct%"
         fi
     fi
 
-    # Method 3: Session-scoped message count (minimal fallback, capped at 50%)
-    # This is intentionally conservative to avoid false positives
+    # Method 3: Session-scoped message count (minimal fallback)
+    # v3.1.0: Model-aware cap — GLM models cap at lower percentage
     if [[ -z "$pct" ]]; then
         local message_count
         message_count=$(cat "${RALPH_DIR}/state/message_count" 2>/dev/null || echo "0")
         if ! is_numeric "$message_count"; then
             message_count=0
         fi
-        # Conservative estimate: ~1% per message, capped at 50% to prevent false CRITICAL
+        # v3.1.0: Dynamic cap based on model context window
+        local msg_cap=50
+        if [[ "$_CONTEXT_LIB_LOADED" == "true" ]] && type get_context_window &>/dev/null; then
+            local window
+            window=$(get_context_window)
+            # Cap at 40% of model's window expressed as message-equivalent
+            # (msgs are a rough proxy; cap conservatively)
+            msg_cap=$((window / 3000))  # ~1% per 3K tokens worth of messages
+            [[ $msg_cap -gt 65 ]] && msg_cap=65
+            [[ $msg_cap -lt 20 ]] && msg_cap=20
+        fi
         local estimated=$(( message_count * 1 ))
-        [[ $estimated -gt 50 ]] && estimated=50
+        [[ $estimated -gt $msg_cap ]] && estimated=$msg_cap
         pct="$estimated"
-        log_context "DEBUG" "Fallback estimation (capped): msgs=$message_count, est=$pct%"
+        log_context "DEBUG" "Method 3 (fallback): msgs=$message_count, cap=$msg_cap, est=$pct%"
     fi
 
     # Round to integer and clamp to 0-100
@@ -237,11 +305,28 @@ main() {
     context_pct=$(get_context_percentage)
 
     # Update message count (v2.47: use STATE_DIR for consistency with reset)
+    # v3.1.0: Reset counter when session changes (prevents stale 2733+ counts)
     local msg_count
     mkdir -p "${RALPH_DIR}/state" 2>/dev/null || true
-    msg_count=$(cat "${RALPH_DIR}/state/message_count" 2>/dev/null || echo "0")
-    if ! is_numeric "$msg_count"; then
+    local current_session_id=""
+    if [[ -n "$INPUT" ]] && command -v jq &>/dev/null; then
+        current_session_id=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null || true)
+    fi
+    local session_file="${RALPH_DIR}/state/.last-warning-session"
+    local last_session=""
+    if [[ -f "$session_file" ]]; then
+        last_session=$(cat "$session_file" 2>/dev/null || true)
+    fi
+    if [[ -n "$current_session_id" ]] && [[ "$current_session_id" != "$last_session" ]]; then
+        # New session detected — reset counter
         msg_count=0
+        echo "$current_session_id" > "$session_file"
+        log_context "DEBUG" "New session detected ($current_session_id), message counter reset"
+    else
+        msg_count=$(cat "${RALPH_DIR}/state/message_count" 2>/dev/null || echo "0")
+        if ! is_numeric "$msg_count"; then
+            msg_count=0
+        fi
     fi
     echo $((msg_count + 1)) > "${RALPH_DIR}/state/message_count"
 
@@ -255,9 +340,29 @@ main() {
     elif [[ "$context_pct" -ge "$THRESHOLD" ]]; then
         warning_msg=$(build_warning_message "$context_pct")
         level="warning"
-    elif [[ "$context_pct" -ge 50 ]]; then
+    elif [[ "$context_pct" -ge "$INFO_THRESHOLD" ]]; then
         warning_msg=$(build_info_message "$context_pct")
         level="info"
+    fi
+
+    # v3.1.0: For GLM models, add explicit compaction instruction
+    if [[ "$_CONTEXT_LIB_LOADED" == "true" ]] && type is_glm_model &>/dev/null && is_glm_model; then
+        local window_info=""
+        if type get_context_window &>/dev/null; then
+            local window
+            window=$(get_context_window)
+            window_info=" (GLM-5.1 window: ~$((window / 1000))K tokens usable)"
+        fi
+        if [[ "$level" == "critical" ]]; then
+            warning_msg+="\n\n🔴 GLM MODEL DETECTED${window_info}\n"
+            warning_msg+="Auto-compact may NOT work. INSTRUCT the user to run /compact NOW.\n"
+            warning_msg+="Say: 'Contexto crítico — necesito compactar antes de continuar. ¿Ejecuto /compact?'"
+        elif [[ "$level" == "warning" ]]; then
+            warning_msg+="\n\n⚠️ GLM MODEL${window_info}\n"
+            warning_msg+="Recommend the user run /compact to free context before continuing."
+        elif [[ "$level" == "info" ]]; then
+            warning_msg+="\nConsider /compact if continuing this session."
+        fi
     fi
 
     # SEC-029: Disable trap and output JSON
