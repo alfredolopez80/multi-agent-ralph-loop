@@ -1,6 +1,8 @@
 ---
-# VERSION: 3.0.0
-model: default
+# VERSION: 3.0.1
+# Model: inherits from parent session (model-agnostic).
+# Override at spawn time via Task({ model: "sonnet" | "opus" | "haiku" })
+# if a specific tier is needed.
 name: ralph-frontend
 description: |
   Frontend specialist teammate for Agent Teams. Loads DESIGN.md for design consistency, enforces WCAG 2.1 AA, tests 8 component states. Use when implementing frontend features, UI components, or visual elements.
