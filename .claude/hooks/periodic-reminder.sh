@@ -79,20 +79,29 @@ is_numeric() {
 # Get current context usage percentage
 # ============================================================================
 get_context_percentage() {
-    # PERF v3.1.1: recursive `claude --print "/context"` removed. It had NO timeout here,
-    # so it could block this UserPromptSubmit hook indefinitely (root-cause family of the
-    # 4.4s/message bug). Fall through to the message-count estimate below.
-    local context_output="unknown"
+    # PERF v3.1.1 + fix: recursive `claude --print "/context"` removed (no timeout — could
+    # block this hook indefinitely). Read the authoritative context % from the hook's stdin
+    # JSON (same source as context-warning.sh Method 1); fall back to the POPULATED counter.
+    local pct=""
+    if [[ -n "$INPUT" ]] && command -v jq &>/dev/null; then
+        local remaining_pct used_pct
+        remaining_pct=$(printf '%s' "$INPUT" | jq -r '.context_window.remaining_percentage // empty' 2>/dev/null)
+        if [[ "$remaining_pct" =~ ^[0-9]+$ ]]; then
+            pct=$((100 - remaining_pct))
+        else
+            used_pct=$(printf '%s' "$INPUT" | jq -r '.context_window.used_percentage // empty' 2>/dev/null)
+            [[ "$used_pct" =~ ^[0-9]+$ ]] && pct="$used_pct"
+        fi
+    fi
 
-    # Parse percentage - support decimals: NN% or N.N%
-    if [[ "$context_output" =~ ([0-9]+\.?[0-9]*)% ]]; then
-        local pct="${BASH_REMATCH[1]}"
+    if [[ -n "$pct" ]]; then
         # Clamp to 0-100 range
         awk -v val="$pct" 'BEGIN { printf "%.0f\n", (val > 100 ? 100 : (val < 0 ? 0 : val)) }'
     else
-        # Fallback: estimate based on message count
+        # Fallback: estimate from the POPULATED counter. The bare ${RALPH_DIR}/message_count
+        # is never written by any hook; the real counter lives under state/.
         local message_count
-        message_count=$(safe_read_file "${RALPH_DIR}/message_count")
+        message_count=$(safe_read_file "${RALPH_DIR}/state/message_count")
         if ! is_numeric "$message_count" || [ -z "$message_count" ]; then
             message_count=0
         fi

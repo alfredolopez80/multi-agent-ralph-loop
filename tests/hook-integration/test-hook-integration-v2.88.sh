@@ -86,11 +86,11 @@ test_ralph_subagent_stop() {
     echo '{"status": "completed", "task": "implement-auth"}' > "$STATE_DIR/test-session/subagents/test-subagent.json"
 
     RESULT=$(echo '{"subagentId": "test-subagent", "subagentType": "ralph-coder", "sessionId": "test-session"}' | \
-        "$REPO_ROOT/.claude/hooks/ralph-subagent-stop.sh" 2>/dev/null || true)
+        "$REPO_ROOT/.claude/hooks/ralph-subagent-stop.sh" 2>/dev/null); RC=$?
 
-    # v3.1.1: completed subagent is ALLOWED via clean exit (exit 0, no output).
-    # {"decision":"approve"} is not a valid Claude Code format; allow == absence of block.
-    if ! echo "$RESULT" | grep -q '"decision":[[:space:]]*"block"'; then
+    # v3.1.1: completed subagent is ALLOWED via clean exit (RC 0) + no block JSON.
+    # {"decision":"approve"} is not a valid format. RC check (no `|| true`) catches a crash.
+    if [[ $RC -eq 0 ]] && ! echo "$RESULT" | grep -q '"decision":[[:space:]]*"block"'; then
         pass
     else
         fail
@@ -258,10 +258,10 @@ test_session_isolation() {
     rm -rf "$STATE_DIR/test-session" 2>/dev/null || true
 
     RESULT=$(echo '{"session_id": "test-session", "cwd": "/tmp", "stop_hook_active": false}' | \
-        "$REPO_ROOT/.claude/hooks/ralph-stop-quality-gate.sh" 2>/dev/null || true)
+        "$REPO_ROOT/.claude/hooks/ralph-stop-quality-gate.sh" 2>/dev/null); RC=$?
 
-    # v3.1.1: no session => allow via clean exit (no block decision emitted).
-    if ! echo "$RESULT" | grep -q '"decision":[[:space:]]*"block"'; then
+    # v3.1.1: no session => allow via clean exit (RC 0) + no block decision emitted.
+    if [[ $RC -eq 0 ]] && ! echo "$RESULT" | grep -q '"decision":[[:space:]]*"block"'; then
         pass
     else
         fail
@@ -330,9 +330,9 @@ test_integration_flow() {
 
         # Stop subagent
         RESULT=$(echo '{"subagentId": "flow-test", "subagentType": "ralph-coder", "sessionId": "test-session"}' | \
-            "$REPO_ROOT/.claude/hooks/ralph-subagent-stop.sh" 2>/dev/null || true)
+            "$REPO_ROOT/.claude/hooks/ralph-subagent-stop.sh" 2>/dev/null); RC=$?
 
-        if ! echo "$RESULT" | grep -q '"decision":[[:space:]]*"block"'; then
+        if [[ $RC -eq 0 ]] && ! echo "$RESULT" | grep -q '"decision":[[:space:]]*"block"'; then
             pass
         else
             fail

@@ -110,7 +110,8 @@ def _event_hook_paths(event: str) -> list[str]:
     """Resolved .sh hook paths registered for a given event in settings.json."""
     settings = os.path.expanduser("~/.claude/settings.json")
     try:
-        data = json.load(open(settings, encoding="utf-8"))
+        with open(settings, encoding="utf-8") as fh:
+            data = json.load(fh)
     except (OSError, json.JSONDecodeError):
         return []
     paths = []
@@ -181,10 +182,18 @@ class TestForkGuards:
 
 class TestSettingsHardening:
     def test_settings_valid_json(self, load_settings_json):
-        assert load_settings_json(), "settings.json must load as valid JSON"
+        data = load_settings_json()  # call the factory fixture, don't assert the callable
+        assert isinstance(data, dict) and data, "settings.json must be a non-empty JSON object"
+
+    def test_event_hooks_resolved_for_timing(self):
+        # Guard: the parametrized per-hook timing tests generate ZERO cases (silently) if
+        # these import-time lists are empty. This sentinel fails loudly instead.
+        assert _UPS_HOOKS, "No UserPromptSubmit hooks resolved from settings.json"
+        assert _STOP_HOOKS, "No Stop hooks resolved from settings.json"
 
     def test_all_hooks_have_timeout(self, load_settings_json):
         data = load_settings_json()
+        assert data, "settings.json not found/empty — cannot validate timeouts"
         missing = []
         for event, groups in data.get("hooks", {}).items():
             for group in groups:

@@ -11,14 +11,15 @@ Based on OFFICIAL Claude Code documentation from /anthropics/claude-code
 | UserPromptSubmit | `continue` | `true` / `false` (boolean) | `{"continue": true}` |
 | PreCompact | `continue` | `true` / `false` (boolean) | `{"continue": true}` |
 | SessionStart | `hookSpecificOutput` | object | `{"hookSpecificOutput": {"additionalContext": "..."}}` |
-| **Stop** | `decision` | `"approve"` / `"block"` (string) | `{"decision": "approve"}` |
+| **Stop** | `decision` (block only) | `"block"` or **clean exit** to allow | `{"decision": "block"}` / `exit 0` |
 
 ## CRITICAL RULES
 
 1. **The string `"continue"` is NEVER valid for the `decision` field**
    - WRONG: `{"decision": "continue"}` ❌
-   - RIGHT for Stop: `{"decision": "approve"}` ✅
-   - RIGHT for others: `{"continue": true}` ✅
+   - WRONG: `{"decision": "approve"}` ❌ (`"approve"` is NOT a valid Claude Code value)
+   - RIGHT for Stop: clean `exit 0` to allow, `{"decision": "block"}` to block ✅
+   - RIGHT for others: `{"continue": true}` or clean `exit 0` ✅
 
 2. **Stop hooks are the ONLY hooks that use `decision`**
    - All other hooks use `continue` (boolean)
@@ -33,7 +34,8 @@ Based on OFFICIAL Claude Code documentation from /anthropics/claude-code
 ```python
 def validate_hook_output(hook_type: str, output: dict) -> bool:
     if hook_type == "Stop":
-        return output.get("decision") in ("approve", "block")
+        # allow == clean exit (no output); block == {"decision": "block"}. "approve" is invalid.
+        return output == {} or output.get("decision") == "block"
     elif hook_type == "SessionStart":
         return "hookSpecificOutput" in output
     else:  # PostToolUse, PreToolUse, UserPromptSubmit, PreCompact

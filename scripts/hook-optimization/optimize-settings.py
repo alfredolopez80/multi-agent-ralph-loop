@@ -98,7 +98,12 @@ def main() -> int:
     timeouts_added = 0
     per_event: dict[str, int] = {}
 
-    for event, groups in patched.get("hooks", {}).items():
+    hooks_section = patched.get("hooks", {})
+    if not isinstance(hooks_section, dict):
+        print(f"❌ 'hooks' in settings.json is not a JSON object "
+              f"(got {type(hooks_section).__name__})", file=sys.stderr)
+        return 1
+    for event, groups in hooks_section.items():
         for group in groups:
             new_hooks = []
             for h in group.get("hooks", []):
@@ -149,20 +154,33 @@ def main() -> int:
         return 0
 
     # APPLY: backup -> write -> re-validate
-    os.makedirs(BACKUP_DIR, exist_ok=True)
-    stamp = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-    backup = os.path.join(BACKUP_DIR, f"settings-{stamp}.json")
-    shutil.copy2(SETTINGS, backup)
-    print(f"\n  📦 backup: {backup}")
+    try:
+        os.makedirs(BACKUP_DIR, exist_ok=True)
+        stamp = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+        backup = os.path.join(BACKUP_DIR, f"settings-{stamp}.json")
+        shutil.copy2(SETTINGS, backup)
+        print(f"\n  📦 backup: {backup}")
+    except OSError as e:
+        print(f"❌ backup failed ({e}) — aborting; settings.json unchanged", file=sys.stderr)
+        return 1
 
     tmp = SETTINGS + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        f.write(new_text)
-    os.replace(tmp, SETTINGS)
-
-    # Re-read + re-validate from disk
-    with open(SETTINGS, encoding="utf-8") as f:
-        json.load(f)
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(new_text)
+        os.replace(tmp, SETTINGS)
+        # Re-read + re-validate from disk
+        with open(SETTINGS, encoding="utf-8") as f:
+            json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        try:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+        except OSError:
+            pass
+        print(f"❌ write/validate failed ({e}).\n   Restore with: cp {backup} {SETTINGS}",
+              file=sys.stderr)
+        return 1
     print("  ✅ written and re-validated (valid JSON on disk).")
     return 0
 
