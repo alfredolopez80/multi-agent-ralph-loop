@@ -1,7 +1,10 @@
 #!/bin/bash
 umask 077
 # ralph-subagent-stop.sh - Quality gate for ralph-* subagent termination
-# VERSION: 2.95.0
+# VERSION: 2.95.1
+# v2.95.1 (v3.1.1): format-correctness — removed invalid {"decision":"approve"}; a
+#                   completed subagent is allowed via clean exit 0. Verified by the
+#                   tightened tests/hook-integration assertions (RC==0 + no block).
 # Event: SubagentStop
 # Matcher: ralph-*
 #

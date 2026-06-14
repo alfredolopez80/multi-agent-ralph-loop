@@ -1,7 +1,10 @@
 #!/bin/bash
 umask 077
 # ralph-stop-quality-gate.sh - Quality gate for Stop event
-# VERSION: 2.88.0
+# VERSION: 2.88.1
+# v2.88.1 (v3.1.1): format-correctness — removed invalid {"decision":"approve"}; allow is
+#                   signaled by clean exit 0. Stale-session cleanup verified by
+#                   tests/hook-integration/test-hook-integration-v2.88.sh.
 # REPO: multi-agent-ralph-loop
 #
 # Triggered by: Stop hook event
