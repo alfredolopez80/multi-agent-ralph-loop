@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # project-backup-metadata.sh - SessionStart/Stop hooks for project metadata backup
 # VERSION: 2.85.0
 #
@@ -24,7 +25,7 @@ set -euo pipefail
 
 # SEC-033: Guaranteed JSON output on any error
 output_json_stop() {
-    echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
 }
 trap 'output_json_stop' ERR
 
@@ -311,11 +312,11 @@ case "$HOOK_TYPE" in
             log "No current session found to backup"
         fi
 
-        echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
         ;;
 
     *)
         echo "Unknown hook type: $HOOK_TYPE"
-        echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
         ;;
 esac

@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # task-completed-quality-gate.sh - Quality gate before task completion
 # VERSION: 2.90.0
 # REPO: multi-agent-ralph-loop
@@ -18,7 +19,7 @@
 #
 # Output (stdout JSON):
 #   {"decision": "approve", "reason": "All acceptance criteria verified"}
-#   {"decision": "request_changes", "reason": "Task incomplete", "feedback": "..."}
+#   {"decision": "request_changes", "reason": "Task incomplete"}
 
 set -euo pipefail
 

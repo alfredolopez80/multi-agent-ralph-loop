@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+umask 077
 # subagent-stop-universal.sh - Universal quality gate for ALL subagent termination
 # VERSION: 2.90.1
 # Event: SubagentStop
@@ -116,6 +117,6 @@ fi
 
 log "APPROVE: Subagent ${agent_id} (${agent_type}) can stop"
 cat <<EOF
-{"decision": "approve", "reason": "Subagent completion verified (model-agnostic)"}
+: # FIXED: bare JSON decision approve removed
 EOF
 exit 0

@@ -79,8 +79,10 @@ is_numeric() {
 # Get current context usage percentage
 # ============================================================================
 get_context_percentage() {
-    local context_output
-    context_output=$(claude --print "/context" 2>/dev/null || echo "unknown")
+    # PERF v3.1.1: recursive `claude --print "/context"` removed. It had NO timeout here,
+    # so it could block this UserPromptSubmit hook indefinitely (root-cause family of the
+    # 4.4s/message bug). Fall through to the message-count estimate below.
+    local context_output="unknown"
 
     # Parse percentage - support decimals: NN% or N.N%
     if [[ "$context_output" =~ ([0-9]+\.?[0-9]*)% ]]; then

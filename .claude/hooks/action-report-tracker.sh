@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # action-report-tracker.sh - Hook for automatic action report generation
 # Hook: PostToolUse (Task tool)
 # VERSION: 2.93.0

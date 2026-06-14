@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # session-end-handoff.sh - SessionEnd Hook for Ralph v2.85.0
 # Hook: SessionEnd
 # Auto-saves state BEFORE session terminates to enable seamless continuation

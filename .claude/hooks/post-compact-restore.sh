@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # VERSION: 2.85.0
 # post-compact-restore.sh - Multi-Agent Ralph v2.85.0
 # Restores context and plan state after compaction

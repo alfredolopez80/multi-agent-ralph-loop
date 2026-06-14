@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+umask 077
 # Quality Parallel Async Hook - FIXED VERSION
 # VERSION: 2.1.0
 # FIX v2.1.0: All MEDIUM + LOW priority fixes applied

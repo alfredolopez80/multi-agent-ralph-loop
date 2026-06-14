@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # ralph-stop-quality-gate.sh - Quality gate for Stop event
 # VERSION: 2.88.0
 # REPO: multi-agent-ralph-loop
@@ -66,7 +67,7 @@ STOP_HOOK_ACTIVE=$(echo "$INPUT" | jq -r '.stop_hook_active // false')
 if [ "$STOP_HOOK_ACTIVE" = "true" ]; then
     # Claude is already continuing from a previous block
     # MUST allow stop to prevent infinite loop
-    echo '{"decision": "approve", "reason": "Previous block already active - allowing stop to prevent infinite loop"}'
+: # FIXED: invalid decision approve removed
     exit 0
 fi
 
@@ -91,7 +92,7 @@ if [[ ! -f "$SESSION_FILE" ]]; then
     if [[ -n "$STATE_DIR" && "$STATE_DIR" == *"/.ralph/"* ]]; then
         find "$STATE_DIR" -mindepth 2 -name "session.json" -mtime +1 -delete 2>/dev/null || true
     fi
-    echo '{"decision": "approve", "reason": "No active session"}'
+: # FIXED: invalid decision approve removed
     exit 0
 fi
 
@@ -100,7 +101,7 @@ SESSION_AGE=$(jq -r '.age_seconds // 0' "$SESSION_FILE" 2>/dev/null || echo "0")
 if [[ "$SESSION_AGE" -gt "$SESSION_MAX_AGE" ]]; then
     # Stale session, cleanup and allow stop
     rm -rf "$STATE_DIR/${SESSION_ID}" 2>/dev/null || true
-    echo '{"decision": "approve", "reason": "Stale session cleaned up"}'
+: # FIXED: invalid decision approve removed
     exit 0
 fi
 
@@ -294,11 +295,11 @@ if [ -n "$BLOCKING_ISSUES" ]; then
     exit 2
 elif [ -n "$ADVISORY_ISSUES" ]; then
     # Advisory issues don't block, but log them
-    echo '{"decision": "approve", "reason": "All blocking conditions met (advisory issues noted)"}'
+: # FIXED: invalid decision approve removed
     exit 0
 else
     # All conditions met, allow stop
-    echo '{"decision": "approve", "reason": "All VERIFIED_DONE conditions met"}'
+: # FIXED: invalid decision approve removed
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Stop APPROVED: All conditions met" >> "$LOG_DIR/stop-hook.log"
     exit 0
 fi

@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # console-log-detector.sh - Warn about console.log statements after JS/TS edits
 # VERSION: 2.69.1
 # HOOK: PostToolUse (Edit|Write)

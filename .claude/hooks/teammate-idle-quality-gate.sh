@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # teammate-idle-quality-gate.sh - Quality gate for Agent Teams teammates
 # VERSION: 2.90.0
 # REPO: multi-agent-ralph-loop
@@ -18,7 +19,7 @@
 #
 # Output (stdout JSON):
 #   {"decision": "approve", "reason": "All quality checks passed"}
-#   {"decision": "request_changes", "reason": "Quality issues found", "feedback": "..."}
+#   {"decision": "request_changes", "reason": "Quality issues found"}
 
 set -euo pipefail
 

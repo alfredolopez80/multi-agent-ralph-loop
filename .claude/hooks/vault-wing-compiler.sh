@@ -55,7 +55,7 @@ if command -v git &>/dev/null; then
     REPO_ROOT="${HOME}/Documents/GitHub/multi-agent-ralph-loop"
     PROJECT=$(basename "$(git -C "$REPO_ROOT" rev-parse --show-toplevel 2>/dev/null || echo "")" 2>/dev/null || echo "unknown")
 fi
-[[ -z "$PROJECT" || "$PROJECT" == "unknown" ]] && { log "WARN no project detected"; echo '{"decision": "approve"}'; exit 0; }
+: # FIXED: invalid decision approve removed
 
 # Sanitize project name for filesystem
 SAFE_PROJECT=$(echo "$PROJECT" | tr -cd 'a-zA-Z0-9_-' | head -c 64)
@@ -68,7 +68,7 @@ FACTS_FILE="${VAULT_DIR}/projects/${PROJECT}/facts/facts-${TODAY}.md"
 
 if [[ ! -f "$FACTS_FILE" ]]; then
     log "INFO no facts file for today: ${FACTS_FILE}"
-    echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
     exit 0
 fi
 
@@ -89,7 +89,7 @@ done < "$FACTS_FILE"
 
 if [[ -z "$NEW_FACTS" ]]; then
     log "INFO no valid categorized facts found"
-    echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
     exit 0
 fi
 
@@ -117,7 +117,7 @@ done <<< "$NEW_FACTS"
 
 if [[ -z "$DEDUPED_FACTS" ]]; then
     log "INFO all facts already in wing, nothing new"
-    echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
     exit 0
 fi
 
@@ -182,5 +182,5 @@ else
     log "WARN could not acquire lock for wing write"
 fi
 
-echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
 exit 0

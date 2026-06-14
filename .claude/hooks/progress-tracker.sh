@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # progress-tracker.sh - PostToolUse Hook for Ralph v2.62.3
 # Hook: PostToolUse (Edit|Write|Bash)
 # Auto-registro de intentos/errores en .claude/progress.md por proyecto

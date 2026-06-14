@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # status-auto-check.sh - Auto-show status periodically
 # VERSION: 2.69.0
 # v2.57.3: Fixed LAST remaining wrong format on line 119 (SEC-036)

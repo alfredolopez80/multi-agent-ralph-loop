@@ -57,7 +57,9 @@ if [[ -n "$STAGED_HOOKS" ]]; then
         hook_name=$(basename "$hook_file")
 
         # CRITICAL: "decision": "continue" is NEVER valid
-        if grep -qE '"decision":\s*"continue"' "$hook_file"; then
+        # v3.1.1: skip comment lines — a hook documenting the invalid form in a comment is
+        # not a violation; only active code matters.
+        if grep -vE '^[[:space:]]*#' "$hook_file" | grep -qE '"decision":\s*"continue"'; then
             echo -e "  ${RED}✗ $hook_name: Uses invalid {\"decision\": \"continue\"}${NC}"
             ((ERRORS++))
             continue

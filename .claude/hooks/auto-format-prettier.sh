@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # auto-format-prettier.sh - Auto-format JS/TS files with Prettier after edits
 # VERSION: 2.69.1
 # v2.68.9: SEC-102 FIX - Validate FILE_PATH to prevent command injection

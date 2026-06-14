@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # VERSION: 2.84.2
 # PostToolUse hook for TodoWrite - Sync todos with plan-state progress
 #

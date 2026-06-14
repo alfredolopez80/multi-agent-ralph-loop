@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # batch-progress-tracker.sh - Track batch execution progress
 # Version: 2.88.0
 # Trigger: PostToolUse (Task, TaskUpdate, TaskCreate)

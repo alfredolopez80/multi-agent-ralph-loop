@@ -1,9 +1,19 @@
 #!/bin/bash
+umask 077
 # Auto-sync global commands/agents/hooks to current project
 # Runs on SessionStart to ensure all projects have global configs
 
 # VERSION: 2.85.0
 set -euo pipefail
+
+# PERF v3.1.1: SessionStart symlink sync — run detached so startup never blocks.
+# Cost was ~600ms synchronously; now returns in ~5ms and the sync runs in the
+# background. A project that needs first-time sync self-heals within this session.
+if [[ "${RALPH_HOOK_BG:-0}" != "1" ]]; then
+    RALPH_HOOK_BG=1 nohup bash "$0" </dev/null >/dev/null 2>&1 &
+    disown 2>/dev/null || true
+    exit 0
+fi
 
 GLOBAL_DIR="${HOME}/.claude"
 

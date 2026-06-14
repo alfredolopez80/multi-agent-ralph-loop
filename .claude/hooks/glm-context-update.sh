@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+umask 077
 # glm-context-update.sh - GLM-4.7 context tracking and update (consolidated)
 # VERSION: 3.0.0 (Consolidated from glm-context-update.sh + glm-context-tracker.sh)
 # Hook: PostToolUse (Edit|Write|Bash)

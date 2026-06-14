@@ -35,14 +35,14 @@ INPUT=$(head -c 100000)
 
 # --- Guard: jq required, fail-open otherwise ---
 if ! command -v jq >/dev/null 2>&1; then
-  echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
   exit 0
 fi
 
 # --- Infinite-loop guard: honor stop_hook_active ---
 STOP_HOOK_ACTIVE=$(echo "$INPUT" | jq -r '.stop_hook_active // false' 2>/dev/null || echo false)
 if [ "$STOP_HOOK_ACTIVE" = "true" ]; then
-  echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
   exit 0
 fi
 
@@ -64,7 +64,7 @@ if [[ -f "$STATE_FILE" ]]; then
 fi
 if [[ "$BLOCK_COUNT" -ge "$MAX_BLOCKS" ]]; then
   echo '{"blocks": 0}' > "$STATE_FILE" 2>/dev/null || true
-  echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
   exit 0
 fi
 
@@ -214,5 +214,5 @@ if [[ "$HAS_ACTIVE_PLAN" == true ]]; then
 fi
 
 # --- No match: approve ---
-echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
 exit 0

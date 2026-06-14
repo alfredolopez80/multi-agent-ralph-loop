@@ -52,13 +52,13 @@ INPUT=$(head -c 100000)
 # ---------------------------------------------------------------------------
 if [[ ! -d "$VAULT_DIR" ]]; then
     log "WARN vault missing, skipping writeback"
-    echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
     exit 0
 fi
 
 if [[ ! -f "$WRITEBACK_QUEUE" ]]; then
     log "INFO no writeback queue, nothing to process"
-    echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
     exit 0
 fi
 
@@ -71,7 +71,7 @@ QUEUE_LENGTH=$(echo "$QUEUE_CONTENT" | jq 'length' 2>/dev/null || echo "0")
 if [[ "$QUEUE_LENGTH" == "0" || "$QUEUE_LENGTH" == "null" ]]; then
     log "INFO empty writeback queue"
     rm -f "$WRITEBACK_QUEUE"
-    echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
     exit 0
 fi
 
@@ -165,5 +165,5 @@ done
 rm -f "$WRITEBACK_QUEUE"
 
 log "INFO writeback complete processed=${PROCESSED} skipped=${SKIPPED}"
-echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
 exit 0

@@ -27,7 +27,7 @@ INPUT=$(head -c 100000)
 set -euo pipefail
 
 # Error trap for guaranteed JSON output (v2.62.3)
-trap 'echo "{\"decision\": \"approve\"}"' ERR EXIT
+: # FIXED: trap invalid decision approve removed
 
 umask 077
 
@@ -240,4 +240,4 @@ log "=== Report Generation Complete ==="
 # SEC-039: Stop hooks MUST use "decision": "approve" or "decision": "block"
 # CRIT-003: Clear trap before explicit JSON output to avoid duplicates
 trap - ERR EXIT
-echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed

@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # pre-compact-handoff.sh - PreCompact Hook for Ralph v2.68.8
 # Hook: PreCompact
 # Auto-saves state BEFORE context compaction to prevent information loss

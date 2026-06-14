@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+umask 077
 # VERSION: 2.70.0
 # Hook: Plan-Sync Post-Step
 # Trigger: PostToolUse (after Edit or Write completes in orchestrated context)

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+umask 077
 # repo-boundary-guard.sh - Repository Isolation Enforcement
 # Hook: PreToolUse (Edit|Write|Bash)
 # Purpose: Prevent accidental work in external repositories

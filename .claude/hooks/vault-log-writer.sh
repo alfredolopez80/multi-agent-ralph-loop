@@ -51,7 +51,7 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"' 2>/dev/null | tr -
 # ---------------------------------------------------------------------------
 if [[ ! -d "$VAULT_DIR" ]]; then
     log "WARN vault missing, skipping log write"
-    echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
     exit 0
 fi
 
@@ -133,6 +133,6 @@ fi
 # ---------------------------------------------------------------------------
 # Output SessionEnd format
 # ---------------------------------------------------------------------------
-echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
 
 exit 0

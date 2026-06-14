@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # command-router.sh - Unified Prompt Analysis Hook
 # VERSION: 2.0.0
 # Hook: UserPromptSubmit
