@@ -1,7 +1,9 @@
 #!/bin/bash
 umask 077
 # ralph-subagent-start.sh - Initialize subagents with Ralph context, memory, and integration
-# VERSION: 2.95.0
+# VERSION: 2.95.1
+# v2.95.1 (v3.1.1): format-correctness — removed invalid {"decision":"approve"} (allow is
+#                   signaled by clean exit 0). Verified by tests/hook-integration.
 # REPO: multi-agent-ralph-loop
 #
 # Triggered by: SubagentStart hook event (matcher: ralph-*)
