@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # ralph-subagent-stop.sh - Quality gate for ralph-* subagent termination
 # VERSION: 2.95.0
 # Event: SubagentStop
@@ -46,7 +47,7 @@ if [[ -f "$SUBAGENT_STATE" ]]; then
     if [[ "$STATUS" == "working" ]]; then
         log "BLOCK: Subagent $SUBAGENT_ID still working"
         cat <<EOF
-{"decision": "block", "reason": "Subagent still has active work", "feedback": "Complete your assigned tasks before stopping"}
+{"decision": "block", "reason": "Subagent still has active work"}
 EOF
         exit 2
     fi
@@ -65,7 +66,7 @@ if [[ -n "$TASK_ID" ]]; then
             if [[ "$TASK_STATUS" == "pending" || "$TASK_STATUS" == "in_progress" ]]; then
                 log "BLOCK: Task $TASK_ID not completed (status: $TASK_STATUS)"
                 cat <<EOF
-{"decision": "block", "reason": "Assigned task not completed", "feedback": "Task $TASK_ID is still $TASK_STATUS. Mark it complete or report blockers."}
+{"decision": "block", "reason": "Assigned task not completed"}
 EOF
                 exit 2
             fi
@@ -81,7 +82,7 @@ if [[ -f "$QUALITY_STATE" ]]; then
         GATE_REASON=$(jq -r '.reason // "Unknown quality issue"' "$QUALITY_STATE" 2>/dev/null)
         log "BLOCK: Quality gate failed - $GATE_REASON"
         cat <<EOF
-{"decision": "block", "reason": "Quality gate failed", "feedback": "$GATE_REASON - Fix quality issues before stopping"}
+{"decision": "block", "reason": "Quality gate failed"}
 EOF
         exit 2
     fi
@@ -154,8 +155,8 @@ fi
 
 # Output approval with cleanup info
 if [[ -n "$CLEANUP_INFO" ]]; then
-  echo "{\"decision\": \"approve\", \"reason\": \"All subagent tasks completed and quality gates passed\", \"cleanup\": \"$CLEANUP_INFO\"}"
+: # FIXED: invalid decision approve removed
 else
-  echo "{\"decision\": \"approve\", \"reason\": \"All subagent tasks completed and quality gates passed\"}"
+: # FIXED: invalid decision approve removed
 fi
 exit 0

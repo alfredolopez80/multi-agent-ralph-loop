@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+umask 077
 # Hook: Stop (sentry-report)
 # Generates Sentry summary report at orchestrator completion
 # Once: true
@@ -14,13 +15,13 @@ INPUT=$(head -c 100000)
 
 
 # SEC-039: Guaranteed valid JSON output on any error (Stop hook format)
-trap 'echo '"'"'{"decision": "approve"}'"'"'' ERR EXIT
+: # FIXED: trap invalid decision approve removed
 
 # Only run if Sentry was used in this session
 if [[ ! -f ".sentry-used" ]]; then
     # CRIT-003: Clear trap before explicit JSON output to avoid duplicates
     trap - ERR EXIT
-    echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
     exit 0
 fi
 
@@ -44,5 +45,5 @@ rm -f ".sentry-used"
 # Stop hook must output JSON
 # CRIT-003: Clear trap before explicit JSON output to avoid duplicates
 trap - ERR EXIT
-echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
 exit 0

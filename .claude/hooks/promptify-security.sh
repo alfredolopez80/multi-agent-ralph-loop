@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # promptify-security.sh - Security hardening functions for Promptify integration
 # VERSION: 1.0.0
 # Purpose: Credential redaction, clipboard consent, agent timeout, audit logging

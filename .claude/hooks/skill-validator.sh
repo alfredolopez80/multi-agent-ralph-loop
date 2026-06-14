@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+umask 077
 # skill-validator.sh - Validate YAML-based skills before execution
 # Hook: PreToolUse (Skill)
 # v2.62.3 - Part of lightweight skills system (H70-inspired)

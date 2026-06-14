@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # wake-up-layer-stack.sh — SessionStart Hook, Wave 2.2 Layer Stack
 # ================================================================
 #

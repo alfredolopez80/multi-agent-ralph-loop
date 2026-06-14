@@ -10,6 +10,16 @@
 set -euo pipefail
 umask 077
 
+# PERF v3.1.1: SessionStart maintenance — run detached so startup never blocks.
+# The full-vault scan cost ~2s synchronously; now the hook returns in ~5ms and the
+# scan/graduation runs in the background. Status JSON is dropped in background mode.
+if [[ "${RALPH_HOOK_BG:-0}" != "1" ]]; then
+    mkdir -p "${HOME}/.ralph/logs" 2>/dev/null || true
+    RALPH_HOOK_BG=1 nohup bash "$0" </dev/null >>"${HOME}/.ralph/logs/vault-graduation.bg.log" 2>&1 &
+    disown 2>/dev/null || true
+    exit 0
+fi
+
 # Safety: always output valid JSON for SessionStart
 trap 'echo "{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"vault-graduation: error\"}}"' ERR INT TERM
 

@@ -20,7 +20,7 @@ umask 077
 # SEC-033: Guaranteed JSON output on any error
 # Stop hooks use {"decision": "approve"} format
 output_json() {
-    echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
 }
 trap 'output_json' ERR EXIT
 
@@ -43,7 +43,7 @@ TRANSCRIPT="${HOME}/.claude/projects/${CLAUDE_PROJECT_ID:-default}/${SESSION_ID}
 # Skip if transcript doesn't exist or is too short
 if [[ ! -f "$TRANSCRIPT" ]]; then
     trap - EXIT
-    echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
     exit 0
 fi
 
@@ -53,7 +53,7 @@ MSG_COUNT=$(wc -l < "$TRANSCRIPT" 2>/dev/null || echo "0")
 # Only analyze sessions with 10+ messages
 if [[ $MSG_COUNT -lt 10 ]]; then
     trap - EXIT
-    echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
     exit 0
 fi
 
@@ -129,4 +129,4 @@ EOF
 fi
 
 trap - EXIT
-echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed

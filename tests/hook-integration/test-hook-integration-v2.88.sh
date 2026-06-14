@@ -86,13 +86,15 @@ test_ralph_subagent_stop() {
     echo '{"status": "completed", "task": "implement-auth"}' > "$STATE_DIR/test-session/subagents/test-subagent.json"
 
     RESULT=$(echo '{"subagentId": "test-subagent", "subagentType": "ralph-coder", "sessionId": "test-session"}' | \
-        "$REPO_ROOT/.claude/hooks/ralph-subagent-stop.sh" 2>/dev/null || true)
+        "$REPO_ROOT/.claude/hooks/ralph-subagent-stop.sh" 2>/dev/null); RC=$?
 
-    if echo "$RESULT" | grep -q '"decision": "approve"'; then
+    # v3.1.1: completed subagent is ALLOWED via clean exit (RC 0) + no block JSON.
+    # {"decision":"approve"} is not a valid format. RC check (no `|| true`) catches a crash.
+    if [[ $RC -eq 0 ]] && ! echo "$RESULT" | grep -q '"decision":[[:space:]]*"block"'; then
         pass
     else
         fail
-        echo -e "  ${RED}✗ Should approve when subagent completed${NC}"
+        echo -e "  ${RED}✗ Should allow (clean exit) when subagent completed${NC}"
     fi
 
     cleanup_test_state
@@ -256,9 +258,10 @@ test_session_isolation() {
     rm -rf "$STATE_DIR/test-session" 2>/dev/null || true
 
     RESULT=$(echo '{"session_id": "test-session", "cwd": "/tmp", "stop_hook_active": false}' | \
-        "$REPO_ROOT/.claude/hooks/ralph-stop-quality-gate.sh" 2>/dev/null || true)
+        "$REPO_ROOT/.claude/hooks/ralph-stop-quality-gate.sh" 2>/dev/null); RC=$?
 
-    if echo "$RESULT" | grep -q '"decision": "approve"'; then
+    # v3.1.1: no session => allow via clean exit (RC 0) + no block decision emitted.
+    if [[ $RC -eq 0 ]] && ! echo "$RESULT" | grep -q '"decision":[[:space:]]*"block"'; then
         pass
     else
         fail
@@ -273,7 +276,9 @@ test_session_isolation() {
     RESULT=$(echo '{"session_id": "test-session", "cwd": "/tmp", "stop_hook_active": false}' | \
         "$REPO_ROOT/.claude/hooks/ralph-stop-quality-gate.sh" 2>/dev/null || true)
 
-    if echo "$RESULT" | grep -q "Stale session"; then
+    # v3.1.1: stale session is cleaned up silently (dir removed) + clean exit. Verify the
+    # cleanup itself, not the removed "Stale session" message.
+    if [[ ! -d "$STATE_DIR/test-session" ]]; then
         pass
     else
         fail
@@ -325,13 +330,13 @@ test_integration_flow() {
 
         # Stop subagent
         RESULT=$(echo '{"subagentId": "flow-test", "subagentType": "ralph-coder", "sessionId": "test-session"}' | \
-            "$REPO_ROOT/.claude/hooks/ralph-subagent-stop.sh" 2>/dev/null || true)
+            "$REPO_ROOT/.claude/hooks/ralph-subagent-stop.sh" 2>/dev/null); RC=$?
 
-        if echo "$RESULT" | grep -q '"decision": "approve"'; then
+        if [[ $RC -eq 0 ]] && ! echo "$RESULT" | grep -q '"decision":[[:space:]]*"block"'; then
             pass
         else
             fail
-            echo -e "  ${RED}✗ SubagentStop did not approve completed subagent${NC}"
+            echo -e "  ${RED}✗ SubagentStop should allow (clean exit) completed subagent${NC}"
         fi
     fi
 

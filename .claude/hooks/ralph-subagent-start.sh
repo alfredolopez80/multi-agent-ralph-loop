@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # ralph-subagent-start.sh - Initialize subagents with Ralph context, memory, and integration
 # VERSION: 2.95.0
 # REPO: multi-agent-ralph-loop

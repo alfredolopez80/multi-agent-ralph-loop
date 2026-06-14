@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # inject-session-context.sh - PreToolUse Hook for Ralph v2.62.3
 # Hook: PreToolUse (Task)
 # Injects session context before Task tool calls

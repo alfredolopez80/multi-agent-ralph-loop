@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # ~/.claude/hooks/context-warning.sh
 # Context Monitoring Hook - v2.90.0
 # Executed on every user-prompt-submit to monitor context usage
@@ -166,17 +167,11 @@ get_context_percentage() {
         fi
     fi
 
-    # Method 2: Try native CLI command (works in full CLI mode)
-    # SEC-029: Added 3s timeout to prevent hook timeout (exit code 124)
-    if [[ -z "$pct" ]] && [[ "$CAPABILITIES" == "full" ]]; then
-        local context_output
-        context_output=$(timeout 3 claude --print "/context" 2>/dev/null || echo "unknown")
-
-        if [[ "$context_output" =~ ([0-9]+\.?[0-9]*)% ]]; then
-            pct="${BASH_REMATCH[1]}"
-            log_context "DEBUG" "Method 2 (/context command): $pct%"
-        fi
-    fi
+    # Method 2 (DISABLED v3.1.1 — PERF): recursive `claude --print "/context"` cost
+    # ~3-4s on EVERY UserPromptSubmit (CLI cold-start + 3s timeout cap). Transcript
+    # estimation (Method 1.5) and the message-count fallback (Method 3) replace it at
+    # ~zero cost. Kept as an explicit no-op to preserve method numbering and intent.
+    : # no-op — do NOT reintroduce a recursive `claude` subprocess in a hot-path hook
 
     # Method 3: Session-scoped message count (minimal fallback)
     # v3.1.0: Model-aware cap — GLM models cap at lower percentage

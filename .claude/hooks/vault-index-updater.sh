@@ -13,13 +13,13 @@ set -euo pipefail
 umask 077
 
 # Safety: always output valid JSON for SessionEnd
-trap 'echo "{\"decision\": \"approve\"}"' ERR INT TERM
+: # FIXED: trap invalid decision approve removed
 
 VAULT_DIR="${VAULT_DIR:-$HOME/Documents/Obsidian/MiVault}"
 
 # Skip if vault doesn't exist
 if [[ ! -d "$VAULT_DIR" ]]; then
-    echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed
     exit 0
 fi
 
@@ -128,4 +128,4 @@ total_decisions=$(find "$VAULT_DIR/global/decisions" -name "*.md" -type f 2>/dev
     echo "- [Project Index](projects/_project-index.md)"
 } > "$VAULT_INDEX" 2>/dev/null || true
 
-echo '{"decision": "approve"}'
+: # FIXED: invalid decision approve removed

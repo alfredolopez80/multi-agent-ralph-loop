@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+umask 077
 # project-state.sh - Unified project state: skills sync validation + context tracking
 # VERSION: 1.0.0 (Consolidated from skills-sync-validator.sh + unified-context-tracker.sh)
 # Hook: SessionStart (matcher: *)
@@ -82,8 +83,10 @@ validate_skills() {
 
     # Check for broken symlinks in global
     local broken_global broken_agents
-    broken_global=$(find "$GLOBAL_SKILLS" -maxdepth 1 -type l ! -exec test -e {} \; -print 2>/dev/null | wc -l | tr -d ' ')
-    broken_agents=$(find "$AGENTS_SKILLS" -maxdepth 1 -type l ! -exec test -e {} \; -print 2>/dev/null | wc -l | tr -d ' ')
+    # PERF v3.1.1: `find -L ... -type l` lists ONLY broken symlinks (those -L cannot
+    # resolve) without spawning a `test` process per symlink — same result, far faster.
+    broken_global=$(find -L "$GLOBAL_SKILLS" -maxdepth 1 -type l 2>/dev/null | wc -l | tr -d ' ')
+    broken_agents=$(find -L "$AGENTS_SKILLS" -maxdepth 1 -type l 2>/dev/null | wc -l | tr -d ' ')
 
     # Determine issues
     local issues=()
@@ -182,9 +185,9 @@ get_percentage() {
             fi
             ;;
         claude)
-            # Try native Claude context command
-            local pct
-            pct=$(timeout 3 claude --print "/context" 2>/dev/null | grep -o '[0-9]*%' | tr -d '%' || echo "")
+            # PERF v3.1.1: recursive `claude --print "/context"` removed (cost 3-4s on
+            # SessionStart). Fall through to the operation/message-count estimate below.
+            local pct=""
 
             if [[ -z "$pct" ]] || [[ "$pct" == "0" ]]; then
                 local ops msgs

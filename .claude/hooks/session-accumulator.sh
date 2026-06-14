@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+umask 077
 # session-accumulator.sh — Captures learnings during a session
 # Event: PostToolUse (Edit|Write)
 # VERSION: 3.1.0

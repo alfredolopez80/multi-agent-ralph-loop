@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 #!/usr/bin/env bash
 # VERSION: 2.84.3
 # LSA Pre-Step Verification

@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # plan-state-lifecycle.sh - Manage plan-state lifecycle
 # VERSION: 2.69.0
 # v2.68.11: SEC-111 FIX - Input length validation to prevent DoS

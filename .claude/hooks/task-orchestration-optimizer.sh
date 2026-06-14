@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # task-orchestration-optimizer.sh - Optimize Task tool usage patterns
 # VERSION: 2.84.3
 # v2.69.0: FIX CRIT-003 - Added EXIT to trap for guaranteed JSON output

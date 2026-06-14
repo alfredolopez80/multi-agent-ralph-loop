@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # session-start-restore-context.sh - SessionStart Hook for Ralph v3.2.0
 # Hook: SessionStart
 # Restores context and plan state when a new session starts

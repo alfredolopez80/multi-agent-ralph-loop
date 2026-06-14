@@ -1,4 +1,5 @@
 #!/bin/bash
+umask 077
 # checkpoint-smart-save.sh - Smart checkpoint based on risk/complexity
 # VERSION: 2.84.3
 # v2.69.0: VERSION sync - all CRIT-003b fixes were already in place
