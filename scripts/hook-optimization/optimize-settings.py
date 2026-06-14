@@ -5,8 +5,11 @@ optimize-settings.py — Safe, idempotent hardener for ~/.claude/settings.json h
 What it does (mechanical, low-risk):
   1. Adds an event-appropriate `timeout` (seconds) to every hook entry that lacks one,
      so a hung hook degrades to a bounded wait instead of Claude Code's 60s default.
-  2. Fixes the fragile escaped-double-quote `.mjs` SessionStart command
-     ("\"/abs/path.mjs\"")  ->  ("node /abs/path.mjs"), the suspected Node-loader error.
+
+  (An earlier version also "normalized" the context-mode `.mjs` command, but that hook
+   entry is owned by the context-mode plugin — it re-registers the quoted form every
+   session, and that quoted path executes fine — so normalizing it was futile churn and
+   has been removed. Only the timeout backfill is durable here.)
 
 Safety model (matches the user's requested workflow):
   * DEFAULT = --dry-run: prints exactly what WOULD change, validates the resulting
@@ -51,11 +54,6 @@ TIMEOUT_POLICY = {
 }
 DEFAULT_TIMEOUT = 10
 
-# The broken command (escaped quotes) and its robust replacement.
-MJS_ABS = os.path.expanduser("~/.claude/hooks/context-mode-cache-heal.mjs")
-MJS_BROKEN = f'"{MJS_ABS}"'          # value stored WITH literal quotes
-MJS_FIXED = f"node {MJS_ABS}"
-
 
 def canonical_hook(h: dict) -> dict:
     """Return a hook dict with keys in a tidy, stable order."""
@@ -93,8 +91,6 @@ def main() -> int:
         return 1
 
     patched = deepcopy(data)
-    changes: list[str] = []
-    mjs_fixed = False
     timeouts_added = 0
     per_event: dict[str, int] = {}
 
@@ -107,15 +103,7 @@ def main() -> int:
         for group in groups:
             new_hooks = []
             for h in group.get("hooks", []):
-                # 1) .mjs quote fix
-                if h.get("command") == MJS_BROKEN:
-                    h["command"] = MJS_FIXED
-                    mjs_fixed = True
-                    changes.append(
-                        f"[{event}] FIX .mjs command: "
-                        f'"\\"...mjs\\"" -> "node ...mjs"'
-                    )
-                # 2) timeout backfill
+                # timeout backfill (the only durable, non-plugin-owned change)
                 if "timeout" not in h:
                     t = TIMEOUT_POLICY.get(event, DEFAULT_TIMEOUT)
                     h["timeout"] = t
@@ -137,17 +125,13 @@ def main() -> int:
     print(f"  optimize-settings.py  [{'DRY-RUN' if dry else 'APPLY'}]")
     print("=" * 64)
     print(f"  Target: {SETTINGS}")
-    print(f"  .mjs command fix:   {'YES' if mjs_fixed else 'already correct / absent'}")
     print(f"  timeouts added:     {timeouts_added}")
     if per_event:
         for ev in sorted(per_event):
             print(f"      {ev:<18} +{per_event[ev]} (timeout={TIMEOUT_POLICY.get(ev, DEFAULT_TIMEOUT)}s)")
-    if not changes and timeouts_added == 0:
+    if timeouts_added == 0:
         print("\n  ✅ Nothing to change — settings.json already hardened (idempotent).")
         return 0
-    if mjs_fixed:
-        print(f"\n  .mjs before: \"{MJS_BROKEN}\"")
-        print(f"  .mjs after:  \"{MJS_FIXED}\"")
 
     if dry:
         print("\n  DRY-RUN: no file written. Review above, then re-run with --apply.")

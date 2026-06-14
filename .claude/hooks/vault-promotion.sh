@@ -31,6 +31,9 @@ if [[ "${RALPH_HOOK_BG:-0}" != "1" ]]; then
     mkdir -p "${HOME}/.ralph/logs" 2>/dev/null || true
     RALPH_HOOK_BG=1 nohup bash "$0" </dev/null >>"${HOME}/.ralph/logs/vault-promotion.bg.log" 2>&1 &
     disown 2>/dev/null || true
+    # Breadcrumb (codex review): keep a SessionStart context line; real promotion status
+    # now goes to the bg log instead of being injected synchronously.
+    printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"vault-promotion: maintenance running in background"}}'
     exit 0
 fi
 
