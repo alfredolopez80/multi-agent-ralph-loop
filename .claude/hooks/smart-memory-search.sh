@@ -1,10 +1,21 @@
 #!/bin/bash
-# smart-memory-search.sh - v3.4.0 Smart Memory-Driven Orchestration (Obsidian-first)
+# smart-memory-search.sh - v3.5.0 Smart Memory-Driven Orchestration (Obsidian-first)
 # Hook: PreToolUse (Task - before orchestration)
 # Purpose: PARALLEL search across all memory sources for relevant context
-# VERSION: 3.4.0
-# UPDATED: 2026-04-15 (removed handoffs source — session-handoff state, not Vault memory)
-# Timestamp: 2026-04-15
+# VERSION: 3.5.0
+# UPDATED: 2026-06-17 (A1: fire-and-forget — respond <10ms, search in background)
+# Timestamp: 2026-06-17
+#
+# v3.5.0 (2026-06-17, A1 hooks-memory-optimization): FIRE-AND-FORGET.
+#   The 45-jq parallel memory search (vault + ledgers + GLM APIs) used to run
+#   SYNCHRONOUSLY on every orchestration Task, blocking the tool for 20-50ms+
+#   (and up to the 5s PreToolUse timeout when APIs were slow). It now responds
+#   {"hookSpecificOutput":{"permissionDecision":"allow"}} in <10ms and forks the
+#   real search detached (SMART_MEMORY_WORKER=1 nohup bash "$0" ... &).
+#   The worker writes results to .claude/memory-context.json (the SAME 30-min
+#   cache the orchestrator already reads) — context is consumed from that cache
+#   on the NEXT tool, never recomputed per tool. Pattern mirrors
+#   vault-fact-extractor.sh + auto-sync-global.sh.
 #
 # Based on @PerceptualPeak Smart Forking concept:
 # "Why not utilize the knowledge gained from your hundreds/thousands
@@ -39,6 +50,30 @@
 # Fixes: SECURITY-001, 002, 003, ADV-001, ADV-002, ADV-003, ADV-004, ADV-005, ADV-006, GAP-MEM-001, SEC-007
 # v2.57.6: FIX GAP-MEM-001 - macOS realpath doesn't support -e flag, use glob instead of regex
 # v2.47.3: Removed unused variable, fixed $KEYWORDS_SAFE usage, date portability, noclobber
+
+# ===============================================================================
+# PARENT MODE (A1, v3.5.0): respond immediately, fork the heavy search detached.
+# This is the ONLY synchronous code path. It must stay jq-free and <10ms.
+# ===============================================================================
+if [[ "${SMART_MEMORY_WORKER:-0}" != "1" ]]; then
+    umask 077
+    # SEC-111: bounded stdin read (100KB max) — prevents DoS from malicious input.
+    INPUT=$(head -c 100000)
+    mkdir -p "${HOME}/.ralph/logs" 2>/dev/null || true
+    # Fork the worker detached; it re-reads INPUT from stdin via the heredoc.
+    SMART_MEMORY_WORKER=1 nohup bash "$0" <<<"$INPUT" \
+        >>"${HOME}/.ralph/logs/smart-memory-search.bg.log" 2>&1 &
+    disown 2>/dev/null || true
+    # PreToolUse permission format (this hook has always used permissionDecision,
+    # NOT {"continue":true} — see test_hooks_task.py::test_has_correct_format).
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+    exit 0
+fi
+
+# ===============================================================================
+# WORKER MODE — detached. No JSON response is consumed by Claude here; output
+# goes to the bg log. The real product is .claude/memory-context.json.
+# ===============================================================================
 
 # SEC-111: Read input from stdin with length limit (100KB max)
 # Prevents DoS from malicious input
@@ -106,7 +141,15 @@ if [[ "$TASK_TYPE" != "orchestrator" ]] && \
 fi
 
 # Skip if memory search was done recently (cache for 30 minutes)
-PROJECT_DIR=$(pwd)
+# Worktree-safe project root (avoids materializing .claude/ inside skill dirs).
+_SMS_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "${_SMS_HOOK_DIR}/lib/worktree-utils.sh" ]]; then
+    # shellcheck disable=SC1091
+    source "${_SMS_HOOK_DIR}/lib/worktree-utils.sh"
+    PROJECT_DIR="$(get_safe_project_root 2>/dev/null || pwd)"
+else
+    PROJECT_DIR=$(pwd)
+fi
 MEMORY_CONTEXT="$PROJECT_DIR/.claude/memory-context.json"
 CACHE_DURATION=1800  # 30 minutes
 
@@ -175,6 +218,37 @@ validate_file_path() {
     return 0
 }
 
+# PERF-002: API rate limiting — A2 FIX (2026-06-17).
+# rate_limit() was previously defined INSIDE Task 3's subshell (lines ~413-424)
+# but ALSO called from Task 4's separate subshell (~line 501), which produced
+# "rate_limit: command not found" because subshells do not share function
+# definitions. Define it (and its config) once at WORKER scope so every
+# subshell forked below inherits it.
+RATE_LIMIT_FILE="${HOME}/.ralph/cache/api-rate-limit"
+RATE_LIMIT_DELAY=1  # 1 second between API calls
+mkdir -p "$(dirname "$RATE_LIMIT_FILE")" 2>/dev/null || true
+
+rate_limit() {
+    if [[ -f "$RATE_LIMIT_FILE" ]]; then
+        local LAST_CALL NOW ELAPSED
+        LAST_CALL=$(cat "$RATE_LIMIT_FILE" 2>/dev/null || echo "0")
+        NOW=$(date +%s)
+        ELAPSED=$((NOW - LAST_CALL))
+        if [[ $ELAPSED -lt $RATE_LIMIT_DELAY ]]; then
+            sleep $((RATE_LIMIT_DELAY - ELAPSED))
+        fi
+    fi
+    date +%s > "$RATE_LIMIT_FILE"
+}
+
+# A2 (2026-06-17): index-once-query-many for rules.json.
+# Source the ctx-query library so the procedural-rules source below queries a
+# prebuilt index instead of re-parsing the 1.09MB rules.json with N jq passes.
+if [[ -f "${_SMS_HOOK_DIR}/lib/ctx-query.sh" ]]; then
+    # shellcheck disable=SC1091
+    source "${_SMS_HOOK_DIR}/lib/ctx-query.sh" 2>/dev/null || true
+fi
+
 # Atomic file creation to prevent TOCTOU race conditions (SECURITY-003 fix)
 # Uses set -C (noclobber) for atomic write protection
 create_initial_file() {
@@ -227,12 +301,79 @@ VAULT_FILE="$TEMP_DIR/vault.json"
 LEDGERS_FILE="$TEMP_DIR/ledgers.json"
 WEB_SEARCH_FILE="$TEMP_DIR/web-search.json"  # v2.68.26: GLM-4.7 Integration
 DOCS_SEARCH_FILE="$TEMP_DIR/docs-search.json"  # v2.68.26: GLM-4.7 Phase 4
+PROCEDURAL_FILE="$TEMP_DIR/procedural.json"  # A2 (2026-06-17): ctx-query rules source
 
 # Initialize with defaults using atomic file creation (SECURITY-003 fix)
 create_initial_file "$VAULT_FILE" '{"results": [], "source": "vault"}'
 create_initial_file "$LEDGERS_FILE" '{"results": [], "source": "ledgers"}'
 create_initial_file "$WEB_SEARCH_FILE" '{"results": [], "source": "web_search"}'  # v2.68.26
 create_initial_file "$DOCS_SEARCH_FILE" '{"results": [], "source": "docs_search"}'  # v2.68.26 Phase 4
+create_initial_file "$PROCEDURAL_FILE" '{"results": [], "source": "procedural"}'  # A2
+
+# ===============================================================================
+# A2 (2026-06-17): PROCEDURAL RULES via ctx-query (index-once-query-many).
+# Replaces the anti-pattern of re-parsing the 1.09MB rules.json with N
+# sequential jq passes per orchestration. ctx-query builds a SQLite/TSV index
+# ONCE (rebuilt only when rules.json mtime/size changes) and answers each query
+# from that index. We pull the top high-value rules (all-domain top-N, plus a
+# domain-targeted slice when the prompt keywords name a known domain) and emit
+# them as a "procedural" memory source. Output JSON shape is unchanged downstream;
+# this only adds a new `sources.procedural` block.
+# ===============================================================================
+if declare -f ctx_query_top_rules >/dev/null 2>&1; then
+    set +e
+    echo "  [proc] querying procedural rules via ctx-query index..." >> "$LOG_FILE"
+
+    # Infer a target domain from keywords (best-effort; falls back to none).
+    PROC_DOMAIN=""
+    for d in security hooks testing backend frontend database devops general; do
+        if echo " $KEYWORDS " | grep -qiw "$d"; then
+            PROC_DOMAIN="$d"
+            break
+        fi
+    done
+
+    # tsv2json: convert ctx-query TSV rows -> JSON array (one jq pass over the
+    # SMALL result set, NOT over rules.json).
+    proc_tsv2json() {
+        jq -R -s '
+            split("\n") | map(select(length > 0)) | map(
+                (. / "\t") as $f |
+                {
+                    source_type: "procedural_rule",
+                    rule_id: ($f[0] // ""),
+                    domain: ($f[1] // ""),
+                    confidence: (($f[2] // "0") | tonumber? // 0),
+                    usage_count: (($f[3] // "0") | tonumber? // 0),
+                    score: (($f[4] // "0") | tonumber? // 0),
+                    behavior: ($f[5] // ""),
+                    trigger: ($f[6] // "")
+                }
+            )'
+    }
+
+    PROC_TOP=$(ctx_query_top_rules 9 2>/dev/null | proc_tsv2json 2>/dev/null || echo "[]")
+    [[ -z "$PROC_TOP" || "$PROC_TOP" == "null" ]] && PROC_TOP="[]"
+
+    PROC_DOMAIN_RULES="[]"
+    if [[ -n "$PROC_DOMAIN" ]]; then
+        PROC_DOMAIN_RULES=$(ctx_query_by_domain "$PROC_DOMAIN" 5 2>/dev/null | proc_tsv2json 2>/dev/null || echo "[]")
+        [[ -z "$PROC_DOMAIN_RULES" || "$PROC_DOMAIN_RULES" == "null" ]] && PROC_DOMAIN_RULES="[]"
+    fi
+
+    # Merge top + domain rules, dedupe by rule_id (one jq pass on small arrays).
+    PROC_MERGED=$(jq -c -n --argjson a "$PROC_TOP" --argjson b "$PROC_DOMAIN_RULES" \
+        '($a + $b) | unique_by(.rule_id) | sort_by(-.score) | .[0:12]' 2>/dev/null || echo "[]")
+    [[ -z "$PROC_MERGED" || "$PROC_MERGED" == "null" ]] && PROC_MERGED="[]"
+
+    jq -n --argjson r "$PROC_MERGED" --arg dom "${PROC_DOMAIN:-none}" \
+        '{results: $r, source: "procedural", target_domain: $dom}' > "$PROCEDURAL_FILE" 2>/dev/null || \
+        echo '{"results": [], "source": "procedural"}' > "$PROCEDURAL_FILE"
+
+    PROC_N=$(echo "$PROC_MERGED" | jq 'length' 2>/dev/null || echo 0)
+    echo "  [proc] procedural rules indexed: $PROC_N (domain=${PROC_DOMAIN:-none})" >> "$LOG_FILE"
+    set -e
+fi
 
 # ===============================================================================
 # PARALLEL MEMORY SEARCH
@@ -362,24 +503,9 @@ PID2=$!
     WEB_SEARCH_FILE="$TEMP_DIR/web-search.json"
     echo '{"results": [], "source": "web_search"}' > "$WEB_SEARCH_FILE"
 
-    # PERF-002: API Rate Limiting
-    RATE_LIMIT_FILE="${HOME}/.ralph/cache/api-rate-limit"
-    RATE_LIMIT_DELAY=1  # 1 segundo entre llamadas
-    mkdir -p "$(dirname "$RATE_LIMIT_FILE")"
-    
-    rate_limit() {
-        if [[ -f "$RATE_LIMIT_FILE" ]]; then
-            local LAST_CALL NOW ELAPSED
-            LAST_CALL=$(cat "$RATE_LIMIT_FILE" 2>/dev/null || echo "0")
-            NOW=$(date +%s)
-            ELAPSED=$((NOW - LAST_CALL))
-            if [[ $ELAPSED -lt $RATE_LIMIT_DELAY ]]; then
-                sleep $((RATE_LIMIT_DELAY - ELAPSED))
-            fi
-        fi
-        date +%s > "$RATE_LIMIT_FILE"
-    }
-    
+    # PERF-002: rate_limit() + its config now defined at WORKER scope (A2 fix);
+    # inherited here by this subshell. See note above create_initial_file().
+
     # Check for Z_AI_API_KEY (required for GLM endpoints)
     # API key must be set via environment variable only
     if [[ -z "${Z_AI_API_KEY:-}" ]]; then
@@ -454,15 +580,13 @@ PID3=$!
     DOCS_SEARCH_FILE="$TEMP_DIR/docs-search.json"
     echo '{"results": [], "source": "docs_search"}' > "$DOCS_SEARCH_FILE"
 
-    # Apply rate limiting before second API call
+    # Apply rate limiting before second API call (rate_limit now visible —
+    # defined at worker scope, A2 fix).
     rate_limit
-    
-    # Check for Z_AI_API_KEY (environment only)
-    if [[ -z "${Z_AI_API_KEY:-}" ]]; then
-        log "WARN" "Z_AI_API_KEY not set, skipping docs search"
-        exit 0
-    fi
 
+    # Check for Z_AI_API_KEY (environment only). A2 fix: removed a broken
+    # log "WARN" ... call here (log() is not defined in this hook → it raised
+    # "log: command not found"). Use the same $LOG_FILE pattern as elsewhere.
     if [[ -z "${Z_AI_API_KEY:-}" ]]; then
         echo "  [4/4] zread: No Z_AI_API_KEY, skipping" >> "$LOG_FILE"
         exit 0
@@ -547,6 +671,7 @@ VAULT_RESULT=$(validate_json "$VAULT_FILE" '{"results": [], "source": "vault"}')
 LEDGERS_RESULT=$(validate_json "$LEDGERS_FILE" '{"results": [], "source": "ledgers"}')
 WEB_SEARCH_RESULT=$(validate_json "$WEB_SEARCH_FILE" '{"results": [], "source": "web_search"}')  # v2.68.26
 DOCS_SEARCH_RESULT=$(validate_json "$DOCS_SEARCH_FILE" '{"results": [], "source": "docs_search"}')  # v2.68.26 Phase 4
+PROCEDURAL_RESULT=$(validate_json "$PROCEDURAL_FILE" '{"results": [], "source": "procedural"}')  # A2
 
 # Count results per source
 VAULT_COUNT=$(echo "$VAULT_RESULT" | jq '.results | length' 2>/dev/null || echo 0)
@@ -555,9 +680,10 @@ VAULT_COUNT=$(echo "$VAULT_RESULT" | jq '.results | length' 2>/dev/null || echo 
 LEDGERS_COUNT=$(echo "$LEDGERS_RESULT" | jq '.results | length' 2>/dev/null || echo 0)
 WEB_SEARCH_COUNT=$(echo "$WEB_SEARCH_RESULT" | jq '.results | length' 2>/dev/null || echo 0)  # v2.68.26
 DOCS_SEARCH_COUNT=$(echo "$DOCS_SEARCH_RESULT" | jq '.results | length' 2>/dev/null || echo 0)  # v2.68.26 Phase 4
-TOTAL_COUNT=$((VAULT_COUNT + LEDGERS_COUNT + WEB_SEARCH_COUNT + DOCS_SEARCH_COUNT))
+PROCEDURAL_COUNT=$(echo "$PROCEDURAL_RESULT" | jq '.results | length' 2>/dev/null || echo 0)  # A2
+TOTAL_COUNT=$((VAULT_COUNT + LEDGERS_COUNT + WEB_SEARCH_COUNT + DOCS_SEARCH_COUNT + PROCEDURAL_COUNT))
 
-echo "  Results: vault=$VAULT_COUNT, ledgers=$LEDGERS_COUNT, web=$WEB_SEARCH_COUNT, docs=$DOCS_SEARCH_COUNT" >> "$LOG_FILE"
+echo "  Results: vault=$VAULT_COUNT, ledgers=$LEDGERS_COUNT, web=$WEB_SEARCH_COUNT, docs=$DOCS_SEARCH_COUNT, procedural=$PROCEDURAL_COUNT" >> "$LOG_FILE"
 
 # Generate fork suggestions (top 5 sessions by relevance, now from ledgers)
 FORK_SUGGESTIONS="[]"
@@ -627,6 +753,7 @@ jq -n \
     --argjson ledgers "$LEDGERS_RESULT" \
     --argjson web_search "$WEB_SEARCH_RESULT" \
     --argjson docs_search "$DOCS_SEARCH_RESULT" \
+    --argjson procedural "$PROCEDURAL_RESULT" \
     --argjson fork_suggestions "$FORK_SUGGESTIONS" \
     --argjson past_successes "$PAST_SUCCESSES" \
     --argjson past_errors "$PAST_ERRORS" \
@@ -641,7 +768,8 @@ jq -n \
             vault: $vault,
             ledgers: $ledgers,
             web_search: $web_search,
-            docs_search: $docs_search
+            docs_search: $docs_search,
+            procedural: $procedural
         },
         insights: {
             past_successes: $past_successes,
@@ -657,8 +785,8 @@ echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] Total results found: $TOTAL_COUNT" >> "
 
 # Build context message for injection
 CONTEXT_MSG="SMART_MEMORY_SEARCH v3.4.0 complete:
-- Found $TOTAL_COUNT relevant results across 4 memory sources (vault + ledgers + GLM-4.7 Coding API)
-- vault: $VAULT_COUNT | ledgers: $LEDGERS_COUNT | web: $WEB_SEARCH_COUNT | docs: $DOCS_SEARCH_COUNT
+- Found $TOTAL_COUNT relevant results across 5 memory sources (vault + ledgers + GLM-4.7 Coding API + procedural index)
+- vault: $VAULT_COUNT | ledgers: $LEDGERS_COUNT | web: $WEB_SEARCH_COUNT | docs: $DOCS_SEARCH_COUNT | procedural: $PROCEDURAL_COUNT
 - Results saved to .claude/memory-context.json
 - Use this historical context to inform implementation decisions"
 

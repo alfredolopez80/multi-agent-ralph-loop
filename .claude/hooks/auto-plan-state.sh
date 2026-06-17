@@ -50,9 +50,45 @@ PLAN_STATE_FILE="$(get_claude_dir)/plan-state.json"
 PLAN_STATE="$PLAN_STATE_FILE"
 LOG_FILE="${HOME}/.ralph/logs/auto-plan-state.log"
 
+# A1 (v3.1.0): debounce marker — skip the 23-jq rebuild when the analysis file
+# is unchanged since the last successful run.
+CACHE_DIR="${HOME}/.ralph/cache"
+DEBOUNCE_MARKER="${CACHE_DIR}/auto-plan-state.debounce"
+
 # Ensure directories exist
 mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null
 mkdir -p "$(get_claude_dir)" 2>/dev/null
+mkdir -p "$CACHE_DIR" 2>/dev/null
+
+# =============================================================================
+# A1 DEBOUNCE HELPER (v3.1.0)
+# =============================================================================
+# Cheap fingerprint of a file: "<mtime>:<size>". Avoids hashing 100KB+ files
+# on every PostToolUse while still detecting any real change.
+_file_fingerprint() {
+    local f="$1"
+    [[ -f "$f" ]] || { echo "absent"; return; }
+    local mtime size
+    mtime=$(stat -f %m "$f" 2>/dev/null || stat -c %Y "$f" 2>/dev/null || echo 0)
+    size=$(stat -f %z "$f" 2>/dev/null || stat -c %s "$f" 2>/dev/null || echo 0)
+    echo "${mtime}:${size}"
+}
+
+# Returns 0 (unchanged → caller should skip) when the analysis file fingerprint
+# matches the stored marker. Otherwise records the new fingerprint and returns 1.
+_debounce_unchanged() {
+    local f="$1" marker="$2" current stored
+    current=$(_file_fingerprint "$f")
+    stored=$(cat "$marker" 2>/dev/null || echo "")
+    if [[ -n "$stored" && "$stored" == "$current" ]]; then
+        return 0
+    fi
+    # Record new fingerprint atomically for the next invocation.
+    local tmp
+    tmp=$(mktemp "${marker}.XXXXXX" 2>/dev/null) || { printf '%s' "$current" > "$marker" 2>/dev/null; return 1; }
+    printf '%s' "$current" > "$tmp" 2>/dev/null && mv "$tmp" "$marker" 2>/dev/null || rm -f "$tmp" 2>/dev/null
+    return 1
+}
 
 # =============================================================================
 # LOGGING
@@ -516,6 +552,17 @@ run_hook_mode() {
     # Verify analysis file exists
     if [[ ! -f "$ANALYSIS_FILE" ]]; then
         log "Analysis file not found: $ANALYSIS_FILE"
+        trap - ERR EXIT
+        echo '{"continue": true}'
+        exit 0
+    fi
+
+    # A1 DEBOUNCE (v3.1.0): if orchestrator-analysis.md is byte-for-byte unchanged
+    # since the last successful rebuild, skip the 23-jq plan-state regeneration.
+    # PostToolUse(Write) can fire repeatedly for the same file; this collapses
+    # the redundant rebuilds to a sub-ms no-op.
+    if _debounce_unchanged "$ANALYSIS_FILE" "$DEBOUNCE_MARKER"; then
+        log "Debounce: orchestrator-analysis.md unchanged — skipping rebuild"
         trap - ERR EXIT
         echo '{"continue": true}'
         exit 0

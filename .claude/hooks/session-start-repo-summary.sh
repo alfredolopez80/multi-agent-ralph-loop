@@ -110,10 +110,16 @@ fi
 
 log "Summary generated (${#SUMMARY} chars)"
 
+# A3 token-recut: the verbose multi-section summary is written to the log; only a
+# 1-line breadcrumb with the source counts is injected into SessionStart context.
+# Pattern mirrors auto-sync-global.sh v3.1.1 (breadcrumb in context, detail to log).
+echo -e "$SUMMARY" >> "${LOG_DIR}/repo-summary.log" 2>&1 || true
+
+BREADCRUMB="repo-summary: ${PROJECT_NAME} | rules=${RULE_COUNT:-0} ledgers=${LEDGER_COUNT:-0} vault=${WIKI_COUNT:-0} (detail: ~/.ralph/logs/repo-summary.log)"
+
 # Output for SessionStart hook
 # v2.87.0 FIX: Use jq for proper JSON escaping instead of sed
-# The additionalContext field will be shown to Claude
-ESCAPED_SUMMARY=$(echo -e "$SUMMARY" | jq -Rs '.' 2>/dev/null || echo '""')
-echo "{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": $ESCAPED_SUMMARY}}"
+ESCAPED_BREADCRUMB=$(printf '%s' "$BREADCRUMB" | jq -Rs '.' 2>/dev/null || echo '""')
+echo "{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": $ESCAPED_BREADCRUMB}}"
 
 log "=== Repo Summary Complete ==="

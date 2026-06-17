@@ -62,8 +62,31 @@ RALPH_DIR="${HOME}/.ralph"
 HOOKS_DIR="${HOME}/.claude/hooks"
 FEATURES_FILE="${HOME}/.ralph/config/features.json"
 
+# A1 (v3.1.1): debounce cache — avoid re-estimating context from the transcript
+# on every single UserPromptSubmit when the transcript hasn't changed.
+CACHE_DIR="${HOME}/.ralph/cache"
+DEBOUNCE_MARKER="${CACHE_DIR}/context-warning.debounce"
+
 # Ensure directories exist (ignore errors)
-mkdir -p "$RALPH_DIR" "$(dirname "$LOG_FILE" 2>/dev/null)" || true
+mkdir -p "$RALPH_DIR" "$CACHE_DIR" "$(dirname "$LOG_FILE" 2>/dev/null)" || true
+
+# Cheap fingerprint of the transcript file ("<mtime>:<size>"). When it matches
+# the stored marker, the previously computed percentage is still valid and the
+# expensive transcript estimation (Method 1.5) can be skipped.
+_transcript_fingerprint() {
+    local path=""
+    if [[ -n "$INPUT" ]] && command -v jq &>/dev/null; then
+        path=$(echo "$INPUT" | jq -r '.transcript_path // empty' 2>/dev/null || true)
+    fi
+    if [[ -n "$path" ]] && [[ -f "$path" ]]; then
+        local mtime size
+        mtime=$(stat -f %m "$path" 2>/dev/null || stat -c %Y "$path" 2>/dev/null || echo 0)
+        size=$(stat -f %z "$path" 2>/dev/null || stat -c %s "$path" 2>/dev/null || echo 0)
+        echo "${mtime}:${size}"
+    else
+        echo ""
+    fi
+}
 
 # Source environment detection (v3.0.1: library moved to .claude/lib/)
 ENV_TYPE="unknown"
@@ -296,8 +319,30 @@ build_info_message() {
 
 # Main execution
 main() {
-    local context_pct
-    context_pct=$(get_context_percentage)
+    # A1 DEBOUNCE (v3.1.1): reuse the last computed percentage when the transcript
+    # is unchanged. The marker stores "<fingerprint>|<pct>". On a hit we skip the
+    # transcript-size estimation entirely; on a miss we recompute and refresh it.
+    local context_pct fp stored stored_fp stored_pct
+    fp=$(_transcript_fingerprint)
+    stored=$(cat "$DEBOUNCE_MARKER" 2>/dev/null || echo "")
+    stored_fp="${stored%%|*}"
+    stored_pct="${stored##*|}"
+
+    if [[ -n "$fp" && "$fp" == "$stored_fp" ]] && [[ "$stored_pct" =~ ^[0-9]+$ ]]; then
+        context_pct="$stored_pct"
+        log_context "DEBUG" "Debounce HIT: transcript unchanged, reusing pct=$context_pct%"
+    else
+        context_pct=$(get_context_percentage)
+        # Refresh the marker only when we have a real transcript fingerprint.
+        if [[ -n "$fp" ]] && [[ "$context_pct" =~ ^[0-9]+$ ]]; then
+            local _tmp
+            _tmp=$(mktemp "${DEBOUNCE_MARKER}.XXXXXX" 2>/dev/null) || _tmp=""
+            if [[ -n "$_tmp" ]]; then
+                printf '%s|%s' "$fp" "$context_pct" > "$_tmp" 2>/dev/null && \
+                    mv "$_tmp" "$DEBOUNCE_MARKER" 2>/dev/null || rm -f "$_tmp" 2>/dev/null
+            fi
+        fi
+    fi
 
     # Update message count (v2.47: use STATE_DIR for consistency with reset)
     # v3.1.0: Reset counter when session changes (prevents stale 2733+ counts)
