@@ -12,9 +12,13 @@ Adaptation notes vs. the codex original:
     (codex nested ``memory_tree`` under each project and carried snapshot /
     links machinery; those are out of B2 scope and were dropped.)
   * ``compute_project_id(repo_root)`` derives the project id from the git
-    remote URL hash + the worktree instance name, so two worktrees of the
-    same repo never share a tree. This replaces codex's reliance on a shared
-    ``active_context`` module.
+    remote URL hash + the MAIN-REPO directory name. Worktrees are unwrapped to
+    their main repository first (Addendum 2, 2026-06-17), so every worktree of
+    a repo shares ONE durable memory tree -- knowledge is a property of the
+    project, not of an ephemeral branch/worktree. ``resolve_main_repo_root`` is
+    the single source of truth for that unwrapping (``project_memory`` imports
+    it rather than duplicating the logic). This replaces codex's reliance on a
+    shared ``active_context`` module.
   * RED-gate, validation, and node schema are reused from ``memory_node`` and
     ``sensitive_content`` (the B1 modules) -- nothing is redefined here.
 
@@ -36,9 +40,10 @@ import re
 import subprocess
 import sys
 import tempfile
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 # Make sibling modules importable both as a package and as loose scripts.
 if __package__:
@@ -81,7 +86,7 @@ def default_ralph_home() -> Path:
 
 
 # ---------------------------------------------------------------------------
-# Worktree-isolated project id derivation.
+# Canonical project id derivation (main-repo, worktree-unwrapped).
 # ---------------------------------------------------------------------------
 
 def _git_remote_url(repo_root: Path) -> str:
@@ -101,27 +106,81 @@ def _git_remote_url(repo_root: Path) -> str:
     return result.stdout.strip()
 
 
+def resolve_main_repo_root(repo_root: Path) -> Path:
+    """Return the MAIN repository root for *repo_root*, unwrapping worktrees.
+
+    Single source of truth for "which project does this path belong to". For a
+    normal checkout this is ``git rev-parse --show-toplevel``. For a linked
+    worktree the top-level ``.git`` is a *file* pointing at
+    ``<main>/.git/worktrees/<name>``; the main repo root is three levels up from
+    that gitdir. Outside a git repo (or on any git error) the resolved input
+    path is returned verbatim as a stable fallback.
+
+    Both ``project_memory`` and the per-project tree id derivation use this so
+    every worktree maps to one canonical project (Addendum 2, 2026-06-17).
+    """
+    start = repo_root.expanduser().resolve()
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(start), "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return start
+    if result.returncode != 0:
+        return start
+    toplevel = Path(result.stdout.strip())
+    git_marker = toplevel / ".git"
+    if not git_marker.is_file():
+        # Normal checkout: .git is a directory, toplevel IS the main repo.
+        return toplevel
+    try:
+        content = git_marker.read_text(encoding="utf-8").strip()
+    except OSError:
+        return toplevel
+    gitdir = content.split("gitdir:", 1)[-1].strip()
+    gitdir_path = (
+        Path(gitdir) if Path(gitdir).is_absolute() else (toplevel / gitdir).resolve()
+    )
+    # .git/worktrees/<name> -> up 3 levels to the main repo root.
+    if "worktrees" in gitdir_path.parts:
+        return gitdir_path.parent.parent.parent
+    return toplevel
+
+
 def repo_remote_hash(repo_root: Path) -> str:
-    """Stable 16-char hash of the repo's remote URL (or its path as fallback)."""
-    remote = _git_remote_url(repo_root)
-    material = remote or str(repo_root.expanduser().resolve())
+    """Stable 16-char hash of the main repo's remote URL (path as fallback)."""
+    main_repo = resolve_main_repo_root(repo_root)
+    remote = _git_remote_url(main_repo)
+    material = remote or str(main_repo)
     return sha256_text(material)[:16]
 
 
 def workspace_instance_id(repo_root: Path) -> str:
-    """Identity of *this* working tree (worktree name or repo dir name)."""
-    return safe_segment(repo_root.expanduser().resolve().name, "workspace_instance_id")
+    """Identity of the PROJECT: the main-repo directory name (worktree-unwrapped).
+
+    Despite the historical name, this is now derived from the MAIN repository
+    (not the worktree) so all worktrees of a repo share one canonical id.
+    """
+    return safe_segment(resolve_main_repo_root(repo_root).name, "workspace_instance_id")
 
 
 def compute_project_id(repo_root: Path) -> str:
-    """Project id isolating each worktree: remote-hash + workspace-instance.
+    """Canonical project id: main-repo remote-hash + main-repo dir name.
 
-    Two worktrees of the same repository hash the same remote but have
-    different directory names, so their project ids -- and therefore their
-    memory trees -- never collide.
+    Worktrees are unwrapped to their main repository first, so two worktrees of
+    the same repo resolve to the SAME project id -- they share one durable
+    memory tree (Addendum 2). Distinct repos still get distinct ids via the
+    remote-hash and/or directory name.
     """
-    root = repo_root.expanduser().resolve()
-    return safe_segment(f"{repo_remote_hash(root)}_{workspace_instance_id(root)}", "project_id")
+    main_repo = resolve_main_repo_root(repo_root)
+    return safe_segment(
+        f"{repo_remote_hash(main_repo)}_{workspace_instance_id(main_repo)}",
+        "project_id",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -197,6 +256,34 @@ class TreeStore:
 
     def __init__(self, ralph_home: Path | None = None) -> None:
         self.ralph_home = (ralph_home or default_ralph_home()).expanduser()
+        # Deferred-index batch state. When > 0 the index is NOT rewritten on
+        # every node write (which is O(n) per write -> O(n^2) for a bulk
+        # migration); instead dirty projects are tracked and flushed once.
+        self._defer_index_depth = 0
+        self._dirty_projects: set[str] = set()
+
+    # --- batch index (bulk-write performance) -----------------------------
+
+    @contextmanager
+    def deferred_index(self) -> "Iterator[TreeStore]":
+        """Batch index writes: skip per-node index rewrites, flush once on exit.
+
+        Node JSON files are still written (and fsynced) immediately, so the
+        per-node duplicate check (``node_exists``) stays correct. Only the
+        aggregate ``index.json`` rebuild is deferred to the end, turning the
+        bulk-migration cost from O(n^2) into O(n). The flush runs even if the
+        body raises, so a partial migration still leaves a consistent index.
+        """
+        self._defer_index_depth += 1
+        try:
+            yield self
+        finally:
+            self._defer_index_depth -= 1
+            if self._defer_index_depth == 0:
+                dirty = sorted(self._dirty_projects)
+                self._dirty_projects.clear()
+                for project_id in dirty:
+                    self._write_index(project_id)
 
     # --- layout -----------------------------------------------------------
 
@@ -273,7 +360,10 @@ class TreeStore:
         path = self.node_path(node.project_id, node.node_id)
         payload = node.to_dict()
         atomic_write_json(path, payload)
-        self._write_index(node.project_id)
+        if self._defer_index_depth > 0:
+            self._dirty_projects.add(node.project_id)
+        else:
+            self._write_index(node.project_id)
         self._append_usage(
             root,
             {"event": "node_written", "node_id": node.node_id, "at": now_iso()},
