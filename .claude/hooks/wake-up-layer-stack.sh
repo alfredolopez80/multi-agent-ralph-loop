@@ -139,9 +139,46 @@ if [[ -n "$YESTERDAY" && -f "${LINT_REPORT_DIR}/vault-lint-${YESTERDAY}.md" ]]; 
 fi
 
 # ---------------------------------------------------------------------------
-# Compose context (L0 + L1 + Vault Stats + Wing + Lint)
+# Load Top-N procedural rules via ctx-query (A2, index-once-query-many)
+# A2: ctx-query wired here; B3 will swap top-N source to recall_v2.
+#
+# This reads ~/.ralph/procedural/rules.json THROUGH the ctx-query index
+# (SQLite/TSV built once, invalidated on rules.json change) instead of
+# re-parsing the 1.09MB JSON with N sequential jq passes. It ONLY supplies the
+# top-N rule selection block; L0 (identity), L1 (essential), and L2 (wing) loads
+# above are intentionally NOT touched.
+# ---------------------------------------------------------------------------
+TOPN_SUMMARY=""
+_WUL_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "${_WUL_HOOK_DIR}/lib/ctx-query.sh" ]]; then
+    # shellcheck disable=SC1091
+    source "${_WUL_HOOK_DIR}/lib/ctx-query.sh" 2>/dev/null || true
+    if declare -f ctx_query_top_rules >/dev/null 2>&1; then
+        # TSV rows: rule_id\tdomain\tconfidence\tusage\tscore\tbehavior\ttrigger\ttags
+        TOPN_RAW=$(ctx_query_top_rules 5 2>/dev/null || echo "")
+        if [[ -n "$TOPN_RAW" ]]; then
+            TOPN_LINES=$(echo "$TOPN_RAW" | awk -F'\t' '{ b=$6; if (length(b) > 90) b=substr(b,1,90) "..."; printf "- **%s** (%s, score %.0f): %s\n", $1, $2, $5, b }')
+            if [[ -n "$TOPN_LINES" ]]; then
+                TOPN_SUMMARY="$TOPN_LINES"
+                log "INFO top-N procedural rules loaded via ctx-query count=$(echo "$TOPN_RAW" | grep -c . )"
+            fi
+        fi
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# Compose context (L0 + L1 + Vault Stats + Wing + Lint + Top-N rules)
 # ---------------------------------------------------------------------------
 EXTRA_SECTIONS=""
+
+if [[ -n "$TOPN_SUMMARY" ]]; then
+    EXTRA_SECTIONS="${EXTRA_SECTIONS}
+
+### Top Procedural Rules (ctx-query index)
+${TOPN_SUMMARY}
+
+"
+fi
 
 if [[ -n "$VAULT_STATS" ]]; then
     EXTRA_SECTIONS="${EXTRA_SECTIONS}
