@@ -116,7 +116,7 @@ fi
 # ============================================
 
 log "APPROVE: Subagent ${agent_id} (${agent_type}) can stop"
-cat <<EOF
-: # FIXED: bare JSON decision approve removed
-EOF
+# SubagentStop: a clean exit 0 with EMPTY stdout means "approve stop".
+# Emitting any non-JSON text (or {"decision":"approve"}) triggers
+# "Hook JSON output validation failed — (root): Invalid input".
 exit 0

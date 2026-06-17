@@ -20,7 +20,8 @@ trap 'echo "{\"continue\": true}"' ERR EXIT
 # Load report generator library
 REPORT_GENERATOR=".claude/lib/action-report-generator.sh"
 if [[ ! -f "$REPORT_GENERATOR" ]]; then
-    echo "{\"continue\": true}"
+    trap - ERR EXIT  # clear trap first so it does not emit a SECOND JSON object
+    echo '{"continue": true}'
     exit 0
 fi
 
