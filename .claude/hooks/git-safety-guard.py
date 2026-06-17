@@ -269,7 +269,7 @@ def main():
             response = {
                 "hookSpecificOutput": {
                     "hookEventName": "PreToolUse",
-                    "permissionDecision": "block",
+                    "permissionDecision": "deny",
                     "permissionDecisionReason": f"BLOCKED by git-safety-guard: Command substitution detected with destructive command. "
                     f"Command: {original_command[:100]}{'...' if len(original_command) > 100 else ''}. "
                     f"Remove the $() or backtick wrapper and run the inner command separately.",
@@ -305,7 +305,7 @@ def main():
                 response = {
                     "hookSpecificOutput": {
                         "hookEventName": "PreToolUse",
-                        "permissionDecision": "block",
+                        "permissionDecision": "deny",
                         "permissionDecisionReason": f"BLOCKED by git-safety-guard: Command chaining detected. "
                         f"Dangerous subcommand found: {subcmd_normalized[:80]}. "
                         f"Reason: {confirm_reason}. "
@@ -324,7 +324,7 @@ def main():
                 response = {
                     "hookSpecificOutput": {
                         "hookEventName": "PreToolUse",
-                        "permissionDecision": "block",
+                        "permissionDecision": "deny",
                         "permissionDecisionReason": f"BLOCKED by git-safety-guard: Command chaining detected. "
                         f"Dangerous subcommand found: {subcmd_normalized[:80]}. "
                         f"Reason: {reason}. "
@@ -346,7 +346,7 @@ def main():
         response = {
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
-                "permissionDecision": "block",
+                "permissionDecision": "deny",
                 "permissionDecisionReason": "git-safety-guard: Invalid input format. Command blocked for safety.",
             }
         }
@@ -360,7 +360,7 @@ def main():
         response = {
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
-                "permissionDecision": "block",
+                "permissionDecision": "deny",
                 "permissionDecisionReason": f"git-safety-guard: Internal error, command blocked for safety. Error: {e}",
             }
         }

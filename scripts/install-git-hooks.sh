@@ -62,6 +62,17 @@ for hook_file in $STAGED_HOOKS; do
     echo -e "${GREEN}✓ $hook_name${NC}"
 done
 
+# Phase 1b: PreToolUse permissionDecision enum guard (allow|deny|ask, never "block").
+# Regression guard for the "(root): Invalid input" hook error.
+PD_CHECK="$(git rev-parse --show-toplevel 2>/dev/null)/scripts/check-pretooluse-permission-decision.sh"
+if [[ -n "$STAGED_HOOKS" && -x "$PD_CHECK" ]]; then
+    if ! "$PD_CHECK" > /dev/null 2>&1; then
+        echo -e "${RED}✗ Invalid permissionDecision (use \"deny\", not \"block\")${NC}"
+        echo "  Run: $PD_CHECK"
+        ((ERRORS++))
+    fi
+fi
+
 if [[ $ERRORS -gt 0 ]]; then
     echo -e "${RED}COMMIT BLOCKED: $ERRORS hook(s) have invalid JSON format${NC}"
     echo "Reference: tests/HOOK_FORMAT_REFERENCE.md"

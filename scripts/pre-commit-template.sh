@@ -72,6 +72,30 @@ else
 fi
 
 #######################################
+# Phase 1b: PreToolUse permissionDecision enum guard
+#######################################
+# Regression guard for the "Hook JSON output validation failed — (root):
+# Invalid input" error: PreToolUse hooks must emit permissionDecision values of
+# allow|deny|ask, NEVER "block" ("block" belongs to the Stop `decision` field).
+# Logic lives in one place (the external checker) so it is also pytest-testable.
+if [[ -n "$STAGED_HOOKS" ]]; then
+    echo ""
+    echo -e "${YELLOW}[Phase 1b] Validating PreToolUse permissionDecision enum${NC}"
+    PD_CHECK="$REPO_ROOT/scripts/check-pretooluse-permission-decision.sh"
+    if [[ -x "$PD_CHECK" ]]; then
+        if "$PD_CHECK" > /dev/null 2>&1; then
+            echo -e "  ${GREEN}✓ permissionDecision values are allow|deny|ask${NC}"
+        else
+            echo -e "  ${RED}✗ Invalid permissionDecision (use \"deny\", not \"block\")${NC}"
+            echo -e "  ${YELLOW}  Run: $PD_CHECK${NC}"
+            ((ERRORS++))
+        fi
+    else
+        echo -e "  ${YELLOW}⚠ Checker not found: $PD_CHECK${NC}"
+    fi
+fi
+
+#######################################
 # Phase 2: Skills Unification Validation
 #######################################
 STAGED_SKILLS=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.claude/skills/.*SKILL\.md$' || true)
