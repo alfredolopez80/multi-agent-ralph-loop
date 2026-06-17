@@ -1,10 +1,21 @@
 #!/bin/bash
-# smart-memory-search.sh - v3.4.0 Smart Memory-Driven Orchestration (Obsidian-first)
+# smart-memory-search.sh - v3.5.0 Smart Memory-Driven Orchestration (Obsidian-first)
 # Hook: PreToolUse (Task - before orchestration)
 # Purpose: PARALLEL search across all memory sources for relevant context
-# VERSION: 3.4.0
-# UPDATED: 2026-04-15 (removed handoffs source — session-handoff state, not Vault memory)
-# Timestamp: 2026-04-15
+# VERSION: 3.5.0
+# UPDATED: 2026-06-17 (A1: fire-and-forget — respond <10ms, search in background)
+# Timestamp: 2026-06-17
+#
+# v3.5.0 (2026-06-17, A1 hooks-memory-optimization): FIRE-AND-FORGET.
+#   The 45-jq parallel memory search (vault + ledgers + GLM APIs) used to run
+#   SYNCHRONOUSLY on every orchestration Task, blocking the tool for 20-50ms+
+#   (and up to the 5s PreToolUse timeout when APIs were slow). It now responds
+#   {"hookSpecificOutput":{"permissionDecision":"allow"}} in <10ms and forks the
+#   real search detached (SMART_MEMORY_WORKER=1 nohup bash "$0" ... &).
+#   The worker writes results to .claude/memory-context.json (the SAME 30-min
+#   cache the orchestrator already reads) — context is consumed from that cache
+#   on the NEXT tool, never recomputed per tool. Pattern mirrors
+#   vault-fact-extractor.sh + auto-sync-global.sh.
 #
 # Based on @PerceptualPeak Smart Forking concept:
 # "Why not utilize the knowledge gained from your hundreds/thousands
@@ -39,6 +50,30 @@
 # Fixes: SECURITY-001, 002, 003, ADV-001, ADV-002, ADV-003, ADV-004, ADV-005, ADV-006, GAP-MEM-001, SEC-007
 # v2.57.6: FIX GAP-MEM-001 - macOS realpath doesn't support -e flag, use glob instead of regex
 # v2.47.3: Removed unused variable, fixed $KEYWORDS_SAFE usage, date portability, noclobber
+
+# ===============================================================================
+# PARENT MODE (A1, v3.5.0): respond immediately, fork the heavy search detached.
+# This is the ONLY synchronous code path. It must stay jq-free and <10ms.
+# ===============================================================================
+if [[ "${SMART_MEMORY_WORKER:-0}" != "1" ]]; then
+    umask 077
+    # SEC-111: bounded stdin read (100KB max) — prevents DoS from malicious input.
+    INPUT=$(head -c 100000)
+    mkdir -p "${HOME}/.ralph/logs" 2>/dev/null || true
+    # Fork the worker detached; it re-reads INPUT from stdin via the heredoc.
+    SMART_MEMORY_WORKER=1 nohup bash "$0" <<<"$INPUT" \
+        >>"${HOME}/.ralph/logs/smart-memory-search.bg.log" 2>&1 &
+    disown 2>/dev/null || true
+    # PreToolUse permission format (this hook has always used permissionDecision,
+    # NOT {"continue":true} — see test_hooks_task.py::test_has_correct_format).
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+    exit 0
+fi
+
+# ===============================================================================
+# WORKER MODE — detached. No JSON response is consumed by Claude here; output
+# goes to the bg log. The real product is .claude/memory-context.json.
+# ===============================================================================
 
 # SEC-111: Read input from stdin with length limit (100KB max)
 # Prevents DoS from malicious input
@@ -106,7 +141,15 @@ if [[ "$TASK_TYPE" != "orchestrator" ]] && \
 fi
 
 # Skip if memory search was done recently (cache for 30 minutes)
-PROJECT_DIR=$(pwd)
+# Worktree-safe project root (avoids materializing .claude/ inside skill dirs).
+_SMS_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "${_SMS_HOOK_DIR}/lib/worktree-utils.sh" ]]; then
+    # shellcheck disable=SC1091
+    source "${_SMS_HOOK_DIR}/lib/worktree-utils.sh"
+    PROJECT_DIR="$(get_safe_project_root 2>/dev/null || pwd)"
+else
+    PROJECT_DIR=$(pwd)
+fi
 MEMORY_CONTEXT="$PROJECT_DIR/.claude/memory-context.json"
 CACHE_DURATION=1800  # 30 minutes
 
