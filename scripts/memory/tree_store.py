@@ -82,7 +82,15 @@ def now_iso() -> str:
 
 
 def default_ralph_home() -> Path:
-    return Path("~/.ralph").expanduser()
+    """Root for the SHARED durable memory tree.
+
+    Honors ``RALPH_MEMORY_HOME`` (default ``~/.ralph``) so the codex agent and
+    the claude agent can converge on ONE shared memory tree root (Wave 5,
+    Addendum 3, 2026-06-17). The default resolves to ``~/.ralph`` -- unchanged
+    from before -- so existing data and the 111 memory tests keep passing.
+    """
+    home = os.environ.get("RALPH_MEMORY_HOME", "").strip()
+    return Path(home or "~/.ralph").expanduser()
 
 
 # ---------------------------------------------------------------------------
@@ -175,7 +183,16 @@ def compute_project_id(repo_root: Path) -> str:
     the same repo resolve to the SAME project id -- they share one durable
     memory tree (Addendum 2). Distinct repos still get distinct ids via the
     remote-hash and/or directory name.
+
+    ``RALPH_PROJECT_ID`` override (Wave 5, Addendum 3, 2026-06-17): if the env
+    var is set, it wins. This gives codex/claude an explicit escape hatch and
+    keeps compatibility with codex's existing ``RALPH_PROJECT_ID`` convention.
+    When unset, the git-remote-hash derivation below is used so the SAME target
+    repo yields the SAME id from either agent.
     """
+    override = os.environ.get("RALPH_PROJECT_ID", "").strip()
+    if override:
+        return safe_segment(override, "project_id")
     main_repo = resolve_main_repo_root(repo_root)
     return safe_segment(
         f"{repo_remote_hash(main_repo)}_{workspace_instance_id(main_repo)}",
