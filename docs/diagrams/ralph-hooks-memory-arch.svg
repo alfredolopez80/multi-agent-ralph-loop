@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1300 980" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+<defs>
+  <marker id="arr" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L10,3.5 L0,7 Z" fill="#60a5fa"/></marker>
+  <marker id="arrg" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L10,3.5 L0,7 Z" fill="#34d399"/></marker>
+  <marker id="arro" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M0,0 L10,3.5 L0,7 Z" fill="#fbbf24"/></marker>
+  <filter id="sh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.5"/></filter>
+</defs>
+<rect x="0" y="0" width="1300" height="980" fill="#0f0f1a"/>
+<text x="650.0" y="42" text-anchor="middle" font-size="26" font-weight="700" fill="#e2e8f0">multi-agent-ralph-loop — Arquitectura objetivo: Hooks optimizados + Memoria v2</text>
+<text x="650.0" y="66" text-anchor="middle" font-size="13" fill="#94a3b8">Plan 2026-06-17 · Track A (latencia/tokens) + Track B (memoria portada de codex)</text>
+<rect x="30" y="90" width="610" height="380" rx="12" fill="none" stroke="#38bdf8" stroke-width="1.4" stroke-dasharray="6,4" opacity="0.7"/>
+<text x="48" y="115" font-size="16" font-weight="700" fill="#38bdf8">TRACK A · Ejecución de hooks optimizada</text>
+<rect x="50" y="130" width="285" height="66" rx="9" fill="#1b1b2f" stroke="#38bdf8" stroke-width="1.6" filter="url(#sh)"/>
+<text x="64" y="155" font-size="14" font-weight="600" fill="#e2e8f0">wake-up-layer-stack</text>
+<text x="64" y="175" font-size="11.5" fill="#94a3b8">Inyecta &lt;2000 tokens (top-N por score)</text>
+<rect x="296" y="138" width="29" height="17" rx="8" fill="#3b82f6" opacity="0.9"/>
+<text x="310.5" y="150" text-anchor="middle" font-size="10" font-weight="700" fill="#0f0f1a">OPT</text>
+<rect x="348" y="130" width="278" height="66" rx="9" fill="#1b1b2f" stroke="#38bdf8" stroke-width="1.6" filter="url(#sh)"/>
+<text x="362" y="155" font-size="14" font-weight="600" fill="#e2e8f0">Mantenimiento background</text>
+<text x="362" y="175" font-size="11.5" fill="#94a3b8">vault-graduation/promotion · nohup &amp;</text>
+<rect x="587" y="138" width="29" height="17" rx="8" fill="#3b82f6" opacity="0.9"/>
+<text x="601.5" y="150" text-anchor="middle" font-size="10" font-weight="700" fill="#0f0f1a">OPT</text>
+<rect x="50" y="210" width="285" height="72" rx="9" fill="#1b1b2f" stroke="#38bdf8" stroke-width="1.6" filter="url(#sh)"/>
+<text x="64" y="235" font-size="14" font-weight="600" fill="#e2e8f0">smart-memory-search</text>
+<text x="64" y="255" font-size="11.5" fill="#94a3b8">FIRE-AND-FORGET · continue:true &lt;10ms</text>
+<rect x="296" y="218" width="29" height="17" rx="8" fill="#3b82f6" opacity="0.9"/>
+<text x="310.5" y="230" text-anchor="middle" font-size="10" font-weight="700" fill="#0f0f1a">OPT</text>
+<rect x="348" y="210" width="278" height="72" rx="9" fill="#1b1b2f" stroke="#38bdf8" stroke-width="1.6" filter="url(#sh)"/>
+<text x="362" y="235" font-size="14" font-weight="600" fill="#e2e8f0">auto-plan-state · context-warning</text>
+<text x="362" y="255" font-size="11.5" fill="#94a3b8">DEBOUNCE por mtime/hash</text>
+<rect x="587" y="218" width="29" height="17" rx="8" fill="#3b82f6" opacity="0.9"/>
+<text x="601.5" y="230" text-anchor="middle" font-size="10" font-weight="700" fill="#0f0f1a">OPT</text>
+<rect x="50" y="296" width="285" height="66" rx="9" fill="#1b1b2f" stroke="#38bdf8" stroke-width="1.6" filter="url(#sh)"/>
+<text x="64" y="321" font-size="14" font-weight="600" fill="#e2e8f0">lib/ctx-query.sh</text>
+<text x="64" y="341" font-size="11.5" fill="#94a3b8">index-once-query-many (reemplaza 45 jq)</text>
+<rect x="296" y="304" width="29" height="17" rx="8" fill="#10b981" opacity="0.9"/>
+<text x="310.5" y="316" text-anchor="middle" font-size="10" font-weight="700" fill="#0f0f1a">NEW</text>
+<rect x="348" y="296" width="278" height="66" rx="9" fill="#1b1b2f" stroke="#38bdf8" stroke-width="1.6" filter="url(#sh)"/>
+<text x="362" y="321" font-size="14" font-weight="600" fill="#e2e8f0">PostToolUse async</text>
+<text x="362" y="341" font-size="11.5" fill="#94a3b8">vault-fact-extractor (ya async)</text>
+<rect x="50" y="378" width="576" height="66" rx="9" fill="#1b1b2f" stroke="#38bdf8" stroke-width="1.6" filter="url(#sh)"/>
+<text x="64" y="403" font-size="14" font-weight="600" fill="#e2e8f0">cache: ~/.ralph/cache/</text>
+<text x="64" y="423" font-size="11.5" fill="#94a3b8">Resultados precalculados · no recomputar por tool</text>
+<rect x="587" y="386" width="29" height="17" rx="8" fill="#10b981" opacity="0.9"/>
+<text x="601.5" y="398" text-anchor="middle" font-size="10" font-weight="700" fill="#0f0f1a">NEW</text>
+<rect x="660" y="90" width="610" height="380" rx="12" fill="none" stroke="#a78bfa" stroke-width="1.4" stroke-dasharray="6,4" opacity="0.7"/>
+<text x="678" y="115" font-size="16" font-weight="700" fill="#a78bfa">TRACK B · Memoria v2 (portada de codex)</text>
+<rect x="680" y="130" width="285" height="66" rx="9" fill="#1b1b2f" stroke="#a78bfa" stroke-width="1.6" filter="url(#sh)"/>
+<text x="694" y="155" font-size="14" font-weight="600" fill="#e2e8f0">MemoryNode v2</text>
+<text x="694" y="175" font-size="11.5" fill="#94a3b8">dataclass frozen · 23 campos · validación</text>
+<rect x="926" y="138" width="29" height="17" rx="8" fill="#10b981" opacity="0.9"/>
+<text x="940.5" y="150" text-anchor="middle" font-size="10" font-weight="700" fill="#0f0f1a">NEW</text>
+<rect x="978" y="130" width="278" height="66" rx="9" fill="#1b1b2f" stroke="#a78bfa" stroke-width="1.6" filter="url(#sh)"/>
+<text x="992" y="155" font-size="14" font-weight="600" fill="#e2e8f0">RED-gate</text>
+<text x="992" y="175" font-size="11.5" fill="#94a3b8">sensitive_content.py · 8 regex · bloquea secretos</text>
+<rect x="1217" y="138" width="29" height="17" rx="8" fill="#10b981" opacity="0.9"/>
+<text x="1231.5" y="150" text-anchor="middle" font-size="10" font-weight="700" fill="#0f0f1a">NEW</text>
+<rect x="680" y="210" width="285" height="66" rx="9" fill="#1b1b2f" stroke="#a78bfa" stroke-width="1.6" filter="url(#sh)"/>
+<text x="694" y="235" font-size="14" font-weight="600" fill="#e2e8f0">domain al crear</text>
+<text x="694" y="255" font-size="11.5" fill="#94a3b8">1881 UNSET → 0</text>
+<rect x="905" y="218" width="50" height="17" rx="8" fill="#fbbf24" opacity="0.9"/>
+<text x="930.0" y="230" text-anchor="middle" font-size="10" font-weight="700" fill="#0f0f1a">MEJORA</text>
+<rect x="978" y="210" width="278" height="66" rx="9" fill="#1b1b2f" stroke="#a78bfa" stroke-width="1.6" filter="url(#sh)"/>
+<text x="992" y="235" font-size="14" font-weight="600" fill="#e2e8f0">tree_store.py</text>
+<text x="992" y="255" font-size="11.5" fill="#94a3b8">nodes/raw/index · atomic · worktree iso</text>
+<rect x="1217" y="218" width="29" height="17" rx="8" fill="#10b981" opacity="0.9"/>
+<text x="1231.5" y="230" text-anchor="middle" font-size="10" font-weight="700" fill="#0f0f1a">NEW</text>
+<rect x="680" y="290" width="285" height="66" rx="9" fill="#1b1b2f" stroke="#a78bfa" stroke-width="1.6" filter="url(#sh)"/>
+<text x="694" y="315" font-size="14" font-weight="600" fill="#e2e8f0">recall_v2.py</text>
+<text x="694" y="335" font-size="11.5" fill="#94a3b8">scoring tipado (reemplaza grep)</text>
+<rect x="926" y="298" width="29" height="17" rx="8" fill="#10b981" opacity="0.9"/>
+<text x="940.5" y="310" text-anchor="middle" font-size="10" font-weight="700" fill="#0f0f1a">NEW</text>
+<rect x="978" y="290" width="278" height="66" rx="9" fill="#1b1b2f" stroke="#a78bfa" stroke-width="1.6" filter="url(#sh)"/>
+<text x="992" y="315" font-size="14" font-weight="600" fill="#e2e8f0">dream.py</text>
+<text x="992" y="335" font-size="11.5" fill="#94a3b8">consolida → construye L3</text>
+<rect x="1217" y="298" width="29" height="17" rx="8" fill="#10b981" opacity="0.9"/>
+<text x="1231.5" y="310" text-anchor="middle" font-size="10" font-weight="700" fill="#0f0f1a">NEW</text>
+<rect x="680" y="372" width="576" height="66" rx="9" fill="#1b1b2f" stroke="#a78bfa" stroke-width="1.6" filter="url(#sh)"/>
+<text x="694" y="397" font-size="14" font-weight="600" fill="#e2e8f0">migrate_rules_to_nodes.py</text>
+<text x="694" y="417" font-size="11.5" fill="#94a3b8">envuelve las 2028 reglas en MemoryNode v2</text>
+<rect x="1217" y="380" width="29" height="17" rx="8" fill="#10b981" opacity="0.9"/>
+<text x="1231.5" y="392" text-anchor="middle" font-size="10" font-weight="700" fill="#0f0f1a">NEW</text>
+<text x="48" y="512" font-size="16" font-weight="700" fill="#fbbf24">FLUJO DE APRENDIZAJE (conecta ambos tracks)</text>
+<rect x="35" y="530" width="138" height="66" rx="8" fill="#1b1b2f" stroke="#60a5fa" stroke-width="1.5"/>
+<text x="104.0" y="557" text-anchor="middle" font-size="12.5" font-weight="600" fill="#e2e8f0">Sesión</text>
+<text x="104.0" y="576" text-anchor="middle" font-size="10.5" fill="#94a3b8">actividad</text>
+<line x1="173" y1="563.0" x2="192" y2="563.0" stroke="#34d399" stroke-width="2" marker-end="url(#arrg)"/>
+<rect x="192" y="530" width="138" height="66" rx="8" fill="#1b1b2f" stroke="#34d399" stroke-width="1.5"/>
+<text x="261.0" y="557" text-anchor="middle" font-size="12.5" font-weight="600" fill="#e2e8f0">continuous-learning</text>
+<text x="261.0" y="576" text-anchor="middle" font-size="10.5" fill="#94a3b8">Stop · extract_validated</text>
+<line x1="330" y1="563.0" x2="349" y2="563.0" stroke="#34d399" stroke-width="2" marker-end="url(#arrg)"/>
+<rect x="349" y="530" width="138" height="66" rx="8" fill="#1b1b2f" stroke="#34d399" stroke-width="1.5"/>
+<text x="418.0" y="557" text-anchor="middle" font-size="12.5" font-weight="600" fill="#e2e8f0">MemoryNode v2</text>
+<text x="418.0" y="576" text-anchor="middle" font-size="10.5" fill="#94a3b8">RED-gate valida</text>
+<line x1="487" y1="563.0" x2="506" y2="563.0" stroke="#34d399" stroke-width="2" marker-end="url(#arrg)"/>
+<rect x="506" y="530" width="138" height="66" rx="8" fill="#1b1b2f" stroke="#34d399" stroke-width="1.5"/>
+<text x="575.0" y="557" text-anchor="middle" font-size="12.5" font-weight="600" fill="#e2e8f0">tree_store</text>
+<text x="575.0" y="576" text-anchor="middle" font-size="10.5" fill="#94a3b8">persiste nodo</text>
+<line x1="644" y1="563.0" x2="663" y2="563.0" stroke="#34d399" stroke-width="2" marker-end="url(#arrg)"/>
+<rect x="663" y="530" width="138" height="66" rx="8" fill="#1b1b2f" stroke="#34d399" stroke-width="1.5"/>
+<text x="732.0" y="557" text-anchor="middle" font-size="12.5" font-weight="600" fill="#e2e8f0">dream.py</text>
+<text x="732.0" y="576" text-anchor="middle" font-size="10.5" fill="#94a3b8">consolida L3</text>
+<line x1="801" y1="563.0" x2="820" y2="563.0" stroke="#34d399" stroke-width="2" marker-end="url(#arrg)"/>
+<rect x="820" y="530" width="138" height="66" rx="8" fill="#1b1b2f" stroke="#60a5fa" stroke-width="1.5"/>
+<text x="889.0" y="557" text-anchor="middle" font-size="12.5" font-weight="600" fill="#e2e8f0">recall_v2</text>
+<text x="889.0" y="576" text-anchor="middle" font-size="10.5" fill="#94a3b8">SessionStart · score</text>
+<line x1="958" y1="563.0" x2="977" y2="563.0" stroke="#34d399" stroke-width="2" marker-end="url(#arrg)"/>
+<rect x="977" y="530" width="138" height="66" rx="8" fill="#1b1b2f" stroke="#60a5fa" stroke-width="1.5"/>
+<text x="1046.0" y="557" text-anchor="middle" font-size="12.5" font-weight="600" fill="#e2e8f0">wake-up</text>
+<text x="1046.0" y="576" text-anchor="middle" font-size="10.5" fill="#94a3b8">inyecta top-N</text>
+<line x1="1115" y1="563.0" x2="1134" y2="563.0" stroke="#34d399" stroke-width="2" marker-end="url(#arrg)"/>
+<rect x="1134" y="530" width="138" height="66" rx="8" fill="#1b1b2f" stroke="#60a5fa" stroke-width="1.5"/>
+<text x="1203.0" y="557" text-anchor="middle" font-size="12.5" font-weight="600" fill="#e2e8f0">Contexto modelo</text>
+<text x="1203.0" y="576" text-anchor="middle" font-size="10.5" fill="#94a3b8">prompt</text>
+<text x="48" y="660" font-size="16" font-weight="700" fill="#e2e8f0">CAPAS DE MEMORIA</text>
+<rect x="35" y="678" width="235" height="78" rx="9" fill="#1b1b2f" stroke="#475569" stroke-width="2"/>
+<text x="49" y="708" font-size="20" font-weight="800" fill="#cbd5e1">L0</text>
+<text x="93" y="705" font-size="14" font-weight="600" fill="#e2e8f0">Identity</text>
+<text x="49" y="736" font-size="11.5" fill="#94a3b8">principios del sistema</text>
+<rect x="292" y="678" width="235" height="78" rx="9" fill="#1b1b2f" stroke="#475569" stroke-width="2"/>
+<text x="306" y="708" font-size="20" font-weight="800" fill="#cbd5e1">L1</text>
+<text x="350" y="705" font-size="14" font-weight="600" fill="#e2e8f0">Essential</text>
+<text x="306" y="736" font-size="11.5" fill="#94a3b8">top-N por scoring</text>
+<rect x="549" y="678" width="235" height="78" rx="9" fill="#1b1b2f" stroke="#475569" stroke-width="2"/>
+<text x="563" y="708" font-size="20" font-weight="800" fill="#cbd5e1">L2</text>
+<text x="607" y="705" font-size="14" font-weight="600" fill="#e2e8f0">Project Wing</text>
+<text x="563" y="736" font-size="11.5" fill="#94a3b8">contexto del repo</text>
+<rect x="806" y="678" width="235" height="78" rx="9" fill="#1b1b2f" stroke="#10b981" stroke-width="2"/>
+<text x="820" y="708" font-size="20" font-weight="800" fill="#10b981">L3</text>
+<text x="864" y="705" font-size="14" font-weight="600" fill="#e2e8f0">Dream consolidation</text>
+<text x="820" y="736" font-size="11.5" fill="#94a3b8">construido por dream.py</text>
+<rect x="997" y="688" width="34" height="17" rx="8" fill="#10b981"/>
+<text x="1014" y="700" text-anchor="middle" font-size="10" font-weight="700" fill="#0f0f1a">NEW</text>
+<rect x="1063" y="678" width="235" height="78" rx="9" fill="#1b1b2f" stroke="#334155" stroke-width="2"/>
+<text x="1077" y="708" font-size="20" font-weight="800" fill="#334155">L4</text>
+<text x="1121" y="705" font-size="14" font-weight="600" fill="#e2e8f0">Reservado</text>
+<text x="1077" y="736" font-size="11.5" fill="#94a3b8">futuro</text>
+<rect x="35" y="784" width="1230" height="46" rx="9" fill="#1b1b2f" stroke="#fbbf24" stroke-width="1.4" stroke-dasharray="5,3"/>
+<text x="55" y="813" font-size="13.5" fill="#fde68a">RECONCILIACIÓN:  MEMORY.md nativo de Claude = proyección de LECTURA desde nodos GREEN (no fuente paralela) → se mantiene la integración nativa sin deriva</text>
+<text x="35" y="858" font-size="13" font-weight="700" fill="#e2e8f0">Leyenda:</text>
+<rect x="110" y="845" width="29" height="17" rx="8" fill="#3b82f6"/>
+<text x="124.5" y="857" text-anchor="middle" font-size="10" font-weight="700" fill="#0f0f1a">OPT</text>
+<text x="147" y="857" font-size="12" fill="#94a3b8">hook existente optimizado</text>
+<rect x="356" y="845" width="29" height="17" rx="8" fill="#10b981"/>
+<text x="370.5" y="857" text-anchor="middle" font-size="10" font-weight="700" fill="#0f0f1a">NEW</text>
+<text x="393" y="857" font-size="12" fill="#94a3b8">nuevo (portado de codex)</text>
+<rect x="595" y="845" width="50" height="17" rx="8" fill="#fbbf24"/>
+<text x="620.0" y="857" text-anchor="middle" font-size="10" font-weight="700" fill="#0f0f1a">MEJORA</text>
+<text x="653" y="857" font-size="12" fill="#94a3b8">mejora sobre codex</text>
+<line x1="813" y1="852" x2="847" y2="852" stroke="#34d399" stroke-width="2" marker-end="url(#arrg)"/>
+<text x="855" y="857" font-size="12" fill="#94a3b8">flujo de aprendizaje (write→read)</text>
+<line x1="335" y1="444" x2="180" y2="530" stroke="#34d399" stroke-width="1.6" stroke-dasharray="4,3" marker-end="url(#arrg)" opacity="0.8"/>
+<line x1="968" y1="438" x2="430" y2="530" stroke="#34d399" stroke-width="1.6" stroke-dasharray="4,3" marker-end="url(#arrg)" opacity="0.7"/>
+<line x1="700" y1="596" x2="700" y2="678" stroke="#60a5fa" stroke-width="1.8" marker-end="url(#arr)"/>
+<text x="708" y="640" font-size="11" fill="#94a3b8">carga L0–L3</text>
+</svg>
