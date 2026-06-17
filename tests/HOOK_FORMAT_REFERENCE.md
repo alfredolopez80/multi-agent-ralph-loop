@@ -7,7 +7,7 @@ Based on OFFICIAL Claude Code documentation from /anthropics/claude-code
 | Hook Type | Format Key | Valid Values | Example |
 |-----------|------------|--------------|---------|
 | PostToolUse | `continue` | `true` / `false` (boolean) | `{"continue": true}` |
-| PreToolUse | `continue` | `true` / `false` (boolean) | `{"continue": true}` |
+| PreToolUse | `continue` _or_ `hookSpecificOutput.permissionDecision` | `continue`: bool · `permissionDecision`: `"allow"` / `"deny"` / `"ask"` | `{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "..."}}` |
 | UserPromptSubmit | `continue` | `true` / `false` (boolean) | `{"continue": true}` |
 | PreCompact | `continue` | `true` / `false` (boolean) | `{"continue": true}` |
 | SessionStart | `hookSpecificOutput` | object | `{"hookSpecificOutput": {"additionalContext": "..."}}` |
@@ -29,6 +29,12 @@ Based on OFFICIAL Claude Code documentation from /anthropics/claude-code
    - `suppressOutput`: boolean - Hide output from transcript
    - `additionalContext`: string - Extra context
 
+4. **PreToolUse `permissionDecision` is `"allow"` / `"deny"` / `"ask"` — NEVER `"block"`**
+   - WRONG: `{"hookSpecificOutput": {"permissionDecision": "block"}}` ❌ → fails with `Hook JSON output validation failed — (root): Invalid input`
+   - RIGHT (deny): `{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "..."}}` ✅
+   - `"block"` belongs to the **Stop** `decision` field ONLY. Do not cross the two vocabularies.
+   - Pair a `deny` with a `permissionDecisionReason` so Claude can relay why.
+
 ## Test Validation Matrix
 
 ```python
@@ -38,7 +44,15 @@ def validate_hook_output(hook_type: str, output: dict) -> bool:
         return output == {} or output.get("decision") == "block"
     elif hook_type == "SessionStart":
         return "hookSpecificOutput" in output
-    else:  # PostToolUse, PreToolUse, UserPromptSubmit, PreCompact
+    elif hook_type == "PreToolUse":
+        # PreToolUse accepts EITHER {"continue": bool} OR
+        # {"hookSpecificOutput": {"permissionDecision": "allow"|"deny"|"ask", ...}}.
+        # "block" is INVALID here — it belongs to the Stop `decision` field only.
+        if output == {} or ("continue" in output and isinstance(output["continue"], bool)):
+            return True
+        hso = output.get("hookSpecificOutput", {})
+        return hso.get("permissionDecision") in ("allow", "deny", "ask")
+    else:  # PostToolUse, UserPromptSubmit, PreCompact
         return output == {} or (
             "continue" in output and isinstance(output["continue"], bool)
         )

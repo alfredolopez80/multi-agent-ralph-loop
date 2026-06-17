@@ -355,7 +355,7 @@ except:
     else
         log_error "Validation failed or timed out for: $skill_name"
         trap - EXIT  # CRIT-004: Clear trap before explicit output
-        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "block", "permissionDecisionReason": "Skill validation failed"}}'
+        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "Skill validation failed"}}'
         exit 1  # Block skill execution on validation failure
     fi
 }

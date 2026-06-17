@@ -189,7 +189,7 @@ class TestMainFunction:
             hook_output = response.get("hookSpecificOutput", response)
             decision = hook_output.get("permissionDecision", hook_output.get("decision"))
             reason = hook_output.get("permissionDecisionReason", hook_output.get("reason", ""))
-            assert decision == "block"
+            assert decision == "deny"
             assert "BLOCKED" in reason or "blocked" in reason.lower()
 
     def test_non_bash_tool_allowed(self):
@@ -301,7 +301,7 @@ class TestCoverageGaps:
             hook_output = response.get("hookSpecificOutput", response)
             decision = hook_output.get("permissionDecision", hook_output.get("decision"))
             reason = hook_output.get("permissionDecisionReason", hook_output.get("reason", ""))
-            assert decision == "block"
+            assert decision == "deny"
             assert "BLOCKED" in reason or "force push" in reason.lower() or "CONFIRMATION" in reason
 
     def test_command_passes_all_checks_exits_zero(self):
@@ -336,7 +336,7 @@ class TestCoverageGaps:
                 hook_output = response.get("hookSpecificOutput", response)
                 decision = hook_output.get("permissionDecision", hook_output.get("decision"))
                 reason = hook_output.get("permissionDecisionReason", hook_output.get("reason", ""))
-                assert decision == "block"
+                assert decision == "deny"  # nested-indent site (was 16-space "block")
                 assert "Internal error" in reason or "internal error" in reason.lower() or "error" in reason.lower()
 
     def test_non_blocked_non_safe_command_allowed(self):

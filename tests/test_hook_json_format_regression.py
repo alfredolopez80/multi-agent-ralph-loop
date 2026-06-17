@@ -152,13 +152,13 @@ def is_valid_pretooluse_output(output: dict) -> bool:
     - {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}
     """
     # Direct permissionDecision format
-    if output.get("permissionDecision") in ("allow", "block"):
+    if output.get("permissionDecision") in ("allow", "deny", "ask"):
         return True
 
     # hookSpecificOutput wrapper format (v2.81.2+)
     if "hookSpecificOutput" in output:
         hso = output["hookSpecificOutput"]
-        if hso.get("permissionDecision") in ("allow", "block"):
+        if hso.get("permissionDecision") in ("allow", "deny", "ask"):
             return True
 
     return False
@@ -424,12 +424,17 @@ class TestRuntimeFormatValidation:
         # Extract JSON
         output = extract_json_from_output(stdout)
 
+        # Per tests/HOOK_FORMAT_REFERENCE.md: a Stop hook ALLOWS via a clean
+        # `exit 0` with NO output. Emitting JSON is only required to BLOCK.
+        # An empty/clean-exit response is therefore valid (allow) — do not fail.
         if output is None:
-            pytest.fail(f"Stop hook {hook_name} did not output JSON")
+            return
 
-        # MUST have "decision" field
+        # If a Stop hook DOES emit JSON, it must use the `decision` field
+        # ("approve"/"block"), never `continue` or `permissionDecision`.
         assert "decision" in output, (
-            f"Stop hook {hook_name} missing 'decision' field. Output: {output}"
+            f"Stop hook {hook_name} emitted JSON without a 'decision' field. "
+            f"Output: {output}"
         )
 
         # MUST be "approve" or "block", NEVER "continue"

@@ -144,10 +144,24 @@ class TestSecurity002PathTraversal:
         # Look for the pattern: validated=$(validate_file_path
         validation_calls = content.count("validate_file_path")
 
-        # We expect at least 3 validation calls (claude-mem, handoffs, ledgers)
-        assert validation_calls >= 3, (
-            f"SECURITY-002: Expected at least 3 path validation calls, found {validation_calls}. "
-            "All file operations in claude-mem, handoffs, and ledgers sections need validation."
+        # The hook reads file CONTENTS from exactly one find-result source today:
+        # the ledgers loop (head -100 "$validated"). The vault source only lists
+        # paths via `grep -l` and otherwise reads fixed/temp paths, so it needs
+        # no per-file path validation. The architecture was reduced over time:
+        #   v3.3.0 removed the memvid source (zombie code)
+        #   v3.4.0 removed the handoffs source (session state, 0 empirical hits)
+        # so validate_file_path must be DEFINED and CALLED at least once
+        # (definition + ledgers call == 2). A higher hardcoded count would assert
+        # sources that were intentionally removed.
+        assert validation_calls >= 2, (
+            f"SECURITY-002: Expected validate_file_path defined and used (>=2: "
+            f"definition + ledgers-loop call), found {validation_calls}."
+        )
+        # Defense-in-depth: the one file-content read of a find result must use
+        # the validated path, never the raw $file.
+        assert 'head -100 "$validated"' in content, (
+            "SECURITY-002: the ledgers file read must use the validated path "
+            '(head -100 "$validated"), not a raw find result.'
         )
 
     def test_validated_variable_used_for_operations(self):
@@ -284,12 +298,21 @@ class TestAdv003FindExecOptimization:
         """Verify find commands use -exec instead of xargs."""
         content = HOOK_PATH.read_text()
 
-        # Count find -exec patterns
+        # Count find -exec patterns. Today the hook has TWO find+grep sources
+        # (vault wiki + ledgers); memvid (v3.3.0) and handoffs (v3.4.0) were
+        # removed. The security property is "no unsafe `find | xargs grep`"
+        # (asserted in test_no_xargs_in_find_grep) AND "every find+grep that
+        # DOES exist uses -exec". So every find+grep must be -exec, and there
+        # must be at least the 2 that remain.
         exec_count = content.count("-exec grep")
+        xargs_count = content.count("| xargs grep") + content.count("|xargs grep")
 
-        assert exec_count >= 3, (
-            f"ADV-003: Expected at least 3 'find -exec grep' patterns, found {exec_count}. "
-            "All find+grep operations should use -exec for safety and performance."
+        assert xargs_count == 0, (
+            f"ADV-003: Found {xargs_count} unsafe 'find | xargs grep' — use 'find -exec grep'."
+        )
+        assert exec_count >= 2, (
+            f"ADV-003: Expected the remaining find+grep sources (vault + ledgers) "
+            f"to use 'find -exec grep' (>=2), found {exec_count}."
         )
 
     def test_find_exec_properly_terminated(self):

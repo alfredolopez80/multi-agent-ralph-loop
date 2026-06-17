@@ -39,7 +39,7 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
 # Only relevant for Bash tool invocations.
 if [[ "$TOOL_NAME" == "Bash" ]]; then
     SAFETY_RESULT=$(echo "$INPUT" | python3 "$HOOKS_DIR/git-safety-guard.py" 2>/dev/null || true)
-    if echo "$SAFETY_RESULT" | jq -e '.hookSpecificOutput.permissionDecision == "block"' >/dev/null 2>&1; then
+    if echo "$SAFETY_RESULT" | jq -e '.hookSpecificOutput.permissionDecision == "deny"' >/dev/null 2>&1; then
         trap - ERR EXIT
         echo "$SAFETY_RESULT"
         exit 0
@@ -50,7 +50,7 @@ fi
 # repo-boundary-guard.sh handles tool-specific path extraction internally
 # and works correctly for Bash, Edit, Write, Agent, and Task tools.
 BOUNDARY_RESULT=$(echo "$INPUT" | "$HOOKS_DIR/repo-boundary-guard.sh" 2>/dev/null || true)
-if echo "$BOUNDARY_RESULT" | jq -e '.hookSpecificOutput.permissionDecision == "block"' >/dev/null 2>&1; then
+if echo "$BOUNDARY_RESULT" | jq -e '.hookSpecificOutput.permissionDecision == "deny"' >/dev/null 2>&1; then
     trap - ERR EXIT
     echo "$BOUNDARY_RESULT"
     exit 0

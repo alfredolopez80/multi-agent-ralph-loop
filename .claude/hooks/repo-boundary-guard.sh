@@ -223,7 +223,7 @@ main() {
 {
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
-    "permissionDecision": "block",
+    "permissionDecision": "deny",
     "permissionDecisionReason": "REPO BOUNDARY: Command references external repository ($mentioned_path). Use /repo-learn to learn from it instead, or explicitly switch repos."
   }
 }
@@ -242,7 +242,7 @@ EOF
 {
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
-    "permissionDecision": "block",
+    "permissionDecision": "deny",
     "permissionDecisionReason": "REPO BOUNDARY: Path $path is outside current repo ($CURRENT_REPO). Use /repo-learn to learn from external repos, or explicitly switch."
   }
 }

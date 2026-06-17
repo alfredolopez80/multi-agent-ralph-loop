@@ -35,15 +35,15 @@ def is_valid_pretooluse_permission(output: dict) -> bool:
     # v2.81.2+ format
     if "hookSpecificOutput" in output:
         hso = output.get("hookSpecificOutput", {})
-        if hso.get("permissionDecision") in ("allow", "block"):
+        if hso.get("permissionDecision") in ("allow", "deny", "ask"):
             return True
 
     # Intermediate format
-    if output.get("permissionDecision") in ("allow", "block"):
+    if output.get("permissionDecision") in ("allow", "deny", "ask"):
         return True
 
     # Legacy format
-    if output.get("decision") in ("allow", "block"):
+    if output.get("decision") in ("allow", "deny", "ask"):
         return True
 
     return False
@@ -61,15 +61,15 @@ def get_pretooluse_decision(output: dict) -> str:
     if "hookSpecificOutput" in output:
         hso = output.get("hookSpecificOutput", {})
         decision = hso.get("permissionDecision", "")
-        if decision in ("allow", "block"):
+        if decision in ("allow", "deny", "ask"):
             return decision
 
     # Intermediate format
-    if output.get("permissionDecision") in ("allow", "block"):
+    if output.get("permissionDecision") in ("allow", "deny", "ask"):
         return output["permissionDecision"]
 
     # Legacy format
-    if output.get("decision") in ("allow", "block"):
+    if output.get("decision") in ("allow", "deny", "ask"):
         return output["decision"]
 
     return ""
