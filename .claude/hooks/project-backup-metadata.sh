@@ -269,11 +269,15 @@ case "$HOOK_TYPE" in
             PROJECT_PATH=$(jq -r '.path' <<< "$PROJECT_JSON")
             BRANCH=$(jq -r '.branch' <<< "$PROJECT_JSON")
 
+            # A3 token-recut: full detail (path/session) goes to the log; only a
+            # 1-line breadcrumb is injected into SessionStart context. Same as
+            # auto-sync-global.sh v3.1.1 — keep one context line, detail to log.
+            log "SessionStart context: repo=$REPO_NAME path=$PROJECT_PATH branch=$BRANCH session=$SESSION_ID"
+            CONTEXT="project-backup: $REPO_NAME @ $BRANCH (detail: ~/.ralph/logs/project-backup-metadata.log)"
             # v2.85: SessionStart hooks must use hookSpecificOutput wrapper
-            CONTEXT="📁 Project: $REPO_NAME\\n📂 Path: $PROJECT_PATH\\n🌿 Branch: $BRANCH\\n🆔 Session: $SESSION_ID"
-            echo "{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"$CONTEXT\"}}"
+            printf '%s\n' "$(jq -n --arg c "$CONTEXT" '{hookSpecificOutput:{hookEventName:"SessionStart",additionalContext:$c}}')"
         else
-            echo '{"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "⚠️ Not in a git repository - project tracking disabled"}}'
+            echo '{"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "project-backup: not a git repo (tracking disabled)"}}'
         fi
         ;;
 

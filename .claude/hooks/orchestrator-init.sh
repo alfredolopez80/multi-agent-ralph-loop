@@ -149,5 +149,10 @@ find "$LOG_DIR" -name "orchestrator-*.log" -mtime +7 -delete 2>/dev/null || true
 
 log "=== Initialization Complete ==="
 
-# SessionStart hook output format (per CLAUDE.md conventions)
-echo "{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"initialized\": true, \"session_id\": \"$SESSION_ID\"}}"
+# A3 token-recut: session id + init detail go to the log; SessionStart context
+# carries only a 1-line breadcrumb. Also fixes the output to the standard
+# SessionStart shape (additionalContext) — previously emitted a non-standard
+# {initialized, session_id} object with no additionalContext field.
+log "SessionStart context: orchestrator initialized session=$SESSION_ID started=$START_TIME"
+BREADCRUMB="orchestrator-init: ready (session ${SESSION_ID:0:8}, detail: ~/.ralph/logs/orchestrator-init.log)"
+printf '%s\n' "$(jq -n --arg c "$BREADCRUMB" '{hookSpecificOutput:{hookEventName:"SessionStart",additionalContext:$c}}')"
