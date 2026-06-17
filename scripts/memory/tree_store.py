@@ -184,13 +184,15 @@ def compute_project_id(repo_root: Path) -> str:
     memory tree (Addendum 2). Distinct repos still get distinct ids via the
     remote-hash and/or directory name.
 
-    ``RALPH_PROJECT_ID`` override (Wave 5, Addendum 3, 2026-06-17): if the env
-    var is set, it wins. This gives codex/claude an explicit escape hatch and
-    keeps compatibility with codex's existing ``RALPH_PROJECT_ID`` convention.
-    When unset, the git-remote-hash derivation below is used so the SAME target
-    repo yields the SAME id from either agent.
+    Tree-id override (Wave 5, Addendum 4, 2026-06-17): the DEDICATED env var
+    ``RALPH_MEMORY_PROJECT_ID`` wins when set. We deliberately do NOT honor the
+    legacy session var ``RALPH_PROJECT_ID`` here, because codex hooks set it to a
+    per-session ``p-<hash>`` id that would split the shared tree. The shared
+    memory tree is keyed by git-remote-hash so the SAME target repo yields the
+    SAME id from either agent; ``RALPH_PROJECT_ID`` stays free for codex's own
+    ledger/handoff subsystem.
     """
-    override = os.environ.get("RALPH_PROJECT_ID", "").strip()
+    override = os.environ.get("RALPH_MEMORY_PROJECT_ID", "").strip()
     if override:
         return safe_segment(override, "project_id")
     main_repo = resolve_main_repo_root(repo_root)
