@@ -469,7 +469,7 @@ def main() -> int:
     parser.add_argument("--project-root", default=".")
     parser.add_argument("--query", default="")
     parser.add_argument("--json", action="store_true")
-    parser.add_argument("--project-id", default=os.environ.get("RALPH_PROJECT_ID", ""))
+    parser.add_argument("--project-id", default=os.environ.get("RALPH_MEMORY_PROJECT_ID", ""))
     parser.add_argument(
         "--ralph-home", default=os.environ.get("RALPH_HOME", "~/.ralph")
     )
