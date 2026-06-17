@@ -139,18 +139,61 @@ if [[ -n "$YESTERDAY" && -f "${LINT_REPORT_DIR}/vault-lint-${YESTERDAY}.md" ]]; 
 fi
 
 # ---------------------------------------------------------------------------
-# Load Top-N procedural rules via ctx-query (A2, index-once-query-many)
-# A2: ctx-query wired here; B3 will swap top-N source to recall_v2.
+# Load Top-N memory nodes by SCORE via recall_v2 (B3), with ctx-query fallback.
 #
-# This reads ~/.ralph/procedural/rules.json THROUGH the ctx-query index
-# (SQLite/TSV built once, invalidated on rules.json change) instead of
-# re-parsing the 1.09MB JSON with N sequential jq passes. It ONLY supplies the
-# top-N rule selection block; L0 (identity), L1 (essential), and L2 (wing) loads
-# above are intentionally NOT touched.
+# B3: the primary source for the "Top Procedural Rules" block is now the typed
+# memory tree (scripts/memory/recall_v2.py), which selects the top-N MemoryNode
+# v2 entries by their score for THIS project/worktree. If the project tree is
+# empty (still migrating) or recall yields nothing, we FALL BACK to the A2
+# ctx-query index over ~/.ralph/procedural/rules.json — so wake-up never fails
+# because the memory tree is empty.
+#
+# Only the top-N selection block is affected; L0 (identity), L1 (essential),
+# and L2 (wing) loads above are intentionally NOT touched.
 # ---------------------------------------------------------------------------
 TOPN_SUMMARY=""
+TOPN_SOURCE=""
 _WUL_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [[ -f "${_WUL_HOOK_DIR}/lib/ctx-query.sh" ]]; then
+
+# Resolve the working-tree root (worktree-safe) for project isolation.
+# shellcheck source=lib/worktree-utils.sh
+source "${_WUL_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || true
+if declare -f get_safe_project_root >/dev/null 2>&1; then
+    _WUL_PROJECT_ROOT="$(get_safe_project_root)"
+else
+    _WUL_PROJECT_ROOT="$(git -C "${REPO_DIR}" rev-parse --show-toplevel 2>/dev/null || echo "${REPO_DIR}")"
+fi
+
+# --- Primary: recall_v2 top-N by score -------------------------------------
+RECALL_PY="${_WUL_HOOK_DIR}/../../scripts/memory/recall_v2.py"
+if [[ -f "$RECALL_PY" ]] && command -v python3 >/dev/null 2>&1; then
+    # A broad, low-risk query surfaces the highest-scoring nodes for this
+    # project. The terms include the canonical tags attached to captured
+    # learnings (session-learning / continuous-learning) plus the common
+    # domain anchors, so the top scorers are reliably matched by recall_v2's
+    # tag/summary/trigger scoring (rather than depending on a single keyword).
+    RECALL_JSON=$(python3 "$RECALL_PY" \
+        --project-root "$_WUL_PROJECT_ROOT" \
+        --query "session-learning continuous-learning decision root cause fix validated rule pattern hooks security testing database backend frontend" \
+        --limit 5 --json 2>>"$LOG_FILE" || echo "")
+    if [[ -n "$RECALL_JSON" ]]; then
+        TOPN_LINES=$(echo "$RECALL_JSON" | jq -r '
+            (.memory_context // [])
+            | map("- (score \(.score)) "
+                  + ((.summary // "") | if length > 90 then .[:90] + "..." else . end))
+            | join("\n")
+        ' 2>/dev/null || echo "")
+        if [[ -n "$TOPN_LINES" && "$TOPN_LINES" != "null" ]]; then
+            TOPN_SUMMARY="$TOPN_LINES"
+            TOPN_SOURCE="recall_v2 by score"
+            log "INFO top-N memory nodes loaded via recall_v2 count=$(echo "$TOPN_LINES" | grep -c .)"
+        fi
+    fi
+fi
+
+# --- Fallback: A2 ctx-query index over rules.json --------------------------
+if [[ -z "$TOPN_SUMMARY" && -f "${_WUL_HOOK_DIR}/lib/ctx-query.sh" ]]; then
+    log "INFO recall_v2 returned no nodes (empty tree?); falling back to ctx-query"
     # shellcheck disable=SC1091
     source "${_WUL_HOOK_DIR}/lib/ctx-query.sh" 2>/dev/null || true
     if declare -f ctx_query_top_rules >/dev/null 2>&1; then
@@ -160,6 +203,7 @@ if [[ -f "${_WUL_HOOK_DIR}/lib/ctx-query.sh" ]]; then
             TOPN_LINES=$(echo "$TOPN_RAW" | awk -F'\t' '{ b=$6; if (length(b) > 90) b=substr(b,1,90) "..."; printf "- **%s** (%s, score %.0f): %s\n", $1, $2, $5, b }')
             if [[ -n "$TOPN_LINES" ]]; then
                 TOPN_SUMMARY="$TOPN_LINES"
+                TOPN_SOURCE="ctx-query index (fallback)"
                 log "INFO top-N procedural rules loaded via ctx-query count=$(echo "$TOPN_RAW" | grep -c . )"
             fi
         fi
@@ -174,7 +218,7 @@ EXTRA_SECTIONS=""
 if [[ -n "$TOPN_SUMMARY" ]]; then
     EXTRA_SECTIONS="${EXTRA_SECTIONS}
 
-### Top Procedural Rules (ctx-query index)
+### Top Procedural Rules (${TOPN_SOURCE:-memory})
 ${TOPN_SUMMARY}
 
 "
@@ -226,11 +270,30 @@ ${EXTRA_SECTIONS}
 log "INFO context composed chars=${#CONTEXT}"
 
 # ---------------------------------------------------------------------------
-# Measure token estimate and log it
+# Measure token cost and log it.
+# Prefer a real tiktoken cl100k_base count (learned rule: NEVER use wc -w for
+# token claims). Fall back to the word-based heuristic only if tiktoken is
+# unavailable, and mark the estimate as approximate in that case.
 # ---------------------------------------------------------------------------
-WORD_COUNT=$(echo "$CONTEXT" | wc -w | tr -d ' ')
-TOKEN_ESTIMATE=$(( (WORD_COUNT * 4 + 2) / 3 ))  # wc -w / 0.75 ≈ * 4/3
-log "INFO token_estimate words=${WORD_COUNT} tokens~=${TOKEN_ESTIMATE} target=1500"
+TOKEN_ESTIMATE=""
+if command -v python3 >/dev/null 2>&1; then
+    TOKEN_ESTIMATE=$(printf '%s' "$CONTEXT" | python3 -c '
+import sys
+try:
+    import tiktoken
+    enc = tiktoken.get_encoding("cl100k_base")
+    print(len(enc.encode(sys.stdin.read())))
+except Exception:
+    pass
+' 2>/dev/null || echo "")
+fi
+if [[ -n "$TOKEN_ESTIMATE" ]]; then
+    log "INFO token_count tiktoken_cl100k=${TOKEN_ESTIMATE} target=1500"
+else
+    WORD_COUNT=$(echo "$CONTEXT" | wc -w | tr -d ' ')
+    TOKEN_ESTIMATE=$(( (WORD_COUNT * 4 + 2) / 3 ))  # wc -w / 0.75 ≈ * 4/3 (approx)
+    log "INFO token_estimate words=${WORD_COUNT} tokens~=${TOKEN_ESTIMATE} (approx, tiktoken unavailable) target=1500"
+fi
 
 # ---------------------------------------------------------------------------
 # Output SessionStart hook JSON
