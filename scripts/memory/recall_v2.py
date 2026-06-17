@@ -163,11 +163,43 @@ def node_id_for(payload: object, path: Path) -> str:
     return path.stem
 
 
+# Perf (Addendum 5): an index entry that carries these keys is a COMPLETE recall
+# payload (scoring + hard-reject + render), so recall scores it without opening
+# the node file. Older "thin" entries lack them and are lazily loaded per-node.
+_FAT_INDEX_KEYS = ("authority", "sensitivity", "project_id")
+
+
 def iter_node_payloads(store: TreeStore, project_id: str) -> list[tuple[Path, Any]]:
+    """Yield (path, payload) for every node, reading index.json ONCE when present.
+
+    Perf: the fat ``index.json`` (Addendum 5) lets recall score+reject all nodes
+    from a single file read — O(1) instead of O(n) node-file opens. Entries that
+    predate the fat index (``thin``) are lazily loaded so mixed trees, and trees
+    written by an older codex/claude build, stay correct. Falls back to scanning
+    node files when no index exists.
+    """
     directory = store.nodes_dir(project_id)
+    index = store.load_index(project_id)
+    entries = index.get("nodes") if isinstance(index, dict) else None
+    if entries:
+        payloads: list[tuple[Path, Any]] = []
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            node_id = entry.get("node_id")
+            if not node_id:
+                continue
+            path = directory / f"{node_id}.json"
+            if all(key in entry for key in _FAT_INDEX_KEYS):
+                payloads.append((path, entry))
+            else:  # thin entry: fall back to the authoritative node file
+                payloads.append((path, store.load_node(project_id, node_id)))
+        return payloads
+
+    # No index (or empty "nodes"): scan node files (legacy / un-indexed tree).
     if not directory.exists():
         return []
-    payloads: list[tuple[Path, Any]] = []
+    payloads = []
     for path in sorted(directory.glob("*.json")):
         if path.name.startswith("."):
             continue
@@ -176,6 +208,48 @@ def iter_node_payloads(store: TreeStore, project_id: str) -> list[tuple[Path, An
         except (OSError, json.JSONDecodeError, ValueError):
             payloads.append((path, None))
     return payloads
+
+
+def candidate_payloads(
+    store: TreeStore, project_id: str, analysis: dict[str, Any]
+) -> list[tuple[Path, Any]]:
+    """Return only the nodes that could score > 0, via the inverted index.
+
+    Perf (Addendum 5): ``score_node`` returns 0 unless a query search term is a
+    SUBSTRING of the node's summary/trigger/entities/paths/tags/links, and recall
+    drops score<=0 nodes. So the candidate set = nodes whose posting tokens
+    contain a search term. This is LOSSLESS (same ranked results) but scores only
+    a handful of nodes instead of all N. Falls back to the full scan when the
+    index has no ``postings`` (older tree) so behaviour is never worse.
+    """
+    index = store.load_index(project_id)
+    postings = index.get("postings") if isinstance(index, dict) else None
+    entries = index.get("nodes") if isinstance(index, dict) else None
+    if not isinstance(postings, dict) or not isinstance(entries, list):
+        return iter_node_payloads(store, project_id)
+
+    search_terms = [s for s in analysis.get("search_terms", []) if s]
+    if not search_terms:
+        return []  # nothing can score > 0 without a search term
+
+    candidate_ids: set[str] = set()
+    for token, ids in postings.items():
+        if isinstance(ids, list) and any(s in token for s in search_terms):
+            candidate_ids.update(ids)
+    if not candidate_ids:
+        return []
+
+    directory = store.nodes_dir(project_id)
+    by_id = {e.get("node_id"): e for e in entries if isinstance(e, dict)}
+    out: list[tuple[Path, Any]] = []
+    for nid in candidate_ids:
+        entry = by_id.get(nid)
+        path = directory / f"{nid}.json"
+        if isinstance(entry, dict) and all(key in entry for key in _FAT_INDEX_KEYS):
+            out.append((path, entry))
+        else:  # thin / missing entry: authoritative node file
+            out.append((path, store.load_node(project_id, nid)))
+    return out
 
 
 def _as_dict(value: object) -> dict[str, Any]:
@@ -391,7 +465,7 @@ def recall(
     rejected: list[dict[str, str]] = []
     scored: list[tuple[float, dict[str, Any], dict[str, float]]] = []
 
-    for path, payload in iter_node_payloads(store, context.project_id):
+    for path, payload in candidate_payloads(store, context.project_id, analysis):
         node_id = node_id_for(payload, path)
         reason = hard_reject_reason(payload, context, include_deprecated)
         if reason:
