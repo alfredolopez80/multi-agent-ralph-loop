@@ -489,15 +489,93 @@ class TreeStore:
             "raw_ref": ref,
             "updated_at": node.get("updated_at", ""),
             "created_at": node.get("created_at", ""),
+            # Perf (Addendum 5): the index entry carries EVERY field recall_v2
+            # scores + hard-rejects + renders on, so recall reads index.json
+            # once (O(1)) instead of opening all N node files (O(n)). These
+            # fields make the entry a complete recall payload. RED never reaches
+            # disk, so none of this leaks secret material.
+            "salience": node.get("salience", {}),
+            "sensitivity": node.get("sensitivity", ""),
+            "authority": node.get("authority", ""),
+            "project_id": node.get("project_id", ""),
+            "workspace_instance_id": node.get("workspace_instance_id", ""),
+            "repo_remote_hash": node.get("repo_remote_hash", ""),
+            "commit": node.get("commit", ""),
+            "session_id": node.get("session_id", ""),
+            "detailed_summary": node.get("detailed_summary", ""),
+            "source_description": node.get("source_description", ""),
         }
+
+    def load_index(self, project_id: str) -> dict[str, Any] | None:
+        """Return the parsed index.json for a project, or None if absent/corrupt.
+
+        Perf (Addendum 5): recall reads this single file instead of opening every
+        node file. Each entry in ``nodes`` is a complete recall payload (see
+        ``_index_entry``). Returns None on any read/parse error so callers fall
+        back to the per-node scan and never crash on a damaged index.
+        """
+        try:
+            path = self.project_tree(project_id) / "index.json"
+        except TreeStorePathError:
+            return None
+        if not path.exists():
+            return None
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError, ValueError):
+            return None
+        return data if isinstance(data, dict) else None
+
+    @staticmethod
+    def _entry_tokens(entry: dict[str, Any]) -> set[str]:
+        """Maximal ``[A-Za-z0-9_./-]`` runs (len>=3) of an entry's searchable text.
+
+        Perf (Addendum 5): these are the posting tokens. They are deliberately
+        NOT stopword/length-filtered the way ``recall_v2.terms`` filters QUERY
+        terms -- recall matches a query term as a SUBSTRING of the node text, and
+        a non-stopword query term can sit inside a stopword run (e.g. ``her`` in
+        ``where``). Indexing every run keeps candidate selection LOSSLESS: any
+        node that ``score_node`` would rank > 0 shares a token here. Runs shorter
+        than 3 chars cannot contain a (>=3 char) query term, so they are skipped.
+        """
+        trigger = entry.get("trigger")
+        trigger_text = " ".join(str(v) for v in trigger.values()) if isinstance(trigger, dict) else str(trigger or "")
+        parts = [
+            str(entry.get("summary", "")),
+            trigger_text,
+            " ".join(str(x) for x in entry.get("entities", []) or []),
+            " ".join(str(x) for x in entry.get("source_paths", []) or []),
+            " ".join(str(x) for x in entry.get("topic_tags", []) or []),
+            " ".join(str(x) for x in entry.get("links", []) or []),
+        ]
+        blob = " ".join(parts).lower()
+        return {tok for tok in re.findall(r"[A-Za-z0-9_./-]+", blob) if len(tok) >= 3}
+
+    def _build_postings(self, nodes: list[dict[str, Any]]) -> dict[str, list[str]]:
+        postings: dict[str, list[str]] = {}
+        for entry in nodes:
+            node_id = entry.get("node_id")
+            if not node_id:
+                continue
+            for tok in self._entry_tokens(entry):
+                postings.setdefault(tok, []).append(node_id)
+        for tok in postings:
+            postings[tok] = sorted(set(postings[tok]))
+        return postings
 
     def _write_index(self, project_id: str) -> None:
         root = self.ensure_layout(project_id)
+        nodes = self.list_nodes(project_id)
         index = {
             "schema_version": INDEX_SCHEMA_VERSION,
             "project_id": project_id,
             "updated_at": now_iso(),
-            "nodes": self.list_nodes(project_id),
+            "nodes": nodes,
+            # Perf (Addendum 5): inverted index (token -> node_ids) so recall scores
+            # only candidate nodes that share a term with the query, not all N.
+            # Lossless: see _entry_tokens. recall falls back to scoring all nodes
+            # when "postings" is absent (older index).
+            "postings": self._build_postings(nodes),
         }
         atomic_write_json(root / "index.json", index)
 
