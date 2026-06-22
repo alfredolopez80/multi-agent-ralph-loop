@@ -195,14 +195,14 @@ section "Skills & Documentation Tests"
 # =============================================================================
 
 echo "Test 20: Context7 usage skill exists..."
-if [[ -f "$PROJECT_ROOT/.claude/skills/context7-usage/skill.md" ]]; then
+if [[ -f "$PROJECT_ROOT/.claude/skills/context7-usage/SKILL.md" ]]; then
     pass "context7-usage skill exists"
 else
     fail "context7-usage skill missing"
 fi
 
 echo "Test 21: Context7 skill has decision tree..."
-if grep -q 'Decision Tree\|decision tree' "$PROJECT_ROOT/.claude/skills/context7-usage/skill.md"; then
+if grep -q 'Decision Tree\|decision tree' "$PROJECT_ROOT/.claude/skills/context7-usage/SKILL.md"; then
     pass "context7-usage has decision tree"
 else
     fail "context7-usage missing decision tree"
