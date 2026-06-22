@@ -18,6 +18,10 @@ import subprocess
 import pytest
 from pathlib import Path
 
+# CI-safe: hooks always resolve from the repo's versioned copy, never the
+# developer's ~/.claude/hooks (which is absent in a clean CI checkout → exit 127).
+HOOKS_DIR = Path(__file__).parent.parent / ".claude" / "hooks"
+
 
 def is_valid_pretooluse_permission(output: dict) -> bool:
     """Check if output has valid PreToolUse permission decision.
@@ -80,15 +84,11 @@ class TestAutoPlanStateHookFunctional:
 
     @pytest.fixture
     def hook_path(self):
-        """Get path to auto-plan-state.sh hook."""
-        paths = [
-            Path.home() / ".claude" / "hooks" / "auto-plan-state.sh",
-            Path(".claude") / "hooks" / "auto-plan-state.sh",
-        ]
-        for p in paths:
-            if p.exists():
-                return p
-        pytest.skip("auto-plan-state.sh not found")
+        """Get path to auto-plan-state.sh hook (repo copy)."""
+        p = HOOKS_DIR / "auto-plan-state.sh"
+        if not p.exists():
+            pytest.skip("auto-plan-state.sh not found")
+        return p
 
     @pytest.fixture
     def temp_project_dir(self, tmp_path):
@@ -131,9 +131,11 @@ Write unit and integration tests.
 """
 
     def test_hook_creates_valid_json_from_analysis(
-        self, hook_path, temp_project_dir, sample_analysis_content
+        self, hook_path, temp_project_dir, sample_analysis_content,
+        isolated_home, requires_tool
     ):
         """Hook should create valid plan-state.json from orchestrator-analysis.md."""
+        requires_tool("jq")
         # Setup: Create analysis file
         analysis_file = temp_project_dir / ".claude" / "orchestrator-analysis.md"
         analysis_file.write_text(sample_analysis_content)
@@ -187,7 +189,7 @@ Write unit and integration tests.
         # Verify steps extracted (4 phases)
         assert len(plan_state["steps"]) >= 1
 
-    def test_hook_handles_empty_analysis(self, hook_path, temp_project_dir):
+    def test_hook_handles_empty_analysis(self, hook_path, temp_project_dir, isolated_home):
         """Hook should handle empty orchestrator-analysis.md gracefully."""
         # Setup: Create empty analysis file
         analysis_file = temp_project_dir / ".claude" / "orchestrator-analysis.md"
@@ -214,7 +216,7 @@ Write unit and integration tests.
         # Should not crash
         assert result.returncode == 0
 
-    def test_hook_skips_non_analysis_files(self, hook_path, temp_project_dir):
+    def test_hook_skips_non_analysis_files(self, hook_path, temp_project_dir, isolated_home):
         """Hook should skip files that are not orchestrator-analysis.md."""
         hook_input = json.dumps({
             "tool_name": "Write",
@@ -250,16 +252,13 @@ class TestInjectSessionContextHookFunctional:
 
     @pytest.fixture
     def hook_path(self):
-        """Get path to inject-session-context.sh hook."""
-        paths = [
-            Path.home() / ".claude" / "hooks" / "inject-session-context.sh",
-        ]
-        for p in paths:
-            if p.exists():
-                return p
-        pytest.skip("inject-session-context.sh not found")
+        """Get path to inject-session-context.sh hook (repo copy)."""
+        p = HOOKS_DIR / "inject-session-context.sh"
+        if not p.exists():
+            pytest.skip("inject-session-context.sh not found")
+        return p
 
-    def test_hook_returns_valid_json_for_task_tool(self, hook_path, tmp_path):
+    def test_hook_returns_valid_json_for_task_tool(self, hook_path, tmp_path, isolated_home, requires_tool):
         """Hook should return valid JSON with permission=allow for Task tool.
 
         Note: PreToolUse hooks cannot inject context into Task calls.
@@ -267,6 +266,7 @@ class TestInjectSessionContextHookFunctional:
 
         v2.84.1: Supports both legacy and v2.81.2+ formats.
         """
+        requires_tool("jq")
         # Create minimal CLAUDE.md
         claude_md = tmp_path / "CLAUDE.md"
         claude_md.write_text("# Test Project v1.0\n\nTest content.")
@@ -297,11 +297,12 @@ class TestInjectSessionContextHookFunctional:
         decision = get_pretooluse_decision(output)
         assert decision == "allow", f"Expected permission=allow, got: {decision}"
 
-    def test_hook_skips_non_task_tools(self, hook_path, tmp_path):
+    def test_hook_skips_non_task_tools(self, hook_path, tmp_path, isolated_home, requires_tool):
         """Hook should return permission=allow for non-Task tools.
 
         v2.84.1: Supports both legacy and v2.81.2+ formats.
         """
+        requires_tool("jq")
         hook_input = json.dumps({
             "tool_name": "Read",
             "session_id": "test-session-456"
@@ -326,7 +327,7 @@ class TestInjectSessionContextHookFunctional:
         decision = get_pretooluse_decision(output)
         assert decision == "allow", f"Expected permission=allow, got: {decision}"
 
-    def test_hook_performance_under_5_seconds(self, hook_path, tmp_path):
+    def test_hook_performance_under_5_seconds(self, hook_path, tmp_path, isolated_home):
         """Hook should complete within 5 seconds (well under 15s timeout)."""
         import time
 
@@ -355,17 +356,13 @@ class TestLsaPreStepHookFunctional:
 
     @pytest.fixture
     def hook_path(self):
-        """Get path to lsa-pre-step.sh hook."""
-        paths = [
-            Path.home() / ".claude" / "hooks" / "lsa-pre-step.sh",
-            Path(".claude") / "hooks" / "lsa-pre-step.sh",
-        ]
-        for p in paths:
-            if p.exists():
-                return p
-        pytest.skip("lsa-pre-step.sh not found")
+        """Get path to lsa-pre-step.sh hook (repo copy)."""
+        p = HOOKS_DIR / "lsa-pre-step.sh"
+        if not p.exists():
+            pytest.skip("lsa-pre-step.sh not found")
+        return p
 
-    def test_hook_passes_without_plan_state(self, hook_path, tmp_path):
+    def test_hook_passes_without_plan_state(self, hook_path, tmp_path, isolated_home):
         """Hook should pass (exit 0) when no plan-state.json exists."""
         hook_input = json.dumps({
             "tool_name": "Edit",
@@ -390,17 +387,13 @@ class TestPlanSyncPostStepHookFunctional:
 
     @pytest.fixture
     def hook_path(self):
-        """Get path to plan-sync-post-step.sh hook."""
-        paths = [
-            Path.home() / ".claude" / "hooks" / "plan-sync-post-step.sh",
-            Path(".claude") / "hooks" / "plan-sync-post-step.sh",
-        ]
-        for p in paths:
-            if p.exists():
-                return p
-        pytest.skip("plan-sync-post-step.sh not found")
+        """Get path to plan-sync-post-step.sh hook (repo copy)."""
+        p = HOOKS_DIR / "plan-sync-post-step.sh"
+        if not p.exists():
+            pytest.skip("plan-sync-post-step.sh not found")
+        return p
 
-    def test_hook_passes_without_plan_state(self, hook_path, tmp_path):
+    def test_hook_passes_without_plan_state(self, hook_path, tmp_path, isolated_home):
         """Hook should pass when no plan-state.json exists."""
         hook_input = json.dumps({
             "tool_name": "Edit",
@@ -422,11 +415,11 @@ class TestPlanSyncPostStepHookFunctional:
 class TestHookErrorRecovery:
     """Tests for hook error recovery and graceful degradation."""
 
-    def test_hooks_handle_invalid_json_input(self):
+    def test_hooks_handle_invalid_json_input(self, isolated_home):
         """Hooks should handle malformed JSON input gracefully."""
         hook_paths = [
-            Path.home() / ".claude" / "hooks" / "auto-plan-state.sh",
-            Path.home() / ".claude" / "hooks" / "inject-session-context.sh",
+            HOOKS_DIR / "auto-plan-state.sh",
+            HOOKS_DIR / "inject-session-context.sh",
         ]
 
         for hook_path in hook_paths:
@@ -445,13 +438,13 @@ class TestHookErrorRecovery:
             # Should not crash (exit 0)
             assert result.returncode == 0, f"{hook_path.name} crashed on invalid JSON"
 
-    def test_hooks_handle_empty_input(self):
+    def test_hooks_handle_empty_input(self, isolated_home):
         """Hooks should handle empty input gracefully."""
         hook_paths = [
-            Path.home() / ".claude" / "hooks" / "auto-plan-state.sh",
-            Path.home() / ".claude" / "hooks" / "inject-session-context.sh",
-            Path.home() / ".claude" / "hooks" / "lsa-pre-step.sh",
-            Path.home() / ".claude" / "hooks" / "plan-sync-post-step.sh",
+            HOOKS_DIR / "auto-plan-state.sh",
+            HOOKS_DIR / "inject-session-context.sh",
+            HOOKS_DIR / "lsa-pre-step.sh",
+            HOOKS_DIR / "plan-sync-post-step.sh",
         ]
 
         for hook_path in hook_paths:
@@ -495,7 +488,7 @@ Implement user authentication
 
         return tmp_path
 
-    def test_task_context_injection_with_progress(self, mock_project):
+    def test_task_context_injection_with_progress(self, mock_project, isolated_home, requires_tool):
         """Verify hook runs for Task tool and returns valid output.
 
         Note: PreToolUse hooks cannot inject context into Task calls.
@@ -503,7 +496,8 @@ Implement user authentication
 
         v2.84.1: Supports both legacy and v2.81.2+ formats.
         """
-        hook_path = Path.home() / ".claude" / "hooks" / "inject-session-context.sh"
+        requires_tool("jq")
+        hook_path = HOOKS_DIR / "inject-session-context.sh"
         if not hook_path.exists():
             pytest.skip("inject-session-context.sh not found")
 

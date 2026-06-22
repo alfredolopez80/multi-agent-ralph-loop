@@ -398,8 +398,15 @@ class TestHooksIntegration:
 
     @pytest.fixture
     def hooks_dir(self):
-        """Return the hooks directory."""
-        return Path.home() / ".claude" / "hooks"
+        """Return the hooks directory (repo copy first, then global).
+
+        Mirrors the project-first pattern used for SCRIPTS_DIR above so the
+        suite runs against the repo's versioned hooks in a clean CI checkout
+        (no ~/.claude/hooks → exit 127).
+        """
+        project_hooks = PROJECT_ROOT / ".claude" / "hooks"
+        global_hooks = Path.home() / ".claude" / "hooks"
+        return project_hooks if project_hooks.exists() else global_hooks
 
     def test_session_start_hook_exists(self, hooks_dir):
         """Test that session-start-restore-context.sh exists and is executable.
@@ -421,12 +428,13 @@ class TestHooksIntegration:
         mode = hook_path.stat().st_mode
         assert mode & 0o111, "Hook is not executable"
 
-    def test_session_start_hook_output_format(self, hooks_dir):
+    def test_session_start_hook_output_format(self, hooks_dir, isolated_home, requires_tool):
         """Test that SessionStart hook returns valid JSON.
 
         v2.85: session-start-ledger.sh was archived (redundant with session-start-restore-context.sh).
         Tests now validate the replacement hook.
         """
+        requires_tool("jq")
         hook_path = hooks_dir / "session-start-restore-context.sh"
 
         result = subprocess.run(
@@ -443,8 +451,9 @@ class TestHooksIntegration:
         assert "hookSpecificOutput" in output
         assert "additionalContext" in output["hookSpecificOutput"]
 
-    def test_pre_compact_hook_output_format(self, hooks_dir):
+    def test_pre_compact_hook_output_format(self, hooks_dir, isolated_home, requires_tool):
         """Test that PreCompact hook returns valid JSON."""
+        requires_tool("jq")
         hook_path = hooks_dir / "pre-compact-handoff.sh"
 
         result = subprocess.run(

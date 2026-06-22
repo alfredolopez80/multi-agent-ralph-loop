@@ -26,8 +26,15 @@ HOOKS_DIR = os.path.join(PROJECT_ROOT, ".claude", "hooks")
 # Helpers
 # ---------------------------------------------------------------------------
 
-def run_hook(script_name, stdin_data="", timeout=10):
-    """Run a hook script and return (stdout, returncode)."""
+def run_hook(script_name, stdin_data="", timeout=10, env=None):
+    """Run a hook script and return (stdout, returncode).
+
+    ``env`` overrides the subprocess environment. The vault hooks resolve
+    their vault under ``${HOME}/Documents/Obsidian/MiVault`` and their logs
+    under ``${HOME}/.ralph``, so passing ``env={**os.environ, "HOME": tmp}``
+    redirects them at an isolated, CI-built vault instead of the developer's
+    real ``~`` (absent in CI).
+    """
     script_path = os.path.join(HOOKS_DIR, script_name)
     if not os.path.exists(script_path):
         pytest.skip(f"{script_name} not found")
@@ -37,8 +44,36 @@ def run_hook(script_name, stdin_data="", timeout=10):
         capture_output=True,
         text=True,
         timeout=timeout,
+        env=env,
     )
     return result.stdout.strip(), result.returncode
+
+
+def build_vault(home_dir):
+    """Build a real vault under ``home_dir`` via the versioned setup script.
+
+    Returns the vault path (``<home>/Documents/Obsidian/MiVault``). This runs
+    ``scripts/setup-obsidian-vault.sh`` for real, honoring ``$VAULT_DIR``, so
+    the hooks under test reach their vault-present code paths in CI.
+    """
+    setup_script = os.path.join(PROJECT_ROOT, "scripts", "setup-obsidian-vault.sh")
+    if not os.path.exists(setup_script):
+        pytest.skip("setup-obsidian-vault.sh not found")
+    vault_dir = os.path.join(home_dir, "Documents", "Obsidian", "MiVault")
+    env = {**os.environ, "HOME": home_dir, "VAULT_DIR": vault_dir}
+    result = subprocess.run(
+        ["bash", setup_script],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, (
+        f"setup-obsidian-vault.sh failed (rc={result.returncode}):\n"
+        f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+    )
+    os.makedirs(os.path.join(home_dir, ".ralph", "logs"), exist_ok=True)
+    return vault_dir
 
 
 def create_minimal_vault(base_dir):
@@ -117,16 +152,27 @@ class TestWingCompiler:
         assert os.path.exists(os.path.join(HOOKS_DIR, "vault-wing-compiler.sh"))
 
     def test_wing_compiler_approves_on_no_vault(self):
-        """Graceful skip when vault missing — returns approve."""
+        """Graceful skip when vault missing — clean exit 0 (allow).
+
+        SessionEnd hooks allow by clean ``exit 0`` (empty stdout). Per
+        ``tests/HOOK_FORMAT_REFERENCE.md`` the legacy ``{"decision": "approve"}``
+        output is INVALID and was removed in v3.1.1, so we assert the real,
+        valid contract: rc 0 and no stdout. HOME is redirected at an empty temp
+        dir so the hook reaches its vault-missing branch without touching the
+        developer's real ``~`` (this is what makes the test CI-safe).
+        """
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Point VAULT_DIR to non-existent path via env won't work
-            # because the script uses hardcoded path. Test that it
-            # outputs valid JSON even when vault doesn't exist.
+            env = {**os.environ, "HOME": tmpdir}
+            os.makedirs(os.path.join(tmpdir, ".ralph", "logs"), exist_ok=True)
             stdin_data = json.dumps({"session_id": "test-123"})
-            stdout, rc = run_hook("vault-wing-compiler.sh", stdin_data=stdin_data)
+            stdout, rc = run_hook(
+                "vault-wing-compiler.sh", stdin_data=stdin_data, env=env
+            )
             assert rc == 0
-            parsed = json.loads(stdout)
-            assert parsed.get("decision") == "approve"
+            assert stdout == "", (
+                "SessionEnd hook must allow via clean exit (no stdout); "
+                f"got: {stdout!r}"
+            )
 
     def test_wing_compiler_creates_wing_from_facts(self):
         """Wing is created from today's facts file."""
@@ -161,52 +207,85 @@ class TestWriteback:
         assert os.path.exists(os.path.join(HOOKS_DIR, "vault-writeback.sh"))
 
     def test_writeback_approves_on_no_queue(self):
-        """No writeback queue — returns approve."""
-        stdin_data = json.dumps({})
-        stdout, rc = run_hook("vault-writeback.sh", stdin_data=stdin_data)
-        assert rc == 0
-        parsed = json.loads(stdout)
-        assert parsed.get("decision") == "approve"
+        """No writeback queue — clean exit 0 (allow).
+
+        A real vault is built under a temp HOME so the hook passes the
+        ``vault present`` check and reaches the ``no queue`` branch (the path
+        this test targets), without depending on the developer's real vault.
+        Stop hooks allow via clean ``exit 0``; per HOOK_FORMAT_REFERENCE.md the
+        old ``{"decision": "approve"}`` is invalid, so we assert rc 0 + no stdout.
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            build_vault(tmpdir)  # ensures no .writeback-queue.json under temp HOME
+            env = {**os.environ, "HOME": tmpdir}
+            stdin_data = json.dumps({})
+            stdout, rc = run_hook(
+                "vault-writeback.sh", stdin_data=stdin_data, env=env
+            )
+            assert rc == 0
+            assert stdout == "", (
+                "Stop hook must allow via clean exit (no stdout); "
+                f"got: {stdout!r}"
+            )
 
     def test_writeback_creates_draft_wiki(self):
-        """Writeback queue → draft wiki article."""
-        with tempfile.TemporaryDirectory(prefix="vault_test_") as vault_dir:
-            # Create queue file
-            ralph_dir = os.path.expanduser("~/.ralph")
-            queue_file = os.path.join(ralph_dir, ".writeback-queue.json")
+        """Writeback queue → draft wiki article (full real path in CI).
 
-            # Save existing queue if any
-            existing_queue = None
-            if os.path.exists(queue_file):
-                with open(queue_file) as f:
-                    existing_queue = f.read()
+        Builds a real vault under a temp HOME, drops a writeback queue at
+        ``<HOME>/.ralph/.writeback-queue.json`` (the path the hook reads), runs
+        the hook, and asserts a draft wiki article was actually written under
+        the vault. This exercises the hook end-to-end without touching the
+        developer's real ``~``. Stop hooks allow via clean ``exit 0`` (no stdout).
+        """
+        with tempfile.TemporaryDirectory(prefix="vault_test_") as home_dir:
+            vault_dir = build_vault(home_dir)
+            env = {**os.environ, "HOME": home_dir}
 
-            try:
-                queue_data = json.dumps([{
-                    "topic": "Test Writeback Topic",
-                    "summary": "This is a test summary for writeback.",
-                    "category": "hooks"
-                }])
-                with open(queue_file, "w") as f:
-                    f.write(queue_data)
+            queue_file = os.path.join(home_dir, ".ralph", ".writeback-queue.json")
+            queue_data = json.dumps([{
+                "topic": "Test Writeback Topic",
+                "summary": "This is a test summary for writeback.",
+                "category": "hooks",
+            }])
+            with open(queue_file, "w") as f:
+                f.write(queue_data)
 
-                stdin_data = json.dumps({})
-                stdout, rc = run_hook("vault-writeback.sh", stdin_data=stdin_data)
-                assert rc == 0
-                parsed = json.loads(stdout)
-                assert parsed.get("decision") == "approve"
+            stdin_data = json.dumps({})
+            stdout, rc = run_hook(
+                "vault-writeback.sh", stdin_data=stdin_data, env=env
+            )
+            assert rc == 0
+            assert stdout == "", (
+                "Stop hook must allow via clean exit (no stdout); "
+                f"got: {stdout!r}"
+            )
 
-                # Check wiki article was created
-                wiki_dir = os.path.join(vault_dir, "projects", "multi-agent-ralph-loop", "wiki")
-                # The script uses $HOME/Documents/Obsidian/MiVault, not our tmpdir
-                # So we verify the script ran without error
-            finally:
-                # Cleanup queue file
-                if os.path.exists(queue_file):
-                    os.remove(queue_file)
-                if existing_queue:
-                    with open(queue_file, "w") as f:
-                        f.write(existing_queue)
+            # The slug is derived from the topic; project resolves to "unknown"
+            # because the repo is not under the temp HOME. Assert the draft
+            # article exists somewhere under projects/*/wiki/.
+            projects_dir = os.path.join(vault_dir, "projects")
+            matches = []
+            for root, _dirs, files in os.walk(projects_dir):
+                if os.path.basename(root) == "wiki":
+                    matches.extend(
+                        os.path.join(root, fn)
+                        for fn in files
+                        if fn == "test-writeback-topic.md"
+                    )
+            assert matches, (
+                "Expected a draft wiki article 'test-writeback-topic.md' under "
+                f"{projects_dir}/*/wiki/ — writeback did not create it"
+            )
+
+            # The draft must carry the writeback frontmatter + summary content.
+            article = matches[0]
+            with open(article) as f:
+                content = f.read()
+            assert "status: draft" in content
+            assert "This is a test summary for writeback." in content
+            # Queue is consumed (deleted) after processing.
+            assert not os.path.exists(queue_file), \
+                "writeback must consume the queue file after processing"
 
     def test_writeback_script_syntax(self):
         result = subprocess.run(
@@ -310,12 +389,33 @@ class TestVaultLogWriter:
         assert os.path.exists(os.path.join(HOOKS_DIR, "vault-log-writer.sh"))
 
     def test_log_writer_approves(self):
-        """SessionEnd hook — returns approve."""
-        stdin_data = json.dumps({"session_id": "test-log-123"})
-        stdout, rc = run_hook("vault-log-writer.sh", stdin_data=stdin_data)
-        assert rc == 0
-        parsed = json.loads(stdout)
-        assert parsed.get("decision") == "approve"
+        """SessionEnd hook — writes a log entry, then clean exit 0 (allow).
+
+        Builds a real vault under a temp HOME so the hook reaches its
+        vault-present path and writes ``log.md``. SessionEnd hooks allow via
+        clean ``exit 0``; per HOOK_FORMAT_REFERENCE.md ``{"decision": "approve"}``
+        is invalid and was removed in v3.1.1, so we assert rc 0 + no stdout and
+        that the log entry was actually written.
+        """
+        with tempfile.TemporaryDirectory(prefix="vault_test_") as home_dir:
+            vault_dir = build_vault(home_dir)
+            env = {**os.environ, "HOME": home_dir}
+            stdin_data = json.dumps({"session_id": "test-log-123"})
+            stdout, rc = run_hook(
+                "vault-log-writer.sh", stdin_data=stdin_data, env=env
+            )
+            assert rc == 0
+            assert stdout == "", (
+                "SessionEnd hook must allow via clean exit (no stdout); "
+                f"got: {stdout!r}"
+            )
+            log_md = os.path.join(vault_dir, "log.md")
+            assert os.path.exists(log_md), \
+                "vault-log-writer must create log.md under the vault"
+            with open(log_md) as f:
+                log_content = f.read()
+            assert "test-log-123" in log_content, \
+                "log entry must record the session id"
 
     def test_log_writer_syntax(self):
         result = subprocess.run(
