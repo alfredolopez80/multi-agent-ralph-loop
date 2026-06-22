@@ -207,12 +207,45 @@ checkWorktreeTTL() {
     return 1
   fi
 
-  # Get creation time from worktree directory metadata
-  local created_epoch
-  created_epoch=$(stat -f "%B" "$wt_dir" 2>/dev/null || stat -c "%W" "$wt_dir" 2>/dev/null || echo "0")
+  # Get creation time from worktree directory metadata.
+  #
+  # Cross-platform AND CI-safe:
+  #   * macOS/BSD stat uses `-f <fmt>`: %B = birth (create) time, %m = mtime.
+  #   * GNU/Linux stat uses `-c <fmt>`: %W = birth time, %Y = mtime.
+  #
+  # Two failures this guards against (both seen on Ubuntu CI, never on macOS):
+  #   1. The old `stat -f "%B"` was tried FIRST on Linux, where `-f` means
+  #      "filesystem mode" — GNU stat then printed multi-line, NON-NUMERIC
+  #      filesystem info into created_epoch, and `$(( now - created_epoch ))`
+  #      aborted the function under `set -uo pipefail` -> EMPTY stdout ->
+  #      JSONDecodeError in the tests.
+  #   2. Many Linux filesystems (ext4/overlayfs on CI) report birth time as 0
+  #      (`%W` == 0). created_epoch=0 made a FRESH worktree look ~29M minutes
+  #      old -> expired:true. We fall back to mtime when birth time is 0/empty.
+  local created_epoch=""
+  if stat -c '%W' / >/dev/null 2>&1; then
+    # GNU/Linux stat
+    created_epoch=$(stat -c '%W' "$wt_dir" 2>/dev/null || echo "")
+    if [[ -z "$created_epoch" || ! "$created_epoch" =~ ^[0-9]+$ || "$created_epoch" -eq 0 ]]; then
+      # Birth time unavailable on this fs -> use mtime (always populated).
+      created_epoch=$(stat -c '%Y' "$wt_dir" 2>/dev/null || echo "")
+    fi
+  else
+    # macOS/BSD stat
+    created_epoch=$(stat -f '%B' "$wt_dir" 2>/dev/null || echo "")
+    if [[ -z "$created_epoch" || ! "$created_epoch" =~ ^[0-9]+$ || "$created_epoch" -eq 0 ]]; then
+      created_epoch=$(stat -f '%m' "$wt_dir" 2>/dev/null || echo "")
+    fi
+  fi
+  # Final guard: never let a non-numeric value reach the arithmetic below
+  # (a non-numeric $(( )) aborts the function under set -e and yields empty stdout).
+  [[ "$created_epoch" =~ ^[0-9]+$ ]] || created_epoch=$(date +%s)
+
   local now_epoch
   now_epoch=$(date +%s)
   local elapsed_minutes=$(( (now_epoch - created_epoch) / 60 ))
+  # Clamp negative drift (clock skew between birth time and now) to 0.
+  (( elapsed_minutes < 0 )) && elapsed_minutes=0
   local expired="false"
 
   if [[ "$elapsed_minutes" -ge "$ttl_minutes" ]]; then

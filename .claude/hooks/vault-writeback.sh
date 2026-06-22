@@ -124,7 +124,13 @@ for i in $(seq 0 $((QUEUE_LENGTH - 1)) 2>/dev/null); do
     fi
 
     # Sanitize summary (no secrets, no absolute paths)
-    SAFE_SUMMARY=$(echo "$SUMMARY" | sed "s|${HOME}/|~/|g" | tr -cd ' a-zA-Z0-9_.:/-()[]{}?!,;' | head -c 2000)
+    # NOTE: the literal '-' MUST be last in the tr set. Inside '...:/-()...' the
+    # substring '/-(' is parsed by GNU tr (Linux/CI) as a range from '/' (0x2F)
+    # to '(' (0x28) — a reversed range — and GNU tr aborts with a non-zero exit
+    # ("range-endpoints ... in reverse collating sequence order"). Under
+    # `set -euo pipefail` that killed the whole hook (rc=1) on Ubuntu while BSD
+    # tr on macOS tolerated it. Trailing '-' is a literal dash on both.
+    SAFE_SUMMARY=$(echo "$SUMMARY" | sed "s|${HOME}/|~/|g" | tr -cd ' a-zA-Z0-9_.:/()[]{}?!,;-' | head -c 2000)
 
     # Create draft wiki article
     NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
