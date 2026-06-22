@@ -39,7 +39,6 @@
 │  • semantic.json      ← Semantic facts from ALL projects                 │
 │  • episodic/          ← Session experiences (30-day TTL)                  │
 │  • procedural/rules.json ← Learned behaviors                              │
-│  • memvid.json        ← Vector-encoded context                            │
 │                                                                           │
 │ ⚠️  PROBLEM: No project isolation - patterns leak between projects!      │
 │                                                                           │

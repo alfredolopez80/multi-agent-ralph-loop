@@ -114,7 +114,7 @@ for chunk in response:
 
 #### 2.2.2 Memory Integration
 
-**Current State**: Ralph has custom memory (claude-mem, memvid, etc.)
+**Current State**: Ralph has custom memory (claude-mem, etc.)
 **Future State**: Leverage Claude's native memory where available
 
 **Benefits**:

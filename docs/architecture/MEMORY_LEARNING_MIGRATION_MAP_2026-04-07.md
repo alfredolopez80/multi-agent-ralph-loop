@@ -160,14 +160,12 @@ Rules from procedural memory. Confidence >= 0.7, usage >= 3.
 
 ---
 
-## 4. CLAUDE-MEM & MEMVID INTEGRATION
+## 4. CLAUDE-MEM INTEGRATION
 
 ### Current Status: **MIGRATION COMPLETE, LEGACY CLEANUP IN PROGRESS**
 
 ### Removed Components
-- **memvid.json**: Deleted from `~/.ralph/memory/` (175KB, purpose unclear)
 - **semantic.json**: Deleted (62KB, deprecated after claude-mem)
-- **memvid tool**: Removed from `scripts/ralph` (tool definition + validation function)
 
 ### Remaining Claude-mem References
 **Active MCP Integration**:
@@ -181,17 +179,8 @@ Rules from procedural memory. Confidence >= 0.7, usage >= 3.
 - `frontend/src/pages/CLAUDE.md` - `<claude-mem-context>` tags
 - README.es.md - References in architecture diagram
 
-### Legacy Memvid Hook Fallbacks (Graceful Degradation)
-| Hook | Behavior | Impact |
-|------|----------|--------|
-| `pre-compact-handoff.sh` | Fails gracefully if memvid missing | Non-blocking |
-| `session-start-repo-summary.sh` | Creates empty memvid.json if needed | Non-blocking |
-| `smart-memory-search.sh` | Skips memvid layer (works without) | Reduced search depth (4→5 sources) |
-
 ### Safe to Remove
-- All memvid references (already non-blocking)
 - `<claude-mem-context>` auto-gen tags (docstring only)
-- Memvid vector search fallback (smart-memory-search.sh Line N)
 
 ### Cannot Break
 - `~/.claude-mem/claude-mem.db` (active observations, 21KB+)
@@ -268,14 +257,13 @@ _templates/ (Obsidian templates)
 | `curator/` | Curator corpus + manifests | <1MB | ✓ Active |
 | `learning/` | Learning session logs | TBD | ✓ Exists |
 | `sessions/` | Session state/metadata | TBD | ✓ Exists |
-| `memory/` | *(deprecated, memvid removed)* | 0B | ✗ Empty |
+| `memory/` | *(deprecated)* | 0B | ✗ Empty |
 | `cache/` | Ephemeral cache | TBD | ✓ Auto-purged |
 | `checkpoints/` | Checkpoint snapshots | TBD | 7588 items, auto-managed |
 
 ### CLAUDE.md Claims vs Reality
 - **Claimed**: episodes/ and procedural/ exist ✓ CONFIRMED
 - **Claimed**: 21,129 observations in claude-mem ✓ CONFIRMED (via CHANGELOG)
-- **Claimed**: memvid.json deleted ✓ CONFIRMED (CHANGELOG entry)
 
 ---
 
@@ -286,7 +274,6 @@ _templates/ (Obsidian templates)
 - ✓ Procedural rules.json (no external dependencies)
 - ✓ Vault structure (already semi-independent via MCP)
 - ✓ Learned rules format (just markdown lists)
-- ✓ Remove all memvid references (already non-blocking)
 
 ### Requires Careful Planning
 - ⚠️ Procedural schema lacks timestamps (add before migration)
@@ -310,7 +297,7 @@ _templates/ (Obsidian templates)
 4. **Phase 4**: Redirect curator-learn.sh output to MemPalace instead of rules.json
 5. **Phase 5**: Implement fallback queries (claude-mem → MemPalace → hybrid search)
 6. **Phase 6**: Migrate vault articles → MemPalace "House of Learning"
-7. **Phase 7**: Decommission legacy memvid/semantic hooks (non-blocking)
+7. **Phase 7**: Decommission legacy semantic hooks (non-blocking)
 8. **Phase 8**: Archive procedural/rules.json (read-only backup)
 
 ---

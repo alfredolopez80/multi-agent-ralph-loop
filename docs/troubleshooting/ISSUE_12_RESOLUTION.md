@@ -10,7 +10,7 @@ User reported bash syntax errors in `scripts/ralph` when running on macOS with d
 
 ```
 scripts/ralph: line 2359: syntax error near unexpected token `)'
-scripts/ralph: line 2359: `echo "║  MEMVID SAVE: Save context to semantic memory (v2.31)         ║"'
+scripts/ralph: line 2359: `echo "║  MEMORY SAVE: Save context to semantic memory (v2.31)         ║"'
 ```
 
 ## Investigation Results
@@ -32,8 +32,8 @@ The script executes correctly on macOS with Bash 3.2.57:
 $ /bin/bash --version
 GNU bash, version 3.2.57(1)-release (arm64-apple-darwin25)
 
-$ /bin/bash -c 'echo "║  MEMVID SAVE: Save context to semantic memory (v2.31)         ║"'
-║  MEMVID SAVE: Save context to semantic memory (v2.31)         ║
+$ /bin/bash -c 'echo "║  MEMORY SAVE: Save context to semantic memory (v2.31)         ║"'
+║  MEMORY SAVE: Save context to semantic memory (v2.31)         ║
 
 $ ./scripts/ralph --version
 ralph v2.83.0

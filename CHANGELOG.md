@@ -57,9 +57,7 @@
   - Previously: NO cleanup policy (2,852 episodes accumulated)
 
 - **Redundant Storage Removed**: Deprecated memory files deleted
-  - Deleted `~/.ralph/memory/memvid.json` (175KB - purpose unclear)
   - Deleted `~/.ralph/memory/semantic.json` (62KB - deprecated after claude-mem migration)
-  - Removed memvid from `scripts/ralph` (tool definition + validation function)
   - semantic.json hooks already disabled in v2.55.0 (no action needed)
 
 ### Changed
@@ -77,12 +75,6 @@
   - Direct SQLite access retained in `session-start-restore-context.sh`
   - Future: Requires MCP server with API REST or CLI wrapper
   - See: docs/analysis/MCP_MIGRATION_TECHNICAL_LIMITATIONS.md (future doc)
-
-- **Memvid References**: Some hooks still reference memvid (non-blocking)
-  - `pre-compact-handoff.sh`: Will fail gracefully if memvid missing
-  - `session-start-repo-summary.sh`: Creates empty memvid.json if needed
-  - `smart-memory-search.sh`: Skips memvid search if unavailable
-  - These are legacy references that degrade gracefully
 
 ---
 
@@ -1257,22 +1249,20 @@ fi
 
 **smart-memory-search.sh** now:
 1. claude-mem MCP (local)
-2. memvid (local)
-3. handoffs (local)
-4. ledgers (local)
-5. GLM web search (via Coding API + MiniMax fallback)
-6. GLM docs search (via Coding API + MiniMax fallback)
+2. handoffs (local)
+3. ledgers (local)
+4. GLM web search (via Coding API + MiniMax fallback)
+5. GLM docs search (via Coding API + MiniMax fallback)
 
 ---
 
 #### DAY 1-2: Web Search + Visual Validation (COMPLETE)
 
-**smart-memory-search.sh** originally searched 5 parallel sources:
+**smart-memory-search.sh** originally searched 4 parallel sources:
 1. claude-mem MCP
-2. memvid vector storage
-3. handoffs (session context)
-4. ledgers (continuity data)
-5. **NEW: webSearchPrime (GLM-4.7)**
+2. handoffs (session context)
+3. ledgers (continuity data)
+4. **NEW: webSearchPrime (GLM-4.7)**
 
 ```bash
 # New Task 5 in parallel search

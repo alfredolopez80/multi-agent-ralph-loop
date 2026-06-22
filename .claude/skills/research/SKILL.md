@@ -178,7 +178,7 @@ Compile findings into structured report:
 
 Save research to memory for future reference:
 ```bash
-ralph memvid save "Research on ${TOPIC}: [key findings]"
+ralph ledger save research "Research on ${TOPIC}: [key findings]"
 ```
 
 ## Research Templates

@@ -3,14 +3,14 @@
 **Date**: 2026-02-16
 **Version**: v2.90.2
 **Status**: ANALYSIS COMPLETE
-**Audit Type**: Comprehensive Memory, Ledger, Memvid, and Claude-Mem Integration
+**Audit Type**: Comprehensive Memory, Ledger, and Claude-Mem Integration
 **Audit Score**: 7.5/10 (Good with Specific Gaps)
 
 ---
 
 ## Executive Summary
 
-This audit examines the current state of memory management, ledger system, memvid implementation, and claude-mem integration in the Multi-Agent Ralph Loop v2.90.2 system.
+This audit examines the current state of memory management, ledger system, and claude-mem integration in the Multi-Agent Ralph Loop v2.90.2 system.
 
 ### Key Findings
 
@@ -18,7 +18,6 @@ This audit examines the current state of memory management, ledger system, memvi
 |--------|--------|--------|--------|-----------------|
 | **claude-mem** | ✅ Active | 9/10 | Minor integration gaps | Tighten hook integration |
 | **ledgers** | ✅ Active | 8/10 | 7,320 files, no TTL | Add cleanup policy |
-| **memvid** | ⚠️ Partial | 4/10 | Disabled, unclear purpose | Define or remove |
 | **episodic memory** | ✅ Active | 9/10 | 1,450 episodes, working | No changes needed |
 | **semantic memory** | ✅ Active | 9/10 | 185 facts in claude-mem | No changes needed |
 | **procedural memory** | ⚠️ Partial | 5/10 | 1,003 rules, unclear usage | Define injection points |
@@ -27,12 +26,11 @@ This audit examines the current state of memory management, ledger system, memvi
 
 1. **smart-memory-search.sh is DISABLED** (line 2-5) despite being the core memory orchestration hook
 2. **Triple memory storage exists** despite "claude-mem only" migration claims:
-   - `~/.ralph/memory/` (265KB semantic.json, 175KB memvid.json)
+   - `~/.ralph/memory/` (265KB semantic.json)
    - `~/.claude-mem/` (21,129 observations via SQLite)
    - Project-specific `.claude/memory-context.json` (cache)
 3. **Ledger system is healthy** but growing unbounded (7,320 files, no cleanup)
 4. **Claude-mem integration works** but via manual SQLite queries, not MCP tools
-5. **Memvid exists but is unused** - referenced but commented out in code
 
 ---
 
@@ -52,9 +50,9 @@ This audit examines the current state of memory management, ledger system, memvi
 │     ├─ Hook Integration: session-start-restore-context.sh       │
 │     └─ Status: ✅ Working via manual SQL                        │
 │                                                                   │
-│  2. RALPH LOCAL MEMORY (Redundant - 441KB)                       │
+│  2. RALPH LOCAL MEMORY (Redundant - 265KB)                       │
 │     ├─ Location: ~/.ralph/memory/                               │
-│     ├─ Files: semantic.json (265KB), memvid.json (175KB)       │
+│     ├─ Files: semantic.json (265KB)                             │
 │     ├─ Purpose: Unknown (claimed deprecated, still present)     │
 │     ├─ Status: ⚠️ Deprecated but not cleaned                    │
 │     └─ Evidence: Backup created 2026-01-29                      │
@@ -103,7 +101,6 @@ This audit examines the current state of memory management, ledger system, memvi
 |--------------|------|-------|---------|--------|---------------|
 | `~/.claude-mem/claude-mem.db` | 21,129 obs | SQLite | Semantic memory | ✅ Healthy | None |
 | `~/.ralph/memory/semantic.json` | 265KB | 1 | Deprecated semantic | ⚠️ Redundant | Remove |
-| `~/.ralph/memory/memvid.json` | 175KB | 1 | Vector storage | ❌ Unused | Decide |
 | `~/.ralph/episodes/` | Unknown | 1,450+ | Session experiences | ✅ Healthy | Verify TTL |
 | `~/.ralph/ledgers/` | Unknown | 452+ | Session continuity | ⚠️ Growing | Add TTL |
 | `~/.ralph/procedural/` | Unknown | 10 files | Learned rules | ⚠️ Unclear | Verify usage |
@@ -218,69 +215,7 @@ This audit examines the current state of memory management, ledger system, memvi
 
 ---
 
-### 3. Memvid System ❌ (4/10)
-
-**Status**: **Exists but unclear/disabled usage**
-
-#### What Works
-- File exists: `~/.ralph/memory/memvid.json` (175KB)
-- Indexed in memory index: `~/.ralph/memory/index.json`
-
-#### What's Broken
-1. **Unclear Purpose**: No documentation on what memvid does
-   ```bash
-   # Claimed: "Video-encoded vector storage" (smart-memory-search.sh:19)
-   # Reality: Just a JSON file, no video encoding evidence
-   ```
-
-2. **Not Used in Active Hooks**:
-   ```bash
-   # smart-memory-search.sh (lines 275-295):
-   # Task 2: memvid search (if available)
-   # But: Hook is disabled (line 2-5), so memvid never searched
-
-   # pre-compact-handoff.sh (lines 193-201):
-   # "Index in Memvid if available and enabled"
-   # Condition: command -v ralph &>/dev/null (ralph CLI exists)
-   # But: ralph CLI doesn't exist (deprecated)
-   ```
-
-3. **Disabled Hook Integration**:
-   ```bash
-   # smart-memory-search.sh line 2-5:
-   # NOTE: Ralph memory system deprecated - using claude-mem MCP only
-   # This hook is temporarily disabled pending migration to claude-mem
-   exit 0  # <-- Hook exits immediately, never searches memvid
-   ```
-
-4. **No MCP Tool**: Memvid has no MCP server, only local file access
-   ```bash
-   # Expected: mcp__ralph__memvid_search
-   # Reality: Only manual file reads via memvid-core.py (which may not exist)
-   ```
-
-#### Recommendation
-**PRIORITY: HIGH - Decision Required**
-
-**Option A: Remove Memvid Entirely**
-- Delete `~/.ralph/memory/memvid.json`
-- Remove all memvid references from code
-- Simplify to claude-mem only
-- **Effort**: 2 hours
-- **Risk**: Low (appears unused)
-
-**Option B: Define and Implement Memvid**
-- Document what memvid does (vector search? embeddings?)
-- Create MCP server for memvid
-- Integrate with smart-memory-search.sh
-- **Effort**: 8 hours
-- **Risk**: Medium (requires new infrastructure)
-
-**Decision needed**: What is memvid's purpose?
-
----
-
-### 4. Episodic Memory ✅ (9/10)
+### 3. Episodic Memory ✅ (9/10)
 
 **Status**: **Working well**
 
@@ -321,7 +256,7 @@ This audit examines the current state of memory management, ledger system, memvi
 
 ---
 
-### 5. Semantic Memory ⚠️ (7/10)
+### 4. Semantic Memory ⚠️ (7/10)
 
 **Status**: **Redundant storage**
 
@@ -363,7 +298,7 @@ This audit examines the current state of memory management, ledger system, memvi
 
 ---
 
-### 6. Procedural Memory ⚠️ (5/10)
+### 5. Procedural Memory ⚠️ (5/10)
 
 **Status**: **Unclear injection mechanism**
 
@@ -415,7 +350,7 @@ This audit examines the current state of memory management, ledger system, memvi
 
 ---
 
-### 7. Handoffs ✅ (9/10)
+### 6. Handoffs ✅ (9/10)
 
 **Status**: **Working excellently**
 
@@ -450,9 +385,9 @@ Nothing significant. Minor improvements possible:
 
 | Hook | Event | Memory Systems Used | Status |
 |------|-------|---------------------|--------|
-| `smart-memory-search.sh` | PreToolUse (Task) | claude-mem, memvid, handoffs, ledgers | ❌ **DISABLED** |
+| `smart-memory-search.sh` | PreToolUse (Task) | claude-mem, handoffs, ledgers | ❌ **DISABLED** |
 | `session-start-restore-context.sh` | SessionStart | claude-mem (SQLite), ledgers, handoffs | ✅ Active |
-| `pre-compact-handoff.sh` | PreCompact | ledgers, handoffs, memvid (attempted) | ✅ Active |
+| `pre-compact-handoff.sh` | PreCompact | ledgers, handoffs | ✅ Active |
 | `reflection-engine.sh` | Stop | episodic, procedural, semantic | ⚠️ Unclear |
 | `semantic-realtime-extractor.sh` | PostToolUse | claude-mem | ⚠️ Unclear |
 | `procedural-inject.sh` | PreToolUse (Task) | procedural | ⚠️ Unclear |
@@ -468,11 +403,6 @@ Nothing significant. Minor improvements possible:
    - **Impact**: Manual SQLite queries instead of abstraction
    - **Evidence**: Direct `sqlite3` calls in session-start-restore-context.sh
    - **Fix**: Replace with `mcp__plugin_claude-mem_mcp-search__*` tools
-
-3. **Memvid Integration Unclear**
-   - **Impact**: 175KB file with unknown purpose
-   - **Evidence**: Referenced but not used in active hooks
-   - **Fix**: Define purpose or remove
 
 ---
 
@@ -503,7 +433,6 @@ Context Compaction Triggered
 ├─ pre-compact-handoff.sh
 │  ├─ Generate ledger (via ledger-manager.py)
 │  ├─ Generate handoff (via handoff-generator.py)
-│  ├─ Index in memvid (fails - ralph CLI doesn't exist)
 │  └─ Backup plan state
 │
 Session End
@@ -525,13 +454,12 @@ Session End
 User invokes /orchestrator
 ├─ PreToolUse hook: smart-memory-search.sh
 │  ├─ ❌ HOOK DISABLED (exits at line 5)
-│  ├─ Expected: Search 6 sources in parallel
+│  ├─ Expected: Search 5 sources in parallel
 │  │   ├─ 1. claude-mem MCP
-│  │   ├─ 2. memvid
-│  │   ├─ 3. handoffs
-│  │   ├─ 4. ledgers
-│  │   ├─ 5. web search (GLM-4.7)
-│  │   └─ 6. docs search (zread)
+│  │   ├─ 2. handoffs
+│  │   ├─ 3. ledgers
+│  │   ├─ 4. web search (GLM-4.7)
+│  │   └─ 5. docs search (zread)
 │  └─ Actual: Returns empty JSON, exits
 │
 └─ Orchestration proceeds WITHOUT memory context
@@ -576,7 +504,6 @@ User invokes /orchestrator
 | Direct SQLite access | Medium | claude-mem | Use MCP tools instead |
 | Path traversal in hooks | High | All | Already sanitized (SEC-029) |
 | Unbounded storage growth | Low | All | Add TTL policies |
-| No input validation on memvid | Medium | memvid | Define or remove |
 
 ### Security Posture
 
@@ -604,36 +531,31 @@ User invokes /orchestrator
 
 ### High Priority (Do This Week)
 
-3. **Decide memvid fate**: Define purpose or remove
-   - **Effort**: 1 hour decision + 2-8 hours implementation
-   - **Impact**: Remove uncertainty
-   - **Priority**: P1
-
-4. **Add ledger cleanup policy** (90-day TTL)
+3. **Add ledger cleanup policy** (90-day TTL)
    - **Effort**: 1 hour
    - **Impact**: Prevent unbounded growth
    - **Priority**: P1
 
 ### Medium Priority (Do This Month)
 
-5. **Complete semantic memory migration** - remove `~/.ralph/memory/semantic.json`
+4. **Complete semantic memory migration** - remove `~/.ralph/memory/semantic.json`
    - **Effort**: 2 hours
    - **Impact**: Remove redundancy
    - **Priority**: P2
 
-6. **Verify episodic TTL implementation**
+5. **Verify episodic TTL implementation**
    - **Effort**: 2 hours
    - **Impact**: Confirm cleanup works
    - **Priority**: P2
 
 ### Low Priority (Nice to Have)
 
-7. **Add procedural injection logging**
+6. **Add procedural injection logging**
    - **Effort**: 2 hours
    - **Impact**: Understand rule usage
    - **Priority**: P3
 
-8. **Add handoff indexing**
+7. **Add handoff indexing**
    - **Effort**: 3 hours
    - **Impact**: Faster retrieval
    - **Priority**: P3
@@ -649,31 +571,26 @@ User invokes /orchestrator
    - Action: Remove lines 2-5 (disable exit), update to use MCP tools
    - Test: Trigger orchestrator task, verify memory context appears
 
-2. **Review memvid purpose**
-   - File: `~/.ralph/memory/memvid.json`
-   - Decision: Keep and implement OR remove entirely
-   - Criteria: Is vector search needed beyond claude-mem?
-
 ### This Week
 
-3. **Implement ledger cleanup**
+2. **Implement ledger cleanup**
    - File: `.claude/hooks/pre-compact-handoff.sh`
    - Add: `find ~/.ralph/ledgers -name "*.md" -mtime +90 -delete`
    - Add: Deduplication check before creating new ledger
 
-4. **Replace SQLite with MCP tools**
+3. **Replace SQLite with MCP tools**
    - File: `.claude/hooks/session-start-restore-context.sh`
    - Replace: Lines 86-103 (SQLite query)
    - With: `mcp__plugin_claude-mem_mcp-search__search`
 
 ### This Month
 
-5. **Complete semantic memory migration**
+4. **Complete semantic memory migration**
    - Verify: All data in `~/.ralph/memory/semantic.json` is in claude-mem
    - Delete: `~/.ralph/memory/semantic.json`
    - Delete: `~/.ralph/memory/` directory
 
-6. **Verify episodic cleanup**
+5. **Verify episodic cleanup**
    - Search: `find ~/.ralph/episodes/ -type f -mtime +30`
    - If files found: Add cleanup to `reflection-engine.sh`
 
@@ -692,7 +609,6 @@ User invokes /orchestrator
 **Weaknesses**:
 - ❌ smart-memory-search.sh disabled (main orchestration hook)
 - ❌ No MCP tool usage (direct SQLite access)
-- ⚠️ Memvid purpose unclear
 - ⚠️ Ledgers grow unbounded (no TTL)
 - ⚠️ Episodic TTL unverified
 
@@ -706,14 +622,12 @@ User invokes /orchestrator
 
 1. **Memory Search**: smart-memory-search.sh disabled, needs MCP integration
 2. **Storage Growth**: Ledgers need cleanup policy
-3. **Unclear Components**: Memvid needs definition or removal
 
 ### Next Steps
 
-1. **Decision**: Keep or remove memvid?
-2. **Action**: Enable smart-memory-search.sh with MCP tools
-3. **Action**: Add ledger cleanup policy
-4. **Verification**: Confirm episodic TTL works
+1. **Action**: Enable smart-memory-search.sh with MCP tools
+2. **Action**: Add ledger cleanup policy
+3. **Verification**: Confirm episodic TTL works
 
 ---
 
@@ -732,7 +646,6 @@ User invokes /orchestrator
 ~/.ralph/
 ├── memory/
 │   ├── semantic.json                # 265KB (deprecated, remove)
-│   ├── memvid.json                  # 175KB (unclear purpose)
 │   └── index.json                   # Memory index
 ├── episodes/                        # 1,450+ episode files
 ├── ledgers/                         # 452+ ledger files
@@ -763,8 +676,7 @@ User invokes /orchestrator
 .claude/scripts/
 ├── context-extractor.py             # Rich context extraction
 ├── ledger-manager.py                # Ledger generation
-├── handoff-generator.py             # Handoff generation
-└── memvid-core.py                   # Memvid search (unclear if exists)
+└── handoff-generator.py             # Handoff generation
 ```
 
 ---

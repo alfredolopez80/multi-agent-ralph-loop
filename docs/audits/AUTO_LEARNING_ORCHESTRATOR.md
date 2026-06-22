@@ -361,7 +361,7 @@ Las reglas de `repo-learn.sh` usan `"category": "all"` en lugar del dominio real
 
 | ID | Gap | Impacto | Solucion |
 |----|-----|---------|----------|
-| **GAP-L01** | Sin embeddings de reglas | Busqueda semantica limitada | Integrar con memvid |
+| **GAP-L01** | Sin embeddings de reglas | Busqueda semantica limitada | Integrar embeddings de busqueda semantica |
 | **GAP-L02** | Sin comparacion A/B | No hay baseline de calidad | Implementar feature flags |
 
 ---
@@ -422,7 +422,7 @@ Las reglas de `repo-learn.sh` usan `"category": "all"` en lugar del dominio real
    - Ejecutar `/curator` automaticamente ANTES de Task
    - Bloquear hasta que haya >= 3 reglas relevantes
 
-7. **Integrar con memvid** para busqueda semantica de reglas
+7. **Integrar embeddings** para busqueda semantica de reglas
 
 ---
 

@@ -2,7 +2,7 @@
 # ralph - Multi-Agent Orchestrator CLI
 # Version 2.83.0
 # v2.47: Smart Memory-Driven Orchestration (based on @PerceptualPeak Smart Forking)
-#        - Parallel memory search across claude-mem, memvid, handoffs, ledgers
+#        - Parallel memory search across claude-mem, handoffs, ledgers
 #        - Smart fork suggestions (top 5 relevant sessions)
 #        - Memory-informed planning and implementation
 #        - Learning from past sessions (successes and errors)
@@ -33,7 +33,6 @@
 # v2.34: Codex CLI v0.79.0 security hardening
 # v2.33: Sentry observability integration
 # v2.32: YAML-based skills system, extended iterations, hook registration fix
-# v2.31: Memvid semantic memory integration
 # v2.30: Context engineering, auto-checkpointing, fresh context explorer
 # v2.29: Smart execution, background tasks, quality criteria
 # v2.28: Comprehensive testing (476 tests), prompt optimization, security audit
@@ -431,16 +430,11 @@ startup_validation() {
             log_info "Feature tools not installed: ${MISSING_FEATURE[*]}"
         fi
 
-        # v2.31: Show Memvid status
-        if [ "$MEMVID_STATUS" = "missing" ]; then
-            log_info "Memvid (v2.31) not installed: $MEMVID_INSTALL"
-        fi
-
         if [ ${#MISSING_QUALITY[@]} -gt 0 ]; then
             log_info "Quality gate tools missing (${#MISSING_QUALITY[@]}/11): some language checks may be skipped"
         fi
 
-        if [ ${#MISSING_FEATURE[@]} -gt 0 ] || [ ${#MISSING_QUALITY[@]} -gt 0 ] || [ "$MEMVID_STATUS" = "missing" ]; then
+        if [ ${#MISSING_FEATURE[@]} -gt 0 ] || [ ${#MISSING_QUALITY[@]} -gt 0 ]; then
             log_info "Run 'ralph integrations' for details"
             echo ""
         fi
@@ -612,20 +606,13 @@ SPECIALIZED:
                                --loop N: Loop up to N iterations
                                --status: Check GLM-4.7 configuration
 
-MEMORY (v2.31):
-  ralph memvid init          Initialize Memvid memory system
-  ralph memvid save "text"   Save context to semantic memory
-  ralph memvid search "query" Search memory with HNSW+BM25 hybrid
-  ralph memvid timeline      View memory history (time-travel)
-  ralph memvid status        Show memory status and config
-
 CONTEXT ENGINE (v2.35):
   ralph ledger save [id]     Save current session state (auto-saved by PreCompact)
   ralph ledger show [id]     Show ledger (latest if no id)
   ralph ledger list [n]      List recent ledgers
   ralph handoff create [id]  Create handoff document (auto-created by PreCompact)
   ralph handoff show [id]    Show handoff (latest if no id)
-  ralph handoff search "q"   Search handoffs via Memvid
+  ralph handoff search "q"   Search handoffs
   ralph setup-context-engine One-time setup for 100% automatic context preservation
 
 SKILLS (v2.32):
@@ -2329,126 +2316,6 @@ PROMPT_EOF
 }
 
 # ===============================================================================
-# MEMVID MEMORY (v2.31)
-# ===============================================================================
-
-cmd_memvid() {
-    local MEMVID_SUBCMD="${1:-help}"
-    shift || true
-
-    local MEMVID_CORE="${HOME}/.claude/scripts/memvid-core.py"
-
-    case "$MEMVID_SUBCMD" in
-        init|initialize)
-            log_info "Initializing Memvid memory system..."
-            if [ -f "$MEMVID_CORE" ]; then
-                python3 "$MEMVID_CORE" init
-            else
-                log_error "Memvid core not found at $MEMVID_CORE"
-                log_info "Run: ralph self-update"
-            fi
-            ;;
-        save)
-            if [ -z "${1:-}" ]; then
-                echo ""
-                echo "╔═══════════════════════════════════════════════════════════════╗"
-                echo "║  MEMVID SAVE: Save context to semantic memory (v2.31)         ║"
-                echo "╠═══════════════════════════════════════════════════════════════╣"
-                echo "║                                                               ║"
-                echo "║  Usage: ralph memvid save \"<context description>\"              ║"
-                echo "║                                                               ║"
-                echo "║  Examples:                                                    ║"
-                echo "║    ralph memvid save \"Working on OAuth2 authentication\"        ║"
-                echo "║    ralph memvid save \"Completed API design, pending tests\"     ║"
-                echo "║                                                               ║"
-                echo "║  Tips:                                                        ║"
-                echo "║    - Use descriptive text for future searches                 ║"
-                echo "║    - Include decisions made and their rationale               ║"
-                echo "║    - Reference related files or components                    ║"
-                echo "╚═══════════════════════════════════════════════════════════════╝"
-                exit 1
-            fi
-            local SAVE_TEXT="$*"
-            log_info "Saving to memory: ${SAVE_TEXT:0:50}..."
-            if [ -f "$MEMVID_CORE" ]; then
-                python3 "$MEMVID_CORE" save "$SAVE_TEXT"
-            else
-                log_error "Memvid core not found"
-            fi
-            ;;
-        search)
-            if [ -z "${1:-}" ]; then
-                echo ""
-                echo "╔═══════════════════════════════════════════════════════════════╗"
-                echo "║  MEMVID SEARCH: Semantic memory search (v2.31)                ║"
-                echo "╠═══════════════════════════════════════════════════════════════╣"
-                echo "║                                                               ║"
-                echo "║  Usage: ralph memvid search \"<query>\"                          ║"
-                echo "║                                                               ║"
-                echo "║  Examples:                                                    ║"
-                echo "║    ralph memvid search \"OAuth2 authentication\"                 ║"
-                echo "║    ralph memvid search \"API design decisions\"                 ║"
-                echo "║                                                               ║"
-                echo "║  Uses HNSW + BM25 hybrid search for best results              ║"
-                echo "╚═══════════════════════════════════════════════════════════════╝"
-                exit 1
-            fi
-            local SEARCH_QUERY="$*"
-            log_info "Searching memory: $SEARCH_QUERY"
-            if [ -f "$MEMVID_CORE" ]; then
-                python3 "$MEMVID_CORE" search "$SEARCH_QUERY"
-            else
-                log_error "Memvid core not found"
-            fi
-            ;;
-        timeline)
-            log_info "Showing memory timeline..."
-            if [ -f "$MEMVID_CORE" ]; then
-                python3 "$MEMVID_CORE" timeline
-            else
-                log_error "Memvid core not found"
-            fi
-            ;;
-        status)
-            log_info "Memvid memory status:"
-            if [ -f "$MEMVID_CORE" ]; then
-                python3 "$MEMVID_CORE" status
-            else
-                log_error "Memvid core not found"
-            fi
-            ;;
-        help|--help|-h|"")
-            echo ""
-            echo "╔═══════════════════════════════════════════════════════════════╗"
-            echo "║  MEMVID: Semantic Memory for Claude Code (v2.31)              ║"
-            echo "╠═══════════════════════════════════════════════════════════════╣"
-            echo "║                                                               ║"
-            echo "║  Commands:                                                    ║"
-            echo "║    ralph memvid init          Initialize memory system        ║"
-            echo "║    ralph memvid save \"text\"   Save context to memory            ║"
-            echo "║    ralph memvid search \"q\"    Search semantic memory            ║"
-            echo "║    ralph memvid timeline      View memory history             ║"
-            echo "║    ralph memvid status        Show memory status              ║"
-            echo "║                                                               ║"
-            echo "║  Features:                                                    ║"
-            echo "║    - HNSW + BM25 hybrid search (sub-5ms)                      ║"
-            echo "║    - Time-travel queries between sessions                     ║"
-            echo "║    - Single .mv2 file (portable, offline)                     ║"
-            echo "║    - Apache 2.0 license (100% free)                           ║"
-            echo "║                                                               ║"
-            echo "║  Docs: @memvid skill or ~/.claude/skills/memvid-memory/       ║"
-            echo "╚═══════════════════════════════════════════════════════════════╝"
-            ;;
-        *)
-            log_error "Unknown memvid command: $MEMVID_SUBCMD"
-            log_info "Run 'ralph memvid help' for usage"
-            exit 1
-            ;;
-    esac
-}
-
-
-# ===============================================================================
 # SMART MEMORY SEARCH (v2.47) - Based on @PerceptualPeak Smart Forking
 # ===============================================================================
 
@@ -2465,7 +2332,6 @@ cmd_memory_search() {
         echo ""
         echo "  Searches PARALLEL across all memory sources:"
         echo "    - claude-mem MCP: Semantic observations"
-        echo "    - memvid: Vector-encoded context (sub-5ms)"
         echo "    - handoffs: Recent session snapshots"
         echo "    - ledgers: Session continuity data"
         echo ""
@@ -2625,7 +2491,6 @@ cmd_memory_stats() {
 
     local HANDOFFS_DIR="$HOME/.ralph/handoffs"
     local LEDGERS_DIR="$HOME/.ralph/ledgers"
-    local MEMVID_FILE="$HOME/.ralph/memory/ralph-memory.mv2"
     local CLAUDE_MEM_DIR="$HOME/.claude-mem"
 
     # Handoffs
@@ -2655,20 +2520,6 @@ cmd_memory_stats() {
         echo "    Path:  $LEDGERS_DIR"
     else
         echo "    Not found"
-    fi
-    echo ""
-
-    # Memvid
-    echo "  MEMVID:"
-    if [ -f "$MEMVID_FILE" ]; then
-        local MEMVID_SIZE
-        MEMVID_SIZE=$(du -sh "$MEMVID_FILE" 2>/dev/null | cut -f1)
-        echo "    Status: Initialized"
-        echo "    Size:   $MEMVID_SIZE"
-        echo "    Path:   $MEMVID_FILE"
-    else
-        echo "    Status: Not initialized"
-        echo "    Setup:  ralph memvid init"
     fi
     echo ""
 
@@ -8110,11 +7961,6 @@ main() {
             ;;
         image|img|analyze-image)
             cmd_image "$@"
-            ;;
-
-        # Memory (v2.31)
-        memvid|memory)
-            cmd_memvid "$@"
             ;;
 
         # Smart Memory Search (v2.47)

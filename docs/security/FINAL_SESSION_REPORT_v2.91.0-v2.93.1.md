@@ -30,7 +30,7 @@ Comprehensive session covering memory system optimization (v2.93.0), security re
 
 **Delivered**:
 - ✅ Re-enabled smart-memory-search.sh (700+ lines functional)
-- ✅ Removed redundant storage: memvid.json (175KB) + semantic.json (62KB)
+- ✅ Removed redundant storage: semantic.json (62KB)
 - ✅ Implemented episodic cleanup (30-day TTL)
 - ✅ Created 10 integration tests preventing regression
 
@@ -199,7 +199,6 @@ tests/test_v2_93_claude_mem_integration.py
 ### Memory System Optimization
 - `.claude/hooks/smart-memory-search.sh` (re-enabled)
 - `.claude/hooks/session-end-handoff.sh` (episodic cleanup)
-- `scripts/ralph` (memvid references removed)
 
 ### Critical Bash Fixes
 - `.claude/hooks/promptify-auto-detect.sh` (9 fixes)
@@ -321,7 +320,6 @@ d9cc3e1 - fix(security): comprehensive security remediation v2.91.0
    - Fixed and validated
 
 3. **Memory System**: Redundant storage eliminated
-   - memvid.json (175KB) removed
    - semantic.json (62KB) removed
    - Episodic cleanup implemented (30-day TTL)
 

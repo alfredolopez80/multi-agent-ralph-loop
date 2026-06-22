@@ -21,7 +21,7 @@ Este informe documenta la evolución arquitectónica del sistema Multi-Agent Ral
 | Componente | Versión | Descripción | Referencia |
 |------------|---------|-------------|------------|
 | **claude-mem MCP** | v2.49 | Integración con sistema de memoria semántica SQLite FTS | CHANGELOG.md:19 |
-| **Smart Memory Search** | v2.49 | Búsqueda paralela entre claude-mem, memvid, ledgers y handoffs | CLAUDE.md:73-85 |
+| **Smart Memory Search** | v2.49 | Búsqueda paralela entre claude-mem, ledgers y handoffs | CLAUDE.md:73-85 |
 | **Repository Learner** | v2.50 | Extracción de patrones de repositorios GitHub vía AST | CLAUDE.md:88-113 |
 | **Repo Curator** | v2.55 | Descubrimiento, scoring y ranking de repositorios de calidad | CLAUDE.md:114-175 |
 | **Agent-Scoped Memory** | v2.51 | Buffers de memoria aislados por agente | CLAUDE.md:303-338 |

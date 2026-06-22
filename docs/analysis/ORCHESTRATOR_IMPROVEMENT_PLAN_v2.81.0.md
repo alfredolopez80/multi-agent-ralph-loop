@@ -46,7 +46,7 @@ Este plan detalla la mejora del flujo del orchestrator integrando tres component
 │  0. INICIO                                                       │
 │     ↓                                                            │
 │  1. SMART MEMORY SEARCH (v2.47)                                  │
-│     ├── Busca: claude-mem, memvid, handoffs, ledgers            │
+│     ├── Busca: claude-mem, handoffs, ledgers                   │
 │     └── Output: .claude/memory-context.json                      │
 │     ↓                                                            │
 │  2. CLARIFY + CLASSIFY                                           │
@@ -200,7 +200,7 @@ Este plan detalla la mejora del flujo del orchestrator integrando tres component
    ```
    ┌─────────────────────────────────────────────────────┐
    │                 SMART MEMORY SEARCH                 │
-   │    (claude-mem + memvid + handoffs + ledgers)      │
+   │    (claude-mem + handoffs + ledgers)                │
    └─────────────────┬───────────────────────────────────┘
                      │
                      ↓
@@ -1009,7 +1009,6 @@ echo "=== E2E test completed ==="
 │              SMART MEMORY SEARCH (v2.47)                    │
 ├─────────────────────────────────────────────────────────────┤
 │  • claude-mem: Semantic observations                        │
-│  • memvid: Vector-encoded context                           │
 │  • handoffs: Session snapshots                              │
 │  • ledgers: Continuity data                                 │
 └────────────────────────┬────────────────────────────────────┘

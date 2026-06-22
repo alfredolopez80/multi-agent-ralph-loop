@@ -219,12 +219,6 @@ ralph adversarial "Design review"
 ralph retrospective
 ```
 
-**Save learnings to memory**:
-```bash
-ralph memvid save "Implemented OAuth2 successfully: [pattern details]"
-ralph memvid save "AVOID: [error pattern] caused [issue]"
-```
-
 -> **VERIFIED_DONE**
 
 ## Model Routing

@@ -3,7 +3,7 @@
 **Date**: 2026-02-16
 **Version**: v2.90.2
 **Audit Score**: 7.5/10 (Good with Specific Gaps)
-**Action Items**: 8 (3 Critical, 2 High, 3 Low Priority)
+**Action Items**: 7 (3 Critical, 1 High, 3 Low Priority)
 
 ---
 
@@ -18,7 +18,6 @@ The memory system is **partially working** with critical gaps:
 | claude-mem | ✅ Active | 9/10 | 21,129 obs | Uses SQLite instead of MCP |
 | ledgers | ✅ Active | 8/10 | 452+ files | No cleanup (unbounded) |
 | episodes | ✅ Active | 9/10 | 1,450+ files | TTL not verified |
-| memvid | ❌ Unused | 4/10 | 175KB | Purpose unclear |
 | semantic (old) | ⚠️ Redundant | 3/10 | 265KB | Deprecated, not deleted |
 | procedural | ⚠️ Unclear | 5/10 | 1,003 rules | Injection unclear |
 
@@ -50,7 +49,6 @@ The memory system is **partially working** with critical gaps:
 
 - ❌ Memory search hook disabled (main orchestration flow)
 - ❌ Direct SQLite access instead of MCP tools
-- ❌ Memvid 175KB file with unclear purpose
 - ⚠️ Ledgers grow without cleanup
 - ⚠️ Redundant semantic.json not deleted
 
@@ -96,28 +94,9 @@ mcp__plugin_claude-mem_mcp-search__search "$project_name" --limit 5
 
 ---
 
-### 3. Decide Memvid Fate (P1 - High)
-
-**Time**: 1 hour decision + 2-8 hours implementation | **Impact**: Remove uncertainty
-
-**Decision Required**:
-- **Option A**: Remove memvid entirely (2 hours)
-  - Delete ~/.ralph/memory/memvid.json
-  - Remove all memvid references
-  - Simplify to claude-mem only
-
-- **Option B**: Implement memvid properly (8 hours)
-  - Define purpose (vector search? embeddings?)
-  - Create MCP server for memvid
-  - Integrate with smart-memory-search.sh
-
-**Recommendation**: Remove unless vector search is needed beyond claude-mem
-
----
-
 ## Secondary Action Items
 
-### 4. Add Ledger Cleanup (P1 - High)
+### 3. Add Ledger Cleanup (P1 - High)
 
 **Time**: 1 hour | **Impact**: Prevent unbounded growth
 
@@ -130,7 +109,7 @@ find ~/.ralph/ledgers/ -name "*.md" -mtime +90 -delete
 
 ---
 
-### 5. Complete Semantic Migration (P2 - Medium)
+### 4. Complete Semantic Migration (P2 - Medium)
 
 **Time**: 2 hours | **Impact**: Remove redundancy
 
@@ -141,7 +120,7 @@ find ~/.ralph/ledgers/ -name "*.md" -mtime +90 -delete
 
 ---
 
-### 6. Verify Episodic TTL (P2 - Medium)
+### 5. Verify Episodic TTL (P2 - Medium)
 
 **Time**: 2 hours | **Impact**: Confirm cleanup works
 
@@ -156,7 +135,7 @@ find ~/.ralph/episodes/ -type f -mtime +30 -delete
 
 ---
 
-### 7. Add Procedural Logging (P3 - Low)
+### 6. Add Procedural Logging (P3 - Low)
 
 **Time**: 2 hours | **Impact**: Understand rule usage
 
@@ -167,7 +146,7 @@ find ~/.ralph/episodes/ -type f -mtime +30 -delete
 
 ---
 
-### 8. Add Handoff Index (P3 - Low)
+### 7. Add Handoff Index (P3 - Low)
 
 **Time**: 3 hours | **Impact**: Faster retrieval
 
@@ -184,7 +163,6 @@ find ~/.ralph/episodes/ -type f -mtime +30 -delete
 - [ ] Replace SQLite with MCP tools (2h)
 
 ### Week 2 (Storage Cleanup)
-- [ ] Decide memvid fate (1h + implementation)
 - [ ] Add ledger cleanup (1h)
 
 ### Week 3-4 (Complete Migration)
@@ -204,7 +182,6 @@ find ~/.ralph/episodes/ -type f -mtime +30 -delete
 | Memory search active | No | Yes | ❌ Blocked |
 | MCP tool usage | No | Yes | ❌ Blocked |
 | Ledger growth | Unbounded | 90d TTL | ⚠️ Needs fix |
-| Memvid purpose | Unclear | Defined | ⚠️ Decision needed |
 | Semantic redundancy | 265KB | 0KB | ⚠️ Pending cleanup |
 
 ---
@@ -216,7 +193,6 @@ find ~/.ralph/episodes/ -type f -mtime +30 -delete
 | Memory search fails | Low | High | Test thoroughly after enabling |
 | MCP tools unavailable | Low | Medium | Graceful degradation to SQLite |
 | Ledger cleanup deletes data | Low | Medium | Backup before cleanup |
-| Memvid decision wrong | Medium | Low | Reversible if archived |
 
 ---
 
@@ -240,7 +216,7 @@ The memory system is **functional but incomplete**. Core systems work (claude-me
 - **Diagrams**: [MEMORY_SYSTEM_DIAGRAMS_2026-02-16.md](./MEMORY_SYSTEM_DIAGRAMS_2026-02-16.md)
 - **Git Analysis**: 50+ memory-related commits examined
 - **Code Review**: 6 memory hooks analyzed
-- **Storage Audit**: 7 memory systems catalogued
+- **Storage Audit**: 6 memory systems catalogued
 
 ---
 

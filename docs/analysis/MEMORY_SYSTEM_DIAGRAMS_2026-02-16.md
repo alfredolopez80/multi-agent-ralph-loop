@@ -32,7 +32,6 @@ graph TB
     end
 
     subgraph "Memory Systems (Unclear/Deprecated)"
-        MEMVID["memvid<br/>175KB<br/>UNUSED"]
         SEMANTIC_OLD["semantic.json<br/>265KB<br/>DEPRECATED"]
     end
 
@@ -51,13 +50,11 @@ graph TB
     HOOK1 -->|Load most recent| HANDOFFS
 
     HOOK2 -.->|Would search| CLAUDE_MEM
-    HOOK2 -.->|Would search| MEMVID
     HOOK2 -.->|Would search| LEDGERS
     HOOK2 -.->|Would search| HANDOFFS
 
     HOOK3 -->|Generate| LEDGERS
     HOOK3 -->|Generate| HANDOFFS
-    HOOK3 -.->|Tries to index| MEMVID
 
     HOOK4 -->|Store to| EPISODES
     HOOK4 -->|Generate| PROCEDURAL
@@ -74,7 +71,7 @@ graph TB
     classDef deprecated fill:#D3D3D3,stroke:#696969,stroke-width:2px,stroke-dasharray: 5 5
 
     class CLAUDE_MEM,LEDGERS,EPISODES,HANDOFFS,PROCEDURAL active
-    class MEMVID,SEMANTIC_OLD deprecated
+    class SEMANTIC_OLD deprecated
     class HOOK1,HOOK3 active
     class HOOK2 disabled
     class HOOK4,HOOK5,HOOK6 unclear
@@ -116,13 +113,12 @@ USER WORK (Code, Chat, Tasks)
 │
 ├─ smart-memory-search.sh (PreToolUse on Task)
 │  ├─ ❌ HOOK DISABLED (exits immediately)
-│  └─ Should search 6 sources in parallel:
+│  └─ Should search 5 sources in parallel:
 │     ├─ 1. claude-mem (MCP tool - NOT IMPLEMENTED)
-│     ├─ 2. memvid (local file - UNUSED)
-│     ├─ 3. handoffs (grep search - WORKS)
-│     ├─ 4. ledgers (grep search - WORKS)
-│     ├─ 5. web search GLM-4.7 (API call - WORKS)
-│     └─ 6. docs search zread (API call - WORKS)
+│     ├─ 2. handoffs (grep search - WORKS)
+│     ├─ 3. ledgers (grep search - WORKS)
+│     ├─ 4. web search GLM-4.7 (API call - WORKS)
+│     └─ 5. docs search zread (API call - WORKS)
 │
 │
 CONTEXT COMPACTION TRIGGERED
@@ -135,9 +131,6 @@ CONTEXT COMPACTION TRIGGERED
 │  ├─ Generate handoff
 │  │  ├─ Run handoff-generator.py create
 │  │  └─ Store to ~/.ralph/handoffs/<id>/handoff-{ts}.md
-│  ├─ Index in memvid
-│  │  ├─ Try: ralph memvid save
-│  │  └─ ❌ FAILS (ralph CLI doesn't exist)
 │  ├─ Backup plan state
 │  │  └─ Copy .claude/plan-state.json to ~/.ralph/ledgers/plan-states/
 │  └─ Cleanup old handoffs
@@ -184,7 +177,6 @@ SESSION END
 ~/.ralph/                               # Session & Learning Memory
 ├── memory/                             # (REDUNDANT - should migrate to claude-mem)
 │   ├── semantic.json                   # 265KB - DEPRECATED, remove
-│   ├── memvid.json                     # 175KB - UNUSED, decide or remove
 │   └── index.json                      # Memory index
 │
 ├── episodes/                           # Episodic Memory
@@ -218,9 +210,8 @@ SESSION END
 .claude/                                 # Project-Specific Memory
 └── memory-context.json                 # Search cache (30 min TTL)
     ├── total_results                   # Combined search results
-    ├── sources                         # 6 sources searched
+    ├── sources                         # 5 sources searched
     │   ├── claude_mem                  # (DISABLED)
-    │   ├── memvid                      # (DISABLED)
     │   ├── handoffs                    # grep search
     │   ├── ledgers                     # grep search
     │   ├── web_search                  # GLM-4.7 API
@@ -251,7 +242,7 @@ PreToolUse Event (on Task tool)
 │
 ├─ smart-memory-search.sh
 │  ├─ ❌ HOOK DISABLED (exits line 5)
-│  ├─ Expected: Search 6 memory sources in parallel
+│  ├─ Expected: Search 5 memory sources in parallel
 │  ├─ Actual: Returns empty JSON, exits
 │  └─ Priority: P0 - MUST FIX
 │
@@ -276,10 +267,9 @@ PreCompact Event (before context compaction)
 └─ pre-compact-handoff.sh
    ├─ ✅ Generate ledger (ledger-manager.py)
    ├─ ✅ Generate handoff (handoff-generator.py)
-   ├─ ❌ Index in memvid (ralph CLI doesn't exist)
    ├─ ✅ Backup plan state
    ├─ ✅ Cleanup old handoffs (7d TTL, keep 20)
-   └─ Status: WORKING (except memvid)
+   └─ Status: WORKING
 
 
 Stop Event (session end)
@@ -405,26 +395,6 @@ Fix: Add 90-day TTL to pre-compact-handoff.sh
 │ find ~/.ralph/ledgers/ -name "*.md" \      │
 │   -mtime +90 -delete                       │
 └────────────────────────────────────────────┘
-
-
-Issue 4: Memvid Purpose Unclear
-═══════════════════════════════
-Severity: P1 (HIGH)
-Impact: 175KB file with unknown usage
-Evidence: ~/.ralph/memory/memvid.json exists but unused
-Fix: Define purpose and implement OR remove entirely
-
-┌────────────────────────────────────────────┐
-│ # Claimed: "Video-encoded vector storage"  │
-│ # Reality: 175KB JSON file, never searched │
-│                                            │
-│ # Referenced in:                           │
-│ # - smart-memory-search.sh (line 19)       │
-│ # - pre-compact-handoff.sh (line 196)      │
-│ # But: Never actually used (hook disabled) │
-│                                            │
-│ # Decision needed: Keep or remove?         │
-└────────────────────────────────────────────┘
 ```
 
 ---
@@ -456,7 +426,6 @@ Fix: Define purpose and implement OR remove entirely
 │                                                                   │
 │  REMOVE ENTIRELY:                                                │
 │  ├─ ~/.ralph/memory/semantic.json (265KB redundant)             │
-│  ├─ ~/.ralph/memory/memvid.json (175KB unused)                  │
 │  └─ ~/.ralph/memory/ directory (deprecated)                     │
 │                                                                   │
 │  HOOKS TO FIX:                                                   │
@@ -495,26 +464,17 @@ PHASE 2: Storage Cleanup (Week 2)
    ├─ find ~/.ralph/ledgers/ -name "*.md" -mtime +90 -delete
    └─ Verify: Ledgers older than 90 days removed
 
-4. Decide memvid fate
-   ├─ Option A: Remove entirely (2 hours)
-   │  └─ Delete ~/.ralph/memory/memvid.json
-   ├─ Option B: Implement (8 hours)
-   │  ├─ Define purpose (vector search?)
-   │  ├─ Create MCP server
-   │  └─ Integrate with hooks
-   └─ Decision required
-
 
 PHASE 3: Complete Migration (Week 3-4)
 ═════════════════════════════════════
 
-5. Remove redundant storage
+4. Remove redundant storage
    ├─ Verify claude-mem has all semantic.json data
    ├─ Delete ~/.ralph/memory/semantic.json
    ├─ Delete ~/.ralph/memory/ directory
    └─ Verify: No regressions
 
-6. Verify episodic TTL
+5. Verify episodic TTL
    ├─ Check for episodes older than 30 days
    ├─ If found, add cleanup to reflection-engine.sh
    └─ Verify: Old episodes auto-deleted
@@ -523,12 +483,12 @@ PHASE 3: Complete Migration (Week 3-4)
 PHASE 4: Documentation & Monitoring (Week 5+)
 ═════════════════════════════════════════════
 
-7. Add procedural injection logging
+6. Add procedural injection logging
    ├─ Log when rules are injected
    ├─ Log which rules matched
    └─ Verify: Rules being used effectively
 
-8. Add monitoring
+7. Add monitoring
    ├─ Track storage growth rates
    ├─ Alert on unbounded growth
    └─ Verify: All TTLs working

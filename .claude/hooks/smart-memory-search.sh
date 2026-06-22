@@ -40,10 +40,6 @@
 #   continuity system, not Vault memory system. Reader had 0/35 empirical hits;
 #   root cause was writer bug (fixed separately in pre-compact-handoff.sh +
 #   session-end-handoff.sh). See ADR: L0 "vault-as-truth" principle.
-# v3.3.0 (2026-04-15): Removed memvid (zombie code — backend memvid-core.py
-#   deleted from ~/.claude/scripts/ but hook still referenced it). No functional
-#   impact; measured results of memvid source were always 0. Ledgers kept
-#   pending empirical value analysis.
 # v2.69.0: FIX CRIT-003 - Added guaranteed JSON output trap
 # v2.68.26: GLM-4.7 web search integration - 5th parallel source via webSearchPrime API
 # v2.68.25: FIX CRIT-001 - Removed duplicate stdin read (SEC-111 already reads at top)
@@ -296,7 +292,6 @@ cleanup_and_json() {
 trap 'cleanup_and_json' EXIT ERR INT TERM
 
 VAULT_FILE="$TEMP_DIR/vault.json"
-# v3.3.0: MEMVID_FILE removed — memvid-core.py backend was deleted; zombie code
 # v3.4.0: HANDOFFS_FILE removed — session state, not memory
 LEDGERS_FILE="$TEMP_DIR/ledgers.json"
 WEB_SEARCH_FILE="$TEMP_DIR/web-search.json"  # v2.68.26: GLM-4.7 Integration
@@ -439,9 +434,6 @@ fi
     echo "  [1/4] vault search complete" >> "$LOG_FILE"
 ) &
 PID1=$!
-
-# v3.3.0: Task 2 (memvid) removed — backend ~/.claude/scripts/memvid-core.py
-# was deleted; search always returned 0 results silently. Zombie code.
 
 # v3.4.0: Task 2 (handoffs) removed — handoffs serve session-handoff state,
 # not long-term memory. Reader had 0/35 empirical hits; writer bug fixed
@@ -666,7 +658,6 @@ validate_json() {
 }
 
 VAULT_RESULT=$(validate_json "$VAULT_FILE" '{"results": [], "source": "vault"}')
-# v3.3.0: MEMVID_RESULT removed (zombie)
 # v3.4.0: HANDOFFS_RESULT removed (session state, not memory)
 LEDGERS_RESULT=$(validate_json "$LEDGERS_FILE" '{"results": [], "source": "ledgers"}')
 WEB_SEARCH_RESULT=$(validate_json "$WEB_SEARCH_FILE" '{"results": [], "source": "web_search"}')  # v2.68.26
@@ -675,7 +666,6 @@ PROCEDURAL_RESULT=$(validate_json "$PROCEDURAL_FILE" '{"results": [], "source": 
 
 # Count results per source
 VAULT_COUNT=$(echo "$VAULT_RESULT" | jq '.results | length' 2>/dev/null || echo 0)
-# v3.3.0: MEMVID_COUNT removed (zombie)
 # v3.4.0: HANDOFFS_COUNT removed (session state, not memory)
 LEDGERS_COUNT=$(echo "$LEDGERS_RESULT" | jq '.results | length' 2>/dev/null || echo 0)
 WEB_SEARCH_COUNT=$(echo "$WEB_SEARCH_RESULT" | jq '.results | length' 2>/dev/null || echo 0)  # v2.68.26

@@ -71,7 +71,6 @@
 │  │  - semantic.json    (Semantic facts)                    │   │
 │  │  - episodic/        (Session experiences, 30-day TTL)    │   │
 │  │  - procedural/rules.json (Learned behaviors)             │   │
-│  │  - memvid.json      (Vector-encoded context)             │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                         ↓ OVERLAP 60%                         │
 │  ┌─────────────────────────────────────────────────────────┐   │
@@ -115,7 +114,6 @@ Claude-mem  Ralph Hooks
 | **Semantic Memory** | ✅ | ✅ | ✅ | **100%** |
 | **Session History** | ✅ | ✅ | ✅ | **95%** |
 | **Pattern Extraction** | ✅ | ✅ | ✅ | **90%** |
-| **Vector Search** | ✅ | ✅ (memvid) | ❌ | **50%** |
 | **Procedural Rules** | ❌ | ✅ | ✅ | **N/A** |
 | **Cross-Session Context** | ✅ | ✅ | ❌ | **80%** |
 | **Project Isolation** | ✅ | ❌ | ✅ | **N/A** |
@@ -228,7 +226,7 @@ Actual:  [Directory created silently]
 **Global Pollution** (`~/.ralph/`):
 ```bash
 ~/.ralph/
-├── memory/           # 4 files (semantic, episodic, procedural, memvid)
+├── memory/           # 3 files (semantic, episodic, procedural)
 ├── cache/            # 8 JSON files (context, GLM usage, etc.)
 ├── archive/          # Old plans (10+ archived plans)
 ├── logs/             # Session logs

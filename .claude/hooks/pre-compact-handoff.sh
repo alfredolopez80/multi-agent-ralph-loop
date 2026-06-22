@@ -193,17 +193,6 @@ else
     log "WARN" "Handoff generator script not found or not executable: $HANDOFF_SCRIPT"
 fi
 
-# Index in Memvid if available and enabled
-if command -v ralph &>/dev/null; then
-    # Check if memvid feature exists in ralph
-    if ralph memvid status >> "$LOG_FILE" 2>&1; then
-        log "INFO" "Indexing checkpoint in Memvid"
-        ralph memvid save "Pre-compact checkpoint: ${SESSION_ID} at ${TIMESTAMP}" >> "$LOG_FILE" 2>&1 || {
-            log "WARN" "Memvid indexing failed (non-critical)"
-        }
-    fi
-fi
-
 # Clean up old handoffs (keep last 20 per session, older than 7 days)
 
 # Backup plan state if exists (v2.81.0)

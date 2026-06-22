@@ -94,7 +94,7 @@
 ├─────────────────────────────────────────────────────────────┤
 │                                                               │
 │   1. SMART MEMORY SEARCH                                     │
-│      ├── Busca en claude-mem, memvid, handoffs, ledgers     │
+│      ├── Busca en claude-mem, handoffs, ledgers             │
 │      └── Output: .claude/memory-context.json                  │
 │                                                               │
 │   2. DETECTAR TIPO DE PROYECTO                               │

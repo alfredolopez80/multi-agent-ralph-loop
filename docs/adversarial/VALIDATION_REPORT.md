@@ -75,7 +75,7 @@ macOS Compatibility:
 Test Case: Realistic OAuth task
 Input: "Implement OAuth2 authentication with JWT tokens"
 Output: Valid JSON with 20+ relevant results
-Sources: claude-mem=0, memvid=0, handoffs=10, ledgers=10
+Sources: claude-mem=0, handoffs=10, ledgers=10
 Status: ✅ PASS
 ```
 

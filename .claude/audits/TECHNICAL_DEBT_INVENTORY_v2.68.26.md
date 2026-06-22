@@ -448,7 +448,7 @@ scripts/validate-global-architecture.sh
 ---
 
 ### MED-019: Memory System Files Unvalidated
-**Location**: `~/.ralph/memory/` (semantic.json, memvid.json, etc.)
+**Location**: `~/.ralph/memory/` (semantic.json, etc.)
 **Description**: No validation that JSON files are well-formed
 **Impact**: Corruption risk
 **Effort**: S (add validation hook)

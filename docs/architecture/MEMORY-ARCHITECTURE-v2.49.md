@@ -288,7 +288,7 @@ class ReflectionExecutor:
 │   │   ├── ep-2026-01-19-def456.json
 │   │   └── ...
 │   └── embeddings/             # Vector embeddings for search
-│       └── episodes.mv2        # Memvid format
+│       └── episodes.bin        # Vector embeddings
 ```
 
 ### 4. Procedural Memory → System Prompts

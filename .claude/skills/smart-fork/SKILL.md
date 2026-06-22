@@ -1,7 +1,7 @@
 ---
 # VERSION: 3.0.0
 name: smart-fork
-description: Smart Forking - Find and fork from relevant historical sessions using parallel memory search across vault, memvid, handoffs, and ledgers
+description: Smart Forking - Find and fork from relevant historical sessions using parallel memory search across vault, handoffs, and ledgers
 author: Multi-Agent Ralph
 version: 2.47.2
 model: sonnet
@@ -56,12 +56,12 @@ When you invoke `/smart-fork`, we search across ALL memory sources **in parallel
 │                    PARALLEL MEMORY SEARCH                     │
 ├──────────────────────────────────────────────────────────────┤
 │                                                              │
-│   ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌──────────┐ │
-│   │ vault │ │  memvid    │ │  handoffs  │ │  ledgers │ │
-│   │    MCP     │ │  search    │ │   scan     │ │   scan   │ │
-│   └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └────┬─────┘ │
-│         │ PARALLEL     │ PARALLEL     │ PARALLEL    │        │
-│         └──────────────┴──────────────┴─────────────┘        │
+│      ┌────────────┐  ┌────────────┐  ┌────────────┐          │
+│      │   vault    │  │  handoffs  │  │  ledgers   │          │
+│      │    MCP     │  │   scan     │  │   scan     │          │
+│      └─────┬──────┘  └─────┬──────┘  └─────┬──────┘          │
+│            │ PARALLEL      │ PARALLEL      │                 │
+│            └───────────────┴───────────────┘                 │
 │                            ↓                                  │
 │                    AGGREGATOR (top 5)                        │
 │                            ↓                                  │
@@ -117,8 +117,8 @@ TOP 5 RELEVANT SESSIONS:
    Summary: Authentication middleware setup
    Fork: claude --continue pqr345-stu678
 
-Memory sources searched: vault (5), memvid (3), handoffs (8), ledgers (2)
-Total results: 18
+Memory sources searched: vault (5), handoffs (8), ledgers (2)
+Total results: 15
 ```
 
 ### `/smart-fork --suggest`
@@ -143,7 +143,6 @@ Step 0: EVALUATE
 └── 0b: SMART MEMORY SEARCH (v2.47) ◄── NEW
         │
         ├── Search vault for relevant observations
-        ├── Search memvid for semantic matches
         ├── Search handoffs for recent context
         └── Search ledgers for session continuity
         │
@@ -161,7 +160,6 @@ Step 0: EVALUATE
 | Source | Content | Speed | Retention |
 |--------|---------|-------|-----------|
 | **vault MCP** | Semantic observations | Fast | Permanent |
-| **memvid** | Vector-encoded context | Sub-5ms | Permanent |
 | **handoffs** | Session context snapshots | Fast | 30 days |
 | **ledgers** | Continuity data | Fast | Permanent |
 
@@ -226,7 +224,7 @@ ralph memory-stats
 
 ### "No memory sources available"
 
-**Cause**: None of the 4 memory sources (vault, memvid, handoffs, ledgers) are initialized.
+**Cause**: None of the 3 memory sources (vault, handoffs, ledgers) are initialized.
 
 **Fix**:
 ```bash
@@ -235,9 +233,6 @@ ralph handoff create
 
 # Initialize ledgers
 ralph ledger save
-
-# Initialize memvid (optional)
-ralph memvid init
 
 # Verify Obsidian vault directory
 ls ~/Documents/Obsidian/MiVault/ 2>/dev/null && echo "vault OK"

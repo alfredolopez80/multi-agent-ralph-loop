@@ -52,12 +52,12 @@ El sistema aborda el desafío fundamental de la programación asistida por IA: *
 │  │       ▼                                                               │   │
 │  │   ┌──────────────────────────────────────────────────────────────┐   │   │
 │  │   │           BÚSQUEDA DE MEMORIA INTELIGENTE (PARALELO) v2.47   │   │   │
-│  │   │  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────┐    │   │   │
-│  │   │  │claude-mem │ │  memvid   │ │ handoffs  │ │  ledgers  │    │   │   │
-│  │   │  │  (MCP)    │ │  (HNSW)   │ │ (30 días) │ │CONTINUIDAD│    │   │   │
-│  │   │  └─────┬─────┘ └─────┬─────┘ └─────┬─────┘ └─────┬─────┘    │   │   │
-│  │   │        │ PARALELO    │ PARALELO    │ PARALELO    │ PARALELO  │   │   │
-│  │   │        └─────────────┴─────────────┴─────────────┘           │   │   │
+│  │   │  ┌───────────┐ ┌───────────┐ ┌───────────┐                  │   │   │
+│  │   │  │claude-mem │ │ handoffs  │ │  ledgers  │                  │   │   │
+│  │   │  │  (MCP)    │ │ (30 días) │ │CONTINUIDAD│                  │   │   │
+│  │   │  └─────┬─────┘ └─────┬─────┘ └─────┬─────┘                  │   │   │
+│  │   │        │ PARALELO    │ PARALELO    │ PARALELO                │   │   │
+│  │   │        └─────────────┴─────────────┘                         │   │   │
 │  │   │                            │                                    │   │   │
 │  │   │                            ▼                                    │   │   │
 │  │   │                   ┌─────────────────┐                          │   │   │
@@ -247,11 +247,11 @@ El sistema aborda el desafío fundamental de la programación asistida por IA: *
 
 ```
 BÚSQUEDA DE MEMORIA INTELIGENTE (PARALELO)
-┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
-│claude-mem│ │ memvid   │ │ handoffs │ │  ledgers │
-└────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘
-     │ PARALELO   │ PARALELO   │ PARALELO   │ PARALELO
-     └────────────┴────────────┴────────────┘
+┌──────────┐ ┌──────────┐ ┌──────────┐
+│claude-mem│ │ handoffs │ │  ledgers │
+└────┬─────┘ └────┬─────┘ └────┬─────┘
+     │ PARALELO   │ PARALELO   │ PARALELO
+     └────────────┴────────────┘
                     ↓
          .claude/memory-context.json
 ```

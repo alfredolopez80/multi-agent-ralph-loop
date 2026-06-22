@@ -260,7 +260,6 @@ trap 'rm -rf "$TEMP_DIR"' EXIT ERR INT TERM
 
 # Lines 88-97 - Multiple files created in TEMP_DIR
 echo '{"results": [], "source": "claude-mem"}' > "$CLAUDE_MEM_FILE"
-echo '{"results": [], "source": "memvid"}' > "$MEMVID_FILE"
 # ...
 ```
 
@@ -319,23 +318,20 @@ PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty' | \
 
 ### ✅ PASS - Parallel Execution Architecture
 
-**Design**: 4 memory sources searched concurrently (lines 104-217)
+**Design**: 3 memory sources searched concurrently (lines 104-217)
 
 ```bash
 # Task 1: claude-mem (background)
 ( search_claude_mem ) & PID1=$!
 
-# Task 2: memvid (background)
-( search_memvid ) & PID2=$!
+# Task 2: handoffs (background)
+( search_handoffs ) & PID2=$!
 
-# Task 3: handoffs (background)
-( search_handoffs ) & PID3=$!
-
-# Task 4: ledgers (background)
-( search_ledgers ) & PID4=$!
+# Task 3: ledgers (background)
+( search_ledgers ) & PID3=$!
 
 # Wait for all with timeout
-timeout 30 wait $PID1 $PID2 $PID3 $PID4
+timeout 30 wait $PID1 $PID2 $PID3
 ```
 
 **Benefits**:
@@ -385,7 +381,7 @@ MATCHES=$(find "$CLAUDE_MEM_DATA_DIR" -name "*.json" -type f \
 |----------|-------|----------|
 | Hooks | 8 | Parallel execution, cache, JSON output, memory sources ✓ |
 | Skills | 5 | Frontmatter, fork functionality, v2.47 features ✓ |
-| Agents | 7 | Version, smart memory step, 4 sources, fork suggestions ✓ |
+| Agents | 7 | Version, smart memory step, 3 sources, fork suggestions ✓ |
 | CLI | 4 | Version header, optional commands (2 skipped) |
 | Memory Context | 4 | File structure, JSON validity, schema ✓ |
 | Global Settings | 1 | Hook registration ✓ |
@@ -480,8 +476,8 @@ def test_temp_directory_race_condition():
 ## Troubleshooting
 
 ### "No memory sources available"
-**Cause**: None of the 4 memory sources are initialized
-**Fix**: Run `ralph memvid init` and `ralph handoff create`
+**Cause**: None of the 3 memory sources are initialized
+**Fix**: Run `ralph handoff create`
 
 ### "Search timeout after 30s"
 **Cause**: Memory sources are too large or slow
@@ -648,7 +644,6 @@ trap 'rm -rf "$TEMP_DIR"' EXIT ERR INT TERM
 
 # Define file paths
 CLAUDE_MEM_FILE="$TEMP_DIR/claude-mem.json"
-MEMVID_FILE="$TEMP_DIR/memvid.json"
 HANDOFFS_FILE="$TEMP_DIR/handoffs.json"
 LEDGERS_FILE="$TEMP_DIR/ledgers.json"
 
@@ -672,7 +667,6 @@ create_initial_file() {
 
 # Initialize with defaults using atomic creation
 create_initial_file "$CLAUDE_MEM_FILE" '{"results": [], "source": "claude-mem"}'
-create_initial_file "$MEMVID_FILE" '{"results": [], "source": "memvid"}'
 create_initial_file "$HANDOFFS_FILE" '{"results": [], "source": "handoffs"}'
 create_initial_file "$LEDGERS_FILE" '{"results": [], "source": "ledgers"}'
 ```

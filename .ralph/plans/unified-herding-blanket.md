@@ -575,7 +575,6 @@ SESIÓN DE TRABAJO EN PROYECTO X
 │ Integración con hooks existentes:                   │
 │   smart-memory-search.sh ya hace búsqueda parallel: │
 │   ├─ claude-mem (ephemeral)                         │
-│   ├─ memvid (vector)                                │
 │   ├─ handoffs (session snapshots)                   │
 │   ├─ ledgers (continuity)                           │
 │   └─ vault (NUEVO: curated knowledge) ← SE AÑADE   │

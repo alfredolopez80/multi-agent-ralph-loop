@@ -148,7 +148,6 @@ class TestSecurity002PathTraversal:
         # the ledgers loop (head -100 "$validated"). The vault source only lists
         # paths via `grep -l` and otherwise reads fixed/temp paths, so it needs
         # no per-file path validation. The architecture was reduced over time:
-        #   v3.3.0 removed the memvid source (zombie code)
         #   v3.4.0 removed the handoffs source (session state, 0 empirical hits)
         # so validate_file_path must be DEFINED and CALLED at least once
         # (definition + ledgers call == 2). A higher hardcoded count would assert
@@ -299,7 +298,7 @@ class TestAdv003FindExecOptimization:
         content = HOOK_PATH.read_text()
 
         # Count find -exec patterns. Today the hook has TWO find+grep sources
-        # (vault wiki + ledgers); memvid (v3.3.0) and handoffs (v3.4.0) were
+        # (vault wiki + ledgers); the handoffs source (v3.4.0) was
         # removed. The security property is "no unsafe `find | xargs grep`"
         # (asserted in test_no_xargs_in_find_grep) AND "every find+grep that
         # DOES exist uses -exec". So every find+grep must be -exec, and there

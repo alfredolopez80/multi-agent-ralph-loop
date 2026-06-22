@@ -212,7 +212,7 @@ The codebase demonstrates strong security practices and good overall code qualit
 
 1. ✅ Re-enabled smart-memory-search.sh (700+ lines functional)
 2. ✅ Implemented episodic cleanup (30-day TTL)
-3. ✅ Removed memvid.json (175KB) and semantic.json (62KB)
+3. ✅ Removed semantic.json (62KB)
 4. ✅ Created 10 integration tests preventing regression
 5. ✅ Documented MCP technical limitation
 

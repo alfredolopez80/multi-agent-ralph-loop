@@ -65,13 +65,12 @@ Vault Graduation (SessionStart)
 Smart Memory Search (PreToolUse: Task)
 │
 ├─► smart-memory-search.sh (PreToolUse)
-│   └─► 6 parallel sources (v3.2.0)
+│   └─► 5 parallel sources (v3.2.0)
 │       ├─► 1. Vault: Obsidian MiVault + migrated JSONs
-│       ├─► 2. Memvid: ~/.ralph/memory/ralph-memory.mv2
-│       ├─► 3. Handoffs: ~/.ralph/handoffs/ (30d)
-│       ├─► 4. Ledgers: ~/.ralph/ledgers/ (30d)
-│       ├─► 5. Web Search: GLM-4.7 webSearchPrime
-│       └─► 6. Docs Search: GLM-4.7 documentation
+│       ├─► 2. Handoffs: ~/.ralph/handoffs/ (30d)
+│       ├─► 3. Ledgers: ~/.ralph/ledgers/ (30d)
+│       ├─► 4. Web Search: GLM-4.7 webSearchPrime
+│       └─► 5. Docs Search: GLM-4.7 documentation
 │           └─► .claude/memory-context.json
 
 
