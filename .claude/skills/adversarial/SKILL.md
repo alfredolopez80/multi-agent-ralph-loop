@@ -23,7 +23,15 @@ Use when the user says `adversarial`, `analisis opuesto`, `opposing analysis`, `
 5. Separate proven issues from plausible risks.
 6. Recommend one concrete next action: keep, adjust, defer, validate, or revert.
 
-For non-trivial work, apply a compact Aristotle pass: assumption autopsy, irreducible truths, reconstruction from evidence, assumption-vs-truth map, and the smallest risk-reducing next move.
+## Aristotle Integration
+
+For non-trivial work, run a compact Aristotle First Principles pass — the same five phases the orchestrator uses — turned toward the opposing position:
+
+1. **Assumption Autopsy** — list every assumption the claim or plan depends on.
+2. **Irreducible Truths** — strip the assumptions; keep only what survives in the current repo/runtime.
+3. **Reconstruction from Zero** — rebuild the strongest counter-position from those truths alone.
+4. **Assumption vs Truth Map** — separate what is proven from what is merely assumed.
+5. **The Aristotelian Move** — the single highest-leverage next action: keep, adjust, defer, validate, or revert.
 
 ## External Advisor Mode
 
