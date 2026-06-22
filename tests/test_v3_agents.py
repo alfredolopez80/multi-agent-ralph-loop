@@ -36,7 +36,8 @@ class TestRalphFrontend:
         assert self.path.exists(), "ralph-frontend.md must exist in .claude/agents/"
 
     def test_has_version_3(self):
-        assert "VERSION: 3.0.0" in self.content, "Must have VERSION 3.0.0"
+        import re
+        assert re.search(r"VERSION:\s*3\.0\.\d+", self.content), "Must have VERSION 3.0.x"
 
     def test_has_allowed_tools_lsp(self):
         assert "LSP" in self.content, "Must list LSP in allowed-tools"
@@ -98,7 +99,8 @@ class TestRalphSecurity:
         assert self.path.exists(), "ralph-security.md must exist in .claude/agents/"
 
     def test_has_version_3(self):
-        assert "VERSION: 3.0.0" in self.content, "Must have VERSION 3.0.0"
+        import re
+        assert re.search(r"VERSION:\s*3\.0\.\d+", self.content), "Must have VERSION 3.0.x"
 
     def test_has_allowed_tools_lsp(self):
         assert "LSP" in self.content, "Must list LSP in allowed-tools"

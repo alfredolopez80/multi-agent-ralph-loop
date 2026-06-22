@@ -148,29 +148,62 @@ class TestAllHooksErrTrap:
         ids=["session-accumulator", "vault-graduation"],
     )
     def test_trap_produces_valid_json(self, hook, expected_key):
-        """Verify the trap string itself is parseable JSON containing the expected key."""
+        """The hook's ERR/INT/TERM trap must honor the allow-contract for its event.
+
+        Two valid trap shapes per tests/HOOK_FORMAT_REFERENCE.md:
+
+          (a) JSON-emitting trap — ``trap 'echo "{...}"' ERR ...`` — whose payload parses
+              to JSON containing the event's required key. This is what vault-graduation
+              (SessionStart) does: it MUST emit ``hookSpecificOutput`` even on error so the
+              session still gets context.
+
+          (b) Clean-exit trap — ``trap 'exit 0' ERR ...`` — a valid "allow" for
+              PostToolUse (an empty/clean exit is allowed; see the reference's validation
+              matrix). session-accumulator v3.1.0 is fire-and-forget: the PARENT emits
+              ``{"continue": true}`` BEFORE forking, then the detached WORKER carries
+              ``trap 'exit 0'`` because nothing reads the worker's output. Forcing the
+              worker trap to echo JSON would be wrong for that design.
+
+        Assert the trap matches one of these two valid contracts — never weaker.
+        """
         text = _read_hook(hook)
-        # Extract the trap argument (single-quoted string after trap)
         for line in text.splitlines():
             stripped = line.strip()
-            if stripped.startswith("trap ") and "ERR" in stripped:
-                # Pull the single-quoted payload: trap '...' ERR INT TERM
-                start = stripped.index("'") + 1
-                end = stripped.index("'", start)
-                trap_payload = stripped[start:end]
-                # The payload is: echo "{\"continue\": true}"
-                # Strip the 'echo ' prefix and outer double quotes to get the JSON
-                trap_payload = trap_payload.strip()
-                if trap_payload.startswith("echo "):
-                    trap_payload = trap_payload[len("echo "):]
-                trap_payload = trap_payload.strip().strip('"')
-                # Unescape \" -> "
-                trap_json_str = trap_payload.replace('\\"', '"')
-                parsed = json.loads(trap_json_str)
-                assert expected_key in parsed, (
-                    f"Trap JSON missing '{expected_key}': {parsed}"
+            if not (stripped.startswith("trap ") and "ERR" in stripped):
+                continue
+            # Pull the single-quoted payload: trap '...' ERR INT TERM [EXIT]
+            start = stripped.index("'") + 1
+            end = stripped.index("'", start)
+            trap_payload = stripped[start:end].strip()
+
+            # (b) Clean-exit allow-contract: valid for PostToolUse (e.g. the detached
+            # session-accumulator worker). The parent already emitted the JSON allow.
+            if trap_payload in ("exit 0", "true", ":"):
+                if expected_key == "continue":
+                    # Confirm the parent path really does emit the {"continue": ...} JSON
+                    # this contract relies on — so the clean-exit worker is genuinely safe.
+                    assert '{"continue": true}' in text or "'continue'" in text or \
+                           '"continue"' in text, (
+                        f"{hook.name} worker uses a clean-exit trap but no parent "
+                        "'continue' JSON allow was found"
+                    )
+                    return
+                # A SessionStart hook must still surface context on error, not exit silently.
+                pytest.fail(
+                    f"{hook.name} uses a clean-exit trap but its event requires "
+                    f"'{expected_key}' in the error output"
                 )
-                return
+
+            # (a) JSON-emitting trap: strip the 'echo ' prefix + outer quotes, unescape.
+            if trap_payload.startswith("echo "):
+                trap_payload = trap_payload[len("echo "):]
+            trap_payload = trap_payload.strip().strip('"')
+            trap_json_str = trap_payload.replace('\\"', '"')
+            parsed = json.loads(trap_json_str)
+            assert expected_key in parsed, (
+                f"Trap JSON missing '{expected_key}': {parsed}"
+            )
+            return
         pytest.fail(f"Could not extract trap string from {hook.name}")
 
 
@@ -341,10 +374,28 @@ class TestProjectState:
         ctx = output.get("hookSpecificOutput", {}).get("context", {})
         assert "model" in ctx, f"Missing 'model' in context: {ctx}"
 
-    def test_validate_skills_subcommand(self):
-        """Running with 'validate-skills' arg should return JSON with status field."""
-        result = _run_hook(PROJECT_STATE, stdin_data="", args=["validate-skills"])
-        assert result.returncode == 0
+    def test_validate_skills_subcommand(self, isolated_home):
+        """Running with 'validate-skills' arg should return JSON with status field.
+
+        project-state.sh scans three skills locations under $HOME:
+        ``~/.claude/skills``, ``~/backup/claude-skills`` and ``~/.agents/skills``. Under
+        ``set -euo pipefail`` a ``find -L`` on a MISSING directory aborts the hook (the
+        pipeline fails). On a fresh CI runner those last two dirs don't exist, so we run
+        the hook under an isolated $HOME with all three skills dirs present — the real,
+        expected environment for this subcommand — instead of the developer's $HOME."""
+        for sub in ("backup/claude-skills", ".agents/skills"):
+            (isolated_home / sub).mkdir(parents=True, exist_ok=True)
+        # `.claude/skills` is already created by the isolated_home fixture.
+        result = _run_hook(
+            PROJECT_STATE,
+            stdin_data="",
+            args=["validate-skills"],
+            env_override={"HOME": str(isolated_home)},
+        )
+        assert result.returncode == 0, (
+            f"validate-skills exited {result.returncode}: "
+            f"stdout={result.stdout!r} stderr={result.stderr!r}"
+        )
         output = _parse_json_output(result)
         assert "status" in output, f"validate-skills missing 'status': {output}"
 

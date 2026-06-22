@@ -90,7 +90,7 @@ jobs:
       - name: Run pytest
         run: |
           if [ -d "tests" ]; then
-            python -m pytest tests/ -v --tb=short || true
+            python -m pytest tests/ -v --tb=short
           fi
 
       - name: Run harness tests

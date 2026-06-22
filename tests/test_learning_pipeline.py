@@ -25,8 +25,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 class TestFix1SyncRulesLearnedTaxonomy:
     """Fix 1: sync-rules-from-source.sh syncs learned/ taxonomy to global."""
 
-    def test_sync_creates_halls_rooms_wings_in_global(self, tmp_path):
+    def test_sync_creates_halls_rooms_wings_in_global(self, tmp_path, requires_tool):
         """rsync -a --delete copies full taxonomy tree to global."""
+        requires_tool("rsync")
         local_learned = tmp_path / "local" / "learned"
         global_learned = tmp_path / "global" / "learned"
 
@@ -36,6 +37,11 @@ class TestFix1SyncRulesLearnedTaxonomy:
         (local_learned / "wings").mkdir(parents=True)
         (local_learned / "halls" / "decisions.md").write_text("# Decisions\n")
         (local_learned / "rooms" / "hooks.md").write_text("# Hooks\n")
+
+        # Mirror the production script (sync-rules-from-source.sh): ensure the
+        # destination's parent chain exists. GNU rsync (Linux CI) returns exit 11
+        # if the dest parent is missing; openrsync (macOS) tolerates it.
+        global_learned.parent.mkdir(parents=True, exist_ok=True)
 
         # Simulate rsync
         subprocess.run(
@@ -50,8 +56,9 @@ class TestFix1SyncRulesLearnedTaxonomy:
         assert (global_learned / "rooms").is_dir()
         assert (global_learned / "wings").is_dir()
 
-    def test_sync_deletes_stale_files_from_global(self, tmp_path):
+    def test_sync_deletes_stale_files_from_global(self, tmp_path, requires_tool):
         """rsync --delete removes files in global that no longer exist locally."""
+        requires_tool("rsync")
         local_learned = tmp_path / "local" / "learned"
         global_learned = tmp_path / "global" / "learned"
 
@@ -74,14 +81,19 @@ class TestFix1SyncRulesLearnedTaxonomy:
         assert (global_learned / "halls" / "decisions.md").exists()
         assert not (global_learned / "halls" / "stale.md").exists()
 
-    def test_sync_preserves_file_contents(self, tmp_path):
+    def test_sync_preserves_file_contents(self, tmp_path, requires_tool):
         """Content of synced files matches source exactly."""
+        requires_tool("rsync")
         local_learned = tmp_path / "local" / "learned"
         global_learned = tmp_path / "global" / "learned"
 
         content = "# Patterns\n\n## Async/Await\nUse async/await.\n"
         (local_learned / "halls").mkdir(parents=True)
         (local_learned / "halls" / "patterns.md").write_text(content)
+
+        # Mirror the production script: ensure the dest parent chain exists so
+        # GNU rsync (Linux CI) does not fail with exit 11.
+        global_learned.parent.mkdir(parents=True, exist_ok=True)
 
         subprocess.run(
             ["rsync", "-a", "--delete", f"{local_learned}/", f"{global_learned}/"],
@@ -115,13 +127,18 @@ class TestFix1SyncRulesLearnedTaxonomy:
                     f"Sensitive pattern '{pattern}' found in {md_file.relative_to(learned_dir)}"
                 )
 
-    def test_sync_idempotent(self, tmp_path):
+    def test_sync_idempotent(self, tmp_path, requires_tool):
         """Running sync twice produces identical results."""
+        requires_tool("rsync")
         local_learned = tmp_path / "local" / "learned"
         global_learned = tmp_path / "global" / "learned"
 
         (local_learned / "halls").mkdir(parents=True)
         (local_learned / "halls" / "decisions.md").write_text("# Decisions\n")
+
+        # Mirror the production script: ensure the dest parent chain exists so
+        # GNU rsync (Linux CI) does not fail with exit 11.
+        global_learned.parent.mkdir(parents=True, exist_ok=True)
 
         # First sync
         subprocess.run(
@@ -442,9 +459,13 @@ class TestEndToEndPipeline:
             capture_output=True,
             timeout=10,
         )
+        assert result.returncode == 0
         output = result.stdout.decode().strip()
-        data = json.loads(output)
-        assert "decision" in data
+        # continuous-learning.sh (Stop hook, v3.1.0) allows by emitting nothing on a
+        # clean exit; if it does emit JSON it must be valid and carry a decision.
+        if output:
+            data = json.loads(output)
+            assert "decision" in data
 
     def test_no_sensitive_patterns_in_learned_taxonomy(self):
         """Global learned files have no sensitive data patterns."""

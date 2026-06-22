@@ -50,25 +50,41 @@ def is_valid_command_file(cmd_file: Path) -> bool:
 
 
 
+def _find_project_ralph_script() -> Path:
+    """Locate the repo's versioned ``scripts/ralph`` (skips if absent).
+
+    CI-safe: resolves the script relative to this test file (which lives at
+    ``tests/``), with a couple of legacy fallbacks. Skips the test if the
+    repo script cannot be found, rather than asserting against an installed
+    copy under ``~/.local/bin`` that does not exist on CI runners.
+    """
+    possible_paths = [
+        Path(__file__).resolve().parent.parent / "scripts" / "ralph",
+        Path.cwd() / "scripts" / "ralph",
+        Path.home() / "Documents" / "GitHub" / "multi-agent-ralph-loop" / "scripts" / "ralph",
+    ]
+    for p in possible_paths:
+        if p.exists():
+            return p
+    pytest.skip("Project ralph script not found at repo scripts/ralph")
+
+
 class TestRalphScriptVersion:
     """Test suite for Ralph script version verification."""
 
     @pytest.fixture
     def ralph_script(self):
-        """Get installed ralph script."""
-        return Path.home() / ".local" / "bin" / "ralph"
+        """Get the repo's versioned ralph script (CI-safe).
+
+        Reuses the repo discovery so version/help tests run against the
+        committed ``scripts/ralph`` instead of an absent ``~/.local/bin/ralph``.
+        """
+        return _find_project_ralph_script()
 
     @pytest.fixture
     def project_ralph_script(self):
-        """Get project ralph script."""
-        possible_paths = [
-            Path.cwd() / "scripts" / "ralph",
-            Path.home() / "Documents" / "GitHub" / "multi-agent-ralph-loop" / "scripts" / "ralph",
-        ]
-        for p in possible_paths:
-            if p.exists():
-                return p
-        pytest.skip("Project ralph script not found")
+        """Get project ralph script (repo ``scripts/ralph``)."""
+        return _find_project_ralph_script()
 
     def test_ralph_script_exists(self, ralph_script):
         """Verify installed ralph script exists."""
@@ -131,16 +147,45 @@ class TestCuratorCommandIntegration:
 
     @pytest.fixture
     def ralph_script(self):
-        """Get installed ralph script."""
-        return Path.home() / ".local" / "bin" / "ralph"
+        """Get the repo's versioned ralph script (CI-safe)."""
+        return _find_project_ralph_script()
 
-    def test_curator_help_command(self, ralph_script):
+    @pytest.fixture
+    def curator_home(self, isolated_home):
+        """Seed the isolated $HOME with the repo's curator scripts.
+
+        ``cmd_curator`` in ``scripts/ralph`` reads ``${HOME}/.claude/scripts/
+        curator*.sh`` and returns rc=1 (no help output) when ``curator.sh`` is
+        absent. The repo ships those scripts under ``.claude/scripts/``; symlink
+        them into the isolated HOME so ``ralph curator help`` resolves and prints
+        usage. If the repo curator scripts are unavailable, skip with a reason.
+        """
+        repo_scripts = Path(__file__).resolve().parent.parent / ".claude" / "scripts"
+        curator_scripts = sorted(repo_scripts.glob("curator*.sh"))
+        if not any(s.name == "curator.sh" for s in curator_scripts):
+            pytest.skip(
+                "Repo curator scripts unavailable at .claude/scripts/curator*.sh "
+                "(curator.sh required for `ralph curator help`)"
+            )
+        dest = isolated_home / ".claude" / "scripts"
+        dest.mkdir(parents=True, exist_ok=True)
+        for src in curator_scripts:
+            link = dest / src.name
+            if not link.exists():
+                link.symlink_to(src)
+        return isolated_home
+
+    def test_curator_help_command(self, ralph_script, curator_home):
         """Verify ralph curator help works."""
         result = subprocess.run(
             ["bash", str(ralph_script), "curator", "help"],
             capture_output=True,
             text=True,
-            timeout=10
+            timeout=10,
+            # RALPH_STARTUP_SHOWN mirrors a real interactive shell (the script
+            # exports it on first run) so the one-time startup banner is skipped
+            # and `curator help` prints on stdout.
+            env={**os.environ, "HOME": str(curator_home), "RALPH_STARTUP_SHOWN": "1"},
         )
 
         # Should not error
@@ -150,13 +195,17 @@ class TestCuratorCommandIntegration:
         # Should show usage
         assert "subcommand" in result.stdout.lower() or "Usage" in result.stdout
 
-    def test_curator_subcommands_available(self, ralph_script):
+    def test_curator_subcommands_available(self, ralph_script, curator_home):
         """Verify expected curator subcommands are documented."""
         result = subprocess.run(
             ["bash", str(ralph_script), "curator", "help"],
             capture_output=True,
             text=True,
-            timeout=10
+            timeout=10,
+            # RALPH_STARTUP_SHOWN mirrors a real interactive shell (the script
+            # exports it on first run) so the one-time startup banner is skipped
+            # and `curator help` prints on stdout.
+            env={**os.environ, "HOME": str(curator_home), "RALPH_STARTUP_SHOWN": "1"},
         )
 
         content = result.stdout.lower()

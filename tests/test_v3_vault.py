@@ -6,6 +6,7 @@ and the vault directory structure.
 """
 
 import os
+import subprocess
 import stat
 import pytest
 from pathlib import Path
@@ -136,28 +137,62 @@ class TestVaultWeeklyCompile:
 # ============================================================
 
 class TestVaultDirectoryStructure:
-    """Test that the vault directory exists with expected structure."""
+    """Test that setup-obsidian-vault.sh produces the expected structure.
 
-    def test_vault_root_exists(self):
-        assert VAULT_DIR.exists(), \
-            f"Vault directory must exist at {VAULT_DIR}"
+    These tests do NOT depend on the developer's personal vault at
+    ``~/Documents/Obsidian/MiVault`` (absent in CI). Instead they run the
+    versioned ``scripts/setup-obsidian-vault.sh`` against a temp ``VAULT_DIR``
+    and assert the structure the script actually creates — so the script's
+    output is what is under test, which is CI-safe on a clean machine.
+    """
 
-    def test_global_wiki_exists(self):
-        wiki_dir = VAULT_DIR / "global" / "wiki"
+    @pytest.fixture
+    def built_vault(self, tmp_path):
+        """Build a temp vault by running the real setup script.
+
+        The script honors ``$VAULT_DIR`` (``VAULT_DIR="${VAULT_DIR:-$HOME/...}"``),
+        so we point it at a temp dir and run it for real. Skips only when the
+        script itself is missing (it ships in the repo, so this is unreachable
+        in normal runs) — never to mask a real failure.
+        """
+        script = SCRIPTS_DIR / "setup-obsidian-vault.sh"
+        if not script.exists():
+            pytest.skip(f"setup script not found: {script}")
+        vault = tmp_path / "MiVault"
+        env = {**os.environ, "VAULT_DIR": str(vault)}
+        result = subprocess.run(
+            ["bash", str(script)],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        assert result.returncode == 0, (
+            f"setup-obsidian-vault.sh failed (rc={result.returncode}):\n"
+            f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+        )
+        return vault
+
+    def test_vault_root_exists(self, built_vault):
+        assert built_vault.exists(), \
+            f"setup script must create vault root at {built_vault}"
+
+    def test_global_wiki_exists(self, built_vault):
+        wiki_dir = built_vault / "global" / "wiki"
         assert wiki_dir.exists(), \
             f"global/wiki/ must exist in vault at {wiki_dir}"
 
-    def test_projects_dir_exists(self):
-        projects_dir = VAULT_DIR / "projects"
+    def test_projects_dir_exists(self, built_vault):
+        projects_dir = built_vault / "projects"
         assert projects_dir.exists(), \
             f"projects/ must exist in vault at {projects_dir}"
 
-    def test_templates_dir_exists(self):
-        templates_dir = VAULT_DIR / "_templates"
+    def test_templates_dir_exists(self, built_vault):
+        templates_dir = built_vault / "_templates"
         assert templates_dir.exists(), \
             f"_templates/ must exist in vault at {templates_dir}"
 
-    def test_vault_entry_template_exists(self):
-        template = VAULT_DIR / "_templates" / "vault-entry.md"
+    def test_vault_entry_template_exists(self, built_vault):
+        template = built_vault / "_templates" / "vault-entry.md"
         assert template.exists(), \
             f"_templates/vault-entry.md must exist at {template}"

@@ -58,8 +58,15 @@ def log_result(test_name: str, hook_name: str, result: Dict[str, Any],
 
 
 def run_hook(hook_path: Path, input_data: str,
-             timeout: int = HOOK_TIMEOUT) -> Dict[str, Any]:
-    """Execute a hook and return structured result."""
+             timeout: int = HOOK_TIMEOUT, cwd: Path = None) -> Dict[str, Any]:
+    """Execute a hook and return structured result.
+
+    ``cwd`` controls the process working directory. It matters for the
+    anti-rationalization gate, which resolves its per-project state and patterns
+    file from ``$CWD`` (``.cwd`` in JSON input, else ``$(pwd)``). Tests point it
+    at the isolated $HOME so the gate reads a clean, seeded
+    ``.claude/state/anti-rat-blocks.json`` instead of the developer's repo state.
+    """
     import time
     start = time.time()
     try:
@@ -68,7 +75,7 @@ def run_hook(hook_path: Path, input_data: str,
             input=input_data,
             capture_output=True,
             text=True,
-            cwd=str(PROJECT_ROOT),
+            cwd=str(cwd) if cwd is not None else str(PROJECT_ROOT),
             timeout=timeout,
             env={**os.environ},
         )
@@ -108,7 +115,10 @@ def run_hook(hook_path: Path, input_data: str,
 # Hook paths
 # ═══════════════════════════════════════════════════════════════════
 
-CLASSIFIER_HOOK = Path.home() / ".claude" / "hooks" / "universal-prompt-classifier.sh"
+# All hooks resolve to the repo's real, versioned scripts (CI-safe — never the
+# developer's global ~/.claude/hooks). The classifier exists in the repo too.
+CLASSIFIER_HOOK = (PROJECT_ROOT / ".claude" / "hooks" /
+                   "universal-prompt-classifier.sh")
 ARISTOTLE_HOOK = (PROJECT_ROOT / ".claude" / "hooks" /
                   "aristotle-analysis-display.sh")
 ANTIRAT_HOOK = (PROJECT_ROOT / ".claude" / "hooks" /
@@ -116,22 +126,59 @@ ANTIRAT_HOOK = (PROJECT_ROOT / ".claude" / "hooks" /
 PATTERNS_FILE = (PROJECT_ROOT / "docs" / "reference" /
                  "anti-rationalization.md")
 
-STATE_DIR = Path.home() / ".claude" / "state"
-ANTIRAT_STATE = STATE_DIR / "anti-rat-blocks.json"
+
+def state_dir() -> Path:
+    """``~/.claude/state`` resolved at call time.
+
+    Under the ``isolated_home`` fixture this is the temp HOME, so the
+    classifier (writes ``~/.claude/state/current-complexity.json``) and the
+    aristotle hook (reads it) share a clean, isolated state dir. The gate's
+    ``$CWD/.claude/state`` is made to match by running it with ``cwd=Path.home()``.
+    """
+    return Path.home() / ".claude" / "state"
+
+
+def antirat_state() -> Path:
+    return state_dir() / "anti-rat-blocks.json"
+
+
+def _seed_gate_env(home: Path) -> None:
+    """Seed the isolated $HOME so the gate runs fully (real patterns + clean state).
+
+    The gate resolves ``PATTERNS_FILE=$CWD/docs/reference/anti-rationalization.md``;
+    symlink the repo's real file in so excuse detection is genuinely exercised.
+    """
+    state = home / ".claude" / "state"
+    state.mkdir(parents=True, exist_ok=True)
+    (state / "anti-rat-blocks.json").write_text('{"blocks": 0}')
+    ref_dir = home / "docs" / "reference"
+    ref_dir.mkdir(parents=True, exist_ok=True)
+    link = ref_dir / "anti-rationalization.md"
+    if not link.exists():
+        link.symlink_to(PATTERNS_FILE)
+
+
+def run_gate(input_data: str, timeout: int = HOOK_TIMEOUT) -> Dict[str, Any]:
+    """Run the anti-rat gate with cwd=isolated $HOME (clean per-project state)."""
+    return run_hook(ANTIRAT_HOOK, input_data, timeout=timeout, cwd=Path.home())
 
 
 # ═══════════════════════════════════════════════════════════════════
 # Fixtures
 # ═══════════════════════════════════════════════════════════════════
 
-@pytest.fixture(autouse=True, scope="session")
-def setup_state():
-    """Ensure state files exist and are clean."""
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-    ANTIRAT_STATE.write_text('{"blocks": 0}')
+@pytest.fixture(autouse=True)
+def setup_state(isolated_home, requires_tool):
+    """Isolate $HOME and seed a clean, repo-backed gate environment per test.
+
+    ``isolated_home`` redirects $HOME and ``Path.home()`` to a temp dir; this
+    fixture additionally symlinks the real patterns file and writes a clean
+    ``anti-rat-blocks.json`` so the gate exercises real excuse detection against
+    isolated state (no cross-test bleed, no developer ~/.claude dependency).
+    """
+    requires_tool("jq")  # the gate fail-opens without jq — exercise the real path
+    _seed_gate_env(isolated_home)
     yield
-    # Cleanup
-    ANTIRAT_STATE.write_text('{"blocks": 0}')
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -155,7 +202,7 @@ class TestPromptClassifier:
         """Classifier must write complexity score to state file."""
         inp = json.dumps({"prompt": "refactor the entire auth system"})
         run_hook(CLASSIFIER_HOOK, inp)
-        state_file = STATE_DIR / "current-complexity.json"
+        state_file = state_dir() / "current-complexity.json"
         assert state_file.exists(), "Complexity state file not created"
         state = json.loads(state_file.read_text())
         assert "complexity" in state, f"Missing complexity key: {state}"
@@ -202,8 +249,8 @@ class TestAristotleAnalysis:
         """Complexity >= 4 should produce a systemMessage with Aristotle
         5-phase analysis."""
         # First set complexity to 7 via classifier
-        STATE_DIR.mkdir(parents=True, exist_ok=True)
-        (STATE_DIR / "current-complexity.json").write_text(
+        state_dir().mkdir(parents=True, exist_ok=True)
+        (state_dir() / "current-complexity.json").write_text(
             json.dumps({"complexity": 7, "timestamp": 0})
         )
         inp = json.dumps({"prompt": "redesign the authentication system"})
@@ -218,7 +265,8 @@ class TestAristotleAnalysis:
 
     def test_low_complexity_no_system_message(self):
         """Complexity 1-2 should NOT produce systemMessage."""
-        (STATE_DIR / "current-complexity.json").write_text(
+        state_dir().mkdir(parents=True, exist_ok=True)
+        (state_dir() / "current-complexity.json").write_text(
             json.dumps({"complexity": 1, "timestamp": 0})
         )
         inp = json.dumps({"prompt": "fix typo"})
@@ -238,25 +286,43 @@ class TestAristotleAnalysis:
 @pytest.mark.skipif(not ANTIRAT_HOOK.exists(),
                     reason="Anti-rationalization hook not found")
 class TestAntiRationalizationGate:
-    """Tests for anti-rationalization-gate.sh (Stop hook)."""
+    """Tests for anti-rationalization-gate.sh (Stop hook).
+
+    Approve contract: per tests/HOOK_FORMAT_REFERENCE.md, a Stop hook ALLOWS the
+    stop with a clean ``exit 0`` and NO ``{"decision": "approve"}`` output
+    (``"approve"`` is NOT a valid Claude Code value — it was removed from this
+    hook in commit 9ee86dce / v3.1.1 per docs/hooks/AUDIT-REPORT.md). So an
+    "approve" is asserted as: returncode == 0 AND output is not a block.
+    """
+
+    @staticmethod
+    def _assert_approves(r):
+        """Stop-hook allow == clean exit 0 with no block decision."""
+        assert r["returncode"] == 0, f"Approve must exit 0: {r}"
+        if r["is_valid_json"] and isinstance(r["output"], dict):
+            assert r["output"].get("decision") != "block", \
+                f"Expected approve (allow), got block: {r['output']}"
+        else:
+            # Documented allow form: empty stdout (clean exit).
+            assert r["stdout"].strip() == "", \
+                f"Approve must emit no block JSON; got: {r['stdout']!r}"
 
     def _reset_state(self):
-        ANTIRAT_STATE.write_text('{"blocks": 0}')
+        antirat_state().write_text('{"blocks": 0}')
 
     def test_clean_stop_approves(self):
-        """Genuine completion should be approved."""
+        """Genuine completion should be approved (clean exit 0, no block)."""
         self._reset_state()
-        r = run_hook(ANTIRAT_HOOK, "All tasks completed. Tests pass.")
+        r = run_gate("All tasks completed. Tests pass.")
         log_result("antirat_clean_approve", "anti-rationalization-gate.sh", r,
                    "All tasks completed.")
-        assert r["is_valid_json"], f"Invalid JSON: {r['stdout']}"
-        assert r["output"]["decision"] == "approve"
+        self._assert_approves(r)
 
     def test_doc_excuse_blocks(self):
         """Excuses from anti-rationalization.md should be blocked."""
         self._reset_state()
         excuse = '"It\'s faster to do it myself sequentially"'
-        r = run_hook(ANTIRAT_HOOK, f"I think {excuse}, let me stop here.")
+        r = run_gate(f"I think {excuse}, let me stop here.")
         log_result("antirat_doc_block", "anti-rationalization-gate.sh", r,
                    f"excuse: {excuse}")
         assert r["is_valid_json"], f"Invalid JSON: {r['stdout']}"
@@ -269,9 +335,9 @@ class TestAntiRationalizationGate:
     def test_parallel_excuse_blocks(self):
         """Parallel-first excuses should be blocked."""
         self._reset_state()
-        r = run_hook(ANTIRAT_HOOK,
-                     "Sequential is simpler to implement, I'll just do it one "
-                     "at a time.")
+        r = run_gate(
+            "Sequential is simpler to implement, I'll just do it one "
+            "at a time.")
         log_result("antirat_parallel_block", "anti-rationalization-gate.sh", r,
                    "Sequential is simpler")
         assert r["is_valid_json"]
@@ -282,21 +348,20 @@ class TestAntiRationalizationGate:
 
     def test_max_blocks_circuit_breaker(self):
         """After 3 blocks, hook must auto-approve (circuit breaker)."""
-        ANTIRAT_STATE.write_text('{"blocks": 3}')
-        r = run_hook(ANTIRAT_HOOK, "Sequential is simpler")
+        antirat_state().write_text('{"blocks": 3}')
+        r = run_gate("Sequential is simpler")
         log_result("antirat_circuit_breaker", "anti-rationalization-gate.sh", r,
                    "blocks=3, should auto-approve")
-        assert r["is_valid_json"]
-        assert r["output"]["decision"] == "approve"
+        self._assert_approves(r)
         # Verify counter reset
-        state = json.loads(ANTIRAT_STATE.read_text())
+        state = json.loads(antirat_state().read_text())
         assert state["blocks"] == 0, "Counter should reset after circuit breaker"
 
     def test_state_increments(self):
         """State file must increment on each block."""
         self._reset_state()
-        run_hook(ANTIRAT_HOOK, "coordination overhead is too high")
-        state = json.loads(ANTIRAT_STATE.read_text())
+        run_gate("coordination overhead is too high")
+        state = json.loads(antirat_state().read_text())
         log_result("antirat_state_increment", "anti-rationalization-gate.sh",
                    {"returncode": 0, "stdout": json.dumps(state),
                     "stderr": "", "output": state, "is_valid_json": True,
@@ -305,19 +370,17 @@ class TestAntiRationalizationGate:
         assert state["blocks"] == 1, f"Expected blocks=1, got {state['blocks']}"
 
     def test_empty_input_approves(self):
-        """Empty input must not crash — approve safely."""
+        """Empty input must not crash — approve safely (clean exit 0)."""
         self._reset_state()
-        r = run_hook(ANTIRAT_HOOK, "")
+        r = run_gate("")
         log_result("antirat_empty_input", "anti-rationalization-gate.sh", r,
                    "(empty)")
-        assert r["is_valid_json"]
-        assert r["output"]["decision"] == "approve"
+        self._assert_approves(r)
 
     def test_block_includes_rebuttal(self):
         """Block reason must include the rebuttal from the doc."""
         self._reset_state()
-        r = run_hook(ANTIRAT_HOOK,
-                     "It's faster to do it myself sequentially")
+        r = run_gate("It's faster to do it myself sequentially")
         log_result("antirat_rebuttal", "anti-rationalization-gate.sh", r,
                    "faster to do it myself")
         assert r["is_valid_json"]
@@ -331,15 +394,14 @@ class TestAntiRationalizationGate:
     def test_multiple_excuses_first_match_wins(self):
         """Only the first matching excuse should trigger a block."""
         self._reset_state()
-        r = run_hook(ANTIRAT_HOOK,
-                     "I already know the answer and "
+        r = run_gate("I already know the answer and "
                      "It's faster to do it myself sequentially")
         log_result("antirat_first_match", "anti-rationalization-gate.sh", r,
                    "two excuses, first match wins")
         assert r["is_valid_json"]
         assert r["output"]["decision"] == "block"
         # Should only increment by 1
-        state = json.loads(ANTIRAT_STATE.read_text())
+        state = json.loads(antirat_state().read_text())
         assert state["blocks"] == 1
 
 
@@ -404,7 +466,7 @@ class TestEndToEndChain:
 
             # Read saved complexity
             state = json.loads(
-                (STATE_DIR / "current-complexity.json").read_text())
+                (state_dir() / "current-complexity.json").read_text())
             complexity = state["complexity"]
             assert complexity >= 3, (
                 f"Complex prompt should score >= 3, got {complexity}"
@@ -425,10 +487,9 @@ class TestEndToEndChain:
 
         # Step 3: Anti-rationalization blocks excuse
         if ANTIRAT_HOOK.exists():
-            ANTIRAT_STATE.write_text('{"blocks": 0}')
+            antirat_state().write_text('{"blocks": 0}')
             excuse = "It's faster to do it myself sequentially"
-            r3 = run_hook(ANTIRAT_HOOK,
-                          f"I think {excuse}, stopping here.")
+            r3 = run_gate(f"I think {excuse}, stopping here.")
             log_result("chain_step3_antirat_block",
                        "anti-rationalization-gate.sh", r3, excuse)
             assert r3["is_valid_json"]
@@ -443,7 +504,7 @@ class TestEndToEndChain:
             r1 = run_hook(CLASSIFIER_HOOK, inp)
             assert r1["is_valid_json"]
             state = json.loads(
-                (STATE_DIR / "current-complexity.json").read_text())
+                (state_dir() / "current-complexity.json").read_text())
             complexity = state["complexity"]
             log_result("chain_simple_step1", "universal-prompt-classifier.sh",
                        r1, f"complexity={complexity}")
@@ -452,7 +513,8 @@ class TestEndToEndChain:
 
         # Step 2: Aristotle silent for low complexity
         if ARISTOTLE_HOOK.exists():
-            (STATE_DIR / "current-complexity.json").write_text(
+            state_dir().mkdir(parents=True, exist_ok=True)
+            (state_dir() / "current-complexity.json").write_text(
                 json.dumps({"complexity": 1, "timestamp": 0})
             )
             inp = json.dumps({"prompt": "fix typo"})
@@ -463,12 +525,16 @@ class TestEndToEndChain:
             output_str = json.dumps(r2["output"])
             assert "Assumption Autopsy" not in output_str
 
-        # Step 3: Clean stop approves
+        # Step 3: Clean stop approves (Stop allow == clean exit 0, no block)
         if ANTIRAT_HOOK.exists():
-            ANTIRAT_STATE.write_text('{"blocks": 0}')
-            r3 = run_hook(ANTIRAT_HOOK,
-                          "Fixed the typo. All tests pass.")
+            antirat_state().write_text('{"blocks": 0}')
+            r3 = run_gate("Fixed the typo. All tests pass.")
             log_result("chain_simple_step3", "anti-rationalization-gate.sh",
                        r3, "clean stop")
-            assert r3["is_valid_json"]
-            assert r3["output"]["decision"] == "approve"
+            assert r3["returncode"] == 0, f"Approve must exit 0: {r3}"
+            if r3["is_valid_json"] and isinstance(r3["output"], dict):
+                assert r3["output"].get("decision") != "block", \
+                    f"Expected approve (allow), got block: {r3['output']}"
+            else:
+                assert r3["stdout"].strip() == "", \
+                    f"Approve must emit no block JSON; got: {r3['stdout']!r}"

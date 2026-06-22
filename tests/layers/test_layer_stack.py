@@ -97,12 +97,20 @@ def sample_rules_json(tmp_path: Path) -> Path:
 class TestLayer0:
     """Tests for the identity layer (L0)."""
 
-    def test_exists_returns_true_for_real_file(self, real_l0_path: Path):
-        """L0.exists() returns True when the real identity file exists."""
-        layer = Layer0(path=real_l0_path)
+    def test_exists_returns_true_for_real_file(self, tmp_path: Path):
+        """L0.exists() returns True when an identity file is present.
+
+        CI-safe: build the artifact in tmp_path instead of depending on the
+        developer's ``~/.ralph/layers/L0_identity.md`` (absent on CI runners).
+        """
+        l0_path = tmp_path / "L0_identity.md"
+        l0_path.write_text(
+            "# Ralph Identity\n\n## Principles\nBuilt for the test.\n",
+            encoding="utf-8",
+        )
+        layer = Layer0(path=l0_path)
         assert layer.exists() is True, (
-            f"L0 identity file missing at {real_l0_path}. "
-            "Run W2.2 setup to create ~/.ralph/layers/L0_identity.md"
+            f"L0 identity file should exist after writing it at {l0_path}"
         )
 
     def test_exists_returns_false_for_missing_file(self, tmp_layers_dir: Path):
@@ -230,12 +238,21 @@ class TestLayer1:
         with pytest.raises(FileNotFoundError):
             layer.load()
 
-    def test_real_l1_exists(self, real_l1_path: Path):
-        """Real L1_essential.md was built by W2.2 setup."""
-        layer = Layer1(path=real_l1_path)
+    def test_real_l1_exists(self, tmp_path: Path, sample_rules_json: Path, monkeypatch):
+        """Layer1.build() produces an L1_essential.md that exists().
+
+        CI-safe: build the artifact in tmp_path from the sample rules fixture
+        (same pattern as test_build_creates_md_file) instead of asserting on the
+        developer's ``~/.ralph/layers/L1_essential.md`` (absent on CI runners).
+        """
+        l1_path = tmp_path / "L1_essential.md"
+        _patch_rules_json(monkeypatch, sample_rules_json)
+
+        layer = Layer1(path=l1_path, rule_count=15)
+        layer.build()
+
         assert layer.exists() is True, (
-            f"L1 file missing at {real_l1_path}. "
-            "Run: python3 .claude/lib/layers.py --build-l1"
+            f"L1 file should exist after build() at {l1_path}"
         )
 
     def test_real_l1_has_substantive_rules(self, real_l1_path: Path):

@@ -6,6 +6,7 @@ import os
 import sys
 import tempfile
 import shutil
+from pathlib import Path
 import pytest
 
 # Add project root to path
@@ -292,3 +293,79 @@ def validate_skill_frontmatter():
         return result
 
     return _validate
+
+
+# ============================================================
+# CI-safe isolation fixtures (PR #28: make tests/ fail-loud-able)
+# ============================================================
+
+@pytest.fixture
+def isolated_home(tmp_path, monkeypatch):
+    """Isolate $HOME to a temp dir seeded with the minimal Ralph layout.
+
+    Redirects BOTH ``$HOME`` (for shell hooks that read ``${HOME}``) and
+    ``Path.home()`` (for Python code), so a test never touches the developer's
+    real ~/.claude or ~/.ralph. The repo's hooks are symlinked in so they
+    resolve to the real, versioned scripts under the temp HOME.
+    """
+    import json
+
+    home = tmp_path / "home"
+    for sub in (
+        ".claude/state", ".claude/teams", ".claude/tasks", ".claude/skills", ".claude/scripts",
+        ".ralph/logs", ".ralph/state", ".ralph/handoffs", ".ralph/ledgers",
+        ".ralph/config", ".ralph/temp", ".ralph/markers",
+    ):
+        (home / sub).mkdir(parents=True, exist_ok=True)
+
+    # Point ~/.claude/hooks at the repo's real hooks (no duplication, no dev HOME).
+    repo_hooks = Path(PROJECT_ROOT) / ".claude" / "hooks"
+    hooks_link = home / ".claude" / "hooks"
+    if repo_hooks.is_dir() and not hooks_link.exists():
+        hooks_link.symlink_to(repo_hooks)
+
+    # Minimal valid config so settings/feature readers find a non-empty file.
+    (home / ".claude" / "settings.json").write_text(
+        json.dumps({"hooks": {}}), encoding="utf-8"
+    )
+    (home / ".ralph" / "config" / "features.json").write_text(
+        json.dumps({"RALPH_ENABLE_HANDOFF": True}), encoding="utf-8"
+    )
+
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setattr(Path, "home", lambda: home)
+    return home
+
+
+@pytest.fixture
+def requires_tool():
+    """Return a helper that skips the test when a named CLI tool is absent.
+
+    Usage: ``def test_x(requires_tool): requires_tool("rsync")``.
+    """
+    def _require(name):
+        if shutil.which(name) is None:
+            pytest.skip(f"required tool not available on PATH: {name}")
+    return _require
+
+
+@pytest.fixture
+def git_repo(tmp_path):
+    """Create a throwaway git repo for hook/worktree tests (skips if git absent)."""
+    import subprocess
+
+    if shutil.which("git") is None:
+        pytest.skip("git not available on PATH")
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    env = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull}
+    run = lambda *a: subprocess.run(a, cwd=repo, check=True, env=env,
+                                    capture_output=True, text=True)
+    run("git", "init", "-q")
+    run("git", "config", "user.email", "test@example.com")
+    run("git", "config", "user.name", "ralph-test")
+    (repo / "README.md").write_text("test\n", encoding="utf-8")
+    run("git", "add", "-A")
+    run("git", "commit", "-qm", "init")
+    return repo
