@@ -304,7 +304,7 @@ gc_cleanup() {
             member_count=$(find "$team_dir" -type f -name "member-*.json" 2>/dev/null | wc -l | tr -d ' ')
             if [[ "$member_count" -eq 0 ]]; then
                 rm -rf "$team_dir" 2>/dev/null && {
-                    ((cleaned_teams++))
+                    cleaned_teams=$((cleaned_teams + 1))
                     log "GC: Removed empty team dir: $team_dir" >> "$gc_log"
                 }
             fi
@@ -321,7 +321,7 @@ gc_cleanup() {
             dir_date=$(basename "$task_dir" | grep -oE '[0-9]{8}' || echo "")
             if [[ -n "$dir_date" ]] && [[ "$dir_date" -lt "$cutoff_date" ]]; then
                 rm -rf "$task_dir" 2>/dev/null && {
-                    ((cleaned_tasks++))
+                    cleaned_tasks=$((cleaned_tasks + 1))
                     log "GC: Removed old task dir: $task_dir" >> "$gc_log"
                 }
             fi
@@ -338,7 +338,7 @@ gc_cleanup() {
                 sort -n | head -n "$to_delete" | cut -d' ' -f2- | \
                 while IFS= read -r file; do
                     rm -f "$file" 2>/dev/null && {
-                        ((cleaned_handoffs++))
+                        cleaned_handoffs=$((cleaned_handoffs + 1))
                         log "GC: Removed old handoff: $file" >> "$gc_log"
                     }
                 done

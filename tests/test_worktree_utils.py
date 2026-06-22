@@ -383,9 +383,14 @@ class TestSubagentStopIntegration:
             env={**os.environ, "CLAUDE_PROJECT_DIR": str(git_repo)},
         )
         assert r.returncode == 0
-        data = json.loads(r.stdout.strip())
-        assert data["decision"] in ("approve", "block")
-        assert "reason" in data
+        out = r.stdout.strip()
+        if out:
+            # Block path: must be valid Stop-hook JSON ({"decision": "block", ...}).
+            data = json.loads(out)
+            assert data["decision"] == "block"
+            assert "reason" in data
+        # else: allow path — a clean exit 0 with no stdout is a valid Stop allow per
+        # tests/HOOK_FORMAT_REFERENCE.md (v2.95.1 removed the invalid "approve" JSON).
 
 
 # ============================================================

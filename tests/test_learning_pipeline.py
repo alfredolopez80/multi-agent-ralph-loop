@@ -442,9 +442,13 @@ class TestEndToEndPipeline:
             capture_output=True,
             timeout=10,
         )
+        assert result.returncode == 0
         output = result.stdout.decode().strip()
-        data = json.loads(output)
-        assert "decision" in data
+        # continuous-learning.sh (Stop hook, v3.1.0) allows by emitting nothing on a
+        # clean exit; if it does emit JSON it must be valid and carry a decision.
+        if output:
+            data = json.loads(output)
+            assert "decision" in data
 
     def test_no_sensitive_patterns_in_learned_taxonomy(self):
         """Global learned files have no sensitive data patterns."""
