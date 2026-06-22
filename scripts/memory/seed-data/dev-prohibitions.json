@@ -1,0 +1,46 @@
+[
+  {
+    "rule_id": "dev-no-placeholders",
+    "behavior": "ABSOLUTE PROHIBITION: Never write placeholder code in ANY development. No stubs, dummy values, TODO/FIXME-as-implementation, foo/bar/example.com, 'pass'/'...'/'not implemented' as final state. If you cannot complete it, STOP and ask the user. Detection duty: if you find a placeholder in ANY file (even outside the current analysis/PR/task scope) you MUST run git blame on the offending lines and report it.",
+    "trigger": "Any code authoring, review, analysis, or PR in any project",
+    "domain": "development",
+    "confidence": 1.0,
+    "usage_count": 1,
+    "severity": "critical",
+    "tags": ["prohibition", "placeholders", "quality", "git-blame", "global"],
+    "source_repo": "user-global-rules"
+  },
+  {
+    "rule_id": "dev-no-unrequested-fallbacks",
+    "behavior": "ABSOLUTE PROHIBITION: Never add fallback logic UNLESS the user requests it explicitly and clearly. No error-swallowing try/except, no 'value || default' masking failures, no silent catch-and-degrade. Fail loud and fail fast by default. Detection duty: if you find an unrequested fallback in ANY file (even outside the current analysis/PR/task scope) you MUST run git blame on the offending lines and report what failure it is masking.",
+    "trigger": "Any code authoring, review, analysis, or PR in any project",
+    "domain": "development",
+    "confidence": 1.0,
+    "usage_count": 1,
+    "severity": "critical",
+    "tags": ["prohibition", "fallbacks", "fail-fast", "fail-loud", "git-blame", "global"],
+    "source_repo": "user-global-rules"
+  },
+  {
+    "rule_id": "dev-no-production-code-for-tests",
+    "behavior": "ABSOLUTE PROHIBITION: Never add, weaken, or special-case PRODUCTION code for the sole purpose of making a test pass. No hardcoding the asserted value, no 'if testMode' branches, no special-casing test inputs. If a test fails, first verify its expectation is correct: fix the test if it is wrong; fix production only for a REAL requirement. Detection duty: if you find production code shaped only to pass a test in ANY file (even outside the current scope) you MUST run git blame and report which test it was gaming.",
+    "trigger": "Any test-driven change, code authoring, review, analysis, or PR in any project",
+    "domain": "testing",
+    "confidence": 1.0,
+    "usage_count": 1,
+    "severity": "critical",
+    "tags": ["prohibition", "testing", "no-test-gaming", "git-blame", "global"],
+    "source_repo": "user-global-rules"
+  },
+  {
+    "rule_id": "testing-fail-loud-fail-fast",
+    "behavior": "MANDATORY: ALL tests (unit AND e2e) MUST fail loud / fail fast. A failing condition MUST make the test FAIL loudly and immediately; a test that cannot reach a real assertion MUST fail, never pass and never silently skip. Forbidden: error-swallowing try/catch, soft asserts that only log, 'assert True', '|| true'/continue-on-error/'set +e' masking, retry loops hiding flakiness, broad skip/xfail. E2E on local minikube (special force): if minikube is down, namespace missing, image pull failed, pod not Ready, or service unreachable -> the test MUST FAIL LOUDLY with the concrete reason; NEVER silently skip, NEVER fall back to a mock, NEVER pretend success; readiness waits MUST have a bounded timeout that FAILS with pod/service diagnostics. Detection duty: if you find a test masking failure in ANY file (even outside the current scope) you MUST run git blame and report what failure it masks.",
+    "trigger": "Authoring, reviewing, or running unit/e2e tests; CI test steps; minikube/k8s e2e suites",
+    "domain": "testing",
+    "confidence": 1.0,
+    "usage_count": 1,
+    "severity": "critical",
+    "tags": ["prohibition", "testing", "e2e", "minikube", "fail-fast", "fail-loud", "git-blame", "global"],
+    "source_repo": "user-global-rules"
+  }
+]
