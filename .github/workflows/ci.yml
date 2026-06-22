@@ -46,12 +46,17 @@ jobs:
         run: |
           # Check hooks exist
           test -d .claude/hooks
-          # Verify all hooks have .sh extension
+          # Verify all hooks use a supported runtime extension.
+          # Hooks are polyglot: Bash (.sh), Python (.py), and Node (.js/.mjs).
           for hook in .claude/hooks/*; do
-            if [ -f "$hook" ] && [[ ! "$hook" == *.sh ]]; then
-              echo "ERROR: Hook $hook missing .sh extension"
-              exit 1
-            fi
+            [ -f "$hook" ] || continue
+            case "$hook" in
+              *.sh|*.py|*.js|*.mjs) ;;
+              *)
+                echo "ERROR: Hook $hook has unsupported extension (expected .sh, .py, .js, or .mjs)"
+                exit 1
+                ;;
+            esac
           done
       
       - name: Validate skills structure

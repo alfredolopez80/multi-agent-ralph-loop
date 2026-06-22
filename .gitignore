@@ -223,6 +223,7 @@ tmp-review/
 .claude/quality-results
 .claude/progress.md
 .claude/plan-state.json
+.claude/tasks.json
 .claude/state/
 .claude/snapshots/
 .claude/backups/

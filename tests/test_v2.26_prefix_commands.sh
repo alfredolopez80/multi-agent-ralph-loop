@@ -412,7 +412,7 @@ test_task_visualizer_exists
 
 # Test 31: task-visualizer has skill.md
 test_task_visualizer_skill() {
-    if [ -f "$PROJECT_ROOT/.claude/skills/task-visualizer/skill.md" ]; then
+    if [ -f "$PROJECT_ROOT/.claude/skills/task-visualizer/SKILL.md" ]; then
         test_pass "task-visualizer skill.md exists"
     else
         test_fail "task-visualizer skill.md does not exist"
