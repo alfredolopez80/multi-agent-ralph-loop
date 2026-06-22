@@ -1,419 +1,102 @@
 ---
-# VERSION: 3.0.0
+# VERSION: 3.1.0
 name: adversarial
-description: Multi-Agent Adversarial Analysis System for code security
+description: Apply adversarial opposite-analysis to plans, specs, architecture, code changes, and claims. Use when the user asks for adversarial review, opposing analysis, contrarian review, red-team reasoning, or Z.ai and MiniMax cross-checks through the Ralph MCP router.
 ---
 
-# Adversarial Code Analyzer
+# Adversarial
 
-**Multi-Agent Adversarial Analysis System** inspired by ZeroLeaks architecture.
+Use this skill to challenge a plan, claim, implementation, or review from the strongest useful opposing position. This is not a default security scan and not a generic model vote. Codex main remains final owner of decisions, edits, synthesis, and verification.
 
-## v2.88 Key Changes (MODEL-AGNOSTIC)
+This skill is adapted from the local Claude Code `adversarial` skill, but narrowed for Codex into opposite-analysis. The original emphasizes multi-agent security analysis; this version defaults to assumption testing, counterargument generation, failure-mode discovery, and concise next actions.
 
-- **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
-- **No flags required**: Works with the configured default model
-- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
-- **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
+## Trigger
 
-Applies security scanner patterns to code analysis: specialized agents work together systematically to find vulnerabilities, weaknesses, and quality issues.
+Use when the user says `adversarial`, `analisis opuesto`, `opposing analysis`, `contrarian review`, `red-team this`, `challenge this plan`, `strongest counterargument`, or asks to consult Z.ai and MiniMax.
 
-## Architecture
+## Core Workflow
 
-Based on ZeroLeaks multi-agent system adapted for code analysis:
+1. State the claim or plan being challenged in one sentence.
+2. List the assumptions it depends on.
+3. Ask what would make each assumption false in the current repo/runtime.
+4. Identify the highest-impact failure modes first.
+5. Separate proven issues from plausible risks.
+6. Recommend one concrete next action: keep, adjust, defer, validate, or revert.
 
-```
-             ORCHESTRATOR (Engine)
-                    |
-    +---------------+---------------+
-    |               |               |
-STRATEGIST      ATTACKER        EVALUATOR
-    |               |               |
-    +-------+-------+-------+-------+
-                    |
-                MUTATOR
-```
+For non-trivial work, apply a compact Aristotle pass: assumption autopsy, irreducible truths, reconstruction from evidence, assumption-vs-truth map, and the smallest risk-reducing next move.
 
-### Agent Roles
+## External Advisor Mode
 
-| Agent | Role | Focus |
-|-------|------|-------|
-| **Engine** | Orchestrates the analysis, manages exploration tree | Coordination |
-| **Strategist** | Selects analysis strategies based on codebase profile | Strategy |
-| **Attacker** | Generates attack vectors / test cases | Offense |
-| **Evaluator** | Analyzes responses for vulnerabilities | Assessment |
-| **Mutator** | Creates variations of test cases | Variation |
+Use external advisors only when the user explicitly asks for Z.ai, MiniMax, both models, multi-model review, or second opinion, or when the risk justifies it and the context is GREEN/YELLOW-sanitized.
 
-## Agent Teams Integration (v2.88)
+Required routing:
 
-**Optimal Scenario**: Integrated (Agent Teams + Custom Subagents)
+- Z.ai: use `ralph_coding_models.zai_coding_deep` for deep opposing analysis, architecture, debugging, migration risk, claim adjudication, and spec review.
+- MiniMax: use `ralph_coding_models.minimax_agentic` for independent counterexamples, implementation advice, and practical risk review.
+- MiniMax fast: use `ralph_coding_models.minimax_agentic_fast` for logs, diffs, summaries, and test ideas.
 
-Adversarial analysis uses Agent Teams coordination with specialized ralph-* agents for multi-vector attack simulation.
+When using both Z.ai and MiniMax, send the same minimized brief:
 
-### Why Scenario C for Adversarial
-- Multi-agent coordination essential (Strategist, Attacker, Evaluator, Mutator)
-- Quality gates validate vulnerability findings
-- Specialized roles map to ralph-* agents
-- Coordinated attack strategy via shared task list
-
-### Subagent Roles
-
-| Subagent | Role in Adversarial Analysis |
-|----------|------------------------------|
-| `ralph-reviewer` | Striker - Identifies vulnerabilities |
-| `ralph-researcher` | Strategist - Maps attack surface |
-| `ralph-coder` | Evaluator - Creates test cases |
-
-### Parallel Attack Analysis
-When Agent Teams is active:
-1. **Team Lead** orchestrates multi-vector attack analysis
-2. **ralph-reviewer** identifies security weaknesses in parallel
-3. **ralph-researcher** maps codebase attack surface
-4. **ralph-coder** generates proof-of-concept tests
-
-### Agent Teams Workflow
-- Uses TeamCreate for coordinated attack analysis
-- Task coordination tracks vulnerability findings
-- TeammateIdle triggers cross-validation of discoveries
-
-## Aristotle Integration (v3.0)
-
-Before adversarial analysis begins, apply Aristotle Phase 1 (Assumption Autopsy):
-- What security assumptions are we inheriting from the framework?
-- Are we testing the right attack surface, or the obvious one?
-- What would an attacker assume about our defenses?
-
-The Irreducible Truths (Phase 2) become the invariants that adversarial testing validates.
-
-## Usage
-
-```bash
-/adversarial src/auth/
-/adversarial --target security src/api/
-/adversarial --depth 5 --branches 4 src/
+```text
+EXTERNAL_MCP_BRIEF
+tool=<Z.ai|MiniMax>
+role=<opposing analyst|claim adjudicator|risk reviewer>
+sensitivity=<GREEN|YELLOW-sanitized>
+context_minimized=yes
+task=<specific claim, plan, diff, or decision to challenge>
+constraints=<what not to change, what assumptions matter>
+required_output=
+- verdict
+- strongest counterargument
+- evidence
+- confidence
+- risks
+- recommended next action
+codex_final_owner=yes
 ```
 
-## Analysis Phases
+After external review, synthesize where Z.ai and MiniMax agree, where they disagree, what Codex verified locally, what remains unverified, and the final Codex recommendation. Do not treat external output as proof.
 
-Follows ZeroLeaks phased methodology:
+## Security Mode
 
-```
-1. RECONNAISSANCE   -> Understand codebase structure, dependencies
-2. PROFILING        -> Build defense profile (patterns, safeguards)
-3. SOFT_PROBE       -> Gentle analysis attempts
-4. ESCALATION       -> Increase analysis intensity
-5. EXPLOITATION     -> Active vulnerability search
-6. PERSISTENCE      -> Verify findings persist across scenarios
-```
+Use security mode when the target is auth, permissions, input validation, network boundaries, data exposure, sandboxing, supply chain, or deployment risk.
 
-## Analysis Categories
+Security mode sequence: reconnaissance, defense profile, attack vectors, evidence check, severity, fix direction. Findings must be grounded in file paths, code behavior, tests, config, or runtime evidence.
 
-| Category | Description | Examples |
-|----------|-------------|----------|
-| `direct` | Straightforward vulnerability checks | SQL injection, XSS |
-| `encoding` | Encoding/decoding issues | Base64, Unicode, escaping |
-| `persona` | Identity/permission bypasses | Privilege escalation |
-| `social` | Trust boundary violations | SSRF, CSRF |
-| `technical` | Technical implementation issues | Race conditions, memory |
-| `crescendo` | Multi-step escalation paths | Chained vulnerabilities |
-| `many_shot` | Pattern-based detection | Repeated anti-patterns |
-| `cot_hijack` | Logic flow manipulation | Business logic flaws |
-| `policy_puppetry` | Configuration exploitation | Misconfigurations |
-| `context_overflow` | Resource exhaustion | DoS, memory leaks |
-| `reasoning_exploit` | Algorithm weaknesses | Cryptographic issues |
+## Output Shapes
 
-## Configuration
+For a plan/spec/decision:
 
-```yaml
-adversarial_config:
-  max_turns: 25           # Maximum analysis iterations
-  max_tree_depth: 5       # How deep to explore each vector
-  branching_factor: 4     # Parallel exploration paths
-  pruning_threshold: 0.3  # Score below which to abandon path
-
-  enable_crescendo: true  # Multi-turn escalation
-  enable_many_shot: true  # Pattern-based detection
-  enable_best_of_n: true  # Generate variations
-  best_of_n_count: 5      # Variations per test
+```text
+Verdict: keep | adjust | defer | revert | validate first
+Strongest counterargument: ...
+Evidence: ...
+Main risk: ...
+Next action: ...
 ```
 
-## Strategies
+For Z.ai + MiniMax cross-check:
 
-### 1. Behavioral Reconnaissance (Priority: 100)
-```yaml
-id: recon_behavioral
-applicable_when:
-  turn_range: [1, 3]
-  leak_status: ["none"]
-attack_sequence:
-  - category: direct
-    weight: 0.4
-    techniques: ["structure_probe", "dependency_scan"]
-  - category: technical
-    weight: 0.3
-    techniques: ["config_analysis", "boundary_test"]
+```text
+External advisors:
+- Z.ai: <verdict>
+- MiniMax: <verdict>
+
+Agreement:
+...
+
+Disagreement:
+...
+
+Codex final:
+...
 ```
 
-### 2. Credential/Secret Scanning (Priority: 95)
-```yaml
-id: credential_hunt
-applicable_when:
-  defense_level: ["none", "weak"]
-attack_sequence:
-  - category: direct
-    weight: 0.5
-    techniques: ["secret_scan", "env_probe"]
-  - category: encoding
-    weight: 0.3
-    techniques: ["base64_secrets", "obfuscated_creds"]
-```
+## Guardrails
 
-### 3. Trust Boundary Analysis (Priority: 90)
-```yaml
-id: trust_boundary
-applicable_when:
-  defense_level: ["weak", "moderate"]
-attack_sequence:
-  - category: crescendo
-    weight: 0.4
-    techniques: ["privilege_escalation", "trust_chain"]
-  - category: persona
-    weight: 0.3
-    techniques: ["identity_bypass", "role_confusion"]
-```
-
-### 4. Input Validation Bypass (Priority: 85)
-```yaml
-id: input_bypass
-applicable_when:
-  defense_level: ["moderate", "strong"]
-  failed_categories: ["direct"]
-attack_sequence:
-  - category: encoding
-    weight: 0.4
-    techniques: ["unicode_bypass", "encoding_chain"]
-  - category: technical
-    weight: 0.3
-    techniques: ["format_injection", "boundary_overflow"]
-```
-
-### 5. Advanced Composite (Priority: 80)
-```yaml
-id: advanced_composite
-applicable_when:
-  defense_level: ["strong", "hardened"]
-  failed_categories: ["direct", "encoding", "persona"]
-attack_sequence:
-  - category: cot_hijack
-    weight: 0.25
-    techniques: ["logic_flow_manipulation"]
-  - category: crescendo
-    weight: 0.25
-    techniques: ["multi_step_chain"]
-  - category: reasoning_exploit
-    weight: 0.25
-    techniques: ["algorithm_weakness"]
-```
-
-## Defense Profile Output
-
-```typescript
-interface DefenseProfile {
-  level: "none" | "weak" | "moderate" | "strong" | "hardened";
-  confidence: number;
-  observedBehaviors: string[];
-  guardrails: {
-    type: string;
-    strength: number;
-    bypassed: boolean;
-    bypassMethod?: string;
-  }[];
-  weaknesses: {
-    category: AttackCategory;
-    description: string;
-    exploitability: number;
-  }[];
-  safePatterns: string[];
-  responsePatterns: {
-    pattern: string;
-    frequency: number;
-    defenseIndicator: boolean;
-  }[];
-}
-```
-
-## Finding Classification
-
-### Severity Levels
-
-| Status | Severity | Description |
-|--------|----------|-------------|
-| `complete` | CRITICAL | Full vulnerability exposed |
-| `substantial` | CRITICAL | Major security issue |
-| `fragment` | HIGH | Partial vulnerability |
-| `hint` | MEDIUM | Potential issue indicated |
-| `none` | LOW | No vulnerability found |
-
-### Finding Output
-
-```typescript
-interface Finding {
-  id: string;
-  turn: number;
-  timestamp: number;
-  extractedContent: string;
-  contentType: "vulnerability" | "weakness" | "smell" | "risk" | "unknown";
-  technique: string;
-  category: AttackCategory;
-  confidence: "high" | "medium" | "low";
-  evidence: string;
-  severity: "critical" | "high" | "medium" | "low";
-  verified: boolean;
-  recommendation: string;
-}
-```
-
-## Integration with Ralph Loop
-
-```yaml
-# Adversarial analysis as part of validation
-Step 7: VALIDATE
-  └── 7a. QUALITY-AUDITOR    (standard)
-  └── 7b. GATES              (standard)
-  └── 7c. ADVERSARIAL-CODE   (this skill)  <- Invoke for complexity >= 7
-  └── 7d. ADVERSARIAL-PLAN   (standard)
-```
-
-### Invocation
-
-**IMPORTANT**: Use available security agents instead of non-existent `adversarial-code-analyzer`.
-
-```yaml
-Task:
-  subagent_type: "security-auditor"
-  model: "opus"
-  prompt: |
-    TARGET_PATH: src/auth/
-    ANALYSIS_TYPE: security
-    CONFIG:
-      max_turns: 25
-      enable_crescendo: true
-      enable_best_of_n: true
-
-    Perform comprehensive security audit on the target codebase.
-```
-
-**Alternative for Cross-Validation**:
-```yaml
-# Use codex-cli for second opinion
-/codex-cli analyze security --target src/auth/
-
-# Or use gemini-cli for alternative analysis
-/gemini-cli search security vulnerabilities in src/auth/
-```
-
-## Output Format
-
-```json
-{
-  "scan_result": {
-    "overall_vulnerability": "medium",
-    "overall_score": 65,
-    "leak_status": "fragment",
-    "findings": [...],
-    "defense_profile": {...},
-    "recommendations": [...],
-    "summary": "Analysis identified 3 potential vulnerabilities..."
-  },
-  "analysis_tree": {
-    "nodes_explored": 47,
-    "max_depth_reached": 4,
-    "successful_paths": 3
-  },
-  "strategies_used": [
-    "recon_behavioral",
-    "credential_hunt",
-    "trust_boundary"
-  ]
-}
-```
-
-## CLI Commands
-
-**IMPORTANT**: Use available skills and tools for adversarial analysis:
-
-```bash
-# Use security-auditor agent (available)
-Task subagent_type=security-auditor model=opus "Perform comprehensive security audit of src/auth/"
-
-# Use codex-cli for cross-validation (available)
-/codex-cli analyze security --target src/auth/
-
-# Use gemini-cli for alternative analysis (available)
-/gemini-cli search "security vulnerabilities SQL injection XSS" --count 10
-
-# Manual grep-based security scanning
-grep -r "eval\|exec\|system\|innerHTML" src/
-grep -r "SELECT.*WHERE.*\+" src/  # SQL injection patterns
-grep -r "md5\|sha1" src/           # Weak hashing
-```
-
-## Best Practices
-
-1. **Start with Reconnaissance**: Always profile before attacking
-2. **Adapt to Defenses**: Each response teaches about the codebase
-3. **Layer Techniques**: Combine multiple vectors for hardened code
-4. **Verify Findings**: Always validate discoveries before reporting
-5. **Document Patterns**: Track successful techniques for future use
-
-## Attribution
-
-Strategy patterns adapted from [ZeroLeaks](https://github.com/ZeroLeaks/zeroleaks) AI security scanner architecture (FSL-1.1-Apache-2.0).
-
-
-## Action Reporting (v2.93.0)
-
-**Esta skill genera reportes automáticos completos** para trazabilidad:
-
-### Reporte Automático
-
-Cuando esta skill completa, se genera automáticamente:
-
-1. **En la conversación de Claude**: Resultados visibles
-2. **En el repositorio**: `docs/actions/adversarial/{timestamp}.md`
-3. **Metadatos JSON**: `.claude/metadata/actions/adversarial/{timestamp}.json`
-
-### Contenido del Reporte
-
-Cada reporte incluye:
-- ✅ **Summary**: Descripción de la tarea ejecutada
-- ✅ **Execution Details**: Duración, iteraciones, archivos modificados
-- ✅ **Results**: Errores encontrados, recomendaciones
-- ✅ **Next Steps**: Próximas acciones sugeridas
-
-### Ver Reportes Anteriores
-
-```bash
-# Listar todos los reportes de esta skill
-ls -lt docs/actions/adversarial/
-
-# Ver el reporte más reciente
-cat $(ls -t docs/actions/adversarial/*.md | head -1)
-
-# Buscar reportes fallidos
-grep -l "Status: FAILED" docs/actions/adversarial/*.md
-```
-
-### Generación Manual (Opcional)
-
-```bash
-source .claude/lib/action-report-lib.sh
-start_action_report "adversarial" "Task description"
-# ... ejecución ...
-complete_action_report "success" "Summary" "Recommendations"
-```
-
-### Referencias del Sistema
-
-- [Action Reports System](docs/actions/README.md) - Documentación completa
-- [action-report-lib.sh](.claude/lib/action-report-lib.sh) - Librería helper
-- [action-report-generator.sh](.claude/lib/action-report-generator.sh) - Generador
+- Do not mutate files during report-only/read-only adversarial review.
+- Do not route sensitive local material externally.
+- Do not ask subagents to request approvals directly.
+- Do not let external advisors decide for Codex main.
+- Do not create findings without evidence.
+- Do not recommend broad rewrites when a small validation or revert resolves the risk.
