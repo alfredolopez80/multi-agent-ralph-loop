@@ -2,6 +2,28 @@
 
 ---
 
+## [Unreleased]
+
+### Added - Cloud CLI destructive-command guard (git-safety-guard v2.70.0)
+
+- **AWS CLI / gcloud / gsutil / kubectl coverage** in `git-safety-guard.py` — 3 tiers per CLI:
+  - BLOCKED (`permissionDecision: "deny"`): bucket/project/instance/cluster/DB/IAM/KMS deletion, `kubectl delete namespace|--all|pv/pvc/crd`, recursive storage deletes; no escape hatch
+  - ASK (`permissionDecision: "ask"`, new tier): recoverable single-resource deletes (lambda/function delete, `kubectl delete pod`, single-object storage rm) — interactive user prompt
+  - SAFE: read-only verbs (`describe/list/get`, `kubectl get/logs`, `--dry-run`) allowed without friction
+- **gcloud `--quiet` escalator** — any `gcloud ... delete --quiet|-q` is treated as BLOCKED (the flag skips gcloud's own interactive confirmation)
+- **Anchored CLI prefixes** (`WRAPPER`/`AWS`/`GCLOUD`/`GSUTIL`/`KUBECTL`) — eliminate false positives (`echo "aws s3 rb --force"`, `grep 'gcloud delete' f`, `./aws-delete-helper.sh`) while still matching `sudo`/env-assignment/`xargs` wrappers
+- **New escape hatches** (ASK tier only): `AWS_DESTRUCTIVE_CONFIRMED`, `GCLOUD_DESTRUCTIVE_CONFIRMED`, `KUBECTL_DESTRUCTIVE_CONFIRMED`, `CLOUD_DESTRUCTIVE_CONFIRMED` (covers the 3 cloud CLIs, not git)
+- **`sh -c` wrapper detection** — `bash -c "aws s3 rb --force ..."` and equivalents are denied
+- **`tests/test_cloud_safety_guard.py`** — 136 parametrized cases (blocked/ask/safe/bypass/false-positives/escape hatches)
+
+### Fixed
+
+- **Escape-hatch bypass of BLOCKED tier** (introduced in a5faf094): `GIT_FORCE_PUSH_CONFIRMED=1` was evaluated before BLOCKED_PATTERNS and disabled the entire guard, including `git reset --hard` and `rm -rf`. Env vars now only pre-approve the CONFIRMATION tier; BLOCKED is evaluated first and has no escape hatch
+- **`permission-guard.sh` v1.1.0** — propagates `permissionDecision: "ask"` from the safety guard (previously only `deny` was short-circuited, which would have silently allowed ask-tier commands)
+- **Command-substitution detector** extended to cloud CLI verbs (`$(gcloud projects delete ...)`, backticks)
+
+---
+
 ## [3.0.0] - 2026-04-05
 
 ### Added - v3.0 Unified Release

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# permission-guard.sh — Unified permission pipeline (v1.0)
+# permission-guard.sh — Unified permission pipeline (v1.1)
 # Hook: PreToolUse (Bash|Edit|Write + Agent|Task)
-# VERSION: 1.0.0
+# VERSION: 1.1.0
+# v1.1.0: propagate permissionDecision "ask" from git-safety-guard.py
+#         (cloud CLI confirmation tier) in addition to "deny"
 #
 # Consolidates: git-safety-guard.py + repo-boundary-guard.sh
 # Strategy: Thin wrapper that dispatches stdin to original guards with
@@ -39,7 +41,9 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
 # Only relevant for Bash tool invocations.
 if [[ "$TOOL_NAME" == "Bash" ]]; then
     SAFETY_RESULT=$(echo "$INPUT" | python3 "$HOOKS_DIR/git-safety-guard.py" 2>/dev/null || true)
-    if echo "$SAFETY_RESULT" | jq -e '.hookSpecificOutput.permissionDecision == "deny"' >/dev/null 2>&1; then
+    # v1.1.0: short-circuit on "deny" AND "ask" — swallowing "ask" would
+    # silently allow destructive cloud CLI operations awaiting confirmation
+    if echo "$SAFETY_RESULT" | jq -e '.hookSpecificOutput.permissionDecision == "deny" or .hookSpecificOutput.permissionDecision == "ask"' >/dev/null 2>&1; then
         trap - ERR EXIT
         echo "$SAFETY_RESULT"
         exit 0
