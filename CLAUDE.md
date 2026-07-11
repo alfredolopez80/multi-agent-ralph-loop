@@ -111,7 +111,7 @@ Rule: `.claude/rules/browser-automation.md`
 
 | Hook | Purpose | Trigger |
 |------|---------|---------|
-| `git-safety-guard.py` | Blocks rm -rf, git reset --hard, command chaining | PreToolUse (Bash) |
+| `git-safety-guard.py` | Blocks rm -rf, git reset --hard, command chaining, and destructive aws/gcloud/gsutil/kubectl ops (deny + ask tiers, v2.70.0) | PreToolUse (Bash) |
 | `repo-boundary-guard.sh` | Prevents operations outside current repo | PreToolUse (Bash) |
 | `audit-secrets.js` | Audit logging for 20+ secret patterns | PostToolUse |
 | `teammate-idle-quality-gate.sh` | Blocks idle with secrets/debug code (CWE-798, CWE-321) | TeammateIdle |
@@ -234,7 +234,7 @@ These hooks must be registered in settings.json:
 
 | Hook | Event | Purpose |
 |------|-------|---------|
-| `git-safety-guard.py` | PreToolUse (Bash) | Blocks rm -rf, git reset --hard |
+| `git-safety-guard.py` | PreToolUse (Bash) | Blocks rm -rf, git reset --hard, destructive aws/gcloud/kubectl |
 | `repo-boundary-guard.sh` | PreToolUse (Bash) | Prevents work outside repo |
 | `learning-gate.sh` | PreToolUse (Task) | Auto-learning trigger |
 | `status-auto-check.sh` | PostToolUse | Status updates |
