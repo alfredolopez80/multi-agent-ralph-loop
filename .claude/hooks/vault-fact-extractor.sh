@@ -51,5 +51,5 @@ if [[ -x "$SEMANTIC_EXTRACTOR" ]]; then
 fi
 
 # Worker-mode exit: clear trap and return quietly (parent already responded).
-trap - EXIT
+trap - ERR EXIT
 exit 0

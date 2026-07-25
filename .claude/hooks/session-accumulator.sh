@@ -76,5 +76,5 @@ esac
 } >> "$BUFFER_FILE" 2>/dev/null || true
 
 # Worker mode: clear trap and exit quietly (parent already responded)
-trap - EXIT
+trap - ERR EXIT
 exit 0

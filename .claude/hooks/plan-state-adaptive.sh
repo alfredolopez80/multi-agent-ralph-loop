@@ -25,7 +25,19 @@ set -euo pipefail
 
 # Error trap for guaranteed JSON output (v2.62.3)
 # v2.87.0 FIX: UserPromptSubmit uses {"continue": true} format, not {}
-trap 'echo "{\"continue\": true}"' ERR EXIT
+# BUG-3: `trap ... ERR EXIT` emitted twice. Under `set -e` a failing command
+# fires ERR (emits JSON) and then EXIT (emits again); stdout then carried two
+# concatenated objects and Claude Code rejected the payload with
+# "Hook JSON output validation failed - (root): Invalid input". emit_json makes
+# emission idempotent, and every `trap -` clears ERR as well as EXIT.
+readonly DEFAULT_HOOK_JSON='{"continue": true}'
+_HOOK_EMITTED=0
+emit_json() {
+    [ "${_HOOK_EMITTED}" -eq 1 ] && return 0
+    _HOOK_EMITTED=1
+    printf '%s\n' "${1:-$DEFAULT_HOOK_JSON}"
+}
+trap 'emit_json' ERR EXIT
 
 umask 077
 
@@ -284,8 +296,8 @@ main() {
 
     if [[ -z "$prompt" ]] || [[ "$prompt" == "null" ]]; then
         log "No prompt provided, skipping"
-        trap - EXIT  # CRIT-007: Clear trap before explicit output
-        echo '{"continue": true}'
+        trap - ERR EXIT  # CRIT-007: Clear trap before explicit output
+        emit_json '{"continue": true}'
         exit 0
     fi
 
@@ -310,8 +322,8 @@ main() {
         if [[ "$file_age_minutes" -lt "$PLAN_STALENESS_MINUTES" ]]; then
             if [[ "$plan_status" == "pending" ]] || [[ "$plan_status" == "in_progress" ]]; then
                 log "Active plan exists (age=${file_age_minutes}m, status=$plan_status), skipping"
-                trap - EXIT  # CRIT-007: Clear trap before explicit output
-                echo '{}'
+                trap - ERR EXIT  # CRIT-007: Clear trap before explicit output
+                emit_json '{}'
                 exit 0
             fi
         fi
@@ -328,8 +340,8 @@ main() {
     # For ORCHESTRATOR mode, defer to the orchestrator workflow
     if [[ "$complexity_mode" == "ORCHESTRATOR" ]]; then
         log "Orchestrator task detected, deferring plan-state creation"
-        trap - EXIT  # CRIT-007: Clear trap before explicit output
-        echo '{"continue": true}'
+        trap - ERR EXIT  # CRIT-007: Clear trap before explicit output
+        emit_json '{"continue": true}'
         exit 0
     fi
 
@@ -355,13 +367,13 @@ main() {
                 *) mode_emoji="🔄" ;;
             esac
             log "Plan ready: $mode_emoji $complexity_mode mode"
-            trap - EXIT  # CRIT-007: Clear trap before explicit output
-            echo '{}'
+            trap - ERR EXIT  # CRIT-007: Clear trap before explicit output
+            emit_json '{}'
         fi
     else
         log "Failed to create plan-state"
-        trap - EXIT  # CRIT-007: Clear trap before explicit output
-        echo '{"continue": true}'
+        trap - ERR EXIT  # CRIT-007: Clear trap before explicit output
+        emit_json '{"continue": true}'
     fi
 }
 

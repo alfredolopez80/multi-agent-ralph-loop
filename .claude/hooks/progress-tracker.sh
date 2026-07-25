@@ -74,7 +74,7 @@ case "$TOOL_NAME" in
         ;;
     *)
         # Skip non-relevant tools silently
-        trap - EXIT  # CRIT-006: Clear trap before explicit output
+        trap - ERR EXIT  # CRIT-006: Clear trap before explicit output
         echo '{"continue": true}'
         exit 0
         ;;
@@ -99,7 +99,7 @@ PROGRESS_FILE="${PROJECT_DIR}/.claude/progress.md"
 # random CWDs like skill subdirs — prevents contamination).
 if [[ ! -d "${PROJECT_DIR}/.claude" ]]; then
     log "INFO" "Skipping progress tracking: no .claude/ at $PROJECT_DIR"
-    trap - EXIT
+    trap - ERR EXIT
     echo '{"continue": true}'
     exit 0
 fi
@@ -238,5 +238,5 @@ main() {
 main
 
 # Clear trap and exit quietly
-trap - EXIT
+trap - ERR EXIT
 exit 0

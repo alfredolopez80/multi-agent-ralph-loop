@@ -15,13 +15,25 @@ umask 077
 set -euo pipefail
 
 # Error trap - hooks should never block workflow
-trap 'echo "{\"continue\": true}"' ERR EXIT
+# BUG-3: `trap ... ERR EXIT` emitted twice. Under `set -e` a failing command
+# fires ERR (emits JSON) and then EXIT (emits again); stdout then carried two
+# concatenated objects and Claude Code rejected the payload with
+# "Hook JSON output validation failed - (root): Invalid input". emit_json makes
+# emission idempotent, and every `trap -` clears ERR as well as EXIT.
+readonly DEFAULT_HOOK_JSON='{"continue": true}'
+_HOOK_EMITTED=0
+emit_json() {
+    [ "${_HOOK_EMITTED}" -eq 1 ] && return 0
+    _HOOK_EMITTED=1
+    printf '%s\n' "${1:-$DEFAULT_HOOK_JSON}"
+}
+trap 'emit_json' ERR EXIT
 
 # Load report generator library
 REPORT_GENERATOR=".claude/lib/action-report-generator.sh"
 if [[ ! -f "$REPORT_GENERATOR" ]]; then
     trap - ERR EXIT  # clear trap first so it does not emit a SECOND JSON object
-    echo '{"continue": true}'
+    emit_json '{"continue": true}'
     exit 0
 fi
 
@@ -47,8 +59,8 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"' 2>/dev/null || ech
 
 # Only track Task tool completions (skill invocations)
 if [[ "$TOOL_NAME" != "Task" ]]; then
-    trap - EXIT
-    echo '{"continue": true}'
+    trap - ERR EXIT
+    emit_json '{"continue": true}'
     exit 0
 fi
 
@@ -78,8 +90,8 @@ SKILL_NAME="${SKILL_MAPPING[$SUBAGENT_TYPE]:-$SUBAGENT_TYPE}"
 # Skip if unknown skill
 if [[ -z "$SKILL_NAME" || "$SKILL_NAME" == "null" ]]; then
     log "Unknown subagent type: $SUBAGENT_TYPE - skipping report"
-    trap - EXIT
-    echo '{"continue": true}'
+    trap - ERR EXIT
+    emit_json '{"continue": true}'
     exit 0
 fi
 
@@ -126,5 +138,5 @@ log "Generating action report for skill: $SKILL_NAME"
 log "Action report generated: $SKILL_NAME ($STATUS)"
 
 # Clear trap and output hook protocol
-trap - EXIT
-echo '{"continue": true}'
+trap - ERR EXIT
+emit_json '{"continue": true}'

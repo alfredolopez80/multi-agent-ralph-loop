@@ -44,7 +44,7 @@ TRANSCRIPT="${HOME}/.claude/projects/${CLAUDE_PROJECT_ID:-default}/${SESSION_ID}
 
 # Skip if transcript doesn't exist or is too short
 if [[ ! -f "$TRANSCRIPT" ]]; then
-    trap - EXIT
+    trap - ERR EXIT
     output_json
     exit 0
 fi
@@ -54,7 +54,7 @@ MSG_COUNT=$(wc -l < "$TRANSCRIPT" 2>/dev/null || echo "0")
 
 # Only analyze sessions with 10+ messages
 if [[ $MSG_COUNT -lt 10 ]]; then
-    trap - EXIT
+    trap - ERR EXIT
     output_json
     exit 0
 fi
@@ -173,5 +173,5 @@ EOF
     fi
 fi
 
-trap - EXIT
+trap - ERR EXIT
 output_json

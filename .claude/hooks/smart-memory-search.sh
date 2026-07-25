@@ -785,7 +785,7 @@ CONTEXT_MSG="SMART_MEMORY_SEARCH v3.4.0 complete:
 # via a dedicated source if needed in the future.
 
 # CRIT-003b: Clear trap before explicit JSON output to prevent duplicate output
-trap - EXIT ERR INT TERM
+trap - ERR EXIT INT TERM
 rm -rf "$TEMP_DIR" 2>/dev/null || true  # Manual cleanup since we cleared trap
 
 # SEC-007: Use jq for safe JSON construction (avoid sed escaping vulnerabilities)

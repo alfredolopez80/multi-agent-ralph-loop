@@ -55,7 +55,7 @@ PROJECT_MEMORY="${SCRIPTS_DIR}/project_memory.py"
 
 if [[ ! -f "$PROJECT_MEMORY" ]]; then
   log "project_memory.py not found at $PROJECT_MEMORY — skipping"
-  trap - EXIT
+  trap - ERR EXIT
   exit 0
 fi
 
@@ -67,5 +67,5 @@ else
   log "projection failed (non-critical)"
 fi
 
-trap - EXIT
+trap - ERR EXIT
 exit 0

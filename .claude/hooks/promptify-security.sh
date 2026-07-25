@@ -195,7 +195,7 @@ rotate_audit_log() {
     # Re-check file still exists and get size (might have changed while waiting)
     if [[ ! -f "$AUDIT_LOG" ]]; then
         rmdir "$LOCK_FILE" 2>/dev/null || true
-        trap - EXIT
+        trap - ERR EXIT
         return 0
     fi
 
@@ -220,7 +220,7 @@ rotate_audit_log() {
 
     # Release lock
     rmdir "$LOCK_FILE" 2>/dev/null || true
-    trap - EXIT
+    trap - ERR EXIT
 }
 
 # =============================================================================

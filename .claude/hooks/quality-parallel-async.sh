@@ -212,4 +212,4 @@ cat <<EOF
 EOF
 
 # Clear EXIT trap to prevent duplicate JSON (CRIT-002 fix)
-trap - EXIT
+trap - ERR EXIT

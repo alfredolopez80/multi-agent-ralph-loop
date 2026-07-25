@@ -39,11 +39,24 @@ if [[ -f "$DOMAIN_CLASSIFIER" ]]; then
     source "$DOMAIN_CLASSIFIER"
 fi
 
-# SEC-034: Guaranteed JSON output on any error
-output_json() {
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+# SEC-034: Guaranteed JSON output on any error.
+#
+# The trap is armed on ERR *and* EXIT. Under `set -e` a failing command fires
+# ERR (emitting JSON) and then EXIT (emitting again), so stdout carried two
+# concatenated objects and Claude Code rejected the whole payload with
+# "Hook JSON output validation failed — (root): Invalid input". For a PreToolUse
+# hook that rejection is treated as a block, which is what stopped Task
+# launches. _HOOK_EMITTED makes emission idempotent; every explicit output site
+# clears BOTH signals (`trap - ERR EXIT`, never `trap - ERR EXIT` alone).
+readonly DEFAULT_ALLOW_JSON='{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+_HOOK_EMITTED=0
+emit_json() {
+    [ "${_HOOK_EMITTED}" -eq 1 ] && return 0
+    _HOOK_EMITTED=1
+    printf '%s\n' "${1:-$DEFAULT_ALLOW_JSON}"
 }
-trap 'output_json' ERR EXIT
+output_json() { emit_json; }
+trap 'emit_json' ERR EXIT
 
 # SEC-110: Redact sensitive data before logging
 redact_sensitive() {
@@ -61,7 +74,7 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
 
 # Only process Task tool
 if [[ "$TOOL_NAME" != "Task" ]]; then
-    trap - EXIT; echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'; exit 0
+    trap - ERR EXIT; emit_json; exit 0
 fi
 
 # Check if this is an orchestrator-related task
@@ -72,7 +85,7 @@ PROMPT_LOWER=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]')
 # Check for orchestrator or planning context
 if [[ "$SUBAGENT_TYPE" != "orchestrator" ]] && [[ "$SUBAGENT_TYPE" != "Plan" ]]; then
     if ! echo "$PROMPT_LOWER" | grep -qE 'implement|build|create|develop|design'; then
-        trap - EXIT; echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'; exit 0
+        trap - ERR EXIT; emit_json; exit 0
     fi
 fi
 
@@ -297,7 +310,7 @@ fi
 
 # If sufficient knowledge, skip learning
 if [[ "$SHOULD_LEARN" != "true" ]]; then
-    trap - EXIT; echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'; exit 0
+    trap - ERR EXIT; emit_json; exit 0
 fi
 
 # Determine learning recommendation
@@ -481,7 +494,9 @@ echo "[$(date -Iseconds)] Learning context written to: $CONTEXT_FILE" >> "${LOG_
 PLAN_STATE_TEMP="${PLAN_STATE}.tmp.$$"
 if [[ -f "$PLAN_STATE" ]]; then
     acquire_plan_state_lock || true
-    trap release_plan_state_lock EXIT
+    # Keep the JSON guarantee while the lock is held: releasing the lock must
+    # not silently disarm emit_json.
+    trap 'release_plan_state_lock; emit_json' ERR EXIT
     if jq --argjson recommended true \
        --arg reason "$LEARN_REASON" \
        --arg domain "$DOMAIN" \
@@ -505,7 +520,7 @@ if [[ -f "$PLAN_STATE" ]]; then
         echo "[$(date -Iseconds)] Updated learning_state in plan-state.json" >> "${LOG_DIR}/auto-learn-$(date +%Y%m%d).log" 2>&1
     fi
     release_plan_state_lock
-    trap - EXIT
+    trap 'emit_json' ERR EXIT
 fi
 
 # Build learning recommendation
@@ -536,11 +551,12 @@ if [[ -n "$ORIGINAL_PROMPT" ]]; then
     if [[ -n "$NEW_TOOL_INPUT" ]] && [[ "$NEW_TOOL_INPUT" != "null" ]]; then
         echo "[$(date -Iseconds)] Injecting learning recommendation into Task prompt" >> "${LOG_DIR}/auto-learn-$(date +%Y%m%d).log" 2>&1
         # v2.81.2: FIX JSON schema - use hookSpecificOutput.updatedInput for PreToolUse
-        jq -n --argjson tool_input "$NEW_TOOL_INPUT" '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "updatedInput": $tool_input}}'
-        trap - EXIT; exit 0
+        trap - ERR EXIT
+        emit_json "$(jq -nc --argjson tool_input "$NEW_TOOL_INPUT" '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "updatedInput": $tool_input}}')"
+        exit 0
     fi
 fi
 
 # Fallback
 echo "[$(date -Iseconds)] Could not inject, recommendation in: $CONTEXT_FILE" >> "${LOG_DIR}/auto-learn-$(date +%Y%m%d).log" 2>&1
-trap - EXIT; echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'; exit 0
+trap - ERR EXIT; emit_json; exit 0

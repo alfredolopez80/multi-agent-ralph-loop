@@ -26,8 +26,21 @@ set -euo pipefail
 # Error trap: Only set when running directly (not when sourced by timeout subshell)
 # This prevents duplicate JSON from nested bash invocations
 # v2.87.0 FIX: Use hookSpecificOutput wrapper for PreToolUse hooks
+# BUG-3: `trap ... ERR EXIT` emitted twice. Under `set -e` a failing command
+# fires ERR (emits JSON) and then EXIT (emits again); stdout then carried two
+# concatenated objects and Claude Code rejected the payload with
+# "Hook JSON output validation failed - (root): Invalid input", which a
+# PreToolUse hook reports as a block. emit_json makes emission idempotent, and
+# every `trap -` clears ERR as well as EXIT.
+readonly DEFAULT_HOOK_JSON='{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+_HOOK_EMITTED=0
+emit_json() {
+    [ "${_HOOK_EMITTED}" -eq 1 ] && return 0
+    _HOOK_EMITTED=1
+    printf '%s\n' "${1:-$DEFAULT_HOOK_JSON}"
+}
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    trap 'echo "{\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"allow\"}}"' ERR EXIT
+    trap 'emit_json' ERR EXIT
 fi
 
 # Configuration
@@ -330,8 +343,8 @@ except:
     if [[ -z "$skill_name" ]]; then
         log_error "No skill name provided in hook input"
         # v2.69.0: Removed stderr output (causes hook error warnings in UI)
-        trap - EXIT  # CRIT-004: Clear trap before explicit output
-        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+        trap - ERR EXIT  # CRIT-004: Clear trap before explicit output
+        emit_json '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
         exit 0  # Don't block if no skill specified
     fi
 
@@ -340,8 +353,8 @@ except:
 
     if [[ -z "$skill_name" ]]; then
         log_error "Skill name became empty after sanitization (contained only invalid characters)"
-        trap - EXIT  # CRIT-004: Clear trap before explicit output
-        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+        trap - ERR EXIT  # CRIT-004: Clear trap before explicit output
+        emit_json '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
         exit 0
     fi
 
@@ -349,13 +362,13 @@ except:
     # Source this script to make functions available
     if timeout "$VALIDATION_TIMEOUT" bash -c "source '${BASH_SOURCE[0]}' && validate_skill '$skill_name'"; then
         log_success "Validation completed successfully for: $skill_name"
-        trap - EXIT  # CRIT-004: Clear trap before explicit output
-        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+        trap - ERR EXIT  # CRIT-004: Clear trap before explicit output
+        emit_json '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
         exit 0
     else
         log_error "Validation failed or timed out for: $skill_name"
-        trap - EXIT  # CRIT-004: Clear trap before explicit output
-        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "Skill validation failed"}}'
+        trap - ERR EXIT  # CRIT-004: Clear trap before explicit output
+        emit_json '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "Skill validation failed"}}'
         exit 1  # Block skill execution on validation failure
     fi
 }
