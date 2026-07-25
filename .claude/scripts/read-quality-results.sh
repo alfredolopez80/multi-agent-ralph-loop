@@ -37,7 +37,11 @@ is_check_complete() {
 # Wait for all quality checks to complete
 wait_for_completion() {
     local run_id="$1"
-    local checks=("sec-context" "code-review" "deslop" "stop-slop")
+    # Must stay in sync with the checks launched by
+    # .claude/hooks/quality-parallel-async.sh. sec-context / code-review /
+    # deslop were dropped there: their scripts were archived in d066c63 and
+    # never ran, so polling for them only ever timed out.
+    local checks=("stop-slop")
     local elapsed=0
 
     log "Waiting for quality checks to complete (timeout: ${POLL_TIMEOUT}s)..."
@@ -78,7 +82,8 @@ aggregate_results() {
 }
 EOF
 
-    local checks=("sec-context" "code-review" "deslop" "stop-slop")
+    # Keep in sync with wait_for_completion() and quality-parallel-async.sh.
+    local checks=("stop-slop")
 
     for check in "${checks[@]}"; do
         local result_file="${RESULTS_DIR}/${check}_${run_id}.json"
