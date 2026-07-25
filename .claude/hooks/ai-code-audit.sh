@@ -49,7 +49,19 @@ log() {
 
 # Get session ID
 get_session_id() {
-    echo "${CLAUDE_SESSION_ID:-$$}"
+    # BUG-6: CLAUDE_SESSION_ID is not exported to hooks, so the old
+    # `${CLAUDE_SESSION_ID:-$$}` fallback used the hook's own PID — a new value
+    # on every invocation. Markers were written under a key that could never be
+    # read back, so per-session deduplication never worked at all.
+    # The session id comes from the hook's stdin payload; the fallback is a
+    # stable cwd+date digest, never $$.
+    local sid
+    sid=$(printf '%s' "${INPUT:-}" | jq -r '.session_id // empty' 2>/dev/null || true)
+    if [[ -z "$sid" ]]; then
+        sid="cwd-$(printf '%s|%s' "$PWD" "$(date -u +%Y%m%d)" | shasum -a 256 | cut -c1-16)"
+    fi
+    # The value becomes part of a filename: strip anything that is not safe.
+    printf '%s' "$sid" | tr -cd 'a-zA-Z0-9_-' | head -c 64
 }
 
 # Check cooldown
