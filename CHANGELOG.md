@@ -22,6 +22,25 @@
 - **`permission-guard.sh` v1.1.0** — propagates `permissionDecision: "ask"` from the safety guard (previously only `deny` was short-circuited, which would have silently allowed ask-tier commands)
 - **Command-substitution detector** extended to cloud CLI verbs (`$(gcloud projects delete ...)`, backticks)
 
+### Fixed - Hook JSON output and jq evaluation bugs
+
+Hooks that blocked `Task` (subagent) launches, plus the guards that were supposed to catch them.
+
+- **Double JSON emission from `trap ... ERR EXIT`** — a hook armed on both signals emits once on `ERR` and again on `EXIT` when `set -e` terminates it, so stdout carries two concatenated objects; the runtime reports `Hook JSON output validation failed — (root): Invalid input`, which for a `PreToolUse` hook is treated as a deny. Fixed with an idempotent `_HOOK_EMITTED` guard in `orchestrator-auto-learn.sh`, `continuous-learning.sh`, `progress-tracker.sh`, `dream-consolidate.sh`, `memory-projection.sh`, `vault-fact-extractor.sh`, `action-report-tracker.sh`, `checkpoint-smart-save.sh`, `inject-session-context.sh`, `plan-state-adaptive.sh`, `plan-state-lifecycle.sh`, `skill-validator.sh`, and — found later by the new hang/block probe — `fast-path-check.sh` and `recursive-decompose.sh`. Every `trap - EXIT` is now `trap - ERR EXIT`, since clearing only `EXIT` leaves `ERR` armed
+- **`jq '// true'` swallows an explicit `false`** — `//` is an alternative over *falsy* values, not over null, so `false // true` is `true` and blocking mode could not be disabled from config. Replaced with an explicit null test across 8 boolean reads in `orchestrator-auto-learn.sh`, `command-router.sh`, `ralph-subagent-stop.sh`, `learning-gate-enforce.sh`, `procedural-inject-fixed.sh`, `semantic-realtime-extractor.sh`, `decision-extractor.sh`
+- **`jq '[.items | length] // 0'` returns a pretty-printed array** — `count` held the literal `[\n 100\n]`, so `[: integer expected` and `total_results + count: syntax error` killed every curator discovery run. Fixed in the installed `~/.ralph/curator/scripts/curator-discovery.sh` (untracked drift, reported) and guarded repo-wide
+- **Malformed JSON literal in `lsa-pre-step.sh`** — the `PreToolUse` trap emitted `{"hookSpecificOutput": {...}` with two `{` and one `}`, so every failure path produced invalid JSON. Literal repaired, the `plan_state_update` failure path now fails open, and `additionalContext` is built with `jq -nc`
+- **Quality checks pointing at archived scripts** — `quality-parallel-async.sh` and `read-quality-results.sh` referenced `sec-context-validate.sh`, `quality-gates-v2.sh` and `deslop-auto-clean.sh`, none of which exist; every aggregated report carried permanently failed checks. References removed and check names aligned with result-file basenames
+- **Session dedup keyed on the hook's own PID** — `${CLAUDE_SESSION_ID:-$$}` always fell through to `$$`, a new value per invocation, so "already triggered this session" markers could never be read back. The key now comes from `.session_id` on stdin with a stable cwd+date fallback, and is sanitised because it is interpolated into a marker path
+- **`ralph-subagent-stop.sh` read only camelCase field names** — it resolved `.subagentId` while `ralph-subagent-start.sh` registers state under `.agent_id`, so it looked for a file named `unknown` and silently skipped all of its checks. Now uses the same fallback chain
+- **`action-report-lib.sh` was syntactically invalid** — an unterminated quote in three `append_progress` calls made the whole library fail to parse, and `((VAR++))` on counters initialised to 0 returned exit status 1, killing any caller under `set -e`
+- **Format guards certified the invalid `{"decision": "approve"}`** — `validate-hook-formats.sh` aborted before checking a single hook (same `((VAR++))` defect) and reported the forbidden payload as a PASS; `test_hook_json_format_regression.py` accepted it and its failure message recommended it. Both now enforce the documented contract: allow is a silent `exit 0`, block is `{"decision": "block"}`
+- **Test suites that never executed an assertion** — both suites in `tests/stop-hook/` died at their first `((TESTS_PASSED++))`, printed a clean-looking run, and had a hardcoded developer path for `REPO_ROOT`; `test_anti_rationalization_gate.sh` asserted the invalid `approve` payload on five allow paths; `test-worktree-utils.sh` grepped a relocated file and asserted the ambient checkout is not a git worktree
+
+Added: `tests/hooks/test_no_hook_hangs_or_blocks.sh` (every hook terminates, emits at most one JSON object, and never denies a benign `Task` launch — including under degenerate stdin), `tests/hooks/test_single_json_emission.sh`, `tests/hooks/test_quality_check_registry.sh`, `tests/hooks/test_session_dedup_key.sh`, `tests/test_jq_scalar_count_regression.py`, `tests/test_jq_boolean_default_regression.py`.
+
+Reinstall required: hooks are executed from their installed location, so `~/.claude/` and `~/.ralph/` must be refreshed before the running system picks these up.
+
 ---
 
 ## [3.0.0] - 2026-04-05
