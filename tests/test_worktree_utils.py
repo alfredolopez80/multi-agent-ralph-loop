@@ -47,9 +47,16 @@ export CLAUDE_PROJECT_DIR="{repo}"
 source "{WORKTREE_UTILS}" 2>/dev/null || {{ echo "FATAL: cannot source worktree-utils.sh" >&2; exit 99; }}
 {script_body}
 """
+    # cwd must be the fixture repo. is_worktree() and the git-based fallbacks in
+    # get_project_root()/get_main_repo() resolve through `git rev-parse` on the
+    # current directory, not through CLAUDE_PROJECT_DIR — so without this the
+    # snippet inspected whatever directory pytest happened to run from. That made
+    # test_is_worktree_false fail whenever the suite ran from a git worktree, which
+    # is how this project is normally developed.
     result = subprocess.run(
         ["bash", "-c", full_script],
         capture_output=True, text=True, timeout=30,
+        cwd=str(repo),
         env={**os.environ, **(env or {})},
     )
     return result
