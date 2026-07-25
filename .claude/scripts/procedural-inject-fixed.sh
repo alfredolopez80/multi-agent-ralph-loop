@@ -93,7 +93,8 @@ TRACK_USAGE=true
 if [[ -f "$CONFIG_FILE" ]]; then
     MAX_RULES=$(jq -r '.procedural.max_rules_injection // 5' "$CONFIG_FILE" 2>/dev/null || echo "5")
     MIN_CONFIDENCE=$(jq -r '.procedural.min_confidence // 0.7' "$CONFIG_FILE" 2>/dev/null || echo "0.7")
-    TRACK_USAGE=$(jq -r '.feedback_loop.track_usage // true' "$CONFIG_FILE" 2>/dev/null || echo "true")
+    # `false // true` is true in jq, so `//` must not be used for boolean defaults.
+    TRACK_USAGE=$(jq -r 'if (.feedback_loop.track_usage) == null then true else (.feedback_loop.track_usage) end' "$CONFIG_FILE" 2>/dev/null || echo "true")
 fi
 
 # Get prompt content to match against rules

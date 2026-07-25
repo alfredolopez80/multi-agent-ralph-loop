@@ -80,7 +80,8 @@ fi
 # Check 3: Check for quality gate failures
 QUALITY_STATE="$STATE_DIR/$SESSION_ID/quality-gate.json"
 if [[ -f "$QUALITY_STATE" ]]; then
-    GATE_PASSED=$(jq -r '.passed // true' "$QUALITY_STATE" 2>/dev/null)
+    # `false // true` is true in jq: a failed gate would have read as passed.
+    GATE_PASSED=$(jq -r 'if (.passed) == null then true else (.passed) end' "$QUALITY_STATE" 2>/dev/null)
     if [[ "$GATE_PASSED" == "false" ]]; then
         GATE_REASON=$(jq -r '.reason // "Unknown quality issue"' "$QUALITY_STATE" 2>/dev/null)
         log "BLOCK: Quality gate failed - $GATE_REASON"

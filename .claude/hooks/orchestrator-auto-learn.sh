@@ -327,7 +327,9 @@ AUTO_LEARN_BLOCKING=true
 if [[ -f "$CONFIG_FILE" ]]; then
     acquire_plan_state_lock || true
     AUTO_LEARN_ENABLED=$(jq -r '.auto_learn.enabled // false' "$CONFIG_FILE" 2>/dev/null || echo "false")
-    AUTO_LEARN_BLOCKING=$(jq -r '.auto_learn.blocking // true' "$CONFIG_FILE" 2>/dev/null || echo "true")
+    # jq's `//` is an alternative over *falsy* values, not over null, so
+    # `false // true` yields true and `"blocking": false` could never be honoured.
+    AUTO_LEARN_BLOCKING=$(jq -r 'if (.auto_learn.blocking) == null then true else (.auto_learn.blocking) end' "$CONFIG_FILE" 2>/dev/null || echo "true")
     release_plan_state_lock
 fi
 
