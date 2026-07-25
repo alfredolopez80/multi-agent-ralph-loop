@@ -48,7 +48,22 @@ log() {
 
 log "SubagentStop: ${SUBAGENT_ID} (${SUBAGENT_TYPE}) session=${SESSION_ID}"
 
-# Check 1: Verify subagent has no incomplete tasks
+# Check 1: Verify subagent has no incomplete tasks.
+#
+# DORMANT BY DESIGN — do not "fix" this by broadening the status below.
+# The "working" vocabulary belongs to the Agent Teams teammate files that the
+# Claude Code runtime owns (see ralph-stop-quality-gate.sh, which reads
+# ~/.claude/teams/*/members/*.json). This check instead reads repo-owned state,
+# whose only producer is ralph-subagent-start.sh, and that writes "active".
+# So this branch never fires today.
+#
+# Broadening it to "active" would block EVERY subagent stop: nothing transitions
+# the status between SubagentStart and SubagentStop, and this hook has no
+# bounded-block valve, so a wrong block here deadlocks the subagent permanently.
+# The live guard for the same intent is Check 2 below, which reads the assigned
+# task status ("pending"/"in_progress") that the task system actually writes.
+# Activating this check safely requires BOTH a producer that writes an in-flight
+# status and a bounded-block valve. tests/hook-integration/ pins this invariant.
 SUBAGENT_STATE="$STATE_DIR/$SESSION_ID/subagents/${SUBAGENT_ID}.json"
 if [[ -f "$SUBAGENT_STATE" ]]; then
     STATUS=$(jq -r '.status // "unknown"' "$SUBAGENT_STATE" 2>/dev/null || echo "unknown")

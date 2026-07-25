@@ -66,19 +66,45 @@ test_ralph_subagent_stop() {
         echo -e "  ${RED}✗ ralph-subagent-stop.sh not found or not executable${NC}"
     fi
 
-    # Test 1.2: Subagent with incomplete task should block
-    print_test "Blocks stop when subagent has incomplete task"
+    # Test 1.2: Subagent with an incomplete assigned task should block.
+    #
+    # This used to fabricate {"status": "working"}, a value no producer in this
+    # repo ever writes: ralph-subagent-start.sh writes "active". That made the
+    # test certify a branch that cannot occur in production. Drive the live guard
+    # (Check 2, assigned task status) with the vocabulary production really uses.
+    print_test "Blocks stop when subagent has incomplete assigned task"
     mkdir -p "$STATE_DIR/test-session/subagents"
-    echo '{"status": "working", "task": "implement-auth"}' > "$STATE_DIR/test-session/subagents/test-subagent.json"
+    echo '{"status": "active", "task": "implement-auth"}' > "$STATE_DIR/test-session/subagents/test-subagent.json"
+    mkdir -p "$TEAMS_DIR/test-team" "$HOME/.claude/tasks/test-team"
+    echo '{"name": "test-team"}' > "$TEAMS_DIR/test-team/config.json"
+    echo '{"status": "in_progress"}' > "$HOME/.claude/tasks/test-team/implement-auth.json"
 
-    RESULT=$(echo '{"subagentId": "test-subagent", "subagentType": "ralph-coder", "sessionId": "test-session"}' | \
+    RESULT=$(echo '{"agent_id": "test-subagent", "agent_type": "ralph-coder", "sessionId": "test-session", "taskId": "implement-auth"}' | \
         "$REPO_ROOT/.claude/hooks/ralph-subagent-stop.sh" 2>/dev/null || true)
 
     if echo "$RESULT" | grep -q '"decision": "block"'; then
         pass
     else
         fail
-        echo -e "  ${RED}✗ Should block when subagent working${NC}"
+        echo -e "  ${RED}✗ Should block while the assigned task is in_progress${NC}"
+    fi
+
+    # Test 1.2b: "active" must never be treated as "still working".
+    # Regression pin for the deadlock this hook must not reintroduce: nothing
+    # transitions the subagent status before SubagentStop, so blocking on the
+    # status that SubagentStart writes would block every stop forever.
+    print_test "Allows stop when subagent status is 'active' with no incomplete task"
+    echo '{"status": "active", "task": "implement-auth"}' > "$STATE_DIR/test-session/subagents/test-subagent.json"
+    rm -f "$HOME/.claude/tasks/test-team/implement-auth.json"
+
+    RESULT=$(echo '{"agent_id": "test-subagent", "agent_type": "ralph-coder", "sessionId": "test-session", "taskId": "implement-auth"}' | \
+        "$REPO_ROOT/.claude/hooks/ralph-subagent-stop.sh" 2>/dev/null || true)
+
+    if echo "$RESULT" | grep -q '"decision": "block"'; then
+        fail
+        echo -e "  ${RED}✗ 'active' blocked the stop — deadlock regression${NC}"
+    else
+        pass
     fi
 
     # Test 1.3: Subagent with completed task should allow stop
