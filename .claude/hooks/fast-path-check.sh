@@ -16,9 +16,24 @@ INPUT=$(head -c 100000)
 
 set -euo pipefail
 
-# Guaranteed valid JSON on error
+# Guaranteed valid JSON on error.
+#
+# The trap is armed on ERR *and* EXIT. Under `set -e` a failing command fires ERR
+# (emitting once) and then terminates the script, firing EXIT (emitting again),
+# so stdout carried two concatenated objects and the runtime reported
+# "Hook JSON output validation failed - (root): Invalid input" — which for a
+# PreToolUse hook is treated as a deny of the Task launch. Clearing the trap at
+# the explicit output sites does not help, because the failure happens before
+# reaching them. Emission is therefore guarded to happen at most once.
+DEFAULT_HOOK_JSON='{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+_HOOK_EMITTED=0
+emit_json() {
+    [ "${_HOOK_EMITTED}" -eq 1 ] && return 0
+    _HOOK_EMITTED=1
+    printf '%s\n' "${1:-$DEFAULT_HOOK_JSON}"
+}
 output_json() {
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+    emit_json
 }
 trap 'output_json' ERR EXIT
 umask 077
@@ -31,7 +46,7 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 # Only process Task tool calls
 if [[ "$TOOL_NAME" != "Task" ]]; then
     trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+    emit_json
     exit 0
 fi
 
@@ -42,7 +57,7 @@ TASK_PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty')
 # Skip if already in orchestrator context
 if [[ "$TASK_TYPE" == "orchestrator" ]]; then
     trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+    emit_json
     exit 0
 fi
 
@@ -94,7 +109,7 @@ LOG_FILE="$LOG_DIR/fast-path-$(date +%Y%m%d).log"
 # v2.81.2: FIX JSON schema - use hookSpecificOutput for PreToolUse
 trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
 if [[ "$IS_TRIVIAL" == "true" ]]; then
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "permissionDecisionReason": "FAST_PATH_ELIGIBLE: This task appears trivial (complexity <= 3). Consider fast-path: DIRECT_EXECUTE -> MICRO_VALIDATE -> DONE."}}'
+    emit_json '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "permissionDecisionReason": "FAST_PATH_ELIGIBLE: This task appears trivial (complexity <= 3). Consider fast-path: DIRECT_EXECUTE -> MICRO_VALIDATE -> DONE."}}'
 else
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+    emit_json
 fi
