@@ -26,6 +26,7 @@ Source: Claude Code official documentation via Context7 MCP
 """
 
 import json
+import re
 import subprocess
 import os
 from pathlib import Path
@@ -36,6 +37,14 @@ import pytest
 # Configuration
 HOOKS_DIR = Path(os.path.expanduser("~/.claude/hooks"))
 PROJECT_HOOKS_DIR = Path(".claude/hooks")
+
+
+def _parses_as_json(text: str) -> bool:
+    try:
+        json.loads(text)
+    except (ValueError, TypeError):
+        return False
+    return True
 
 
 def run_hook(hook_path: Path, input_json: str = "{}") -> Tuple[int, str, str]:
@@ -443,6 +452,84 @@ class TestRuntimeFormatValidation:
             f"Stop hook {hook_name} has invalid decision: '{decision}'\n"
             f"Must be 'approve' or 'block', NEVER 'continue'!\n"
             f"Output: {output}"
+        )
+
+
+class TestEmittedJsonLiteralsParse:
+    """
+    BUG-4 regression: every literal JSON string a hook prints must parse.
+
+    lsa-pre-step.sh armed
+        trap 'echo "{\\"hookSpecificOutput\\": {\\"hookEventName\\": ...}"' ERR EXIT
+    with two `{` and one `}`, so every failure path of that PreToolUse hook
+    emitted invalid JSON and Claude Code rejected it with
+    "(root): Invalid input" — which a PreToolUse hook reports as a block.
+
+    This scans every file in .claude/hooks/ for JSON-looking literals that get
+    echoed/printed and asserts each one parses.
+    """
+
+    # `echo '...'`, `echo "..."`, `printf '%s\n' '...'` where the payload starts
+    # with a brace. Captures the quoted literal.
+    _EMIT_PATTERNS = [
+        re.compile(r"""(?:echo|emit_json|output_json)\s+(?:-[neE]+\s+)?'(\{.*?\})'""", re.DOTALL),
+        # Also matches literals nested inside a single-quoted trap action, e.g.
+        #   trap 'echo "{\"hookSpecificOutput\": ...}"' ERR EXIT
+        re.compile(r"""(?:echo|emit_json|output_json)\s+(?:-[neE]+\s+)?"(\{.*?\}|\{.*?\\"\})\"""", re.DOTALL),
+        re.compile(r"""DEFAULT_[A-Z_]*JSON=\s*'(\{.*?\})'""", re.DOTALL),
+    ]
+
+    @staticmethod
+    def _unescape_shell_double_quotes(literal: str) -> str:
+        """Turn a bash double-quoted literal back into its printed bytes."""
+        return literal.replace('\\"', '"').replace("\\$", "$").replace("\\\\", "\\")
+
+    @classmethod
+    def _iter_json_literals(cls, text: str):
+        for line_num, line in enumerate(text.split("\n"), 1):
+            if line.strip().startswith("#"):
+                continue
+            for pattern in cls._EMIT_PATTERNS:
+                for match in pattern.finditer(line):
+                    yield line_num, cls._unescape_shell_double_quotes(match.group(1))
+
+    def test_detector_catches_the_original_defect(self):
+        """Proven against the exact unbalanced literal that shipped in lsa-pre-step.sh."""
+        original = (
+            'trap \'echo "{\\"hookSpecificOutput\\": {\\"hookEventName\\": \\"PreToolUse\\", '
+            '\\"permissionDecision\\": \\"allow\\"}"\' ERR EXIT'
+        )
+        literals = list(self._iter_json_literals(original))
+        assert literals, "detector found no JSON literal in the original BUG-4 line"
+
+        unparseable = [lit for _, lit in literals if not _parses_as_json(lit)]
+        assert unparseable, (
+            "detector no longer flags the original unbalanced BUG-4 literal; "
+            "it would not catch a regression"
+        )
+
+    def test_every_emitted_json_literal_in_hooks_parses(self):
+        hooks_dir = Path(".claude/hooks")
+        if not hooks_dir.is_dir():
+            pytest.skip(".claude/hooks not present")
+
+        violations = []
+        for path in sorted(hooks_dir.iterdir()):
+            if not path.is_file() or path.suffix not in (".sh", ".py", ".mjs", ".js"):
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace")
+            for line_num, literal in self._iter_json_literals(text):
+                # Shell-interpolated payloads are not literals we can validate.
+                if "$" in literal:
+                    continue
+                if not _parses_as_json(literal):
+                    violations.append(f"{path.name}:{line_num}: {literal[:120]}")
+
+        assert not violations, (
+            f"BUG-4 REGRESSION: {len(violations)} hook(s) emit a JSON literal that "
+            f"does not parse. Claude Code rejects the whole payload with "
+            f'"(root): Invalid input", which a PreToolUse hook reports as a block.\n'
+            + "\n".join(f"  - {v}" for v in violations)
         )
 
 
