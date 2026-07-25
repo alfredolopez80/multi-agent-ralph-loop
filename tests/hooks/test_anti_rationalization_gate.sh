@@ -7,14 +7,19 @@
 # - No global fallback is permitted (cross-project contamination)
 #
 # These tests therefore use a TEMP PROJECT ROOT as CWD and verify that:
-#   1. stop_hook_active short-circuits to approve
+#   1. stop_hook_active short-circuits to allow
 #   2. Excuse patterns block
 #   3. Active plan + confirmation blocks
-#   4. No active plan + confirmation approves
-#   5. Plain transcripts approve
-#   6. Max blocks threshold resets + approves
+#   4. No active plan + confirmation allows
+#   5. Plain transcripts allow
+#   6. Max blocks threshold resets + allows
 #   7. Global ~/.ralph/active-plan is IGNORED even if it contains a plan
 #      (project isolation guarantee)
+#
+# Allow contract: per tests/HOOK_FORMAT_REFERENCE.md a Stop hook allows with a
+# clean `exit 0` and NO stdout. `{"decision": "approve"}` is not a valid Claude
+# Code value, so the allow paths are asserted with assert_allow(), not by
+# grepping for an "approve" payload the hook must never emit.
 
 set -euo pipefail
 
@@ -39,6 +44,23 @@ assert_output() {
     echo "  FAIL $label"
     echo "       expected substring: $expected_substr"
     echo "       actual: $actual"
+    FAIL=$((FAIL + 1))
+  fi
+}
+
+# Asserts the Stop allow contract: silent stdout and exit 0. Emitting anything
+# on an allow path (notably {"decision": "approve"}) fails runtime validation.
+assert_allow() {
+  local label="$1"
+  local actual="$2"
+  local rc="$3"
+  if [[ -z "${actual//[[:space:]]/}" && "$rc" -eq 0 ]]; then
+    echo "  OK   $label"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL $label"
+    echo "       expected: no stdout and exit 0 (Stop allow contract)"
+    echo "       actual: rc=$rc stdout=$actual"
     FAIL=$((FAIL + 1))
   fi
 }
@@ -74,10 +96,11 @@ run_hook() {
   return $rc
 }
 
-echo "=== Test 1: stop_hook_active=true → approve ==="
+echo "=== Test 1: stop_hook_active=true → allow ==="
 P=$(new_project)
-OUT=$(run_hook "$P" "{\"stop_hook_active\": true, \"cwd\": \"$P\"}")
-assert_output "approve on stop_hook_active" '"decision": "approve"' "$OUT"
+RC=0
+OUT=$(run_hook "$P" "{\"stop_hook_active\": true, \"cwd\": \"$P\"}") || RC=$?
+assert_allow "allow on stop_hook_active" "$OUT" "$RC"
 rm -rf "$P"
 
 echo "=== Test 2: excuse pattern → block ==="
@@ -93,23 +116,26 @@ OUT=$(run_hook "$P" "{\"stop_hook_active\": false, \"cwd\": \"$P\", \"transcript
 assert_output "block on confirmation with active plan" 'Plan-immutability gate' "$OUT"
 rm -rf "$P"
 
-echo "=== Test 4: NO active plan + confirmation → approve ==="
+echo "=== Test 4: NO active plan + confirmation → allow ==="
 P=$(new_project)
-OUT=$(run_hook "$P" "{\"stop_hook_active\": false, \"cwd\": \"$P\", \"transcript\": \"Should I continue?\"}")
-assert_output "approve when no active plan exists" '"decision": "approve"' "$OUT"
+RC=0
+OUT=$(run_hook "$P" "{\"stop_hook_active\": false, \"cwd\": \"$P\", \"transcript\": \"Should I continue?\"}") || RC=$?
+assert_allow "allow when no active plan exists" "$OUT" "$RC"
 rm -rf "$P"
 
-echo "=== Test 5: no pattern → approve ==="
+echo "=== Test 5: no pattern → allow ==="
 P=$(new_project)
-OUT=$(run_hook "$P" "{\"stop_hook_active\": false, \"cwd\": \"$P\", \"transcript\": \"work complete\"}")
-assert_output "approve on benign transcript" '"decision": "approve"' "$OUT"
+RC=0
+OUT=$(run_hook "$P" "{\"stop_hook_active\": false, \"cwd\": \"$P\", \"transcript\": \"work complete\"}") || RC=$?
+assert_allow "allow on benign transcript" "$OUT" "$RC"
 rm -rf "$P"
 
-echo "=== Test 6: max blocks → approve + reset ==="
+echo "=== Test 6: max blocks → allow + reset ==="
 P=$(new_project)
 echo '{"blocks": 3}' > "$P/.claude/state/anti-rat-blocks.json"
-OUT=$(run_hook "$P" "{\"stop_hook_active\": false, \"cwd\": \"$P\", \"transcript\": \"Sequential is simpler\"}")
-assert_output "approve after max blocks" '"decision": "approve"' "$OUT"
+RC=0
+OUT=$(run_hook "$P" "{\"stop_hook_active\": false, \"cwd\": \"$P\", \"transcript\": \"Sequential is simpler\"}") || RC=$?
+assert_allow "allow after max blocks" "$OUT" "$RC"
 COUNTER=$(cat "$P/.claude/state/anti-rat-blocks.json")
 assert_output "counter resets to 0" '"blocks": 0' "$COUNTER"
 rm -rf "$P"
@@ -132,8 +158,9 @@ mkdir -p "$ISO_HOME/.ralph/active-plan"
 cat > "$ISO_HOME/.ralph/active-plan/poison.json" <<EOF
 {"last_updated":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","steps":{"0":{"status":"in_progress"}}}
 EOF
-OUT=$(HOME="$ISO_HOME" printf '%s' "{\"stop_hook_active\": false, \"cwd\": \"$P\", \"transcript\": \"Should I continue?\"}" | HOME="$ISO_HOME" /bin/bash "$HOOK")
-assert_output "ignores global ~/.ralph/active-plan (per-repo isolation)" '"decision": "approve"' "$OUT"
+RC=0
+OUT=$(HOME="$ISO_HOME" printf '%s' "{\"stop_hook_active\": false, \"cwd\": \"$P\", \"transcript\": \"Should I continue?\"}" | HOME="$ISO_HOME" /bin/bash "$HOOK") || RC=$?
+assert_allow "ignores global ~/.ralph/active-plan (per-repo isolation)" "$OUT" "$RC"
 rm -rf "$P" "$ISO_HOME"
 
 echo

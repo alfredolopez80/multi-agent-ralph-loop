@@ -131,11 +131,59 @@ PY
     fi
 }
 
+# ---------------------------------------------------------------------------
+# BUG-7 guard: stop-slop-hook.sh reads .tool_input.file_path, which the Stop
+# event does not carry, so registering it on Stop makes it a permanent no-op.
+# The repo template ships no such registration today; this keeps it that way.
+# ---------------------------------------------------------------------------
+test_stop_slop_not_registered_on_stop() {
+    local templates=()
+    while IFS= read -r f; do templates+=("$f"); done < <(
+        git ls-files '*settings*.json' '*settings*.json.example' 'installer/*' 2>/dev/null
+    )
+    [[ ${#templates[@]} -gt 0 ]] || { pass "stop-slop registration (no templates tracked)"; return; }
+
+    local report
+    report=$(python3 - "${templates[@]}" <<'PY'
+import json, re, sys
+problems = []
+for path in sys.argv[1:]:
+    try:
+        text = open(path, encoding="utf-8").read()
+    except (OSError, UnicodeDecodeError):
+        continue
+    if "stop-slop" not in text:
+        continue
+    try:
+        data = json.loads(text)
+    except ValueError:
+        # Not JSON (installer script): flag only an explicit Stop registration.
+        if re.search(r'Stop[^\n]*stop-slop|stop-slop[^\n]*Stop', text):
+            problems.append(f"{path}: registers stop-slop near a Stop event")
+        continue
+    for entry in (data.get("hooks") or {}).get("Stop", []):
+        for hook in entry.get("hooks", []):
+            if "stop-slop" in hook.get("command", ""):
+                problems.append(
+                    f"{path}: stop-slop registered on Stop (no .tool_input there); "
+                    "use PostToolUse with a Write|Edit|MultiEdit matcher"
+                )
+print("\n".join(problems))
+PY
+)
+    if [[ -z "$report" ]]; then
+        pass "no tracked template registers stop-slop on Stop"
+    else
+        fail "stop-slop registered on an event that lacks its input" "$report"
+    fi
+}
+
 echo "BUG-5 regression: quality check registry consistency"
 echo
 
 test_no_dangling_hook_references
 test_check_names_match_result_basenames
+test_stop_slop_not_registered_on_stop
 
 echo
 printf 'passed: %d  failed: %d\n' "$PASS" "$FAIL"

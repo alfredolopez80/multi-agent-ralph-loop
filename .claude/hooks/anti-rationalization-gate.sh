@@ -2,7 +2,10 @@
 # anti-rationalization-gate.sh — Stop hook: blocks excuses AND mid-plan confirmations
 # VERSION: 2.0.0
 # Event: Stop
-# Format: {"decision": "approve"} or {"decision": "block", "reason": "..."}
+# Format: allow == clean `exit 0` with NO stdout; block == {"decision": "block",
+#   "reason": "..."}. `{"decision": "approve"}` is NOT a valid Claude Code value
+#   and is rejected by output validation — never emit it. See
+#   tests/HOOK_FORMAT_REFERENCE.md.
 #
 # v2.0.0 (2026-04-20): MERGED plan-continuation-gate.sh into this hook.
 #   - Unifies two Stop-chain gates into a single coordinated enforcer
@@ -35,14 +38,14 @@ INPUT=$(head -c 100000)
 
 # --- Guard: jq required, fail-open otherwise ---
 if ! command -v jq >/dev/null 2>&1; then
-: # FIXED: invalid decision approve removed
+  # allow: silent exit 0 (see Format note in the header)
   exit 0
 fi
 
 # --- Infinite-loop guard: honor stop_hook_active ---
 STOP_HOOK_ACTIVE=$(echo "$INPUT" | jq -r '.stop_hook_active // false' 2>/dev/null || echo false)
 if [ "$STOP_HOOK_ACTIVE" = "true" ]; then
-: # FIXED: invalid decision approve removed
+  # allow: silent exit 0 (see Format note in the header)
   exit 0
 fi
 
@@ -64,7 +67,7 @@ if [[ -f "$STATE_FILE" ]]; then
 fi
 if [[ "$BLOCK_COUNT" -ge "$MAX_BLOCKS" ]]; then
   echo '{"blocks": 0}' > "$STATE_FILE" 2>/dev/null || true
-: # FIXED: invalid decision approve removed
+  # allow: silent exit 0 (see Format note in the header)
   exit 0
 fi
 
@@ -214,5 +217,5 @@ if [[ "$HAS_ACTIVE_PLAN" == true ]]; then
 fi
 
 # --- No match: approve ---
-: # FIXED: invalid decision approve removed
+  # allow: silent exit 0 (see Format note in the header)
 exit 0
