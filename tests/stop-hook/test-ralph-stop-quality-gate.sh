@@ -19,7 +19,7 @@ set -euo pipefail
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 HOOK_PATH="$REPO_ROOT/.claude/hooks/ralph-stop-quality-gate.sh"
 STATE_DIR="$HOME/.ralph/state"
 TEST_SESSION="test-stop-hook-$$"
@@ -47,12 +47,12 @@ trap cleanup EXIT
 
 # Test helper functions
 pass() {
-    ((TESTS_PASSED++))
+    TESTS_PASSED=$((TESTS_PASSED + 1))
     echo -e "${GREEN}✅ PASS${NC}: $1"
 }
 
 fail() {
-    ((TESTS_FAILED++))
+    TESTS_FAILED=$((TESTS_FAILED + 1))
     echo -e "${RED}❌ FAIL${NC}: $1"
     if [ -n "$2" ]; then
         echo "   Expected: $2"
@@ -62,7 +62,7 @@ fail() {
 
 run_test() {
     local test_name="$1"
-    ((TESTS_TOTAL++))
+    TESTS_TOTAL=$((TESTS_TOTAL + 1))
     echo ""
     echo -e "${YELLOW}Test $TESTS_TOTAL: $test_name${NC}"
     echo "----------------------------------------"
@@ -93,14 +93,13 @@ INPUT=$(cat <<EOF
 EOF
 )
 
-RESULT=$(echo "$INPUT" | "$HOOK_PATH" 2>/dev/null)
-EXIT_CODE=$?
+RESULT=$(echo "$INPUT" | "$HOOK_PATH" 2>/dev/null) && EXIT_CODE=0 || EXIT_CODE=$?
 
 if [ "$EXIT_CODE" -eq 0 ]; then
-    if echo "$RESULT" | grep -q '"decision".*"approve"'; then
-        pass "Exit code 0 and decision approve when stop_hook_active=true"
+    if [ -z "${RESULT//[[:space:]]/}" ]; then
+        pass "Exit code 0 and silent stdout when stop_hook_active=true"
     else
-        fail "Decision should be approve" '"decision": "approve"' "$RESULT"
+        fail "Allow must be a silent exit 0" "no stdout" "$RESULT"
     fi
 else
     fail "Should exit 0 when stop_hook_active=true" "exit 0" "exit $EXIT_CODE"
@@ -121,14 +120,13 @@ INPUT=$(cat <<EOF
 EOF
 )
 
-RESULT=$(echo "$INPUT" | "$HOOK_PATH" 2>/dev/null)
-EXIT_CODE=$?
+RESULT=$(echo "$INPUT" | "$HOOK_PATH" 2>/dev/null) && EXIT_CODE=0 || EXIT_CODE=$?
 
 if [ "$EXIT_CODE" -eq 0 ]; then
-    if echo "$RESULT" | grep -q '"decision".*"approve"'; then
-        pass "Exit code 0 and decision approve when no state exists"
+    if [ -z "${RESULT//[[:space:]]/}" ]; then
+        pass "Exit code 0 and silent stdout when no state exists"
     else
-        fail "Decision should be approve" '"decision": "approve"' "$RESULT"
+        fail "Allow must be a silent exit 0" "no stdout" "$RESULT"
     fi
 else
     fail "Should exit 0 when no state exists" "exit 0" "exit $EXIT_CODE"
@@ -139,8 +137,17 @@ fi
 # ============================================
 run_test "Incomplete orchestrator (should block)"
 
-# Create orchestrator state
+# Create orchestrator state.
+# v2.88.0 added session isolation: the hook allows the stop and returns early
+# unless <session>/session.json exists and is younger than SESSION_MAX_AGE.
+# Without it none of the VERIFIED_DONE checks below are ever reached.
 mkdir -p "$STATE_DIR/$TEST_SESSION"
+cat > "$STATE_DIR/$TEST_SESSION/session.json" <<EOF
+{
+    "session_id": "$TEST_SESSION",
+    "age_seconds": 0
+}
+EOF
 cat > "$STATE_DIR/$TEST_SESSION/orchestrator.json" <<EOF
 {
     "session_id": "$TEST_SESSION",
@@ -222,10 +229,10 @@ EOF
 RESULT=$(echo "$INPUT" | "$HOOK_PATH" 2>/dev/null) && EXIT_CODE=0 || EXIT_CODE=$?
 
 if [ "$EXIT_CODE" -eq 0 ]; then
-    if echo "$RESULT" | grep -q '"decision".*"approve"'; then
-        pass "Exit code 0 and decision approve when orchestrator complete"
+    if [ -z "${RESULT//[[:space:]]/}" ]; then
+        pass "Exit code 0 and silent stdout when orchestrator complete"
     else
-        fail "Decision should be approve" '"decision": "approve"' "$RESULT"
+        fail "Allow must be a silent exit 0" "no stdout" "$RESULT"
     fi
 else
     fail "Should exit 0 when orchestrator complete" "exit 0" "exit $EXIT_CODE"
@@ -305,10 +312,10 @@ EOF
 RESULT=$(echo "$INPUT" | "$HOOK_PATH" 2>/dev/null) && EXIT_CODE=0 || EXIT_CODE=$?
 
 if [ "$EXIT_CODE" -eq 0 ]; then
-    if echo "$RESULT" | grep -q '"decision".*"approve"'; then
-        pass "Exit code 0 and decision approve when loop complete"
+    if [ -z "${RESULT//[[:space:]]/}" ]; then
+        pass "Exit code 0 and silent stdout when loop complete"
     else
-        fail "Decision should be approve" '"decision": "approve"' "$RESULT"
+        fail "Allow must be a silent exit 0" "no stdout" "$RESULT"
     fi
 else
     fail "Should exit 0 when loop complete" "exit 0" "exit $EXIT_CODE"
