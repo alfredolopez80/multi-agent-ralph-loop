@@ -112,9 +112,18 @@ probe_hook() {
     local name started out rc elapsed count verdict
     name="$(basename "$hook")"
 
+    # Hooks are not all shell scripts: settings.json also registers .mjs and .py
+    # handlers, and those were escaping this probe entirely.
+    local -a runner
+    case "$hook" in
+        *.mjs|*.js) runner=(node "$hook") ;;
+        *.py)       runner=(python3 "$hook") ;;
+        *)          runner=(/bin/bash "$hook") ;;
+    esac
+
     started=$(date +%s)
     out=$(printf '%s' "$payload" \
-        | HOME="$ISO_HOME" timeout "$HOOK_TIMEOUT" /bin/bash "$hook" 2>/dev/null)
+        | HOME="$ISO_HOME" timeout "$HOOK_TIMEOUT" "${runner[@]}" 2>/dev/null)
     rc=$?
     elapsed=$(( $(date +%s) - started ))
 
@@ -153,7 +162,7 @@ echo "Hook hang/block probe — ${HOOK_TIMEOUT}s budget per hook, isolated HOME"
 echo
 
 # Phase 1: the happy path that was being blocked.
-for hook in "$HOOKS_DIR"/*.sh; do
+for hook in "$HOOKS_DIR"/*.sh "$HOOKS_DIR"/*.mjs "$HOOKS_DIR"/*.py; do
     [[ -f "$hook" ]] || continue
     probe_hook "$hook" "$TASK_PAYLOAD" "yes" "benign Task"
 done
@@ -162,7 +171,7 @@ done
 # malformed JSON literal or a trap armed on both ERR and EXIT produces invalid or
 # duplicated output — the mechanism that made the runtime treat a PreToolUse hook
 # as a deny. Hooks may refuse here, but must still terminate and emit valid JSON.
-for hook in "$HOOKS_DIR"/*.sh; do
+for hook in "$HOOKS_DIR"/*.sh "$HOOKS_DIR"/*.mjs "$HOOKS_DIR"/*.py; do
     [[ -f "$hook" ]] || continue
     probe_hook "$hook" '' "no" "empty stdin"
     probe_hook "$hook" 'not json at all' "no" "garbage stdin"
