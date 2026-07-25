@@ -81,16 +81,16 @@ EOF
 # Mark an iteration
 # Usage: mark_iteration
 mark_iteration() {
-    ((CURRENT_ACTION_ITERATIONS++))
-    append_progress "$CURRENT_ACTION_SKILL" "$(date -u +"%Y-%m-%dT%H:%M:%SZ") "Iteration $CURRENT_ACTION_ITERATIONS"
+    CURRENT_ACTION_ITERATIONS=$((CURRENT_ACTION_ITERATIONS + 1))
+    append_progress "$CURRENT_ACTION_SKILL" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "Iteration $CURRENT_ACTION_ITERATIONS"
 }
 
 # Mark a file modification
 # Usage: mark_file_modified <file_path>
 mark_file_modified() {
     local file_path="$1"
-    ((CURRENT_ACTION_FILES_MODIFIED++))
-    append_progress "$CURRENT_ACTION_SKILL" "$(date -u +"%Y-%m-%dT%H:%M:%SZ") "Modified: $file_path"
+    CURRENT_ACTION_FILES_MODIFIED=$((CURRENT_ACTION_FILES_MODIFIED + 1))
+    append_progress "$CURRENT_ACTION_SKILL" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "Modified: $file_path"
 }
 
 # Record an error
@@ -98,7 +98,7 @@ mark_file_modified() {
 record_error() {
     local error_msg="$1"
     CURRENT_ACTION_ERRORS+=("$error_msg")
-    append_progress "$CURRENT_ACTION_SKILL" "$(date -u +"%Y-%m-%dT%H:%M:%SZ") "ERROR: $error_msg"
+    append_progress "$CURRENT_ACTION_SKILL" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "ERROR: $error_msg"
 }
 
 # Complete the action report
