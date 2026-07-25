@@ -70,8 +70,8 @@ test_ralph_subagent_stop() {
     #
     # This used to fabricate {"status": "working"}, a value no producer in this
     # repo ever writes: ralph-subagent-start.sh writes "active". That made the
-    # test certify a branch that cannot occur in production. Drive the live guard
-    # (Check 2, assigned task status) with the vocabulary production really uses.
+    # test certify a status branch that could not occur in production; the branch
+    # has since been removed. Drive the real guard — the assigned task status.
     print_test "Blocks stop when subagent has incomplete assigned task"
     mkdir -p "$STATE_DIR/test-session/subagents"
     echo '{"status": "active", "task": "implement-auth"}' > "$STATE_DIR/test-session/subagents/test-subagent.json"
@@ -90,7 +90,7 @@ test_ralph_subagent_stop() {
     fi
 
     # Test 1.2b: "active" must never be treated as "still working".
-    # Regression pin for the deadlock this hook must not reintroduce: nothing
+    # Regression pin against reintroducing a status-based block: nothing
     # transitions the subagent status before SubagentStop, so blocking on the
     # status that SubagentStart writes would block every stop forever.
     print_test "Allows stop when subagent status is 'active' with no incomplete task"

@@ -48,35 +48,14 @@ log() {
 
 log "SubagentStop: ${SUBAGENT_ID} (${SUBAGENT_TYPE}) session=${SESSION_ID}"
 
-# Check 1: Verify subagent has no incomplete tasks.
-#
-# DORMANT BY DESIGN — do not "fix" this by broadening the status below.
-# The "working" vocabulary belongs to the Agent Teams teammate files that the
-# Claude Code runtime owns (see ralph-stop-quality-gate.sh, which reads
-# ~/.claude/teams/*/members/*.json). This check instead reads repo-owned state,
-# whose only producer is ralph-subagent-start.sh, and that writes "active".
-# So this branch never fires today.
-#
-# Broadening it to "active" would block EVERY subagent stop: nothing transitions
-# the status between SubagentStart and SubagentStop, and this hook has no
-# bounded-block valve, so a wrong block here deadlocks the subagent permanently.
-# The live guard for the same intent is Check 2 below, which reads the assigned
-# task status ("pending"/"in_progress") that the task system actually writes.
-# Activating this check safely requires BOTH a producer that writes an in-flight
-# status and a bounded-block valve. tests/hook-integration/ pins this invariant.
+# No status-based block here: this file only ever holds "active" (written at
+# SubagentStart) or "completed" (written by Check 3 below), so such a check
+# either never fires or blocks every stop, and this hook has no bounded-block
+# valve to recover from a wrong block. Unfinished work is detected by Check 1,
+# from the authoritative task status.
 SUBAGENT_STATE="$STATE_DIR/$SESSION_ID/subagents/${SUBAGENT_ID}.json"
-if [[ -f "$SUBAGENT_STATE" ]]; then
-    STATUS=$(jq -r '.status // "unknown"' "$SUBAGENT_STATE" 2>/dev/null || echo "unknown")
-    if [[ "$STATUS" == "working" ]]; then
-        log "BLOCK: Subagent $SUBAGENT_ID still working"
-        cat <<EOF
-{"decision": "block", "reason": "Subagent still has active work"}
-EOF
-        exit 2
-    fi
-fi
 
-# Check 2: Check team task status if this subagent was assigned a task
+# Check 1: Check team task status if this subagent was assigned a task
 if [[ -n "$TASK_ID" ]]; then
     TEAMS_DIR="$HOME/.claude/teams"
     for team_config in "$TEAMS_DIR"/*/config.json; do
@@ -97,7 +76,7 @@ EOF
     done
 fi
 
-# Check 3: Check for quality gate failures
+# Check 2: Check for quality gate failures
 QUALITY_STATE="$STATE_DIR/$SESSION_ID/quality-gate.json"
 if [[ -f "$QUALITY_STATE" ]]; then
     # `false // true` is true in jq: a failed gate would have read as passed.
@@ -112,7 +91,7 @@ EOF
     fi
 fi
 
-# Check 4: Update subagent state to completed
+# Check 3: Update subagent state to completed
 if [[ -f "$SUBAGENT_STATE" ]]; then
     jq --arg time "$(date -Iseconds)" '. + {status: "completed", stopped_at: $time}' "$SUBAGENT_STATE" > "${SUBAGENT_STATE}.tmp" && mv "${SUBAGENT_STATE}.tmp" "$SUBAGENT_STATE"
     log "Subagent state updated to completed"
