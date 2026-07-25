@@ -32,10 +32,15 @@ mkdir -p "$LOG_DIR"
 
 # SEC-111: Read stdin with length limit (100KB max) to prevent DoS
 INPUT=$(head -c 100000)
-SUBAGENT_ID=$(echo "$INPUT" | jq -r '.subagentId // "unknown"')
-SUBAGENT_TYPE=$(echo "$INPUT" | jq -r '.subagentType // "unknown"')
-SESSION_ID=$(echo "$INPUT" | jq -r '.sessionId // "default"')
-TASK_ID=$(echo "$INPUT" | jq -r '.taskId // ""')
+# Official runtime field names first (agent_id, agent_type), then the legacy
+# camelCase spellings. ralph-subagent-start.sh registers the state file under the
+# id it resolves from `.agent_id`; reading only `.subagentId` here resolved to
+# "unknown", so this hook never found that state and every check below was
+# silently skipped. Fallback chain mirrors ralph-subagent-start.sh (v2.89.2).
+SUBAGENT_ID=$(echo "$INPUT" | jq -r '.agent_id // .subagentId // .subagent_id // "unknown"')
+SUBAGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // .subagentType // .subagent_type // "unknown"')
+SESSION_ID=$(echo "$INPUT" | jq -r '.sessionId // .session_id // "default"')
+TASK_ID=$(echo "$INPUT" | jq -r '.taskId // .task_id // ""')
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] [ralph-subagent-stop] $1" >> "$LOG_DIR/hooks.log"
