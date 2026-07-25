@@ -26,8 +26,8 @@ umask 077
 #   }
 #
 # Output (stdout JSON):
-#   {"decision": "approve", "reason": "All conditions met"}
-#   {"decision": "block", "reason": "Specific issues to fix"}
+#   (allow) no stdout, exit 0 — "approve" is not a valid Claude Code value
+#   (block) {"decision": "block", "reason": "Specific issues to fix"}
 #
 # IMPORTANT:
 #   - ALWAYS check stop_hook_active first to prevent infinite loops
@@ -70,7 +70,7 @@ STOP_HOOK_ACTIVE=$(echo "$INPUT" | jq -r '.stop_hook_active // false')
 if [ "$STOP_HOOK_ACTIVE" = "true" ]; then
     # Claude is already continuing from a previous block
     # MUST allow stop to prevent infinite loop
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
     exit 0
 fi
 
@@ -95,7 +95,7 @@ if [[ ! -f "$SESSION_FILE" ]]; then
     if [[ -n "$STATE_DIR" && "$STATE_DIR" == *"/.ralph/"* ]]; then
         find "$STATE_DIR" -mindepth 2 -name "session.json" -mtime +1 -delete 2>/dev/null || true
     fi
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
     exit 0
 fi
 
@@ -104,7 +104,7 @@ SESSION_AGE=$(jq -r '.age_seconds // 0' "$SESSION_FILE" 2>/dev/null || echo "0")
 if [[ "$SESSION_AGE" -gt "$SESSION_MAX_AGE" ]]; then
     # Stale session, cleanup and allow stop
     rm -rf "$STATE_DIR/${SESSION_ID}" 2>/dev/null || true
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
     exit 0
 fi
 
@@ -298,11 +298,11 @@ if [ -n "$BLOCKING_ISSUES" ]; then
     exit 2
 elif [ -n "$ADVISORY_ISSUES" ]; then
     # Advisory issues don't block, but log them
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
     exit 0
 else
     # All conditions met, allow stop
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Stop APPROVED: All conditions met" >> "$LOG_DIR/stop-hook.log"
     exit 0
 fi

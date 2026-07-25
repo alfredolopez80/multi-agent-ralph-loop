@@ -13,7 +13,7 @@
 #   - session_id: session identifier
 #   - (other fields ignored)
 #
-# Output: {"decision": "approve"} (SessionEnd format)
+# Output: none — allow is a silent exit 0 (SessionEnd)
 #
 # VERSION: 1.0.0
 # CREATED: 2026-04-09
@@ -51,7 +51,7 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"' 2>/dev/null | tr -
 # ---------------------------------------------------------------------------
 if [[ ! -d "$VAULT_DIR" ]]; then
     log "WARN vault missing, skipping log write"
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
     exit 0
 fi
 
@@ -133,6 +133,6 @@ fi
 # ---------------------------------------------------------------------------
 # Output SessionEnd format
 # ---------------------------------------------------------------------------
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
 
 exit 0

@@ -19,13 +19,13 @@ umask 077
 #   - Generate session summary
 #
 # Output: Plain text (becomes additionalContext for SessionStart)
-#         JSON via stdout for Stop: {"decision": "approve"}
+#         Stop: allow is a silent exit 0 (no decision payload)
 
 set -euo pipefail
 
 # SEC-033: Guaranteed JSON output on any error
 output_json_stop() {
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
 }
 trap 'output_json_stop' ERR
 
@@ -316,11 +316,11 @@ case "$HOOK_TYPE" in
             log "No current session found to backup"
         fi
 
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
         ;;
 
     *)
         echo "Unknown hook type: $HOOK_TYPE"
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
         ;;
 esac

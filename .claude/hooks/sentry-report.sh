@@ -21,7 +21,7 @@ INPUT=$(head -c 100000)
 if [[ ! -f ".sentry-used" ]]; then
     # CRIT-003: Clear trap before explicit JSON output to avoid duplicates
     trap - ERR EXIT
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
     exit 0
 fi
 
@@ -45,5 +45,5 @@ rm -f ".sentry-used"
 # Stop hook must output JSON
 # CRIT-003: Clear trap before explicit JSON output to avoid duplicates
 trap - ERR EXIT
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
 exit 0

@@ -19,7 +19,7 @@ VAULT_DIR="${VAULT_DIR:-$HOME/Documents/Obsidian/MiVault}"
 
 # Skip if vault doesn't exist
 if [[ ! -d "$VAULT_DIR" ]]; then
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
     exit 0
 fi
 
@@ -128,4 +128,4 @@ total_decisions=$(find "$VAULT_DIR/global/decisions" -name "*.md" -type f 2>/dev
     echo "- [Project Index](projects/_project-index.md)"
 } > "$VAULT_INDEX" 2>/dev/null || true
 
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)

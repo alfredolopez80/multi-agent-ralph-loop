@@ -57,15 +57,15 @@ validate_pretooluse() {
 
     if [[ $has_old_format -eq 1 && $has_new_format -eq 0 ]]; then
         echo -e "${YELLOW}WARN${NC}   | $(basename "$file") | Using old PreToolUse format"
-        ((WARN++))
+        WARN=$((WARN + 1))
         return 1
     elif [[ $has_new_format -eq 1 ]]; then
         echo -e "${GREEN}PASS${NC}   | $(basename "$file") | Using new PreToolUse format"
-        ((PASS++))
+        PASS=$((PASS + 1))
         return 0
     else
         echo -e "${RED}FAIL${NC}   | $(basename "$file") | No valid PreToolUse format found"
-        ((FAIL++))
+        FAIL=$((FAIL + 1))
         return 2
     fi
 }
@@ -74,15 +74,30 @@ validate_pretooluse() {
 validate_stop() {
     local file=$1
 
-    # Stop hooks should use {"decision": "approve"}
-    if grep -q '{"decision": "approve"' "$file" || grep -q '{"decision": "block"' "$file"; then
-        echo -e "${GREEN}PASS${NC}   | $(basename "$file") | Valid Stop format"
-        ((PASS++))
+    # A Stop hook allows with a clean exit 0 and NO stdout; the only valid value
+    # for `decision` is "block". "approve" is not a Claude Code value and is
+    # rejected by output validation, so a hook emitting it must FAIL here — the
+    # previous check reported exactly that case as PASS. See
+    # tests/HOOK_FORMAT_REFERENCE.md.
+    # Whole-line comments are stripped first: several hooks *document* the old
+    # format in their header, and matching that text reported a correct hook as
+    # emitting it.
+    local body
+    body=$(grep -v -E '^[[:space:]]*#' "$file" || true)
+
+    if printf '%s\n' "$body" | grep -q '"decision": *\\*"approve"'; then
+        echo -e "${RED}FAIL${NC}   | $(basename "$file") | Emits invalid {\"decision\": \"approve\"}; allow is a silent exit 0"
+        FAIL=$((FAIL + 1))
+        return 1
+    elif printf '%s\n' "$body" | grep -q '{"decision": "block"'; then
+        echo -e "${GREEN}PASS${NC}   | $(basename "$file") | Valid Stop format (block payload)"
+        PASS=$((PASS + 1))
         return 0
     else
-        echo -e "${RED}FAIL${NC}   | $(basename "$file") | Invalid Stop format"
-        ((FAIL++))
-        return 1
+        # No decision payload at all: the hook only ever allows, which is valid.
+        echo -e "${GREEN}PASS${NC}   | $(basename "$file") | Valid Stop format (allow via silent exit 0)"
+        PASS=$((PASS + 1))
+        return 0
     fi
 }
 
@@ -93,11 +108,11 @@ validate_posttooluse() {
     # PostToolUse should use {"continue": true}
     if grep -q '{"continue": true}' "$file" || grep -q '{"continue": false}' "$file"; then
         echo -e "${GREEN}PASS${NC}   | $(basename "$file") | Valid PostToolUse format"
-        ((PASS++))
+        PASS=$((PASS + 1))
         return 0
     else
         echo -e "${RED}FAIL${NC}   | $(basename "$file") | Invalid PostToolUse format"
-        ((FAIL++))
+        FAIL=$((FAIL + 1))
         return 1
     fi
 }
@@ -109,11 +124,11 @@ validate_error_trap() {
     # Should have trap 'output_json' ERR EXIT or similar
     if grep -q "trap.*output_json.*ERR.*EXIT" "$file" || grep -q "trap.*ERR.*EXIT" "$file"; then
         echo -e "${GREEN}PASS${NC}   | $(basename "$file") | Has ERR EXIT trap"
-        ((PASS++))
+        PASS=$((PASS + 1))
         return 0
     else
         echo -e "${YELLOW}WARN${NC}   | $(basename "$file") | Missing ERR EXIT trap"
-        ((WARN++))
+        WARN=$((WARN + 1))
         return 1
     fi
 }
@@ -124,19 +139,23 @@ echo "-------------|------|--------"
 
 for hook_file in "$HOOKS_DIR"/*.sh "$HOOKS_DIR"/*.py; do
     if [[ -f "$hook_file" ]]; then
-        ((TOTAL++))
+        TOTAL=$((TOTAL + 1))
 
         # Determine hook type by filename and validate accordingly
+        # `|| true` is required: each validator returns non-zero to signal WARN or
+        # FAIL, and under `set -euo pipefail` that aborted the whole run on the
+        # first non-passing hook. The verdict is carried by the counters and
+        # applied by the summary below, so swallowing the status here is safe.
         if [[ "$hook_file" =~ (lsa-pre|repo-boundary|fast-path|smart-memory|skill-validator|procedural-inject|checkpoint-smart|checkpoint-auto|git-safety|smart-skill|orchestrator-auto-learn|task-orchestration|inject-session) ]]; then
-            validate_pretooluse "$hook_file"
+            validate_pretooluse "$hook_file" || true
         elif [[ "$hook_file" =~ (continuous-learning|orchestrator-report|project-backup|reflection-engine|semantic-auto-extractor|sentry-report|stop-verification) ]]; then
-            validate_stop "$hook_file"
+            validate_stop "$hook_file" || true
         elif [[ "$hook_file" =~ (quality-gates|sec-context|security-full|decision-extractor|semantic-realtime|plan-sync|glm-context|progress-tracker|typescript-quick) ]]; then
-            validate_posttooluse "$hook_file"
+            validate_posttooluse "$hook_file" || true
         fi
 
         # All hooks should have error traps
-        validate_error_trap "$hook_file"
+        validate_error_trap "$hook_file" || true
     fi
 done
 

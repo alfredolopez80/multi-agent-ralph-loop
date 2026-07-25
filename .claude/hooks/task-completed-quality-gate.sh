@@ -18,7 +18,7 @@ umask 077
 #   }
 #
 # Output (stdout JSON):
-#   {"decision": "approve", "reason": "All acceptance criteria verified"}
+#   (allow) no stdout, exit 0 — "approve" is not a valid Claude Code value
 #   {"decision": "request_changes", "reason": "Task incomplete"}
 
 set -euo pipefail

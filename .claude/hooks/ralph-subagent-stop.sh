@@ -164,8 +164,8 @@ fi
 
 # Output approval with cleanup info
 if [[ -n "$CLEANUP_INFO" ]]; then
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
 else
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
 fi
 exit 0
