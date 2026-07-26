@@ -17,6 +17,13 @@
 #                    permissionDecision "deny"/"ask", {"continue": false},
 #                    {"decision": "block"}, or exit code 2.
 #
+# Invariants 1 and 2 apply to every hook: hanging or emitting garbage is never
+# acceptable, whatever the event. Invariant 3 applies only to hooks that speak the
+# PreToolUse dialect, because only those are ever handed a Task payload. A Stop or
+# SubagentStop hook emitting {"decision": "block"} is exercising its own contract,
+# and reading that as "blocked a Task launch" would be a false accusation — five
+# hooks here can legitimately emit exactly that for their own event.
+#
 # Hooks run with an isolated HOME so the real ~/.ralph and ~/.claude are not
 # touched, which also exercises the cold-start path where state files are absent.
 #
@@ -161,10 +168,22 @@ probe_hook() {
 echo "Hook hang/block probe — ${HOOK_TIMEOUT}s budget per hook, isolated HOME"
 echo
 
+# Only a hook that speaks the PreToolUse dialect can deny a Task launch; the
+# runtime never hands a Task payload to a Stop or SessionStart hook. Deriving this
+# from the hook source keeps the suite deterministic and machine-independent —
+# settings.json lives outside the repo and differs per checkout.
+speaks_pretooluse() { grep -q 'PreToolUse' "$1"; }
+
 # Phase 1: the happy path that was being blocked.
+PRETOOLUSE_COUNT=0
 for hook in "$HOOKS_DIR"/*.sh "$HOOKS_DIR"/*.mjs "$HOOKS_DIR"/*.py; do
     [[ -f "$hook" ]] || continue
-    probe_hook "$hook" "$TASK_PAYLOAD" "yes" "benign Task"
+    if speaks_pretooluse "$hook"; then
+        PRETOOLUSE_COUNT=$((PRETOOLUSE_COUNT + 1))
+        probe_hook "$hook" "$TASK_PAYLOAD" "yes" "benign Task"
+    else
+        probe_hook "$hook" "$TASK_PAYLOAD" "no" "benign Task"
+    fi
 done
 
 # Phase 2: degenerate stdin. This drives the ERR/EXIT trap paths, where a
@@ -180,5 +199,6 @@ done
 
 echo
 printf 'slowest hook: %s (%ss)\n' "$SLOWEST_HOOK" "$SLOWEST_TIME"
+printf 'deny-verdict scoped to %d PreToolUse hooks\n' "$PRETOOLUSE_COUNT"
 printf 'checks passed: %d  failed: %d\n' "$PASS" "$FAIL"
 [[ "$FAIL" -eq 0 ]]
