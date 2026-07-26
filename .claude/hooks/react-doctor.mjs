@@ -20,6 +20,13 @@ const readFileOrEmpty = (source) => {
   }
 };
 
+// This hook is registered globally, so it fires in repos that have no JavaScript
+// at all. There react-doctor exits non-zero with "No React project found", which
+// the reporting path below would present as a code-quality finding. A missing root
+// package.json is the unambiguous "nothing here to scan" case; a JS monorepo still
+// has one, so this does not skip nested-workspace projects.
+const looksLikeJsProject = () => existsSync('package.json');
+
 const shouldScan = (input) => {
   const eventName = input.hook_event_name || input.eventName || input.event_name;
   if (eventName === 'PostToolBatch') {
@@ -53,8 +60,14 @@ const runReactDoctor = (outputPath) => {
   for (const command of commands) {
     const result = spawnSync(command, { encoding: 'utf8', shell: true, maxBuffer: SPAWN_MAX_BUFFER_BYTES });
     if (result.error?.code === 'ENOENT' || result.status === 127 || result.status === 9009) continue;
+    // A scan reports on stdout. A runner that started but never executed the tool
+    // — registry 404, auth, TLS, offline — exits non-zero with stdout empty. That
+    // is a setup failure, not a finding: fall through to the next candidate rather
+    // than presenting the package manager's error as a code-quality regression.
+    const stdout = result.stdout || '';
+    if (result.status !== 0 && !stdout.trim()) continue;
     try {
-      writeFileSync(outputPath, (result.stdout || '') + (result.stderr || ''));
+      writeFileSync(outputPath, stdout + (result.stderr || ''));
     } catch {}
     return result.status;
   }
@@ -86,6 +99,10 @@ const main = () => {
   try {
     process.chdir(projectRoot);
   } catch {
+    process.exit(0);
+  }
+
+  if (!looksLikeJsProject()) {
     process.exit(0);
   }
 
