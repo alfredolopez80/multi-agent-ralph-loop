@@ -20,7 +20,19 @@ set -euo pipefail
 
 # SEC-006: Guaranteed JSON output on any error (CRIT-002 + CRIT-003 fix)
 # v2.87.0 FIX: Use hookSpecificOutput wrapper for PreToolUse hooks
-trap 'echo "{\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"allow\"}"' ERR EXIT
+#
+# BUG-4: the trap literal had two `{` and one `}`, so every failure path of this
+# PreToolUse hook emitted invalid JSON and Claude Code rejected it as a block.
+# The brace is restored here and emission is made idempotent so ERR followed by
+# EXIT cannot print the payload twice.
+readonly DEFAULT_HOOK_JSON='{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+_HOOK_EMITTED=0
+emit_json() {
+    [ "${_HOOK_EMITTED}" -eq 1 ] && return 0
+    _HOOK_EMITTED=1
+    printf '%s\n' "${1:-$DEFAULT_HOOK_JSON}"
+}
+trap 'emit_json' ERR EXIT
 
 # Configuration
 PLAN_STATE=".claude/plan-state.json"
@@ -37,7 +49,7 @@ log() {
 if [ ! -f "$PLAN_STATE" ]; then
     # Not in orchestrated mode, skip LSA verification
     trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'; exit 0
+    emit_json; exit 0
 fi
 
 # Get current step from environment or plan-state
@@ -59,7 +71,7 @@ fi
 if [ -z "$CURRENT_STEP" ]; then
     log "No active step found, skipping LSA pre-check"
     trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'; exit 0
+    emit_json; exit 0
 fi
 
 log "LSA Pre-Step Check for step: $CURRENT_STEP"
@@ -78,7 +90,7 @@ SPEC=$(jq -r --arg id "$CURRENT_STEP" '
 if [ "$SPEC" = "null" ] || [ -z "$SPEC" ]; then
     log "No spec found for step $CURRENT_STEP"
     trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'; exit 0
+    emit_json; exit 0
 fi
 
 # v2.69.0: Write verification banner to log file instead of stderr (fixes hook error warnings)
@@ -132,7 +144,10 @@ if ! plan_state_update "$PLAN_STATE" '
     --arg step "$CURRENT_STEP" \
     --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)"; then
     log "ERROR: plan_state_update failed"
-    exit 1
+    # Fail open: a failed bookkeeping write must not block the tool call.
+    trap - ERR EXIT
+    emit_json
+    exit 0
 fi
 
 log "LSA pre-check completed for step $CURRENT_STEP"
@@ -140,4 +155,4 @@ log "LSA pre-check completed for step $CURRENT_STEP"
 # v2.69.0: PreToolUse hooks output JSON with additionalContext (instead of stderr)
 # v2.87.0 FIX: Use hookSpecificOutput wrapper for PreToolUse hooks
 trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-echo "{\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"allow\", \"additionalContext\": \"$LSA_CONTEXT\"}}"
+emit_json "$(jq -nc --arg ctx "$LSA_CONTEXT" '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "allow", additionalContext: $ctx}}')"

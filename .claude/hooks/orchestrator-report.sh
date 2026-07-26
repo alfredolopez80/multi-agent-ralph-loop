@@ -6,7 +6,7 @@
 #
 # v2.66.6: Fixed duplicate VERSION (GAP-003) and consolidated version history
 # v2.59.0: Added effectiveness metrics and domain-specific recommendations
-# v2.57.5: Fixed JSON output format (SEC-039) - use "decision": "approve" not "continue"
+# v2.57.5: Fixed JSON output format (SEC-039) - Stop uses "decision", not "continue"
 # v2.57.0: Created as part of Memory System Reconstruction
 #
 # When: Triggered on Stop event (session ending)
@@ -237,7 +237,7 @@ log "=== Report Generation Complete ==="
 
 # Stop hook output format (per CLAUDE.md conventions)
 # Only output the decision JSON - report is saved to file
-# SEC-039: Stop hooks MUST use "decision": "approve" or "decision": "block"
+# SEC-039: Stop hooks use "decision": "block" to block; allow is a silent exit 0
 # CRIT-003: Clear trap before explicit JSON output to avoid duplicates
 trap - ERR EXIT
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)

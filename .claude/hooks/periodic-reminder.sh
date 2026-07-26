@@ -227,7 +227,7 @@ main() {
     if [[ "$current_goal" == "No goal set"* ]]; then
         log_reminder "DEBUG" "No goal set, skipping reminder"
         # SEC-030: Disable trap and output explicit JSON
-        trap - EXIT
+        trap - ERR EXIT
         echo '{"continue": true}'
         exit 0
     fi
@@ -273,7 +273,7 @@ main() {
     fi
 
     # SEC-030: Disable trap and output explicit JSON
-    trap - EXIT
+    trap - ERR EXIT
     echo '{"continue": true}'
     exit 0
 }

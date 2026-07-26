@@ -13,7 +13,7 @@ CRITICAL FORMAT RULES (per OFFICIAL Claude Code documentation):
 - PostToolUse: {"continue": true} or {"continue": true, "systemMessage": "..."}
 - UserPromptSubmit: {} or {"additionalContext": "..."}
 - PreCompact: {"continue": true}
-- Stop: {"decision": "approve"} or {"decision": "approve", "reason": "..."}
+- Stop: nothing (allow) or {"decision": "block", "reason": "..."}
 - SessionStart: Plain text (no JSON required)
 - The string "continue" is NEVER valid for the "decision" field!
 
@@ -26,6 +26,7 @@ Source: Claude Code official documentation via Context7 MCP
 """
 
 import json
+import re
 import subprocess
 import os
 from pathlib import Path
@@ -36,6 +37,14 @@ import pytest
 # Configuration
 HOOKS_DIR = Path(os.path.expanduser("~/.claude/hooks"))
 PROJECT_HOOKS_DIR = Path(".claude/hooks")
+
+
+def _parses_as_json(text: str) -> bool:
+    try:
+        json.loads(text)
+    except (ValueError, TypeError):
+        return False
+    return True
 
 
 def run_hook(hook_path: Path, input_json: str = "{}") -> Tuple[int, str, str]:
@@ -74,7 +83,7 @@ def get_hook_type(hook_name: str, settings_json: dict = None) -> str:
     classification always matches actual hook registrations.
 
     Priority order for classification:
-    1. Stop hooks (use {"decision": "approve/block"})
+    1. Stop hooks (silent exit 0 to allow, {"decision": "block"} to block)
     2. UserPromptSubmit hooks (use {} or {"additionalContext": ...})
     3. SessionStart hooks (plain text, no JSON required)
     4. PreCompact hooks (use {"continue": true})
@@ -101,7 +110,7 @@ def get_hook_type(hook_name: str, settings_json: dict = None) -> str:
                         return event_type
 
     # Fallback to static classification (for missing hooks or offline testing)
-    # Stop hooks (use {"decision": "approve/block"})
+    # Stop hooks (silent exit 0 to allow, {"decision": "block"} to block)
     # NOTE: stop-slop-hook.sh is registered as Stop in settings.json but uses
     # {"continue": true} format (PostToolUse-style quality check). Exclude it here.
     if any(x in hook_name for x in ['sentry-report', 'reflection-engine',
@@ -218,12 +227,17 @@ class TestCriticalFormatRegression:
             f"CRITICAL REGRESSION: {len(violations)} hook(s) contain INVALID 'decision: continue' pattern!\n"
             f"Violations:\n" + "\n".join(f"  - {v}" for v in violations) + "\n\n"
             f"FIX: Use {{'continue': true}} for PostToolUse/PreToolUse/UserPromptSubmit\n"
-            f"     Use {{'decision': 'approve'}} for Stop hooks\n"
+            f"     For Stop, allow with a silent exit 0 and block with {{'decision': 'block'}}\n"
             f"Reference: tests/HOOK_FORMAT_REFERENCE.md"
         )
 
-    def test_stop_hooks_use_approve_or_block(self, all_hooks):
-        """Stop hooks must use {"decision": "approve"} or {"decision": "block"}.
+    def test_stop_hooks_block_or_exit_silently(self, all_hooks):
+        """Stop hooks may only emit {"decision": "block"}; allow is a silent exit 0.
+
+        `"approve"` is not a Claude Code value (HOOK_FORMAT_REFERENCE.md), so a hook
+        emitting it fails runtime output validation. This previously accepted
+        "approve" as valid and its failure message recommended it, which is how the
+        invalid payload kept being reintroduced.
 
         v3.0: stop-slop-hook.sh is registered under Stop but intentionally uses
         {"continue": true} format (PostToolUse-style quality checker). It is excluded.
@@ -241,22 +255,36 @@ class TestCriticalFormatRegression:
             if hook_path.name in STOP_CONTINUE_EXCEPTIONS:
                 continue
 
-            content = hook_path.read_text()
+            # Whole-line comments are stripped: hooks legitimately *document* the
+            # rejected format in their headers, and matching that text would
+            # report a correct hook as emitting it.
+            content = "\n".join(
+                line for line in hook_path.read_text().splitlines()
+                if not line.lstrip().startswith("#")
+            )
 
-            # Stop hooks should have "decision": "approve" or "decision": "block"
             import re
-            has_valid_stop_format = bool(re.search(r'"decision":\s*"(approve|block)"', content))
+            if re.search(r'"decision":\s*\\?"approve"', content):
+                violations.append(
+                    f"{hook_path.name}: emits invalid {{'decision': 'approve'}} "
+                    f"(allow must be a silent exit 0)"
+                )
+                continue
 
-            # Should NOT have {"continue": true} as primary output
+            has_block = bool(re.search(r'"decision":\s*\\?"block"', content))
             has_continue_format = bool(re.search(r'"continue":\s*(true|false)', content))
 
-            if not has_valid_stop_format and has_continue_format:
-                violations.append(f"{hook_path.name}: Stop hook uses 'continue' instead of 'decision: approve/block'")
+            if not has_block and has_continue_format:
+                violations.append(
+                    f"{hook_path.name}: Stop hook uses 'continue' instead of "
+                    f"'decision: block'"
+                )
 
         assert len(violations) == 0, (
             f"STOP HOOK FORMAT ERROR: {len(violations)} Stop hook(s) use wrong format!\n"
             f"Violations:\n" + "\n".join(f"  - {v}" for v in violations) + "\n\n"
-            f"Stop hooks MUST use: {{\"decision\": \"approve\"}} or {{\"decision\": \"block\"}}\n"
+            f"Stop hooks: allow == clean exit 0 with no stdout; "
+            f"block == {{\"decision\": \"block\"}}. \"approve\" is INVALID.\n"
             f"Reference: tests/HOOK_FORMAT_REFERENCE.md"
         )
 
@@ -409,7 +437,7 @@ class TestRuntimeFormatValidation:
         "sentry-report.sh",
     ])
     def test_stop_hooks_output_decision_format(self, hook_name, test_input_stop):
-        """Verify Stop hooks output {"decision": "approve"/"block"} format."""
+        """Verify Stop hooks stay silent to allow, or emit {"decision": "block"}."""
         hook_path = HOOKS_DIR / hook_name
         if not hook_path.exists():
             hook_path = PROJECT_HOOKS_DIR / hook_name
@@ -443,6 +471,84 @@ class TestRuntimeFormatValidation:
             f"Stop hook {hook_name} has invalid decision: '{decision}'\n"
             f"Must be 'approve' or 'block', NEVER 'continue'!\n"
             f"Output: {output}"
+        )
+
+
+class TestEmittedJsonLiteralsParse:
+    """
+    BUG-4 regression: every literal JSON string a hook prints must parse.
+
+    lsa-pre-step.sh armed
+        trap 'echo "{\\"hookSpecificOutput\\": {\\"hookEventName\\": ...}"' ERR EXIT
+    with two `{` and one `}`, so every failure path of that PreToolUse hook
+    emitted invalid JSON and Claude Code rejected it with
+    "(root): Invalid input" — which a PreToolUse hook reports as a block.
+
+    This scans every file in .claude/hooks/ for JSON-looking literals that get
+    echoed/printed and asserts each one parses.
+    """
+
+    # `echo '...'`, `echo "..."`, `printf '%s\n' '...'` where the payload starts
+    # with a brace. Captures the quoted literal.
+    _EMIT_PATTERNS = [
+        re.compile(r"""(?:echo|emit_json|output_json)\s+(?:-[neE]+\s+)?'(\{.*?\})'""", re.DOTALL),
+        # Also matches literals nested inside a single-quoted trap action, e.g.
+        #   trap 'echo "{\"hookSpecificOutput\": ...}"' ERR EXIT
+        re.compile(r"""(?:echo|emit_json|output_json)\s+(?:-[neE]+\s+)?"(\{.*?\}|\{.*?\\"\})\"""", re.DOTALL),
+        re.compile(r"""DEFAULT_[A-Z_]*JSON=\s*'(\{.*?\})'""", re.DOTALL),
+    ]
+
+    @staticmethod
+    def _unescape_shell_double_quotes(literal: str) -> str:
+        """Turn a bash double-quoted literal back into its printed bytes."""
+        return literal.replace('\\"', '"').replace("\\$", "$").replace("\\\\", "\\")
+
+    @classmethod
+    def _iter_json_literals(cls, text: str):
+        for line_num, line in enumerate(text.split("\n"), 1):
+            if line.strip().startswith("#"):
+                continue
+            for pattern in cls._EMIT_PATTERNS:
+                for match in pattern.finditer(line):
+                    yield line_num, cls._unescape_shell_double_quotes(match.group(1))
+
+    def test_detector_catches_the_original_defect(self):
+        """Proven against the exact unbalanced literal that shipped in lsa-pre-step.sh."""
+        original = (
+            'trap \'echo "{\\"hookSpecificOutput\\": {\\"hookEventName\\": \\"PreToolUse\\", '
+            '\\"permissionDecision\\": \\"allow\\"}"\' ERR EXIT'
+        )
+        literals = list(self._iter_json_literals(original))
+        assert literals, "detector found no JSON literal in the original BUG-4 line"
+
+        unparseable = [lit for _, lit in literals if not _parses_as_json(lit)]
+        assert unparseable, (
+            "detector no longer flags the original unbalanced BUG-4 literal; "
+            "it would not catch a regression"
+        )
+
+    def test_every_emitted_json_literal_in_hooks_parses(self):
+        hooks_dir = Path(".claude/hooks")
+        if not hooks_dir.is_dir():
+            pytest.skip(".claude/hooks not present")
+
+        violations = []
+        for path in sorted(hooks_dir.iterdir()):
+            if not path.is_file() or path.suffix not in (".sh", ".py", ".mjs", ".js"):
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace")
+            for line_num, literal in self._iter_json_literals(text):
+                # Shell-interpolated payloads are not literals we can validate.
+                if "$" in literal:
+                    continue
+                if not _parses_as_json(literal):
+                    violations.append(f"{path.name}:{line_num}: {literal[:120]}")
+
+        assert not violations, (
+            f"BUG-4 REGRESSION: {len(violations)} hook(s) emit a JSON literal that "
+            f"does not parse. Claude Code rejects the whole payload with "
+            f'"(root): Invalid input", which a PreToolUse hook reports as a block.\n'
+            + "\n".join(f"  - {v}" for v in violations)
         )
 
 

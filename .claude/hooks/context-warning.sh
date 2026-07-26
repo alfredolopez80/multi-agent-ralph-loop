@@ -406,7 +406,7 @@ main() {
     fi
 
     # SEC-029: Disable trap and output JSON
-    trap - EXIT
+    trap - ERR EXIT
 
     # Output JSON with message if there's a warning
     # v2.87.0 FIX: Use {"continue": true} format with hookSpecificOutput for UserPromptSubmit

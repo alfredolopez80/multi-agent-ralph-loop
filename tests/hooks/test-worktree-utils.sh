@@ -63,14 +63,20 @@ else
   fail "get_claude_dir does not end with .claude: $result"
 fi
 
-# Test 5: is_worktree returns 1 in normal repo
+# Test 5: is_worktree returns 1 in a normal repo
 echo ""
 echo "--- Test 5: is_worktree in normal repo ---"
-if is_worktree; then
-  fail "is_worktree returned 0 (worktree) in normal repo"
+# Asserted against a purpose-built fixture rather than the ambient checkout: this
+# project is routinely developed from git worktrees (.claude/worktrees/), where
+# the ambient answer is legitimately "yes" and the old assertion always failed.
+NON_WT_DIR="$(mktemp -d)"
+git init "$NON_WT_DIR/plain-repo" --quiet 2>/dev/null
+if (cd "$NON_WT_DIR/plain-repo" && is_worktree); then
+  fail "is_worktree returned 0 (worktree) for a plain, non-worktree repo"
 else
-  pass "is_worktree correctly returns 1 in normal repo"
+  pass "is_worktree correctly returns 1 in a plain repo"
 fi
+rm -rf "$NON_WT_DIR"
 
 # Test 6: Simulated worktree test
 echo ""
@@ -122,29 +128,33 @@ git worktree remove "$TEMP_DIR/test-worktree" --force 2>/dev/null || true
 echo ""
 echo "--- Test 7: Hooks source worktree-utils.sh ---"
 cd "$REPO_ROOT"
+# Paths are relative to the repo root. Entries dropped because the file is no
+# longer part of the active hook set: glm-visual-validation.sh (.claude/archive/)
+# and plan-state-init.sh, stop-verification.sh, auto-save-context.sh,
+# global-task-sync.sh (.claude/archive/pre-migration-v2.70.0-*/), plus
+# pre-commit-batch-skills-test.sh, which is not present anywhere. Listing them
+# only produced permanent failures blamed on a missing `source` line.
+# agent-teams-coordinator.sh lives in .claude/lib/, not .claude/hooks/.
 HOOKS_TO_CHECK=(
-  "session-start-repo-summary.sh"
-  "ralph-subagent-start.sh"
-  "pre-commit-batch-skills-test.sh"
-  "task-completed-quality-gate.sh"
-  "teammate-idle-quality-gate.sh"
-  "ralph-stop-quality-gate.sh"
-  "subagent-stop-universal.sh"
-  "quality-parallel-async.sh"
-  "glm-visual-validation.sh"
-  "repo-boundary-guard.sh"
-  "session-end-handoff.sh"
-  "plan-state-init.sh"
-  "auto-plan-state.sh"
-  "stop-verification.sh"
-  "auto-save-context.sh"
-  "agent-teams-coordinator.sh"
-  "global-task-sync.sh"
+  ".claude/hooks/session-start-repo-summary.sh"
+  ".claude/hooks/ralph-subagent-start.sh"
+  ".claude/hooks/task-completed-quality-gate.sh"
+  ".claude/hooks/teammate-idle-quality-gate.sh"
+  ".claude/hooks/ralph-stop-quality-gate.sh"
+  ".claude/hooks/subagent-stop-universal.sh"
+  ".claude/hooks/quality-parallel-async.sh"
+  ".claude/hooks/repo-boundary-guard.sh"
+  ".claude/hooks/session-end-handoff.sh"
+  ".claude/hooks/auto-plan-state.sh"
 )
 
-for hook in "${HOOKS_TO_CHECK[@]}"; do
-  hook_path=".claude/hooks/$hook"
-  if [[ -f "$hook_path" ]] && grep -q "worktree-utils.sh" "$hook_path"; then
+for hook_path in "${HOOKS_TO_CHECK[@]}"; do
+  hook="$(basename "$hook_path")"
+  # A missing file and a file that simply lacks the source line are different
+  # defects; reporting both as "does NOT source" hid five relocated hooks.
+  if [[ ! -f "$hook_path" ]]; then
+    fail "$hook not found at $hook_path"
+  elif grep -q "worktree-utils.sh" "$hook_path"; then
     pass "$hook sources worktree-utils.sh"
   else
     fail "$hook does NOT source worktree-utils.sh"
@@ -154,7 +164,13 @@ done
 # Test 8: No hardcoded user paths in agent-teams-coordinator
 echo ""
 echo "--- Test 8: No hardcoded paths ---"
-if grep -q "/Users/alfredolopez" .claude/hooks/agent-teams-coordinator.sh; then
+# The file lives in .claude/lib/, not .claude/hooks/. Grepping the wrong path
+# made this check vacuous: grep failed on the missing file and the else branch
+# reported a pass regardless of the file's contents.
+COORDINATOR=".claude/lib/agent-teams-coordinator.sh"
+if [[ ! -f "$COORDINATOR" ]]; then
+  fail "$COORDINATOR not found — this check cannot validate anything"
+elif grep -q "/Users/alfredolopez" "$COORDINATOR"; then
   fail "agent-teams-coordinator.sh still contains hardcoded /Users/alfredolopez"
 else
   pass "agent-teams-coordinator.sh has no hardcoded user paths"

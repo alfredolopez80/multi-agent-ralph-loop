@@ -204,7 +204,8 @@ run_command_router() {
 
     # Check if router is enabled
     local router_enabled
-    router_enabled=$(jq -r '.enabled // true' "$CONFIG_FILE" 2>/dev/null || echo "true")
+    # `false // true` is true in jq, so `//` must not be used for boolean defaults.
+    router_enabled=$(jq -r 'if (.enabled) == null then true else (.enabled) end' "$CONFIG_FILE" 2>/dev/null || echo "true")
     local confidence_threshold
     confidence_threshold=$(jq -r '.confidence_threshold // 80' "$CONFIG_FILE" 2>/dev/null || echo "80")
 
@@ -384,7 +385,7 @@ run_promptify_auto_detect() {
     local enabled=true
     local threshold=50
     if [[ -f "$PROMPTIFY_CONFIG_FILE" ]]; then
-        enabled=$(jq -r '.enabled // true' "$PROMPTIFY_CONFIG_FILE" 2>/dev/null || echo "true")
+        enabled=$(jq -r 'if (.enabled) == null then true else (.enabled) end' "$PROMPTIFY_CONFIG_FILE" 2>/dev/null || echo "true")
         threshold=$(jq -r '.vagueness_threshold // 50' "$PROMPTIFY_CONFIG_FILE" 2>/dev/null || echo "50")
     fi
 

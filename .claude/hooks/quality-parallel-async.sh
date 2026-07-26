@@ -108,10 +108,10 @@ if [[ ! "$RUN_ID" =~ ^[0-9]{8}_[0-9]{6}_[0-9]+$ ]]; then
     exit 1
 fi
 
-# Results files
-readonly SECURITY_RESULT="${RESULTS_DIR}/sec-context_${RUN_ID}.json"
-readonly REVIEW_RESULT="${RESULTS_DIR}/code-review_${RUN_ID}.json"
-readonly DESLOP_RESULT="${RESULTS_DIR}/deslop_${RUN_ID}.json"
+# Results files.
+# The check name MUST equal the result-file basename: read-quality-results.sh
+# polls "${check}_${run_id}.json" by name, and the self-reported "checks" array
+# below is what consumers match against.
 readonly STOPSLOP_RESULT="${RESULTS_DIR}/stop-slop_${RUN_ID}.json"
 
 # Function to run quality check using ACTUAL scripts
@@ -122,6 +122,21 @@ run_quality_check() {
     local input_json="$4"
 
     log "Running ${check_name} via: ${script_path}"
+
+    # A missing script used to fall through to the generic "Script returned
+    # non-zero" branch, so a permanently dead check looked like a failing one.
+    if [[ ! -f "$script_path" ]]; then
+        log "❌ ${check_name}: script not found at ${script_path}"
+        jq -n \
+            --arg status "error" \
+            --arg error "Script not found: ${script_path}" \
+            --arg timestamp "$(date -Iseconds)" \
+            --arg run_id "$RUN_ID" \
+            --arg check "$check_name" \
+            '{status: $status, error: $error, timestamp: $timestamp, run_id: $run_id, check: $check}' > "$result_file"
+        touch "${result_file}.done"
+        return 0
+    fi
 
     # Run the actual quality script with stdin input
     if OUTPUT=$(bash "$script_path" < <(echo "$input_json") 2>&1); then
@@ -178,11 +193,15 @@ INPUT_JSON=$(jq -n \
     --arg file_path "$FILE_PATH" \
     '{tool_name: $tool_name, tool_input: {file_path: $file_path}}')
 
-# Launch all 4 quality checks in parallel using EXISTING validated scripts
-# v2.90.1 FIX: Check names now match actual script purpose (FINDING-002)
-run_quality_check "sec-context" ".claude/hooks/sec-context-validate.sh" "$SECURITY_RESULT" "$INPUT_JSON" &
-run_quality_check "quality-gates" ".claude/hooks/quality-gates-v2.sh" "$REVIEW_RESULT" "$INPUT_JSON" &
-run_quality_check "deslop-clean" ".claude/hooks/deslop-auto-clean.sh" "$DESLOP_RESULT" "$INPUT_JSON" &
+# Launch the quality checks in parallel using EXISTING validated scripts.
+#
+# sec-context-validate.sh, quality-gates-v2.sh and deslop-auto-clean.sh were
+# moved to .claude/archive/ by the Wave H1 hook census (d066c63) but were never
+# unregistered here, so those three checks had never actually run: each one
+# produced {"status":"failed","error":"Script returned non-zero"} on every
+# invocation while still touching its .done marker, so every aggregated report
+# carried three permanently failed checks. They are dropped rather than pointed
+# at .claude/archive/; restore them from there if they are reinstated.
 run_quality_check "stop-slop" ".claude/hooks/stop-slop-hook.sh" "$STOPSLOP_RESULT" "$INPUT_JSON" &
 
 # Wait for all background processes to complete
@@ -194,7 +213,7 @@ timeout "$QUALITY_CHECK_TIMEOUT" wait || {
     exit 0
 }
 
-log "All 4 quality checks completed for: ${FILE_PATH}"
+log "All quality checks completed for: ${FILE_PATH}"
 log "Results written to: ${RESULTS_DIR}/"
 
 # Output hook result (non-blocking with async: true)
@@ -203,13 +222,13 @@ cat <<EOF
   "continue": true,
   "hookSpecificOutput": {
     "hookEventName": "QualityParallelAsync",
-    "checks": ["sec-context", "quality-gates", "deslop-clean", "stop-slop"],
+    "checks": ["stop-slop"],
     "runId": "${RUN_ID}",
     "resultsDir": "${RESULTS_DIR}",
-    "message": "4 quality checks completed using validated bash scripts"
+    "message": "Quality checks completed using validated bash scripts"
   }
 }
 EOF
 
 # Clear EXIT trap to prevent duplicate JSON (CRIT-002 fix)
-trap - EXIT
+trap - ERR EXIT

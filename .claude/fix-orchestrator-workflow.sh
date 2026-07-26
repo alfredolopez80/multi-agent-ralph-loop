@@ -46,7 +46,11 @@ if [[ "${RALPH_AUTO_MODE:-false}" == "true" ]]; then
 
   if [[ "$TOOL_NAME" == "TaskUpdate" ]]; then
     MARKERS_DIR="${HOME}/.ralph/markers"
-    SESSION_ID="${CLAUDE_SESSION_ID:-$$}"
+    # BUG-6: CLAUDE_SESSION_ID is not exported to hooks and $$ changes every
+    # invocation, so the marker key could never be read back.
+    SESSION_ID=$(printf '%s' "${INPUT:-}" | jq -r '.session_id // empty' 2>/dev/null || true)
+    [[ -z "$SESSION_ID" ]] && SESSION_ID="cwd-$(printf '%s|%s' "$PWD" "$(date -u +%Y%m%d)" | shasum -a 256 | cut -c1-16)"
+    SESSION_ID=$(printf '%s' "$SESSION_ID" | tr -cd 'a-zA-Z0-9_-' | head -c 64)
     REVIEW_MARKER="${MARKERS_DIR}/review-pending-${SESSION_ID}.txt"
 
     if [[ -f "$REVIEW_MARKER" && -s "$REVIEW_MARKER" ]]; then

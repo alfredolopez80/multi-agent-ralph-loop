@@ -80,7 +80,8 @@ esac
 # Config check
 CONFIG_FILE="${HOME}/.ralph/config/memory-config.json"
 if [[ -f "$CONFIG_FILE" ]]; then
-    EXTRACT_ENABLED=$(jq -r '.episodic.extract_decisions // true' "$CONFIG_FILE" 2>/dev/null || echo "true")
+    # `false // true` is true in jq, so `//` must not be used for boolean defaults.
+    EXTRACT_ENABLED=$(jq -r 'if (.episodic.extract_decisions) == null then true else (.episodic.extract_decisions) end' "$CONFIG_FILE" 2>/dev/null || echo "true")
     if [[ "$EXTRACT_ENABLED" != "true" ]]; then
         trap - ERR EXIT  # v2.69.1: SEC-112 FIX
         echo '{"continue": true}'

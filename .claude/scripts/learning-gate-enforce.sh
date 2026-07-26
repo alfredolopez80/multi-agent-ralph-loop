@@ -79,7 +79,8 @@ EOF
 # Load configuration
 load_config() {
     if [[ -f "$CONFIG_FILE" ]]; then
-        LEARNING_ENABLED=$(jq -r '.auto_learn.enabled // true' "$CONFIG_FILE" 2>/dev/null || echo "true")
+        # `false // true` is true in jq, so `//` must not be used for boolean defaults.
+        LEARNING_ENABLED=$(jq -r 'if (.auto_learn.enabled) == null then true else (.auto_learn.enabled) end' "$CONFIG_FILE" 2>/dev/null || echo "true")
         BLOCK_ON_CRITICAL=$(jq -r '.auto_learn.blocking // false' "$CONFIG_FILE" 2>/dev/null || echo "false")
         MIN_RULES_DOMAIN=$(jq -r '.auto_learn.min_rules // 3' "$CONFIG_FILE" 2>/dev/null || echo "3")
     fi

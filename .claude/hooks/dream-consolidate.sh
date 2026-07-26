@@ -60,7 +60,7 @@ DREAM="${SCRIPTS_DIR}/dream.py"
 
 if [[ ! -f "$DREAM" ]]; then
   log "dream.py not found at $DREAM — skipping"
-  trap - EXIT
+  trap - ERR EXIT
   exit 0
 fi
 
@@ -85,5 +85,5 @@ else
   fi
 fi
 
-trap - EXIT
+trap - ERR EXIT
 exit 0

@@ -17,7 +17,7 @@
 # Input (JSON via stdin):
 #   - (standard Stop hook input)
 #
-# Output: {"decision": "approve"} (Stop format)
+# Output: none — allow is a silent exit 0 (Stop)
 #
 # VERSION: 1.0.0
 # CREATED: 2026-04-09
@@ -52,13 +52,13 @@ INPUT=$(head -c 100000)
 # ---------------------------------------------------------------------------
 if [[ ! -d "$VAULT_DIR" ]]; then
     log "WARN vault missing, skipping writeback"
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
     exit 0
 fi
 
 if [[ ! -f "$WRITEBACK_QUEUE" ]]; then
     log "INFO no writeback queue, nothing to process"
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
     exit 0
 fi
 
@@ -71,7 +71,7 @@ QUEUE_LENGTH=$(echo "$QUEUE_CONTENT" | jq 'length' 2>/dev/null || echo "0")
 if [[ "$QUEUE_LENGTH" == "0" || "$QUEUE_LENGTH" == "null" ]]; then
     log "INFO empty writeback queue"
     rm -f "$WRITEBACK_QUEUE"
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
     exit 0
 fi
 
@@ -171,5 +171,5 @@ done
 rm -f "$WRITEBACK_QUEUE"
 
 log "INFO writeback complete processed=${PROCESSED} skipped=${SKIPPED}"
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
 exit 0

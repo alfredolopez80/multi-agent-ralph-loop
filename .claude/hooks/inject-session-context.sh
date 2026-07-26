@@ -28,7 +28,19 @@ INPUT=$(head -c 100000)
 set -uo pipefail
 
 # Error trap: Always output valid JSON for PreToolUse
-trap 'echo "{\"decision\": \"allow\"}"' ERR EXIT
+# BUG-3: `trap ... ERR EXIT` emitted twice. Under `set -e` a failing command
+# fires ERR (emits JSON) and then EXIT (emits again); stdout then carried two
+# concatenated objects and Claude Code rejected the payload with
+# "Hook JSON output validation failed - (root): Invalid input". emit_json makes
+# emission idempotent, and every `trap -` clears ERR as well as EXIT.
+readonly DEFAULT_HOOK_JSON='{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+_HOOK_EMITTED=0
+emit_json() {
+    [ "${_HOOK_EMITTED}" -eq 1 ] && return 0
+    _HOOK_EMITTED=1
+    printf '%s\n' "${1:-$DEFAULT_HOOK_JSON}"
+}
+trap 'emit_json' ERR EXIT
 
 # Configuration
 LOG_FILE="${HOME}/.ralph/logs/inject-context.log"
@@ -86,16 +98,16 @@ log "INFO" "PreToolUse hook triggered - tool: $TOOL_NAME, session: $SESSION_ID"
 # Only inject context for Task tool calls
 if [[ "$TOOL_NAME" != "Task" ]]; then
     log "DEBUG" "Skipping non-Task tool: $TOOL_NAME"
-    trap - EXIT  # CRIT-002: Clear trap before explicit output
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+    trap - ERR EXIT  # CRIT-002: Clear trap before explicit output
+    emit_json '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
     exit 0
 fi
 
 # Check if context injection is enabled
 if ! check_feature_enabled "RALPH_INJECT_CONTEXT" "true"; then
     log "INFO" "Context injection disabled via features.json"
-    trap - EXIT  # CRIT-002: Clear trap before explicit output
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+    trap - ERR EXIT  # CRIT-002: Clear trap before explicit output
+    emit_json '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
     exit 0
 fi
 
@@ -109,6 +121,6 @@ fi
 #   - All of which was discarded since PreToolUse cannot inject
 
 log "INFO" "PreToolUse hook allowing Task tool"
-trap - EXIT  # CRIT-002: Clear trap before explicit output
-echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+trap - ERR EXIT  # CRIT-002: Clear trap before explicit output
+emit_json '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
 exit 0

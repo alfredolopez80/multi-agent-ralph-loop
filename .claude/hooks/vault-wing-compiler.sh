@@ -13,7 +13,7 @@
 # Input (JSON via stdin):
 #   - session_id: session identifier
 #
-# Output: {"decision": "approve"} (SessionEnd format)
+# Output: none — allow is a silent exit 0 (SessionEnd)
 #
 # VERSION: 1.0.0
 # CREATED: 2026-04-09
@@ -55,7 +55,7 @@ if command -v git &>/dev/null; then
     REPO_ROOT="${HOME}/Documents/GitHub/multi-agent-ralph-loop"
     PROJECT=$(basename "$(git -C "$REPO_ROOT" rev-parse --show-toplevel 2>/dev/null || echo "")" 2>/dev/null || echo "unknown")
 fi
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
 
 # Sanitize project name for filesystem
 SAFE_PROJECT=$(echo "$PROJECT" | tr -cd 'a-zA-Z0-9_-' | head -c 64)
@@ -68,7 +68,7 @@ FACTS_FILE="${VAULT_DIR}/projects/${PROJECT}/facts/facts-${TODAY}.md"
 
 if [[ ! -f "$FACTS_FILE" ]]; then
     log "INFO no facts file for today: ${FACTS_FILE}"
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
     exit 0
 fi
 
@@ -89,7 +89,7 @@ done < "$FACTS_FILE"
 
 if [[ -z "$NEW_FACTS" ]]; then
     log "INFO no valid categorized facts found"
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
     exit 0
 fi
 
@@ -117,7 +117,7 @@ done <<< "$NEW_FACTS"
 
 if [[ -z "$DEDUPED_FACTS" ]]; then
     log "INFO all facts already in wing, nothing new"
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
     exit 0
 fi
 
@@ -182,5 +182,5 @@ else
     log "WARN could not acquire lock for wing write"
 fi
 
-: # FIXED: invalid decision approve removed
+: # allow: this hook signals allow with a silent exit 0 (no stdout)
 exit 0

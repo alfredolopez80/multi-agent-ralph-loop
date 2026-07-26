@@ -40,7 +40,19 @@ set -euo pipefail
 
 # Error trap for guaranteed JSON output (v2.62.3)
 # v2.87.0 FIX: UserPromptSubmit uses {"continue": true} format, not {}
-trap 'echo "{\"continue\": true}"' ERR EXIT
+# BUG-3: `trap ... ERR EXIT` emitted twice. Under `set -e` a failing command
+# fires ERR (emits JSON) and then EXIT (emits again); stdout then carried two
+# concatenated objects and Claude Code rejected the payload with
+# "Hook JSON output validation failed - (root): Invalid input". emit_json makes
+# emission idempotent, and every `trap -` clears ERR as well as EXIT.
+readonly DEFAULT_HOOK_JSON='{"continue": true}'
+_HOOK_EMITTED=0
+emit_json() {
+    [ "${_HOOK_EMITTED}" -eq 1 ] && return 0
+    _HOOK_EMITTED=1
+    printf '%s\n' "${1:-$DEFAULT_HOOK_JSON}"
+}
+trap 'emit_json' ERR EXIT
 
 # Worktree-safe path resolution
 _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -127,8 +139,8 @@ fi
 # Check if plan-state exists
 if [[ ! -f "$PLAN_STATE" ]]; then
     # No plan-state, nothing to check
-    trap - EXIT  # CRIT-008: Clear trap before explicit output
-    echo '{"continue": true}'
+    trap - ERR EXIT  # CRIT-008: Clear trap before explicit output
+    emit_json '{"continue": true}'
     exit 0
 fi
 
@@ -139,8 +151,8 @@ if [[ -f "$PLAN_STATE" ]]; then
     PLAN_AGE_MINUTES=$((PLAN_AGE_SECONDS / 60))
     PLAN_AGE_HOURS=$((PLAN_AGE_SECONDS / 3600))
 else
-    trap - EXIT  # CRIT-008: Clear trap before explicit output
-    echo '{"continue": true}'
+    trap - ERR EXIT  # CRIT-008: Clear trap before explicit output
+    emit_json '{"continue": true}'
     exit 0
 fi
 
@@ -191,7 +203,7 @@ if [[ "$PLAN_AGE_MINUTES" -ge "$STALENESS_MINUTES" ]] && [[ "$IS_NEW_TASK" == "t
             MODIFIED_PROMPT="[PLAN-STATE AUTO-ARCHIVED: Previous ${ADAPTIVE_MODE} plan \"${CURRENT_TASK}\" (${PLAN_AGE_MINUTES}m old, threshold: ${STALENESS_MINUTES}m, ${COMPLETED_STEPS}/${TOTAL_STEPS} steps) has been archived to ~/.ralph/archive/plans/. Starting fresh for new task. Disable with PLAN_STATE_AUTO_ARCHIVE=false]
 
 $USER_PROMPT"
-            trap - EXIT  # CRIT-008: Clear trap before explicit output
+            trap - ERR EXIT  # CRIT-008: Clear trap before explicit output
             printf '%s' "$MODIFIED_PROMPT" | jq -Rs '{userPromptContent: .}'
             exit 0
         else
@@ -205,7 +217,7 @@ $USER_PROMPT"
 
 $USER_PROMPT"
 
-    trap - EXIT  # CRIT-008: Clear trap before explicit output
+    trap - ERR EXIT  # CRIT-008: Clear trap before explicit output
     printf '%s' "$MODIFIED_PROMPT" | jq -Rs '{userPromptContent: .}'
     exit 0
 fi
@@ -220,5 +232,5 @@ if [[ "$PROMPT_LOWER" =~ ^/orchestrator ]] || [[ "$PROMPT_LOWER" =~ ^ralph\ orch
 fi
 
 # No modification needed
-trap - EXIT  # CRIT-008: Clear trap before explicit output
-echo '{}'
+trap - ERR EXIT  # CRIT-008: Clear trap before explicit output
+emit_json '{}'

@@ -67,7 +67,8 @@ esac
 # Config check
 CONFIG_FILE="${HOME}/.ralph/config/memory-config.json"
 if [[ -f "$CONFIG_FILE" ]]; then
-    REALTIME_EXTRACT=$(jq -r '.semantic.realtime_extract // true' "$CONFIG_FILE" 2>/dev/null || echo "true")
+    # `false // true` is true in jq, so `//` must not be used for boolean defaults.
+    REALTIME_EXTRACT=$(jq -r 'if (.semantic.realtime_extract) == null then true else (.semantic.realtime_extract) end' "$CONFIG_FILE" 2>/dev/null || echo "true")
     if [[ "$REALTIME_EXTRACT" != "true" ]]; then
         trap - ERR EXIT  # v2.69.1: SEC-112 FIX - Clear trap before output
         echo '{"continue": true}'

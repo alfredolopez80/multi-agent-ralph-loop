@@ -14,8 +14,21 @@ INPUT=$(head -c 100000)
 
 set -euo pipefail
 
-# Error trap for guaranteed JSON output (v2.62.3)
-trap 'echo "{\"continue\": true}"' ERR EXIT
+# Error trap for guaranteed JSON output (v2.62.3).
+#
+# Armed on ERR *and* EXIT. Under `set -e` a failing command fires ERR (emitting
+# once) and then terminates the script, firing EXIT (emitting again), so stdout
+# carried two concatenated objects and the runtime rejected the whole output.
+# Clearing the trap at the explicit output sites does not help, because the
+# failure happens before reaching them. Emission is guarded to happen once.
+DEFAULT_HOOK_JSON='{"continue": true}'
+_HOOK_EMITTED=0
+emit_json() {
+    [ "${_HOOK_EMITTED}" -eq 1 ] && return 0
+    _HOOK_EMITTED=1
+    printf '%s\n' "${1:-$DEFAULT_HOOK_JSON}"
+}
+trap 'emit_json' ERR EXIT
 
 umask 077
 
@@ -28,7 +41,7 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 if [[ "$TOOL_NAME" != "Task" ]]; then
     # CRIT-003: Clear trap before explicit JSON output to avoid duplicates
     trap - ERR EXIT
-    echo '{"continue": true}'
+    emit_json
     exit 0
 fi
 
@@ -40,7 +53,7 @@ TASK_PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty')
 if [[ "$TASK_TYPE" != "orchestrator" ]] && ! echo "$TASK_PROMPT" | grep -qi "classify\|classification\|complexity"; then
     # CRIT-003: Clear trap before explicit JSON output to avoid duplicates
     trap - ERR EXIT
-    echo '{"continue": true}'
+    emit_json
     exit 0
 fi
 
@@ -151,7 +164,12 @@ if [[ "$NEEDS_DECOMPOSITION" == "true" ]]; then
     # Build additionalContext with proper newline escaping
     CONTEXT_MSG="RECURSIVE_DECOMPOSITION_REQUIRED: Task requires recursive decomposition (reason: ${DECOMPOSITION_REASON}). DECOMPOSITION PROTOCOL (RLM-inspired): 1. IDENTIFY CHUNKS: Break task into logical units (by module, feature, or file group). 2. CREATE SUB-PLANS: Each chunk gets its own verifiable spec. 3. SPAWN SUB-ORCHESTRATORS: Use Task tool with subagent_type=orchestrator for each chunk (depth=$((CURRENT_DEPTH + 1)), max_depth=$MAX_DEPTH). 4. AGGREGATE RESULTS: Collect sub-results, reconcile conflicts, merge outputs. IMPORTANT: Sub-orchestrators run STANDARD flow (not recursive). Each sub has isolated context. Max $MAX_CHILDREN children per level."
 
-    jq -n --argjson cont true --arg ctx "$CONTEXT_MSG" '{continue: $cont, additionalContext: $ctx}'
+    FINAL_JSON=$(jq -nc --argjson cont true --arg ctx "$CONTEXT_MSG" '{continue: $cont, additionalContext: $ctx}')
 else
-    jq -n --argjson cont true --arg ctx "STANDARD_PATH: No recursive decomposition needed. Proceeding with standard orchestration flow." '{continue: $cont, additionalContext: $ctx}'
+    FINAL_JSON=$(jq -nc --argjson cont true --arg ctx "STANDARD_PATH: No recursive decomposition needed. Proceeding with standard orchestration flow." '{continue: $cont, additionalContext: $ctx}')
 fi
+
+# The trap was still armed here, so this payload printed and then EXIT fired and
+# printed the default object after it. Clear it and emit exactly once.
+trap - ERR EXIT
+emit_json "$FINAL_JSON"
