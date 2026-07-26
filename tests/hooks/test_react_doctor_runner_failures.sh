@@ -30,6 +30,10 @@ fail() {
 # Build a project whose local react-doctor bin behaves as described, and neutralise
 # the network fallbacks so this exercises the hook rather than the real react-doctor:
 # stub pnpm/npx exit 127, which is the code the hook already treats as "not here".
+#
+# The hook reads react-doctor's --json report and ignores the exit code, so $3 is
+# set to values the real tool uses (non-zero both for findings and for "cannot run")
+# precisely to prove the exit code no longer decides anything.
 run_with_fake_bin() { # $1=stdout $2=stderr $3=exit-code -> prints hook stdout
     local fake_stdout="$1" fake_stderr="$2" fake_rc="$3" proj bin stub
     proj="$(mktemp -d)"
@@ -69,7 +73,7 @@ try:
 except ValueError:
     print("unparseable"); raise SystemExit
 ctx = (d.get("hookSpecificOutput") or {}).get("additionalContext") or d.get("additional_context") or ""
-print("yes" if "React Doctor found issues" in ctx else "no")
+print("yes" if "React Doctor found" in ctx else "no")
 '
 }
 
@@ -94,29 +98,71 @@ else
          "$(printf '%s' "$OUT" | head -c 300)"
 fi
 
-# 3. A real scan with findings must still be reported.
-OUT="$(run_with_fake_bin 'src/App.tsx:12  no-unstable-context-value  high' 'scanned 1 file' 1)"
+# A report carrying one error-severity diagnostic.
+ERROR_REPORT='{"schemaVersion":3,"error":null,"reactDetected":true,"diagnostics":[{"filePath":"src/App.tsx","rule":"react-doctor/no-unstable-context-value","severity":"error","message":"Unstable context value","help":"Memoise it","line":12,"column":5,"category":"Correctness"}],"summary":{"errorCount":1,"warningCount":0,"totalDiagnosticCount":1}}'
+
+# 3. Real findings must still be reported, exit code notwithstanding.
+OUT="$(run_with_fake_bin "$ERROR_REPORT" 'scanned 1 file' 1)"
 if [[ "$(reports_findings "$OUT")" == "yes" ]]; then
     pass
 else
-    fail "real findings on stdout were suppressed" \
+    fail "an error-severity diagnostic was suppressed" \
          "$(printf '%s' "$OUT" | head -c 300)"
 fi
 
-# 4. A clean scan stays silent.
-OUT="$(run_with_fake_bin 'no issues found' '' 0)"
+# 4. A clean report stays silent.
+OUT="$(run_with_fake_bin '{"schemaVersion":3,"error":null,"reactDetected":true,"diagnostics":[],"summary":{"errorCount":0,"warningCount":0,"totalDiagnosticCount":0}}' '' 0)"
 if [[ -z "${OUT// /}" ]]; then
     pass
 else
-    fail "a clean scan emitted output" "$(printf '%s' "$OUT" | head -c 300)"
+    fail "a clean report emitted output" "$(printf '%s' "$OUT" | head -c 300)"
 fi
 
-# 5. Whatever happens, the hook must emit valid JSON or nothing at all.
-for spec in "''|err|1" "out|err|1" "out||0"; do
+# 5. A populated `error` field is a setup failure, never a finding — this is the
+# shape the real tool returns in a tree with no React project.
+OUT="$(run_with_fake_bin '{"schemaVersion":3,"error":{"message":"No React project found in /tmp/x"},"reactDetected":null,"diagnostics":[],"summary":{"errorCount":0,"warningCount":0,"totalDiagnosticCount":0}}' '' 1)"
+if [[ -z "${OUT// /}" ]]; then
+    pass
+else
+    fail "a report carrying an error field was presented as findings" \
+         "$(printf '%s' "$OUT" | head -c 300)"
+fi
+
+# 6. Plain warnings outside a reported category do not interrupt; the same report
+# with a Security category does. Reporting every warning on every edit batch is
+# the noise this filter exists to prevent.
+WARN='{"schemaVersion":3,"error":null,"reactDetected":true,"diagnostics":[{"filePath":"src/a.js","rule":"r","severity":"warning","message":"m","line":1,"column":1,"category":"Style"}],"summary":{"errorCount":0,"warningCount":1,"totalDiagnosticCount":1}}'
+OUT="$(run_with_fake_bin "$WARN" '' 1)"
+if [[ -z "${OUT// /}" ]]; then
+    pass
+else
+    fail "a Style warning interrupted the loop" "$(printf '%s' "$OUT" | head -c 300)"
+fi
+
+SEC="${WARN//\"Style\"/\"Security\"}"
+OUT="$(run_with_fake_bin "$SEC" '' 1)"
+if [[ "$(reports_findings "$OUT")" == "yes" ]]; then
+    pass
+else
+    fail "a Security warning was suppressed" "$(printf '%s' "$OUT" | head -c 300)"
+fi
+
+# 7. An unknown schemaVersion means the field names may have moved: stay silent
+# rather than reporting from a shape we cannot read.
+OUT="$(run_with_fake_bin "${ERROR_REPORT//\"schemaVersion\":3/\"schemaVersion\":99}" '' 1)"
+if [[ -z "${OUT// /}" ]]; then
+    pass
+else
+    fail "an unsupported schemaVersion was still parsed as findings" \
+         "$(printf '%s' "$OUT" | head -c 300)"
+fi
+
+# 8. Whatever happens, the hook must emit valid JSON or nothing at all.
+for spec in "|err|1" "$ERROR_REPORT|err|1" "$ERROR_REPORT||0" "not-json|err|1"; do
     IFS='|' read -r so se rc <<< "$spec"
     OUT="$(run_with_fake_bin "$so" "$se" "$rc")"
     if [[ "$(reports_findings "$OUT")" == "unparseable" ]]; then
-        fail "hook emitted unparseable stdout [$spec]" "$(printf '%s' "$OUT" | head -c 200)"
+        fail "hook emitted unparseable stdout [rc=$rc]" "$(printf '%s' "$OUT" | head -c 200)"
     else
         pass
     fi
