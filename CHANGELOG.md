@@ -42,7 +42,7 @@ Hooks that blocked `Task` (subagent) launches, plus the guards that were suppose
 
 Added: `tests/hooks/test_no_hook_hangs_or_blocks.sh` (every hook terminates, emits at most one JSON object, and never denies a benign `Task` launch — including under degenerate stdin), `tests/hooks/test_single_json_emission.sh`, `tests/hooks/test_quality_check_registry.sh`, `tests/hooks/test_session_dedup_key.sh`, `tests/test_jq_scalar_count_regression.py`, `tests/test_jq_boolean_default_regression.py`.
 
-Reinstall required: hooks are executed from their installed location, so `~/.claude/` and `~/.ralph/` must be refreshed before the running system picks these up.
+Activation: no copy step is needed. `settings.json` registers all 39 affected hooks by absolute path into the repo checkout (0 of them load from the `~/.claude/hooks/` copies), so merging to `main` makes them live. Verified end to end with `claude -p` driving a real `Task` launch. The one exception is `~/.ralph/curator/scripts/curator-discovery.sh`, which has no tracked copy in this repo and was fixed in place.
 
 ---
 
