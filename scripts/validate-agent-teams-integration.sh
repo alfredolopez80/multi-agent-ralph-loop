@@ -148,12 +148,16 @@ echo -e "Warnings: ${YELLOW}$warnings${NC}"
 echo -e "Errors:   ${RED}$errors${NC}"
 echo ""
 
-if [[ $errors -gt 0 ]]; then
-    if [[ $((passed + errors + warnings)) -eq 0 ]]; then
-  echo "FATAL: cero comprobaciones ejecutadas — no se puede declarar veredicto" >&2
-  exit 1
+# Antes que cualquier veredicto: cero comprobaciones nunca es exito. Esta guarda estaba
+# DENTRO de la rama de errores, asi que con errors=0 no se evaluaba y el else final podia
+# declarar "todo verificado" habiendo comprobado nada.
+if [[ $((passed + errors + warnings)) -eq 0 ]]; then
+    echo "FATAL: cero comprobaciones ejecutadas — no se puede declarar veredicto" >&2
+    exit 1
 fi
-echo -e "${RED}VALIDATION FAILED${NC}: $errors error(s) found"
+
+if [[ $errors -gt 0 ]]; then
+    echo -e "${RED}VALIDATION FAILED${NC}: $errors error(s) found"
     exit 1
 elif [[ $warnings -gt 0 ]]; then
     echo -e "${YELLOW}VALIDATION PASSED${NC} with $warnings warning(s)"

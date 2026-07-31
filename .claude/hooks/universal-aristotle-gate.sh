@@ -71,8 +71,11 @@ STATE="${CWD}/.claude/state/current-complexity.json"
 
 COMPLEXITY=$(jq -r '.complexity // empty' "$STATE" 2>/dev/null)
 if [[ ! "$COMPLEXITY" =~ ^[0-9]+$ ]]; then
-  echo "[$HOOK_NAME] malformed 'complexity' in $STATE: ${COMPLEXITY:-<empty>}" >&2
-  allow
+  # The state file EXISTS but its score is unreadable, so the gate cannot tell whether a
+  # plan is required. Allowing here let an implementation edit through on a corrupt or
+  # hand-edited state file; only mutating tools reach this point, so denying costs a fix
+  # to the file, while allowing costs the guarantee.
+  deny "[$HOOK_NAME] '$STATE' exists but its 'complexity' is not an integer (${COMPLEXITY:-<empty>}), so the plan requirement cannot be evaluated. Repair or delete the file."
 fi
 
 (( COMPLEXITY < 4 )) && allow
