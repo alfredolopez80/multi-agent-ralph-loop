@@ -96,16 +96,28 @@ def test_no_validator_uses_the_set_e_counter_trap():
     # ralph-doctor.sh, the setup-*.sh installers, gc-stale-worktrees.sh and the ci/
     # validators precisely because the sweep only looked at validators, and then only at
     # the top level. The guard is only as wide as its glob; rglob reaches subdirectories.
+    #
+    # Extension-less shell scripts (the `ralph` orchestrator CLI) are shell too and carried
+    # the trap just the same, but `rglob("*.sh")` never sees them — add them explicitly.
+    extensionless = [SCRIPTS_DIR / name for name in ("ralph",)]
+    scripts = sorted(SCRIPTS_DIR.rglob("*.sh")) + [p for p in extensionless if p.is_file()]
+
+    trap = re.compile(r"\(\(\s*\w+\s*\+\+\s*\)\)")
     offenders = {}
-    for script in sorted(SCRIPTS_DIR.rglob("*.sh")):
+    for script in scripts:
         text = script.read_text(encoding="utf-8", errors="replace")
         if not re.search(r"^\s*set\s+-[a-z]*e", text, re.M):
             continue
-        bad = [
-            line.strip()
-            for line in text.splitlines()
-            if re.search(r"\(\(\s*\w+\s*\+\+\s*\)\)", line) and not line.strip().startswith("#")
-        ]
+        bad = []
+        for line in text.splitlines():
+            if line.strip().startswith("#"):
+                continue
+            # Strip an inline comment before checking: a `((VAR++))` written inside a
+            # ` # ...` comment (e.g. the note explaining this very trap) is documentation,
+            # not a live post-increment. Splitting on " #" leaves `${#var}` / `$#` alone.
+            code = line.split(" #", 1)[0]
+            if trap.search(code):
+                bad.append(line.strip())
         if bad:
             offenders[script.name] = bad[:3]
     assert not offenders, (
