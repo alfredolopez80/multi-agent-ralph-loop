@@ -87,6 +87,12 @@ run 'eval kubectl --context=kind-dev get pods' 0 'eval a contexto permitido + le
 run "eval eval kubectl --context=$PROD apply -f x.yaml" 2 'doble eval NO evade'
 run "command eval kubectl --context=$PROD apply -f x.yaml" 2 'command+eval NO evade'
 run "eval eval kubectl --context=kind-dev get pods" 0 'doble eval a contexto permitido OK'
+# 7+ wrappers superan cualquier cota: un segmento que sigue envuelto tras el strip se fuerza
+# a enforcement de contexto (fail-closed) en vez de asumirse benigno.
+run "eval eval eval eval eval eval eval kubectl --context=$PROD apply -f x" 2 'eval x7 NO evade'
+run "command command command command command command command kubectl --context=$PROD apply -f x" 2 'command x7 NO evade'
+run "sudo command eval env time nice nohup kubectl --context=$PROD apply -f x" 2 '7 wrappers distintos NO evade'
+run "eval echo hola" 0 'comando NO-k8s muy envuelto no se sobre-bloquea'
 
 echo
 echo "=== paridad con las copias que realmente se ejecutan ==="

@@ -229,6 +229,9 @@ def test_background_ampersand_separates_commands(sample_repo):
         "command cd", "builtin cd", "eval cd", "\\cd",
         # Wrappers that stack or carry a backslash / `time` also move the shell.
         "time cd", "\\command cd", "command eval cd", "eval eval cd",
+        # Wrappers carrying their own options, and a stack deeper than any fixed bound —
+        # an unresolvable wrapping must fail closed, not fall through to the stale cwd.
+        "command -p cd", "time -p cd", "eval " * 7 + "cd",
     ],
 )
 def test_wrapped_cd_forms_fail_closed(sample_repo, other_repo, wrapper):
@@ -259,6 +262,17 @@ def test_cd_itself_is_never_blocked(sample_repo, other_repo):
 def test_fails_closed_outside_a_git_repo(tmp_path):
     """No repo means no way to prove the file is deleted, so the block must hold."""
     assert _decide(f"{RESTORE} whatever.txt", str(tmp_path)) == "deny"
+
+
+@pytest.mark.skipif(not GUARD.is_file(), reason="git-safety-guard.py not present")
+def test_brace_group_cd_fails_closed(sample_repo, other_repo):
+    """`{ cd DIR; }` moves the current shell — it must not leave the tracker on the stale cwd.
+
+    `deleted.txt` is deleted in sample_repo (exemption would apply there) and modified in
+    other_repo (restore is destructive). Judging the restore against sample_repo would allow
+    the destructive restore, so the brace-group cd must force the exemption closed.
+    """
+    assert _decide(f"{{ cd {other_repo}; }} && {RESTORE} deleted.txt", sample_repo) == "deny"
 
 
 @pytest.mark.skipif(not GUARD.is_file(), reason="git-safety-guard.py not present")

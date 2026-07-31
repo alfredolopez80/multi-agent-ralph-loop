@@ -579,25 +579,34 @@ RESTORE_LIKE = re.compile(
 CD_RE = re.compile(r"^\s*cd(?:\s+(?P<target>\S+))?\s*$")
 # Wrappers that still run the following builtin in the CURRENT shell, so `<wrapper> cd DIR`
 # moves the shell. They can stack (`command eval cd`), carry a leading backslash
-# (`\command cd`), and `cd`/`pushd`/`popd` itself may be escaped (`\cd`). A single-wrapper
-# regex missed the nested and `time`/`\command` forms, leaving the STALE cwd — a fail-open.
-CD_WRAPPER_RE = re.compile(r"^\s*\\?(?:command|builtin|eval|time)\s+")
-CD_HEAD_RE = re.compile(r"^\s*\\?(?:cd|pushd|popd)\b")
+# (`\command cd`), carry their own options (`command -p cd`, `time -p cd`), and the whole
+# thing may sit inside a brace group (`{ cd DIR; }`). `cd`/`pushd`/`popd` itself may be
+# escaped (`\cd`). Enumerating a fixed depth is a losing game — any bound is beaten by more
+# wrappers — so exhaustion is treated as a directory change and fails closed (see below).
+CD_WRAPPER_RE = re.compile(r"^\s*\{?\s*\\?(?:command|builtin|eval|time)(?:\s+-\S+)*\s+")
+CD_HEAD_RE = re.compile(r"^\s*\{?\s*\\?(?:cd|pushd|popd)\b")
+_CD_STRIP_BOUND = 12
 
 
 def _is_directory_change(subcmd: str) -> bool:
     """True if the subcommand ultimately runs cd/pushd/popd in the current shell.
 
-    Strips any stack of shell-builtin wrappers (bounded) before looking for the builtin, so
-    `time cd`, `\\command cd`, `command eval cd` and `eval eval cd` are all recognised.
+    Peels shell-builtin wrappers (with their options, an optional leading `{`, a backslash)
+    one at a time, checking for the builtin at each step, so `time -p cd`, `\\command cd`,
+    `command eval cd` and `{ cd X; }` are all recognised. If the input is STILL wrapped after
+    the bound — a pathological `eval`×N stack we cannot see through — that counts as a
+    directory change too, so apply_cd fails closed rather than assuming the stale cwd. The
+    only way to return False is to settle on a concrete non-cd token within the bound.
     """
     s = subcmd
-    for _ in range(6):  # bounded: unwind nested wrappers, never loop forever
+    for _ in range(_CD_STRIP_BOUND):
+        if CD_HEAD_RE.match(s):
+            return True
         m = CD_WRAPPER_RE.match(s)
         if not m:
-            break
+            return False  # settled on a real, non-cd command → genuinely not a dir change
         s = s[m.end():]
-    return CD_HEAD_RE.match(s) is not None
+    return True  # still peeling wrappers past the bound — unresolvable, so fail closed
 
 
 def apply_cd(subcmd: str, cwd: str) -> str:

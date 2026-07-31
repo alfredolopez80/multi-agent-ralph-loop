@@ -115,7 +115,7 @@ for seg in "${SEGMENTS[@]}"; do
   # segment sailed past context enforcement. The loop is bounded to avoid pathological input.
   cleaned="$(printf '%s' "$seg" | sed -E 's/^[[:space:]]+//')"
   prev=""; i=0
-  while [[ "$cleaned" != "$prev" && $i -lt 6 ]]; do
+  while [[ "$cleaned" != "$prev" && $i -lt 12 ]]; do
     prev="$cleaned"; i=$((i + 1))
     cleaned="$(printf '%s' "$cleaned" \
       | sed -E 's/^([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*//' \
@@ -126,7 +126,14 @@ for seg in "${SEGMENTS[@]}"; do
   first_token="${first_token##*/}"          # allow /usr/local/bin/kubectl
   first_token="${first_token#\\}"           # allow the escaped \kubectl
   case "$first_token" in
-    kubectl|helm|kustomize) invokes_k8s_tool=1; K8S_SEGMENTS+=("$seg") ;;
+    kubectl|helm|kustomize)
+      invokes_k8s_tool=1; K8S_SEGMENTS+=("$seg") ;;
+    sudo|command|builtin|eval|env|time|nice|nohup|xargs)
+      # Still a wrapper after the strip bound — a pathological `eval`×N stack we cannot see
+      # through. Enumerating a fixed depth is a losing game (any bound is beaten by more
+      # wrappers), so an unresolved wrapped segment is treated as a k8s invocation and forced
+      # through context enforcement below, instead of being assumed benign and exiting 0.
+      invokes_k8s_tool=1; K8S_SEGMENTS+=("$seg") ;;
   esac
 done
 
