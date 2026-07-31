@@ -33,6 +33,49 @@ For non-trivial work, run a compact Aristotle First Principles pass — the same
 4. **Assumption vs Truth Map** — separate what is proven from what is merely assumed.
 5. **The Aristotelian Move** — the single highest-leverage next action: keep, adjust, defer, validate, or revert.
 
+## Agent Teams Integration
+
+Adversarial review depends on **independent** perspectives: two passes that share a
+starting frame tend to share its blind spots. Agent Teams provides that independence
+locally, which also makes it the route to use when the external router is unavailable —
+the pre-flight below already requires falling back to local analysis rather than
+fabricating one.
+
+Spawn teammates in parallel, one per lens, so no teammate sees another's reasoning
+before forming its own:
+
+```yaml
+TeamCreate:
+  team_name: "adversarial-${TARGET}"
+  description: "Independent opposing analysis of ${CLAIM}"
+
+# Each lens challenges the claim from a different angle, in parallel
+Task:
+  subagent_type: "ralph-security"
+  team_name: "adversarial-${TARGET}"
+  run_in_background: true
+  prompt: "Attack ${CLAIM} from a security standpoint. What breaks under a hostile input?"
+
+Task:
+  subagent_type: "ralph-reviewer"
+  team_name: "adversarial-${TARGET}"
+  run_in_background: true
+  prompt: "Attack ${CLAIM} from correctness. Which assumption is false in this repo?"
+
+Task:
+  subagent_type: "ralph-tester"
+  team_name: "adversarial-${TARGET}"
+  run_in_background: true
+  prompt: "Find the case that falsifies ${CLAIM}. Prefer a reproducible failure."
+```
+
+**Disagreement is the signal.** Where the teammates converge, the claim is probably
+sound; where they diverge, that is the part worth investigating. Synthesis stays with
+the main agent — teammates supply positions, not verdicts.
+
+Use a single local pass instead of a team when the claim is small enough that three
+perspectives would restate one another.
+
 ## External Advisor Mode
 
 Use external advisors only when the user explicitly asks for Z.ai, MiniMax, both models, multi-model review, or second opinion, or when the risk justifies it.

@@ -271,11 +271,14 @@ Step 6: EXECUTE-WITH-SYNC
 
 ### Invocation
 
+This is a SKILL, not an agent: invoke it with the Skill tool (or `/tap-explorer`).
+Routing it through Task as a subagent type does not resolve — no agent carries
+this name — so the call fails.
+
 ```yaml
-Task:
-  subagent_type: "tap-explorer"
-  model: "sonnet"
-  prompt: |
+Skill:
+  skill: "tap-explorer"
+  args: |
     GOAL: "Find optimal solution for authentication refactor"
     CONFIG:
       max_depth: 5

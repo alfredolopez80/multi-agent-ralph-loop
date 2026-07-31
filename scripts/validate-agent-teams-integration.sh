@@ -7,6 +7,9 @@
 # ============================================================================
 
 set -e
+# NOTE: use `VAR=$((VAR+1))`, never `((VAR++))`. Under set -e, a post-increment
+# on a counter holding 0 evaluates to 0 -> exit status 1 -> the script aborts silently,
+# leaving zero counters and an apparent early success.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -22,7 +25,7 @@ NC='\033[0m' # No Color
 REQUIRED_SKILLS=(
     "orchestrator"
     "parallel"
-    "loop"
+    "iterate"
     "bugs"
     "security"
     "gates"
@@ -31,12 +34,10 @@ REQUIRED_SKILLS=(
     "retrospective"
     "code-reviewer"
     "quality-gates-parallel"
-    "glm5-parallel"
 )
 
 # Optional skills (nice to have)
 OPTIONAL_SKILLS=(
-    "glm5"
     "edd"
     "retrospective"
     "audit"
@@ -60,11 +61,11 @@ for agent in ralph-coder ralph-reviewer ralph-tester ralph-researcher; do
             echo -e "  ${GREEN}✓${NC} $agent (v2.88.0 with model inheritance)"
         else
             echo -e "  ${YELLOW}!${NC} $agent (missing VERSION 2.88.0 or model inheritance)"
-            ((warnings++))
+            warnings=$((warnings+1))
         fi
     else
         echo -e "  ${RED}✗${NC} $agent (MISSING)"
-        ((errors++))
+        errors=$((errors+1))
     fi
 done
 echo ""
@@ -78,11 +79,11 @@ for hook in teammate-idle-quality-gate.sh task-completed-quality-gate.sh ralph-s
             echo -e "  ${GREEN}✓${NC} $hook (executable)"
         else
             echo -e "  ${YELLOW}!${NC} $hook (not executable)"
-            ((warnings++))
+            warnings=$((warnings+1))
         fi
     else
         echo -e "  ${RED}✗${NC} $hook (MISSING)"
-        ((errors++))
+        errors=$((errors+1))
     fi
 done
 echo ""
@@ -103,7 +104,7 @@ check_skill_agent_teams() {
     else
         if [[ "$required" == "required" ]]; then
             echo -e "  ${RED}✗${NC} $skill_name (SKILL.md not found)"
-            ((errors++))
+            errors=$((errors+1))
         fi
         return 1
     fi
@@ -111,14 +112,14 @@ check_skill_agent_teams() {
     # Check for Agent Teams integration
     if grep -qi "Agent Teams" "$skill_path" && grep -qi "TeamCreate\|spawn\|parallel\|subagent" "$skill_path"; then
         echo -e "  ${GREEN}✓${NC} $skill_name (has Agent Teams integration)"
-        ((passed++))
+        passed=$((passed+1))
     else
         if [[ "$required" == "required" ]]; then
             echo -e "  ${RED}✗${NC} $skill_name (missing Agent Teams integration)"
-            ((errors++))
+            errors=$((errors+1))
         else
             echo -e "  ${YELLOW}!${NC} $skill_name (optional - no Agent Teams integration)"
-            ((warnings++))
+            warnings=$((warnings+1))
         fi
     fi
 }

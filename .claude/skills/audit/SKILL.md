@@ -25,9 +25,6 @@ Generate usage and cost optimization report.
 
 ## Execution
 ```bash
-# View stats
-mmc --stats
-
 # Detailed audit report
 ralph audit
 ```

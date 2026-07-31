@@ -307,11 +307,14 @@ Step 7: VALIDATE
 
 ### Invocation
 
+This is a SKILL, not an agent: invoke it with the Skill tool (or `/defense-profiler`).
+Routing it through Task as a subagent type does not resolve — no agent carries
+this name — so the call fails.
+
 ```yaml
-Task:
-  subagent_type: "defense-profiler"
-  model: "sonnet"
-  prompt: |
+Skill:
+  skill: "defense-profiler"
+  args: |
     TARGET_PATH: src/
     FOCUS: security
     DEPTH: comprehensive

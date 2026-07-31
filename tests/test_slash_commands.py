@@ -38,10 +38,7 @@ EXPECTED_SKILLS = [
     "exit-review",
     "gates",
     "gemini-cli",
-    "glm5",
-    "glm5-parallel",
     "iterate",
-    "minimax",
     "orchestrator",
     "parallel",
     "perf",
@@ -86,8 +83,9 @@ def test_expected_skills_present(skill_paths):
 
 def test_expected_skill_count():
     """Verify expected skills count."""
-    assert len(EXPECTED_SKILLS) >= 34, (
-        f"Expected at least 34 core skills, got {len(EXPECTED_SKILLS)}"
+    # Floor lowered from 34 on 2026-07-31: glm5, glm5-parallel and minimax were retired.
+    assert len(EXPECTED_SKILLS) >= 31, (
+        f"Expected at least 31 core skills, got {len(EXPECTED_SKILLS)}"
     )
 
 

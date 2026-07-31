@@ -4,6 +4,9 @@
 # Uso: ./validate-all-hooks.sh [--test]
 
 set -e
+# NOTE: use `VAR=$((VAR+1))`, never `((VAR++))`. Under set -e, a post-increment
+# on a counter holding 0 evaluates to 0 -> exit status 1 -> the script aborts silently,
+# leaving zero counters and an apparent early success.
 
 SETTINGS="$HOME/.claude/settings.json"
 REPO_HOOKS="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/hooks"
@@ -36,15 +39,15 @@ if [ -f "$SETTINGS" ]; then
     echo -e "   ${GREEN}✅${NC} Archivo existe: $SETTINGS"
 else
     echo -e "   ${RED}❌${NC} Archivo NO existe: $SETTINGS"
-    ((fail++))
+    fail=$((fail+1))
 fi
 
 if jq empty "$SETTINGS" 2>/dev/null; then
     echo -e "   ${GREEN}✅${NC} JSON válido"
-    ((pass++))
+    pass=$((pass+1))
 else
     echo -e "   ${RED}❌${NC} JSON inválido"
-    ((fail++))
+    fail=$((fail+1))
 fi
 
 echo ""
@@ -61,14 +64,14 @@ for dir in agents commands skills hooks rules; do
         if [ -d "$HOME/.claude/$dir" ]; then
             count=$(ls -1 "$HOME/.claude/$dir" 2>/dev/null | wc -l | tr -d ' ')
             echo -e "   ${GREEN}✅${NC} $dir → $target ($count elementos)"
-            ((pass++))
+            pass=$((pass+1))
         else
             echo -e "   ${RED}❌${NC} $dir → $target (ROTO)"
-            ((fail++))
+            fail=$((fail+1))
         fi
     else
         echo -e "   ${YELLOW}⚠️${NC}  $dir no es symlink"
-        ((warn++))
+        warn=$((warn+1))
     fi
 done
 
@@ -84,28 +87,30 @@ echo "-------------------------------------------"
 if jq -e '.env.CLAUDE_PLUGIN_ROOT' "$SETTINGS" > /dev/null 2>&1; then
     env_plugin=$(jq -r '.env.CLAUDE_PLUGIN_ROOT' "$SETTINGS")
     echo -e "   ${GREEN}✅${NC} CLAUDE_PLUGIN_ROOT en env: $env_plugin"
-    ((pass++))
+    pass=$((pass+1))
 else
     echo -e "   ${YELLOW}⚠️${NC}  CLAUDE_PLUGIN_ROOT NO está en env de settings.json"
-    ((warn++))
+    warn=$((warn+1))
 fi
 
-# Verificar directorio del plugin
+# claude-mem fue eliminado del proyecto (Wave 0, retirada forense completa). Verificar
+# su presencia hacía fallar el validador por la ausencia de algo retirado a propósito.
+# Se comprueba lo contrario: que no haya vuelto.
 if [ -d "$PLUGIN_ROOT" ]; then
-    echo -e "   ${GREEN}✅${NC} Plugin directory existe"
-    ((pass++))
+    echo -e "   ${RED}❌${NC} claude-mem reapareció en $PLUGIN_ROOT (fue retirado en Wave 0)"
+    fail=$((fail+1))
 else
-    echo -e "   ${RED}❌${NC} Plugin directory NO existe: $PLUGIN_ROOT"
-    ((fail++))
+    echo -e "   ${GREEN}✅${NC} claude-mem ausente (retirado en Wave 0)"
+    pass=$((pass+1))
 fi
 
-# Verificar worker
+# worker-service.cjs pertenecía al mismo plugin retirado.
 if [ -f "$PLUGIN_ROOT/scripts/worker-service.cjs" ]; then
-    echo -e "   ${GREEN}✅${NC} worker-service.cjs existe"
-    ((pass++))
+    echo -e "   ${RED}❌${NC} worker-service.cjs de claude-mem reapareció"
+    fail=$((fail+1))
 else
-    echo -e "   ${RED}❌${NC} worker-service.cjs NO existe"
-    ((fail++))
+    echo -e "   ${GREEN}✅${NC} worker-service.cjs ausente (plugin retirado)"
+    pass=$((pass+1))
 fi
 
 echo ""
@@ -207,11 +212,11 @@ if grep -q '\${CLAUDE_PLUGIN_ROOT}' "$SETTINGS"; then
     echo -e "   ${YELLOW}⚠️${NC}  Se encontraron referencias a \${CLAUDE_PLUGIN_ROOT}"
     echo "      Estas pueden no expandirse correctamente en hooks."
     echo "      Considera usar rutas absolutas."
-    ((warn++))
+    warn=$((warn+1))
 else
     echo -e "   ${GREEN}✅${NC} No hay referencias a \${CLAUDE_PLUGIN_ROOT}"
     echo "      (usando rutas absolutas)"
-    ((pass++))
+    pass=$((pass+1))
 fi
 
 echo ""
@@ -228,10 +233,16 @@ echo -e "   ${RED}Fallaron:${NC} $fail"
 echo -e "   ${YELLOW}Advertencias:${NC} $warn"
 echo ""
 
-if [ $fail -eq 0 ]; then
+if [ $((pass + fail)) -eq 0 ]; then
+    echo -e "${RED}❌ Cero comprobaciones ejecutadas — no se puede declarar éxito${NC}"
+    exit 1
+elif [ $fail -eq 0 ]; then
     echo -e "${GREEN}✅ Todos los hooks están configurados correctamente${NC}"
 else
+    # Antes imprimía este error y salía 0: el exit code contradecía el veredicto,
+    # así que ningún CI podía detectar el fallo.
     echo -e "${RED}❌ Hay $fail problemas que necesitan atención${NC}"
+    exit 1
 fi
 
 echo ""

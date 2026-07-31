@@ -1,6 +1,6 @@
 ---
 name: ralph-reference
-description: Version history and reference tables for Multi-Agent Ralph (batch execution v2.88, skills/commands unification v2.87, GLM-5 flag v2.84.1, LSP integration v2.88.1, security fixes v2.89.2, test layout, docs map). Load when you need the detailed feature reference, changelog, or file-layout tables that used to live in CLAUDE.md.
+description: Version history and reference tables for Multi-Agent Ralph (batch execution v2.88, skills/commands unification v2.87, LSP integration v2.88.1, security fixes v2.89.2, test layout, docs map). Load when you need the detailed feature reference, changelog, or file-layout tables that used to live in CLAUDE.md.
 ---
 
 # Ralph Reference (lazy-loaded)
@@ -70,12 +70,7 @@ Legacy multi-platform distribution (cc-mirror, codex, ralph, agents) was removed
 
 ## GLM-5 Integration (v2.84.1)
 
-All major commands support `--with-glm5` flag:
-```bash
-/orchestrator "task" --with-glm5
-/iterate "fix errors" --with-glm5
-/security src/ --with-glm5
-```
+The `--with-glm5` flag and the GLM-5 teammate scripts were removed on 2026-07-31 together with the rest of the GLM/MiniMax surface.
 
 ## LSP Integration (v2.88.1)
 

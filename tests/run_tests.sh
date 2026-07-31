@@ -149,9 +149,6 @@ run_agent_teams_tests() {
 
     cd "$PROJECT_DIR"
 
-    if [[ -x "$SCRIPT_DIR/agent-teams/test-glm5-teammates.sh" ]]; then
-        "$SCRIPT_DIR/agent-teams/test-glm5-teammates.sh" || log_warn "Agent teams tests require GLM-5 setup"
-    fi
 }
 
 # Run Bash tests

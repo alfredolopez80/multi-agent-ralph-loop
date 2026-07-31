@@ -88,7 +88,6 @@ declare -A HOOK_INPUT_MAP
 HOOK_INPUT_MAP["git-safety-guard.py"]="pre-tool-use-bash.json"
 HOOK_INPUT_MAP["repo-boundary-guard.sh"]="pre-tool-use-bash.json"
 HOOK_INPUT_MAP["context-warning.sh"]="user-prompt-submit.json"
-HOOK_INPUT_MAP["glm5-subagent-stop.sh"]="subagent-stop.json"
 HOOK_INPUT_MAP["pre-compact-handoff.sh"]="pre-compact.json"
 HOOK_INPUT_MAP["auto-migrate-plan-state.sh"]="session-start.json"
 HOOK_INPUT_MAP["session-start-restore-context.sh"]="session-start.json"
@@ -286,7 +285,6 @@ get_hooks_to_test() {
         "git-safety-guard.py"
         "repo-boundary-guard.sh"
         "context-warning.sh"
-        "glm5-subagent-stop.sh"
         "pre-compact-handoff.sh"
     )
 

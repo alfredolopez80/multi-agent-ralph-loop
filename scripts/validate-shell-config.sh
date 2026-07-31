@@ -105,17 +105,10 @@ RALPH_ALIASES=(
     "task-batch"
     "create-task-batch"
     "research"
-    "glm5"
     "parallel"
 )
 
 # MiniMax aliases
-MINIMAX_ALIASES=(
-    "mmc"
-    "mmc-search"
-    "mmc-config"
-    "mmc-status"
-)
 
 # Ralph marker in rc file
 RALPH_MARKER="# RALPH CONFIGURATION"
@@ -237,37 +230,6 @@ check_ralph_aliases() {
     fi
 
     record_check "ralph_aliases" "$status" "$message"
-}
-
-# Check MiniMax aliases
-check_minimax_aliases() {
-    local found=0
-    local total=${#MINIMAX_ALIASES[@]}
-    local missing=()
-
-    for alias_name in "${MINIMAX_ALIASES[@]}"; do
-        if alias "$alias_name" &>/dev/null || command -v "$alias_name" &>/dev/null; then
-            found=$((found + 1))
-        else
-            missing+=("$alias_name")
-        fi
-    done
-
-    local status=""
-    local message=""
-
-    if [[ $found -eq $total ]]; then
-        status="PASS"
-        message="All $total MiniMax aliases available"
-    elif [[ $found -gt 0 ]]; then
-        status="WARN"
-        message="$found/$total MiniMax aliases available (missing: ${missing[*]})"
-    else
-        status="WARN"
-        message="No MiniMax aliases found (optional)"
-    fi
-
-    record_check "minimax_aliases" "$status" "$message"
 }
 
 # Check Claude Code environment variables
@@ -414,7 +376,6 @@ check_path
 check_rc_file
 check_ralph_markers
 check_ralph_aliases
-check_minimax_aliases
 check_claude_env
 check_shell_version
 
