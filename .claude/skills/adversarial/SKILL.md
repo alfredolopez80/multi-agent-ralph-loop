@@ -1,7 +1,7 @@
 ---
 # VERSION: 3.1.0
 name: adversarial
-description: Apply adversarial opposite-analysis to plans, specs, architecture, code changes, and claims. Use when the user asks for adversarial review, opposing analysis, contrarian review, red-team reasoning, or Z.ai and MiniMax cross-checks through the Ralph MCP router.
+description: Apply adversarial opposite-analysis to plans, specs, architecture, code changes, and claims. Use when the user asks for adversarial review, opposing analysis, contrarian review, or red-team reasoning.
 ---
 
 # Adversarial
@@ -12,7 +12,7 @@ This skill narrows the original multi-agent security analyzer into opposite-anal
 
 ## Trigger
 
-Use when the user says `adversarial`, `analisis opuesto`, `opposing analysis`, `contrarian review`, `red-team this`, `challenge this plan`, `strongest counterargument`, `security review of this change`, or asks to consult Z.ai and MiniMax.
+Use when the user says `adversarial`, `analisis opuesto`, `opposing analysis`, `contrarian review`, `red-team this`, `challenge this plan`, `strongest counterargument`, `security review of this change`.
 
 ## Core Workflow
 
@@ -36,10 +36,8 @@ For non-trivial work, run a compact Aristotle First Principles pass — the same
 ## Agent Teams Integration
 
 Adversarial review depends on **independent** perspectives: two passes that share a
-starting frame tend to share its blind spots. Agent Teams provides that independence
-locally, which also makes it the route to use when the external router is unavailable —
-the pre-flight below already requires falling back to local analysis rather than
-fabricating one.
+starting frame tend to share its blind spots. Agent Teams provides that independence by
+giving each lens its own context, so no teammate inherits the framing of another.
 
 Spawn teammates in parallel, one per lens, so no teammate sees another's reasoning
 before forming its own:
@@ -76,43 +74,6 @@ the main agent — teammates supply positions, not verdicts.
 Use a single local pass instead of a team when the claim is small enough that three
 perspectives would restate one another.
 
-## External Advisor Mode
-
-Use external advisors only when the user explicitly asks for Z.ai, MiniMax, both models, multi-model review, or second opinion, or when the risk justifies it.
-
-Pre-flight (MANDATORY before any external routing):
-
-1. Confirm the Ralph MCP router tools are available in the session. If they are not, complete the analysis locally and report that external advisors were unavailable — do not fabricate a fallback.
-2. The sensitivity gate is mechanical, never self-asserted. Scan the FULL brief string — task, constraints, and any attached diff or log snippet — with the repo classifier `scripts/memory/sensitive_content.py` (`classify_text`). Only a GREEN result may be routed. If it is not GREEN, redact every RED match and re-scan until GREEN; if it cannot be made GREEN, abort external routing and tell the user why. The scanner result is authoritative — the agent never assigns the label itself.
-
-Required routing:
-
-- Z.ai: use `ralph_coding_models.zai_coding_deep` for deep opposing analysis, architecture, debugging, migration risk, claim adjudication, and spec review.
-- MiniMax: use `ralph_coding_models.minimax_agentic` for independent counterexamples, implementation advice, and practical risk review.
-- MiniMax fast: use `ralph_coding_models.minimax_agentic_fast` for logs, diffs, summaries, and test ideas.
-
-When using both Z.ai and MiniMax, send each the same minimized brief (one per tool):
-
-```text
-EXTERNAL_MCP_BRIEF
-tool=<Z.ai|MiniMax>
-role=<opposing analyst|claim adjudicator|risk reviewer>
-sensitivity=<classify_text result — GREEN only; scanner-authoritative, never self-asserted>
-context_minimized=yes
-task=<specific claim, plan, diff, or decision to challenge>
-constraints=<what not to change, what assumptions matter>
-required_output=
-- verdict
-- strongest counterargument
-- evidence
-- confidence
-- risks
-- recommended next action
-main_agent_final_owner=yes
-```
-
-After external review, synthesize where Z.ai and MiniMax agree, where they disagree, what the main agent verified locally, what remains unverified, and the final main-agent recommendation. Do not treat external output as proof.
-
 ## Security Mode
 
 Use security mode when the target is auth, permissions, input validation, network boundaries, data exposure, sandboxing, supply chain, or deployment risk.
@@ -131,30 +92,9 @@ Main risk: ...
 Next action: ...
 ```
 
-For Z.ai + MiniMax cross-check:
-
-```text
-External advisors:
-- Z.ai: <verdict>
-- MiniMax: <verdict>
-
-Agreement:
-...
-
-Disagreement:
-...
-
-Main agent final:
-...
-```
-
 ## Guardrails
 
 - Do not mutate files during report-only/read-only adversarial review.
-- Do not route any material externally until it passes the mechanical sensitivity gate (`classify_text` == GREEN). The scanner result is authoritative; a self-asserted label is never sufficient.
-- Minimize context before routing. Include ONLY the specific claim/decision text, line ranges (not full file bodies), and function signatures. EXCLUDE env var values, log lines, and any path containing `.env`, `~/.ralph`, or `~/.claude`, or any token-like substring.
-- Spawn external advisor subagents with the most restrictive scope the router supports: read-only, no Bash, no filesystem. They receive only the text brief.
 - Do not ask subagents to request approvals directly.
-- Do not let external advisors decide for the main agent.
 - Do not create findings without evidence.
 - Do not recommend broad rewrites when a small validation or revert resolves the risk.
