@@ -5,7 +5,7 @@ description: >
   Code review teammate with security and quality focus. Reviews code changes for
   anti-patterns, vulnerabilities, and style violations. Use when code needs
   review before merge, after implementation, or for quality assessment.
-tools: ["Read", "Grep", "Glob"]
+tools: Read, Grep, Glob, Bash(git diff:*, git log:*, git status:*, git show:*)
 permissionMode: default
 maxTurns: 25
 diary_path: ~/Documents/Obsidian/MiVault/agents/ralph-reviewer/diary/

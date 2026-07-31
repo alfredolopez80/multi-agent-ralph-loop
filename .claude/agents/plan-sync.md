@@ -44,13 +44,19 @@ DRIFT_ITEMS:
 
 ### 1.1 Load Completed Step
 
-```bash
-# Read what was SUPPOSED to happen
-jq '.steps[] | select(.id == "COMPLETED_STEP_ID") | .spec' .claude/plan-state.json
+Read `.claude/plan-state.json` with the **Read** tool. It is JSON, so no shell is needed —
+and this agent declares `disallowedTools: Bash` on purpose: it patches plan steps, it does
+not execute anything.
 
-# Read what ACTUALLY happened
-jq '.steps[] | select(.id == "COMPLETED_STEP_ID") | .actual' .claude/plan-state.json
-```
+From the parsed file, locate the entry in `steps[]` whose `id` matches the completed step,
+then compare two of its fields:
+
+| Field | Meaning |
+|-------|---------|
+| `.spec` | what was SUPPOSED to happen |
+| `.actual` | what ACTUALLY happened |
+
+The difference between them is the drift this agent exists to propagate.
 
 ### 1.2 Build Drift Map
 
@@ -71,10 +77,9 @@ DRIFT_MAP:
 
 ### 2.1 Get Downstream Steps
 
-```bash
-# All steps that are still pending
-jq '[.steps[] | select(.status == "pending")] | .[].id' .claude/plan-state.json
-```
+From the same parsed `.claude/plan-state.json`, collect every entry in `steps[]` whose
+`status` is `"pending"`. Those are the downstream steps that may now hold stale
+references.
 
 ### 2.2 Search for Stale References
 
@@ -225,10 +230,8 @@ Add comments to patched specs indicating the sync:
 - **Plan State**: SYNCHRONIZED
 
 ### Verification
-To verify patches were applied correctly:
-```bash
-jq '.steps[] | select(.id == "3") | .spec' .claude/plan-state.json
-```
+To verify patches were applied correctly, Read `.claude/plan-state.json` again and check
+that `steps[]` entry `id: "3"` now carries the patched `.spec`.
 ```
 
 ## Example Scenarios

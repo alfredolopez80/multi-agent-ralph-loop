@@ -18,12 +18,7 @@ description: |
   assistant: "I'll use ralph-security to run all 6 quality pillars: threat model, code audit, secrets scan, dependency CVEs, plan review, and hooks integrity."
   <commentary>Pre-deployment security is ralph-security's primary use case.</commentary>
   </example>
-allowed-tools:
-  - LSP
-  - Read
-  - Grep
-  - Glob
-  - Bash(npm audit:*, pip-audit:*, semgrep:*, gitleaks:*, git:*)
+tools: LSP, Read, Grep, Glob, Skill, Bash(npm audit:*, pip-audit:*, semgrep:*, gitleaks:*, git:*)
 diary_path: ~/Documents/Obsidian/MiVault/agents/ralph-security/diary/
 ---
 

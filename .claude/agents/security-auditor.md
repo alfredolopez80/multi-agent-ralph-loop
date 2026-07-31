@@ -2,7 +2,7 @@
 # VERSION: 2.43.0
 name: security-auditor
 description: "Security audit specialist. Invokes Codex CLI for vulnerability analysis + MiniMax for second opinion."
-tools: Bash, Read
+tools: Bash, Read, Task
 model: sonnet
 ---
 
@@ -57,11 +57,11 @@ Task:
        Output JSON: {severity, vulnerability, file, line, fix}"
 ```
 
-### 2. MiniMax Second Opinion (Parallel)
+### 2. Independent Second Opinion (Parallel)
 ```yaml
 Task:
-  subagent_type: "minimax-reviewer"
-  description: "MiniMax security review"
+  subagent_type: "codex-reviewer"
+  description: "Independent security review"
   run_in_background: true
   prompt: "Security review for: $FILES. Focus on subtle vulnerabilities."
 ```

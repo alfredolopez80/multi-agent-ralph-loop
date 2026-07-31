@@ -2,7 +2,7 @@
 # VERSION: 2.43.0
 name: test-architect
 description: "Test generation specialist. Codex for unit tests, Gemini for integration tests."
-tools: Bash, Read, Write
+tools: Bash, Read, Write, Task
 model: sonnet
 ---
 

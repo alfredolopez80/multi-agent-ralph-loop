@@ -17,12 +17,7 @@ description: |
   assistant: "I'll use ralph-tester to diagnose and fix the failing tests."
   <commentary>Test failures require test expertise, not code changes.</commentary>
   </example>
-tools:
-  - LSP
-  - Read
-  - Edit
-  - Write
-  - Bash(npm test:*, pytest:*, npx jest:*, npx vitest:*)
+tools: LSP, Read, Edit, Write, Bash(npm test:*, pytest:*, npx jest:*, npx vitest:*, bash validate-hooks.sh, ./validate-hooks.sh)
 # Model is inherited from ~/.claude/settings.json (ANTHROPIC_DEFAULT_*_MODEL)
 permissionMode: acceptEdits
 maxTurns: 30

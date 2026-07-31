@@ -2,7 +2,7 @@
 # VERSION: 2.43.0
 name: refactorer
 description: "Refactoring specialist. Uses Codex for systematic code improvement."
-tools: Bash, Read, Write
+tools: Bash, Read, Write, Task
 model: sonnet
 ---
 

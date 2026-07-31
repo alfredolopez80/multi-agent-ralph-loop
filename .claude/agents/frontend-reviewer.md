@@ -2,7 +2,7 @@
 # VERSION: 2.43.0
 name: frontend-reviewer
 description: "Frontend/UX specialist. Uses Opus for design decisions, Gemini/MiniMax for review."
-tools: Bash, Read
+tools: Bash, Read, Task
 model: opus
 ---
 
@@ -49,11 +49,11 @@ Task:
       --yolo -o text
 ```
 
-### MiniMax Second Opinion (via Task)
+### Independent Second Opinion (via Task)
 ```yaml
 Task:
-  subagent_type: "minimax-reviewer"
-  description: "MiniMax frontend review"
+  subagent_type: "codex-reviewer"
+  description: "Independent frontend review"
   run_in_background: true
   prompt: "Frontend review for: $FILES. Focus on component architecture."
 ```

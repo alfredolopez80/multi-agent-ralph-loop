@@ -20,14 +20,7 @@ description: |
   assistant: "I'll use ralph-frontend to audit the settings page for WCAG 2.1 AA compliance."
   <commentary>Accessibility audits are ralph-frontend's domain, not ralph-reviewer's.</commentary>
   </example>
-allowed-tools:
-  - LSP
-  - Read
-  - Edit
-  - Write
-  - Bash(npm:*, npx:*, bun:*, git:*)
-  - Glob
-  - Grep
+tools: LSP, Read, Edit, Write, Glob, Grep, Skill, Bash(npm:*, npx:*, bun:*, git:*)
 diary_path: ~/Documents/Obsidian/MiVault/agents/ralph-frontend/diary/
 ---
 
