@@ -62,7 +62,7 @@ for skill_dir in "$REPO_SKILLS"/*/; do
     # Check if skill has SKILL.md
     if [[ ! -f "$skill_dir/SKILL.md" ]] && [[ ! -f "$skill_dir/skill.md" ]]; then
         echo "  ⚠ Skipping $skill_name (no SKILL.md)"
-        ((SKIPPED++))
+        SKIPPED=$((SKIPPED+1))
         continue
     fi
 
@@ -71,28 +71,28 @@ for skill_dir in "$REPO_SKILLS"/*/; do
         current_target=$(readlink "$global_link")
         if [[ "$current_target" == "$skill_dir" ]]; then
             # Already correct
-            ((SKIPPED++))
+            SKIPPED=$((SKIPPED+1))
             continue
         elif $FORCE; then
             echo "  ↻ Replacing: $skill_name"
             $DRY_RUN || rm -f "$global_link"
             $DRY_RUN || ln -s "$skill_dir" "$global_link"
-            ((REPLACED++))
+            REPLACED=$((REPLACED+1))
         else
             echo "  ⚠ Exists with different target: $skill_name"
             echo "    Current: $current_target"
             echo "    Expected: $skill_dir"
-            ((SKIPPED++))
+            SKIPPED=$((SKIPPED+1))
         fi
     elif [[ -e "$global_link" ]]; then
         # Exists but not a symlink
         echo "  ⚠ Blocked (not symlink): $skill_name"
-        ((SKIPPED++))
+        SKIPPED=$((SKIPPED+1))
     else
         # Create new symlink
         echo "  ✓ Creating: $skill_name"
         $DRY_RUN || ln -s "$skill_dir" "$global_link"
-        ((CREATED++))
+        CREATED=$((CREATED+1))
     fi
 done
 

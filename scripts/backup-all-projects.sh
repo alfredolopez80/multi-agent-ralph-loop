@@ -106,9 +106,9 @@ main() {
 
     for project in "${PROJECTS[@]}"; do
         if backup_project "$project"; then
-            ((success_count++))
+            success_count=$((success_count+1))
         else
-            ((skip_count++))
+            skip_count=$((skip_count+1))
         fi
     done
 
@@ -125,9 +125,9 @@ main() {
 
         log_info "Found additional project: $project_name"
         if backup_project "$project_name"; then
-            ((success_count++))
+            success_count=$((success_count+1))
         else
-            ((skip_count++))
+            skip_count=$((skip_count+1))
         fi
     done < <(find "$GITHUB_DIR" -maxdepth 4 -type d -name ".claude" -print0 2>/dev/null)
 

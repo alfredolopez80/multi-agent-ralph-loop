@@ -7,16 +7,12 @@
 
 set -euo pipefail
 
-# Colores para output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Shared colors, counters and the zero-checks verdict guard.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/validation-common.sh"
 
 SKILLS_DIR="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/skills"
-ERRORS=0
-WARNINGS=0
+vc_init
 
 # Skills a verificar (los 3 que se consolidaron en Fase 1)
 SKILLS=("deslop" "stop-slop" "testing-anti-patterns")
@@ -74,15 +70,16 @@ for skill in "${SKILLS[@]}"; do
     
     if [[ ! -e "$skill_path" ]]; then
         echo -e "${RED}✗ ERROR${NC}: $skill - Directorio no existe"
-        ((ERRORS++))
+        vc_fail
         continue
     fi
     
     if is_symlink "$skill_path"; then
         echo -e "${RED}✗ ERROR${NC}: $skill - Aún es un symlink (!)"
-        ((ERRORS++))
+        vc_fail
     else
         echo -e "${GREEN}✓ OK${NC}: $skill - Es directorio regular (no symlink)"
+        vc_pass
     fi
 done
 
@@ -102,16 +99,17 @@ for skill in "${SKILLS[@]}"; do
     if has_skill_md "$skill_path"; then
         skill_md_path="$skill_path/SKILL.md"
         echo -e "${GREEN}✓ OK${NC}: $skill/SKILL.md existe"
+        vc_pass
         
         # Verificar tamaño del archivo
         size=$(stat -f "%z" "$skill_md_path" 2>/dev/null || stat -c "%s" "$skill_md_path" 2>/dev/null)
         if [[ $size -lt 100 ]]; then
             echo -e "  ${YELLOW}⚠ ADVERTENCIA${NC}: SKILL.md parece muy pequeño ($size bytes)"
-            ((WARNINGS++))
+            vc_warn
         fi
     else
         echo -e "${RED}✗ ERROR${NC}: $skill/SKILL.md NO existe"
-        ((ERRORS++))
+        vc_fail
     fi
 done
 
@@ -133,9 +131,10 @@ for skill in "${SKILLS[@]}"; do
         perm=$(stat -f "%Lp" "$skill_path/SKILL.md" 2>/dev/null || stat -c "%a" "$skill_path/SKILL.md" 2>/dev/null)
         if [[ "$perm" == "644" ]]; then
             echo -e "${GREEN}✓ OK${NC}: $skill/SKILL.md - Permisos 644 correctos"
+            vc_pass
         else
             echo -e "${YELLOW}⚠ ADVERTENCIA${NC}: $skill/SKILL.md - Permisos $perm (esperado: 644)"
-            ((WARNINGS++))
+            vc_warn
         fi
     fi
     
@@ -143,9 +142,10 @@ for skill in "${SKILLS[@]}"; do
     dir_perm=$(stat -f "%Lp" "$skill_path" 2>/dev/null || stat -c "%a" "$skill_path" 2>/dev/null)
     if [[ "$dir_perm" == "755" ]]; then
         echo -e "  ${GREEN}✓${NC}: Directorio $skill - Permisos 755 correctos"
+        vc_pass
     else
         echo -e "  ${YELLOW}⚠${NC}: Directorio $skill - Permisos $dir_perm (esperado: 755)"
-        ((WARNINGS++))
+        vc_warn
     fi
 done
 
@@ -158,9 +158,10 @@ echo ""
 GITIGNORE="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.gitignore"
 if grep -q "\.claude/skills/\*\.bak" "$GITIGNORE" 2>/dev/null; then
     echo -e "${GREEN}✓ OK${NC}: .gitignore contiene entrada para backups (.claude/skills/*.bak)"
+    vc_pass
 else
     echo -e "${RED}✗ ERROR${NC}: .gitignore NO contiene entrada para backups"
-    ((ERRORS++))
+    vc_fail
 fi
 
 echo ""
@@ -168,26 +169,15 @@ echo "════════════════════════�
 echo "  RESUMEN DE VERIFICACIÓN"
 echo "═══════════════════════════════════════════════════════════════════════════════"
 echo ""
-echo -e "Errores encontrados: ${ERRORS}"
-echo -e "Advertencias: ${WARNINGS}"
-echo ""
-
-if [[ $ERRORS -eq 0 ]]; then
-    echo -e "${GREEN}✓✓✓ VERIFICACIÓN EXITOSA ✓✓✓${NC}"
-    echo ""
-    echo "Todos los checks pasaron. La consolidación de skills está completa."
-    echo ""
+# Shared summary + the zero-checks guard. Previously this declared success on
+# `ERRORS -eq 0` alone and never counted the passing checks, so a fully-healthy run
+# would report success without vc_verdict being able to tell it ran anything at all.
+if vc_verdict "Skills Consolidation"; then
     echo "Skills verificados:"
     for skill in "${SKILLS[@]}"; do
         echo "  - $skill"
     done
     echo ""
     exit 0
-else
-    echo -e "${RED}✗✗✗ VERIFICACIÓN FALLIDA ✗✗✗${NC}"
-    echo ""
-    echo "Se encontraron errores que deben corregirse."
-    echo "Revisa los mensajes de error arriba."
-    echo ""
-    exit 1
 fi
+exit 1

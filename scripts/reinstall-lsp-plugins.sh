@@ -35,10 +35,10 @@ for plugin in "${PLUGINS[@]}"; do
     echo -n "Installing $plugin... "
     if claude plugin install "$plugin@claude-plugins-official" 2>&1; then
         echo "✅"
-        ((success++))
+        success=$((success+1))
     else
         echo "❌"
-        ((failed++))
+        failed=$((failed+1))
     fi
 done
 

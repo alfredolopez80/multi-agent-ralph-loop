@@ -70,15 +70,15 @@ for wt_dir in "$WT_BASE"/*/; do
     else
       if removeWorktree "$slug" 2>/dev/null; then
         echo "[REMOVED] $slug (dir_age=$(( dir_age / 86400 ))d, commit_age=$(( last_commit_age / 86400 ))d)"
-        ((REMOVED++)) || true
+        REMOVED=$((REMOVED+1))
       else
         echo "[ERROR] Failed to remove: $slug"
-        ((ERRORS++)) || true
+        ERRORS=$((ERRORS+1))
       fi
     fi
   else
     echo "[PRESERVED] $slug (dir_age=$(( dir_age / 86400 ))d, commit_age=$(( last_commit_age / 86400 ))d)"
-    ((PRESERVED++)) || true
+    PRESERVED=$((PRESERVED+1))
   fi
 done
 

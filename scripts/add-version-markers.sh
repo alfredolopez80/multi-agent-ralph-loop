@@ -96,7 +96,7 @@ add_version_sh() {
             if [[ ! "$line" =~ ^# ]] && [[ -n "$line" ]]; then
                 break
             fi
-            ((line_num++))
+            line_num=$((line_num+1))
         done < "$file"
 
         # Insert VERSION before the blank line after comments
@@ -131,7 +131,7 @@ process_directory() {
         for file in "${claude_dir}/agents"/*.md; do
             [[ -f "$file" ]] || continue
             add_version_md "$file" "$VERSION"
-            ((count++))
+            count=$((count+1))
         done
     fi
 
@@ -141,7 +141,7 @@ process_directory() {
         for file in "${claude_dir}/commands"/*.md; do
             [[ -f "$file" ]] || continue
             add_version_md "$file" "$VERSION"
-            ((count++))
+            count=$((count+1))
         done
     fi
 
@@ -153,14 +153,14 @@ process_directory() {
             local skill_file="${skill_dir}SKILL.md"
             if [[ -f "$skill_file" ]]; then
                 add_version_md "$skill_file" "$VERSION"
-                ((count++))
+                count=$((count+1))
             fi
         done
         # Also check for direct .md files in skills
         for file in "${claude_dir}/skills"/*.md; do
             [[ -f "$file" ]] || continue
             add_version_md "$file" "$VERSION"
-            ((count++))
+            count=$((count+1))
         done
     fi
 
@@ -170,12 +170,12 @@ process_directory() {
         for file in "${claude_dir}/hooks"/*.sh; do
             [[ -f "$file" ]] || continue
             add_version_sh "$file" "$VERSION"
-            ((count++))
+            count=$((count+1))
         done
         for file in "${claude_dir}/hooks"/*.py; do
             [[ -f "$file" ]] || continue
             add_version_sh "$file" "$VERSION"
-            ((count++))
+            count=$((count+1))
         done
     fi
 
@@ -208,13 +208,13 @@ check_versions() {
 
         if [[ -z "$file_version" ]]; then
             print_warn "Missing: $name"
-            ((missing++))
+            missing=$((missing+1))
         elif [[ "$file_version" == "$VERSION" ]]; then
             print_success "Current: $name (v${file_version})"
-            ((current++))
+            current=$((current+1))
         else
             print_warn "Outdated: $name (v${file_version} -> v${VERSION})"
-            ((outdated++))
+            outdated=$((outdated+1))
         fi
     }
 

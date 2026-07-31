@@ -162,17 +162,17 @@ main() {
 
     for cmd in "$SOURCE_DIR"/*.md; do
         [[ -f "$cmd" ]] || continue
-        ((total++))
+        total=$((total+1))
 
         name=$(basename "$cmd" .md)
 
         if should_skip "$name"; then
-            ((skipped++))
+            skipped=$((skipped+1))
         elif skill_exists "$name"; then
-            ((existing++))
+            existing=$((existing+1))
         else
             migrate_command "$cmd"
-            ((migrated++))
+            migrated=$((migrated+1))
         fi
     done
 

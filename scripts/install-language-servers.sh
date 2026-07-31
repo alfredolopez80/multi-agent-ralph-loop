@@ -171,9 +171,9 @@ check_all_servers() {
 
     for server in "${ESSENTIAL_SERVERS[@]}"; do
         if check_server "$server"; then
-            ((essential_installed++))
+            essential_installed=$((essential_installed+1))
         else
-            ((essential_missing++))
+            essential_missing=$((essential_missing+1))
         fi
     done
 
@@ -185,9 +185,9 @@ check_all_servers() {
 
     for server in "${OPTIONAL_SERVERS[@]}"; do
         if check_server "$server"; then
-            ((optional_installed++))
+            optional_installed=$((optional_installed+1))
         else
-            ((optional_missing++))
+            optional_missing=$((optional_missing+1))
         fi
     done
 

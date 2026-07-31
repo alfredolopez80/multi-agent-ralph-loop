@@ -214,7 +214,7 @@ clean_project() {
     if [[ -f "${claude_dir}/settings.json" ]]; then
         rm "${claude_dir}/settings.json"
         print_success "  Removed ${project_name}/.claude/settings.json"
-        ((cleaned++))
+        cleaned=$((cleaned+1))
     fi
 
     # Remove agents that exist in global
@@ -225,7 +225,7 @@ clean_project() {
             if [[ -f "${GLOBAL_CLAUDE_DIR}/agents/${agent_name}" ]]; then
                 rm "$agent"
                 print_success "  Removed ${project_name}/agents/${agent_name}"
-                ((cleaned++))
+                cleaned=$((cleaned+1))
             fi
         done
         # Remove directory if empty
@@ -240,7 +240,7 @@ clean_project() {
             if [[ -f "${GLOBAL_CLAUDE_DIR}/commands/${cmd_name}" ]]; then
                 rm "$cmd"
                 print_success "  Removed ${project_name}/commands/${cmd_name}"
-                ((cleaned++))
+                cleaned=$((cleaned+1))
             fi
         done
         rmdir "${claude_dir}/commands" 2>/dev/null || true
@@ -254,7 +254,7 @@ clean_project() {
             if [[ -d "${GLOBAL_CLAUDE_DIR}/skills/${skill_name}" ]]; then
                 rm -rf "$skill_dir"
                 print_success "  Removed ${project_name}/skills/${skill_name}/"
-                ((cleaned++))
+                cleaned=$((cleaned+1))
             fi
         done
         rmdir "${claude_dir}/skills" 2>/dev/null || true
@@ -268,7 +268,7 @@ clean_project() {
             if [[ -f "${GLOBAL_CLAUDE_DIR}/hooks/${hook_name}" ]]; then
                 rm "$hook"
                 print_success "  Removed ${project_name}/hooks/${hook_name}"
-                ((cleaned++))
+                cleaned=$((cleaned+1))
             fi
         done
         rmdir "${claude_dir}/hooks" 2>/dev/null || true
@@ -295,7 +295,7 @@ do_scan() {
 
         local result=$(scan_project "$project_dir")
         if [[ -n "$result" ]]; then
-            ((projects_with_issues++))
+            projects_with_issues=$((projects_with_issues+1))
             local outdated=$(echo "$result" | cut -d: -f2)
             local removable=$(echo "$result" | cut -d: -f3)
             ((total_outdated += outdated))
