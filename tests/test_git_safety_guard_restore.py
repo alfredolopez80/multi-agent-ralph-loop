@@ -190,6 +190,41 @@ def test_quoted_cd_target_does_not_fail_open(sample_repo, other_repo):
 
 
 @pytest.mark.skipif(not GUARD.is_file(), reason="git-safety-guard.py not present")
+def test_newline_separates_commands(sample_repo):
+    """A newline is a command separator; a safe verb before it must not whiten the tail.
+
+    `git status\\ngit restore modified.txt` is two commands. Collapsing the newline to a
+    space fused them into one, and the unanchored safe-pattern match on the leading
+    `git status` then vouched for the destructive `git restore`, which never got judged.
+    """
+    nl = "\n"
+    assert _decide(f"git status{nl}{RESTORE} modified.txt", sample_repo) == "deny"
+    assert _decide(f"git diff{nl}{RESTORE} modified.txt", sample_repo) == "deny"
+    # Two genuinely safe reads across a newline stay allowed.
+    assert _decide(f"git status{nl}git log", sample_repo) == "allow"
+    # A newline before a harmless restore-of-deleted is still allowed.
+    assert _decide(f"git status{nl}{RESTORE} deleted.txt", sample_repo) == "allow"
+
+
+@pytest.mark.skipif(not GUARD.is_file(), reason="git-safety-guard.py not present")
+@pytest.mark.parametrize(
+    "wrapper",
+    ["command cd", "builtin cd", "eval cd", "\\cd"],
+)
+def test_wrapped_cd_forms_fail_closed(sample_repo, other_repo, wrapper):
+    """`command cd` / `builtin cd` / `eval cd` / `\\cd` all move the shell.
+
+    Only bare `cd` was recognised, so these wrapped forms left the tracker on the STALE
+    directory and a later `git restore` was judged against the repo the shell had left —
+    a fail-open. They are now recognised as directory changes the parser cannot resolve,
+    so the restore exemption is withheld (deny) rather than granted against the wrong tree.
+    `deleted.txt` is deleted in sample_repo (exemption would apply there) and modified in
+    other_repo (restore is destructive).
+    """
+    assert _decide(f"{wrapper} {other_repo} && {RESTORE} deleted.txt", sample_repo) == "deny"
+
+
+@pytest.mark.skipif(not GUARD.is_file(), reason="git-safety-guard.py not present")
 def test_cd_itself_is_never_blocked(sample_repo, other_repo):
     """Changing directory is routine worktree work and carries no risk on its own."""
     for command in (

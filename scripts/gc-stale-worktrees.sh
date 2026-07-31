@@ -57,10 +57,16 @@ for wt_dir in "$WT_BASE"/*/; do
 
   # Get last commit timestamp in the worktree
   last_commit_epoch=$(cd "$wt_dir" && git log -1 --format="%ct" 2>/dev/null || echo "0")
+  [[ "$last_commit_epoch" =~ ^[0-9]+$ ]] || last_commit_epoch=0
   last_commit_age=$(( NOW - last_commit_epoch ))
 
-  # Get directory creation time
-  dir_epoch=$(stat -f "%B" "$wt_dir" 2>/dev/null || stat -c "%W" "$wt_dir" 2>/dev/null || echo "0")
+  # Get directory creation time. GNU stat (%W) first, then BSD/macOS (%B). Order matters:
+  # `stat -f "%B"` is BSD syntax, but on Linux `-f` means --file-system and SUCCEEDS,
+  # printing filesystem info that begins with "File:" — which then poisoned the arithmetic
+  # below (`File: unbound variable` under set -u). Validate the result is an epoch integer
+  # so a platform that prints something else falls back to 0 instead of crashing the run.
+  dir_epoch=$(stat -c "%W" "$wt_dir" 2>/dev/null || stat -f "%B" "$wt_dir" 2>/dev/null || echo "0")
+  [[ "$dir_epoch" =~ ^[0-9]+$ ]] || dir_epoch=0
   dir_age=$(( NOW - dir_epoch ))
 
   # Stale if BOTH directory age > threshold AND last commit age > threshold

@@ -239,15 +239,17 @@ main() {
         if [[ -n "$path" ]] && ! is_allowed_path "$path" "$CURRENT_REPO"; then
             log "BLOCKED: Access to external repo path: $path (current: $CURRENT_REPO)"
             trap - ERR EXIT
-            cat << EOF
-{
-  "hookSpecificOutput": {
-    "hookEventName": "PreToolUse",
-    "permissionDecision": "deny",
-    "permissionDecisionReason": "[repo-boundary-guard] REPO BOUNDARY: Path $path is outside current repo ($CURRENT_REPO). Use /repo-learn to learn from external repos, or explicitly switch."
-  }
-}
-EOF
+            # Build with jq, never string interpolation: a path containing a double quote
+            # produced malformed JSON, the harness could not parse the deny, and an
+            # unparseable deny denies nothing — a fail-open. The sibling mentioned-path deny
+            # already uses jq -n for exactly this reason; this block was the one left behind.
+            jq -n --arg p "$path" --arg repo "$CURRENT_REPO" '{
+              hookSpecificOutput: {
+                hookEventName: "PreToolUse",
+                permissionDecision: "deny",
+                permissionDecisionReason: ("[repo-boundary-guard] REPO BOUNDARY: Path " + $p + " is outside current repo (" + $repo + "). Use /repo-learn to learn from external repos, or explicitly switch.")
+              }
+            }'
             exit 0
         fi
     done

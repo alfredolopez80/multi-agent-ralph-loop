@@ -107,22 +107,31 @@ EXECUTABLE="$(strip_noninvocations "$COMMAND")"
 mapfile -t SEGMENTS < <(printf '%s' "$EXECUTABLE" | sed 's/\$(/\n/g; s/`/\n/g; s/&&/\n/g; s/||/\n/g; s/|/\n/g; s/;/\n/g')
 
 invokes_k8s_tool=0
+K8S_SEGMENTS=()
 for seg in "${SEGMENTS[@]}"; do
   cleaned="$(printf '%s' "$seg" \
     | sed -E 's/^[[:space:]]+//' \
     | sed -E 's/^([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*//' \
-    | sed -E 's/^(sudo|command|env|time|nice|nohup|xargs)[[:space:]]+(-[^[:space:]]+[[:space:]]+)*//')"
+    | sed -E 's/^(sudo|command|builtin|eval|env|time|nice|nohup|xargs)[[:space:]]+(-[^[:space:]]+[[:space:]]+)*//')"
   first_token="${cleaned%%[[:space:]]*}"
   first_token="${first_token##*/}"          # allow /usr/local/bin/kubectl
   case "$first_token" in
-    kubectl|helm|kustomize) invokes_k8s_tool=1; break ;;
+    kubectl|helm|kustomize) invokes_k8s_tool=1; K8S_SEGMENTS+=("$seg") ;;
   esac
 done
 
 [[ "$invokes_k8s_tool" -eq 0 ]] && exit 0
 
 # ---------------------------------------------------------------------------
-# Exemptions: operations that never contact a cluster API server.
+# Exemptions: operations that never contact a cluster API server, or only read.
+#
+# CRITICAL: these are evaluated PER SEGMENT, not over the whole command string. A
+# cluster-free segment (a `kustomize build` render, a `--dry-run=client` check) must NOT
+# exempt a sibling segment that mutates a real cluster. Judging the whole string let the
+# canonical GitOps idiom `kustomize build overlays/prod | kubectl --context=prod apply -f -`
+# — and `kubectl apply --dry-run=client; kubectl apply` — sail past the guard: the exempt
+# segment vouched for the destructive one. The chain is exempt only if EVERY k8s-invoking
+# segment is individually exempt.
 # ---------------------------------------------------------------------------
 
 is_cluster_free() {
@@ -140,16 +149,27 @@ is_cluster_free() {
   return 1
 }
 
-if is_cluster_free "$EXECUTABLE"; then
-  exit 0
-fi
+# A pure read against a cluster cannot mutate state (v1 behaviour), but only when the
+# segment has a read verb AND no mutating verb.
+is_pure_read() {
+  local cmd="$1"
+  grep -qE '\bkubectl\b' <<< "$cmd" || return 1
+  grep -qE '\b(get|describe|logs|explain|top|events)\b' <<< "$cmd" || return 1
+  grep -qE '\b(apply|create|delete|patch|replace|edit|scale|rollout|drain|cordon|uncordon|taint|label|annotate|exec|cp|port-forward)\b' <<< "$cmd" && return 1
+  return 0
+}
 
-# Pure reads against a cluster stay allowed, as in v1: they cannot mutate state.
-if grep -qE '\bkubectl\b' <<< "$EXECUTABLE" \
-   && grep -qE '\b(get|describe|logs|explain|top|events)\b' <<< "$EXECUTABLE" \
-   && ! grep -qE '\b(apply|create|delete|patch|replace|edit|scale|rollout|drain|cordon|uncordon|taint|label|annotate|exec|cp|port-forward)\b' <<< "$EXECUTABLE"; then
-  exit 0
-fi
+# Exempt the chain only if EVERY k8s-invoking segment is individually cluster-free or a
+# pure read. One mutating segment against a real cluster forces context enforcement below.
+all_segments_exempt=1
+for seg in "${K8S_SEGMENTS[@]}"; do
+  if is_cluster_free "$seg" || is_pure_read "$seg"; then
+    continue
+  fi
+  all_segments_exempt=0
+  break
+done
+[[ "$all_segments_exempt" -eq 1 ]] && exit 0
 
 # ---------------------------------------------------------------------------
 # D2: resolve the context the command will ACTUALLY use.

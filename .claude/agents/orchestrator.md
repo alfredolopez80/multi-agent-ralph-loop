@@ -1096,7 +1096,7 @@ no longer installed, so naming them offered a route that cannot be taken.
 ```yaml
 # Web Search (enhanced, default)
 mcp__web-search-prime__webSearchPrime:
-  query: "React 19 useOptimistic hook examples 2026"
+  search_query: "React 19 useOptimistic hook examples 2026"
 
 # General Image Analysis
 mcp__zai-mcp-server__analyze_image:

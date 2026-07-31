@@ -62,6 +62,29 @@ run 'kubectl config use-context kind-dev' 0 'use-context es local'
 run 'helm list --all-namespaces' 0 'helm list es lectura'
 
 echo
+echo "=== fail-open por exencion global vs por-segmento (2026-07-31, bug-hunt) ==="
+# Una exencion (kustomize build / --dry-run=client) en UN segmento NO debe eximir a un
+# hermano que muta un cluster real. Antes se evaluaba is_cluster_free sobre la cadena
+# entera, asi que el idioma GitOps canonico colaba un apply destructivo a produccion.
+run "kustomize build overlays/prod | kubectl --context=$PROD apply -f -" 2 'render cluster-free NO exime al apply a prod'
+run "kubectl kustomize overlays/prod | kubectl --context=$PROD apply -f -" 2 'kubectl kustomize NO exime al apply a prod'
+run "helm template ./chart && kubectl --context=$PROD apply -f rendered.yaml" 2 'helm template NO exime al apply a prod'
+run "kubectl --context=$PROD apply --dry-run=client -f x.yaml; kubectl --context=$PROD apply -f x.yaml" 2 'dry-run NO exime al apply real a prod'
+# Y las exenciones legitimas por-segmento siguen permitidas:
+run 'kustomize build overlays/prod' 0 'kustomize build solo sigue exento'
+run "kubectl --context=$PROD apply --dry-run=client -f x.yaml" 0 'dry-run solo sigue exento'
+run "kustomize build overlays/dev | kubectl --context=kind-dev apply -f -" 0 'render + apply a contexto permitido' '^kind-'
+
+echo
+echo "=== eval sin comillas evadia el scanner (2026-07-31, bug-hunt) ==="
+# `eval` faltaba en la lista de wrappers benignos, asi que `eval kubectl ...` (sin comillas)
+# dejaba first_token=eval y el guard no veia el kubectl.
+run "eval kubectl --context=$PROD delete pod foo" 2 'eval sin comillas NO evade'
+run "eval \"kubectl --context=$PROD delete pod foo\"" 2 'eval con comillas sigue bloqueado'
+run "builtin kubectl --context=$PROD delete pod foo" 2 'builtin no evade'
+run 'eval kubectl --context=kind-dev get pods' 0 'eval a contexto permitido + lectura sigue OK'
+
+echo
 echo "=== paridad con las copias que realmente se ejecutan ==="
 # Los 26 casos de arriba corren contra la copia VERSIONADA. El hook que Claude Code carga
 # es una copia instalada en el arbol del plugin (el plugin se auto-registra, no pasa por

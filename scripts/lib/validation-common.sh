@@ -84,3 +84,15 @@ vc_verdict() {
   fi
   return 0
 }
+
+# The verdict as an EXIT CODE only, no printing — 1 when nothing was checked (zero-checks
+# guard) or anything failed, else 0. A script whose text path prints via vc_verdict but
+# whose `--format json` path prints its own JSON must call this after the case so the
+# process exit code reflects the verdict in BOTH modes. Without it, json mode ends on a
+# plain `echo` (rc 0) and reports success over failures or an empty run.
+vc_exit_code() {
+  local total=$((PASSED + FAILED + WARNINGS))
+  [[ $total -eq 0 ]] && return 1
+  [[ $FAILED -gt 0 ]] && return 1
+  return 0
+}

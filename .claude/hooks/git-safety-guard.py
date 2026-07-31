@@ -90,8 +90,16 @@ def normalize_command(command: str) -> str:
     # Expand environment variables in paths
     command = os.path.expandvars(command)
 
-    # Normalize multiple spaces to single space
-    command = re.sub(r"\s+", " ", command.strip())
+    # Newlines and carriage returns are UNCONDITIONAL command separators in shell:
+    # `git status\ngit restore x` is TWO commands. A blanket `\s+` -> ' ' collapsed them
+    # into one fused string, and because is_safe_pattern uses an unanchored search, a safe
+    # leading verb (`git status`) then whitened the destructive tail (`git restore`), which
+    # never got evaluated. Convert them to `;` so split_chained_commands treats them as the
+    # separators they are, then collapse only horizontal whitespace. Splitting a newline
+    # that happened to sit inside a quoted string merely over-scrutinises — it fails closed,
+    # never open.
+    command = re.sub(r"[\r\n]+", " ; ", command)
+    command = re.sub(r"[ \t]+", " ", command.strip())
 
     # Remove common quote variations around paths
     # e.g., rm -rf "/tmp/foo" -> rm -rf /tmp/foo for pattern matching
@@ -572,7 +580,12 @@ CD_RE = re.compile(r"^\s*cd(?:\s+(?P<target>\S+))?\s*$")
 # Every command that moves the shell's directory. `popd`, and any `pushd`/`cd` form CD_RE
 # can't parse, must fail closed rather than leave a later subcommand judged against a
 # stale directory.
-DIR_CHANGE_RE = re.compile(r"^\s*(?:cd|pushd|popd)\b")
+# Also recognise the wrapped forms `command cd`, `builtin cd`, `eval cd` and the
+# backslash-escaped `\cd` — they all still move the shell. CD_RE cannot parse them (extra
+# tokens / leading backslash), so apply_cd returns "" for them, which fails CLOSED. Leaving
+# them unrecognised returned the STALE cwd instead, judging a later `git restore` against
+# the directory the shell had already left — a fail-OPEN.
+DIR_CHANGE_RE = re.compile(r"^\s*(?:(?:command|builtin|eval)\s+)?\\?(?:cd|pushd|popd)\b")
 
 
 def apply_cd(subcmd: str, cwd: str) -> str:
@@ -691,10 +704,11 @@ def split_chained_commands(command: str) -> list[str]:
     SEC-1.6: Detects command chaining to prevent bypass of safety checks
     via patterns like 'echo safe && rm -rf /' or 'ls ; git reset --hard'.
     """
-    # Split by &&, ||, ;, | (but not ||= or &&= which are not shell operators)
-    # Use regex to split on these operators while preserving quoted strings
-    # Simple approach: split on operators outside of quotes
-    parts = re.split(r'\s*(?:&&|\|\||[;|])\s*', command)
+    # Split by &&, ||, ;, |, and a bare newline (all shell command separators) — not ||=
+    # or &&=, which are not operators. Newline is included as defense in case this runs on
+    # a command normalize_command did not first rewrite; normalize already turns newlines
+    # into `;`, but the guard must not depend on that single conversion.
+    parts = re.split(r'\s*(?:&&|\|\||[;|\n])\s*', command)
     return [p.strip() for p in parts if p.strip()]
 
 
