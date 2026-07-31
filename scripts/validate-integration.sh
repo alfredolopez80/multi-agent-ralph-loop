@@ -11,7 +11,9 @@
 # ==============================================================================
 
 set -uo pipefail
-# Note: -e disabled to allow ((counter++)) when counter is 0
+# Note: -e is intentionally omitted so a failed check (check_fail) does not abort the run
+# before the summary. Counters use the assignment form PASSED=$((PASSED + 1)), which is
+# safe under -e anyway; the earlier ((counter++)) trap that needed -e off is gone.
 
 # Shared colors, counters and the zero-checks verdict guard.
 _VC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -362,6 +364,16 @@ print_summary() {
     echo -e "  ${RED}✗ FAILED:${NC}   $FAILED"
     echo -e "  ${YELLOW}⚠ WARNINGS:${NC} $WARNINGS"
     echo ""
+
+    # Zero checks executed is never success — a run that reached the summary having asserted
+    # nothing (all check_* skipped, an early abort) must FAIL, not report VALID over an empty
+    # result set (repo rule: zero-tests-is-never-success).
+    if [ "$((PASSED + FAILED + WARNINGS))" -eq 0 ]; then
+        echo -e "${RED}══════════════════════════════════════════════════════════════${NC}"
+        echo -e "${RED}  ✗ Integration UNVERIFIED - zero checks executed${NC}"
+        echo -e "${RED}══════════════════════════════════════════════════════════════${NC}"
+        exit 1
+    fi
 
     if [ "$FAILED" -eq 0 ]; then
         echo -e "${GREEN}══════════════════════════════════════════════════════════════${NC}"

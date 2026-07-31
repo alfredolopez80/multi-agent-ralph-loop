@@ -86,6 +86,66 @@ def test_validator_exits_clean(script_name: str, count_pattern: re.Pattern):
     )
 
 
+@pytest.mark.parametrize("fmt", ["text", "json"])
+@pytest.mark.parametrize("mode", ["failing", "absent"])
+def test_installation_aggregator_verdict_is_the_exit_code(tmp_path, fmt, mode):
+    """`validate-installation.sh` must exit non-zero when a sub-validator fails OR cannot run.
+
+    The aggregator judged its verdict from summed per-check counts, which are populated only
+    in --format json (text never parses them) and stay 0 for a sub-validator that could not
+    run (status=ERROR, failed=0). Two fail-opens followed: an all-ERROR run reported VALID,
+    and in json — whose printer ends in a `echo` returning 0 — a failing run still exited 0.
+    The verdict is now derived from per-validator STATUSES and IS the exit code in both
+    formats. This test drives both a FAILING and an ABSENT sub-validator set through both
+    formats, hermetically (stub scripts), so it needs no local install.
+    """
+    import shutil
+
+    src = SCRIPTS_DIR / "validate-installation.sh"
+    if not src.is_file():
+        pytest.skip("validate-installation.sh not present")
+
+    stage = tmp_path / "scripts"
+    stage.mkdir()
+    shutil.copytree(SCRIPTS_DIR / "lib", stage / "lib")
+    shutil.copy(src, stage / "validate-installation.sh")
+
+    # The aggregator runs these three under --quick.
+    critical = ("validate-system-requirements", "validate-hooks-registration",
+                "validate-settings-structure")
+    if mode == "failing":
+        # Present but exit 1 (in json mode they print a fail summary so counts parse too).
+        for name in critical:
+            stub = stage / f"{name}.sh"
+            stub.write_text(
+                '#!/usr/bin/env bash\n'
+                'if [[ "$1" == "--format" && "$2" == "json" ]]; then\n'
+                '  echo \'{"status":"fail","summary":{"passed":0,"failed":1,"warnings":0}}\'\n'
+                'fi\n'
+                'exit 1\n'
+            )
+            stub.chmod(0o755)
+    # mode == "absent": leave the sub-validators missing -> status=ERROR for each.
+
+    result = subprocess.run(
+        ["bash", str(stage / "validate-installation.sh"), "--quick", "--format", fmt],
+        capture_output=True, text=True, timeout=60,
+    )
+    output = _strip_ansi(result.stdout + result.stderr)
+    assert result.returncode != 0, (
+        f"aggregator ({mode}, --format {fmt}) exited 0 over a failing/absent sub-validator "
+        f"— the verdict must be the exit code:\n{output[-1500:]}"
+    )
+    if fmt == "json":
+        assert '"status": "fail"' in output or '"status":"fail"' in output, (
+            f"json verdict must report fail:\n{output[-1500:]}"
+        )
+    else:
+        assert "HAS ISSUES" in output or "UNVERIFIED" in output or "could not run" in output, (
+            f"text verdict must report failure:\n{output[-1500:]}"
+        )
+
+
 def test_no_validator_uses_the_set_e_counter_trap():
     """`((VAR++))` under `set -e` aborts the script when VAR is 0.
 
