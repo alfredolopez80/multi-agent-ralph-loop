@@ -207,9 +207,29 @@ def test_newline_separates_commands(sample_repo):
 
 
 @pytest.mark.skipif(not GUARD.is_file(), reason="git-safety-guard.py not present")
+def test_background_ampersand_separates_commands(sample_repo):
+    """A single `&` backgrounds the left command and runs the right one — it is a separator.
+
+    `git status & git restore modified.txt` executes the restore; a safe leading verb must
+    not whiten it. Redirect operators (`2>&1`, `&>`) keep their `&` and are not split.
+    """
+    amp = "&"
+    assert _decide(f"git status {amp} {RESTORE} modified.txt", sample_repo) == "deny"
+    assert _decide(f"git diff {amp} git reset --hard HEAD", sample_repo) == "deny"
+    # Redirects must survive — the `&` in `2>&1` is not a separator.
+    assert _decide("git log 2>&1", sample_repo) == "allow"
+    # Two genuinely safe commands backgrounded together stay allowed.
+    assert _decide(f"ls {amp} git status", sample_repo) == "allow"
+
+
+@pytest.mark.skipif(not GUARD.is_file(), reason="git-safety-guard.py not present")
 @pytest.mark.parametrize(
     "wrapper",
-    ["command cd", "builtin cd", "eval cd", "\\cd"],
+    [
+        "command cd", "builtin cd", "eval cd", "\\cd",
+        # Wrappers that stack or carry a backslash / `time` also move the shell.
+        "time cd", "\\command cd", "command eval cd", "eval eval cd",
+    ],
 )
 def test_wrapped_cd_forms_fail_closed(sample_repo, other_repo, wrapper):
     """`command cd` / `builtin cd` / `eval cd` / `\\cd` all move the shell.

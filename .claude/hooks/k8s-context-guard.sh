@@ -109,12 +109,22 @@ mapfile -t SEGMENTS < <(printf '%s' "$EXECUTABLE" | sed 's/\$(/\n/g; s/`/\n/g; s
 invokes_k8s_tool=0
 K8S_SEGMENTS=()
 for seg in "${SEGMENTS[@]}"; do
-  cleaned="$(printf '%s' "$seg" \
-    | sed -E 's/^[[:space:]]+//' \
-    | sed -E 's/^([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*//' \
-    | sed -E 's/^(sudo|command|builtin|eval|env|time|nice|nohup|xargs)[[:space:]]+(-[^[:space:]]+[[:space:]]+)*//')"
+  # Strip leading env-assignments and benign wrappers REPEATEDLY until the token settles.
+  # A single pass left the real tool hidden behind a second wrapper (`command eval kubectl`
+  # -> `eval kubectl` -> first_token=eval), so the scan missed the kubectl entirely and the
+  # segment sailed past context enforcement. The loop is bounded to avoid pathological input.
+  cleaned="$(printf '%s' "$seg" | sed -E 's/^[[:space:]]+//')"
+  prev=""; i=0
+  while [[ "$cleaned" != "$prev" && $i -lt 6 ]]; do
+    prev="$cleaned"; i=$((i + 1))
+    cleaned="$(printf '%s' "$cleaned" \
+      | sed -E 's/^([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*//' \
+      | sed -E 's/^\\?(sudo|command|builtin|eval|env|time|nice|nohup|xargs)[[:space:]]+(-[^[:space:]]+[[:space:]]+)*//' \
+      | sed -E 's/^[[:space:]]+//')"
+  done
   first_token="${cleaned%%[[:space:]]*}"
   first_token="${first_token##*/}"          # allow /usr/local/bin/kubectl
+  first_token="${first_token#\\}"           # allow the escaped \kubectl
   case "$first_token" in
     kubectl|helm|kustomize) invokes_k8s_tool=1; K8S_SEGMENTS+=("$seg") ;;
   esac

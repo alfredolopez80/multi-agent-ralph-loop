@@ -577,15 +577,27 @@ RESTORE_LIKE = re.compile(
 # that needed quoting (normalize_command strips the quotes, so `cd "a b"` arrives as the
 # three-token `cd a b`), an option like `-P`/`-L`, or `cd -` — is NOT trackable here.
 CD_RE = re.compile(r"^\s*cd(?:\s+(?P<target>\S+))?\s*$")
-# Every command that moves the shell's directory. `popd`, and any `pushd`/`cd` form CD_RE
-# can't parse, must fail closed rather than leave a later subcommand judged against a
-# stale directory.
-# Also recognise the wrapped forms `command cd`, `builtin cd`, `eval cd` and the
-# backslash-escaped `\cd` — they all still move the shell. CD_RE cannot parse them (extra
-# tokens / leading backslash), so apply_cd returns "" for them, which fails CLOSED. Leaving
-# them unrecognised returned the STALE cwd instead, judging a later `git restore` against
-# the directory the shell had already left — a fail-OPEN.
-DIR_CHANGE_RE = re.compile(r"^\s*(?:(?:command|builtin|eval)\s+)?\\?(?:cd|pushd|popd)\b")
+# Wrappers that still run the following builtin in the CURRENT shell, so `<wrapper> cd DIR`
+# moves the shell. They can stack (`command eval cd`), carry a leading backslash
+# (`\command cd`), and `cd`/`pushd`/`popd` itself may be escaped (`\cd`). A single-wrapper
+# regex missed the nested and `time`/`\command` forms, leaving the STALE cwd — a fail-open.
+CD_WRAPPER_RE = re.compile(r"^\s*\\?(?:command|builtin|eval|time)\s+")
+CD_HEAD_RE = re.compile(r"^\s*\\?(?:cd|pushd|popd)\b")
+
+
+def _is_directory_change(subcmd: str) -> bool:
+    """True if the subcommand ultimately runs cd/pushd/popd in the current shell.
+
+    Strips any stack of shell-builtin wrappers (bounded) before looking for the builtin, so
+    `time cd`, `\\command cd`, `command eval cd` and `eval eval cd` are all recognised.
+    """
+    s = subcmd
+    for _ in range(6):  # bounded: unwind nested wrappers, never loop forever
+        m = CD_WRAPPER_RE.match(s)
+        if not m:
+            break
+        s = s[m.end():]
+    return CD_HEAD_RE.match(s) is not None
 
 
 def apply_cd(subcmd: str, cwd: str) -> str:
@@ -603,11 +615,11 @@ def apply_cd(subcmd: str, cwd: str) -> str:
     block the `cd` itself). Returning the STALE cwd here instead would fail OPEN: the
     later `git restore` would be judged against the directory the shell already left.
     """
-    if not DIR_CHANGE_RE.match(subcmd):
+    if not _is_directory_change(subcmd):
         return cwd  # not a directory change — the next subcommand still runs in cwd
     match = CD_RE.match(subcmd)
     if not match:
-        return ""  # a cd/pushd/popd we cannot track — fail closed
+        return ""  # a wrapped/escaped/multi-token cd we cannot track — fail closed
     target = (match.group("target") or "~").strip("\"'")
     if target == "-":
         return ""  # previous directory — not tracked
@@ -704,11 +716,12 @@ def split_chained_commands(command: str) -> list[str]:
     SEC-1.6: Detects command chaining to prevent bypass of safety checks
     via patterns like 'echo safe && rm -rf /' or 'ls ; git reset --hard'.
     """
-    # Split by &&, ||, ;, |, and a bare newline (all shell command separators) — not ||=
-    # or &&=, which are not operators. Newline is included as defense in case this runs on
-    # a command normalize_command did not first rewrite; normalize already turns newlines
-    # into `;`, but the guard must not depend on that single conversion.
-    parts = re.split(r'\s*(?:&&|\|\||[;|\n])\s*', command)
+    # Split on every shell command separator: &&, ||, ;, |, newline, AND a background `&`.
+    # A background `&` runs the NEXT command too (`git status & git reset --hard` executes
+    # the reset), so a safe leading verb must not whiten the tail after it. The lone-`&`
+    # branch excludes redirect operators via look-around: `2>&1`, `&>file`, `<&3` keep their
+    # `&`. `&&` is matched by its own alternative first, so it never reaches the lone branch.
+    parts = re.split(r'\s*(?:&&|\|\||[;|\n]|(?<![<>&])&(?![<>&]))\s*', command)
     return [p.strip() for p in parts if p.strip()]
 
 

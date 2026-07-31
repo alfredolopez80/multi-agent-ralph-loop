@@ -83,6 +83,10 @@ run "eval kubectl --context=$PROD delete pod foo" 2 'eval sin comillas NO evade'
 run "eval \"kubectl --context=$PROD delete pod foo\"" 2 'eval con comillas sigue bloqueado'
 run "builtin kubectl --context=$PROD delete pod foo" 2 'builtin no evade'
 run 'eval kubectl --context=kind-dev get pods' 0 'eval a contexto permitido + lectura sigue OK'
+# Dobles wrappers: el limpiador de un solo paso dejaba el segundo wrapper como first_token.
+run "eval eval kubectl --context=$PROD apply -f x.yaml" 2 'doble eval NO evade'
+run "command eval kubectl --context=$PROD apply -f x.yaml" 2 'command+eval NO evade'
+run "eval eval kubectl --context=kind-dev get pods" 0 'doble eval a contexto permitido OK'
 
 echo
 echo "=== paridad con las copias que realmente se ejecutan ==="
