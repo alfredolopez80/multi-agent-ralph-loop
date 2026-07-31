@@ -7,7 +7,13 @@
     "confidence": 1.0,
     "usage_count": 1,
     "severity": "critical",
-    "tags": ["prohibition", "placeholders", "quality", "git-blame", "global"],
+    "tags": [
+      "prohibition",
+      "placeholders",
+      "quality",
+      "git-blame",
+      "global"
+    ],
     "source_repo": "user-global-rules"
   },
   {
@@ -18,7 +24,14 @@
     "confidence": 1.0,
     "usage_count": 1,
     "severity": "critical",
-    "tags": ["prohibition", "fallbacks", "fail-fast", "fail-loud", "git-blame", "global"],
+    "tags": [
+      "prohibition",
+      "fallbacks",
+      "fail-fast",
+      "fail-loud",
+      "git-blame",
+      "global"
+    ],
     "source_repo": "user-global-rules"
   },
   {
@@ -29,7 +42,13 @@
     "confidence": 1.0,
     "usage_count": 1,
     "severity": "critical",
-    "tags": ["prohibition", "testing", "no-test-gaming", "git-blame", "global"],
+    "tags": [
+      "prohibition",
+      "testing",
+      "no-test-gaming",
+      "git-blame",
+      "global"
+    ],
     "source_repo": "user-global-rules"
   },
   {
@@ -40,7 +59,34 @@
     "confidence": 1.0,
     "usage_count": 1,
     "severity": "critical",
-    "tags": ["prohibition", "testing", "e2e", "minikube", "fail-fast", "fail-loud", "git-blame", "global"],
+    "tags": [
+      "prohibition",
+      "testing",
+      "e2e",
+      "minikube",
+      "fail-fast",
+      "fail-loud",
+      "git-blame",
+      "global"
+    ],
+    "source_repo": "user-global-rules"
+  },
+  {
+    "rule_id": "testing-zero-tests-is-never-success",
+    "behavior": "ABSOLUTE PRINCIPLE: a test run that executed ZERO tests MUST NEVER report success — not a unit suite, not an e2e gate, not a CI step, in ANY project. 'Nothing failed' is not 'everything passed'. A harness MUST assert TWO independent conditions before declaring success: failed == 0 AND total > 0. Checking only failed == 0 is a fail-open: when fixture setup dies, a filter matches nothing or collection aborts, the harness reports green over an empty result set, and 'everything is broken' becomes indistinguishable from 'everything is fine'. Where the expected count is knowable, assert total >= expected_minimum: a suite that normally runs 5 tests and now runs 1 has silently lost 80% of its coverage while still printing 'All tests passed'. Applies to pytest (exit code 5 'no tests collected' is a FAILURE), vitest/jest (never set --passWithNoTests in CI), go test over packages with no test files, CI legs that skip their body and stay green, and any custom validate-*.sh that prints its own verdict. Silent cause to check: in a `set -e` script, ((COUNTER++)) on a counter holding 0 returns exit status 1 and aborts the run mid-way, leaving zero counters — always write COUNTER=$((COUNTER+1)). Detection duty: if you find a harness that can report success with zero tests in ANY file (even outside the current scope) you MUST run git blame on the offending lines, measure the blast radius (how many gates consume that helper) and report it.",
+    "trigger": "Authoring or reviewing any test harness, result reporter, CI test step, e2e gate or validate-*.sh; any run whose reported test count is 0 or unexpectedly low",
+    "domain": "testing",
+    "confidence": 1.0,
+    "usage_count": 1,
+    "severity": "critical",
+    "tags": [
+      "prohibition",
+      "testing",
+      "false-green",
+      "zero-tests",
+      "git-blame",
+      "global"
+    ],
     "source_repo": "user-global-rules"
   }
 ]

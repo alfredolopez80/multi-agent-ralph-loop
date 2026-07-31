@@ -74,9 +74,11 @@ done
 # CORE SKILLS TO VALIDATE
 #===============================================================================
 
+# `loop` was renamed to `iterate` in v2.94; `glm5` was retired on 2026-07-31 with the
+# rest of the GLM/MiniMax surface.
 CORE_SKILLS=(
     "orchestrator"
-    "loop"
+    "iterate"
     "gates"
     "adversarial"
     "bugs"
@@ -87,7 +89,6 @@ CORE_SKILLS=(
     "task-batch"
     "create-task-batch"
     "research"
-    "glm5"
     "parallel"
 )
 

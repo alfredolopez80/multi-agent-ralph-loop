@@ -31,7 +31,17 @@ VERBOSE="${VERBOSE:-0}"
 
 # Settings path - use primary location
 SETTINGS_PATH="${HOME}/.claude/settings.json"
-PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+
+# Hooks are registered in settings.json with absolute paths into the MAIN repo, so the
+# comparison must resolve there. `--show-toplevel` returns the worktree when run from
+# one, which made every path mismatch and reported 0/49 passing. `--git-common-dir`
+# points at the main repo's .git in both cases.
+GIT_COMMON_DIR="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+if [[ -n "$GIT_COMMON_DIR" ]]; then
+    PROJECT_ROOT="$(dirname "$GIT_COMMON_DIR")"
+else
+    PROJECT_ROOT="$(pwd)"
+fi
 HOOKS_DIR="${PROJECT_ROOT}/.claude/hooks"
 
 # Parse arguments
@@ -80,77 +90,35 @@ done
 
 # Format: "event:matcher||script||description" (using double pipe as delimiter)
 # Using array instead of associative for order preservation
+# Format: "event:matcher||script||description" (double pipe separates FIELDS).
+#
+# The matcher uses a SINGLE pipe, exactly as Claude Code writes it: `Edit|Write|Bash`.
+# Earlier revisions wrote `Edit||Write||Bash`, which collided with the field separator:
+# the parser cut at the first `||`, read `Edit` as the matcher and `Write` as the script
+# name, and reported 13 bogus "Script not found: .../hooks/Write" failures.
+#
+# This list is deliberately limited to hooks that are CRITICAL and verified as
+# registered. It used to enumerate 49 entries, most pointing at scripts long since
+# archived, so every run reported failures that meant nothing. Exhaustive
+# "is every registered hook present?" coverage lives in
+# tests/test_registered_hooks_exist.py, which needs no maintenance.
 HOOK_DEFINITIONS=(
-    # SessionStart hooks
-    "SessionStart:*||auto-migrate-plan-state.sh||Plan state migration"
-    "SessionStart:*||auto-sync-global.sh||Global sync"
-    "SessionStart:*||session-start-restore-context.sh||Context restore"
-    "SessionStart:*||orchestrator-init.sh||Orchestrator init"
-    "SessionStart:*||project-backup-metadata.sh||Backup metadata"
-    "SessionStart:*||session-start-repo-summary.sh||Repo summary"
+    # Security guards (PreToolUse on Bash)
+    "PreToolUse:Bash||git-safety-guard.py||Blocks destructive git/fs commands"
+    "PreToolUse:Bash||repo-boundary-guard.sh||Prevents work outside the repo"
 
-    # PreToolUse (Edit/Write) hooks
-    "PreToolUse:Edit||Write||checkpoint-auto-save.sh||Auto-save checkpoint"
-    "PreToolUse:Edit||Write||smart-skill-reminder.sh||Skill reminder"
+    # Session lifecycle
+    "SessionStart:*||wake-up-layer-stack.sh||Loads L0+L1 memory layers"
 
-    # PreToolUse (Bash) hooks
-    "PreToolUse:Bash||git-safety-guard.py||Git safety"
-    "PreToolUse:Bash||repo-boundary-guard.sh||Repo boundary"
+    # Quality gates
+    "TeammateIdle:*||teammate-idle-quality-gate.sh||Quality gate before idle"
+    "TaskCompleted:*||task-completed-quality-gate.sh||Quality gate before completion"
 
-    # PreToolUse (Task) hooks
-    "PreToolUse:Task||lsa-pre-step.sh||LSA pre-step"
-    "PreToolUse:Task||fast-path-check.sh||Fast path"
-    "PreToolUse:Task||smart-memory-search.sh||Memory search"
-    "PreToolUse:Task||skill-validator.sh||Skill validation"
-    "PreToolUse:Task||procedural-inject.sh||Procedural inject"
-    "PreToolUse:Task||checkpoint-smart-save.sh||Smart save"
-    "PreToolUse:Task||orchestrator-auto-learn.sh||Auto learn"
-    "PreToolUse:Task||promptify-security.sh||Security prompt"
-    "PreToolUse:Task||inject-session-context.sh||Session context"
-    "PreToolUse:Task||rules-injector.sh||Rules inject"
-
-    # Stop hooks
-    "Stop:*||reflection-engine.sh||Reflection"
-    "Stop:*||orchestrator-report.sh||Report"
-
-    # PostToolUse (Edit/Write/Bash) hooks
-    "PostToolUse:Edit||Write||Bash||sec-context-validate.sh||Security validate"
-    "PostToolUse:Edit||Write||Bash||security-full-audit.sh||Full audit"
-    "PostToolUse:Edit||Write||Bash||quality-gates-v2.sh||Quality gates"
-    "PostToolUse:Edit||Write||Bash||decision-extractor.sh||Decision extract"
-    "PostToolUse:Edit||Write||Bash||semantic-realtime-extractor.sh||Semantic extract"
-    "PostToolUse:Edit||Write||Bash||plan-sync-post-step.sh||Plan sync"
-    "PostToolUse:Edit||Write||Bash||glm-context-update.sh||Context update"
-    "PostToolUse:Edit||Write||Bash||progress-tracker.sh||Progress track"
-    "PostToolUse:Edit||Write||Bash||typescript-quick-check.sh||TypeScript check"
-    "PostToolUse:Edit||Write||Bash||quality-parallel-async.sh||Parallel quality"
-    "PostToolUse:Edit||Write||Bash||status-auto-check.sh||Status check"
-    "PostToolUse:Edit||Write||Bash||console-log-detector.sh||Console detect"
-    "PostToolUse:Edit||Write||Bash||ai-code-audit.sh||AI audit"
-
-    # PostToolUse (Task) hooks
-    "PostToolUse:Task||auto-background-swarm.sh||Background swarm"
-    "PostToolUse:Task||parallel-explore.sh||Parallel explore"
-    "PostToolUse:Task||recursive-decompose.sh||Recursive decompose"
-    "PostToolUse:Task||adversarial-auto-trigger.sh||Adversarial"
-    "PostToolUse:Task||code-review-auto.sh||Code review"
-
-    # PostToolUse (TodoWrite) hooks
-    "PostToolUse:TodoWrite||todo-plan-sync.sh||Todo sync"
-
-    # PreCompact hooks
-    "PreCompact:*||pre-compact-handoff.sh||Compact handoff"
-
-    # UserPromptSubmit hooks
-    "UserPromptSubmit:*||context-warning.sh||Context warning"
-    "UserPromptSubmit:*||command-router.sh||Command router"
-    "UserPromptSubmit:*||memory-write-trigger.sh||Memory trigger"
-    "UserPromptSubmit:*||periodic-reminder.sh||Periodic remind"
-    "UserPromptSubmit:*||plan-state-adaptive.sh||Plan adaptive"
-    "UserPromptSubmit:*||plan-state-lifecycle.sh||Plan lifecycle"
-
-    # SubagentStop hooks
-    "SubagentStop:*||glm5-subagent-stop.sh||GLM5 stop"
+    # Task and state tracking
+    "TaskCompleted:*||task-list-projection.sh||Event-sourced task projection"
+    "PostToolUse:Task||batch-progress-tracker.sh||Batch progress"
+    "PostToolUse:Edit|Write|Bash||status-auto-check.sh||Status updates"
+    "PostToolUse:Edit|Write|Bash||vault-fact-extractor.sh||Vault fact extraction"
 )
 
 #===============================================================================

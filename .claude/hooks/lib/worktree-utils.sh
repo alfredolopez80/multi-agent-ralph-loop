@@ -16,32 +16,49 @@
 #   setupWorktreeEnv <slug> - Symlink deps + copy config into worktree
 #   removeWorktree <slug> - Force-remove a worktree and its branch
 
+# WHY GIT COMES FIRST, AND CLAUDE_PROJECT_DIR LAST (v2.96.0)
+#
+# CLAUDE_PROJECT_DIR is captured once, when the session starts, and never moves again.
+# Inside a worktree it points at THAT WORKTREE — not at the main repo, despite what the
+# old `get_main_repo` fast-path comment claimed. Both functions used to return it before
+# consulting git, so once the CWD moved they answered about a directory nobody was in.
+#
+# The concrete failure: repo-boundary-guard.sh resolves "the current repo" through
+# get_main_repo. With the frozen variable, every sibling worktree of the SAME repository
+# — and the parent repository itself — looked external, and legitimate access was denied.
+#
+# Now each function asks git for exactly what its name promises, which stays correct when
+# the CWD changes, and falls back to the frozen variable only when there is no git context
+# at all (deleted CWD, or not a repository).
+
 get_project_root() {
-  if [[ -n "${CLAUDE_PROJECT_DIR:-}" && -d "${CLAUDE_PROJECT_DIR}" ]]; then echo "$CLAUDE_PROJECT_DIR"
-  elif [[ -d "${PWD:-}" ]]; then git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"
-  else echo "${CLAUDE_PROJECT_DIR:-.}"
+  # The CURRENT working tree: the worktree when in one, the main repo otherwise.
+  if [[ -d "${PWD:-}" ]]; then
+    local toplevel
+    toplevel="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+    if [[ -n "$toplevel" ]]; then echo "$toplevel"; return; fi
   fi
+  if [[ -n "${CLAUDE_PROJECT_DIR:-}" && -d "${CLAUDE_PROJECT_DIR}" ]]; then
+    echo "$CLAUDE_PROJECT_DIR"; return
+  fi
+  echo "."
 }
 
 get_main_repo() {
-  # Fast path: CLAUDE_PROJECT_DIR is always the main repo root (set by Claude Code)
-  if [[ -n "${CLAUDE_PROJECT_DIR:-}" && -d "${CLAUDE_PROJECT_DIR}" ]]; then echo "$CLAUDE_PROJECT_DIR"; return; fi
-  # Guard: if CWD doesn't exist (deleted worktree), git commands will fail
-  if [[ ! -d "${PWD:-}" ]]; then echo "${CLAUDE_PROJECT_DIR:-.}"; return; fi
-  local toplevel
-  toplevel="$(git rev-parse --show-toplevel 2>/dev/null || echo ".")"
-  if [[ -f "$toplevel/.git" ]]; then
-    # Worktree: .git file contains "gitdir: <main>/.git/worktrees/<name>"
-    local gitdir
-    gitdir="$(sed 's/gitdir: //' "$toplevel/.git" | tr -d '[:space:]')"
-    # Resolve to absolute path, then navigate up from .git/worktrees/<name>
-    local abs_gitdir
-    abs_gitdir="$(cd "$toplevel" && cd "$(dirname "$gitdir")" && pwd)/$(basename "$gitdir")"
-    # .git/worktrees/<name> -> go up 3 levels to reach main repo
-    dirname "$(dirname "$(dirname "$abs_gitdir")")"
-  else
-    echo "$toplevel"
+  # The MAIN repository, from any worktree.
+  #
+  # `--git-common-dir` names the main repo's .git in both a plain checkout and a linked
+  # worktree, so a single call replaces the previous manual parsing of the worktree's
+  # `.git` file (which only worked when the CWD was already the worktree root).
+  if [[ -d "${PWD:-}" ]]; then
+    local common_dir
+    common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+    if [[ -n "$common_dir" ]]; then dirname "$common_dir"; return; fi
   fi
+  if [[ -n "${CLAUDE_PROJECT_DIR:-}" && -d "${CLAUDE_PROJECT_DIR}" ]]; then
+    echo "$CLAUDE_PROJECT_DIR"; return
+  fi
+  echo "."
 }
 
 get_claude_dir() {
