@@ -122,6 +122,12 @@ def test_continue_false_uses_stop_reason(path: Path):
     )
 
 
+requires_settings = pytest.mark.skipif(
+    not SETTINGS.is_file(),
+    reason=f"{SETTINGS} not present (expected on CI; this validates a local install)",
+)
+
+
 def _pretooluse_hook_names() -> set[str]:
     settings = json.loads(SETTINGS.read_text(encoding="utf-8"))
     names = set()
@@ -133,6 +139,7 @@ def _pretooluse_hook_names() -> set[str]:
     return names
 
 
+@requires_settings
 def test_pretooluse_hooks_veto_with_permission_decision():
     """A PreToolUse hook must veto with `deny`, not by halting the turn.
 

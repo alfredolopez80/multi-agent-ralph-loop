@@ -127,13 +127,16 @@ check_skill_agent_teams() {
 # Check required skills
 echo "Required skills:"
 for skill in "${REQUIRED_SKILLS[@]}"; do
-    check_skill_agent_teams "$skill" "required"
+    # `|| true`: the function returns 1 on a missing skill and, under `set -e`, a
+    # bare call aborted the whole run there — reporting 1 problem when there could
+    # be ten, and never printing the summary.
+    check_skill_agent_teams "$skill" "required" || true
 done
 
 echo ""
 echo "Optional skills:"
 for skill in "${OPTIONAL_SKILLS[@]}"; do
-    check_skill_agent_teams "$skill" "optional"
+    check_skill_agent_teams "$skill" "optional" || true
 done
 
 echo ""
@@ -146,7 +149,11 @@ echo -e "Errors:   ${RED}$errors${NC}"
 echo ""
 
 if [[ $errors -gt 0 ]]; then
-    echo -e "${RED}VALIDATION FAILED${NC}: $errors error(s) found"
+    if [[ $((passed + errors + warnings)) -eq 0 ]]; then
+  echo "FATAL: cero comprobaciones ejecutadas — no se puede declarar veredicto" >&2
+  exit 1
+fi
+echo -e "${RED}VALIDATION FAILED${NC}: $errors error(s) found"
     exit 1
 elif [[ $warnings -gt 0 ]]; then
     echo -e "${YELLOW}VALIDATION PASSED${NC} with $warnings warning(s)"

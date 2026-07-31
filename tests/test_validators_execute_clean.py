@@ -43,6 +43,17 @@ def _strip_ansi(text: str) -> str:
     return re.sub(r"\x1b\[[0-9;]*m", "", text)
 
 
+# These validators inspect the local Claude install (~/.claude/skills, ~/.claude/agents,
+# ~/.ralph). On a clean CI runner there is nothing to validate, so they skip — explicitly,
+# never as a silent pass. The static check below (the `set -e` counter trap) has no such
+# dependency and always runs.
+requires_local_install = pytest.mark.skipif(
+    not (Path.home() / ".claude" / "settings.json").is_file(),
+    reason="no local Claude install (expected on CI; these validate an installation)",
+)
+
+
+@requires_local_install
 @pytest.mark.parametrize("script_name, count_pattern", VALIDATORS, ids=[v[0] for v in VALIDATORS])
 def test_validator_exits_clean(script_name: str, count_pattern: re.Pattern):
     script = SCRIPTS_DIR / script_name

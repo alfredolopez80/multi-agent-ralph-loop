@@ -20,6 +20,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 AGENTS_DIR = REPO_ROOT / ".claude" / "agents"
 SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 SCRIPTS_DIR = REPO_ROOT / ".claude" / "scripts"
+HOOKS_DIR = REPO_ROOT / ".claude" / "hooks"
 MODELS_JSON = REPO_ROOT / "config" / "models.json"
 
 # Agent types resolved by the harness from outside .claude/agents/: built-ins and
@@ -69,6 +70,9 @@ def _config_surfaces() -> list[Path]:
     files += _agent_files()
     files += [p for p in SKILLS_DIR.glob("*/SKILL.md")]
     files += [p for p in SCRIPTS_DIR.glob("*.sh")] if SCRIPTS_DIR.is_dir() else []
+    # Hooks were missing from this sweep, so a hook invoking a retired CLI passed
+    # green with the defect in plain sight.
+    files += [p for p in HOOKS_DIR.glob("*.sh")] if HOOKS_DIR.is_dir() else []
     return [p for p in files if not _is_historical(p)]
 
 
@@ -110,10 +114,10 @@ def test_no_retired_names_in_live_config(path: Path):
         for i, line in enumerate(lines):
             if token not in line:
                 continue
-            # Prose documenting the retirement is not a live reference. The marker may sit
-            # a couple of lines earlier — a blockquote explaining a removal wraps across
-            # lines, so only the first carries the word "Removed".
-            window = lines[max(0, i - 3) : i + 1]
+            # Prose documenting the retirement is not a live reference. The window is
+            # the line itself plus ONE before it: a 3-line window excused a live call
+            # sitting near unrelated prose that happened to say "removed".
+            window = lines[max(0, i - 1) : i + 1]
             if any(documented.search(w) for w in window):
                 continue
             found.setdefault(token, (why, line.strip()[:100]))

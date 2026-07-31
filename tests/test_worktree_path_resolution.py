@@ -85,14 +85,22 @@ def test_env_var_is_still_the_fallback_without_git(paths, tmp_path):
 
 
 @pytest.mark.skipif(not GUARD.is_file(), reason="repo-boundary-guard.sh not present")
-def test_guard_allows_the_parent_repo_from_a_worktree(paths):
+def test_guard_allows_the_parent_repo_from_a_worktree(paths, tmp_path):
     """The end-to-end symptom: reaching the parent repo from its own worktree.
 
     This is a no-op when the tests run from the main repo (main == tree); it only has
     something to prove from inside a linked worktree.
     """
+    # Create a worktree when the suite runs from the main repo (as CI does), instead of
+    # skipping: this is the only end-to-end test of the symptom that motivated the fix,
+    # and a permanent skip means it never guards anything where it matters.
+    created = None
     if paths["main"] == paths["tree"]:
-        pytest.skip("not running from a worktree — nothing to distinguish")
+        created = str(tmp_path / "wt")
+        branch = "pytest-worktree-probe"
+        subprocess.run(["git", "worktree", "add", "--detach", created, "HEAD"],
+                       cwd=paths["main"], capture_output=True, text=True, check=True)
+        paths = {**paths, "tree": created}
 
     payload = json.dumps({
         "hook_event_name": "PreToolUse",
@@ -109,8 +117,13 @@ def test_guard_allows_the_parent_repo_from_a_worktree(paths):
         cwd=paths["tree"],
         env={"PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin", "HOME": str(Path.home())},
     )
-    decision = json.loads(result.stdout)["hookSpecificOutput"]["permissionDecision"]
-    assert decision == "allow", (
-        "the parent repository is not external to its own worktree; "
-        f"guard said {decision}: {result.stdout}"
-    )
+    try:
+        decision = json.loads(result.stdout)["hookSpecificOutput"]["permissionDecision"]
+        assert decision == "allow", (
+            "the parent repository is not external to its own worktree; "
+            f"guard said {decision}: {result.stdout}"
+        )
+    finally:
+        if created:
+            subprocess.run(["git", "worktree", "remove", "--force", created],
+                           cwd=paths["main"], capture_output=True, text=True)

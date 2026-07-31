@@ -46,19 +46,12 @@ KNOWN_GAPS: dict[tuple[str, str], str] = {
 # in `tools` would grant nothing, so they are excluded from the citation check. If one
 # ever gets installed, test_uninstalled_mcp_are_still_absent fails so it is declared
 # properly instead of staying invisible.
-UNINSTALLED_MCP: dict[str, str] = {
-    "MiniMax": (
-        "MiniMax and MiniMax-Coding were retired from ~/.claude.json on 2026-07-31. "
-        "orchestrator and blender-3d-creator still describe mcp__MiniMax__ calls in "
-        "their prompts; those instructions are now dead and should be removed."
-    ),
-    "blender": "blender-3d-creator drives Blender via MCP; the server is not installed.",
-    "nanobanana": (
-        "orchestrator and blender-3d-creator cite mcp__nanobanana__generate_image for "
-        "image generation; the server is not installed."
-    ),
-}
-
+# Empty on purpose. It previously exempted MiniMax, blender and nanobanana so that
+# prompts could keep ordering servers that are not installed. Exempting a live defect is
+# not coverage: blender-3d-creator was archived (all three of its servers were missing,
+# so it could not work) and orchestrator's dead MiniMax instructions were removed. If an
+# entry is ever needed again, it must name a server the prompts genuinely cannot drop.
+UNINSTALLED_MCP: dict[str, str] = {}
 
 def _agent_files() -> list[Path]:
     files = sorted(p for p in AGENTS_DIR.glob("*.md") if p.name not in NON_AGENT_FILES)
@@ -121,6 +114,12 @@ def _shell_commands(body: str) -> list[str]:
 
 def _existing_skill_names() -> set[str]:
     return {p.name for p in SKILLS_DIR.iterdir() if (p / "SKILL.md").is_file()}
+
+
+requires_mcp_config = pytest.mark.skipif(
+    not MCP_CONFIG.is_file(),
+    reason=f"{MCP_CONFIG} not present (expected on CI; this validates a local install)",
+)
 
 
 def _installed_mcp_servers() -> set[str]:
@@ -341,6 +340,7 @@ def test_known_gaps_are_still_gaps():
     )
 
 
+@requires_mcp_config
 def test_uninstalled_mcp_are_still_absent():
     """Once a cited-but-missing server is installed, it must be declared in `tools`."""
     now_installed = set(UNINSTALLED_MCP) & _installed_mcp_servers()
@@ -350,6 +350,7 @@ def test_uninstalled_mcp_are_still_absent():
     )
 
 
+@requires_mcp_config
 def test_declared_mcp_servers_are_installed():
     """A tools entry naming an uninstalled MCP server grants nothing at runtime."""
     installed = _installed_mcp_servers()
