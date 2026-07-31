@@ -1,6 +1,8 @@
 ---
 # VERSION: 3.0.0
-model: default
+# No `model:` field — inherits from the session, like the other five ralph-* teammates.
+# It previously read `model: default`, which is not a valid value: launching this agent
+# failed with "issue with the selected model (default)". The agent was uninvocable.
 name: ralph-security
 description: |
   Security specialist teammate for Agent Teams. Combines threat modeling, code audit, secrets scanning, dependency CVE checks, plan security review, and hooks integrity verification. Use when: security review, vulnerability assessment, threat modeling, pre-deployment audit.

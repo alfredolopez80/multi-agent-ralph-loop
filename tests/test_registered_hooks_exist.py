@@ -48,24 +48,45 @@ def _script_path(command: str) -> str | None:
     return None
 
 
+# The host's Claude install is not present on a clean CI runner. These checks are about
+# the INSTALLATION, so they skip there — but the skip must be explicit and visible, never
+# a silent pass, and when the file IS present the checks must prove they examined
+# something (per `testing-zero-tests-is-never-success`).
+requires_settings = pytest.mark.skipif(
+    not SETTINGS_FILES[0].is_file(),
+    reason=f"{SETTINGS_FILES[0]} not present (expected on CI; these validate a local install)",
+)
+
+
+@requires_settings
 @pytest.mark.parametrize("settings_path", SETTINGS_FILES, ids=lambda p: p.name)
 def test_settings_file_exists(settings_path: Path):
     assert settings_path.is_file(), f"{settings_path} not found"
 
 
+@requires_settings
 @pytest.mark.parametrize("settings_path", SETTINGS_FILES, ids=lambda p: p.name)
 def test_every_registered_hook_script_exists(settings_path: Path):
     if not settings_path.is_file():
         pytest.skip(f"{settings_path} not present")
 
+    examined = 0
     broken = []
     for event, matcher, command in _registered_hooks(settings_path):
         path = _script_path(command)
         if path is None or path.startswith(RUNTIME_PREFIXES):
             continue
+        examined += 1
         if not os.path.isfile(path):
             broken.append(f"{event}/{matcher} -> {os.path.basename(path)}")
 
+    # Zero hooks examined is not a pass: it means the settings shape changed (e.g. every
+    # command now written with a runtime prefix) and this check silently stopped covering
+    # anything, which is exactly what justified trimming the hand-maintained list.
+    assert examined > 0, (
+        f"{settings_path} yielded 0 examinable hook paths — the settings format likely "
+        f"changed and this check is no longer covering anything."
+    )
     assert not broken, (
         f"{settings_path} registers {len(broken)} hook(s) whose script does not exist:\n  "
         + "\n  ".join(sorted(broken))
@@ -74,6 +95,7 @@ def test_every_registered_hook_script_exists(settings_path: Path):
     )
 
 
+@requires_settings
 @pytest.mark.parametrize("settings_path", SETTINGS_FILES, ids=lambda p: p.name)
 def test_every_registered_hook_script_is_executable(settings_path: Path):
     """A shell hook that is not executable fails the same way a missing one does."""
@@ -109,6 +131,7 @@ def test_no_cc_mirror_settings_remain():
     )
 
 
+@requires_settings
 def test_no_hook_command_references_cc_mirror():
     """No registered hook may reach into the removed mirror tree."""
     offenders = []

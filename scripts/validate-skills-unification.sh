@@ -35,7 +35,9 @@ echo ""
 # `loop` was renamed to `iterate` in v2.94; `glm5`/`glm5-parallel` were retired on
 # 2026-07-31 with the rest of the GLM/MiniMax surface.
 echo "Test 1: Verifying skill distribution..."
-COPIED_SKILLS=("orchestrator" "task-classifier")
+# All three skills DISTRIBUTION_POLICY.md names as copied. `curator` was missing here,
+# so a symlinked or absent curator passed validation while violating the policy.
+COPIED_SKILLS=("orchestrator" "task-classifier" "curator")
 SYMLINKED_SKILLS=("iterate" "gates" "adversarial" "parallel" "retrospective" "clarify" "security" "bugs" "smart-fork")
 
 for skill in "${COPIED_SKILLS[@]}"; do

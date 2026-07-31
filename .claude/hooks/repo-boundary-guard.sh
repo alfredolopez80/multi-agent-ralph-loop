@@ -219,15 +219,16 @@ main() {
             if ! is_allowed_path "$mentioned_path" "$CURRENT_REPO"; then
                 log "BLOCKED: Bash command references external repo: $mentioned_path"
                 trap - ERR EXIT
-                cat << EOF
-{
-  "hookSpecificOutput": {
-    "hookEventName": "PreToolUse",
-    "permissionDecision": "deny",
-    "permissionDecisionReason": "[repo-boundary-guard] REPO BOUNDARY: Command references external repository ($mentioned_path). Use /repo-learn to learn from it instead, or explicitly switch repos."
-  }
-}
-EOF
+                # jq -n, not a heredoc: $mentioned_path comes from the payload, and a
+                # quote in it produced invalid JSON — a deny the harness cannot parse
+                # denies nothing.
+                jq -n --arg p "$mentioned_path" '{
+                  hookSpecificOutput: {
+                    hookEventName: "PreToolUse",
+                    permissionDecision: "deny",
+                    permissionDecisionReason: ("[repo-boundary-guard] REPO BOUNDARY: Command references external repository (" + $p + "). Use /repo-learn to learn from it instead, or explicitly switch repos.")
+                  }
+                }'
                 exit 0
             fi
         fi

@@ -175,7 +175,7 @@ GIT_SAFE_PATTERNS = [
     r"git\s+(status|log|diff|show|remote|fetch)\b",
     # `(?-i:...)` keeps this case-SENSITIVE even though the caller matches with
     # re.IGNORECASE: `-d` refuses to drop unmerged work and is safe, `-D` forces it.
-    r"git\s+branch\b(?!.*(?-i:-[a-zA-Z]*D[a-zA-Z]*\b|--delete\s+--force|--force\s+--delete))",
+    r"git\s+branch\b(?!.*(?-i:-[a-zA-Z]*D[a-zA-Z]*\b|-[a-zA-Z]*f[a-zA-Z]*d[a-zA-Z]*\b|-[a-zA-Z]*d[a-zA-Z]*f[a-zA-Z]*\b|--delete(\s+\S+)*\s+--force|--force(\s+\S+)*\s+--delete|-f(\s+\S+)*\s+-d\b|-d(\s+\S+)*\s+-f\b|--force(\s+\S+)*\s+-d\b|-d(\s+\S+)*\s+--force|--delete(\s+\S+)*\s+-f\b|-f(\s+\S+)*\s+--delete))",
     # Git add/commit (safe write operations)
     r"git\s+(add|commit|pull|stash\s+push|stash\s+save)\b",
 ]
@@ -306,7 +306,7 @@ GIT_FS_BLOCKED_PATTERNS = [
     # `-D` pattern also blocked the SAFE `git branch -d`, which refuses to drop unmerged
     # work. Covers the long forms too — `--delete --force` bypassed the old pattern.
     (
-        r"git\s+branch\s+(?-i:-[a-zA-Z]*D[a-zA-Z]*\b|--delete\s+--force|--force\s+--delete)",
+        r"git\s+branch\s+(?-i:-[a-zA-Z]*D[a-zA-Z]*\b|-[a-zA-Z]*f[a-zA-Z]*d[a-zA-Z]*\b|-[a-zA-Z]*d[a-zA-Z]*f[a-zA-Z]*\b|--delete(\s+\S+)*\s+--force|--force(\s+\S+)*\s+--delete|-f(\s+\S+)*\s+-d\b|-d(\s+\S+)*\s+-f\b|--force(\s+\S+)*\s+-d\b|-d(\s+\S+)*\s+--force|--delete(\s+\S+)*\s+-f\b|-f(\s+\S+)*\s+--delete)",
         "force-deletes branch without checking if merged",
     ),
     # Stash drop/clear permanently deletes
@@ -565,7 +565,7 @@ RESTORE_LIKE = re.compile(
 )
 
 
-def _restore_targets_are_all_deleted(command: str, cwd: str) -> bool:
+def _restore_targets_are_all_deleted(command: str, cwd: str, full_command: str = "") -> bool:
     """True when every path in a restore-like command is deleted in the working tree.
 
     Returns False on any doubt — no targets, an unreadable repo, a non-zero git exit,
@@ -575,6 +575,14 @@ def _restore_targets_are_all_deleted(command: str, cwd: str) -> bool:
         return False
     match = RESTORE_LIKE.match(command)
     if not match:
+        return False
+
+    # `cd` anywhere in the original command means this subcommand may run somewhere other
+    # than the payload's cwd, so `git status` here would classify a DIFFERENT repository.
+    # Observed: `cd other-repo && git restore f.txt` was allowed because f.txt was deleted
+    # in the payload's cwd, while in other-repo it held uncommitted edits that the restore
+    # would have destroyed. Tracking the cd is fragile; refusing to guess is not.
+    if re.search(r"(^|[|&;])\s*cd\s+\S", full_command or ""):
         return False
 
     targets = [
@@ -628,11 +636,11 @@ def safe_alternative(command: str) -> str:
     return ""
 
 
-def check_blocked_pattern(command: str, cwd: str = "") -> tuple[bool, str]:
+def check_blocked_pattern(command: str, cwd: str = "", full_command: str = "") -> tuple[bool, str]:
     """Check if command matches a blocked pattern. Returns (blocked, reason)."""
     for pattern, reason in BLOCKED_PATTERNS:
         if re.search(pattern, command, re.IGNORECASE):
-            if RESTORE_LIKE.match(command) and _restore_targets_are_all_deleted(command, cwd):
+            if RESTORE_LIKE.match(command) and _restore_targets_are_all_deleted(command, cwd, full_command):
                 continue  # recovering a deleted file — nothing to overwrite
             return True, reason
     return False, ""
@@ -745,7 +753,7 @@ def main():
             # shadowed by confirmation catch-alls nor bypassed via env vars
             # (fixes pre-existing bug where GIT_FORCE_PUSH_CONFIRMED=1
             # disabled the entire guard, commit a5faf094)
-            blocked, reason = check_blocked_pattern(subcmd_normalized, hook_cwd)
+            blocked, reason = check_blocked_pattern(subcmd_normalized, hook_cwd, command)
 
             if blocked:
                 log_security_event("BLOCKED", original_command, f"Chained command contains: {reason}")

@@ -78,6 +78,20 @@ strip_noninvocations() {
   sed "s/'[^']*'/''/g; s/\"[^\"]*\"/\"\"/g"
 }
 
+# A shell wrapper carries the real command INSIDE a quoted span. Unwrap it BEFORE
+# blanking quoted text, otherwise the payload disappears and the invocation scan sees
+# only the wrapper name — a total bypass of every check in this file.
+unwrap_shell_wrappers() {
+  local cmd="$1" prev="" i=0
+  # A wrapper may nest. Bounded to avoid pathological input.
+  while [[ "$cmd" != "$prev" && $i -lt 5 ]]; do
+    prev="$cmd"; i=$((i + 1))
+    cmd="$(printf '%s' "$cmd" | sed -E "s/(^|[|&;[:space:]])(sudo[[:space:]]+)?(bash|sh|zsh|dash|eval)[[:space:]]+(-[a-z]+[[:space:]]+)*['\"]([^'\"]*)['\"]/\1\5/g")"
+  done
+  printf '%s' "$cmd"
+}
+
+COMMAND="$(unwrap_shell_wrappers "$COMMAND")"
 EXECUTABLE="$(strip_noninvocations "$COMMAND")"
 
 # Split on shell separators so each piece starts at a command position, then discard
@@ -112,7 +126,8 @@ is_cluster_free() {
   # Client-side validation only
   grep -qE '\-\-dry-run[= ]client\b' <<< "$cmd" && return 0
   # Reading local kubeconfig
-  grep -qE '\bkubectl[[:space:]]+config[[:space:]]+(view|current-context|get-contexts|get-clusters)\b' <<< "$cmd" && return 0
+  grep -qE '\bkubectl[[:space:]]+config[[:space:]]+(view|current-context|get-contexts|get-clusters|use-context|set-context|rename-context)\b' <<< "$cmd" && return 0
+  grep -qE '\bhelm[[:space:]]+(list|version|env|repo)\b' <<< "$cmd" && return 0
   grep -qE '\bkubectl[[:space:]]+(version[[:space:]]+--client|api-versions|api-resources)\b' <<< "$cmd" && return 0
   return 1
 }
@@ -135,19 +150,33 @@ fi
 CONTEXT=""
 CONTEXT_SOURCE=""
 
-if [[ "$EXECUTABLE" =~ --context[=[:space:]]+([^[:space:]\;\&\|]+) ]]; then
-  CONTEXT="${BASH_REMATCH[1]}"
+# Collect EVERY context flag in the command, not just the first. Two reasons the
+# first-match approach was exploitable:
+#   1. kubectl applies the LAST occurrence when the flag repeats (standard last-wins CLI
+#      semantics), so a decoy allowed value in front made the guard read that one while
+#      kubectl acted on a later, non-allowed one.
+#   2. A chain of two invocations is a single string with two contexts; judging it by the
+#      first authorises the second.
+# Every context named must be allowed, so a decoy cannot cover a real one.
+mapfile -t CONTEXTS < <(
+  printf '%s' "$EXECUTABLE" \
+    | grep -oE -- '--(kube-)?context[= ]+[^[:space:];&|]+' \
+    | sed -E 's/^--(kube-)?context[= ]+//'
+)
+
+if [[ "${#CONTEXTS[@]}" -gt 0 ]]; then
   CONTEXT_SOURCE="--context flag"
-elif [[ "$EXECUTABLE" =~ --kube-context[=[:space:]]+([^[:space:]\;\&\|]+) ]]; then
-  CONTEXT="${BASH_REMATCH[1]}"          # helm's spelling
-  CONTEXT_SOURCE="--kube-context flag"
 else
-  CONTEXT="$(kubectl config current-context 2>/dev/null || true)"
+  CONTEXTS=("$(kubectl config current-context 2>/dev/null || true)")
   CONTEXT_SOURCE="current-context"
 fi
 
-CONTEXT="${CONTEXT%\"}"; CONTEXT="${CONTEXT#\"}"
-CONTEXT="${CONTEXT%\'}"; CONTEXT="${CONTEXT#\'}"
+CLEANED=()
+for c in "${CONTEXTS[@]}"; do
+  c="${c%\"}"; c="${c#\"}"; c="${c%\'}"; c="${c#\'}"
+  CLEANED+=("$c")
+done
+CONTEXTS=("${CLEANED[@]}")
 
 # ---------------------------------------------------------------------------
 # D3: configurable allowlist, evaluated fail-closed.
@@ -168,9 +197,21 @@ context_is_allowed() {
   return 1
 }
 
-if context_is_allowed "$CONTEXT"; then
+# One non-allowed context anywhere in the command is enough to block it.
+ALL_ALLOWED=1
+DENIED_CONTEXT=""
+for c in "${CONTEXTS[@]}"; do
+  if ! context_is_allowed "$c"; then
+    ALL_ALLOWED=0
+    DENIED_CONTEXT="$c"
+    break
+  fi
+done
+
+if [[ "$ALL_ALLOWED" -eq 1 && "${#CONTEXTS[@]}" -gt 0 ]]; then
   exit 0
 fi
+CONTEXT="$DENIED_CONTEXT"
 
 if [[ -z "$CONTEXT" ]]; then
   detected="none (no --context flag and no current-context set)"

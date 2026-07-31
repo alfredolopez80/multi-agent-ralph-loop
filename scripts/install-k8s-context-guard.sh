@@ -21,9 +21,14 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 SOURCE="$REPO_ROOT/.claude/hooks/k8s-context-guard.sh"
-TARGETS=(
-  "$HOME/.claude/plugins/cache/sagart-devtools/k8s/0.1.3/scripts/context-guard.sh"
-  "$HOME/.claude/plugins/marketplaces/sagart-devtools/scripts/context-guard.sh"
+# Discovered by glob, never version-pinned: a hardcoded `k8s/0.1.3/...` silently stops
+# matching the moment the plugin updates, and the script would report "0 reinstalled,
+# 1 absent" and exit 0 while the vulnerable guard stays active under the new version.
+TARGETS=()
+while IFS= read -r found; do
+  TARGETS+=("$found")
+done < <(
+  find "$HOME/.claude/plugins" -type f -path "*sagart-devtools*" -name "context-guard.sh" 2>/dev/null | sort
 )
 
 MODE="${1:---install}"
@@ -37,6 +42,7 @@ esac
 installed=0
 drifted=0
 missing=0
+failed=0
 
 for target in "${TARGETS[@]}"; do
   if [[ ! -f "$target" ]]; then
@@ -53,14 +59,26 @@ for target in "${TARGETS[@]}"; do
     echo "  DRIFT  differs from the versioned guard: ${target/$HOME/\~}"
     continue
   fi
-  cp "$SOURCE" "$target" && chmod +x "$target"
+  # Check the copy. Previously `cp ... && chmod ...` only guarded the chmod: on a failed
+  # copy the script still printed "FIXED reinstalled", counted it, and exited 0 — leaving
+  # the vulnerable guard in place while claiming to have replaced it.
+  if ! cp "$SOURCE" "$target" 2>/dev/null || ! chmod +x "$target" 2>/dev/null; then
+    echo "  ERROR  could not install into: ${target/$HOME/\~}" >&2
+    failed=$((failed + 1))
+    continue
+  fi
   echo "  FIXED  reinstalled: ${target/$HOME/\~}"
   installed=$((installed + 1))
 done
 
-# Zero targets examined is not a success: it means the plugin layout changed.
-if [[ "$missing" -eq "${#TARGETS[@]}" ]]; then
-  echo "FATAL: none of the expected guard paths exist — the plugin layout changed." >&2
+# Zero targets found is not a success: the plugin layout changed, or it is not installed.
+if [[ "${#TARGETS[@]}" -eq 0 ]]; then
+  echo "FATAL: no sagart-devtools context-guard.sh found under ~/.claude/plugins." >&2
+  exit 1
+fi
+
+if [[ "$failed" -gt 0 ]]; then
+  echo "FATAL: $failed cop(y/ies) could not be installed — the vulnerable guard is still active." >&2
   exit 1
 fi
 

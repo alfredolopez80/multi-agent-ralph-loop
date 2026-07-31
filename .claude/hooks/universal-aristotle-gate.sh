@@ -16,7 +16,11 @@
 #   5. It built JSON by string interpolation; a quote in the payload produced invalid
 #      JSON. Output is now built with `jq -n`.
 umask 077
-INPUT=$(head -c 100000)
+# 10 MB, not 100 KB. The old cap truncated any payload with a large `new_string`, `jq`
+# then failed to parse it, `cwd` came back empty and the gate allowed the call — so a
+# BIG edit skipped the gate while a small one was denied. Large edits are precisely the
+# high-complexity ones this gate exists for. The cap remains as a DoS bound.
+INPUT=$(head -c 10000000)
 
 HOOK_NAME="universal-aristotle-gate"
 
@@ -25,14 +29,41 @@ allow() {
   exit 0
 }
 
+deny() {
+  jq -n --arg reason "$1" '{
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "deny",
+      permissionDecisionReason: $reason
+    }
+  }'
+  exit 0
+}
+
+# No payload at all means there is no tool call to judge — distinct from a payload that
+# exists but cannot be read, which is handled below.
+[[ -z "${INPUT//[[:space:]]/}" ]] && allow
+
+if ! printf '%s' "$INPUT" | jq -e . >/dev/null 2>&1; then
+  deny "[$HOOK_NAME] the hook payload is not valid JSON, so the complexity gate cannot be evaluated. Blocking rather than assuming the call is safe."
+fi
+
 CWD=$(printf '%s' "$INPUT" | jq -r '.cwd // ""' 2>/dev/null)
 TOOL=$(printf '%s' "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null)
 
-# Without a cwd the project state cannot be resolved. Say so on stderr rather than
-# blocking every tool call, but never stay silent about it.
+# Only the tools that IMPLEMENT are gated — see the note further down for why. Running
+# this filter BEFORE the cwd check keeps an unreadable cwd from blocking reads.
+case "$TOOL" in
+  Edit|Write|MultiEdit|NotebookEdit) ;;
+  *) allow ;;
+esac
+
+# A payload we cannot parse must FAIL CLOSED. Allowing here was a regression: the
+# previous version emitted `continue: false` on this path, i.e. it did not let the call
+# through. Since only mutating tools reach this point, denying costs a retry; allowing
+# costs the whole guarantee.
 if [[ -z "$CWD" ]]; then
-  echo "[$HOOK_NAME] no 'cwd' in hook payload; cannot resolve per-project state" >&2
-  allow
+  deny "[$HOOK_NAME] cannot determine the project directory from the hook payload (absent or unparseable 'cwd'), so the complexity gate cannot be evaluated. Blocking ${TOOL:-this tool} rather than assuming it is safe."
 fi
 
 STATE="${CWD}/.claude/state/current-complexity.json"
@@ -46,8 +77,10 @@ fi
 
 (( COMPLEXITY < 4 )) && allow
 
-# Entering plan mode is exactly what this gate asks for — never block it.
-[[ "$TOOL" == "EnterPlanMode" ]] && allow
+# The tool filter runs earlier, right after parsing, so an unreadable payload cannot
+# block reads. Registered with matcher "*", this hook sees EVERY tool call, but its rule
+# is "plan before IMPLEMENTING" — with `permissionDecision: "deny"` a broad match denied
+# Read, Grep, Glob, Task and even ExitPlanMode, trapping the user inside plan mode.
 
 # A plan exists: the gate is satisfied.
 [[ -f "${CWD}/.claude/plan-state.json" ]] && allow

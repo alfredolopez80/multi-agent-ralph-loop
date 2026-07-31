@@ -443,3 +443,8 @@ main() {
 }
 
 main "$@"
+
+# k8s context guard (26 casos: invocacion vs mencion, contexto efectivo, allowlist)
+if [[ -x "$SCRIPT_DIR/hooks/test-k8s-context-guard.sh" ]]; then
+    "$SCRIPT_DIR/hooks/test-k8s-context-guard.sh" || FAILED=1
+fi

@@ -162,6 +162,52 @@ def test_name_matches_filename(path: Path):
     )
 
 
+# Values Claude Code accepts for an agent's `model:`. A tier alias, `inherit`, or a
+# concrete model id. Anything else makes the agent fail to launch.
+VALID_MODEL_TIERS = {"opus", "sonnet", "haiku", "fable", "inherit"}
+
+
+@pytest.mark.parametrize("path", AGENT_FILES, ids=AGENT_IDS)
+def test_model_field_is_launchable(path: Path):
+    """An unrecognised `model:` makes the agent uninvocable — it fails at launch.
+
+    Found on 2026-07-31: ralph-security declared `model: default`, which is not a valid
+    value, so spawning it errored with "issue with the selected model (default)". One of
+    the six ralph teammates could not be launched at all, and nothing flagged it.
+    """
+    frontmatter, _ = _split_frontmatter(path)
+    match = re.search(r"^model:\s*(.+)$", frontmatter, re.M)
+    if not match:
+        return  # no field: inherits from the session, which is valid
+    model = match.group(1).strip().strip("\"'")
+    is_tier = model in VALID_MODEL_TIERS
+    is_concrete = model.startswith(("claude-", "glm-", "gpt-", "kimi-"))
+    assert is_tier or is_concrete, (
+        f"{path.name}: `model: {model}` is not launchable. Use one of "
+        f"{sorted(VALID_MODEL_TIERS)}, a concrete model id, or omit the field to inherit."
+    )
+
+
+# Permission modes Claude Code accepts. Note `default` IS valid here but NOT for
+# `model:` — that asymmetry is very likely how `model: default` got written.
+VALID_PERMISSION_MODES = {
+    "default", "acceptEdits", "plan", "bypassPermissions", "dontAsk", "auto",
+}
+
+
+@pytest.mark.parametrize("path", AGENT_FILES, ids=AGENT_IDS)
+def test_permission_mode_is_valid(path: Path):
+    frontmatter, _ = _split_frontmatter(path)
+    match = re.search(r"^permissionMode:\s*(.+)$", frontmatter, re.M)
+    if not match:
+        return
+    mode = match.group(1).strip().strip("\"'")
+    assert mode in VALID_PERMISSION_MODES, (
+        f"{path.name}: `permissionMode: {mode}` is not a recognised mode. "
+        f"Valid: {sorted(VALID_PERMISSION_MODES)}."
+    )
+
+
 @pytest.mark.parametrize("path", AGENT_FILES, ids=AGENT_IDS)
 def test_does_not_use_allowed_tools_field(path: Path):
     """`allowed-tools:` belongs to skills/commands. On an agent it is ignored entirely,

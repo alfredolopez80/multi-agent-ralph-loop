@@ -76,6 +76,13 @@ get_safe_project_root() {
   # /repo/.claude/skills/foo returns /repo.
   if [[ "$root" == *"/.claude/"* ]]; then
     root="${root%%/.claude/*}"
+  # ...and also when the root IS a .claude directory, with nothing after it. That case
+  # was uncovered: a root of ~/.claude yielded PROJECT_CLAUDE_DIR=~/.claude/.claude,
+  # which is how the stray ~/.claude/.claude/ tree (39 stale agent copies, plus hooks and
+  # rules from May) came to exist. Callers append /.claude to this value, so returning a
+  # path that already ends in .claude nests it a second time.
+  elif [[ "$root" == *"/.claude" ]]; then
+    root="${root%/.claude}"
   fi
   echo "$root"
 }

@@ -3,9 +3,11 @@
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 GUARD="$REPO_ROOT/.claude/hooks/k8s-context-guard.sh"
 fails=0
+ran=0
 
 run() {  # run <cmd> <expected 0|2> <why> [allowlist]
   local cmd="$1" want="$2" why="$3" allow="${4:-^kind-}"
+  ran=$((ran+1))
   local payload
   payload=$(python3 -c "import json,sys;print(json.dumps({'hook_event_name':'PreToolUse','tool_name':'Bash','tool_input':{'command':sys.argv[1]}}))" "$cmd")
   local out rc
@@ -42,4 +44,23 @@ run 'sudo kubectl --context=kind-dev apply -f x.yaml' 0 'wrapper sudo, contexto 
 run 'ls && kubectl --context=gke_prod delete ns x' 2 'invocacion tras &&'
 
 echo
-[[ "$fails" -eq 0 ]] && echo "TODOS OK" || { echo "$fails FALLOS"; exit 1; }
+echo "=== bypasses reportados por la auditoria de seguridad (2026-07-31) ==="
+PROD="gke_proj_region_prod"
+DEL="delete namespace critical-ns"
+# Blocker 1: un wrapper de shell llevaba el comando dentro de comillas, que el propio
+# guard blanqueaba antes de escanear -> el escaner solo veia el wrapper.
+run "bash -c \"kubectl --context=$PROD $DEL\"" 2 'wrapper bash -c'
+run "sh -c 'kubectl --context=$PROD $DEL'" 2 'wrapper sh -c'
+run "eval \"kubectl --context=$PROD $DEL\"" 2 'wrapper eval'
+run "sudo bash -c \"kubectl --context=$PROD $DEL\"" 2 'sudo + wrapper'
+# Blocker 2: kubectl aplica el ULTIMO --context; el guard leia el primero.
+run "kubectl --context=kind-decoy --context=$PROD apply -f x.yaml" 2 'flag repetido con decoy delante'
+run "kubectl --context=kind-a get pods && kubectl --context=$PROD $DEL" 2 'cadena con decoy de lectura'
+run "kubectl --context=kind-a get pods && kubectl --context=kind-b apply -f x.yaml" 0 'cadena, ambos permitidos' '^kind-'
+# Over-blocking corregido: editar el kubeconfig local no contacta ningun cluster.
+run 'kubectl config use-context kind-dev' 0 'use-context es local'
+run 'helm list --all-namespaces' 0 'helm list es lectura'
+
+echo
+if [[ "$ran" -eq 0 ]]; then echo "FATAL: cero casos ejecutados — no se puede declarar exito"; exit 1; fi
+[[ "$fails" -eq 0 ]] && echo "TODOS OK ($ran casos)" || { echo "$fails FALLOS de $ran"; exit 1; }
