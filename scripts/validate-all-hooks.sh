@@ -20,10 +20,9 @@ echo "=========================================="
 echo ""
 
 # Colores
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# Shared colors, counters and the zero-checks verdict guard.
+_VC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_VC_DIR}/lib/validation-common.sh"
 
 pass=0
 fail=0

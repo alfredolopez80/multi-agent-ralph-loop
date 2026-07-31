@@ -13,12 +13,9 @@
 set -uo pipefail
 # Note: -e disabled to allow ((counter++)) when counter is 0
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Shared colors, counters and the zero-checks verdict guard.
+_VC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_VC_DIR}/lib/validation-common.sh"
 
 # Counters
 PASSED=0

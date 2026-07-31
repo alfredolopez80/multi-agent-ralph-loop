@@ -9,12 +9,9 @@ SOURCE_DIR="${HOME}/.claude/commands"
 DEST_DIR="${HOME}/.claude/skills"
 LOG_FILE="/tmp/migration-$(date +%Y%m%d-%H%M%S).log"
 
-# Colors
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+# Shared colors, counters and the zero-checks verdict guard.
+_VC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_VC_DIR}/lib/validation-common.sh"
 
 log() {
     echo -e "${GREEN}[$(date +%H:%M:%S)]${NC} $1" | tee -a "$LOG_FILE"

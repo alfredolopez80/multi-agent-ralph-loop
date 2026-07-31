@@ -9,11 +9,9 @@ echo "=== Claude Code Hook Diagnostic ===" | tee "$LOG_FILE"
 echo "Date: $(date)" | tee -a "$LOG_FILE"
 echo ""
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# Shared colors, counters and the zero-checks verdict guard.
+_VC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_VC_DIR}/lib/validation-common.sh"
 
 pass() { echo -e "${GREEN}✅ $1${NC}" | tee -a "$LOG_FILE"; }
 fail() { echo -e "${RED}❌ $1${NC}" | tee -a "$LOG_FILE"; }

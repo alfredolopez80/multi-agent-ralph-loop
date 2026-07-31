@@ -27,12 +27,9 @@ BACKUP_DIR="${HOME}/.ralph/backups/project-configs"
 CURRENT_VERSION="2.43.0"
 LOG_FILE="${HOME}/.ralph/logs/cleanup-project-configs.log"
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Shared colors, counters and the zero-checks verdict guard.
+_VC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_VC_DIR}/lib/validation-common.sh"
 
 # Ensure directories exist
 mkdir -p "$BACKUP_DIR" "${HOME}/.ralph/logs"
