@@ -77,6 +77,8 @@ INSTALLATION:
 import json
 import os
 import re
+import shlex
+import subprocess
 import sys
 
 
@@ -164,7 +166,16 @@ GIT_SAFE_PATTERNS = [
     r"rm\s+(-rf|-fr|--recursive)\s+['\"]?/tmp/",
     r"rm\s+(-rf|-fr|--recursive)\s+['\"]?/var/tmp/",
     # Git status/log/diff (read-only)
-    r"git\s+(status|log|diff|show|branch|remote|fetch)\b",
+    #
+    # `branch` carries a negative lookahead: this catch-all is evaluated BEFORE the
+    # blocked patterns, so a bare `git branch` entry silently whitelisted
+    # `git branch -D` / `--delete --force` and turned the GIT_FS_BLOCKED_PATTERNS rule
+    # for it into dead code — while the module docstring claimed it was blocked.
+    # Present since the initial commit (f0ec3c1); fixed 2026-07-31.
+    r"git\s+(status|log|diff|show|remote|fetch)\b",
+    # `(?-i:...)` keeps this case-SENSITIVE even though the caller matches with
+    # re.IGNORECASE: `-d` refuses to drop unmerged work and is safe, `-D` forces it.
+    r"git\s+branch\b(?!.*(?-i:-[a-zA-Z]*D[a-zA-Z]*\b|--delete\s+--force|--force\s+--delete))",
     # Git add/commit (safe write operations)
     r"git\s+(add|commit|pull|stash\s+push|stash\s+save)\b",
 ]
@@ -290,8 +301,14 @@ GIT_FS_BLOCKED_PATTERNS = [
         r"git\s+clean\s+.*-f(?!.*(-n|--dry-run))",
         "removes untracked files permanently (use -n first to preview)",
     ),
-    # Force delete branch without merge check
-    (r"git\s+branch\s+-D\s+", "force-deletes branch without checking if merged"),
+    # Force delete branch without merge check.
+    # Case-sensitive via `(?-i:...)`: the caller matches with re.IGNORECASE, so a plain
+    # `-D` pattern also blocked the SAFE `git branch -d`, which refuses to drop unmerged
+    # work. Covers the long forms too — `--delete --force` bypassed the old pattern.
+    (
+        r"git\s+branch\s+(?-i:-[a-zA-Z]*D[a-zA-Z]*\b|--delete\s+--force|--force\s+--delete)",
+        "force-deletes branch without checking if merged",
+    ),
     # Stash drop/clear permanently deletes
     (r"git\s+stash\s+drop", "permanently deletes stashed changes"),
     (r"git\s+stash\s+clear", "permanently deletes ALL stashed changes"),
@@ -539,10 +556,84 @@ def check_confirmation_pattern(command: str) -> tuple[bool, str]:
     return needs_confirm, reason
 
 
-def check_blocked_pattern(command: str) -> tuple[bool, str]:
+# `git restore` / `git checkout --` on a file that is DELETED in the working tree
+# destroys nothing: the content is intact in HEAD and the only thing reverted is the
+# deletion itself. On a MODIFIED file the same command wipes edits that exist nowhere
+# else (no reflog covers the working tree), which is why the block stays for those.
+RESTORE_LIKE = re.compile(
+    r"^\s*git\s+(?:restore|checkout\s+--)\s+(?P<targets>.+)$", re.IGNORECASE
+)
+
+
+def _restore_targets_are_all_deleted(command: str, cwd: str) -> bool:
+    """True when every path in a restore-like command is deleted in the working tree.
+
+    Returns False on any doubt — no targets, an unreadable repo, a non-zero git exit,
+    or a single path that is not deleted. The guard must fail closed.
+    """
+    if not cwd or not os.path.isdir(cwd):
+        return False
+    match = RESTORE_LIKE.match(command)
+    if not match:
+        return False
+
+    targets = [
+        token
+        for token in shlex.split(match.group("targets"))
+        if not token.startswith("-")
+    ]
+    if not targets:
+        return False
+
+    try:
+        result = subprocess.run(
+            ["git", "status", "--porcelain", "--"] + targets,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    if result.returncode != 0:
+        return False
+
+    lines = [line for line in result.stdout.splitlines() if line.strip()]
+    # One status line per target, and every one of them must report a deletion.
+    if len(lines) != len(targets):
+        return False
+    return all(line[:2] in (" D", "D ", "DD") for line in lines)
+
+
+def safe_alternative(command: str) -> str:
+    """A concrete non-destructive command to run instead, or "" when none applies.
+
+    Escalating to "ask the user to run it manually" is not a plan: it leaves the caller
+    with no way forward. Where a safe route exists, name it.
+    """
+    if RESTORE_LIKE.match(command):
+        return (
+            "SAFE ALTERNATIVE: preserve the changes first, then restore — "
+            "`git stash push -- <files>` followed by the restore. "
+        )
+    if re.search(r"git\s+reset\s+--hard", command, re.IGNORECASE):
+        return (
+            "SAFE ALTERNATIVE: `git stash push -u` keeps the working tree recoverable; "
+            "commits stay reachable via `git reflog`. "
+        )
+    if re.search(r"git\s+clean\s+.*-f", command, re.IGNORECASE):
+        return "SAFE ALTERNATIVE: run `git clean -n` first to preview what would be removed. "
+    if re.search(r"git\s+branch\s+-D\s+", command, re.IGNORECASE):
+        return "SAFE ALTERNATIVE: `git branch -d` refuses to drop unmerged work. "
+    return ""
+
+
+def check_blocked_pattern(command: str, cwd: str = "") -> tuple[bool, str]:
     """Check if command matches a blocked pattern. Returns (blocked, reason)."""
     for pattern, reason in BLOCKED_PATTERNS:
         if re.search(pattern, command, re.IGNORECASE):
+            if RESTORE_LIKE.match(command) and _restore_targets_are_all_deleted(command, cwd):
+                continue  # recovering a deleted file — nothing to overwrite
             return True, reason
     return False, ""
 
@@ -594,6 +685,10 @@ def main():
 
         if not original_command:
             allow_and_exit()  # No command, allow
+
+        # Needed to inspect working-tree state: `git restore` on a DELETED file is
+        # harmless, on a MODIFIED one it is irreversible. Only git can tell them apart.
+        hook_cwd = hook_input.get("cwd", "") or os.getcwd()
 
         # SECURITY: Normalize command to prevent regex bypass
         command = normalize_command(original_command)
@@ -650,7 +745,7 @@ def main():
             # shadowed by confirmation catch-alls nor bypassed via env vars
             # (fixes pre-existing bug where GIT_FORCE_PUSH_CONFIRMED=1
             # disabled the entire guard, commit a5faf094)
-            blocked, reason = check_blocked_pattern(subcmd_normalized)
+            blocked, reason = check_blocked_pattern(subcmd_normalized, hook_cwd)
 
             if blocked:
                 log_security_event("BLOCKED", original_command, f"Chained command contains: {reason}")
@@ -662,6 +757,7 @@ def main():
                         f"Dangerous subcommand found: {subcmd_normalized[:80]}. "
                         f"Reason: {reason}. "
                         f"Command: {original_command[:100]}{'...' if len(original_command) > 100 else ''}. "
+                        f"{safe_alternative(subcmd_normalized)}"
                         f"If truly needed, ask the user to run it manually.",
                     }
                 }

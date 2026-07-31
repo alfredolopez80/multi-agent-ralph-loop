@@ -67,9 +67,9 @@ if [[ -n "$TASK_ID" ]]; then
             TASK_STATUS=$(jq -r '.status // "unknown"' "$TASK_FILE" 2>/dev/null)
             if [[ "$TASK_STATUS" == "pending" || "$TASK_STATUS" == "in_progress" ]]; then
                 log "BLOCK: Task $TASK_ID not completed (status: $TASK_STATUS)"
-                cat <<EOF
-{"decision": "block", "reason": "Assigned task not completed"}
-EOF
+                # Name the hook in the reason: an unattributed block is undiagnosable.
+                jq -n --arg id "$TASK_ID" --arg st "$TASK_STATUS" \
+                  '{decision: "block", reason: ("[ralph-subagent-stop] Assigned task \($id) not completed (status: \($st))")}'
                 exit 2
             fi
         fi
@@ -84,9 +84,9 @@ if [[ -f "$QUALITY_STATE" ]]; then
     if [[ "$GATE_PASSED" == "false" ]]; then
         GATE_REASON=$(jq -r '.reason // "Unknown quality issue"' "$QUALITY_STATE" 2>/dev/null)
         log "BLOCK: Quality gate failed - $GATE_REASON"
-        cat <<EOF
-{"decision": "block", "reason": "Quality gate failed"}
-EOF
+        # Name the hook and pass through the concrete reason, not just "failed".
+        jq -n --arg r "$GATE_REASON" \
+          '{decision: "block", reason: ("[ralph-subagent-stop] Quality gate failed: \($r)")}'
         exit 2
     fi
 fi

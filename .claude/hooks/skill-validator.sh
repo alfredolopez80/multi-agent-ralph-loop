@@ -368,7 +368,7 @@ except:
     else
         log_error "Validation failed or timed out for: $skill_name"
         trap - ERR EXIT  # CRIT-004: Clear trap before explicit output
-        emit_json '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "Skill validation failed"}}'
+        emit_json '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "[skill-validator] Skill validation failed or timed out"}}'
         exit 1  # Block skill execution on validation failure
     fi
 }

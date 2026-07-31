@@ -24,9 +24,17 @@ if echo "$PROMPT" | grep -qiE '(implement|build|create|develop) .*(system|framew
 # Cap at 10
 [[ $COMPLEXITY -gt 10 ]] && COMPLEXITY=10
 
-# Save complexity for other hooks
-mkdir -p ~/.claude/state
-echo "{\"complexity\": $COMPLEXITY, \"timestamp\": $(date +%s)}" > ~/.claude/state/current-complexity.json
+# Save complexity for other hooks (universal-aristotle-gate.sh reads it).
+# PER-PROJECT, never ~/.claude/state: a shared file lets the complexity scored in one
+# repo gate tool calls in another. $CWD/.claude/state/ is already gitignored.
+CWD=$(echo "$INPUT" | jq -r '.cwd // ""')
+if [[ -z "$CWD" ]]; then
+  echo "[universal-prompt-classifier] no 'cwd' in hook payload; complexity $COMPLEXITY not persisted" >&2
+else
+  mkdir -p "${CWD}/.claude/state"
+  jq -n --argjson c "$COMPLEXITY" --argjson t "$(date +%s)" \
+    '{complexity: $c, timestamp: $t}' > "${CWD}/.claude/state/current-complexity.json"
+fi
 
 # Complexity message delegated to aristotle-analysis-display.sh (last in chain)
 # This hook only scores + saves state — the aristotle hook generates the 5-phase message
