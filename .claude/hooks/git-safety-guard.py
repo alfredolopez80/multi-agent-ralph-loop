@@ -565,7 +565,14 @@ RESTORE_LIKE = re.compile(
 )
 
 
+# A trackable `cd`: bare (→ $HOME) or exactly one target token. Anything else — a target
+# that needed quoting (normalize_command strips the quotes, so `cd "a b"` arrives as the
+# three-token `cd a b`), an option like `-P`/`-L`, or `cd -` — is NOT trackable here.
 CD_RE = re.compile(r"^\s*cd(?:\s+(?P<target>\S+))?\s*$")
+# Every command that moves the shell's directory. `popd`, and any `pushd`/`cd` form CD_RE
+# can't parse, must fail closed rather than leave a later subcommand judged against a
+# stale directory.
+DIR_CHANGE_RE = re.compile(r"^\s*(?:cd|pushd|popd)\b")
 
 
 def apply_cd(subcmd: str, cwd: str) -> str:
@@ -576,17 +583,24 @@ def apply_cd(subcmd: str, cwd: str) -> str:
     other-repo's working tree, not the payload's cwd. Evaluating in the wrong repository
     once allowed a restore that destroyed uncommitted edits.
 
-    Returns "" when the destination cannot be determined (`cd -`, an unreadable path).
-    Callers treat an empty cwd as doubt and fail closed, which withholds an exemption —
-    it never blocks the `cd` itself.
+    A subcommand that does NOT change directory returns `cwd` unchanged. A directory
+    change this function cannot resolve with confidence — `popd`, `pushd`, `cd -`, a
+    quoted/spaced/optioned target, an unreadable path — returns "". Callers treat an
+    empty cwd as doubt and fail closed (they withhold a restore exemption; they never
+    block the `cd` itself). Returning the STALE cwd here instead would fail OPEN: the
+    later `git restore` would be judged against the directory the shell already left.
     """
+    if not DIR_CHANGE_RE.match(subcmd):
+        return cwd  # not a directory change — the next subcommand still runs in cwd
     match = CD_RE.match(subcmd)
     if not match:
-        return cwd
+        return ""  # a cd/pushd/popd we cannot track — fail closed
     target = (match.group("target") or "~").strip("\"'")
     if target == "-":
         return ""  # previous directory — not tracked
-    target = os.path.expanduser(target)
+    target = os.path.expanduser(os.path.expandvars(target))
+    if not target or target.startswith("$"):
+        return ""  # an unresolved variable expansion — fail closed
     destination = target if os.path.isabs(target) else os.path.join(cwd or "", target)
     return os.path.normpath(destination) if destination else ""
 

@@ -16,7 +16,7 @@ for skill_dir in "$SKILLS_DIR"/*/; do
     # Check SKILL.md exists
     if [ ! -f "${skill_dir}SKILL.md" ]; then
         echo "❌ Missing SKILL.md"
-        ((ERRORS++))
+        ERRORS=$((ERRORS+1))
         continue
     fi
     

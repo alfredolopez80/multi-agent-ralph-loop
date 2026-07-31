@@ -605,10 +605,9 @@ case "$FORMAT" in
         print_text_output
         ;;
 esac
-
-# Exit with appropriate code
-if [[ $FAILED -gt 0 ]]; then
-    exit 1
-fi
-
-exit 0
+# The exit code propagates from the branch that ran: in text mode from vc_verdict (which
+# owns the zero-checks guard), in json mode from print_json_output. This script has no
+# `set -e`, so a trailing `if [[ $FAILED -gt 0 ]]` here would have been the ONLY exit
+# logic — discarding vc_verdict's return in both modes and leaving its zero-checks guard
+# dead. Ending on the case lets vc_verdict's status become the script's, as the last
+# command's status always does.

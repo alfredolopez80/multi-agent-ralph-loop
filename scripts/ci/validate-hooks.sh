@@ -15,14 +15,14 @@ for hook in "$HOOKS_DIR"/*.sh; do
     # Check syntax
     if ! bash -n "$hook" 2>/dev/null; then
         echo "❌ SYNTAX ERROR"
-        ((ERRORS++))
+        ERRORS=$((ERRORS+1))
         continue
     fi
     
     # Check executable
     if [ ! -x "$hook" ]; then
         echo "⚠️  NOT EXECUTABLE"
-        ((ERRORS++))
+        ERRORS=$((ERRORS+1))
         continue
     fi
     

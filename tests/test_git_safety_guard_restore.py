@@ -162,11 +162,31 @@ def test_cd_moves_the_verdict_to_the_directory_the_command_lands_in(sample_repo,
         ("cd - && " + RESTORE + " deleted.txt", "deny", "`cd -` destination is not tracked"),
         ("cd && " + RESTORE + " deleted.txt", "deny", "bare `cd` goes to $HOME, not a repo"),
         ("cd /nonexistent-dir && " + RESTORE + " deleted.txt", "deny", "unreadable destination"),
+        # A directory change the tracker cannot parse must fail closed, not fall back to
+        # the stale cwd. Returning the stale directory judged `git restore` against the
+        # tree the shell had already left — a fail-OPEN that allowed a destructive restore.
+        ("pushd /somewhere && " + RESTORE + " deleted.txt", "deny", "pushd is not tracked"),
+        ("popd && " + RESTORE + " deleted.txt", "deny", "popd is not tracked"),
+        ("cd -P /nonexistent && " + RESTORE + " deleted.txt", "deny", "cd with an option is not tracked"),
     ],
 )
 def test_untrackable_cd_fails_closed(sample_repo, command, expected, why):
     """An undeterminable destination withholds the exemption; it never blocks the `cd`."""
     assert _decide(command, sample_repo) == expected, why
+
+
+@pytest.mark.skipif(not GUARD.is_file(), reason="git-safety-guard.py not present")
+def test_quoted_cd_target_does_not_fail_open(sample_repo, other_repo):
+    """`cd "path with spaces"` must not be judged against the payload's cwd.
+
+    normalize_command strips the quotes before the guard sees the chain, so a spaced
+    target arrives split across tokens. That form is not confidently trackable, so the
+    exemption is withheld — the destructive restore in `other_repo` is denied rather than
+    allowed by judging `sample_repo`, where the file happens to be deleted.
+    """
+    # `deleted.txt` is deleted in sample_repo (exemption would apply) and modified in
+    # other_repo (restore is destructive). A spaced path forces the split-token form.
+    assert _decide(f'cd "{other_repo} x" && {RESTORE} deleted.txt', sample_repo) == "deny"
 
 
 @pytest.mark.skipif(not GUARD.is_file(), reason="git-safety-guard.py not present")

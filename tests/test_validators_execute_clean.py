@@ -92,11 +92,12 @@ def test_no_validator_uses_the_set_e_counter_trap():
     The post-increment evaluates to the OLD value; 0 is exit status 1. Scripts must use
     `VAR=$((VAR+1))`, whose assignment always succeeds.
     """
-    # Every shell script, not just validate-*.sh: the trap lived undetected in
-    # ralph-doctor.sh, the setup-*.sh installers and gc-stale-worktrees.sh precisely
-    # because the sweep only looked at validators. The guard is only as wide as its glob.
+    # Every shell script under scripts/, recursively — the trap lived undetected in
+    # ralph-doctor.sh, the setup-*.sh installers, gc-stale-worktrees.sh and the ci/
+    # validators precisely because the sweep only looked at validators, and then only at
+    # the top level. The guard is only as wide as its glob; rglob reaches subdirectories.
     offenders = {}
-    for script in sorted(SCRIPTS_DIR.glob("*.sh")):
+    for script in sorted(SCRIPTS_DIR.rglob("*.sh")):
         text = script.read_text(encoding="utf-8", errors="replace")
         if not re.search(r"^\s*set\s+-[a-z]*e", text, re.M):
             continue
