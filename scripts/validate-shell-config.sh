@@ -311,21 +311,7 @@ print_text_output() {
     done
 
     echo ""
-    echo "═══════════════════════════════════════════════════════════════"
-    echo "   SUMMARY"
-    echo "═══════════════════════════════════════════════════════════════"
-    echo "  Passed:   $PASSED"
-    echo "  Failed:   $FAILED"
-    echo "  Warnings: $WARNINGS"
-    echo ""
-
-    if [[ $FAILED -eq 0 ]]; then
-        echo -e "${GREEN}✓ Shell environment is properly configured${NC}"
-        return 0
-    else
-        echo -e "${RED}✗ Some shell configuration issues detected${NC}"
-        return 1
-    fi
+    vc_verdict "Shell Environment"
 }
 
 # Print JSON output

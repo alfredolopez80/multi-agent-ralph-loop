@@ -514,22 +514,7 @@ print_text_output() {
     fi
 
     echo ""
-    echo "═══════════════════════════════════════════════════════════════"
-    echo "   SUMMARY"
-    echo "═══════════════════════════════════════════════════════════════"
-    echo "  Total:    $TOTAL_SKILLS"
-    echo "  Passed:   $PASSED"
-    echo "  Failed:   $FAILED"
-    echo "  Warnings: $WARNINGS"
-    echo ""
-
-    if [[ $FAILED -eq 0 ]]; then
-        echo -e "${GREEN}All core skills are loadable and valid${NC}"
-        return 0
-    else
-        echo -e "${RED}Some skills failed validation${NC}"
-        return 1
-    fi
+    vc_verdict "Skills Execution"
 }
 
 # Print JSON output

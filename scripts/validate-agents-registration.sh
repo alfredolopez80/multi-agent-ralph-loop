@@ -191,21 +191,7 @@ print_text_output() {
     done
 
     echo ""
-    echo "═══════════════════════════════════════════════════════════════"
-    echo "   SUMMARY"
-    echo "═══════════════════════════════════════════════════════════════"
-    echo "  Passed:   $PASSED"
-    echo "  Failed:   $FAILED"
-    echo "  Warnings: $WARNINGS"
-    echo ""
-
-    if [[ $FAILED -eq 0 ]]; then
-        echo -e "${GREEN}✓ All required agents are properly installed${NC}"
-        return 0
-    else
-        echo -e "${RED}✗ Some agents are missing or invalid${NC}"
-        return 1
-    fi
+    vc_verdict "Agents Registration"
 }
 
 # Print JSON output

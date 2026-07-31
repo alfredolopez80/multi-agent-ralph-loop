@@ -78,6 +78,7 @@ declare -A MESSAGES
 declare -A ERROR_DETAILS
 PASSED=0
 FAILED=0
+WARNINGS=0
 TOTAL=0
 
 #===============================================================================
@@ -318,21 +319,7 @@ print_text_output() {
     fi
 
     echo ""
-    echo "=================================================="
-    echo "   SUMMARY"
-    echo "=================================================="
-    echo "  Total:   $TOTAL"
-    echo "  Passed:  $PASSED"
-    echo "  Failed:  $FAILED"
-    echo ""
-
-    if [[ $FAILED -eq 0 ]]; then
-        echo -e "${GREEN}OK All hooks have valid syntax${NC}"
-        return 0
-    else
-        echo -e "${RED}FAIL Some hooks have syntax errors${NC}"
-        return 1
-    fi
+    vc_verdict "Hooks Syntax"
 }
 
 # Print JSON output

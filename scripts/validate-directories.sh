@@ -228,21 +228,7 @@ print_text_output() {
     done
     echo ""
 
-    echo "═══════════════════════════════════════════════════════════════"
-    echo "   SUMMARY"
-    echo "═══════════════════════════════════════════════════════════════"
-    echo "  Passed:   $PASSED"
-    echo "  Failed:   $FAILED"
-    echo "  Warnings: $WARNINGS"
-    echo ""
-
-    if [[ $FAILED -eq 0 ]]; then
-        echo -e "${GREEN}✓ All required directories exist${NC}"
-        return 0
-    else
-        echo -e "${RED}✗ Some directories are missing or misconfigured${NC}"
-        return 1
-    fi
+    vc_verdict "Directory Structure"
 }
 
 # Print JSON output

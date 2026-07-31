@@ -199,22 +199,7 @@ print_text_output() {
     done
 
     echo ""
-    echo "═══════════════════════════════════════════════════════════════"
-    echo "   SUMMARY"
-    echo "═══════════════════════════════════════════════════════════════"
-    echo "  Total:    $TOTAL_SKILLS"
-    echo "  Passed:   $PASSED"
-    echo "  Failed:   $FAILED"
-    echo "  Warnings: $WARNINGS"
-    echo ""
-
-    if [[ $FAILED -eq 0 ]]; then
-        echo -e "${GREEN}✓ All core skills are properly installed${NC}"
-        return 0
-    else
-        echo -e "${RED}✗ Some skills are missing or invalid${NC}"
-        return 1
-    fi
+    vc_verdict "Skills Registration"
 }
 
 # Print JSON output

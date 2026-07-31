@@ -286,21 +286,7 @@ print_text_output() {
     echo ""
 
     # Summary
-    echo "═══════════════════════════════════════════════════════════════"
-    echo "   SUMMARY"
-    echo "═══════════════════════════════════════════════════════════════"
-    echo "  Passed:   $PASSED"
-    echo "  Failed:   $FAILED"
-    echo "  Warnings: $WARNINGS"
-    echo ""
-
-    if [[ $FAILED -eq 0 ]]; then
-        echo -e "${GREEN}✓ All required tools are available${NC}"
-        return 0
-    else
-        echo -e "${RED}✗ Some required tools are missing or outdated${NC}"
-        return 1
-    fi
+    vc_verdict "System Requirements"
 }
 
 # Print JSON output
