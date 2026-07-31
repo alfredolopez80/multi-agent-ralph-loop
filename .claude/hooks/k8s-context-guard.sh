@@ -81,6 +81,14 @@ strip_noninvocations() {
 # A shell wrapper carries the real command INSIDE a quoted span. Unwrap it BEFORE
 # blanking quoted text, otherwise the payload disappears and the invocation scan sees
 # only the wrapper name — a total bypass of every check in this file.
+#
+# SCOPE, stated so the next audit does not have to rediscover it: this is defence in
+# depth by text matching, NOT a shell parser. It recognises the wrappers observed in
+# practice (bash/sh/zsh/dash/eval, optionally via sudo). It does not attempt mismatched
+# or nested quoting, nor other interpreters that can carry a command (`python3 -c`,
+# `perl -e`, `ssh host "..."`, `xargs`). Those remain covered by the normal permission
+# prompt, which this hook advises but never replaces. Widen the list when a real bypass
+# is observed; do not mistake this for a complete boundary.
 unwrap_shell_wrappers() {
   local cmd="$1" prev="" i=0
   # A wrapper may nest. Bounded to avoid pathological input.

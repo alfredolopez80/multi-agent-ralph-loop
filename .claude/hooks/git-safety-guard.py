@@ -565,24 +565,45 @@ RESTORE_LIKE = re.compile(
 )
 
 
-def _restore_targets_are_all_deleted(command: str, cwd: str, full_command: str = "") -> bool:
+CD_RE = re.compile(r"^\s*cd(?:\s+(?P<target>\S+))?\s*$")
+
+
+def apply_cd(subcmd: str, cwd: str) -> str:
+    """The directory the NEXT subcommand runs in, after honouring a leading `cd`.
+
+    `cd` is a routine worktree operation and is never blocked. What it changes is WHERE
+    a later subcommand acts: `cd other-repo && git restore f.txt` must be judged against
+    other-repo's working tree, not the payload's cwd. Evaluating in the wrong repository
+    once allowed a restore that destroyed uncommitted edits.
+
+    Returns "" when the destination cannot be determined (`cd -`, an unreadable path).
+    Callers treat an empty cwd as doubt and fail closed, which withholds an exemption —
+    it never blocks the `cd` itself.
+    """
+    match = CD_RE.match(subcmd)
+    if not match:
+        return cwd
+    target = (match.group("target") or "~").strip("\"'")
+    if target == "-":
+        return ""  # previous directory — not tracked
+    target = os.path.expanduser(target)
+    destination = target if os.path.isabs(target) else os.path.join(cwd or "", target)
+    return os.path.normpath(destination) if destination else ""
+
+
+def _restore_targets_are_all_deleted(command: str, cwd: str) -> bool:
     """True when every path in a restore-like command is deleted in the working tree.
 
     Returns False on any doubt — no targets, an unreadable repo, a non-zero git exit,
     or a single path that is not deleted. The guard must fail closed.
+
+    `cwd` is the EFFECTIVE directory for this subcommand (see `apply_cd`), so a chain
+    that changes directory is judged against the repository it actually lands in.
     """
     if not cwd or not os.path.isdir(cwd):
         return False
     match = RESTORE_LIKE.match(command)
     if not match:
-        return False
-
-    # `cd` anywhere in the original command means this subcommand may run somewhere other
-    # than the payload's cwd, so `git status` here would classify a DIFFERENT repository.
-    # Observed: `cd other-repo && git restore f.txt` was allowed because f.txt was deleted
-    # in the payload's cwd, while in other-repo it held uncommitted edits that the restore
-    # would have destroyed. Tracking the cd is fragile; refusing to guess is not.
-    if re.search(r"(^|[|&;])\s*cd\s+\S", full_command or ""):
         return False
 
     targets = [
@@ -636,11 +657,15 @@ def safe_alternative(command: str) -> str:
     return ""
 
 
-def check_blocked_pattern(command: str, cwd: str = "", full_command: str = "") -> tuple[bool, str]:
-    """Check if command matches a blocked pattern. Returns (blocked, reason)."""
+def check_blocked_pattern(command: str, cwd: str = "") -> tuple[bool, str]:
+    """Check if command matches a blocked pattern. Returns (blocked, reason).
+
+    `cwd` is the effective directory for this subcommand, so a chain that changes
+    directory is judged against the repository it actually lands in.
+    """
     for pattern, reason in BLOCKED_PATTERNS:
         if re.search(pattern, command, re.IGNORECASE):
-            if RESTORE_LIKE.match(command) and _restore_targets_are_all_deleted(command, cwd, full_command):
+            if RESTORE_LIKE.match(command) and _restore_targets_are_all_deleted(command, cwd):
                 continue  # recovering a deleted file — nothing to overwrite
             return True, reason
     return False, ""
@@ -742,8 +767,16 @@ def main():
 
         # If there are multiple subcommands, check each one individually
         # A chained command is only safe if ALL subcommands are safe
+        #
+        # `cd` is tracked as the chain is walked so each subcommand is judged against the
+        # directory it really runs in. Worktree work is full of `cd <worktree> && git ...`,
+        # and treating the payload's cwd as the destination misjudged those. The tracking
+        # happens BEFORE the safe-pattern check because `cd` is itself a safe pattern and
+        # would otherwise skip the loop body.
+        effective_cwd = hook_cwd
         for subcmd in subcommands:
             subcmd_normalized = normalize_command(subcmd)
+            effective_cwd = apply_cd(subcmd_normalized, effective_cwd)
 
             # Check safe patterns first (skip to next subcommand if safe)
             if is_safe_pattern(subcmd_normalized):
@@ -753,7 +786,7 @@ def main():
             # shadowed by confirmation catch-alls nor bypassed via env vars
             # (fixes pre-existing bug where GIT_FORCE_PUSH_CONFIRMED=1
             # disabled the entire guard, commit a5faf094)
-            blocked, reason = check_blocked_pattern(subcmd_normalized, hook_cwd, command)
+            blocked, reason = check_blocked_pattern(subcmd_normalized, effective_cwd)
 
             if blocked:
                 log_security_event("BLOCKED", original_command, f"Chained command contains: {reason}")

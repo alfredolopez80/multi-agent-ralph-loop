@@ -13,6 +13,29 @@ import pytest
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
+REPO_ROOT = Path(PROJECT_ROOT)
+AGENTS_DIR = REPO_ROOT / ".claude" / "agents"
+
+# Documentation that lives among the agent definitions without being one.
+NON_AGENT_FILES = {"CLAUDE.md"}
+
+
+def agent_definition_files() -> list[Path]:
+    """Every agent definition in `.claude/agents/`.
+
+    Canonical on purpose: two test modules had grown their own copy of this, one keyed on
+    a set and the other on the literal "CLAUDE.md". They agree today and would disagree
+    the moment a second non-agent file lands here — one module's exclusion being invisible
+    to the other is precisely how a check goes quietly out of sync with what it checks.
+
+    Raises when the directory yields nothing: an empty list would let every parametrized
+    caller collect zero tests and still report green.
+    """
+    files = sorted(p for p in AGENTS_DIR.glob("*.md") if p.name not in NON_AGENT_FILES)
+    if not files:
+        raise AssertionError(f"No agent definitions found in {AGENTS_DIR}")
+    return files
+
 
 @pytest.fixture(scope="session")
 def project_root():

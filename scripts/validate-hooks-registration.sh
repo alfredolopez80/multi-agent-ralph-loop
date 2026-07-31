@@ -259,6 +259,13 @@ print_text_output() {
     echo "  Warnings: $WARNINGS"
     echo ""
 
+    # "Nothing failed" is not "everything passed": a run that checked zero hooks proves
+    # nothing, and its green verdict is indistinguishable from a healthy one.
+    if [[ $((PASSED + FAILED + WARNINGS)) -eq 0 ]]; then
+        echo -e "${RED}✗ FATAL: zero checks executed — no verdict can be declared${NC}" >&2
+        return 1
+    fi
+
     if [[ $FAILED -eq 0 ]]; then
         echo -e "${GREEN}✓ All required hooks registered correctly${NC}"
         return 0

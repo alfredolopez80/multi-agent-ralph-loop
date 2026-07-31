@@ -16,8 +16,9 @@ from pathlib import Path
 
 import pytest
 
+from tests.conftest import agent_definition_files
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
-AGENTS_DIR = REPO_ROOT / ".claude" / "agents"
 SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 SCRIPTS_DIR = REPO_ROOT / ".claude" / "scripts"
 HOOKS_DIR = REPO_ROOT / ".claude" / "hooks"
@@ -57,26 +58,46 @@ def _is_historical(path: Path) -> bool:
 
 
 def _agent_files() -> list[Path]:
-    return [p for p in sorted(AGENTS_DIR.glob("*.md")) if p.name != "CLAUDE.md"]
+    return agent_definition_files()
 
 
 def _known_agent_types() -> set[str]:
     return {p.stem for p in _agent_files()} | EXTERNAL_AGENT_TYPES
 
 
+# Hooks and scripts are not all shell. Sweeping only "*.sh" repeated the very gap this
+# sweep exists to close: `git-safety-guard.py` is a live PreToolUse hook and was invisible
+# to the check, as were every .mjs/.js hook.
+EXECUTABLE_SUFFIXES = (".sh", ".py", ".mjs", ".js")
+
+
+def _executables_in(directory: Path) -> list[Path]:
+    if not directory.is_dir():
+        return []
+    return [p for p in sorted(directory.iterdir()) if p.suffix in EXECUTABLE_SUFFIXES]
+
+
 def _config_surfaces() -> list[Path]:
-    """Live configuration: agents, skills and the scripts they drive."""
+    """Live configuration: agents, skills and the scripts and hooks they drive."""
     files: list[Path] = []
     files += _agent_files()
     files += [p for p in SKILLS_DIR.glob("*/SKILL.md")]
-    files += [p for p in SCRIPTS_DIR.glob("*.sh")] if SCRIPTS_DIR.is_dir() else []
-    # Hooks were missing from this sweep, so a hook invoking a retired CLI passed
-    # green with the defect in plain sight.
-    files += [p for p in HOOKS_DIR.glob("*.sh")] if HOOKS_DIR.is_dir() else []
+    files += _executables_in(SCRIPTS_DIR)
+    files += _executables_in(HOOKS_DIR)
     return [p for p in files if not _is_historical(p)]
 
 
-@pytest.mark.parametrize("path", _config_surfaces(), ids=lambda p: str(p.relative_to(REPO_ROOT)))
+CONFIG_SURFACES = _config_surfaces()
+
+# An empty parametrize list collects zero tests and still reports green — the sweep would
+# announce that nothing references a retired name precisely when it examined nothing.
+assert CONFIG_SURFACES, (
+    f"No configuration surfaces found under {REPO_ROOT}/.claude. The globs no longer "
+    f"match the repository layout, so the checks below would pass vacuously."
+)
+
+
+@pytest.mark.parametrize("path", CONFIG_SURFACES, ids=lambda p: str(p.relative_to(REPO_ROOT)))
 def test_subagent_type_names_an_existing_agent(path: Path):
     """Every `subagent_type` must resolve to an agent that exists."""
     known = _known_agent_types()
@@ -103,7 +124,7 @@ def test_models_json_maps_only_existing_agents():
     )
 
 
-@pytest.mark.parametrize("path", _config_surfaces(), ids=lambda p: str(p.relative_to(REPO_ROOT)))
+@pytest.mark.parametrize("path", CONFIG_SURFACES, ids=lambda p: str(p.relative_to(REPO_ROOT)))
 def test_no_retired_names_in_live_config(path: Path):
     """Retired tooling must not be named in configuration that is still executed."""
     text = path.read_text(encoding="utf-8", errors="replace")

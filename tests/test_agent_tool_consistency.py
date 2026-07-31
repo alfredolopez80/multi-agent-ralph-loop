@@ -21,6 +21,8 @@ import re
 from pathlib import Path
 
 import pytest
+
+from tests.conftest import agent_definition_files
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -28,8 +30,6 @@ AGENTS_DIR = REPO_ROOT / ".claude" / "agents"
 SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 MCP_CONFIG = Path.home() / ".claude.json"
 
-# Files in .claude/agents/ that are not agent definitions.
-NON_AGENT_FILES = {"CLAUDE.md"}
 
 # Gaps accepted for a documented reason. Each entry is verified in BOTH directions:
 # the gap must still be present. When it is fixed, test_known_gaps_are_still_gaps
@@ -54,10 +54,7 @@ KNOWN_GAPS: dict[tuple[str, str], str] = {
 UNINSTALLED_MCP: dict[str, str] = {}
 
 def _agent_files() -> list[Path]:
-    files = sorted(p for p in AGENTS_DIR.glob("*.md") if p.name not in NON_AGENT_FILES)
-    if not files:
-        raise AssertionError(f"No agent definitions found in {AGENTS_DIR}")
-    return files
+    return agent_definition_files()
 
 
 def _split_frontmatter(path: Path) -> tuple[str, str]:

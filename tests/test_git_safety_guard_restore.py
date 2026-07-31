@@ -118,6 +118,68 @@ def test_branch_delete_distinguishes_force_from_safe(sample_repo, command, expec
     assert _decide(command, sample_repo) == expected, why
 
 
+@pytest.fixture(scope="module")
+def other_repo(tmp_path_factory) -> str:
+    """A SECOND repo where `f.txt` is modified, to catch judging the wrong working tree."""
+    repo = tmp_path_factory.mktemp("other_repo")
+
+    def git(*args):
+        subprocess.run(["git", *args], cwd=repo, capture_output=True, text=True, check=True)
+
+    git("init", "-q")
+    git("config", "user.email", "test@example.com")
+    git("config", "user.name", "test")
+    (repo / "deleted.txt").write_text("original\n")
+    git("add", "-A")
+    git("commit", "-qm", "init")
+    (repo / "deleted.txt").write_text("valuable local edit\n")
+    return str(repo)
+
+
+@pytest.mark.skipif(not GUARD.is_file(), reason="git-safety-guard.py not present")
+def test_cd_moves_the_verdict_to_the_directory_the_command_lands_in(sample_repo, other_repo):
+    """`cd` is followed, not refused.
+
+    Worktree work is full of `cd <worktree> && git ...`; refusing to judge whenever a
+    chain changes directory blocked an entirely harmless restore. What the `cd` really
+    changes is WHICH working tree decides, so the guard tracks it:
+
+      * `cd <repo where the file is deleted>`  -> harmless, allow.
+      * `cd <repo where the file is modified>` -> the edits exist nowhere else, deny.
+
+    The second case is the original defect: `deleted.txt` is deleted in the payload's cwd
+    and modified in `other_repo`, so judging by the payload's cwd would have destroyed a
+    real edit.
+    """
+    assert _decide(f"cd {sample_repo} && {RESTORE} deleted.txt", sample_repo) == "allow"
+    assert _decide(f"cd {other_repo} && {RESTORE} deleted.txt", sample_repo) == "deny"
+
+
+@pytest.mark.skipif(not GUARD.is_file(), reason="git-safety-guard.py not present")
+@pytest.mark.parametrize(
+    "command, expected, why",
+    [
+        ("cd - && " + RESTORE + " deleted.txt", "deny", "`cd -` destination is not tracked"),
+        ("cd && " + RESTORE + " deleted.txt", "deny", "bare `cd` goes to $HOME, not a repo"),
+        ("cd /nonexistent-dir && " + RESTORE + " deleted.txt", "deny", "unreadable destination"),
+    ],
+)
+def test_untrackable_cd_fails_closed(sample_repo, command, expected, why):
+    """An undeterminable destination withholds the exemption; it never blocks the `cd`."""
+    assert _decide(command, sample_repo) == expected, why
+
+
+@pytest.mark.skipif(not GUARD.is_file(), reason="git-safety-guard.py not present")
+def test_cd_itself_is_never_blocked(sample_repo, other_repo):
+    """Changing directory is routine worktree work and carries no risk on its own."""
+    for command in (
+        f"cd {other_repo}",
+        f"cd {other_repo} && git status",
+        f"cd {other_repo} && git log --oneline",
+    ):
+        assert _decide(command, sample_repo) == "allow", command
+
+
 @pytest.mark.skipif(not GUARD.is_file(), reason="git-safety-guard.py not present")
 def test_fails_closed_outside_a_git_repo(tmp_path):
     """No repo means no way to prove the file is deleted, so the block must hold."""

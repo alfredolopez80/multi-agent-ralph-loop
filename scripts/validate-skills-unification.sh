@@ -140,6 +140,13 @@ echo -e "  ${RED}Failed${NC}: $FAIL"
 echo -e "  ${YELLOW}Warnings${NC}: $WARN"
 echo ""
 
+# "Nothing failed" is not "everything passed": a run that checked zero skills proves
+# nothing, and its green verdict is indistinguishable from a healthy one.
+if [[ $((PASS + FAIL + WARN)) -eq 0 ]]; then
+    echo -e "${RED}FATAL${NC}: zero checks executed — no verdict can be declared" >&2
+    exit 1
+fi
+
 if [[ $FAIL -eq 0 ]]; then
     echo -e "${GREEN}SUCCESS${NC}: Skills unification validated successfully!"
     exit 0

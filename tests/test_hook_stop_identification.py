@@ -93,6 +93,16 @@ HOOK_IDS = [p.name for p in HOOK_FILES]
 BLOCKING_HOOKS = [p for p in HOOK_FILES if _blocking_lines(p)]
 BLOCKING_IDS = [p.name for p in BLOCKING_HOOKS]
 
+# A parametrized list that silently empties collects zero tests and still reports green.
+# `_hook_files` guards its own list; this DERIVED one needs the same guard, because the
+# way it empties is not "no hooks" but "BLOCK_PATTERNS drifted and matches nothing" —
+# exactly the case where the tests below would be needed most.
+assert BLOCKING_HOOKS, (
+    f"No hook in {HOOKS_DIR} matched BLOCK_PATTERNS. Either every blocking hook was "
+    f"removed, or the patterns drifted away from the emissions they are meant to find. "
+    f"Both make the checks below vacuous."
+)
+
 
 @pytest.mark.parametrize("path", BLOCKING_HOOKS, ids=BLOCKING_IDS)
 def test_blocking_hook_names_itself(path: Path):

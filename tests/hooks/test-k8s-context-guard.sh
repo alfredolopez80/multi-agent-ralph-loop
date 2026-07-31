@@ -62,5 +62,34 @@ run 'kubectl config use-context kind-dev' 0 'use-context es local'
 run 'helm list --all-namespaces' 0 'helm list es lectura'
 
 echo
+echo "=== paridad con las copias que realmente se ejecutan ==="
+# Los 26 casos de arriba corren contra la copia VERSIONADA. El hook que Claude Code carga
+# es una copia instalada en el arbol del plugin (el plugin se auto-registra, no pasa por
+# settings.json), asi que la suite podia estar verde mientras la copia viva conservaba los
+# bypasses. Ocurrio: el 2026-07-31 las dos copias instaladas seguian con el --context de
+# primera coincidencia y sin unwrap_shell_wrappers, con todos los casos en verde.
+# Ahora la deriva falla aqui, en voz alta.
+INSTALLER="$REPO_ROOT/scripts/install-k8s-context-guard.sh"
+if [[ ! -x "$INSTALLER" ]]; then
+  echo "FATAL: falta $INSTALLER — la paridad no se puede comprobar"; exit 1
+fi
+if ! mapfile -t INSTALLED < <(find "$HOME/.claude/plugins" -name "context-guard.sh" -type f 2>/dev/null); then
+  INSTALLED=()
+fi
+if [[ "${#INSTALLED[@]}" -eq 0 ]]; then
+  echo "  SKIP   el plugin k8s no esta instalado en esta maquina (nada que pueda derivar)"
+else
+  ran=$((ran+1))
+  if "$INSTALLER" --check >/dev/null 2>&1; then
+    echo "  OK     las ${#INSTALLED[@]} copias instaladas coinciden con la versionada"
+  else
+    fails=$((fails+1))
+    echo "  FALLO  copias instaladas derivadas — el guard que corre NO es el que se testea:"
+    "$INSTALLER" --check 2>&1 | sed 's/^/           /'
+    echo "           corrige con: bash scripts/install-k8s-context-guard.sh"
+  fi
+fi
+
+echo
 if [[ "$ran" -eq 0 ]]; then echo "FATAL: cero casos ejecutados — no se puede declarar exito"; exit 1; fi
 [[ "$fails" -eq 0 ]] && echo "TODOS OK ($ran casos)" || { echo "$fails FALLOS de $ran"; exit 1; }
