@@ -106,14 +106,20 @@ def normalize_command(command: str) -> str:
     command = re.sub(r'["\']([^"\']+)["\']', r"\1", command)
 
     # Collapse git's GLOBAL options so the subcommand verb sits adjacent to `git`. Every
-    # destructive pattern anchors `git\s+<verb>`, so a global flag in between —
-    # `git -C other reset --hard`, `git -c k=v clean -fd`, `git --git-dir=… branch -D` —
-    # slipped past all of them. `-C`/`-c`/`--git-dir`/`--work-tree`/`--namespace`/
-    # `--exec-path` take a value; the rest are valueless. Repeated to strip a stack of them.
+    # destructive pattern anchors `git\s+<verb>`, so any global flag in between —
+    # `git -C other reset --hard`, `git -c k=v clean -fd`, `git -p checkout -- f`,
+    # `git -P reset --hard` — slips past all of them. Value-taking globals consume their
+    # value; EVERY OTHER leading `-`/`--` token is treated as a valueless global and skipped,
+    # so an unenumerated flag (the `-p`/`-P` bypass class found on PR #31) can never break
+    # verb adjacency. Git subcommands never start with `-`, so this cannot swallow the verb.
     command = re.sub(
-        r"\bgit(?:\s+(?:-C\s+\S+|-c\s+\S+|--git-dir(?:=\S+|\s+\S+)|--work-tree(?:=\S+|\s+\S+)"
-        r"|--namespace(?:=\S+|\s+\S+)|--exec-path(?:=\S+)?|--no-pager|--paginate|--bare"
-        r"|--no-replace-objects|--literal-pathspecs|--no-optional-locks|--noglob-pathspecs))+",
+        r"\bgit(?:\s+(?:"
+        r"(?:-C|-c|--git-dir|--work-tree|--namespace|--super-prefix|--config-env|--attr-source)"
+        r"(?:=\S+|\s+\S+)"
+        r"|--exec-path(?:=\S+)?"
+        r"|--[A-Za-z][\w-]*"
+        r"|-[A-Za-z]+"
+        r"))+",
         "git",
         command,
     )
@@ -156,12 +162,33 @@ WRAPPER = (
     r"^(?:\w+=\S*\s+)*"  # FOO=bar aws ...
     r"(?:(?:sudo|command|nohup|time|nice|env|eval|xargs)\s+(?:-\S+\s+)*(?:\w+=\S*\s+)*)*"
 )
-# AWS global flags are enumerated explicitly so the prefix cannot swallow
-# arbitrary text (e.g. `aws s3 ls --query "s3 rb"` must NOT match rb patterns)
-AWS = WRAPPER + r"aws\s+(?:--(?:profile|region|output|endpoint-url|no-cli-pager)(?:=|\s+)\S+\s+)*"
-GCLOUD = WRAPPER + r"gcloud\s+(?:(?:alpha|beta)\s+)?"
+# CLI GLOBAL flags sit between the tool name and its subcommand/verb. The destructive
+# patterns anchor `tool\s+<verb>`, so ANY unenumerated global flag in between breaks the
+# adjacency and silently defeats every block (the `gcloud --project=…`, `kubectl -v=6`
+# bypass class found on PR #31). Rather than a fixed allowlist, each prefix now skips a
+# leading run of global flags GENERICALLY: value-taking flags are enumerated (so their
+# value token is consumed too), and every OTHER leading `-`/`--` token is treated as a
+# valueless global and skipped. Subcommands/verbs never start with `-`, so the verb is
+# never swallowed. Only LEADING flags are skipped, so a flag appearing after the verb
+# (`delete … --quiet`, `s3 ls --query "s3 rb"`) stays in the remainder and never widens
+# a match — the anchoring against `echo "aws s3 rb"` (quotes stripped) still holds.
+_GLOBAL_TAIL = r"|--[A-Za-z][\w-]*|-[A-Za-z]+)\s+)*"
+AWS = (
+    WRAPPER + r"aws\s+(?:(?:--(?:profile|region|output|endpoint-url|cli-connect-timeout"
+    r"|cli-read-timeout|color|ca-bundle|query|cli-binary-format)(?:=\S+|\s+\S+)" + _GLOBAL_TAIL
+)
+GCLOUD = (
+    WRAPPER + r"gcloud\s+(?:(?:alpha|beta|preview)\s+)?"
+    r"(?:(?:--(?:project|account|configuration|verbosity|format|flags-file|billing-project"
+    r"|impersonate-service-account|access-token-file)(?:=\S+|\s+\S+)" + _GLOBAL_TAIL
+)
 GSUTIL = WRAPPER + r"gsutil\s+(?:-[mqD]\s+)*"
-KUBECTL = WRAPPER + r"kubectl\s+(?:(?:--context|--kubeconfig|--namespace|-n)(?:=|\s+)\S+\s+)*"
+KUBECTL = (
+    WRAPPER + r"kubectl\s+(?:(?:--(?:context|kubeconfig|namespace|server|token|user|cluster"
+    r"|request-timeout|as|as-group|cache-dir|certificate-authority|client-certificate"
+    r"|client-key|tls-server-name|v|log-flush-frequency|chunk-size|password|username"
+    r"|profile|profile-output)(?:=\S+|\s+\S+)|-[nsuvp](?:=\S+|\s+\S+)" + _GLOBAL_TAIL
+)
 
 # Destructive verbs used by the command-substitution / shell -c detectors
 DESTRUCTIVE_INNER = (

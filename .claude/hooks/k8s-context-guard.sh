@@ -74,6 +74,13 @@ strip_noninvocations() {
       print
     }
   ' <<< "$1" |
+  # Unquote flag VALUES (--flag="v" / --flag='v') BEFORE blanking free-standing strings.
+  # The blanking exists to erase a tool name hidden inside a string (echo "kubectl delete"),
+  # not to destroy a flag value: blanking a legitimately quoted context made
+  # `kubectl --context="kind-test" ...` read an EMPTY context and fail closed (over-block).
+  # Only `=`-adjacent quoted spans are unquoted, so a free-standing "kubectl ..." string is
+  # still blanked below.
+  sed "s/=\"\([^\"]*\)\"/=\1/g; s/='\([^']*\)'/=\1/g" |
   # Remove single- and double-quoted spans: a tool name inside a string is data.
   sed "s/'[^']*'/''/g; s/\"[^\"]*\"/\"\"/g"
 }
@@ -94,7 +101,14 @@ unwrap_shell_wrappers() {
   # A wrapper may nest. Bounded to avoid pathological input.
   while [[ "$cmd" != "$prev" && $i -lt 5 ]]; do
     prev="$cmd"; i=$((i + 1))
-    cmd="$(printf '%s' "$cmd" | sed -E "s/(^|[|&;[:space:]])(sudo[[:space:]]+)?(bash|sh|zsh|dash|eval)[[:space:]]+(-[a-z]+[[:space:]]+)*['\"]([^'\"]*)['\"]/\1\5/g")"
+    # Two passes with MATCHED delimiters. A single `['\"]([^'\"]*)['\"]` class forbade BOTH
+    # quote types inside the body, so a double-quoted payload carrying an inner single quote
+    # (`bash -c "if [ x = 'prod' ]; then kubectl ... delete ...; fi"`) truncated at that inner
+    # quote and left the kubectl behind an unrecognised keyword — a total bypass. The
+    # double-quoted pass allows single quotes inside the body and vice-versa.
+    cmd="$(printf '%s' "$cmd" \
+      | sed -E "s/(^|[|&;[:space:]])(sudo[[:space:]]+)?(bash|sh|zsh|dash|eval)[[:space:]]+(-[a-z]+[[:space:]]+)*\"([^\"]*)\"/\1\5/g" \
+      | sed -E "s/(^|[|&;[:space:]])(sudo[[:space:]]+)?(bash|sh|zsh|dash|eval)[[:space:]]+(-[a-z]+[[:space:]]+)*'([^']*)'/\1\5/g")"
   done
   printf '%s' "$cmd"
 }
@@ -148,6 +162,20 @@ for seg in "${SEGMENTS[@]}"; do
   esac
 done
 
+# Fail-closed safety net: if the executable text still names a k8s tool as a WORD but no
+# segment was flagged, the parser lost it (a truncated unwrap or an unrecognised shell
+# keyword like `then`/`do` left `then kubectl ... delete ...` unclassified). Rather than
+# assume benign, force enforcement over the whole command. Tool names hidden inside a
+# free-standing string were already blanked by strip_noninvocations, so `echo "kubectl ..."`
+# does not trip this. Enforcement here also skips the exemption block (a lost parse cannot
+# be trusted to have found a genuine cluster-free/read-only segment).
+FORCE_ENFORCE=0
+if [[ "$invokes_k8s_tool" -eq 0 ]] && grep -qwE 'kubectl|helm|kustomize' <<< "$EXECUTABLE"; then
+  invokes_k8s_tool=1
+  FORCE_ENFORCE=1
+  K8S_SEGMENTS=("$EXECUTABLE")
+fi
+
 [[ "$invokes_k8s_tool" -eq 0 ]] && exit 0
 
 # ---------------------------------------------------------------------------
@@ -197,7 +225,9 @@ for seg in "${K8S_SEGMENTS[@]}"; do
   all_segments_exempt=0
   break
 done
-[[ "$all_segments_exempt" -eq 1 ]] && exit 0
+# A parser-lost command (FORCE_ENFORCE) never earns an exemption: we could not trust the
+# segmentation, so we cannot trust a cluster-free/read-only classification of it either.
+[[ "$all_segments_exempt" -eq 1 && "$FORCE_ENFORCE" -eq 0 ]] && exit 0
 
 # ---------------------------------------------------------------------------
 # D2: resolve the context the command will ACTUALLY use.

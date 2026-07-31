@@ -107,6 +107,19 @@ run "flock -n /tmp/lock kubectl --context=$PROD apply -f x.yaml" 2 'flock -n + l
 run 'watch kubectl --context=kind-dev get pods' 0 'watch a contexto permitido + lectura OK'
 
 echo
+echo "=== comilla anidada en wrapper y valor de flag entrecomillado (2026-07-31, sec-audit) ==="
+# BLOCKER 4: un cuerpo doble-comillado con una comilla simple interna truncaba el unwrap y
+# dejaba el kubectl tras un keyword (then/do) no reconocido -> bypass total. La red fail-closed
+# fuerza enforcement cuando el texto aun nombra un tool k8s pero ningun segmento se marco.
+run "bash -c \"if [ x = 'prod' ]; then kubectl --context=$PROD delete namespace evil; fi\"" 2 'comilla anidada en if NO evade'
+run "bash -c \"for e in 'staging' prod; do kubectl --context=$PROD delete namespace evil; done\"" 2 'comilla anidada en for NO evade'
+run "sh -c \"echo 'go'; kubectl --context=$PROD delete ns evil\"" 2 'comilla simple dentro de doble NO evade'
+# Medium: un --context legitimamente entrecomillado se leia vacio (blanqueado) -> se sobre-bloqueaba.
+run 'kubectl --context="kind-test" delete pod x' 0 'context entre comillas permitido NO se sobre-bloquea' '^kind-'
+run "kubectl --context='kind-test' get pods" 0 'context comilla simple permitido OK' '^kind-'
+run 'kubectl --context="gke_prod" delete ns x' 2 'context entre comillas NO permitido sigue bloqueado' '^kind-'
+
+echo
 echo "=== paridad con las copias que realmente se ejecutan ==="
 # Los 26 casos de arriba corren contra la copia VERSIONADA. El hook que Claude Code carga
 # es una copia instalada en el arbol del plugin (el plugin se auto-registra, no pasa por
