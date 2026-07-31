@@ -265,6 +265,29 @@ def test_fails_closed_outside_a_git_repo(tmp_path):
 
 
 @pytest.mark.skipif(not GUARD.is_file(), reason="git-safety-guard.py not present")
+@pytest.mark.skipif(not GUARD.is_file(), reason="git-safety-guard.py not present")
+def test_opaque_relocators_fail_closed(sample_repo, other_repo):
+    """Sourcing and function calls can relocate the shell where the guard cannot see.
+
+    `. move.sh`, `source move.sh`, `. <(...)`, and a function whose body cds all move the
+    shell opaquely. The restore-of-deleted exemption must not be trusted after them, so the
+    destructive restore in other_repo is denied rather than judged against sample_repo (where
+    the file is deleted). `move.sh` is written into other_repo and cds there.
+    """
+    move = os.path.join(other_repo, "move.sh")
+    with open(move, "w") as fh:
+        fh.write(f"cd {other_repo}\n")
+    for command in (
+        f". {move} ; {RESTORE} deleted.txt",
+        f"source {move} ; {RESTORE} deleted.txt",
+        f". <(echo cd {other_repo}) ; {RESTORE} deleted.txt",
+        f"f(){{ cd {other_repo}; }}; f ; {RESTORE} deleted.txt",
+        f"{{ {{ cd {other_repo}; }}; }}; {RESTORE} deleted.txt",  # nested braces
+    ):
+        assert _decide(command, sample_repo) == "deny", command
+
+
+@pytest.mark.skipif(not GUARD.is_file(), reason="git-safety-guard.py not present")
 def test_brace_group_cd_fails_closed(sample_repo, other_repo):
     """`{ cd DIR; }` moves the current shell — it must not leave the tracker on the stale cwd.
 

@@ -119,7 +119,9 @@ for seg in "${SEGMENTS[@]}"; do
     prev="$cleaned"; i=$((i + 1))
     cleaned="$(printf '%s' "$cleaned" \
       | sed -E 's/^([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*//' \
-      | sed -E 's/^\\?(sudo|command|builtin|eval|env|time|nice|nohup|xargs)[[:space:]]+(-[^[:space:]]+[[:space:]]+)*//' \
+      | sed -E 's/^\\?(sudo|command|builtin|eval|env|time|timeout|stdbuf|chrt|ionice|nice|nohup|xargs)[[:space:]]+(-[^[:space:]]+[[:space:]]+)*//' \
+      | sed -E 's/^-[IJnPsLE][[:space:]]+[^[:space:]]+[[:space:]]+//' \
+      | sed -E 's/^[0-9]+[.0-9smhd]*[[:space:]]+//' \
       | sed -E 's/^[[:space:]]+//')"
   done
   first_token="${cleaned%%[[:space:]]*}"
@@ -128,12 +130,20 @@ for seg in "${SEGMENTS[@]}"; do
   case "$first_token" in
     kubectl|helm|kustomize)
       invokes_k8s_tool=1; K8S_SEGMENTS+=("$seg") ;;
-    sudo|command|builtin|eval|env|time|nice|nohup|xargs)
+    sudo|command|builtin|eval|env|time|timeout|stdbuf|chrt|ionice|nice|nohup|xargs)
       # Still a wrapper after the strip bound — a pathological `eval`×N stack we cannot see
       # through. Enumerating a fixed depth is a losing game (any bound is beaten by more
       # wrappers), so an unresolved wrapped segment is treated as a k8s invocation and forced
       # through context enforcement below, instead of being assumed benign and exiting 0.
       invokes_k8s_tool=1; K8S_SEGMENTS+=("$seg") ;;
+    '{}'|'%'|'{}'|'[]')
+      # An xargs replacement placeholder sits where the command should be — the real command
+      # is what xargs runs per item. If it is a k8s tool, enforce context; a placeholder here
+      # is unambiguous (it never appears as a plain command), so this does not over-block a
+      # k8s tool named inside an ordinary string argument.
+      if grep -qwE 'kubectl|helm|kustomize' <<< "$cleaned"; then
+        invokes_k8s_tool=1; K8S_SEGMENTS+=("$seg")
+      fi ;;
   esac
 done
 

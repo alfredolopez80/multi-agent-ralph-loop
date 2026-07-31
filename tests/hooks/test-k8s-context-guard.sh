@@ -93,6 +93,12 @@ run "eval eval eval eval eval eval eval kubectl --context=$PROD apply -f x" 2 'e
 run "command command command command command command command kubectl --context=$PROD apply -f x" 2 'command x7 NO evade'
 run "sudo command eval env time nice nohup kubectl --context=$PROD apply -f x" 2 '7 wrappers distintos NO evade'
 run "eval echo hola" 0 'comando NO-k8s muy envuelto no se sobre-bloquea'
+# Wrappers con argumento posicional/replacement que dejaban el arg como first_token.
+run "echo x | xargs -I {} kubectl --context=$PROD delete ns foo" 2 'xargs -I {} (con espacio) NO evade'
+run "timeout 5 kubectl --context=$PROD delete ns foo" 2 'timeout con duracion NO evade'
+run "timeout 5s kubectl --context=$PROD delete ns foo" 2 'timeout 5s NO evade'
+run "stdbuf -oL kubectl --context=$PROD delete ns foo" 2 'stdbuf NO evade'
+run 'echo "deploy with kubectl later"' 0 'kubectl dentro de string NO se sobre-bloquea'
 
 echo
 echo "=== paridad con las copias que realmente se ejecutan ==="

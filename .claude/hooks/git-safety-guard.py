@@ -583,9 +583,16 @@ CD_RE = re.compile(r"^\s*cd(?:\s+(?P<target>\S+))?\s*$")
 # thing may sit inside a brace group (`{ cd DIR; }`). `cd`/`pushd`/`popd` itself may be
 # escaped (`\cd`). Enumerating a fixed depth is a losing game — any bound is beaten by more
 # wrappers — so exhaustion is treated as a directory change and fails closed (see below).
-CD_WRAPPER_RE = re.compile(r"^\s*\{?\s*\\?(?:command|builtin|eval|time)(?:\s+-\S+)*\s+")
-CD_HEAD_RE = re.compile(r"^\s*\{?\s*\\?(?:cd|pushd|popd)\b")
+CD_WRAPPER_RE = re.compile(r"^\s*(?:\{\s*)*\\?(?:command|builtin|eval|time)(?:\s+-\S+)*\s+")
+CD_HEAD_RE = re.compile(r"^\s*(?:\{\s*)*\\?(?:cd|pushd|popd)\b")
 _CD_STRIP_BOUND = 12
+
+# Constructs that can relocate the shell OPAQUELY — the guard cannot see where they land,
+# so the restore-of-deleted exemption must not be trusted after them: sourcing a file
+# (`.`/`source`, incl. `. <(...)`) whose contents may `cd`, and a function definition
+# (`f(){ ... }`) whose later call may `cd`. apply_cd returns "" for these so the exemption
+# fails closed rather than judging a restore against a possibly-stale directory.
+_OPAQUE_RELOCATOR_RE = re.compile(r"^\s*(?:\.|source)\s|[A-Za-z_]\w*\s*\(\s*\)")
 
 
 def _is_directory_change(subcmd: str) -> bool:
@@ -624,6 +631,8 @@ def apply_cd(subcmd: str, cwd: str) -> str:
     block the `cd` itself). Returning the STALE cwd here instead would fail OPEN: the
     later `git restore` would be judged against the directory the shell already left.
     """
+    if _OPAQUE_RELOCATOR_RE.search(subcmd):
+        return ""  # sourcing / a function definition can relocate the shell — fail closed
     if not _is_directory_change(subcmd):
         return cwd  # not a directory change — the next subcommand still runs in cwd
     match = CD_RE.match(subcmd)
