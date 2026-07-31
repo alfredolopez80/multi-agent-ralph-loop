@@ -1,7 +1,7 @@
 ---
 # VERSION: 3.0.0
 name: security
-description: "Security audit with Codex plus an independent second opinion. Integrates ralph-security agent (6 quality pillars, OWASP A01-A10). Uses LSP for code navigation during analysis. Use when: (1) /security is invoked, (2) task relates to security functionality."
+description: "Claude-driven security audit with an independent second opinion. Integrates the ralph-security agent (6 quality pillars, OWASP A01-A10). Uses LSP for code navigation during analysis. Use when: (1) /security is invoked, (2) task relates to security functionality."
 user-invocable: true
 context: fork
 allowed-tools:
@@ -14,7 +14,7 @@ allowed-tools:
 
 # /security - Multi-Agent Security Audit (v3.0)
 
-Comprehensive security audit using Codex GPT-5 for primary analysis and an independent reviewer (ralph-security) for second-opinion validation.
+Comprehensive security audit run entirely on Claude: the `security-auditor` agent performs the primary analysis and an independent reviewer (`ralph-security`) provides second-opinion validation. No dependency on any external LLM CLI.
 
 ## v2.88 Key Changes (MODEL-AGNOSTIC)
 
@@ -238,7 +238,7 @@ Trigger `/security` when:
 │                                                        │
 │  2. MINIMAX SECOND OPINION                             │
 │     ├─ Independent vulnerability review                │
-│     ├─ Cross-validate Codex findings                   │
+│     ├─ Cross-validate primary findings                 │
 │     ├─ Catch additional issues                         │
 │     └─ Consensus report                                │
 │                                                        │
@@ -276,18 +276,21 @@ ralph security src/ --output security-report.json
 
 ## Task Tool Invocation
 
-### Primary Security Audit (Codex GPT-5)
+### Primary Security Audit (Claude security-auditor)
 
 ```yaml
 Task:
   subagent_type: "security-auditor"
-  model: "sonnet"  # Sonnet manages the Codex CLI call
+  model: "sonnet"   # escalate to opus for auth/crypto/payment paths
   run_in_background: true
-  description: "Codex: Primary security audit"
+  description: "Primary security audit"
   prompt: |
-    Execute via Codex CLI for security analysis:
-    cd /absolute/path/to/project && codex exec -m gpt-5.2-codex "
-    Perform comprehensive security audit on: <path>
+    Perform a comprehensive security audit on: <path>
+
+    Read the code yourself and reason about it. Where local scanners are installed,
+    use them as evidence (semgrep, gitleaks) — they are not external LLM engines and
+    are fine to run. Do NOT depend on any external LLM CLI (Codex/Gemini/MiniMax); this
+    audit runs entirely on Claude.
 
     Check for:
     1. CWE vulnerabilities (prioritize High/Critical)
@@ -325,7 +328,6 @@ Task:
         'low': 1
       }
     }
-    "
 
     Apply Ralph Loop: iterate until audit complete and all findings validated.
 ```
@@ -347,8 +349,8 @@ Task:
     4. Insecure defaults and misconfigurations
     5. Complex injection chains
 
-    Cross-validate the Codex findings and identify additional issues.
-    Use the same JSON format as Codex for consistency.
+    Cross-validate the primary findings and identify additional issues.
+    Use the same JSON format for consistency.
 ```
 
 A second reviewer is valuable because it is *independent*, not because it is cheaper —
@@ -411,7 +413,7 @@ disagreement between two passes is the signal worth acting on.
 
 **Date:** 2025-01-04
 **Target:** src/
-**Tools:** Codex GPT-5 + ralph-security
+**Tools:** security-auditor (Claude) + ralph-security
 
 ## Summary
 
@@ -457,7 +459,7 @@ await execFileNoThrow('convert', [filename, 'output.png'])
 2. **Sensitive Data Handling** - Reports may contain code snippets with secrets; handle with care
 3. **False Positives** - Manual review required; automated tools may flag benign patterns
 4. **Scope Limitation** - Static analysis only; cannot detect runtime vulnerabilities
-5. **Tool Trust** - Codex is a third-party service; do not send proprietary code if restricted
+5. **Tool Trust** - if you enable the optional external second opinion, it is a third-party service; do not send proprietary code if restricted
 
 ### CWE Categories Checked
 
@@ -563,24 +565,23 @@ ralph security src/upload/
 # Primary audit
 Task:
   subagent_type: "security-auditor"
-  model: "sonnet"
+  model: "opus"   # auth is critical — escalate from the sonnet default
   run_in_background: true
-  description: "Codex: Security audit of auth module"
+  description: "Security audit of auth module"
   prompt: |
-    codex exec -m gpt-5.2-codex "
     Security audit: src/auth/
-    Focus on authentication bypasses, session hijacking, and credential storage.
-    JSON output with CWE/OWASP references.
-    "
+    Read the code and reason about it yourself; run local scanners (semgrep/gitleaks)
+    if installed. Focus on authentication bypasses, session hijacking, and credential
+    storage. JSON output with CWE/OWASP references.
 
 # Second opinion
 Task:
   subagent_type: "ralph-security"
   run_in_background: true
-  description: "Validate Codex findings"
+  description: "Validate primary findings"
   prompt: |
     Independent security review: src/auth/
-    Cross-validate the Codex findings and find missed issues.
+    Cross-validate the primary findings and find missed issues.
     Same JSON format.
 ```
 

@@ -38,7 +38,7 @@ Consolidates all security tools in the Multi-Agent Ralph ecosystem:
 | Code Audit | `/sec-context-depth` | 27 security anti-patterns deep analysis |
 | SecOps | `/senior-secops` | Application security operations |
 | App Security | `/senior-security` | Comprehensive application security |
-| Dual-Model Audit | `/security` | Codex + MiniMax second opinion |
+| Deep Audit | `/security` | Claude-native vulnerability analysis (OWASP A01-A10) |
 | Iterative Audit | `/security-loop` | Loop until zero vulnerabilities |
 | Assessment | `/security-audit` | Security assessment workflow |
 | Best Practices | `/security-best-practices` | Language-specific security patterns |
@@ -108,6 +108,6 @@ Consolidates all security tools in the Multi-Agent Ralph ecosystem:
 Verify:
 - [ ] All 6 quality pillars assessed
 - [ ] No critical/high findings unresolved
-- [ ] Security hooks registered in ALL active settings (claude + minimax)
+- [ ] Security hooks registered in active settings (claude)
 - [ ] Threat model updated if new attack surface introduced
 - [ ] Secrets scan clean on all modified files

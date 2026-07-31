@@ -1,10 +1,12 @@
 ---
-# VERSION: 3.0.0
+# VERSION: 3.1.0
 name: bugs
-description: "Bug hunting with Codex CLI Use when: (1) /bugs is invoked, (2) task relates to bugs functionality."
+description: "Evidence-first bug hunting driven by Claude subagents. Use when: (1) /bugs is invoked, (2) task relates to finding bugs in code, a diff, or a failing behavior."
 context: fork
 user-invocable: true
 allowed-tools:
+  - Agent
+  - Task
   - LSP
   - Read
   - Bash
@@ -12,16 +14,35 @@ allowed-tools:
   - Glob
 ---
 
-# /bugs (v2.37)
+# /bugs (v3.1)
 
-Deep bug analysis using Codex gpt-5.2-codex with the bug-hunter skill and **TLDR context optimization**.
+Deep, evidence-first bug analysis. **The engine is Claude subagents** spawned via the
+Agent/Task tool — the skill works whenever Claude does, with no dependency on any external
+CLI. TLDR context optimization keeps token cost low.
 
-## v2.88 Key Changes (MODEL-AGNOSTIC)
+## v3.1 — Claude is the engine (was Codex-only)
 
-- **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
-- **No flags required**: Works with the configured default model
-- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
-- **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
+Earlier versions shelled out to `codex exec -m gpt-5.2-codex` as the *only* execution
+path, so the skill broke whenever Codex was unavailable (rate limits, auth failure, not
+installed) — despite claiming to be "model-agnostic". It is now genuinely Claude-native:
+
+- **Primary engine: Claude subagents.** Bug hunting runs through the Agent/Task tool with a
+  bug-hunter prompt and the evidence-first contract below. This is the default and always
+  works.
+- **Codex is an OPTIONAL accelerator, never required.** If the `codex` CLI is installed AND
+  responsive, you MAY fan a second opinion out to it and merge findings — but you must
+  first confirm it responds (a rate-limited or unauthenticated `codex` is treated as
+  absent). If it is unavailable, proceed with Claude alone and say so; never block on it.
+- **Model selection** for the Claude subagents follows the session's configured model
+  (`~/.claude/settings.json` / env), inherited by the spawned agents.
+
+## Evidence-First Contract (non-negotiable)
+
+Bug hunting is evidence work, not a confidence exercise. Report ONLY issues grounded in
+changed code, reachable paths, a test failure, runtime evidence, or a clear invariant
+violation. If a suspected issue cannot be verified from the available context, label it an
+**unverified risk** and state the fastest way to prove it — do not report it as a confirmed
+bug. Prefer a small number of high-conviction findings over a long list of speculation.
 
 ## Agent Teams Integration (v2.88)
 
@@ -86,9 +107,9 @@ tldr semantic "try catch error exception throw" .
 
 ## Overview
 
-The `/bugs` command performs comprehensive static analysis using **TLDR-compressed context** to identify potential bugs, logic errors, race conditions, edge cases, and other code issues that could cause runtime failures or unexpected behavior. It uses Codex GPT-5.2 model with specialized bug-hunting capabilities to analyze code paths, detect anti-patterns, and suggest fixes.
+The `/bugs` command performs comprehensive analysis using **TLDR-compressed context** to identify bugs, logic errors, race conditions, edge cases, and other issues that could cause runtime failures. It runs **Claude bug-hunter subagents** that read the target, trace reachable code paths, and report findings grounded in evidence.
 
-Unlike traditional linters, Codex bug hunting performs deep semantic analysis:
+Unlike traditional linters, this performs deep semantic analysis:
 - **Context-aware**: Understands code intent and business logic
 - **Multi-file analysis**: Traces bugs across module boundaries
 - **Pattern recognition**: Identifies common bug patterns and anti-patterns
@@ -107,7 +128,7 @@ Use `/bugs` when:
 
 ## Analysis Methodology
 
-Codex bug hunting follows a systematic approach:
+The bug-hunter subagent follows a systematic approach:
 
 1. **Static Analysis**: Parse AST and control flow graphs
 2. **Pattern Matching**: Compare against known bug patterns database
@@ -129,82 +150,58 @@ Codex bug hunting follows a systematic approach:
 | **Async Issues** | Unhandled promises, callback hell, deadlocks | HIGH |
 | **Security Bugs** | Injection, XSS, CSRF (see /security for full audit) | CRITICAL |
 
-## CLI Execution
+## Execution — Claude subagents (primary path)
 
-```bash
-# Bug hunt on specific file
-ralph bugs src/auth/login.ts
-
-# Bug hunt on directory
-ralph bugs src/components/
-
-# Bug hunt on entire codebase
-ralph bugs .
-
-# Background execution with logging
-ralph bugs src/ > bugs-report.json 2>&1 &
-```
-
-## Task Tool Invocation (TLDR-Enhanced)
-
-Use the Task tool to invoke Codex bug hunting with TLDR context:
+Spawn one or more Claude bug-hunter subagents through the Agent/Task tool. Pass the
+target and the TLDR context; require the evidence-first contract and the JSON output
+below. The subagents inherit the session's configured model.
 
 ```yaml
-Task:
-  subagent_type: "debugger"
-  model: "sonnet"
-  run_in_background: true
-  description: "Codex bug hunting analysis"
+Agent:
+  subagent_type: "general-purpose"   # or a code-review agent if available
+  description: "Bug hunt: $ARGUMENTS"
   prompt: |
-    # Context (95% token savings via tldr)
-    Structure: $(tldr structure .)
-    File Context: $(tldr context $ARGUMENTS .)
-    Dependencies: $(tldr deps $ARGUMENTS .)
+    Evidence-first bug hunt on: $ARGUMENTS
 
-    Execute Codex bug hunting via CLI:
-    cd ~/Documents/GitHub/multi-agent-ralph-loop && \
-    codex exec --yolo --enable-skills -m gpt-5.2-codex \
-    "Use bug-hunter skill. Find bugs in: $ARGUMENTS
+    # Context (token-optimized via tldr, when available)
+    Structure:    $(tldr structure . 2>/dev/null)
+    File context: $(tldr context $ARGUMENTS . 2>/dev/null)
+    Dependencies: $(tldr deps $ARGUMENTS . 2>/dev/null)
 
-    Output JSON: {
-      bugs: [
+    Rules:
+    - Report ONLY bugs grounded in reachable code, a failing test, runtime evidence,
+      or a clear invariant violation. Verify each finding by reading the real code
+      (and, where safe, by running a throwaway repro). Anything you cannot verify is an
+      "unverified risk" with the fastest proof named — not a confirmed bug.
+    - Do NOT modify code. Report only.
+
+    Output JSON:
+    {
+      "bugs": [
         {
-          severity: 'CRITICAL|HIGH|MEDIUM|LOW',
-          type: 'logic|race|memory|type|error-handling|edge-case|async|security',
-          file: 'path/to/file.ts',
-          line: 42,
-          description: 'Clear bug description',
-          fix: 'Concrete remediation steps'
+          "severity": "CRITICAL|HIGH|MEDIUM|LOW",
+          "type": "logic|race|memory|type|error-handling|edge-case|async|security",
+          "file": "path/to/file.ts",
+          "line": 42,
+          "description": "Clear bug description",
+          "fix": "Concrete remediation steps",
+          "evidence": "How it was verified, or the proof that would confirm it"
         }
       ],
-      summary: {
-        total: 5,
-        high: 2,
-        medium: 2,
-        low: 1,
-        approved: false
-      }
-    }"
-
-    Apply Ralph Loop: iterate until all HIGH+ bugs are resolved or approved.
+      "summary": { "total": 0, "high": 0, "medium": 0, "low": 0, "approved": false }
+    }
 ```
 
-### Direct Codex Execution
+For a large target, fan out several subagents over disjoint file ranges in a single
+message (they run concurrently), then merge and dedupe their JSON — deduped findings that
+several agents raise independently are the strongest.
 
-For immediate results without Task orchestration:
+### Optional accelerator: Codex second opinion
 
-```bash
-codex exec --yolo --enable-skills -m gpt-5.2-codex \
-  "Use bug-hunter skill. Find bugs in: src/
-
-  Focus on:
-  - Race conditions in async code
-  - Uncaught promise rejections
-  - Type coercion issues
-  - Edge case handling
-
-  Output JSON with severity, type, file, line, description, fix"
-```
+Codex is **not required**. If — and only if — the `codex` CLI is installed and responds to
+a cheap probe (`codex exec "reply OK"` returns without a rate-limit/auth error), you may run
+a parallel Codex pass and merge its findings with the Claude ones. If the probe fails,
+proceed with Claude alone and state that Codex was unavailable. Never block the skill on it.
 
 ## Output Format
 
@@ -318,13 +315,13 @@ The `/bugs` command follows the Ralph Loop pattern with these hooks:
 │ RALPH LOOP: Bug Hunting                                 │
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
-│ 1. EXECUTE   → codex exec bug-hunter                    │
+│ 1. EXECUTE   → Claude bug-hunter subagent(s)            │
 │ 2. VALIDATE  → Check severity counts                    │
 │ 3. ITERATE   → Fix HIGH+ bugs                           │
 │ 4. VERIFY    → Re-run until summary.approved = true     │
 │                                                         │
 │ Quality Gate: No HIGH+ bugs OR all explicitly approved  │
-│ Max Iterations: 15 (Codex GPT-5.2)                      │
+│ Max Iterations: 15                                      │
 │                                                         │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -345,7 +342,7 @@ Full bug hunting and remediation workflow:
 ralph bugs src/
 
 # 2. Review report
-cat .claude/tmp/codex_bugs.json | jq '.summary'
+cat .claude/tmp/bugs_report.json | jq '.summary'
 
 # 3. Fix HIGH severity bugs
 # (manual or via /refactor)
@@ -373,15 +370,19 @@ ralph gates
 6. **Combine with /security**: Bug hunting finds logic errors, security finds vulnerabilities
 7. **Use Opus for critical**: Switch to `--model opus` for payment/auth/crypto code
 
-## Cost Optimization
+## Cost / model selection
 
-| Model | Cost | Speed | When to Use |
-|-------|------|-------|-------------|
-| GPT-5.2-Codex | ~15% | Fast | Default for bug hunting |
-| Opus | 100% | Slow | Critical code paths |
-| Sonnet | 60% | Medium | Task orchestration only |
+The bug-hunter subagents inherit the session's configured Claude model. Tune per target:
 
-**Recommended**: Codex GPT-5.2 for bug hunting (optimized for code analysis)
+| Model | When to Use |
+|-------|-------------|
+| Sonnet | Default — fast, strong on most bug hunting and directory scans |
+| Opus | Critical code paths (payment/auth/crypto), subtle concurrency, deep multi-file traces |
+| Haiku | Cheap first-pass triage on large low-risk surfaces before a focused Opus pass |
+
+**Recommended**: Sonnet by default; escalate to Opus for critical or subtle code. If the
+optional Codex accelerator is available, use it as an independent second opinion — never as
+the sole engine.
 
 
 ## Action Reporting (v2.93.0)

@@ -32,22 +32,32 @@ You're not just an AI assistant. You're a craftsman. An artist. An engineer who 
 
 1. **Reproduce**: Confirm the issue exists
 2. **Isolate**: Narrow down to smallest failing case
-3. **Analyze**: Use Codex for deep code analysis
+3. **Analyze**: Trace the code yourself and find the root cause
 4. **Fix**: Implement minimal fix
 5. **Verify**: Confirm fix works, no regressions
 
-### Codex Bug Analysis (via Task)
-```yaml
-Task:
-  subagent_type: "general-purpose"
-  description: "Codex bug analysis"
-  prompt: |
-    Run Codex CLI for deep bug analysis:
-    codex exec --profile security-audit \
-      "Use bug-hunter skill. Debug this issue: $ERROR
-       Files: $FILES
-       Trace the bug, find root cause, suggest fix."
-```
+### Deep Bug Analysis (Claude-native)
+
+You do the diagnosis yourself with your own tools — no external CLI is required.
+
+1. **Read the failing surface**: Open the files named in `$FILES` with `Read`. Search
+   for the failing symbol, error string, and call sites with `Bash` (`grep -rn`,
+   `rg`). Build a complete picture of the code path before forming a hypothesis.
+2. **Trace the causal chain**: Follow the data and control flow from the reported
+   error `$ERROR` back to its origin. Reproduce with a minimal case via `Bash`
+   (run the failing command, add temporary instrumentation, inspect state).
+3. **Confirm the root cause**: State the single defect that explains the failure.
+   Reject the obvious-but-wrong culprit until the evidence forces the conclusion.
+4. **Apply the fix**: Write the smallest change that eliminates the cause using
+   `Write` (or `Bash` for scripted edits). Fix the cause, not the symptom.
+5. **Verify**: Re-run the reproduction via `Bash`, confirm the failure is gone, and
+   check that no adjacent behavior regressed. Remove any temporary instrumentation.
+
+> Optional second opinion: if the `codex` CLI happens to be installed and responds,
+> you MAY ask it to cross-check your diagnosis
+> (`codex exec --profile security-audit "..."`). Never wait on or depend on it — if
+> `codex` is missing, rate-limited, or unauthenticated, proceed with your own
+> analysis. Claude is always the default engine.
 
 ## Worktree Awareness (v2.20)
 
