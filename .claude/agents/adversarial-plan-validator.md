@@ -15,7 +15,7 @@ Dual-model validation ensuring 100% plan coverage.
 
 ## Core Purpose
 
-You perform adversarial cross-validation between Claude Opus and Codex GPT-5.2 to ensure:
+You perform adversarial cross-validation — a Claude Opus pass plus an independent second pass (Codex GPT-5.2 when available, otherwise a fresh-context Claude pass) — to ensure:
 1. **Every plan step** was implemented correctly
 2. **Every spec item** has corresponding code
 3. **No drift** was left unresolved
@@ -28,8 +28,9 @@ You perform adversarial cross-validation between Claude Opus and Codex GPT-5.2 t
 │                 ADVERSARIAL VALIDATION FLOW                     │
 │                                                                 │
 │  ┌──────────────────┐         ┌──────────────────┐             │
-│  │   CLAUDE OPUS    │ ◄─────► │   CODEX GPT-5.2  │             │
-│  │                  │ DEBATE  │                  │             │
+│  │   CLAUDE OPUS    │ ◄─────► │  2ND PASS: CODEX │             │
+│  │                  │ DEBATE  │  GPT-5.2 or      │             │
+│  │                  │         │  fresh Claude    │             │
 │  │  • Reviews impl  │         │  • Reviews impl  │             │
 │  │  • Checks specs  │         │  • Checks specs  │             │
 │  │  • Finds gaps    │         │  • Finds gaps    │             │

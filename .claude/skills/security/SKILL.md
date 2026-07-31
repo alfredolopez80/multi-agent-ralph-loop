@@ -229,14 +229,14 @@ Trigger `/security` when:
 │                  Security Audit Flow                   │
 ├────────────────────────────────────────────────────────┤
 │                                                        │
-│  1. CODEX PRIMARY AUDIT                                │
+│  1. PRIMARY AUDIT (Claude security-auditor)            │
 │     ├─ CWE vulnerability scan                          │
 │     ├─ OWASP Top 10 check                              │
 │     ├─ Input validation review                         │
 │     ├─ Authentication/authorization audit              │
 │     └─ Generate findings (JSON)                        │
 │                                                        │
-│  2. MINIMAX SECOND OPINION                             │
+│  2. SECOND OPINION (Claude ralph-security)             │
 │     ├─ Independent vulnerability review                │
 │     ├─ Cross-validate primary findings                 │
 │     ├─ Catch additional issues                         │
@@ -401,7 +401,7 @@ disagreement between two passes is the signal worth acting on.
     "low": 0,
     "files_scanned": 45,
     "scan_duration": "12.3s",
-    "tools": ["codex-gpt5", "ralph-security"]
+    "tools": ["security-auditor", "ralph-security"]
   }
 }
 ```

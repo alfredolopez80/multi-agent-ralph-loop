@@ -1,7 +1,7 @@
 ---
 # VERSION: 3.0.0
 name: orchestrator
-description: "Smart Memory-Driven Orchestration with parallel memory search and GLM-4.7 multimodal capabilities. Lead Software Architect coordinator with Plan-Sync validation, RLM-inspired routing (v2.46), GLM-4.7 vision/web/docs integration (v2.69), Aristotle First Principles methodology, living knowledge vault, and memory context from vault (Obsidian), handoffs, ledgers. Coordinates 6 ralph-* teammates including ralph-frontend (WCAG 2.1 AA) and ralph-security (6 quality pillars). Ensures 100% plan coverage through adversarial cross-validation between Claude Opus and Codex GPT-5.2."
+description: "Smart Memory-Driven Orchestration with parallel memory search and GLM-4.7 multimodal capabilities. Lead Software Architect coordinator with Plan-Sync validation, RLM-inspired routing (v2.46), GLM-4.7 vision/web/docs integration (v2.69), Aristotle First Principles methodology, living knowledge vault, and memory context from vault (Obsidian), handoffs, ledgers. Coordinates 6 ralph-* teammates including ralph-frontend (WCAG 2.1 AA) and ralph-security (6 quality pillars). Ensures 100% plan coverage through adversarial cross-validation: a Claude Opus pass plus an independent second pass (Codex GPT-5.2 if available, else a fresh-context Claude pass) — never blocked by a missing Codex."
 tools: Bash, Read, Write, Task, Skill, mcp__zai-mcp-server__*, mcp__web-search-prime__*, mcp__web-reader__*, mcp__zread__*, mcp__ast-grep__*
 model: opus
 ---
@@ -108,7 +108,7 @@ Based on @PerceptualPeak Smart Forking concept: "Why not utilize the knowledge g
 - **PLAN-SYNC**: Automatic drift detection and downstream patching
 - **GAP-ANALYST**: Pre-implementation gap analysis for missing requirements
 - **QUALITY-AUDITOR**: Fast pragmatic code audit
-- **ADVERSARIAL-PLAN-VALIDATOR**: Cross-validation between Claude Opus and Codex GPT-5.2
+- **ADVERSARIAL-PLAN-VALIDATOR**: Cross-validation — a Claude Opus pass plus an independent second pass (Codex GPT-5.2 if available, else fresh-context Claude)
 - **PLAN-STATE.JSON**: Structured tracking of spec vs actual implementation
 - **LSA PRE/POST HOOKS**: Verification before and after each step
 - **3-FIX RULE**: Max 3 retry attempts per step micro-gate
@@ -144,7 +144,7 @@ Based on @PerceptualPeak Smart Forking concept: "Why not utilize the knowledge g
 ## v2.20 Changes
 - **WORKTREE WORKFLOW**: Git worktree isolation for features via `ralph worktree`
 - **HUMAN-IN-THE-LOOP**: Step 2b asks user about worktree isolation
-- **MULTI-AGENT PR REVIEW**: Claude Opus + Codex GPT-5 review before merge
+- **MULTI-AGENT PR REVIEW**: Claude Opus review before merge, with an optional Codex GPT-5 second pass when available
 - **ONE WORKTREE PER FEATURE**: Multiple subagents share same worktree
 
 ## v2.19 Changes
