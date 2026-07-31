@@ -23,7 +23,12 @@ from pathlib import Path
 import pytest
 
 from tests.conftest import agent_definition_files
-import yaml
+
+# NOTE: PyYAML is imported lazily inside the one test that truly needs a YAML parser
+# (`pytest.importorskip` there). A top-level `import yaml` aborted collection of this whole
+# module on CI, which does not install PyYAML — turning a missing optional dependency into
+# an exit-2 that took down all 2170 tests. A missing parser must skip one test, never the
+# suite.
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 AGENTS_DIR = REPO_ROOT / ".claude" / "agents"
@@ -140,6 +145,7 @@ def _exempt(agent: str, rule: str) -> bool:
 
 @pytest.mark.parametrize("path", AGENT_FILES, ids=AGENT_IDS)
 def test_frontmatter_is_valid_yaml(path: Path):
+    yaml = pytest.importorskip("yaml")  # only this check needs a real YAML parser
     frontmatter, _ = _split_frontmatter(path)
     parsed = yaml.safe_load(frontmatter)
     assert isinstance(parsed, dict), (
@@ -148,10 +154,16 @@ def test_frontmatter_is_valid_yaml(path: Path):
     )
 
 
+# `name:` is a simple scalar; extract it without a YAML dependency so this check runs
+# everywhere, including CI environments without PyYAML.
+_NAME_RE = re.compile(r"^name:[ \t]*(?P<name>\S.*?)[ \t]*$", re.MULTILINE)
+
+
 @pytest.mark.parametrize("path", AGENT_FILES, ids=AGENT_IDS)
 def test_name_matches_filename(path: Path):
     frontmatter, _ = _split_frontmatter(path)
-    declared = yaml.safe_load(frontmatter).get("name")
+    match = _NAME_RE.search(frontmatter)
+    declared = match.group("name").strip("\"'") if match else None
     assert declared == path.stem, (
         f"{path.name}: frontmatter name is {declared!r} but the filename implies "
         f"{path.stem!r}. Claude Code resolves agents by filename, so they must agree."

@@ -86,6 +86,9 @@ jobs:
       - name: Install test dependencies
         run: |
           pip install pytest pytest-cov
+          # PyYAML: parses agent/skill frontmatter in the config tests. Optional at runtime
+          # (those tests importorskip it), but installed here so they actually run in CI.
+          if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; else pip install pyyaml; fi
       
       - name: Run pytest
         run: |
