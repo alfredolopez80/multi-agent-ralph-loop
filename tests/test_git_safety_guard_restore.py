@@ -319,6 +319,44 @@ def test_fails_closed_when_cwd_is_missing(sample_repo):
 
 
 @pytest.mark.skipif(not GUARD.is_file(), reason="git-safety-guard.py not present")
+def test_git_global_C_flag_targets_another_tree(sample_repo, other_repo):
+    """`git -C <dir>` (and `-c`/`--git-dir`/`--work-tree`) relocate git to another tree.
+
+    These global flags sit BEFORE the verb, so a `git\\s+restore` anchor never saw them and
+    the guard judged the payload's cwd instead of the tree git actually operates on. The
+    restore-of-deleted exemption is now withheld whenever such a flag is present: the tree it
+    targets is not the one the guard can cheaply verify, so it fails closed. `deleted.txt` is
+    deleted in sample_repo (exemption would apply) and modified in other_repo (restore is
+    destructive there); judging by cwd would have destroyed the edit.
+    """
+    assert _decide(f"git -C {other_repo} {RESTORE} deleted.txt", sample_repo) == "deny"
+    assert _decide(f"git --work-tree={other_repo} {RESTORE} deleted.txt", sample_repo) == "deny"
+    # Destructive verbs behind a global flag also stay blocked (normalize collapses the flag
+    # so the verb pattern still anchors).
+    assert _decide(f"git -C {other_repo} reset --hard", sample_repo) == "deny"
+    assert _decide(f"git -c core.editor=x reset --hard", sample_repo) == "deny"
+    assert _decide(f"git -C {other_repo} clean -fd", sample_repo) == "deny"
+    # `-C` in a subcommand OPTION position (git commit -C <commit> reuses a message) is NOT a
+    # global flag and must not be mistaken for one — it is not destructive.
+    assert _decide("git commit -C HEAD", sample_repo) == "allow"
+
+
+@pytest.mark.skipif(not GUARD.is_file(), reason="git-safety-guard.py not present")
+def test_eval_dynamic_relocator_fails_closed(sample_repo, other_repo):
+    """`eval` over a command substitution / variable can cd anywhere the guard cannot read.
+
+    `eval $(cat move.sh)` or `eval $M` executes text the guard never resolves statically, so a
+    following restore-of-deleted must not be trusted. The exemption is withheld (deny) rather
+    than judged against the payload's cwd where the file happens to be deleted.
+    """
+    move = os.path.join(other_repo, "move.sh")
+    with open(move, "w") as fh:
+        fh.write(f"cd {other_repo}\n")
+    assert _decide(f"eval $(cat {move}) ; {RESTORE} deleted.txt", sample_repo) == "deny"
+    assert _decide(f'M="cd {other_repo}" ; eval $M ; {RESTORE} deleted.txt', sample_repo) == "deny"
+
+
+@pytest.mark.skipif(not GUARD.is_file(), reason="git-safety-guard.py not present")
 @pytest.mark.parametrize(
     "command, expected_hint",
     [

@@ -119,7 +119,8 @@ for seg in "${SEGMENTS[@]}"; do
     prev="$cleaned"; i=$((i + 1))
     cleaned="$(printf '%s' "$cleaned" \
       | sed -E 's/^([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*//' \
-      | sed -E 's/^\\?(sudo|command|builtin|eval|env|time|timeout|stdbuf|chrt|ionice|nice|nohup|xargs)[[:space:]]+(-[^[:space:]]+[[:space:]]+)*//' \
+      | sed -E 's/^\\?(sudo|command|builtin|eval|env|time|timeout|stdbuf|chrt|ionice|nice|nohup|watch|setsid|xargs)[[:space:]]+(-[^[:space:]]+[[:space:]]+)*//' \
+      | sed -E 's/^\\?flock[[:space:]]+(-[^[:space:]]+[[:space:]]+)*[^-[:space:]][^[:space:]]*[[:space:]]+//' \
       | sed -E 's/^-[IJnPsLE][[:space:]]+[^[:space:]]+[[:space:]]+//' \
       | sed -E 's/^[0-9]+[.0-9smhd]*[[:space:]]+//' \
       | sed -E 's/^[[:space:]]+//')"
@@ -130,7 +131,7 @@ for seg in "${SEGMENTS[@]}"; do
   case "$first_token" in
     kubectl|helm|kustomize)
       invokes_k8s_tool=1; K8S_SEGMENTS+=("$seg") ;;
-    sudo|command|builtin|eval|env|time|timeout|stdbuf|chrt|ionice|nice|nohup|xargs)
+    sudo|command|builtin|eval|env|time|timeout|stdbuf|chrt|ionice|nice|nohup|watch|setsid|flock|xargs)
       # Still a wrapper after the strip bound — a pathological `eval`×N stack we cannot see
       # through. Enumerating a fixed depth is a losing game (any bound is beaten by more
       # wrappers), so an unresolved wrapped segment is treated as a k8s invocation and forced

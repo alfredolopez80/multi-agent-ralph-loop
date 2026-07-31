@@ -105,6 +105,19 @@ def normalize_command(command: str) -> str:
     # e.g., rm -rf "/tmp/foo" -> rm -rf /tmp/foo for pattern matching
     command = re.sub(r'["\']([^"\']+)["\']', r"\1", command)
 
+    # Collapse git's GLOBAL options so the subcommand verb sits adjacent to `git`. Every
+    # destructive pattern anchors `git\s+<verb>`, so a global flag in between —
+    # `git -C other reset --hard`, `git -c k=v clean -fd`, `git --git-dir=… branch -D` —
+    # slipped past all of them. `-C`/`-c`/`--git-dir`/`--work-tree`/`--namespace`/
+    # `--exec-path` take a value; the rest are valueless. Repeated to strip a stack of them.
+    command = re.sub(
+        r"\bgit(?:\s+(?:-C\s+\S+|-c\s+\S+|--git-dir(?:=\S+|\s+\S+)|--work-tree(?:=\S+|\s+\S+)"
+        r"|--namespace(?:=\S+|\s+\S+)|--exec-path(?:=\S+)?|--no-pager|--paginate|--bare"
+        r"|--no-replace-objects|--literal-pathspecs|--no-optional-locks|--noglob-pathspecs))+",
+        "git",
+        command,
+    )
+
     return command
 
 
@@ -589,10 +602,17 @@ _CD_STRIP_BOUND = 12
 
 # Constructs that can relocate the shell OPAQUELY — the guard cannot see where they land,
 # so the restore-of-deleted exemption must not be trusted after them: sourcing a file
-# (`.`/`source`, incl. `. <(...)`) whose contents may `cd`, and a function definition
-# (`f(){ ... }`) whose later call may `cd`. apply_cd returns "" for these so the exemption
-# fails closed rather than judging a restore against a possibly-stale directory.
-_OPAQUE_RELOCATOR_RE = re.compile(r"^\s*(?:\.|source)\s|[A-Za-z_]\w*\s*\(\s*\)")
+# (`.`/`source`, incl. `. <(...)`) whose contents may `cd`; a function definition
+# (`f(){ ... }`) whose later call may `cd`; and `eval` of DYNAMIC content (`eval "$(...)"`,
+# `eval "$VAR"`) whose expansion may `cd` — a literal `eval cd DIR` is still tracked by
+# _is_directory_change, but `eval` over a command/variable substitution is unknowable.
+# apply_cd returns "" for these so the exemption fails closed rather than judging a restore
+# against a possibly-stale directory.
+_OPAQUE_RELOCATOR_RE = re.compile(
+    r"^\s*(?:\.|source)\s"          # sourcing a file
+    r"|[A-Za-z_]\w*\s*\(\s*\)"      # a function definition
+    r"|\beval\b[^;&|]*[$`]"         # eval over a $(...) / `...` / $VAR expansion
+)
 
 
 def _is_directory_change(subcmd: str) -> bool:
@@ -836,6 +856,15 @@ def main():
         for subcmd in subcommands:
             subcmd_normalized = normalize_command(subcmd)
             effective_cwd = apply_cd(subcmd_normalized, effective_cwd)
+
+            # A git op retargeted with -C/--git-dir/--work-tree acts on a DIFFERENT working
+            # tree than cwd. normalize_command strips those flags so the destructive verbs
+            # (reset/clean/branch -D/…) match and block; but for `git restore`, whose only
+            # allow-path is the deleted-file exemption, judging the payload's cwd would be
+            # wrong (the file may be modified in the -C tree). Mark cwd untrustworthy so the
+            # exemption fails closed for any retargeted git command.
+            if re.search(r"\bgit\b(?=.*\s(?:-C\b|--git-dir\b|--work-tree\b))", subcmd):
+                effective_cwd = ""
 
             # Check safe patterns first (skip to next subcommand if safe)
             if is_safe_pattern(subcmd_normalized):

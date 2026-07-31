@@ -99,6 +99,12 @@ run "timeout 5 kubectl --context=$PROD delete ns foo" 2 'timeout con duracion NO
 run "timeout 5s kubectl --context=$PROD delete ns foo" 2 'timeout 5s NO evade'
 run "stdbuf -oL kubectl --context=$PROD delete ns foo" 2 'stdbuf NO evade'
 run 'echo "deploy with kubectl later"' 0 'kubectl dentro de string NO se sobre-bloquea'
+# Wrappers de scheduling/locking que dejaban el kubectl detras del wrapper o de su lockfile.
+run "watch kubectl --context=$PROD delete ns victim" 2 'watch NO evade'
+run "setsid kubectl --context=$PROD delete ns victim" 2 'setsid NO evade'
+run "flock /tmp/lock kubectl --context=$PROD delete ns victim" 2 'flock + lockfile NO evade'
+run "flock -n /tmp/lock kubectl --context=$PROD apply -f x.yaml" 2 'flock -n + lockfile NO evade'
+run 'watch kubectl --context=kind-dev get pods' 0 'watch a contexto permitido + lectura OK'
 
 echo
 echo "=== paridad con las copias que realmente se ejecutan ==="
