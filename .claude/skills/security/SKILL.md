@@ -1,7 +1,7 @@
 ---
 # VERSION: 3.0.0
 name: security
-description: "Security audit with Codex + MiniMax second opinion. Integrates ralph-security agent (6 quality pillars, OWASP A01-A10). Uses LSP for code navigation during analysis. Use when: (1) /security is invoked, (2) task relates to security functionality."
+description: "Security audit with Codex plus an independent second opinion. Integrates ralph-security agent (6 quality pillars, OWASP A01-A10). Uses LSP for code navigation during analysis. Use when: (1) /security is invoked, (2) task relates to security functionality."
 user-invocable: true
 context: fork
 allowed-tools:
@@ -14,7 +14,7 @@ allowed-tools:
 
 # /security - Multi-Agent Security Audit (v3.0)
 
-Comprehensive security audit using Codex GPT-5 for primary analysis and MiniMax for second opinion validation.
+Comprehensive security audit using Codex GPT-5 for primary analysis and an independent reviewer (ralph-security) for second-opinion validation.
 
 ## v2.88 Key Changes (MODEL-AGNOSTIC)
 
@@ -330,32 +330,29 @@ Task:
     Apply Ralph Loop: iterate until audit complete and all findings validated.
 ```
 
-### Secondary Validation (MiniMax Second Opinion)
+### Secondary Validation (Independent Second Opinion)
 
 ```yaml
 Task:
-  subagent_type: "minimax-reviewer"
-  model: "sonnet"  # Sonnet manages the mmc CLI call
+  subagent_type: "ralph-security"
   run_in_background: true
-  description: "MiniMax: Security second opinion"
+  description: "Independent security second opinion"
   prompt: |
-    Execute via MiniMax CLI for independent security validation:
-    mmc --query "
-    Perform independent security review on: <path>
+    Perform an independent security review on: <path>
 
-    Focus on vulnerabilities Codex might have missed:
+    Focus on vulnerabilities the first pass might have missed:
     1. Subtle logic flaws in authentication
     2. Business logic vulnerabilities
     3. Race conditions in concurrent code
     4. Insecure defaults and misconfigurations
     5. Complex injection chains
 
-    Cross-validate Codex findings and identify additional issues.
-    Use same JSON format as Codex for consistency.
-    "
-
-    MiniMax provides Opus-level quality at 8% cost for second opinion.
+    Cross-validate the Codex findings and identify additional issues.
+    Use the same JSON format as Codex for consistency.
 ```
+
+A second reviewer is valuable because it is *independent*, not because it is cheaper —
+disagreement between two passes is the signal worth acting on.
 
 ## Output Format
 
@@ -402,7 +399,7 @@ Task:
     "low": 0,
     "files_scanned": 45,
     "scan_duration": "12.3s",
-    "tools": ["codex-gpt5", "minimax-m2.1"]
+    "tools": ["codex-gpt5", "ralph-security"]
   }
 }
 ```
@@ -414,7 +411,7 @@ Task:
 
 **Date:** 2025-01-04
 **Target:** src/
-**Tools:** Codex GPT-5 + MiniMax M2.1
+**Tools:** Codex GPT-5 + ralph-security
 
 ## Summary
 
@@ -460,7 +457,7 @@ await execFileNoThrow('convert', [filename, 'output.png'])
 2. **Sensitive Data Handling** - Reports may contain code snippets with secrets; handle with care
 3. **False Positives** - Manual review required; automated tools may flag benign patterns
 4. **Scope Limitation** - Static analysis only; cannot detect runtime vulnerabilities
-5. **Tool Trust** - Codex and MiniMax are third-party services; do not send proprietary code if restricted
+5. **Tool Trust** - Codex is a third-party service; do not send proprietary code if restricted
 
 ### CWE Categories Checked
 
@@ -578,16 +575,13 @@ Task:
 
 # Second opinion
 Task:
-  subagent_type: "minimax-reviewer"
-  model: "sonnet"
+  subagent_type: "ralph-security"
   run_in_background: true
-  description: "MiniMax: Validate Codex findings"
+  description: "Validate Codex findings"
   prompt: |
-    mmc --query "
     Independent security review: src/auth/
-    Cross-validate Codex findings and find missed issues.
+    Cross-validate the Codex findings and find missed issues.
     Same JSON format.
-    "
 ```
 
 ### Example 5: Integration with Worktree Workflow

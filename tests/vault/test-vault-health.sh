@@ -158,7 +158,6 @@ echo "▸ 5. Global hook registration"
 # ─────────────────────────────────────────────
 SETTINGS_FILES=(
     "$HOME/.claude/settings.json"
-    "$HOME/.cc-mirror/minimax/config/settings.json"
 )
 
 for sf in "${SETTINGS_FILES[@]}"; do

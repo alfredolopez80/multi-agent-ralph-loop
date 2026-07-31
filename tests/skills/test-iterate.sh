@@ -58,8 +58,6 @@ SYMLINK_DIRS=(
   "$HOME/.claude/skills"
   "$HOME/.codex/skills"
   "$HOME/.ralph/skills"
-  "$HOME/.cc-mirror/zai/config/skills"
-  "$HOME/.cc-mirror/minimax/config/skills"
   "$HOME/.config/agents/skills"
 )
 

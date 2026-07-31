@@ -89,7 +89,7 @@ Multi-Agent Ralph Loop is a CLI-based multi-agent orchestration framework built 
 **Evidence**:
 - The user prompt references `sk-cp-O39X...` visible in plaintext in settings.json
 - `docs/security/SECURITY_FIX_VALIDATION_v2.91.0.md` confirms `skipDangerousModePermissionPrompt: true` was found in `~/.claude/settings.json:494` (CRIT-001)
-- Settings.json is configured at `~/.cc-mirror/minimax/config/settings.json` (per CLAUDE.md line 19) -- any API keys in `env` blocks are stored in plaintext
+- Settings live only at `~/.claude/settings.json` -- any API keys in `env` blocks are stored in plaintext. (The `~/.cc-mirror/` mirrors were removed on 2026-07-31, eliminating the duplicate plaintext-key surface.)
 - The `scripts/mmc` script reads API key from `MINIMAX_API_KEY` env var or `~/.ralph/config/minimax.json` (per `docs/security/API_KEYS_AUDIT.md`)
 
 **Attack Scenario**:
@@ -233,7 +233,7 @@ Multi-Agent Ralph Loop is a CLI-based multi-agent orchestration framework built 
 - No audit trail of when `bypassPermissions` or `skipDangerousModePermissionPrompt` changes
 
 **Recommendations**:
-1. Verify `skipDangerousModePermissionPrompt` is set to `false` in ALL settings.json locations (3 documented: `~/.claude/settings.json`, `~/.claude-sneakpeek/zai/config/settings.json`, `~/.cc-mirror/minimax/config/settings.json`)
+1. Verify `skipDangerousModePermissionPrompt` is set to `false` in `~/.claude/settings.json` (since 2026-07-31 this is the only settings file; the `~/.cc-mirror/` mirrors were removed)
 2. Add a SessionStart hook that checks this value and warns if `true`
 3. Never use `bypassPermissions` mode -- use `delegate` with quality gates instead
 4. Add file integrity monitoring on settings.json files (hash check on session start)
@@ -336,8 +336,8 @@ Multi-Agent Ralph Loop is a CLI-based multi-agent orchestration framework built 
 **Evidence**:
 - CLAUDE.md documents 6 symlink directories for skill distribution:
   - `~/.claude/skills/`, `~/.codex/skills/`, `~/.ralph/skills/`
-  - `~/.cc-mirror/zai/config/skills/`, `~/.cc-mirror/minimax/config/skills/`
   - `~/.config/agents/skills/`
+  - (the two `~/.cc-mirror/` skill directories were removed on 2026-07-31)
 - `auto-sync-global.sh` copies commands and agents from `~/.claude/` to project `.claude/` directories
 - Hook sync uses a whitelist of 7 approved hooks (SEC-2.3) -- good
 - Agent/command sync has NO whitelist -- copies all `.md` files

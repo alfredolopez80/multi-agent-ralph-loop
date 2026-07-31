@@ -633,8 +633,6 @@ ralph_progress=$(get_ralph_progress "$cwd")
 claude_hud_dir=""
 for search_path in \
     "$HOME/.claude/plugins/cache/claude-hud/claude-hud/"* \
-    "$HOME/.cc-mirror/minimax/config/plugins/cache/claude-hud/claude-hud/"* \
-    "$HOME/.cc-mirror/zai/config/plugins/cache/claude-hud/claude-hud/"* \
     "$HOME/.claude-code-old/plugins/cache/claude-hud/claude-hud/"*; do
     if [[ -d "$search_path" ]] && [[ -f "${search_path}/dist/index.js" ]]; then
         claude_hud_dir="${search_path}/"

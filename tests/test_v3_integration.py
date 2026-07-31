@@ -334,31 +334,3 @@ class TestSettingsSyncClaude:
     def test_pre_compact_handoff_registered(self):
         assert any("pre-compact-handoff.sh" in b for b in self.basenames), \
             "pre-compact-handoff.sh must be registered in ~/.claude/settings.json"
-
-
-class TestSettingsSyncMinimax:
-    """Test critical hooks are registered in ~/.cc-mirror/minimax/config/settings.json."""
-
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        self.path = HOME / ".cc-mirror" / "minimax" / "config" / "settings.json"
-        if not self.path.exists():
-            pytest.skip("~/.cc-mirror/minimax/config/settings.json not found")
-        self.settings = load_json(self.path)
-        self.all_commands = get_all_hook_commands(self.settings)
-        self.basenames = [os.path.basename(c.split()[0]) if c else "" for c in self.all_commands]
-
-    def test_has_hooks_section(self):
-        assert "hooks" in self.settings, "minimax settings.json must have hooks section"
-
-    def test_sanitize_secrets_registered(self):
-        assert any("sanitize-secrets.js" in b for b in self.basenames), \
-            "sanitize-secrets.js must be registered in minimax settings.json"
-
-    def test_session_accumulator_registered(self):
-        assert any("session-accumulator.sh" in b for b in self.basenames), \
-            "session-accumulator.sh must be registered in minimax settings.json"
-
-    def test_vault_graduation_registered(self):
-        assert any("vault-graduation.sh" in b for b in self.basenames), \
-            "vault-graduation.sh must be registered in minimax settings.json"
