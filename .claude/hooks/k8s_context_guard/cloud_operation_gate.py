@@ -15,6 +15,7 @@ from .script_operation_inspector import script_cloud_commands, script_path, wrap
 # git-safety-guard.py (disjoint frontiers -> no double-decision). kustomize is
 # intentionally excluded: `kustomize build` is read-only and never touches a cluster.
 CLOUD_TOOLS = {"helm", "kubectl", "minikube"}
+_CLOUD_TOOL_ALT = "|".join(re.escape(name) for name in sorted(CLOUD_TOOLS))  # derived; keeps the substitution scan in sync
 READ_ACTIONS = {
     "api-resources", "api-versions", "can-i", "cluster-info", "describe", "diff", "explain", "get",
     "get-contexts", "head", "history", "info", "list", "logs", "ls", "output", "plan", "providers",
@@ -41,22 +42,39 @@ COMPLETE_KUBERNETES_RESOURCES = {
 _WRAPPERS = {
     "sudo", "doas", "command", "nice", "ionice", "nohup", "setsid", "stdbuf", "time", "timeout", "watch", "chrt",
 }
-_WRAPPER_VALUE_OPTS = {
-    "-n", "--adjustment", "-c", "--class", "--classdata", "-s", "--signal", "-k", "--kill-after",
-    "-i", "-o", "-e", "--input", "--output", "--error", "-p",
+# Per-wrapper BOOLEAN (no-value) flags. Option arity differs per CLI (`-p` is boolean for
+# `time`/`command` but value-taking for `chrt`; `-n` is boolean for `doas` but value-taking
+# for `nice`/`ionice`; `-c` is boolean for `setsid` but value-taking for `ionice`), so a
+# single shared table is WRONG and mis-skips the real tool. We enumerate only the safe
+# boolean flags; ANY other option makes the peel un-inspectable -> approval (fail-closed),
+# never a guessed skip that could swallow the tool token.
+_WRAPPER_BOOLEAN_OPTS: dict[str, set[str]] = {
+    "sudo": {"-A", "-b", "-E", "-H", "-i", "-K", "-k", "-n", "-S", "-s", "-v"},
+    "doas": {"-n", "-s"},
+    "command": {"-p", "-v", "-V"},
+    "nice": set(),      # only option is `-n VALUE`
+    "ionice": set(),    # `-c/-n/-p` all take values
+    "nohup": set(),
+    "setsid": {"-c", "-f", "-w"},
+    "stdbuf": set(),    # `-i/-o/-e` take values
+    "time": {"-p", "-v"},
+    "timeout": set(),   # `-s/-k` take values; leading DURATION handled below
+    "watch": set(),     # interval is `-n SECONDS`, never a leading positional
+    "chrt": set(),
 }
-_WRAPPERS_LEADING_VALUE = {"timeout", "watch"}  # first positional is a duration/interval, not the tool
+_WRAPPERS_LEADING_VALUE = {"timeout"}  # `timeout DURATION COMMAND` — first positional is a value
 # Shells whose `-c` payload this guard does NOT parse (only bash/sh/zsh are inspected). An
 # opaque shell hides a cloud command -> require approval instead of silent allow.
-_OPAQUE_SHELLS = {"dash", "ksh", "fish", "ash", "csh", "tcsh"}
+_OPAQUE_SHELLS = {"dash", "ksh", "fish", "ash", "csh", "tcsh", "rbash"}
 
 
 def _strip_command_wrappers(parts: list[str]) -> tuple[list[str], bool]:
     """Peel leading command-prefix wrappers (sudo/timeout/nice/…) to reach the real tool.
 
-    Returns (stripped_parts, uninspectable). `uninspectable=True` when `eval` is hit — its
-    payload is a runtime-built string the guard cannot statically see — so the caller must
-    require approval rather than allow.
+    Returns (stripped_parts, uninspectable). `uninspectable=True` when the peel cannot
+    continue safely — `eval`, or an option we cannot prove is boolean (guessing its arity
+    could swallow the tool token, e.g. `sudo -u root kubectl …` or `nice -n 5 kubectl …`).
+    The caller then requires approval rather than allow.
     """
     index = 0
     while index < len(parts):
@@ -65,19 +83,17 @@ def _strip_command_wrappers(parts: list[str]) -> tuple[list[str], bool]:
             return parts[index:], True
         if tool not in _WRAPPERS:
             break
+        boolean_opts = _WRAPPER_BOOLEAN_OPTS.get(tool, set())
         index += 1
-        leading_value = tool in _WRAPPERS_LEADING_VALUE
-        while index < len(parts):
-            part = parts[index]
-            if part.startswith("-"):
-                option = part.split("=", 1)[0]
-                index += 1 if "=" in part or option not in _WRAPPER_VALUE_OPTS else 2
-                continue
-            if leading_value:
+        if tool in _WRAPPERS_LEADING_VALUE and index < len(parts) and not parts[index].startswith("-"):
+            index += 1  # consume the leading DURATION positional
+        while index < len(parts) and parts[index].startswith("-"):
+            option = parts[index].split("=", 1)[0]
+            if "=" in parts[index] or option in boolean_opts:
                 index += 1
-                leading_value = False
                 continue
-            break
+            # Unknown option that may take a value: refuse to guess -> un-inspectable.
+            return parts[index:], True
     return parts[index:], False
 
 
@@ -346,9 +362,7 @@ def assess_command(
     # Command substitution ($()/backticks) is NOT expanded by shlex, so a cloud tool hidden
     # inside one escapes per-segment classification. Treat any cloud tool inside a
     # substitution as un-inspectable -> approval (never a silent allow).
-    if re.search(r"[$]\([^)]*\b(?:kubectl|helm|minikube)\b", command) or re.search(
-        r"`[^`]*\b(?:kubectl|helm|minikube)\b", command
-    ):
+    if re.search(rf"(?:[$]\([^)]*|`[^`]*)\b(?:{_CLOUD_TOOL_ALT})\b", command):
         approval = _approval("command", "mutating", "execute a cloud command hidden in command substitution")
         return replace(approval, approval_subject=command)
     script_hashes: list[str] = []

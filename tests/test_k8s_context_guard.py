@@ -261,6 +261,27 @@ def test_wrapper_on_minikube_read_still_allows(tmp_path):
     assert a.action == "allow"
 
 
+@pytest.mark.parametrize("cmd", [
+    "time -p kubectl --context={ctx} delete namespace foo",       # -p boolean for time
+    "command -p kubectl --context={ctx} delete namespace foo",    # -p boolean for command
+    "doas -n kubectl --context={ctx} delete namespace foo",       # -n boolean for doas
+    "setsid -c kubectl --context={ctx} delete namespace foo",     # -c boolean for setsid
+    "watch kubectl --context={ctx} delete namespace foo",         # no leading positional
+    "sudo -u root kubectl --context={ctx} delete namespace foo",  # -u takes a value -> approval
+    "nice -n 5 kubectl --context={ctx} delete namespace foo",     # -n takes a value -> approval
+    "sudo nice timeout 30 kubectl --context={ctx} delete namespace foo",  # nested wrappers
+])
+def test_wrapper_flag_edge_cases_do_not_bypass(cmd, tmp_path):
+    a = assess_command(cmd.format(ctx=CLERUM_PROD), tmp_path, make_verifier(set()))
+    assert a.action in ("approval", "block"), f"leaked: {cmd}"
+
+
+def test_wrapper_boolean_flag_still_reaches_tool(tmp_path):
+    # a genuinely-boolean flag must be skipped so a legit minikube read still allows
+    a = assess_command(f"time -p kubectl --context={MINIKUBE_CTX} get pods", tmp_path, make_verifier({MINIKUBE_CTX}))
+    assert a.action == "allow"
+
+
 # --- pv/pvc/node complete-deletion -> ask even on verified minikube (fix #6) ---
 
 @pytest.mark.parametrize("resource", ["pv", "pvc", "persistentvolume", "persistentvolumeclaim", "no", "node"])
