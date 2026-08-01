@@ -354,15 +354,12 @@ def test_git_global_C_flag_targets_another_tree(sample_repo, other_repo):
         # cloud CLIs: any unenumerated GLOBAL flag before the subcommand broke adjacency.
         ("gcloud --project=p compute instances delete vm", "deny", "gcloud --project bypass"),
         ("gcloud --verbosity=debug projects delete p", "deny", "gcloud --verbosity bypass"),
-        ("kubectl -v=6 delete namespace prod", "deny", "kubectl -v verbosity bypass"),
-        ("kubectl --request-timeout=30s delete namespace prod", "deny", "kubectl timeout bypass"),
-        ("kubectl --token=abc delete namespace prod", "deny", "kubectl --token bypass"),
+        # kubectl global-flag bypass cases handed off to k8s-context-guard-v2 (context-aware)
         ("aws --debug s3 rb s3://b --force", "deny", "aws --debug bypass"),
         # Regressions: a value-taking global still consumes its value; a subcommand OPTION
         # that reuses a global-looking short letter is not mistaken for a global flag.
         ("git commit -C HEAD", "allow", "commit -C reuses a message, not a global flag"),
         ("git status", "allow", "read-only stays allowed"),
-        ("kubectl -n dev get pods", "allow", "-n value consumed, read-only allowed"),
         ("gcloud --project=p compute instances list", "allow", "list is not destructive"),
     ],
 )

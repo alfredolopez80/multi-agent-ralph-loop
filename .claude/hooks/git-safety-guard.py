@@ -32,8 +32,8 @@ BLOCKED COMMANDS (permissionDecision "deny" - no escape hatch):
   - gcloud: projects delete, compute/sql/container delete, storage rm -r,
     kms versions destroy, any delete with --quiet/-q, ... (GCLOUD_BLOCKED_PATTERNS)
   - gsutil: rm -r, rb
-  - kubectl: delete namespace, delete --all / -A, delete pv/pvc/crd,
-    --grace-period=0, delete/replace --force (KUBECTL_BLOCKED_PATTERNS)
+  - kubectl/helm/minikube: HANDED OFF to k8s-context-guard-v2 (context-aware); git-safety
+    no longer decides the kube domain (KUBECTL_* patterns are inert — see aggregates below)
 
 CONFIRMATION COMMANDS (recoverable-destructive):
   - git push --force / -f / +branch  -> deny unless GIT_FORCE_PUSH_CONFIRMED=1
@@ -120,6 +120,10 @@ def normalize_command(command: str) -> str:
     # never open.
     command = re.sub(r"[\r\n]+", " ; ", command)
     command = re.sub(r"[ \t]+", " ", command.strip())
+
+    # HARDENING: collapse adjacent quoted-string concatenation so obfuscation like
+    # 'rm' + ' -rf /' cannot split a destructive token before the quote-stripping below.
+    command = re.sub(r'''(["'])\s*\+\s*\1''', "", command)
 
     # Remove common quote variations around paths
     # e.g., rm -rf "/tmp/foo" -> rm -rf /tmp/foo for pattern matching
@@ -216,8 +220,8 @@ DESTRUCTIVE_INNER = (
     r"|aws\s+[\w-]+\s+(?:delete|terminate|purge|destroy|remove|deregister)"
     r"|aws\s+s3\s+(?:rm|rb|sync)\b"
     r"|gcloud\s+.*\bdelete\b"
-    r"|gsutil\s+(?:rm|rb)\b"
-    r"|kubectl\s+(?:delete|drain)\b)"
+    r"|gsutil\s+(?:rm|rb)\b)"
+    # HANDOFF: kubectl verbs (delete/drain) delegated to k8s-context-guard-v2 (context-aware).
 )
 
 # Patterns that are ALWAYS safe (checked first)
@@ -405,6 +409,18 @@ GIT_FS_BLOCKED_PATTERNS = [
         r"git\s+rebase\s+.*(main|master|develop)\b",
         "rebasing shared branches can cause issues for collaborators",
     ),
+    # HARDENING: recursive deletion via interpreter libraries (bypasses the `rm` token).
+    # Covers shutil.rmtree / os.removedirs / bare `rmtree(` (from-import) / keyword `path=` /
+    # getattr indirection. Same temp-dir exemption as the rm patterns above; literal absolute
+    # paths only (a variable/expression argument cannot be resolved statically -- inherent limit).
+    (
+        r"(?:shutil\.rmtree|os\.removedirs|(?<![.\w])rmtree)\s*\(\s*(?:path\s*=\s*)?(?!(?:/tmp/|/var/tmp/|/private/tmp/|\$TMPDIR/))/\S",
+        "recursive library deletion (rmtree/removedirs) outside a safe temp directory",
+    ),
+    (
+        r"getattr\s*\([^)]*\b(?:rmtree|removedirs)\b",
+        "recursive library deletion via getattr indirection",
+    ),
 ]
 
 AWS_BLOCKED_PATTERNS = [
@@ -559,21 +575,24 @@ KUBECTL_BLOCKED_PATTERNS = [
     ),
 ]
 
-# Aggregates - names preserved so check_* functions and legacy tests are untouched
+# Aggregates - names preserved so check_* functions and legacy tests are untouched.
+# HANDOFF (k8s-context-guard-v2): KUBECTL_* lists are intentionally NOT aggregated here.
+# kubectl/helm/minikube decisions are delegated to the context-aware k8s-context-guard-v2
+# hook (single owner of the kube domain -> no double-decision). The KUBECTL_* definitions
+# above are inert: verified (grep) that NO live code path or test references them. They are
+# kept intentionally for reference / a fast handoff rollback, not accidental dead code.
 SAFE_PATTERNS = (
-    GIT_SAFE_PATTERNS + AWS_SAFE_PATTERNS + GCLOUD_SAFE_PATTERNS + KUBECTL_SAFE_PATTERNS
+    GIT_SAFE_PATTERNS + AWS_SAFE_PATTERNS + GCLOUD_SAFE_PATTERNS
 )
 BLOCKED_PATTERNS = (
     GIT_FS_BLOCKED_PATTERNS
     + AWS_BLOCKED_PATTERNS
     + GCLOUD_BLOCKED_PATTERNS
-    + KUBECTL_BLOCKED_PATTERNS
 )
 CONFIRMATION_PATTERNS = (
     GIT_CONFIRMATION_PATTERNS
     + AWS_CONFIRMATION_PATTERNS
     + GCLOUD_CONFIRMATION_PATTERNS
-    + KUBECTL_CONFIRMATION_PATTERNS
 )
 
 # Confirmation groups: (patterns, env vars that pre-approve them, decision).
@@ -583,7 +602,7 @@ CONFIRMATION_GROUPS = [
     (GIT_CONFIRMATION_PATTERNS, ("GIT_FORCE_PUSH_CONFIRMED",), "deny"),
     (AWS_CONFIRMATION_PATTERNS, ("AWS_DESTRUCTIVE_CONFIRMED", "CLOUD_DESTRUCTIVE_CONFIRMED"), "ask"),
     (GCLOUD_CONFIRMATION_PATTERNS, ("GCLOUD_DESTRUCTIVE_CONFIRMED", "CLOUD_DESTRUCTIVE_CONFIRMED"), "ask"),
-    (KUBECTL_CONFIRMATION_PATTERNS, ("KUBECTL_DESTRUCTIVE_CONFIRMED", "CLOUD_DESTRUCTIVE_CONFIRMED"), "ask"),
+    # KUBECTL_CONFIRMATION_PATTERNS handed off to k8s-context-guard-v2 (context-aware).
 ]
 
 
@@ -854,7 +873,8 @@ def main():
 
         # BUG-007 FIX: Detect command substitution patterns ($(...) and backticks)
         # These can hide destructive commands inside seemingly safe ones
-        # v2.70.0: DESTRUCTIVE_INNER also covers aws/gcloud/gsutil/kubectl verbs
+        # v2.70.0: DESTRUCTIVE_INNER covers aws/gcloud/gsutil verbs (kubectl handed off to
+        # k8s-context-guard-v2, which itself detects cloud tools inside $()/backticks)
         if re.search(r'\$\(.*' + DESTRUCTIVE_INNER, command) or \
            re.search(r'`.*' + DESTRUCTIVE_INNER, command):
             log_security_event("BLOCKED", original_command, "Command substitution with destructive command detected")
