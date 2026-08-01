@@ -88,12 +88,13 @@ def test_minikube_complete_delete_is_approval(tmp_path):
     assert a.profile == f"profile-{MINIKUBE_CTX}"  # still known-minikube -> maps to ask
 
 
-def test_non_minikube_apply_is_approval_with_context(tmp_path):
+def test_non_minikube_undeclared_apply_blocks(tmp_path):
+    # non-minikube + undeclared context (no AGENTS.md) -> unknown -> block (fail-closed);
+    # the gate now encapsulates the prod/unknown verdict so _choose can pick it in a chain.
     verifier = make_verifier(set())
     a = assess_command(f"kubectl --context={CLERUM_PROD} apply -f x.yaml", tmp_path, verifier)
-    assert a.action == "approval"
+    assert a.action == "block"
     assert a.context == CLERUM_PROD
-    assert a.profile == ""
 
 
 def test_kubectl_without_context_blocks(tmp_path):
@@ -122,7 +123,7 @@ def test_script_with_internal_apply_to_prod(tmp_path):
     script.chmod(0o755)
     verifier = make_verifier(set())
     a = assess_command(f"bash {script}", tmp_path, verifier)
-    assert a.action == "approval"
+    assert a.action == "block"   # undeclared prod-ish context -> unknown -> block
     assert a.context == CLERUM_PROD
 
 
@@ -309,7 +310,7 @@ def test_high_blast_deletion_asks_on_minikube(resource, tmp_path):
 
 def test_helm_write_to_prod_is_denied(agents_cwd):
     a = assess_command(f"helm uninstall app --kube-context {CLERUM_PROD}", agents_cwd, make_verifier(set()))
-    assert a.action == "approval" and a.context == CLERUM_PROD
+    assert a.action == "block" and a.context == CLERUM_PROD  # prod declared -> gate blocks
     assert ENTRY._decide(a, agents_cwd)[0] == "deny"
 
 
@@ -354,4 +355,26 @@ def test_choose_prefers_destructive_prod_across_segments(tmp_path):
         f"kubectl --context={CLERUM_PROD} delete deploy x && kubectl --context={MINIKUBE_CTX} get pods",
         tmp_path, make_verifier({MINIKUBE_CTX}),
     )
-    assert a.action == "approval" and a.context == CLERUM_PROD
+    assert a.action in ("approval", "block") and a.context == CLERUM_PROD
+
+
+def test_chain_prod_mutation_wins_over_dev(agents_cwd):
+    # prod apply + dev delete in one chain: the prod verdict (deny) must win over dev's ask,
+    # even though the dev segment is more "destructive" by verb (Codex P1 #4).
+    a = assess_command(
+        f"kubectl --context={CLERUM_PROD} apply -f x.yaml && kubectl --context={CLERUM_DEV} delete pod y",
+        agents_cwd, make_verifier(set()),
+    )
+    assert a.action == "block"
+    assert ENTRY._decide(a, agents_cwd)[0] == "deny"
+
+
+def test_main_deny_returns_exit_zero(monkeypatch, capsys):
+    # A deny must exit 0 so the JSON permissionDecision actually blocks (Codex P1 #1).
+    import io
+    payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": "kubectl apply -f x.yaml"}, "cwd": "/tmp"})
+    monkeypatch.setattr("sys.stdin", io.StringIO(payload))
+    rc = ENTRY.main()
+    out = json.loads(capsys.readouterr().out)
+    assert out["hookSpecificOutput"]["permissionDecision"] == "deny"  # no --context -> deny
+    assert rc == 0

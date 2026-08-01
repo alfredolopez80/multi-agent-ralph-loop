@@ -93,7 +93,7 @@ def main() -> int:
         payload = json.loads(raw)
     except (json.JSONDecodeError, ValueError):
         _emit("deny", f"{HOOK_NAME}: could not parse hook input (fail-closed).")
-        return 1
+        return 0  # permissionDecision in the JSON is authoritative; exit 0 so the deny blocks
 
     if not isinstance(payload, dict) or payload.get("tool_name") != "Bash":
         _emit("allow")
@@ -113,12 +113,14 @@ def main() -> int:
     except Exception as exc:  # noqa: BLE001 - fail-closed on ANY evaluation error
         _log(f"ERROR evaluating command (fail-closed to deny): {exc!r} :: {command}")
         _emit("deny", f"{HOOK_NAME}: guard failed to evaluate the command (fail-closed).")
-        return 1
+        return 0  # exit 0 so the fail-closed deny actually blocks (non-zero may be non-blocking)
 
     _log(f"{decision}: ctx={assessment.context!r} profile={assessment.profile!r} "
          f"action={assessment.action} :: {command}")
     _emit(decision, reason)
-    return 0 if decision in ("allow", "ask") else 1
+    # PreToolUse decision is carried by permissionDecision in the JSON. Return 0 for allow/ask/deny
+    # so a deny actually blocks — a non-zero exit can be treated as a non-blocking hook error.
+    return 0
 
 
 if __name__ == "__main__":

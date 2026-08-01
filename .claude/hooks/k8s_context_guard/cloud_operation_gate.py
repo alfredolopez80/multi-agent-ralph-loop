@@ -7,6 +7,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Literal
 
+from .context_classification import classify
 from .minikube_context import ContextVerification, verify_minikube_context
 from .script_operation_inspector import script_cloud_commands, script_path, wrapper_script_path
 
@@ -338,8 +339,25 @@ def _assess_cloud_parts(
     if risk == "read":
         return CommandAssessment(action="allow", tool=tool, context=context)
     consequence = "delete a complete Kubernetes scope" if complete else f"{operation} non-minikube cluster state"
-    approval = _approval(tool, "destructive" if complete else risk, consequence)
-    return replace(approval, context=context, profile=verification.profile if verification.is_minikube else "")
+    approval = replace(
+        _approval(tool, "destructive" if complete else risk, consequence),
+        context=context,
+        profile=verification.profile if verification.is_minikube else "",
+    )
+    # A verified-minikube complete deletion stays approval (-> ask). For a NON-minikube context,
+    # encapsulate the dev/prod verdict in the assessment itself so _choose picks the most
+    # restrictive across a whole chain: a prod (or undeclared) mutation in ANY segment wins as a
+    # block, even alongside another segment's dev/ask.
+    if not verification.is_minikube:
+        kind = classify(context, cwd)
+        if kind in ("prod", "unknown"):
+            return replace(
+                approval,
+                action="block",
+                reason_code=f"context_{kind}",
+                reason=f"context '{context}' is {kind} (not verified-minikube, not declared dev).",
+            )
+    return approval
 
 
 def _choose(assessments: list[CommandAssessment]) -> CommandAssessment:
