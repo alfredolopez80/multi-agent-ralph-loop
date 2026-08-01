@@ -20,12 +20,9 @@ SCRIPT_VERSION="1.0.1"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+# Shared colors, counters and the zero-checks verdict guard.
+_VC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_VC_DIR}/lib/validation-common.sh"
 
 #===============================================================================
 # Configuration Arrays (Bash 3 compatible)
@@ -171,9 +168,9 @@ check_all_servers() {
 
     for server in "${ESSENTIAL_SERVERS[@]}"; do
         if check_server "$server"; then
-            ((essential_installed++))
+            essential_installed=$((essential_installed+1))
         else
-            ((essential_missing++))
+            essential_missing=$((essential_missing+1))
         fi
     done
 
@@ -185,9 +182,9 @@ check_all_servers() {
 
     for server in "${OPTIONAL_SERVERS[@]}"; do
         if check_server "$server"; then
-            ((optional_installed++))
+            optional_installed=$((optional_installed+1))
         else
-            ((optional_missing++))
+            optional_missing=$((optional_missing+1))
         fi
     done
 

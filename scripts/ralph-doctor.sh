@@ -62,10 +62,10 @@ check_dependencies() {
     for dep in "${deps[@]}"; do
         if command -v "$dep" &>/dev/null; then
             log_success "$dep instalado ($(command -v $dep))"
-            ((CHECKS_PASSED++))
+            CHECKS_PASSED=$((CHECKS_PASSED+1))
         else
             log_error "$dep NO encontrado (REQUERIDO)"
-            ((ERRORS++))
+            ERRORS=$((ERRORS+1))
         fi
     done
     
@@ -73,10 +73,10 @@ check_dependencies() {
     for dep in "${optional_deps[@]}"; do
         if command -v "$dep" &>/dev/null; then
             log_success "$dep instalado (opcional)"
-            ((CHECKS_PASSED++))
+            CHECKS_PASSED=$((CHECKS_PASSED+1))
         else
             log_warn "$dep no instalado (opcional)"
-            ((WARNINGS++))
+            WARNINGS=$((WARNINGS+1))
         fi
     done
     
@@ -84,10 +84,10 @@ check_dependencies() {
     if [ -f "${RALPH_DIR}/config/glm.json" ]; then
         if jq -e '.api_key' "${RALPH_DIR}/config/glm.json" &>/dev/null; then
             log_success "API Key de GLM-4.7 configurada"
-            ((CHECKS_PASSED++))
+            CHECKS_PASSED=$((CHECKS_PASSED+1))
         else
             log_warn "API Key de GLM-4.7 no configurada"
-            ((WARNINGS++))
+            WARNINGS=$((WARNINGS+1))
         fi
     fi
 }
@@ -108,33 +108,33 @@ check_skills() {
     # Check if skills directory exists
     if [ ! -d "$skills_dir" ]; then
         log_error "Directorio de skills no encontrado: $skills_dir"
-        ((ERRORS++))
+        ERRORS=$((ERRORS+1))
         return 1
     fi
     
     # Iterate through skills
     for skill_path in "$skills_dir"/*; do
         [ -e "$skill_path" ] || continue
-        ((total_skills++))
+        total_skills=$((total_skills+1))
         
         local skill_name=$(basename "$skill_path")
         
         # Check if it's a broken symlink
         if [ -L "$skill_path" ] && [ ! -e "$skill_path" ]; then
             log_error "Skill '$skill_name': SYMLINK ROTO → $skill_path"
-            ((broken_symlinks++))
-            ((ERRORS++))
+            broken_symlinks=$((broken_symlinks+1))
+            ERRORS=$((ERRORS+1))
             continue
         fi
         
         # Check if SKILL.md exists
         if [ ! -f "$skill_path/SKILL.md" ]; then
             log_warn "Skill '$skill_name': falta SKILL.md"
-            ((missing_skillmd++))
-            ((WARNINGS++))
+            missing_skillmd=$((missing_skillmd+1))
+            WARNINGS=$((WARNINGS+1))
         else
             log_success "Skill '$skill_name': OK"
-            ((CHECKS_PASSED++))
+            CHECKS_PASSED=$((CHECKS_PASSED+1))
         fi
     done
     
@@ -158,7 +158,7 @@ check_tests() {
     # Check if test directory exists
     if [ ! -d "$tests_dir" ]; then
         log_warn "Directorio de tests no encontrado: $tests_dir"
-        ((WARNINGS++))
+        WARNINGS=$((WARNINGS+1))
         return 0
     fi
     
@@ -167,10 +167,10 @@ check_tests() {
         log_info "Ejecutando tests de hooks..."
         if python -m pytest "${tests_dir}/test_hooks_comprehensive.py" -v --tb=short &>/dev/null; then
             log_success "Tests de hooks: PASARON"
-            ((CHECKS_PASSED++))
+            CHECKS_PASSED=$((CHECKS_PASSED+1))
         else
             log_warn "Tests de hooks: ALGUNOS FALLARON (ver logs)"
-            ((WARNINGS++))
+            WARNINGS=$((WARNINGS+1))
         fi
     else
         log_info "Tests de hooks no encontrados (opcional)"
@@ -181,10 +181,10 @@ check_tests() {
         log_info "Ejecutando tests de command router..."
         if bash "${tests_dir}/test-command-router.sh" &>/dev/null; then
             log_success "Tests de command router: PASARON"
-            ((CHECKS_PASSED++))
+            CHECKS_PASSED=$((CHECKS_PASSED+1))
         else
             log_warn "Tests de command router: ALGUNOS FALLARON"
-            ((WARNINGS++))
+            WARNINGS=$((WARNINGS+1))
         fi
     fi
 }
@@ -207,7 +207,7 @@ apply_fixes() {
         if [ ! -x "$hook_file" ]; then
             chmod +x "$hook_file"
             log_success "Permisos corregidos: $(basename "$hook_file")"
-            ((fixes_applied++))
+            fixes_applied=$((fixes_applied+1))
         fi
     done < <(find "$hooks_dir" -name "*.sh" -type f)
     
@@ -222,7 +222,7 @@ apply_fixes() {
             mkdir -p "$dir"
             chmod 700 "$dir"
             log_success "Directorio creado: $dir"
-            ((fixes_applied++))
+            fixes_applied=$((fixes_applied+1))
         fi
     done
     
@@ -317,7 +317,7 @@ check_hooks() {
     # Check if hooks directory exists
     if [ ! -d "$hooks_dir" ]; then
         log_error "Directorio de hooks no encontrado: $hooks_dir"
-        ((ERRORS++))
+        ERRORS=$((ERRORS+1))
         return 1
     fi
     
@@ -335,21 +335,21 @@ check_hooks() {
         # Check if executable
         if [ ! -x "$hook_file" ]; then
             log_warn "Hook '$hook_name': no es ejecutable"
-            ((not_executable++))
-            ((WARNINGS++))
+            not_executable=$((not_executable+1))
+            WARNINGS=$((WARNINGS+1))
             has_error=true
         fi
         
         # Check bash syntax
         if ! bash -n "$hook_file" 2>/dev/null; then
             log_error "Hook '$hook_name': error de sintaxis bash"
-            ((syntax_errors++))
-            ((ERRORS++))
+            syntax_errors=$((syntax_errors+1))
+            ERRORS=$((ERRORS+1))
             has_error=true
         fi
         
         if [ "$has_error" = false ]; then
-            ((CHECKS_PASSED++))
+            CHECKS_PASSED=$((CHECKS_PASSED+1))
         fi
         
     done < <(find "$hooks_dir" -name "*.sh" -type f)
@@ -387,10 +387,10 @@ check_configuration() {
     for dir in "${required_dirs[@]}"; do
         if [ -d "$dir" ]; then
             log_success "Directorio existe: $(basename "$dir")"
-            ((CHECKS_PASSED++))
+            CHECKS_PASSED=$((CHECKS_PASSED+1))
         else
             log_warn "Directorio no existe: $dir (se creará si es necesario)"
-            ((WARNINGS++))
+            WARNINGS=$((WARNINGS+1))
         fi
     done
     
@@ -398,32 +398,32 @@ check_configuration() {
     if [ -f "${RALPH_DIR}/config/models.json" ]; then
         if jq empty "${RALPH_DIR}/config/models.json" 2>/dev/null; then
             log_success "config/models.json: válido"
-            ((CHECKS_PASSED++))
+            CHECKS_PASSED=$((CHECKS_PASSED+1))
         else
             log_error "config/models.json: JSON inválido"
-            ((ERRORS++))
+            ERRORS=$((ERRORS+1))
         fi
     else
         log_warn "config/models.json: no existe"
-        ((WARNINGS++))
+        WARNINGS=$((WARNINGS+1))
     fi
     
     # Check settings.json.example exists in repo
     if [ -f "${REPO_DIR}/.claude/settings.json.example" ]; then
         log_success "settings.json.example: existe"
-        ((CHECKS_PASSED++))
+        CHECKS_PASSED=$((CHECKS_PASSED+1))
     else
         log_warn "settings.json.example: no existe"
-        ((WARNINGS++))
+        WARNINGS=$((WARNINGS+1))
     fi
     
     # Check if Claude Code is configured
     if [ -f "${CLAUDE_DIR}/settings.json" ]; then
         log_success "Claude Code settings.json: configurado"
-        ((CHECKS_PASSED++))
+        CHECKS_PASSED=$((CHECKS_PASSED+1))
     else
         log_warn "Claude Code settings.json: no configurado (ejecutar install.sh)"
-        ((WARNINGS++))
+        WARNINGS=$((WARNINGS+1))
     fi
 }
 

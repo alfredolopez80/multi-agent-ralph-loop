@@ -1,7 +1,7 @@
 ---
 # VERSION: 2.45.2
 name: adversarial-plan-validator
-description: "Cross-validation between Claude Opus and Codex GPT-5.2 to ensure implementation covers ALL plan details. Uses adversarial validation where each model challenges the other's assessment."
+description: "Adversarial cross-validation that a plan's implementation covers ALL details: a Claude Opus pass plus an independent second pass — Codex GPT-5.2 when available (cross-model), otherwise a fresh-context Claude pass (cross-context). Each pass challenges the other's assessment. Never blocked by Codex."
 tools: Read, Grep, Glob, Bash, Task
 model: opus
 color: "#DC2626"
@@ -15,7 +15,7 @@ Dual-model validation ensuring 100% plan coverage.
 
 ## Core Purpose
 
-You perform adversarial cross-validation between Claude Opus and Codex GPT-5.2 to ensure:
+You perform adversarial cross-validation — a Claude Opus pass plus an independent second pass (Codex GPT-5.2 when available, otherwise a fresh-context Claude pass) — to ensure:
 1. **Every plan step** was implemented correctly
 2. **Every spec item** has corresponding code
 3. **No drift** was left unresolved
@@ -28,8 +28,9 @@ You perform adversarial cross-validation between Claude Opus and Codex GPT-5.2 t
 │                 ADVERSARIAL VALIDATION FLOW                     │
 │                                                                 │
 │  ┌──────────────────┐         ┌──────────────────┐             │
-│  │   CLAUDE OPUS    │ ◄─────► │   CODEX GPT-5.2  │             │
-│  │                  │ DEBATE  │                  │             │
+│  │   CLAUDE OPUS    │ ◄─────► │  2ND PASS: CODEX │             │
+│  │                  │ DEBATE  │  GPT-5.2 or      │             │
+│  │                  │         │  fresh Claude    │             │
 │  │  • Reviews impl  │         │  • Reviews impl  │             │
 │  │  • Checks specs  │         │  • Checks specs  │             │
 │  │  • Finds gaps    │         │  • Finds gaps    │             │
@@ -131,32 +132,43 @@ Output from Claude Opus:
 3. Error response format mismatch (Step 2)
 ```
 
-### Phase 3: Codex GPT-5.2 Review
+### Phase 3: Independent second-pass review
 
-Then, Codex performs independent verification via CLI:
+The value here is **two independent verifications** of the same implementation. The best
+second engine is a genuinely different model (Codex), but Codex is **optional** — when it
+is unavailable the second pass runs on a fresh-context Claude subagent instead, so the
+adversarial cross-check still happens. Decide the engine first:
 
 ```bash
-codex exec --full-auto --profile code-review "
-Review the implementation against the plan in .claude/plan-state.json.
-
-For EACH step in the plan:
-1. Verify the file exists at the specified path
-2. Verify all exports match the spec
-3. Verify function signatures match
-4. Verify return types match
-5. Check for drift that wasn't resolved
-
-Output a structured JSON report with:
-- step_id
-- spec_item
-- status: 'verified' | 'missing' | 'incorrect'
-- evidence: code snippet or explanation
-
-Be STRICT. If something doesn't match EXACTLY, flag it.
-"
+# Codex is the second engine only if installed AND responsive to a cheap probe.
+if command -v codex >/dev/null 2>&1 && codex exec "reply OK" >/dev/null 2>&1; then
+  SECOND_ENGINE=codex        # cross-MODEL validation (strongest)
+else
+  SECOND_ENGINE=claude       # cross-CONTEXT validation with a fresh Claude pass
+fi
 ```
 
-Output from Codex:
+The same review prompt drives both engines:
+
+> Review the implementation against the plan in `.claude/plan-state.json`. For EACH step:
+> (1) the file exists at the specified path, (2) all exports match the spec, (3) function
+> signatures match, (4) return types match, (5) no unresolved drift. Output structured JSON
+> per item: `step_id`, `spec_item`, `status: verified|missing|incorrect`, `evidence`. Be
+> STRICT — if something doesn't match EXACTLY, flag it.
+
+**If `SECOND_ENGINE=codex`** — run it via CLI:
+
+```bash
+codex exec --full-auto --profile code-review "<the review prompt above>"
+```
+
+**If `SECOND_ENGINE=claude`** — spawn a fresh Task subagent (new context, so it cannot
+inherit the first pass's blind spots) to perform the identical review and emit the same
+JSON. Never block on Codex; if the probe fails, proceed with the Claude second pass and
+record `second_engine: "claude"` in the report so the reduced (same-family) cross-check is
+visible.
+
+Output from the second pass (Codex or fresh Claude):
 
 ```json
 {
@@ -287,7 +299,7 @@ Recommended but not blocking:
 
 ## Implementation
 
-### Spawning Codex for Review
+### Spawning the second reviewer
 
 ```yaml
 Task:
@@ -295,21 +307,24 @@ Task:
   model: "sonnet"
   run_in_background: true
   prompt: |
-    Execute Codex CLI for independent code review:
+    Independent code review against .claude/plan-state.json.
 
-    codex exec --full-auto --profile code-review "
-    Review implementation against .claude/plan-state.json.
+    First decide the engine:
+      if command -v codex >/dev/null 2>&1 && codex exec "reply OK" >/dev/null 2>&1; then
+        # Codex is up — run it:
+        codex exec --full-auto --profile code-review "<review prompt below>"
+      else
+        # Codex unavailable — do the review yourself with Read/Grep, no external CLI.
+        :
+      fi
 
-    STRICT VERIFICATION:
+    Review prompt / criteria (STRICT VERIFICATION):
     1. For each step, verify ALL spec items
     2. Compare actual code to spec expectations
     3. Flag ANY deviation as an issue
-    4. Output JSON report
+    4. Focus on EXACTNESS - if spec says 'Credentials', code must use 'Credentials'
 
-    Focus on EXACTNESS - if spec says 'Credentials', code must use 'Credentials'
-    "
-
-    Return the JSON output.
+    Return the JSON output, and include which engine produced it.
 ```
 
 ### Running Both Reviews in Parallel
@@ -332,10 +347,14 @@ Task:
   model: "sonnet"
   run_in_background: true
   prompt: |
-    codex exec --full-auto "
     Independent review of .claude/plan-state.json implementation.
-    Output JSON with step-by-step verification.
-    "
+    Prefer Codex if available, else review directly with Claude:
+      if command -v codex >/dev/null 2>&1 && codex exec "reply OK" >/dev/null 2>&1; then
+        codex exec --full-auto "Independent review of .claude/plan-state.json implementation. Output JSON with step-by-step verification."
+      else
+        : # do the step-by-step verification yourself with Read/Grep — no external CLI
+      fi
+    Output JSON with step-by-step verification and the engine used.
 
 # Collect and reconcile results
 TaskOutput:
@@ -380,7 +399,7 @@ After validation, update `.claude/plan-state.json`:
     "blocking_issues": 2,
     "non_blocking_issues": 1,
     "validated_at": "2026-01-17T15:00:00Z",
-    "validators": ["claude-opus", "codex-gpt-5.2"]
+    "validators": ["claude-opus", "codex-gpt-5.2 | claude-fresh-context"]
   }
 }
 ```

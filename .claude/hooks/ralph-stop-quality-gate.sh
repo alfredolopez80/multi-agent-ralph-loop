@@ -293,7 +293,7 @@ if [ -n "$BLOCKING_ISSUES" ]; then
 
     jq -n --arg reason "$REASON" '{
         decision: "block",
-        reason: ("Quality gates not passed. " + $reason + "Continue working until VERIFIED_DONE.")
+        reason: ("[ralph-stop-quality-gate] Quality gates not passed. " + $reason + "Continue working until VERIFIED_DONE.")
     }'
     exit 2
 elif [ -n "$ADVISORY_ISSUES" ]; then

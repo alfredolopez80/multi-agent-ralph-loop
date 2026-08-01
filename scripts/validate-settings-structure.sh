@@ -17,12 +17,9 @@
 
 set -euo pipefail
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+# Shared colors, counters and the zero-checks verdict guard.
+_VC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_VC_DIR}/lib/validation-common.sh"
 
 # Output format
 FORMAT="${FORMAT:-text}"
@@ -256,21 +253,7 @@ print_text_output() {
     done
 
     echo ""
-    echo "═══════════════════════════════════════════════════════════════"
-    echo "   SUMMARY"
-    echo "═══════════════════════════════════════════════════════════════"
-    echo "  Passed:   $PASSED"
-    echo "  Failed:   $FAILED"
-    echo "  Warnings: $WARNINGS"
-    echo ""
-
-    if [[ $FAILED -eq 0 ]]; then
-        echo -e "${GREEN}✓ Settings structure is valid${NC}"
-        return 0
-    else
-        echo -e "${RED}✗ Settings structure is invalid${NC}"
-        return 1
-    fi
+    vc_verdict "Settings Structure"
 }
 
 # Print JSON output

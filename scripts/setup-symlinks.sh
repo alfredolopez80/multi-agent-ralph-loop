@@ -109,7 +109,7 @@ for script in "${CRITICAL_SCRIPTS[@]}"; do
         else
             ln -sf "$REPO_CLAUDE/scripts/$script" "$STD_CLAUDE/scripts/$script"
         fi
-        ((count++))
+        count=$((count+1))
     fi
 done
 echo "   ✓ $count scripts criticos configurados"

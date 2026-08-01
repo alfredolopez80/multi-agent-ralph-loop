@@ -7397,13 +7397,13 @@ cmd_sentry_validate() {
     # Check for Sentry files
     if [[ ! -f "sentry.properties" && ! -f ".sentryclirc" ]]; then
         log_warn "No Sentry configuration files found"
-        ((errors++))
+        errors=$((errors+1))
     fi
 
     # Check for DSN in environment
     if [[ -z "$SENTRY_DSN" ]]; then
         log_warn "SENTRY_DSN environment variable not set"
-        ((errors++))
+        errors=$((errors+1))
     fi
 
     # Check for common issues in code
@@ -7412,7 +7412,7 @@ cmd_sentry_validate() {
     if [[ -n "$high_sample_rates" ]]; then
         log_warn "Found 100% sample rates (performance issue):"
         echo "$high_sample_rates"
-        ((errors++))
+        errors=$((errors+1))
     fi
 
     # Check for duplicate captures
@@ -7421,7 +7421,7 @@ cmd_sentry_validate() {
     if [[ -n "$duplicate_captures" ]]; then
         log_warn "Found duplicate error captures:"
         echo "$duplicate_captures"
-        ((errors++))
+        errors=$((errors+1))
     fi
 
     if [[ $errors -eq 0 ]]; then
@@ -7624,7 +7624,7 @@ _cmd_mmc_loop() {
     
     local ITER=0
     while [ $ITER -lt "$MAX_ITER" ]; do
-        ((ITER++))
+        ITER=$((ITER+1))
         echo -e "${YELLOW}[Iteration $ITER/$MAX_ITER]${NC}"
         
         local RESULT

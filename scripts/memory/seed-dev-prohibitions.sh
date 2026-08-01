@@ -53,15 +53,37 @@ if [[ "$MODE" == "--apply" ]]; then
   echo "==> Verifying recall_v2 surfaces the new nodes"
   RECALL="$SCRIPT_DIR/recall_v2.py"
   [[ -f "$RECALL" ]] || { echo "FATAL: recall_v2 not found: $RECALL" >&2; exit 1; }
+
+  # Derive the rule list from the seed file. A hardcoded set of queries (and a hardcoded
+  # "all 4" in the success line) silently stopped covering the seed the moment a fifth
+  # rule was added: the check kept passing while verifying less than it claimed. Per
+  # `testing-zero-tests-is-never-success`, a verifier must prove it actually checked
+  # something, and that the count matches what exists.
+  mapfile -t RULE_IDS < <(python3 -c '
+import json, sys
+for rule in json.load(open(sys.argv[1])):
+    print(rule["rule_id"])
+' "$SEED_FILE")
+
+  EXPECTED="${#RULE_IDS[@]}"
+  [[ "$EXPECTED" -gt 0 ]] || { echo "FATAL: seed file declares zero rules: $SEED_FILE" >&2; exit 1; }
+
   MISSING=0
-  for q in "placeholder in code" "unrequested fallback error handling" \
-           "production code to pass a test" "e2e test minikube fail loud fail fast"; do
-    if ! python3 "$RECALL" --query "$q" --limit 3 \
-         | grep -qE "rule_(dev-no-|testing-fail-loud)"; then
-      echo "FAIL: no dev-prohibition node recalled for query: '$q'" >&2
-      MISSING=1
+  VERIFIED=0
+  for rule_id in "${RULE_IDS[@]}"; do
+    # Query by rule id: recall_v2 is semantic, and the id carries the rule's own terms.
+    if python3 "$RECALL" --query "${rule_id//-/ }" --limit 5 | grep -q "rule_${rule_id}"; then
+      VERIFIED=$((VERIFIED+1))
+    else
+      echo "FAIL: node 'rule_${rule_id}' is not recallable" >&2
+      MISSING=$((MISSING+1))
     fi
   done
-  [[ "$MISSING" -eq 0 ]] || { echo "FATAL: recall verification failed — nodes not surfaced" >&2; exit 1; }
-  echo "OK: all 4 dev-prohibition rules are recallable in this project's tree."
+
+  [[ "$MISSING" -eq 0 ]] || { echo "FATAL: recall verification failed — $MISSING node(s) not surfaced" >&2; exit 1; }
+  [[ "$VERIFIED" -eq "$EXPECTED" ]] || {
+    echo "FATAL: verified $VERIFIED of $EXPECTED rules — refusing to report success" >&2
+    exit 1
+  }
+  echo "OK: all $VERIFIED of $EXPECTED seeded rules are recallable in this project's tree."
 fi

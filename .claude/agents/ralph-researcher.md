@@ -17,13 +17,7 @@ description: |
   assistant: "I'll use ralph-researcher to search for worktree patterns in similar projects."
   <commentary>Pattern discovery across codebases requires research, not implementation.</commentary>
   </example>
-tools:
-  - LSP
-  - Read
-  - Grep
-  - Glob
-  - WebSearch
-  - WebFetch
+tools: LSP, Read, Grep, Glob, WebSearch, WebFetch, mcp__web-search-prime__*, mcp__web-reader__*, mcp__web-search__*
 # Model is inherited from ~/.claude/settings.json (ANTHROPIC_DEFAULT_*_MODEL)
 permissionMode: default
 maxTurns: 20

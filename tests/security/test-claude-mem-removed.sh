@@ -78,7 +78,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 fi
 
 # 5. No entries in active settings.json files
-for cfg in "$HOME/.claude/settings.json" "$HOME/.cc-mirror/minimax/config/settings.json" "$HOME/.cc-mirror/zai/config/settings.json"; do
+for cfg in "$HOME/.claude/settings.json"; do
     if [[ -f "$cfg" ]]; then
         count_eq_zero "no claude-mem in $(basename "$(dirname "$cfg")")/settings.json" "grep claude-mem '$cfg'"
     fi

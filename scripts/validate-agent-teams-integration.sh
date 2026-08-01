@@ -7,22 +7,23 @@
 # ============================================================================
 
 set -e
+# NOTE: use `VAR=$((VAR+1))`, never `((VAR++))`. Under set -e, a post-increment
+# on a counter holding 0 evaluates to 0 -> exit status 1 -> the script aborts silently,
+# leaving zero counters and an apparent early success.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 SKILLS_DIR="$PROJECT_ROOT/.claude/skills"
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# Shared colors, counters and the zero-checks verdict guard.
+_VC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_VC_DIR}/lib/validation-common.sh"
 
 # Skills that MUST have Agent Teams integration
 REQUIRED_SKILLS=(
     "orchestrator"
     "parallel"
-    "loop"
+    "iterate"
     "bugs"
     "security"
     "gates"
@@ -31,12 +32,10 @@ REQUIRED_SKILLS=(
     "retrospective"
     "code-reviewer"
     "quality-gates-parallel"
-    "glm5-parallel"
 )
 
 # Optional skills (nice to have)
 OPTIONAL_SKILLS=(
-    "glm5"
     "edd"
     "retrospective"
     "audit"
@@ -60,11 +59,11 @@ for agent in ralph-coder ralph-reviewer ralph-tester ralph-researcher; do
             echo -e "  ${GREEN}✓${NC} $agent (v2.88.0 with model inheritance)"
         else
             echo -e "  ${YELLOW}!${NC} $agent (missing VERSION 2.88.0 or model inheritance)"
-            ((warnings++))
+            warnings=$((warnings+1))
         fi
     else
         echo -e "  ${RED}✗${NC} $agent (MISSING)"
-        ((errors++))
+        errors=$((errors+1))
     fi
 done
 echo ""
@@ -78,11 +77,11 @@ for hook in teammate-idle-quality-gate.sh task-completed-quality-gate.sh ralph-s
             echo -e "  ${GREEN}✓${NC} $hook (executable)"
         else
             echo -e "  ${YELLOW}!${NC} $hook (not executable)"
-            ((warnings++))
+            warnings=$((warnings+1))
         fi
     else
         echo -e "  ${RED}✗${NC} $hook (MISSING)"
-        ((errors++))
+        errors=$((errors+1))
     fi
 done
 echo ""
@@ -103,7 +102,7 @@ check_skill_agent_teams() {
     else
         if [[ "$required" == "required" ]]; then
             echo -e "  ${RED}✗${NC} $skill_name (SKILL.md not found)"
-            ((errors++))
+            errors=$((errors+1))
         fi
         return 1
     fi
@@ -111,14 +110,14 @@ check_skill_agent_teams() {
     # Check for Agent Teams integration
     if grep -qi "Agent Teams" "$skill_path" && grep -qi "TeamCreate\|spawn\|parallel\|subagent" "$skill_path"; then
         echo -e "  ${GREEN}✓${NC} $skill_name (has Agent Teams integration)"
-        ((passed++))
+        passed=$((passed+1))
     else
         if [[ "$required" == "required" ]]; then
             echo -e "  ${RED}✗${NC} $skill_name (missing Agent Teams integration)"
-            ((errors++))
+            errors=$((errors+1))
         else
             echo -e "  ${YELLOW}!${NC} $skill_name (optional - no Agent Teams integration)"
-            ((warnings++))
+            warnings=$((warnings+1))
         fi
     fi
 }
@@ -126,13 +125,16 @@ check_skill_agent_teams() {
 # Check required skills
 echo "Required skills:"
 for skill in "${REQUIRED_SKILLS[@]}"; do
-    check_skill_agent_teams "$skill" "required"
+    # `|| true`: the function returns 1 on a missing skill and, under `set -e`, a
+    # bare call aborted the whole run there — reporting 1 problem when there could
+    # be ten, and never printing the summary.
+    check_skill_agent_teams "$skill" "required" || true
 done
 
 echo ""
 echo "Optional skills:"
 for skill in "${OPTIONAL_SKILLS[@]}"; do
-    check_skill_agent_teams "$skill" "optional"
+    check_skill_agent_teams "$skill" "optional" || true
 done
 
 echo ""
@@ -143,6 +145,14 @@ echo -e "Passed:   ${GREEN}$passed${NC}"
 echo -e "Warnings: ${YELLOW}$warnings${NC}"
 echo -e "Errors:   ${RED}$errors${NC}"
 echo ""
+
+# Antes que cualquier veredicto: cero comprobaciones nunca es exito. Esta guarda estaba
+# DENTRO de la rama de errores, asi que con errors=0 no se evaluaba y el else final podia
+# declarar "todo verificado" habiendo comprobado nada.
+if [[ $((passed + errors + warnings)) -eq 0 ]]; then
+    echo "FATAL: cero comprobaciones ejecutadas — no se puede declarar veredicto" >&2
+    exit 1
+fi
 
 if [[ $errors -gt 0 ]]; then
     echo -e "${RED}VALIDATION FAILED${NC}: $errors error(s) found"

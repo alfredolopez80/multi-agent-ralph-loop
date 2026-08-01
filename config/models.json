@@ -55,10 +55,7 @@
     "debugger": "kimi-k2.5",
     "refactorer": "kimi-k2.5",
     "docs-writer": "kimi-k2.5",
-    "frontend-reviewer": "kimi-k2.5",
-    "glm-reviewer": "glm-4.7",
-    "minimax-reviewer": "minimax (deprecated)",
-    "kimi-reviewer": "kimi-k2.5"
+    "frontend-reviewer": "kimi-k2.5"
   },
   "cost_comparison": {
     "claude_opus": {"input": 5.00, "output": 25.00, "relative": "100%"},

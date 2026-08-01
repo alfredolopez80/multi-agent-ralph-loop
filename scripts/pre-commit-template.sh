@@ -61,7 +61,7 @@ if [[ -n "$STAGED_HOOKS" ]]; then
         # not a violation; only active code matters.
         if grep -vE '^[[:space:]]*#' "$hook_file" | grep -qE '"decision":\s*"continue"'; then
             echo -e "  ${RED}✗ $hook_name: Uses invalid {\"decision\": \"continue\"}${NC}"
-            ((ERRORS++))
+            ERRORS=$((ERRORS+1))
             continue
         fi
 
@@ -88,7 +88,7 @@ if [[ -n "$STAGED_HOOKS" ]]; then
         else
             echo -e "  ${RED}✗ Invalid permissionDecision (use \"deny\", not \"block\")${NC}"
             echo -e "  ${YELLOW}  Run: $PD_CHECK${NC}"
-            ((ERRORS++))
+            ERRORS=$((ERRORS+1))
         fi
     else
         echo -e "  ${YELLOW}⚠ Checker not found: $PD_CHECK${NC}"
@@ -113,7 +113,7 @@ if [[ -n "$STAGED_SKILLS" ]]; then
         else
             echo -e "  ${RED}✗ Skills unification test failed${NC}"
             echo -e "  ${YELLOW}  Run for details: $SKILLS_TEST --verbose${NC}"
-            ((ERRORS++))
+            ERRORS=$((ERRORS+1))
         fi
     else
         echo -e "  ${YELLOW}⚠ Skills test script not found or not executable${NC}"
@@ -225,7 +225,7 @@ if [[ -x "$MODEL_AGNOSTIC_TEST" ]]; then
     else
         echo -e "  ${RED}✗ Model-agnostic validation failed${NC}"
         echo -e "  ${YELLOW}  Run: $MODEL_AGNOSTIC_TEST -v${NC}"
-        ((ERRORS++))
+        ERRORS=$((ERRORS+1))
     fi
 else
     echo ""
@@ -250,7 +250,7 @@ if [[ -x "$HOOK_INTEGRATION_TEST" ]]; then
     else
         echo -e "  ${RED}✗ Hook integration validation failed${NC}"
         echo -e "  ${YELLOW}  Run: $HOOK_INTEGRATION_TEST -v${NC}"
-        ((ERRORS++))
+        ERRORS=$((ERRORS+1))
     fi
 else
     echo ""

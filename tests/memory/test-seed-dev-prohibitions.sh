@@ -39,8 +39,19 @@ else
   fail "unknown argument did not fail loud (rc=$rc): $out"
 fi
 
-# --- Test 3: in-repo seed fixture is valid JSON with the 4 expected rules ------
-expected="dev-no-placeholders dev-no-production-code-for-tests dev-no-unrequested-fallbacks testing-fail-loud-fail-fast "
+# --- Test 3: in-repo seed fixture is valid JSON with exactly the expected rules ------
+#
+# The list is deliberately explicit: comparing the WHOLE set (not a sample of it) is what
+# makes adding or dropping a rule a conscious act. Keep it in sorted order.
+# 2026-07-31: added testing-zero-tests-is-never-success.
+expected_ids=(
+  dev-no-placeholders
+  dev-no-production-code-for-tests
+  dev-no-unrequested-fallbacks
+  testing-fail-loud-fail-fast
+  testing-zero-tests-is-never-success
+)
+expected="$(printf '%s ' "${expected_ids[@]}")"
 if [[ ! -f "$SEED_JSON" ]]; then
   fail "in-repo seed fixture missing: $SEED_JSON"
 elif ! command -v jq >/dev/null 2>&1; then
@@ -48,7 +59,7 @@ elif ! command -v jq >/dev/null 2>&1; then
 else
   ids="$(jq -r '.[].rule_id' "$SEED_JSON" | sort | tr '\n' ' ')"
   if [[ "$ids" == "$expected" ]]; then
-    pass "in-repo seed fixture is valid and has the 4 expected rule ids"
+    pass "in-repo seed fixture is valid and has the ${#expected_ids[@]} expected rule ids"
   else
     fail "seed fixture rule-id mismatch: got [$ids] expected [$expected]"
   fi

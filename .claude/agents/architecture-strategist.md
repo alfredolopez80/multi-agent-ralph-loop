@@ -2,7 +2,7 @@
 # VERSION: 2.43.0
 name: architecture-strategist
 description: "Architectural compliance review and system design analysis. Evaluates changes against established patterns and component boundaries."
-tools: Read, Grep, Glob, Task
+tools: Read, Grep, Glob, Task, Bash(grep:*, awk:*, sort:*, uniq:*)
 model: opus
 ---
 

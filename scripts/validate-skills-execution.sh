@@ -18,12 +18,9 @@
 
 set -uo pipefail
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+# Shared colors, counters and the zero-checks verdict guard.
+_VC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_VC_DIR}/lib/validation-common.sh"
 
 # Output format
 FORMAT="${FORMAT:-text}"
@@ -517,22 +514,7 @@ print_text_output() {
     fi
 
     echo ""
-    echo "═══════════════════════════════════════════════════════════════"
-    echo "   SUMMARY"
-    echo "═══════════════════════════════════════════════════════════════"
-    echo "  Total:    $TOTAL_SKILLS"
-    echo "  Passed:   $PASSED"
-    echo "  Failed:   $FAILED"
-    echo "  Warnings: $WARNINGS"
-    echo ""
-
-    if [[ $FAILED -eq 0 ]]; then
-        echo -e "${GREEN}All core skills are loadable and valid${NC}"
-        return 0
-    else
-        echo -e "${RED}Some skills failed validation${NC}"
-        return 1
-    fi
+    vc_verdict "Skills Execution"
 }
 
 # Print JSON output
@@ -623,10 +605,9 @@ case "$FORMAT" in
         print_text_output
         ;;
 esac
-
-# Exit with appropriate code
-if [[ $FAILED -gt 0 ]]; then
-    exit 1
-fi
-
-exit 0
+# The exit code must reflect the verdict in BOTH output modes. This script has no `set -e`,
+# so nothing propagates print_text_output's / print_json_output's status on its own — and
+# print_json_output ends on a plain echo (rc 0), so `--format json` would report success
+# over failures or an empty run. vc_exit_code re-derives the verdict (including the
+# zero-checks guard) with no printing and, as the last command, becomes the exit code.
+vc_exit_code

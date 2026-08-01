@@ -205,7 +205,7 @@ done < <(find ~/.claude/agents -maxdepth 1 -type l -print0 2>/dev/null)
 # === 5. INFRASTRUCTURE DIRECTORIES ===
 echo ""
 echo "=== Infrastructure Directories ==="
-DIRS=(~/.ralph/plans ~/.ralph/handoffs ~/.ralph/ledgers ~/.ralph/logs)
+DIRS=(~/.ralph/handoffs ~/.ralph/ledgers ~/.ralph/logs)
 for dir in "${DIRS[@]}"; do
   if [[ -d "$dir" ]]; then
     pass "$dir exists"
@@ -217,12 +217,30 @@ for dir in "${DIRS[@]}"; do
   fi
 done
 
+# Plans are PER-PROJECT, never global. A global ~/.ralph/plans would let one
+# project's plans leak into another's context (cross-contamination).
+if [[ -d ~/.ralph/plans ]]; then
+  fail "~/.ralph/plans exists — plans must be per-project. Move its contents into each project's .ralph/plans/ and remove the global directory."
+else
+  pass "~/.ralph/plans absent (plans are per-project)"
+fi
+
 # === 6. SETTINGS.JSON ===
 echo ""
 echo "=== Settings Configuration ==="
 SETTINGS=~/.claude/settings.json
 if [[ -f "$SETTINGS" ]]; then
-  grep -q "plansDirectory" "$SETTINGS" && pass "plansDirectory in settings.json" || fail "plansDirectory missing from settings.json"
+  # plansDirectory MUST be a relative path so each project resolves its own
+  # .ralph/plans/. An absolute path (or ~) points every project at one shared
+  # directory and cross-contaminates plans between them.
+  PLANS_DIR=$(jq -r '.plansDirectory // empty' "$SETTINGS")
+  if [[ -z "$PLANS_DIR" ]]; then
+    fail "plansDirectory missing from settings.json"
+  elif [[ "$PLANS_DIR" == /* || "$PLANS_DIR" == "~"* ]]; then
+    fail "plansDirectory is absolute ('$PLANS_DIR') — must be relative (e.g. '.ralph/plans/') so plans stay per-project"
+  else
+    pass "plansDirectory is relative ('$PLANS_DIR') — per-project"
+  fi
   grep -q "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS" "$SETTINGS" && pass "Agent Teams env var in settings" || fail "Agent Teams env var missing"
 else
   fail "~/.claude/settings.json not found"

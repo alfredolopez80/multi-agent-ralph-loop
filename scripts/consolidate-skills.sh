@@ -78,14 +78,14 @@ for link in "$GLOBAL_SKILLS"/*; do
 
     # Skip Ralph skills (keep as symlinks)
     if [[ "$target" == *"multi-agent-ralph-loop"* ]]; then
-        ((RALPH_PRESERVED++))
+        RALPH_PRESERVED=$((RALPH_PRESERVED+1))
         continue
     fi
 
     # Check if target exists
     if [[ ! -d "$target" ]]; then
         echo "  ⚠ Broken: $skill_name (target not found)"
-        ((BROKEN++))
+        BROKEN=$((BROKEN+1))
 
         # Remove broken symlink
         if ! $DRY_RUN; then
@@ -105,7 +105,7 @@ for link in "$GLOBAL_SKILLS"/*; do
     fi
 
     if $BACKUP_ONLY; then
-        ((SKIPPED++))
+        SKIPPED=$((SKIPPED+1))
         continue
     fi
 
@@ -119,7 +119,7 @@ for link in "$GLOBAL_SKILLS"/*; do
         cp -r "$target" "$link"
         echo "  ✓ Converted: $skill_name"
     fi
-    ((COPIED++))
+    COPIED=$((COPIED+1))
 done
 
 #######################################
@@ -156,7 +156,7 @@ if ! $BACKUP_ONLY; then
         else
             rm -f "$agents_link" 2>/dev/null
             ln -s "$GLOBAL_SKILLS/$skill_name" "$agents_link"
-            ((AGENTS_CREATED++))
+            AGENTS_CREATED=$((AGENTS_CREATED+1))
         fi
     done
 

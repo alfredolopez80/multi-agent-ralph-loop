@@ -18,12 +18,9 @@
 
 set -eo pipefail
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+# Shared colors, counters and the zero-checks verdict guard.
+_VC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_VC_DIR}/lib/validation-common.sh"
 
 # Output format
 FORMAT="${FORMAT:-text}"
@@ -81,6 +78,7 @@ declare -A MESSAGES
 declare -A ERROR_DETAILS
 PASSED=0
 FAILED=0
+WARNINGS=0
 TOTAL=0
 
 #===============================================================================
@@ -321,21 +319,7 @@ print_text_output() {
     fi
 
     echo ""
-    echo "=================================================="
-    echo "   SUMMARY"
-    echo "=================================================="
-    echo "  Total:   $TOTAL"
-    echo "  Passed:  $PASSED"
-    echo "  Failed:  $FAILED"
-    echo ""
-
-    if [[ $FAILED -eq 0 ]]; then
-        echo -e "${GREEN}OK All hooks have valid syntax${NC}"
-        return 0
-    else
-        echo -e "${RED}FAIL Some hooks have syntax errors${NC}"
-        return 1
-    fi
+    vc_verdict "Hooks Syntax"
 }
 
 # Print JSON output
@@ -429,9 +413,10 @@ case "$FORMAT" in
         print_text_output
         ;;
 esac
-
-# Return exit code based on failures
-if [[ $FAILED -gt 0 ]]; then
-    exit 1
-fi
-exit 0
+# The exit code must reflect the verdict in BOTH output modes. Text mode already carries
+# vc_verdict's status out of print_text_output; json mode's print_json_output ends on a
+# plain echo (rc 0), so `--format json` would report success over failures or an empty run.
+# vc_exit_code re-derives the verdict (including the zero-checks guard) with no printing and,
+# as the last command, becomes the script's exit code. The earlier `if [[ $FAILED -gt 0 ]]`
+# tail was wrong twice over: it ran only in one mode's favour and omitted the zero-checks case.
+vc_exit_code

@@ -547,17 +547,10 @@ PID2=$!
     if [[ "$GLM_SUCCESS" != "true" ]]; then
         echo "  [3/4] Attempting MiniMax fallback..." >> "$LOG_FILE"
         # Try MiniMax M2.1 via mmc CLI if available
-        if command -v mmc >/dev/null 2>&1; then
-            MM_RESULT=$(timeout 20 mmc --query "Search best practices for: $QUERY" --max-tokens 400 2>/dev/null) || true
-            if [[ -n "$MM_RESULT" ]] && [[ ${#MM_RESULT} -gt 10 ]]; then
-                echo "{\"results\": [{\"content\": $(echo "$MM_RESULT" | jq -Rs .)}], \"source\": \"web_search\", \"provider\": \"minimax\"}" > "$WEB_SEARCH_FILE"
-                echo "  [3/4] MiniMax fallback: Success (${#MM_RESULT} chars)" >> "$LOG_FILE"
-            else
-                echo "  [3/4] MiniMax fallback: No results" >> "$LOG_FILE"
-            fi
-        else
-            echo "  [3/4] MiniMax fallback: mmc CLI not available" >> "$LOG_FILE"
-        fi
+        # The MiniMax CLI was retired on 2026-07-31. This branch used it behind
+        # `2>/dev/null || true`, so once the CLI vanished the search returned empty
+        # for ever without a single signal.
+        : # no external fallback: local sources above are authoritative
     fi
 ) &
 PID3=$!
@@ -620,17 +613,10 @@ PID3=$!
     # Phase 5: MiniMax fallback if GLM failed
     if [[ "$GLM_SUCCESS" != "true" ]]; then
         echo "  [4/4] Attempting MiniMax fallback..." >> "$LOG_FILE"
-        if command -v mmc >/dev/null 2>&1; then
-            MM_RESULT=$(timeout 20 mmc --query "Find documentation and API references for: $QUERY" --max-tokens 400 2>/dev/null) || true
-            if [[ -n "$MM_RESULT" ]] && [[ ${#MM_RESULT} -gt 10 ]]; then
-                echo "{\"results\": [{\"content\": $(echo "$MM_RESULT" | jq -Rs .)}], \"source\": \"docs_search\", \"provider\": \"minimax\"}" > "$DOCS_SEARCH_FILE"
-                echo "  [4/4] MiniMax fallback: Success (${#MM_RESULT} chars)" >> "$LOG_FILE"
-            else
-                echo "  [4/4] MiniMax fallback: No results" >> "$LOG_FILE"
-            fi
-        else
-            echo "  [4/4] MiniMax fallback: mmc CLI not available" >> "$LOG_FILE"
-        fi
+        # The MiniMax CLI was retired on 2026-07-31. This branch used it behind
+        # `2>/dev/null || true`, so once the CLI vanished the search returned empty
+        # for ever without a single signal.
+        : # no external fallback: local sources above are authoritative
     fi
 ) &
 PID4=$!

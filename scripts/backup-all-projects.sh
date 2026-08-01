@@ -10,11 +10,9 @@
 set -euo pipefail
 
 # Colores
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+# Shared colors, counters and the zero-checks verdict guard.
+_VC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_VC_DIR}/lib/validation-common.sh"
 
 # Configuración
 BACKUP_DIR="${HOME}/.ralph/backups/$(date +%Y%m%d_%H%M%S)"
@@ -106,9 +104,9 @@ main() {
 
     for project in "${PROJECTS[@]}"; do
         if backup_project "$project"; then
-            ((success_count++))
+            success_count=$((success_count+1))
         else
-            ((skip_count++))
+            skip_count=$((skip_count+1))
         fi
     done
 
@@ -125,9 +123,9 @@ main() {
 
         log_info "Found additional project: $project_name"
         if backup_project "$project_name"; then
-            ((success_count++))
+            success_count=$((success_count+1))
         else
-            ((skip_count++))
+            skip_count=$((skip_count+1))
         fi
     done < <(find "$GITHUB_DIR" -maxdepth 4 -type d -name ".claude" -print0 2>/dev/null)
 

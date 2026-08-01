@@ -9,12 +9,9 @@ SOURCE_DIR="${HOME}/.claude/commands"
 DEST_DIR="${HOME}/.claude/skills"
 LOG_FILE="/tmp/migration-$(date +%Y%m%d-%H%M%S).log"
 
-# Colors
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+# Shared colors, counters and the zero-checks verdict guard.
+_VC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_VC_DIR}/lib/validation-common.sh"
 
 log() {
     echo -e "${GREEN}[$(date +%H:%M:%S)]${NC} $1" | tee -a "$LOG_FILE"
@@ -162,17 +159,17 @@ main() {
 
     for cmd in "$SOURCE_DIR"/*.md; do
         [[ -f "$cmd" ]] || continue
-        ((total++))
+        total=$((total+1))
 
         name=$(basename "$cmd" .md)
 
         if should_skip "$name"; then
-            ((skipped++))
+            skipped=$((skipped+1))
         elif skill_exists "$name"; then
-            ((existing++))
+            existing=$((existing+1))
         else
             migrate_command "$cmd"
-            ((migrated++))
+            migrated=$((migrated+1))
         fi
     done
 

@@ -149,9 +149,6 @@ run_agent_teams_tests() {
 
     cd "$PROJECT_DIR"
 
-    if [[ -x "$SCRIPT_DIR/agent-teams/test-glm5-teammates.sh" ]]; then
-        "$SCRIPT_DIR/agent-teams/test-glm5-teammates.sh" || log_warn "Agent teams tests require GLM-5 setup"
-    fi
 }
 
 # Run Bash tests
@@ -445,4 +442,20 @@ main() {
     echo "================================================================"
 }
 
+# k8s context guard (26 casos: invocacion vs mencion, contexto efectivo, allowlist).
+# Se ejecuta ANTES de main y propaga su codigo de salida: colgado detras de main, el
+# FAILED=1 no lo leia nadie y un fallo del hook seguia dando exit 0 tras imprimir el
+# banner de exito.
+K8S_GUARD_RC=0
+if [[ -x "$SCRIPT_DIR/hooks/test-k8s-context-guard.sh" ]]; then
+    "$SCRIPT_DIR/hooks/test-k8s-context-guard.sh" || K8S_GUARD_RC=1
+fi
+
 main "$@"
+MAIN_RC=$?
+
+if [[ $K8S_GUARD_RC -ne 0 ]]; then
+    echo "FAIL: la suite del k8s context guard fallo" >&2
+    exit 1
+fi
+exit $MAIN_RC

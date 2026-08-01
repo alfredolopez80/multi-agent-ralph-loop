@@ -17,12 +17,9 @@
 
 set -euo pipefail
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+# Shared colors, counters and the zero-checks verdict guard.
+_VC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_VC_DIR}/lib/validation-common.sh"
 
 # Output format
 FORMAT="${FORMAT:-text}"
@@ -105,17 +102,10 @@ RALPH_ALIASES=(
     "task-batch"
     "create-task-batch"
     "research"
-    "glm5"
     "parallel"
 )
 
 # MiniMax aliases
-MINIMAX_ALIASES=(
-    "mmc"
-    "mmc-search"
-    "mmc-config"
-    "mmc-status"
-)
 
 # Ralph marker in rc file
 RALPH_MARKER="# RALPH CONFIGURATION"
@@ -239,37 +229,6 @@ check_ralph_aliases() {
     record_check "ralph_aliases" "$status" "$message"
 }
 
-# Check MiniMax aliases
-check_minimax_aliases() {
-    local found=0
-    local total=${#MINIMAX_ALIASES[@]}
-    local missing=()
-
-    for alias_name in "${MINIMAX_ALIASES[@]}"; do
-        if alias "$alias_name" &>/dev/null || command -v "$alias_name" &>/dev/null; then
-            found=$((found + 1))
-        else
-            missing+=("$alias_name")
-        fi
-    done
-
-    local status=""
-    local message=""
-
-    if [[ $found -eq $total ]]; then
-        status="PASS"
-        message="All $total MiniMax aliases available"
-    elif [[ $found -gt 0 ]]; then
-        status="WARN"
-        message="$found/$total MiniMax aliases available (missing: ${missing[*]})"
-    else
-        status="WARN"
-        message="No MiniMax aliases found (optional)"
-    fi
-
-    record_check "minimax_aliases" "$status" "$message"
-}
-
 # Check Claude Code environment variables
 check_claude_env() {
     local status=""
@@ -352,21 +311,7 @@ print_text_output() {
     done
 
     echo ""
-    echo "═══════════════════════════════════════════════════════════════"
-    echo "   SUMMARY"
-    echo "═══════════════════════════════════════════════════════════════"
-    echo "  Passed:   $PASSED"
-    echo "  Failed:   $FAILED"
-    echo "  Warnings: $WARNINGS"
-    echo ""
-
-    if [[ $FAILED -eq 0 ]]; then
-        echo -e "${GREEN}✓ Shell environment is properly configured${NC}"
-        return 0
-    else
-        echo -e "${RED}✗ Some shell configuration issues detected${NC}"
-        return 1
-    fi
+    vc_verdict "Shell Environment"
 }
 
 # Print JSON output
@@ -414,7 +359,6 @@ check_path
 check_rc_file
 check_ralph_markers
 check_ralph_aliases
-check_minimax_aliases
 check_claude_env
 check_shell_version
 

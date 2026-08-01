@@ -17,14 +17,9 @@
 
 set -euo pipefail
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-MAGENTA='\033[0;35m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+# Shared colors, counters and the zero-checks verdict guard.
+_VC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_VC_DIR}/lib/validation-common.sh"
 
 # Output format
 FORMAT="${FORMAT:-text}"
@@ -203,7 +198,7 @@ print_text_output() {
     echo "  Total Warnings: $TOTAL_WARNINGS"
     echo ""
 
-    if [[ $TOTAL_FAILED -eq 0 ]]; then
+    if [[ ${VERDICT_FAILED:-1} -eq 0 && ${VERDICT_TOTAL:-0} -gt 0 ]]; then
         echo -e "${GREEN}✓ INSTALLATION IS VALID${NC}"
         echo ""
         echo "All validations passed. The installation is properly configured."
@@ -211,7 +206,7 @@ print_text_output() {
     else
         echo -e "${RED}✗ INSTALLATION HAS ISSUES${NC}"
         echo ""
-        echo "Some validations failed. Please review the output above."
+        echo "Some validations failed or could not run. Please review the output above."
         return 1
     fi
 }
@@ -219,7 +214,7 @@ print_text_output() {
 # Print JSON output
 print_json_output() {
     local overall_status="pass"
-    [[ $TOTAL_FAILED -gt 0 ]] && overall_status="fail"
+    { [[ ${VERDICT_FAILED:-1} -gt 0 ]] || [[ ${VERDICT_TOTAL:-0} -eq 0 ]]; } && overall_status="fail"
 
     cat << EOF
 {
@@ -270,6 +265,23 @@ if [[ $QUICK -eq 0 ]]; then
     run_validation "agents_registration" "$SCRIPT_DIR/validate-agents-registration.sh"
 fi
 
+# Derive the verdict from per-validator STATUSES, not from the numeric TOTAL_* sums. The
+# sums are populated only in --format json (text mode never parses per-check counts), and a
+# sub-validator that could not run reports status=ERROR while contributing failed=0. Judging
+# by the sums therefore had two fail-opens: an all-ERROR run and (in json, whose printer ends
+# in a `echo` that returns 0) any failing run both exited 0. A validator is a success only if
+# its status is PASS/pass (WARN is advisory); FAIL/ERROR/empty/unknown all count as failure,
+# and zero validators is itself a failure (repo rule: zero checks is never success).
+VERDICT_TOTAL=0
+VERDICT_FAILED=0
+for _name in "${!VALIDATION_RESULTS[@]}"; do
+    VERDICT_TOTAL=$((VERDICT_TOTAL + 1))
+    case "${VALIDATION_RESULTS[$_name]}" in
+        PASS|pass|WARN|warn) ;;
+        *) VERDICT_FAILED=$((VERDICT_FAILED + 1)) ;;
+    esac
+done
+
 # Output results
 case "$FORMAT" in
     json)
@@ -279,3 +291,11 @@ case "$FORMAT" in
         print_text_output
         ;;
 esac
+
+# The verdict IS the exit code, in both formats.
+if [[ $VERDICT_TOTAL -eq 0 ]]; then
+    echo "FATAL: zero validators executed — cannot report success over an empty run" >&2
+    exit 2
+fi
+[[ $VERDICT_FAILED -gt 0 ]] && exit 1
+exit 0

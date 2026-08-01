@@ -23,8 +23,6 @@ RALPH_SKILLS=(
     "smart-fork"
     "task-classifier"
     "curator"
-    "glm5"
-    "glm5-parallel"
     "kaizen"
     "readme"
     "quality-gates-parallel"
@@ -33,8 +31,6 @@ RALPH_SKILLS=(
     "testing-anti-patterns"
     "sec-context-depth"
     "codex-cli"
-    "minimax"
-    "minimax-mcp-usage"
     "openai-docs"
     "context7-usage"
     "gemini-cli"
@@ -116,10 +112,10 @@ for skill in "${RALPH_SKILLS[@]}"; do
     if [[ -L "$GLOBAL_SKILL" ]]; then
         TARGET=$(readlink "$GLOBAL_SKILL")
         if [[ -d "$TARGET" ]]; then
-            ((VERIFIED++))
+            VERIFIED=$((VERIFIED+1))
         else
             echo "  BROKEN: $skill -> $TARGET"
-            ((BROKEN++))
+            BROKEN=$((BROKEN+1))
         fi
     fi
 done

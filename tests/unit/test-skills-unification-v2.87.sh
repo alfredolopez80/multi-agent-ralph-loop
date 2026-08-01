@@ -22,7 +22,15 @@ set -uo pipefail
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# Global skills are symlinked to the MAIN repo, so comparisons must resolve there.
+# Walking up from SCRIPT_DIR yields the worktree when run from one, which made every
+# symlink target mismatch. `--git-common-dir` names the main repo's .git in both cases.
+_GIT_COMMON_DIR="$(cd "$SCRIPT_DIR" && git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+if [[ -n "$_GIT_COMMON_DIR" ]]; then
+    REPO_ROOT="$(dirname "$_GIT_COMMON_DIR")"
+else
+    REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+fi
 GLOBAL_SKILLS="$HOME/.claude/skills"
 GLOBAL_COMMANDS="$HOME/.claude/commands"
 SETTINGS_FILE="$HOME/.claude/settings.json"
@@ -73,8 +81,6 @@ RALPH_CORE_SKILLS=(
     "bugs"
     "smart-fork"
     "task-classifier"
-    "glm5"
-    "glm5-parallel"
     "kaizen"
     "readme"
     "quality-gates-parallel"
@@ -98,7 +104,6 @@ RALPH_OPTIONAL_SKILLS=(
     "stop-slop"
     "task-visualizer"
     "testing-anti-patterns"
-    "glm-mcp"
     "crafting-effective-readmes"
     "senior-software-engineer"
     "attack-mutator"

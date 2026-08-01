@@ -52,6 +52,26 @@ ALLOWED SAFE PATTERNS:
   - gcloud list/describe, gsutil ls/stat/cat
   - kubectl get/describe/logs/top/explain/diff, kubectl delete --dry-run
 
+SCOPE / KNOWN LIMITATIONS (stated so the next audit does not re-discover them):
+  This guard is defence-in-depth by TEXT MATCHING, not a shell/language parser. It runs
+  BEFORE the command and fails CLOSED: when in doubt it denies. Two consequences are
+  accepted by design, both erring toward the safe (deny) direction:
+
+  1. Destructive-looking text INSIDE a string literal is matched as if it were a command.
+     A payload like  python3 -c "re.sub(r'git reset --hard', ...)"  or a heredoc whose body
+     merely mentions `git reset --hard` is DENIED even though no git command runs. Teaching
+     the guard to skip string/heredoc/`-c` bodies would require parsing those languages, and
+     a half-parser is itself a bypass surface (a real command hidden in a "fake" string). We
+     accept the over-block: it is friction, never data loss. Work around it by not embedding
+     destructive command text in an inline literal, or run the script from a file.
+  2. Wrapper / relocation enumeration is inherently unbounded — there is always one more
+     exotic wrapper. The guard does NOT try to enumerate them all; an unresolved wrapping
+     (a stack deeper than the bound, an opaque relocator) is treated as the dangerous case
+     and denied/enforced, so a new wrapper OVER-blocks rather than bypasses.
+
+  Global CLI flags before the verb ARE handled generically (any leading -/-- token is
+  skipped so it cannot break `tool <verb>` adjacency); that class is closed, not enumerated.
+
 EXIT CODES:
   0 = Allow command (silent) OR permissionDecision "ask" (JSON on stdout)
   Non-zero with JSON = Block command
@@ -77,6 +97,8 @@ INSTALLATION:
 import json
 import os
 import re
+import shlex
+import subprocess
 import sys
 
 
@@ -88,12 +110,39 @@ def normalize_command(command: str) -> str:
     # Expand environment variables in paths
     command = os.path.expandvars(command)
 
-    # Normalize multiple spaces to single space
-    command = re.sub(r"\s+", " ", command.strip())
+    # Newlines and carriage returns are UNCONDITIONAL command separators in shell:
+    # `git status\ngit restore x` is TWO commands. A blanket `\s+` -> ' ' collapsed them
+    # into one fused string, and because is_safe_pattern uses an unanchored search, a safe
+    # leading verb (`git status`) then whitened the destructive tail (`git restore`), which
+    # never got evaluated. Convert them to `;` so split_chained_commands treats them as the
+    # separators they are, then collapse only horizontal whitespace. Splitting a newline
+    # that happened to sit inside a quoted string merely over-scrutinises — it fails closed,
+    # never open.
+    command = re.sub(r"[\r\n]+", " ; ", command)
+    command = re.sub(r"[ \t]+", " ", command.strip())
 
     # Remove common quote variations around paths
     # e.g., rm -rf "/tmp/foo" -> rm -rf /tmp/foo for pattern matching
     command = re.sub(r'["\']([^"\']+)["\']', r"\1", command)
+
+    # Collapse git's GLOBAL options so the subcommand verb sits adjacent to `git`. Every
+    # destructive pattern anchors `git\s+<verb>`, so any global flag in between —
+    # `git -C other reset --hard`, `git -c k=v clean -fd`, `git -p checkout -- f`,
+    # `git -P reset --hard` — slips past all of them. Value-taking globals consume their
+    # value; EVERY OTHER leading `-`/`--` token is treated as a valueless global and skipped,
+    # so an unenumerated flag (the `-p`/`-P` bypass class found on PR #31) can never break
+    # verb adjacency. Git subcommands never start with `-`, so this cannot swallow the verb.
+    command = re.sub(
+        r"\bgit(?:\s+(?:"
+        r"(?:-C|-c|--git-dir|--work-tree|--namespace|--super-prefix|--config-env|--attr-source)"
+        r"(?:=\S+|\s+\S+)"
+        r"|--exec-path(?:=\S+)?"
+        r"|--[A-Za-z][\w-]*"
+        r"|-[A-Za-z]+"
+        r"))+",
+        "git",
+        command,
+    )
 
     return command
 
@@ -133,12 +182,33 @@ WRAPPER = (
     r"^(?:\w+=\S*\s+)*"  # FOO=bar aws ...
     r"(?:(?:sudo|command|nohup|time|nice|env|eval|xargs)\s+(?:-\S+\s+)*(?:\w+=\S*\s+)*)*"
 )
-# AWS global flags are enumerated explicitly so the prefix cannot swallow
-# arbitrary text (e.g. `aws s3 ls --query "s3 rb"` must NOT match rb patterns)
-AWS = WRAPPER + r"aws\s+(?:--(?:profile|region|output|endpoint-url|no-cli-pager)(?:=|\s+)\S+\s+)*"
-GCLOUD = WRAPPER + r"gcloud\s+(?:(?:alpha|beta)\s+)?"
+# CLI GLOBAL flags sit between the tool name and its subcommand/verb. The destructive
+# patterns anchor `tool\s+<verb>`, so ANY unenumerated global flag in between breaks the
+# adjacency and silently defeats every block (the `gcloud --project=…`, `kubectl -v=6`
+# bypass class found on PR #31). Rather than a fixed allowlist, each prefix now skips a
+# leading run of global flags GENERICALLY: value-taking flags are enumerated (so their
+# value token is consumed too), and every OTHER leading `-`/`--` token is treated as a
+# valueless global and skipped. Subcommands/verbs never start with `-`, so the verb is
+# never swallowed. Only LEADING flags are skipped, so a flag appearing after the verb
+# (`delete … --quiet`, `s3 ls --query "s3 rb"`) stays in the remainder and never widens
+# a match — the anchoring against `echo "aws s3 rb"` (quotes stripped) still holds.
+_GLOBAL_TAIL = r"|--[A-Za-z][\w-]*|-[A-Za-z]+)\s+)*"
+AWS = (
+    WRAPPER + r"aws\s+(?:(?:--(?:profile|region|output|endpoint-url|cli-connect-timeout"
+    r"|cli-read-timeout|color|ca-bundle|query|cli-binary-format)(?:=\S+|\s+\S+)" + _GLOBAL_TAIL
+)
+GCLOUD = (
+    WRAPPER + r"gcloud\s+(?:(?:alpha|beta|preview)\s+)?"
+    r"(?:(?:--(?:project|account|configuration|verbosity|format|flags-file|billing-project"
+    r"|impersonate-service-account|access-token-file)(?:=\S+|\s+\S+)" + _GLOBAL_TAIL
+)
 GSUTIL = WRAPPER + r"gsutil\s+(?:-[mqD]\s+)*"
-KUBECTL = WRAPPER + r"kubectl\s+(?:(?:--context|--kubeconfig|--namespace|-n)(?:=|\s+)\S+\s+)*"
+KUBECTL = (
+    WRAPPER + r"kubectl\s+(?:(?:--(?:context|kubeconfig|namespace|server|token|user|cluster"
+    r"|request-timeout|as|as-group|cache-dir|certificate-authority|client-certificate"
+    r"|client-key|tls-server-name|v|log-flush-frequency|chunk-size|password|username"
+    r"|profile|profile-output)(?:=\S+|\s+\S+)|-[nsuvp](?:=\S+|\s+\S+)" + _GLOBAL_TAIL
+)
 
 # Destructive verbs used by the command-substitution / shell -c detectors
 DESTRUCTIVE_INNER = (
@@ -164,7 +234,16 @@ GIT_SAFE_PATTERNS = [
     r"rm\s+(-rf|-fr|--recursive)\s+['\"]?/tmp/",
     r"rm\s+(-rf|-fr|--recursive)\s+['\"]?/var/tmp/",
     # Git status/log/diff (read-only)
-    r"git\s+(status|log|diff|show|branch|remote|fetch)\b",
+    #
+    # `branch` carries a negative lookahead: this catch-all is evaluated BEFORE the
+    # blocked patterns, so a bare `git branch` entry silently whitelisted
+    # `git branch -D` / `--delete --force` and turned the GIT_FS_BLOCKED_PATTERNS rule
+    # for it into dead code — while the module docstring claimed it was blocked.
+    # Present since the initial commit (f0ec3c1); fixed 2026-07-31.
+    r"git\s+(status|log|diff|show|remote|fetch)\b",
+    # `(?-i:...)` keeps this case-SENSITIVE even though the caller matches with
+    # re.IGNORECASE: `-d` refuses to drop unmerged work and is safe, `-D` forces it.
+    r"git\s+branch\b(?!.*(?-i:-[a-zA-Z]*D[a-zA-Z]*\b|-[a-zA-Z]*f[a-zA-Z]*d[a-zA-Z]*\b|-[a-zA-Z]*d[a-zA-Z]*f[a-zA-Z]*\b|--delete(\s+\S+)*\s+--force|--force(\s+\S+)*\s+--delete|-f(\s+\S+)*\s+-d\b|-d(\s+\S+)*\s+-f\b|--force(\s+\S+)*\s+-d\b|-d(\s+\S+)*\s+--force|--delete(\s+\S+)*\s+-f\b|-f(\s+\S+)*\s+--delete))",
     # Git add/commit (safe write operations)
     r"git\s+(add|commit|pull|stash\s+push|stash\s+save)\b",
 ]
@@ -290,8 +369,14 @@ GIT_FS_BLOCKED_PATTERNS = [
         r"git\s+clean\s+.*-f(?!.*(-n|--dry-run))",
         "removes untracked files permanently (use -n first to preview)",
     ),
-    # Force delete branch without merge check
-    (r"git\s+branch\s+-D\s+", "force-deletes branch without checking if merged"),
+    # Force delete branch without merge check.
+    # Case-sensitive via `(?-i:...)`: the caller matches with re.IGNORECASE, so a plain
+    # `-D` pattern also blocked the SAFE `git branch -d`, which refuses to drop unmerged
+    # work. Covers the long forms too — `--delete --force` bypassed the old pattern.
+    (
+        r"git\s+branch\s+(?-i:-[a-zA-Z]*D[a-zA-Z]*\b|-[a-zA-Z]*f[a-zA-Z]*d[a-zA-Z]*\b|-[a-zA-Z]*d[a-zA-Z]*f[a-zA-Z]*\b|--delete(\s+\S+)*\s+--force|--force(\s+\S+)*\s+--delete|-f(\s+\S+)*\s+-d\b|-d(\s+\S+)*\s+-f\b|--force(\s+\S+)*\s+-d\b|-d(\s+\S+)*\s+--force|--delete(\s+\S+)*\s+-f\b|-f(\s+\S+)*\s+--delete)",
+        "force-deletes branch without checking if merged",
+    ),
     # Stash drop/clear permanently deletes
     (r"git\s+stash\s+drop", "permanently deletes stashed changes"),
     (r"git\s+stash\s+clear", "permanently deletes ALL stashed changes"),
@@ -539,10 +624,173 @@ def check_confirmation_pattern(command: str) -> tuple[bool, str]:
     return needs_confirm, reason
 
 
-def check_blocked_pattern(command: str) -> tuple[bool, str]:
-    """Check if command matches a blocked pattern. Returns (blocked, reason)."""
+# `git restore` / `git checkout --` on a file that is DELETED in the working tree
+# destroys nothing: the content is intact in HEAD and the only thing reverted is the
+# deletion itself. On a MODIFIED file the same command wipes edits that exist nowhere
+# else (no reflog covers the working tree), which is why the block stays for those.
+RESTORE_LIKE = re.compile(
+    r"^\s*git\s+(?:restore|checkout\s+--)\s+(?P<targets>.+)$", re.IGNORECASE
+)
+
+
+# A trackable `cd`: bare (→ $HOME) or exactly one target token. Anything else — a target
+# that needed quoting (normalize_command strips the quotes, so `cd "a b"` arrives as the
+# three-token `cd a b`), an option like `-P`/`-L`, or `cd -` — is NOT trackable here.
+CD_RE = re.compile(r"^\s*cd(?:\s+(?P<target>\S+))?\s*$")
+# Wrappers that still run the following builtin in the CURRENT shell, so `<wrapper> cd DIR`
+# moves the shell. They can stack (`command eval cd`), carry a leading backslash
+# (`\command cd`), carry their own options (`command -p cd`, `time -p cd`), and the whole
+# thing may sit inside a brace group (`{ cd DIR; }`). `cd`/`pushd`/`popd` itself may be
+# escaped (`\cd`). Enumerating a fixed depth is a losing game — any bound is beaten by more
+# wrappers — so exhaustion is treated as a directory change and fails closed (see below).
+CD_WRAPPER_RE = re.compile(r"^\s*(?:\{\s*)*\\?(?:command|builtin|eval|time)(?:\s+-\S+)*\s+")
+CD_HEAD_RE = re.compile(r"^\s*(?:\{\s*)*\\?(?:cd|pushd|popd)\b")
+_CD_STRIP_BOUND = 12
+
+# Constructs that can relocate the shell OPAQUELY — the guard cannot see where they land,
+# so the restore-of-deleted exemption must not be trusted after them: sourcing a file
+# (`.`/`source`, incl. `. <(...)`) whose contents may `cd`; a function definition
+# (`f(){ ... }`) whose later call may `cd`; and `eval` of DYNAMIC content (`eval "$(...)"`,
+# `eval "$VAR"`) whose expansion may `cd` — a literal `eval cd DIR` is still tracked by
+# _is_directory_change, but `eval` over a command/variable substitution is unknowable.
+# apply_cd returns "" for these so the exemption fails closed rather than judging a restore
+# against a possibly-stale directory.
+_OPAQUE_RELOCATOR_RE = re.compile(
+    r"^\s*(?:\.|source)\s"          # sourcing a file
+    r"|[A-Za-z_]\w*\s*\(\s*\)"      # a function definition
+    r"|\beval\b[^;&|]*[$`]"         # eval over a $(...) / `...` / $VAR expansion
+)
+
+
+def _is_directory_change(subcmd: str) -> bool:
+    """True if the subcommand ultimately runs cd/pushd/popd in the current shell.
+
+    Peels shell-builtin wrappers (with their options, an optional leading `{`, a backslash)
+    one at a time, checking for the builtin at each step, so `time -p cd`, `\\command cd`,
+    `command eval cd` and `{ cd X; }` are all recognised. If the input is STILL wrapped after
+    the bound — a pathological `eval`×N stack we cannot see through — that counts as a
+    directory change too, so apply_cd fails closed rather than assuming the stale cwd. The
+    only way to return False is to settle on a concrete non-cd token within the bound.
+    """
+    s = subcmd
+    for _ in range(_CD_STRIP_BOUND):
+        if CD_HEAD_RE.match(s):
+            return True
+        m = CD_WRAPPER_RE.match(s)
+        if not m:
+            return False  # settled on a real, non-cd command → genuinely not a dir change
+        s = s[m.end():]
+    return True  # still peeling wrappers past the bound — unresolvable, so fail closed
+
+
+def apply_cd(subcmd: str, cwd: str) -> str:
+    """The directory the NEXT subcommand runs in, after honouring a leading `cd`.
+
+    `cd` is a routine worktree operation and is never blocked. What it changes is WHERE
+    a later subcommand acts: `cd other-repo && git restore f.txt` must be judged against
+    other-repo's working tree, not the payload's cwd. Evaluating in the wrong repository
+    once allowed a restore that destroyed uncommitted edits.
+
+    A subcommand that does NOT change directory returns `cwd` unchanged. A directory
+    change this function cannot resolve with confidence — `popd`, `pushd`, `cd -`, a
+    quoted/spaced/optioned target, an unreadable path — returns "". Callers treat an
+    empty cwd as doubt and fail closed (they withhold a restore exemption; they never
+    block the `cd` itself). Returning the STALE cwd here instead would fail OPEN: the
+    later `git restore` would be judged against the directory the shell already left.
+    """
+    if _OPAQUE_RELOCATOR_RE.search(subcmd):
+        return ""  # sourcing / a function definition can relocate the shell — fail closed
+    if not _is_directory_change(subcmd):
+        return cwd  # not a directory change — the next subcommand still runs in cwd
+    match = CD_RE.match(subcmd)
+    if not match:
+        return ""  # a wrapped/escaped/multi-token cd we cannot track — fail closed
+    target = (match.group("target") or "~").strip("\"'")
+    if target == "-":
+        return ""  # previous directory — not tracked
+    target = os.path.expanduser(os.path.expandvars(target))
+    if not target or target.startswith("$"):
+        return ""  # an unresolved variable expansion — fail closed
+    destination = target if os.path.isabs(target) else os.path.join(cwd or "", target)
+    return os.path.normpath(destination) if destination else ""
+
+
+def _restore_targets_are_all_deleted(command: str, cwd: str) -> bool:
+    """True when every path in a restore-like command is deleted in the working tree.
+
+    Returns False on any doubt — no targets, an unreadable repo, a non-zero git exit,
+    or a single path that is not deleted. The guard must fail closed.
+
+    `cwd` is the EFFECTIVE directory for this subcommand (see `apply_cd`), so a chain
+    that changes directory is judged against the repository it actually lands in.
+    """
+    if not cwd or not os.path.isdir(cwd):
+        return False
+    match = RESTORE_LIKE.match(command)
+    if not match:
+        return False
+
+    targets = [
+        token
+        for token in shlex.split(match.group("targets"))
+        if not token.startswith("-")
+    ]
+    if not targets:
+        return False
+
+    try:
+        result = subprocess.run(
+            ["git", "status", "--porcelain", "--"] + targets,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    if result.returncode != 0:
+        return False
+
+    lines = [line for line in result.stdout.splitlines() if line.strip()]
+    # One status line per target, and every one of them must report a deletion.
+    if len(lines) != len(targets):
+        return False
+    return all(line[:2] in (" D", "D ", "DD") for line in lines)
+
+
+def safe_alternative(command: str) -> str:
+    """A concrete non-destructive command to run instead, or "" when none applies.
+
+    Escalating to "ask the user to run it manually" is not a plan: it leaves the caller
+    with no way forward. Where a safe route exists, name it.
+    """
+    if RESTORE_LIKE.match(command):
+        return (
+            "SAFE ALTERNATIVE: preserve the changes first, then restore — "
+            "`git stash push -- <files>` followed by the restore. "
+        )
+    if re.search(r"git\s+reset\s+--hard", command, re.IGNORECASE):
+        return (
+            "SAFE ALTERNATIVE: `git stash push -u` keeps the working tree recoverable; "
+            "commits stay reachable via `git reflog`. "
+        )
+    if re.search(r"git\s+clean\s+.*-f", command, re.IGNORECASE):
+        return "SAFE ALTERNATIVE: run `git clean -n` first to preview what would be removed. "
+    if re.search(r"git\s+branch\s+-D\s+", command, re.IGNORECASE):
+        return "SAFE ALTERNATIVE: `git branch -d` refuses to drop unmerged work. "
+    return ""
+
+
+def check_blocked_pattern(command: str, cwd: str = "") -> tuple[bool, str]:
+    """Check if command matches a blocked pattern. Returns (blocked, reason).
+
+    `cwd` is the effective directory for this subcommand, so a chain that changes
+    directory is judged against the repository it actually lands in.
+    """
     for pattern, reason in BLOCKED_PATTERNS:
         if re.search(pattern, command, re.IGNORECASE):
+            if RESTORE_LIKE.match(command) and _restore_targets_are_all_deleted(command, cwd):
+                continue  # recovering a deleted file — nothing to overwrite
             return True, reason
     return False, ""
 
@@ -553,10 +801,12 @@ def split_chained_commands(command: str) -> list[str]:
     SEC-1.6: Detects command chaining to prevent bypass of safety checks
     via patterns like 'echo safe && rm -rf /' or 'ls ; git reset --hard'.
     """
-    # Split by &&, ||, ;, | (but not ||= or &&= which are not shell operators)
-    # Use regex to split on these operators while preserving quoted strings
-    # Simple approach: split on operators outside of quotes
-    parts = re.split(r'\s*(?:&&|\|\||[;|])\s*', command)
+    # Split on every shell command separator: &&, ||, ;, |, newline, AND a background `&`.
+    # A background `&` runs the NEXT command too (`git status & git reset --hard` executes
+    # the reset), so a safe leading verb must not whiten the tail after it. The lone-`&`
+    # branch excludes redirect operators via look-around: `2>&1`, `&>file`, `<&3` keep their
+    # `&`. `&&` is matched by its own alternative first, so it never reaches the lone branch.
+    parts = re.split(r'\s*(?:&&|\|\||[;|\n]|(?<![<>&])&(?![<>&]))\s*', command)
     return [p.strip() for p in parts if p.strip()]
 
 
@@ -594,6 +844,10 @@ def main():
 
         if not original_command:
             allow_and_exit()  # No command, allow
+
+        # Needed to inspect working-tree state: `git restore` on a DELETED file is
+        # harmless, on a MODIFIED one it is irreversible. Only git can tell them apart.
+        hook_cwd = hook_input.get("cwd", "") or os.getcwd()
 
         # SECURITY: Normalize command to prevent regex bypass
         command = normalize_command(original_command)
@@ -639,8 +893,25 @@ def main():
 
         # If there are multiple subcommands, check each one individually
         # A chained command is only safe if ALL subcommands are safe
+        #
+        # `cd` is tracked as the chain is walked so each subcommand is judged against the
+        # directory it really runs in. Worktree work is full of `cd <worktree> && git ...`,
+        # and treating the payload's cwd as the destination misjudged those. The tracking
+        # happens BEFORE the safe-pattern check because `cd` is itself a safe pattern and
+        # would otherwise skip the loop body.
+        effective_cwd = hook_cwd
         for subcmd in subcommands:
             subcmd_normalized = normalize_command(subcmd)
+            effective_cwd = apply_cd(subcmd_normalized, effective_cwd)
+
+            # A git op retargeted with -C/--git-dir/--work-tree acts on a DIFFERENT working
+            # tree than cwd. normalize_command strips those flags so the destructive verbs
+            # (reset/clean/branch -D/…) match and block; but for `git restore`, whose only
+            # allow-path is the deleted-file exemption, judging the payload's cwd would be
+            # wrong (the file may be modified in the -C tree). Mark cwd untrustworthy so the
+            # exemption fails closed for any retargeted git command.
+            if re.search(r"\bgit\b(?=.*\s(?:-C\b|--git-dir\b|--work-tree\b))", subcmd):
+                effective_cwd = ""
 
             # Check safe patterns first (skip to next subcommand if safe)
             if is_safe_pattern(subcmd_normalized):
@@ -650,7 +921,7 @@ def main():
             # shadowed by confirmation catch-alls nor bypassed via env vars
             # (fixes pre-existing bug where GIT_FORCE_PUSH_CONFIRMED=1
             # disabled the entire guard, commit a5faf094)
-            blocked, reason = check_blocked_pattern(subcmd_normalized)
+            blocked, reason = check_blocked_pattern(subcmd_normalized, effective_cwd)
 
             if blocked:
                 log_security_event("BLOCKED", original_command, f"Chained command contains: {reason}")
@@ -662,6 +933,7 @@ def main():
                         f"Dangerous subcommand found: {subcmd_normalized[:80]}. "
                         f"Reason: {reason}. "
                         f"Command: {original_command[:100]}{'...' if len(original_command) > 100 else ''}. "
+                        f"{safe_alternative(subcmd_normalized)}"
                         f"If truly needed, ask the user to run it manually.",
                     }
                 }

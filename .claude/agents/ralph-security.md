@@ -1,6 +1,8 @@
 ---
 # VERSION: 3.0.0
-model: default
+# No `model:` field — inherits from the session, like the other five ralph-* teammates.
+# It previously read `model: default`, which is not a valid value: launching this agent
+# failed with "issue with the selected model (default)". The agent was uninvocable.
 name: ralph-security
 description: |
   Security specialist teammate for Agent Teams. Combines threat modeling, code audit, secrets scanning, dependency CVE checks, plan security review, and hooks integrity verification. Use when: security review, vulnerability assessment, threat modeling, pre-deployment audit.
@@ -18,12 +20,7 @@ description: |
   assistant: "I'll use ralph-security to run all 6 quality pillars: threat model, code audit, secrets scan, dependency CVEs, plan review, and hooks integrity."
   <commentary>Pre-deployment security is ralph-security's primary use case.</commentary>
   </example>
-allowed-tools:
-  - LSP
-  - Read
-  - Grep
-  - Glob
-  - Bash(npm audit:*, pip-audit:*, semgrep:*, gitleaks:*, git:*)
+tools: LSP, Read, Grep, Glob, Skill, Bash(npm audit:*, pip-audit:*, semgrep:*, gitleaks:*, git:*)
 diary_path: ~/Documents/Obsidian/MiVault/agents/ralph-security/diary/
 ---
 
@@ -41,7 +38,7 @@ Consolidates all security tools in the Multi-Agent Ralph ecosystem:
 | Code Audit | `/sec-context-depth` | 27 security anti-patterns deep analysis |
 | SecOps | `/senior-secops` | Application security operations |
 | App Security | `/senior-security` | Comprehensive application security |
-| Dual-Model Audit | `/security` | Codex + MiniMax second opinion |
+| Deep Audit | `/security` | Claude-native vulnerability analysis (OWASP A01-A10) |
 | Iterative Audit | `/security-loop` | Loop until zero vulnerabilities |
 | Assessment | `/security-audit` | Security assessment workflow |
 | Best Practices | `/security-best-practices` | Language-specific security patterns |
@@ -111,6 +108,6 @@ Consolidates all security tools in the Multi-Agent Ralph ecosystem:
 Verify:
 - [ ] All 6 quality pillars assessed
 - [ ] No critical/high findings unresolved
-- [ ] Security hooks registered in ALL active settings (claude + minimax)
+- [ ] Security hooks registered in active settings (claude)
 - [ ] Threat model updated if new attack surface introduced
 - [ ] Secrets scan clean on all modified files

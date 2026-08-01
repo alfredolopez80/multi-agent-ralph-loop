@@ -12,7 +12,6 @@ EXPECTED_SKILLS = [
     "task-classifier",
     "retrospective",
     "worktree-pr",
-    "minimax-mcp-usage",
     "context7-usage",
     "task-visualizer",
 ]
@@ -175,8 +174,11 @@ def test_skill_root_exists(skill_root):
     assert os.path.isdir(skill_root)
 
 
-def test_expected_skill_count_is_seven(expected_skills):
-    assert len(expected_skills) == 7
+def test_expected_skill_list_is_not_empty(expected_skills):
+    """A hardcoded count goes stale on every add/remove; what must never happen is an
+    EMPTY list, which would make every parametrised test below vacuously pass."""
+    assert len(expected_skills) > 0, "EXPECTED_SKILLS is empty — nothing would be tested"
+    assert len(expected_skills) == len(set(expected_skills)), "duplicate entries"
 
 
 @pytest.mark.parametrize("skill_name", EXPECTED_SKILLS)

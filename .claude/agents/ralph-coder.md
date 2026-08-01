@@ -5,7 +5,7 @@ description: >
   Specialized coding teammate for Agent Teams. Implements features, fixes bugs,
   and refactors code following Ralph quality gates. Use when code changes are
   needed: new features, bug fixes, refactoring, or performance improvements.
-tools: ["Read", "Edit", "Write", "Bash", "Grep", "Glob"]
+tools: Read, Edit, Write, Bash, Grep, Glob, Skill
 permissionMode: acceptEdits
 maxTurns: 50
 diary_path: ~/Documents/Obsidian/MiVault/agents/ralph-coder/diary/

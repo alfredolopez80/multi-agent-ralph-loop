@@ -232,38 +232,6 @@ ralph retrospective
 | PARALLEL_CHUNKS | sonnet (chunks) | opus (aggregate) | 15/chunk |
 | RECURSIVE | opus (root) | sonnet (sub) | 15/sub |
 
-## GLM-5 Teams Integration (--with-glm5)
-
-When `$ARGUMENTS` contains `--with-glm5`:
-
-**Step 1: Parse Arguments**
-```
-TASK=<everything before --with-glm5>
-USE_GLM5=true
-```
-
-**Step 2: Spawn GLM-5 Teammates**
-```bash
-# GLM-5 Coder
-.claude/scripts/glm5-teammate.sh "glm5-coder" "$CODER_TASK" "$TASK_ID-coder"
-
-# GLM-5 Reviewer
-.claude/scripts/glm5-teammate.sh "glm5-reviewer" "$REVIEW_TASK" "$TASK_ID-reviewer"
-
-# GLM-5 Tester
-.claude/scripts/glm5-teammate.sh "glm5-tester" "$TEST_TASK" "$TASK_ID-tester"
-```
-
-**Step 3: Wait for Completion**
-```bash
-cat .ralph/teammates/$TASK_ID-*/status.json
-```
-
-**Step 4: Aggregate Results**
-- Collect outputs from `.ralph/reasoning/`
-- Show thinking process for transparency
-- Apply quality gates
-
 ## Available Teammates
 
 | Teammate | Role | Best For |
@@ -305,8 +273,6 @@ cat .ralph/teammates/$TASK_ID-*/status.json
 ralph orch "task description"
 
 # With GLM-5 teammates
-ralph orch "task description" --with-glm5
-ralph orch "complex feature" --with-glm5 --teammates coder,reviewer,tester
 
 # Quality gates
 ralph gates

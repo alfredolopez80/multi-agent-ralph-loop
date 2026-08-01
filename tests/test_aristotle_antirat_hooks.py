@@ -128,12 +128,13 @@ PATTERNS_FILE = (PROJECT_ROOT / "docs" / "reference" /
 
 
 def state_dir() -> Path:
-    """``~/.claude/state`` resolved at call time.
+    """The per-project state dir, resolved at call time.
 
-    Under the ``isolated_home`` fixture this is the temp HOME, so the
-    classifier (writes ``~/.claude/state/current-complexity.json``) and the
-    aristotle hook (reads it) share a clean, isolated state dir. The gate's
-    ``$CWD/.claude/state`` is made to match by running it with ``cwd=Path.home()``.
+    Complexity state is per-project (``$CWD/.claude/state``), never a shared
+    ``~/.claude/state``: a global file let the complexity scored in one repo gate
+    tool calls in another. These tests pass ``cwd=Path.home()`` to both the
+    classifier (writer) and the gate (reader), so under the ``isolated_home``
+    fixture both land in the same clean temp dir.
     """
     return Path.home() / ".claude" / "state"
 
@@ -200,7 +201,12 @@ class TestPromptClassifier:
 
     def test_saves_complexity_state(self):
         """Classifier must write complexity score to state file."""
-        inp = json.dumps({"prompt": "refactor the entire auth system"})
+        # `cwd` is required: the classifier persists complexity per-project under
+        # $CWD/.claude/state, never in a shared ~/.claude/state (cross-contamination).
+        inp = json.dumps({
+            "prompt": "refactor the entire auth system",
+            "cwd": str(Path.home()),
+        })
         run_hook(CLASSIFIER_HOOK, inp)
         state_file = state_dir() / "current-complexity.json"
         assert state_file.exists(), "Complexity state file not created"
@@ -456,7 +462,8 @@ class TestEndToEndChain:
         if CLASSIFIER_HOOK.exists():
             inp = json.dumps({
                 "prompt": "redesign the authentication system "
-                          "with OAuth2 and JWT tokens"
+                          "with OAuth2 and JWT tokens",
+                "cwd": str(Path.home()),
             })
             r1 = run_hook(CLASSIFIER_HOOK, inp)
             log_result("chain_step1_classifier", "universal-prompt-classifier.sh",
@@ -500,7 +507,10 @@ class TestEndToEndChain:
         clean stop approves."""
         # Step 1: Classifier
         if CLASSIFIER_HOOK.exists():
-            inp = json.dumps({"prompt": "fix typo in readme"})
+            inp = json.dumps({
+                "prompt": "fix typo in readme",
+                "cwd": str(Path.home()),
+            })
             r1 = run_hook(CLASSIFIER_HOOK, inp)
             assert r1["is_valid_json"]
             state = json.loads(

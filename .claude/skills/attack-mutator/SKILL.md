@@ -257,11 +257,14 @@ Step 7: VALIDATE
 
 ### Invocation
 
+This is a SKILL, not an agent: invoke it with the Skill tool (or `/attack-mutator`).
+Routing it through Task as a subagent type does not resolve — no agent carries
+this name — so the call fails.
+
 ```yaml
-Task:
-  subagent_type: "attack-mutator"
-  model: "sonnet"
-  prompt: |
+Skill:
+  skill: "attack-mutator"
+  args: |
     ORIGINAL: "Test authentication with invalid token"
     COUNT: 10
     TYPES: ["semantic", "encoding", "visual"]

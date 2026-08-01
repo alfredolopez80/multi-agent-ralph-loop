@@ -462,7 +462,9 @@ class TestVersionMarkers:
 class TestV245Hooks:
     """Test v2.45 specific hooks are properly configured."""
 
-    V245_HOOKS = ["lsa-pre-step.sh", "plan-sync-post-step.sh", "auto-plan-state.sh"]
+    # auto-plan-state.sh archived 2026-07-31 (moved to .claude/archive/ and
+    # deregistered from both settings files) — no longer expected to exist.
+    V245_HOOKS = ["lsa-pre-step.sh", "plan-sync-post-step.sh"]
 
     def test_v245_hooks_exist(self, global_hooks_dir):
         """v2.45 hooks should exist."""

@@ -17,12 +17,9 @@
 
 set -euo pipefail
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+# Shared colors, counters and the zero-checks verdict guard.
+_VC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_VC_DIR}/lib/validation-common.sh"
 
 # Configuration
 FORMAT="${FORMAT:-text}"
@@ -88,7 +85,6 @@ declare -A HOOK_INPUT_MAP
 HOOK_INPUT_MAP["git-safety-guard.py"]="pre-tool-use-bash.json"
 HOOK_INPUT_MAP["repo-boundary-guard.sh"]="pre-tool-use-bash.json"
 HOOK_INPUT_MAP["context-warning.sh"]="user-prompt-submit.json"
-HOOK_INPUT_MAP["glm5-subagent-stop.sh"]="subagent-stop.json"
 HOOK_INPUT_MAP["pre-compact-handoff.sh"]="pre-compact.json"
 HOOK_INPUT_MAP["auto-migrate-plan-state.sh"]="session-start.json"
 HOOK_INPUT_MAP["session-start-restore-context.sh"]="session-start.json"
@@ -286,7 +282,6 @@ get_hooks_to_test() {
         "git-safety-guard.py"
         "repo-boundary-guard.sh"
         "context-warning.sh"
-        "glm5-subagent-stop.sh"
         "pre-compact-handoff.sh"
     )
 

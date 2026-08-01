@@ -97,28 +97,6 @@ Uses Claude Sonnet with **15 iteration limit**:
 - Cost: Standard Claude pricing
 - Quality: 85%+ SWE-bench accuracy
 
-### GLM-5 Mode (--with-glm5 flag)
-
-```bash
-ralph iterate "implement OAuth2 authentication" --with-glm5
-```
-
-Uses GLM-5 with **30 iteration limit**:
-- Best for: Standard features, refactoring, testing, documentation
-- Cost: ~10% of Claude cost
-- Quality: 80%+ SWE-bench accuracy
-
-### MiniMax Mode (--mmc flag)
-
-```bash
-ralph iterate --mmc "implement OAuth2 authentication"
-```
-
-Uses MiniMax M2.1 with **30 iteration limit**:
-- Best for: Non-critical features, exploratory research
-- Cost: ~8% of Claude cost
-- Quality: 74% SWE-bench accuracy
-
 ## CLI Execution
 
 ```bash
@@ -126,10 +104,8 @@ Uses MiniMax M2.1 with **30 iteration limit**:
 ralph iterate "implement user authentication with JWT"
 
 # GLM-5 mode (30 iterations)
-ralph iterate "refactor database queries" --with-glm5
 
 # MiniMax mode (30 iterations)
-ralph iterate --mmc "refactor database queries to use TypeORM"
 
 # Complex task with specific requirements
 ralph iterate "add rate limiting to API endpoints with Redis"
@@ -250,7 +226,6 @@ Each iteration follows this pattern:
 | `teammate-idle-quality-gate.sh` | TeammateIdle | Quality checks before idle |
 | `task-completed-quality-gate.sh` | TaskCompleted | Final validation before completion |
 | `ralph-subagent-start.sh` | SubagentStart | Load Ralph context into teammates |
-| `glm5-subagent-stop.sh` | SubagentStop | Quality gates when teammate stops |
 
 ### Team Composition
 
