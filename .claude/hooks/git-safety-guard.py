@@ -121,6 +121,10 @@ def normalize_command(command: str) -> str:
     command = re.sub(r"[\r\n]+", " ; ", command)
     command = re.sub(r"[ \t]+", " ", command.strip())
 
+    # HARDENING: collapse adjacent quoted-string concatenation so obfuscation like
+    # 'rm' + ' -rf /' cannot split a destructive token before the quote-stripping below.
+    command = re.sub(r'''(["'])\s*\+\s*\1''', "", command)
+
     # Remove common quote variations around paths
     # e.g., rm -rf "/tmp/foo" -> rm -rf /tmp/foo for pattern matching
     command = re.sub(r'["\']([^"\']+)["\']', r"\1", command)
@@ -216,8 +220,8 @@ DESTRUCTIVE_INNER = (
     r"|aws\s+[\w-]+\s+(?:delete|terminate|purge|destroy|remove|deregister)"
     r"|aws\s+s3\s+(?:rm|rb|sync)\b"
     r"|gcloud\s+.*\bdelete\b"
-    r"|gsutil\s+(?:rm|rb)\b"
-    r"|kubectl\s+(?:delete|drain)\b)"
+    r"|gsutil\s+(?:rm|rb)\b)"
+    # HANDOFF: kubectl verbs (delete/drain) delegated to k8s-context-guard-v2 (context-aware).
 )
 
 # Patterns that are ALWAYS safe (checked first)
@@ -405,6 +409,13 @@ GIT_FS_BLOCKED_PATTERNS = [
         r"git\s+rebase\s+.*(main|master|develop)\b",
         "rebasing shared branches can cause issues for collaborators",
     ),
+    # HARDENING: recursive deletion via interpreter libraries (bypasses the `rm` token).
+    # Same temp-dir exemption as the rm patterns above; literal absolute paths only
+    # (a variable/expression argument cannot be resolved statically -- inherent limit).
+    (
+        r"(?:shutil\.rmtree|os\.removedirs)\s*\(\s*(?!(/tmp/|/var/tmp/|/private/tmp/|\$TMPDIR/))/\S",
+        "recursive library deletion (rmtree/removedirs) outside a safe temp directory",
+    ),
 ]
 
 AWS_BLOCKED_PATTERNS = [
@@ -559,21 +570,23 @@ KUBECTL_BLOCKED_PATTERNS = [
     ),
 ]
 
-# Aggregates - names preserved so check_* functions and legacy tests are untouched
+# Aggregates - names preserved so check_* functions and legacy tests are untouched.
+# HANDOFF (k8s-context-guard-v2): KUBECTL_* lists are intentionally NOT aggregated here.
+# kubectl/helm/minikube decisions are delegated to the context-aware k8s-context-guard-v2
+# hook (single owner of the kube domain -> no double-decision). The KUBECTL_* definitions
+# above are retained only so legacy tests importing those names keep resolving.
 SAFE_PATTERNS = (
-    GIT_SAFE_PATTERNS + AWS_SAFE_PATTERNS + GCLOUD_SAFE_PATTERNS + KUBECTL_SAFE_PATTERNS
+    GIT_SAFE_PATTERNS + AWS_SAFE_PATTERNS + GCLOUD_SAFE_PATTERNS
 )
 BLOCKED_PATTERNS = (
     GIT_FS_BLOCKED_PATTERNS
     + AWS_BLOCKED_PATTERNS
     + GCLOUD_BLOCKED_PATTERNS
-    + KUBECTL_BLOCKED_PATTERNS
 )
 CONFIRMATION_PATTERNS = (
     GIT_CONFIRMATION_PATTERNS
     + AWS_CONFIRMATION_PATTERNS
     + GCLOUD_CONFIRMATION_PATTERNS
-    + KUBECTL_CONFIRMATION_PATTERNS
 )
 
 # Confirmation groups: (patterns, env vars that pre-approve them, decision).
@@ -583,7 +596,7 @@ CONFIRMATION_GROUPS = [
     (GIT_CONFIRMATION_PATTERNS, ("GIT_FORCE_PUSH_CONFIRMED",), "deny"),
     (AWS_CONFIRMATION_PATTERNS, ("AWS_DESTRUCTIVE_CONFIRMED", "CLOUD_DESTRUCTIVE_CONFIRMED"), "ask"),
     (GCLOUD_CONFIRMATION_PATTERNS, ("GCLOUD_DESTRUCTIVE_CONFIRMED", "CLOUD_DESTRUCTIVE_CONFIRMED"), "ask"),
-    (KUBECTL_CONFIRMATION_PATTERNS, ("KUBECTL_DESTRUCTIVE_CONFIRMED", "CLOUD_DESTRUCTIVE_CONFIRMED"), "ask"),
+    # KUBECTL_CONFIRMATION_PATTERNS handed off to k8s-context-guard-v2 (context-aware).
 ]
 
 

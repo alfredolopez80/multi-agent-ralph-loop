@@ -95,14 +95,7 @@ class TestCloudSafePatterns:
             "gcloud auth list",
             "gsutil ls gs://bucket",
             "gsutil stat gs://bucket/obj",
-            # kubectl
-            "kubectl get pods",
-            "kubectl get pods -A",
-            "kubectl describe deployment my-app",
-            "kubectl logs -f pod-x",
-            "kubectl top nodes",
-            "kubectl config view",
-            "kubectl delete pod x --dry-run=client",
+            # kubectl handed off to k8s-context-guard-v2 (tests/test_k8s_context_guard.py)
         ],
     )
     def test_safe_cloud_commands(self, command):
@@ -112,16 +105,6 @@ class TestCloudSafePatterns:
         )
         blocked, reason = git_safety_guard.check_blocked_pattern(normalized)
         assert blocked is False, f"'{command}' must not be blocked ({reason})"
-
-    def test_dry_run_wins_over_blocked_at_runtime(self, capsys):
-        """SAFE is evaluated before BLOCKED in main(), so a --dry-run preview
-        of an otherwise-blocked command is allowed (it changes nothing)."""
-        exit_code, decision, _reason = run_main_with_output(
-            "kubectl delete pods --all --dry-run=server", capsys
-        )
-        assert exit_code == 0
-        assert decision == "allow"
-
 
 class TestAwsBlockedPatterns:
     """Catastrophic AWS operations must be BLOCKED with no escape hatch."""
@@ -197,30 +180,31 @@ class TestGcloudBlockedPatterns:
         assert expected_reason.lower() in reason.lower()
 
 
-class TestKubectlBlockedPatterns:
-    """High blast-radius kubectl operations must be BLOCKED."""
+class TestKubectlHandedOff:
+    """kubectl is HANDED OFF to k8s-context-guard-v2 (context-aware, single owner).
+    git-safety no longer decides kubectl; the real context-aware protection is in
+    tests/test_k8s_context_guard.py. These assert git-safety CEDES kubectl (neither
+    blocks nor asks) so there is no double-decision on the kube domain."""
 
     @pytest.mark.parametrize(
-        "command,expected_reason",
+        "command",
         [
-            ("kubectl delete namespace prod", "entire namespace"),
-            ("kubectl delete ns prod", "entire namespace"),
-            ("kubectl delete pods --all", "ALL resources"),
-            ("kubectl delete deploy --all-namespaces", "all namespaces"),
-            ("kubectl delete pods -A", "all namespaces"),
-            ("kubectl delete pvc data-0", "persistent volume"),
-            ("kubectl delete pv shared-disk", "persistent volume"),
-            ("kubectl delete crd foo.example.com", "CRD cascades"),
-            ("kubectl delete pod x --grace-period=0 --force", "grace-period 0"),
-            ("kubectl replace --force -f deploy.yaml", "forced deletion/replacement"),
-            ("kubectl -n prod delete namespace staging", "entire namespace"),
+            "kubectl delete namespace prod",
+            "kubectl delete pods --all",
+            "kubectl delete pvc data-0",
+            "kubectl replace --force -f deploy.yaml",
+            "kubectl drain node-1",
+            "kubectl delete pod x --grace-period=0 --force",
         ],
     )
-    def test_kubectl_blocked(self, command, expected_reason):
+    def test_git_safety_cedes_kubectl(self, command):
         normalized = git_safety_guard.normalize_command(command)
-        blocked, reason = git_safety_guard.check_blocked_pattern(normalized)
-        assert blocked is True, f"'{command}' should be BLOCKED"
-        assert expected_reason.lower() in reason.lower()
+        assert git_safety_guard.check_blocked_pattern(normalized)[0] is False, (
+            f"git-safety must CEDE kubectl (handoff), not block: '{command}'"
+        )
+        assert git_safety_guard.check_confirmation_pattern(normalized)[0] is False, (
+            f"git-safety must CEDE kubectl (handoff), not ask: '{command}'"
+        )
 
 
 class TestCloudAskPatterns:
@@ -239,11 +223,7 @@ class TestCloudAskPatterns:
             "gcloud run services delete svc",
             "gcloud pubsub topics delete t",
             "gsutil rm gs://bucket/obj.txt",
-            "kubectl delete pod crashed-pod",
-            "kubectl delete deployment my-app",
-            "kubectl delete configmap stale-config",
-            "kubectl drain node-1",
-            "kubectl delete -f deploy.yaml",
+            # kubectl handed off to k8s-context-guard-v2
         ],
     )
     def test_needs_confirmation(self, command):
@@ -255,7 +235,6 @@ class TestCloudAskPatterns:
     @pytest.mark.parametrize(
         "command",
         [
-            "kubectl delete pod crashed-pod",
             "aws lambda delete-function --function-name f",
             "gcloud functions delete f",
         ],
@@ -269,7 +248,7 @@ class TestCloudAskPatterns:
 
     def test_ask_decision_is_ask_not_deny(self):
         """check_confirmation_pattern_ex returns 'ask' for cloud groups."""
-        normalized = git_safety_guard.normalize_command("kubectl delete pod x")
+        normalized = git_safety_guard.normalize_command("aws lambda delete-function --function-name f")
         needs, _reason, decision = git_safety_guard.check_confirmation_pattern_ex(normalized)
         assert needs is True
         assert decision == "ask"
@@ -289,15 +268,12 @@ class TestCloudBypassPrevention:
         "command",
         [
             "aws s3 ls && aws s3 rb --force s3://x",
-            "kubectl get pods; kubectl delete ns prod",
             "gcloud info || gcloud projects delete p --quiet",
             "echo $(gcloud projects delete p --quiet)",
             "echo `aws ec2 terminate-instances --instance-ids i-1`",
             'bash -c "aws s3 rb --force s3://x"',
-            'sh -c "kubectl delete namespace prod"',
             "sudo aws ec2 terminate-instances --instance-ids i-1",
             "AWS_PROFILE=prod aws rds delete-db-instance --db-instance-identifier d",
-            "xargs kubectl delete ns",
             "AWS   S3   RB --FORCE S3://X",  # case + whitespace
             'aws s3 rb "--force" s3://x',  # quoted flag
         ],
@@ -340,12 +316,6 @@ class TestCloudEscapeHatches:
         assert exit_code == 0
         assert decision == "allow"
 
-    def test_cloud_env_allows_kubectl_ask(self, monkeypatch, capsys):
-        monkeypatch.setenv("CLOUD_DESTRUCTIVE_CONFIRMED", "1")
-        exit_code, decision, _ = run_main_with_output("kubectl delete pod x", capsys)
-        assert exit_code == 0
-        assert decision == "allow"
-
     def test_aws_env_does_not_allow_gcloud(self, monkeypatch, capsys):
         monkeypatch.setenv("AWS_DESTRUCTIVE_CONFIRMED", "1")
         exit_code, decision, _ = run_main_with_output("gcloud functions delete f", capsys)
@@ -369,7 +339,6 @@ class TestCloudEscapeHatches:
             ("CLOUD_DESTRUCTIVE_CONFIRMED", "aws ec2 terminate-instances --instance-ids i-1"),
             ("AWS_DESTRUCTIVE_CONFIRMED", "aws s3 rb s3://prod --force"),
             ("GCLOUD_DESTRUCTIVE_CONFIRMED", "gcloud projects delete p --quiet"),
-            ("KUBECTL_DESTRUCTIVE_CONFIRMED", "kubectl delete namespace prod"),
         ],
     )
     def test_no_env_var_bypasses_blocked_tier(self, monkeypatch, env_var, command, capsys):
