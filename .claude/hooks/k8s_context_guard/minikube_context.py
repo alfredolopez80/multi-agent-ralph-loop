@@ -4,6 +4,7 @@ import json
 import re
 import subprocess
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 # minikube API servers are ALWAYS local endpoints: 127.0.0.1/localhost (docker & other
 # port-forward drivers expose the apiserver on a forwarded localhost port) or an RFC1918
@@ -30,11 +31,16 @@ def _run(*args: str) -> subprocess.CompletedProcess[str]:
 
 
 def _is_local_endpoint(server: str) -> bool:
-    """True iff the kube API server URL points at a local/private address."""
-    match = re.match(r"https?://(\[?[^/:\]]+\]?)", server.strip())
-    if not match:
+    """True iff the kube API server URL's HOST is a local/private address.
+
+    Uses urlsplit so userinfo (`https://10.0.0.1@evil.com`), an explicit port, and IPv6
+    brackets are parsed correctly. A naive regex treats the userinfo as the host and is
+    spoofable — `hostname` returns the real host (`evil.com`) here.
+    """
+    try:
+        host = (urlsplit(server.strip()).hostname or "").lower()
+    except ValueError:
         return False
-    host = match.group(1).strip("[]").lower()
     return bool(_LOCAL_HOST.match(host) or _RFC1918.match(host))
 
 

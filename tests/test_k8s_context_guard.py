@@ -21,7 +21,7 @@ sys.path.insert(0, str(HOOKS_DIR))
 
 from k8s_context_guard import context_classification as cc  # noqa: E402
 from k8s_context_guard.cloud_operation_gate import CommandAssessment, assess_command  # noqa: E402
-from k8s_context_guard.minikube_context import ContextVerification  # noqa: E402
+from k8s_context_guard.minikube_context import ContextVerification, _is_local_endpoint  # noqa: E402
 
 
 def _load_entrypoint():
@@ -250,10 +250,25 @@ def test_opaque_shell_does_not_bypass(shell, tmp_path):
 @pytest.mark.parametrize("cmd", [
     "X=$(kubectl --context={ctx} delete namespace foo)",
     "echo `kubectl --context={ctx} delete ns foo`",
+    "cat <(kubectl --context={ctx} delete ns foo)",   # process substitution
+    "tee >(kubectl --context={ctx} delete ns foo)",
 ])
 def test_command_substitution_does_not_bypass(cmd, tmp_path):
     a = assess_command(cmd.format(ctx=CLERUM_PROD), tmp_path, make_verifier(set()))
     assert a.action == "approval"
+
+
+@pytest.mark.parametrize("server,is_local", [
+    ("https://127.0.0.1:63791", True),
+    ("https://192.168.58.2:8443", True),
+    ("https://[::1]:8443", True),
+    ("https://127.0.0.1.evil.com:8443", False),   # suffix spoof
+    ("https://10.0.0.1@evil.com", False),          # userinfo spoof
+    ("https://34.120.0.1", False),                 # public IP
+    ("https://myprod.example.com", False),         # public host
+])
+def test_is_local_endpoint_rejects_spoofs(server, is_local):
+    assert _is_local_endpoint(server) is is_local
 
 
 def test_wrapper_on_minikube_read_still_allows(tmp_path):

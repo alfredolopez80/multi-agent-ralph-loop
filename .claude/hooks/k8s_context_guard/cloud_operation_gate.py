@@ -362,7 +362,8 @@ def assess_command(
     # Command substitution ($()/backticks) is NOT expanded by shlex, so a cloud tool hidden
     # inside one escapes per-segment classification. Treat any cloud tool inside a
     # substitution as un-inspectable -> approval (never a silent allow).
-    if re.search(rf"(?:[$]\([^)]*|`[^`]*)\b(?:{_CLOUD_TOOL_ALT})\b", command):
+    # covers $(...), <(...) and >(...) process substitution, and `...` backticks
+    if re.search(rf"(?:[$<>]\([^)]*|`[^`]*)\b(?:{_CLOUD_TOOL_ALT})\b", command):
         approval = _approval("command", "mutating", "execute a cloud command hidden in command substitution")
         return replace(approval, approval_subject=command)
     script_hashes: list[str] = []
