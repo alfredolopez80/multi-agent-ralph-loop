@@ -352,3 +352,34 @@ class TestCloudEscapeHatches:
         monkeypatch.setenv("GIT_FORCE_PUSH_CONFIRMED", "1")
         exit_code = run_main("git push --force origin main")
         assert exit_code == 0
+
+
+class TestRmtreeHardening:
+    """Recursive library deletion (rmtree/removedirs) outside temp dirs must be blocked,
+    including the from-import / keyword-arg / getattr obfuscations found in review."""
+
+    @pytest.mark.parametrize(
+        "command",
+        [
+            "python3 -c \"from shutil import rmtree; rmtree('/etc')\"",
+            "python3 -c \"import shutil; shutil.rmtree(path='/etc')\"",
+            "python3 -c \"import shutil; getattr(shutil, 'rmtree')('/etc')\"",
+            "python3 -c \"import os; os.removedirs('/etc')\"",
+        ],
+    )
+    def test_rmtree_obfuscations_blocked(self, command):
+        normalized = git_safety_guard.normalize_command(command)
+        blocked, _reason = git_safety_guard.check_blocked_pattern(normalized)
+        assert blocked is True, f"'{command}' should be blocked"
+
+    @pytest.mark.parametrize(
+        "command",
+        [
+            "python3 -c \"import shutil; shutil.rmtree('/tmp/build')\"",  # temp dir exempt
+            "python3 -c \"print(1 + 2)\"",
+        ],
+    )
+    def test_rmtree_no_false_positive(self, command):
+        normalized = git_safety_guard.normalize_command(command)
+        blocked, _reason = git_safety_guard.check_blocked_pattern(normalized)
+        assert blocked is False, f"'{command}' must not be blocked"

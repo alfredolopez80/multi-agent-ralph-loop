@@ -29,8 +29,56 @@ MUTATING_ACTIONS = {
 }
 COMPLETE_KUBERNETES_RESOURCES = {
     "cluster", "clusters", "crd", "customresourcedefinition", "customresourcedefinitions", "namespace",
-    "namespaces", "node", "nodes", "ns",
+    "namespaces", "node", "nodes", "no", "ns",
+    # PV/PVC deletion can reclaim/destroy underlying data — high blast radius even on minikube.
+    "pv", "persistentvolume", "persistentvolumes", "pvc", "persistentvolumeclaim", "persistentvolumeclaims",
 }
+
+# Command-prefix wrappers to peel off before tool classification, mirroring the PR-#31
+# hardening in git-safety-guard.py. A leading `sudo`/`timeout`/`nice`/… must NOT smuggle a
+# cloud tool past the guard (it would otherwise be classified as an opaque non-cloud tool
+# and silently allowed). Value-taking options and leading positional values are consumed.
+_WRAPPERS = {
+    "sudo", "doas", "command", "nice", "ionice", "nohup", "setsid", "stdbuf", "time", "timeout", "watch", "chrt",
+}
+_WRAPPER_VALUE_OPTS = {
+    "-n", "--adjustment", "-c", "--class", "--classdata", "-s", "--signal", "-k", "--kill-after",
+    "-i", "-o", "-e", "--input", "--output", "--error", "-p",
+}
+_WRAPPERS_LEADING_VALUE = {"timeout", "watch"}  # first positional is a duration/interval, not the tool
+# Shells whose `-c` payload this guard does NOT parse (only bash/sh/zsh are inspected). An
+# opaque shell hides a cloud command -> require approval instead of silent allow.
+_OPAQUE_SHELLS = {"dash", "ksh", "fish", "ash", "csh", "tcsh"}
+
+
+def _strip_command_wrappers(parts: list[str]) -> tuple[list[str], bool]:
+    """Peel leading command-prefix wrappers (sudo/timeout/nice/…) to reach the real tool.
+
+    Returns (stripped_parts, uninspectable). `uninspectable=True` when `eval` is hit — its
+    payload is a runtime-built string the guard cannot statically see — so the caller must
+    require approval rather than allow.
+    """
+    index = 0
+    while index < len(parts):
+        tool = _tool(parts[index])
+        if tool == "eval":
+            return parts[index:], True
+        if tool not in _WRAPPERS:
+            break
+        index += 1
+        leading_value = tool in _WRAPPERS_LEADING_VALUE
+        while index < len(parts):
+            part = parts[index]
+            if part.startswith("-"):
+                option = part.split("=", 1)[0]
+                index += 1 if "=" in part or option not in _WRAPPER_VALUE_OPTS else 2
+                continue
+            if leading_value:
+                index += 1
+                leading_value = False
+                continue
+            break
+    return parts[index:], False
 
 
 @dataclass(frozen=True)
@@ -204,17 +252,37 @@ def _assess_cloud_parts(
     parts: list[str],
     verifier: ContextVerifier,
     kubeconfig: str = "",
-    cwd: Path = Path.cwd(),
+    cwd: Path | None = None,
 ) -> CommandAssessment:
+    # Path.cwd() must be resolved per-call, NOT baked into the default arg at import time.
+    if cwd is None:
+        cwd = Path.cwd()
     tool = _tool(parts[0])
     risk, operation = _classify_words(parts)
-    if tool != "kubectl":
+
+    if tool == "minikube":
+        # minikube only ever targets LOCAL profiles; a read is safe, a write (delete/stop/
+        # pause) affects a local cluster -> ask (profile set so the entrypoint maps to ask).
+        if risk == "read":
+            return CommandAssessment(action="allow", tool=tool)
+        profile = _option(parts, "--profile") or _option(parts, "-p")
+        return replace(_approval(tool, risk, f"{operation} a local minikube profile"), profile=profile or "minikube")
+
+    if tool not in {"kubectl", "helm"}:
         if risk == "read":
             return CommandAssessment(action="allow", tool=tool)
         return _approval(tool, risk, f"{operation} cluster or cloud state")
 
-    context = _context(parts)
+    # kubectl (--context) and helm (--kube-context) both name their target cluster; verify
+    # the declared context the same way so helm writes against prod are DENIED, not just asked.
+    context = _context(parts) if tool == "kubectl" else _option(parts, "--kube-context")
     if not context:
+        if tool == "helm":
+            # helm without --kube-context uses the ambient current-context — unknowable
+            # statically -> approval (never silent allow). R3 (default-context) backstop.
+            if risk == "read":
+                return CommandAssessment(action="allow", tool=tool)
+            return _approval(tool, risk, f"{operation} the ambient kube-context")
         return CommandAssessment(
             action="block",
             reason_code="kubectl_context_required",
@@ -275,6 +343,14 @@ def assess_command(
     cwd: Path,
     verifier: ContextVerifier = verify_minikube_context,
 ) -> CommandAssessment:
+    # Command substitution ($()/backticks) is NOT expanded by shlex, so a cloud tool hidden
+    # inside one escapes per-segment classification. Treat any cloud tool inside a
+    # substitution as un-inspectable -> approval (never a silent allow).
+    if re.search(r"[$]\([^)]*\b(?:kubectl|helm|minikube)\b", command) or re.search(
+        r"`[^`]*\b(?:kubectl|helm|minikube)\b", command
+    ):
+        approval = _approval("command", "mutating", "execute a cloud command hidden in command substitution")
+        return replace(approval, approval_subject=command)
     script_hashes: list[str] = []
     inspected_scripts: list[Path] = []
     assessments: list[CommandAssessment] = []
@@ -295,10 +371,21 @@ def assess_command(
         parts = _without_environment(raw_parts)
         if not parts:
             return
+        # Peel command-prefix wrappers (sudo/timeout/nice/…) so a leading wrapper cannot
+        # smuggle a cloud tool past classification (PR-#31 bypass class).
+        parts, uninspectable = _strip_command_wrappers(parts)
+        if uninspectable:
+            assessments.append(_approval("command", "mutating", "execute a cloud command hidden behind eval"))
+            return
+        if not parts:
+            return
         if depth > 3:
             assessments.append(_approval("local-script", "mutating", "execute nested script logic beyond inspection depth"))
             return
         tool = _tool(parts[0])
+        if tool in _OPAQUE_SHELLS:
+            assessments.append(_approval("local-script", "mutating", f"execute a cloud command via un-inspected shell '{tool}'"))
+            return
         if tool in {"bash", "sh", "zsh"}:
             shell_command = _shell_command(parts)
             if shell_command:

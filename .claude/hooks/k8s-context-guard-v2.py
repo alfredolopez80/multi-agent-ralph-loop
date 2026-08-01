@@ -10,7 +10,8 @@ I/O contract (mirrors git-safety-guard.py):
   stdout = {"hookSpecificOutput": {"hookEventName":"PreToolUse","permissionDecision": ...}}
   exit   = 0 for allow/ask, non-zero for deny (both still print JSON)
 
-Fail-closed: unparsable input or any evaluation error -> deny (never allow).
+Fail-closed: unparsable hook-input JSON or any evaluation error -> deny; an unparseable
+shell command (e.g. unbalanced quotes) -> ask. Never a silent allow on error.
 Named "-v2" with a distinct HOOK_NAME so it can never be confused with the retired
 sagart/legacy `k8s-context-guard` (identical-name twins were a diagnostic trap).
 """

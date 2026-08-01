@@ -231,3 +231,91 @@ def test_emit_allow_has_no_reason(capsys):
     out = json.loads(capsys.readouterr().out)
     assert out["hookSpecificOutput"]["permissionDecision"] == "allow"
     assert "permissionDecisionReason" not in out["hookSpecificOutput"]
+
+
+# --- hardening regression: wrapper / alt-shell / command-substitution must NOT bypass ---
+
+@pytest.mark.parametrize("wrapper", ["sudo", "timeout 30", "nice -n5", "nohup", "command", "eval", "time", "setsid", "stdbuf -oL"])
+def test_wrapper_prefix_does_not_bypass_prod(wrapper, tmp_path):
+    a = assess_command(f"{wrapper} kubectl --context={CLERUM_PROD} delete namespace foo", tmp_path, make_verifier(set()))
+    assert a.action in ("approval", "block"), f"{wrapper} leaked to allow"
+
+
+@pytest.mark.parametrize("shell", ["dash", "ksh", "fish", "ash"])
+def test_opaque_shell_does_not_bypass(shell, tmp_path):
+    a = assess_command(f'{shell} -c "kubectl --context={CLERUM_PROD} delete ns foo"', tmp_path, make_verifier(set()))
+    assert a.action == "approval"
+
+
+@pytest.mark.parametrize("cmd", [
+    "X=$(kubectl --context={ctx} delete namespace foo)",
+    "echo `kubectl --context={ctx} delete ns foo`",
+])
+def test_command_substitution_does_not_bypass(cmd, tmp_path):
+    a = assess_command(cmd.format(ctx=CLERUM_PROD), tmp_path, make_verifier(set()))
+    assert a.action == "approval"
+
+
+def test_wrapper_on_minikube_read_still_allows(tmp_path):
+    a = assess_command(f"sudo kubectl --context={MINIKUBE_CTX} get pods", tmp_path, make_verifier({MINIKUBE_CTX}))
+    assert a.action == "allow"
+
+
+# --- pv/pvc/node complete-deletion -> ask even on verified minikube (fix #6) ---
+
+@pytest.mark.parametrize("resource", ["pv", "pvc", "persistentvolume", "persistentvolumeclaim", "no", "node"])
+def test_high_blast_deletion_asks_on_minikube(resource, tmp_path):
+    a = assess_command(f"kubectl --context={MINIKUBE_CTX} delete {resource} x", tmp_path, make_verifier({MINIKUBE_CTX}))
+    assert a.action == "approval", f"delete {resource} should ask even on minikube"
+
+
+# --- helm / minikube context routing (fix #4) ---
+
+def test_helm_write_to_prod_is_denied(agents_cwd):
+    a = assess_command(f"helm uninstall app --kube-context {CLERUM_PROD}", agents_cwd, make_verifier(set()))
+    assert a.action == "approval" and a.context == CLERUM_PROD
+    assert ENTRY._decide(a, agents_cwd)[0] == "deny"
+
+
+def test_helm_read_allows(tmp_path):
+    a = assess_command("helm list --kube-context anything", tmp_path, make_verifier(set()))
+    assert a.action == "allow"
+
+
+def test_minikube_write_is_ask(tmp_path):
+    a = assess_command("minikube delete -p clerum-x", tmp_path, make_verifier(set()))
+    assert a.action == "approval"
+    assert ENTRY._decide(a, tmp_path)[0] == "ask"
+
+
+# --- parser: an item ending in ':' must not drop the rest of the section (fix #7) ---
+
+def test_agents_parser_item_with_colon_preserves_section(tmp_path):
+    (tmp_path / "AGENTS.md").write_text(
+        "<!-- k8s-guard:begin -->\nprod:\n  - ctx-a:\n  - real-prod-ctx\n<!-- k8s-guard:end -->\n",
+        encoding="utf-8",
+    )
+    _dev, prod = cc.load_context_lists(tmp_path)
+    assert "real-prod-ctx" in prod
+
+
+# --- corrupt memory / unparseable command / _choose precedence ---
+
+def test_corrupt_memory_is_deny(agents_cwd, tmp_path, monkeypatch):
+    mem = tmp_path / "mem.json"
+    mem.write_text("{not valid json", encoding="utf-8")
+    monkeypatch.setattr(cc, "_MEMORY_PATH", mem)
+    assert cc.classify("gke_totally_unknown", agents_cwd) == "unknown"
+
+
+def test_unparseable_command_is_ask(tmp_path):
+    a = assess_command('kubectl --context="oops apply', tmp_path, make_verifier(set()))
+    assert a.action == "approval"
+
+
+def test_choose_prefers_destructive_prod_across_segments(tmp_path):
+    a = assess_command(
+        f"kubectl --context={CLERUM_PROD} delete deploy x && kubectl --context={MINIKUBE_CTX} get pods",
+        tmp_path, make_verifier({MINIKUBE_CTX}),
+    )
+    assert a.action == "approval" and a.context == CLERUM_PROD

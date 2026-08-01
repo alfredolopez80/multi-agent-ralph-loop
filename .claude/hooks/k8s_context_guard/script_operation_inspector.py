@@ -8,7 +8,9 @@ SCRIPT_INTERPRETERS = {"bash", "node", "perl", "python", "python3", "ruby", "sh"
 SCRIPT_SUFFIXES = {".bash", ".js", ".mjs", ".pl", ".py", ".rb", ".sh", ".zsh"}
 PYTHON_VALUE_OPTIONS = {"-W", "-X", "--check-hash-based-pycs"}
 MAX_SCRIPT_BYTES = 256_000
-TOOL_RE = re.compile(r"(?<![A-Za-z0-9_.-])(aws|gcloud|helm|kubectl|minikube|terraform)(?![A-Za-z0-9_.-])")
+# Narrowed to this guard's domain (helm/kubectl/minikube). aws/gcloud/terraform belong to
+# git-safety-guard; extracting them here would be dead work since CLOUD_TOOLS drops them.
+TOOL_RE = re.compile(r"(?<![A-Za-z0-9_.-])(helm|kubectl|minikube)(?![A-Za-z0-9_.-])")
 
 
 def _is_script_interpreter(tool: str) -> bool:

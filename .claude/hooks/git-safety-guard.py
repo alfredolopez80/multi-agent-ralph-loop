@@ -32,8 +32,8 @@ BLOCKED COMMANDS (permissionDecision "deny" - no escape hatch):
   - gcloud: projects delete, compute/sql/container delete, storage rm -r,
     kms versions destroy, any delete with --quiet/-q, ... (GCLOUD_BLOCKED_PATTERNS)
   - gsutil: rm -r, rb
-  - kubectl: delete namespace, delete --all / -A, delete pv/pvc/crd,
-    --grace-period=0, delete/replace --force (KUBECTL_BLOCKED_PATTERNS)
+  - kubectl/helm/minikube: HANDED OFF to k8s-context-guard-v2 (context-aware); git-safety
+    no longer decides the kube domain (KUBECTL_* patterns are inert — see aggregates below)
 
 CONFIRMATION COMMANDS (recoverable-destructive):
   - git push --force / -f / +branch  -> deny unless GIT_FORCE_PUSH_CONFIRMED=1
@@ -410,11 +410,16 @@ GIT_FS_BLOCKED_PATTERNS = [
         "rebasing shared branches can cause issues for collaborators",
     ),
     # HARDENING: recursive deletion via interpreter libraries (bypasses the `rm` token).
-    # Same temp-dir exemption as the rm patterns above; literal absolute paths only
-    # (a variable/expression argument cannot be resolved statically -- inherent limit).
+    # Covers shutil.rmtree / os.removedirs / bare `rmtree(` (from-import) / keyword `path=` /
+    # getattr indirection. Same temp-dir exemption as the rm patterns above; literal absolute
+    # paths only (a variable/expression argument cannot be resolved statically -- inherent limit).
     (
-        r"(?:shutil\.rmtree|os\.removedirs)\s*\(\s*(?!(/tmp/|/var/tmp/|/private/tmp/|\$TMPDIR/))/\S",
+        r"(?:shutil\.rmtree|os\.removedirs|(?<![.\w])rmtree)\s*\(\s*(?:path\s*=\s*)?(?!(?:/tmp/|/var/tmp/|/private/tmp/|\$TMPDIR/))/\S",
         "recursive library deletion (rmtree/removedirs) outside a safe temp directory",
+    ),
+    (
+        r"getattr\s*\([^)]*\b(?:rmtree|removedirs)\b",
+        "recursive library deletion via getattr indirection",
     ),
 ]
 
@@ -574,7 +579,8 @@ KUBECTL_BLOCKED_PATTERNS = [
 # HANDOFF (k8s-context-guard-v2): KUBECTL_* lists are intentionally NOT aggregated here.
 # kubectl/helm/minikube decisions are delegated to the context-aware k8s-context-guard-v2
 # hook (single owner of the kube domain -> no double-decision). The KUBECTL_* definitions
-# above are retained only so legacy tests importing those names keep resolving.
+# above are inert: verified (grep) that NO live code path or test references them. They are
+# kept intentionally for reference / a fast handoff rollback, not accidental dead code.
 SAFE_PATTERNS = (
     GIT_SAFE_PATTERNS + AWS_SAFE_PATTERNS + GCLOUD_SAFE_PATTERNS
 )
@@ -867,7 +873,8 @@ def main():
 
         # BUG-007 FIX: Detect command substitution patterns ($(...) and backticks)
         # These can hide destructive commands inside seemingly safe ones
-        # v2.70.0: DESTRUCTIVE_INNER also covers aws/gcloud/gsutil/kubectl verbs
+        # v2.70.0: DESTRUCTIVE_INNER covers aws/gcloud/gsutil verbs (kubectl handed off to
+        # k8s-context-guard-v2, which itself detects cloud tools inside $()/backticks)
         if re.search(r'\$\(.*' + DESTRUCTIVE_INNER, command) or \
            re.search(r'`.*' + DESTRUCTIVE_INNER, command):
             log_security_event("BLOCKED", original_command, "Command substitution with destructive command detected")

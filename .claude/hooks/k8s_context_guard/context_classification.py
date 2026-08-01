@@ -38,6 +38,13 @@ def load_context_lists(cwd: Path) -> tuple[set[str], set[str]]:
     Returns (dev, prod) as sets of EXACT context names. A missing or malformed
     block yields empty sets, which upstream treats as fail-closed (only
     verified-minikube passes; every declared-remote path denies).
+
+    SECURITY (trust boundary): AGENTS.md is a repo-local file writable by the same agent
+    this guard restrains. A compromised/prompt-injected turn could add a context under
+    `dev:` to turn its OWN destructive command from deny into ASK — but never into allow
+    (classify() has no allow-mapping), and obvious-prod / declared-prod are checked BEFORE
+    dev, so a prod context can never be downgraded. The ask prompt is the backstop; treat
+    AGENTS.md edits in a PR as security-relevant review surface.
     """
     agents = cwd / "AGENTS.md"
     try:
@@ -58,14 +65,18 @@ def load_context_lists(cwd: Path) -> tuple[set[str], set[str]]:
         stripped = raw.strip()
         if not stripped or stripped.startswith("#"):
             continue
+        # Check list ITEM before section KEY: an item whose text happens to end in ':'
+        # (a plausible typo) must not be mistaken for a section header — that would reset
+        # the current section and silently drop every following item in it.
+        if stripped.startswith("-"):
+            if current is not None:
+                item = stripped[1:].strip().strip('"').strip("'")
+                if item:
+                    current.add(item)
+            continue
         if stripped.endswith(":"):
             key = stripped[:-1].strip().lower()
             current = dev if key == "dev" else prod if key == "prod" else None
-            continue
-        if stripped.startswith("-") and current is not None:
-            item = stripped[1:].strip().strip('"').strip("'")
-            if item:
-                current.add(item)
     return (dev, prod)
 
 
