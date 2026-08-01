@@ -153,9 +153,11 @@ for skill in "${SKILLS[@]}"; do
 done
 
 # === 4. KEY AGENTS (must be symlinks) ===
+# NOTE: the Codex->Claude review/bug agents (orchestrator, ralph-security, and the rest of
+# the set) are distributed as COPIES, not symlinks — validated separately in section 4b.
 echo ""
 echo "=== Key Agents (global symlinks) ==="
-AGENTS=(orchestrator ralph-coder ralph-reviewer ralph-tester ralph-researcher ralph-frontend ralph-security autoresearch)
+AGENTS=(ralph-coder ralph-reviewer ralph-tester ralph-researcher ralph-frontend autoresearch)
 for agent in "${AGENTS[@]}"; do
   target=~/.claude/agents/"$agent".md
   if [[ -L "$target" && -f "$target" ]]; then
@@ -184,6 +186,27 @@ for agent in "${AGENTS[@]}"; do
     fi
   fi
 done
+
+# === 4b. CLAUDE-NATIVE COPY AGENTS/SKILLS (Codex->Claude set, COPY not symlink) ===
+# Per docs/architecture/DISTRIBUTION_POLICY.md, the Codex->Claude review/bug agents and the
+# bugs/security skills are COPIES so a stale or moved repo checkout can never resurrect their
+# old Codex-dependent version. Parity (and --fix re-sync) is delegated to their installer, so
+# --fix re-syncs the copies from the repo rather than reverting them to symlinks.
+echo ""
+echo "=== Claude-native COPY agents/skills (parity) ==="
+# Locate the installer relative to THIS script (its sibling in scripts/), not via $REPO —
+# $REPO is a quoted "~/..." literal that does not tilde-expand in this context.
+_cn_installer="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/install-claude-native-agents.sh"
+if [[ ! -x "$_cn_installer" && ! -f "$_cn_installer" ]]; then
+  fail "missing $_cn_installer — cannot verify the Claude-native copy set"
+elif bash "$_cn_installer" --check >/dev/null 2>&1; then
+  pass "Claude-native copies match the repo (install-claude-native-agents.sh --check)"
+elif [[ "$FIX_MODE" == "--fix" ]]; then
+  bash "$_cn_installer" >/dev/null 2>&1
+  fixed "Claude-native copies re-synced from repo"
+else
+  fail "Claude-native copies drifted. Fix: bash scripts/install-claude-native-agents.sh"
+fi
 
 # Sweep for ANY broken symlink in ~/.claude/agents (beyond hardcoded list)
 echo ""
