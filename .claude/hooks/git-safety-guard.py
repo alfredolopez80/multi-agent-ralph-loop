@@ -52,6 +52,26 @@ ALLOWED SAFE PATTERNS:
   - gcloud list/describe, gsutil ls/stat/cat
   - kubectl get/describe/logs/top/explain/diff, kubectl delete --dry-run
 
+SCOPE / KNOWN LIMITATIONS (stated so the next audit does not re-discover them):
+  This guard is defence-in-depth by TEXT MATCHING, not a shell/language parser. It runs
+  BEFORE the command and fails CLOSED: when in doubt it denies. Two consequences are
+  accepted by design, both erring toward the safe (deny) direction:
+
+  1. Destructive-looking text INSIDE a string literal is matched as if it were a command.
+     A payload like  python3 -c "re.sub(r'git reset --hard', ...)"  or a heredoc whose body
+     merely mentions `git reset --hard` is DENIED even though no git command runs. Teaching
+     the guard to skip string/heredoc/`-c` bodies would require parsing those languages, and
+     a half-parser is itself a bypass surface (a real command hidden in a "fake" string). We
+     accept the over-block: it is friction, never data loss. Work around it by not embedding
+     destructive command text in an inline literal, or run the script from a file.
+  2. Wrapper / relocation enumeration is inherently unbounded — there is always one more
+     exotic wrapper. The guard does NOT try to enumerate them all; an unresolved wrapping
+     (a stack deeper than the bound, an opaque relocator) is treated as the dangerous case
+     and denied/enforced, so a new wrapper OVER-blocks rather than bypasses.
+
+  Global CLI flags before the verb ARE handled generically (any leading -/-- token is
+  skipped so it cannot break `tool <verb>` adjacency); that class is closed, not enumerated.
+
 EXIT CODES:
   0 = Allow command (silent) OR permissionDecision "ask" (JSON on stdout)
   Non-zero with JSON = Block command
