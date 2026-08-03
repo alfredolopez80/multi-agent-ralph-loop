@@ -2,9 +2,9 @@
 umask 077
 # repo-boundary-guard.sh — Repository Isolation Enforcement
 # Hook: PreToolUse (Edit|Write|Bash)
-# VERSION: 2.97.0
-# v2.96.1: Worktree-aware boundary (--git-common-dir, boundary-safe prefix, full path extraction).
+# VERSION: 2.98.0
 # v2.97.0: Review fixes — is_same_repo param, single-fire trap, sed trim, dedup canonicalize.
+# v2.98.0: Security fixes — canonicalize ancestor-walk, worktree-list validation, fail-closed trap, redirect detection.
 
 # SEC-111: stdin with 100KB limit
 INPUT=$(head -c 100000)
@@ -12,11 +12,11 @@ INPUT=$(head -c 100000)
 
 set -euo pipefail
 
-_emit_allow() {
+_emit_deny_on_crash() {
     trap - ERR EXIT
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "[repo-boundary-guard] Guard crashed — failing closed. Check ~/.ralph/logs/repo-boundary.log"}}'
 }
-trap '_emit_allow' ERR EXIT
+trap '_emit_deny_on_crash' ERR EXIT
 
 # Configuration
 LOG_FILE="${HOME}/.ralph/logs/repo-boundary.log"
@@ -52,17 +52,34 @@ get_current_repo() {
     get_main_repo 2>/dev/null || git rev-parse --show-toplevel 2>/dev/null || echo ""
 }
 
-# canonicalize <path> — expand ~ and resolve via realpath (best-effort).
+# canonicalize <path> — expand ~ and resolve via realpath.
+# For non-existent paths (Write's primary case), walks up to the nearest
+# existing ancestor and resolves THAT, then appends the remaining basename.
+# This collapses ".." sequences that realpath alone cannot resolve on macOS BSD
+# when the full path doesn't exist yet.
 canonicalize() {
-    local p="$1"
-    p="${p/#\~/$HOME}"
-    realpath "$p" 2>/dev/null || realpath -m "$p" 2>/dev/null || echo "$p"
+    local p="${1/#\~/$HOME}"
+    local out
+    if out="$(realpath "$p" 2>/dev/null)"; then echo "$out"; return; fi
+    if out="$(realpath -m "$p" 2>/dev/null)"; then echo "$out"; return; fi
+    local dir base
+    dir="$(dirname "$p")"
+    base="$(basename "$p")"
+    local rdir
+    if rdir="$(realpath "$dir" 2>/dev/null)"; then
+        echo "$rdir/$base"
+    elif rdir="$(realpath -m "$dir" 2>/dev/null)"; then
+        echo "$rdir/$base"
+    else
+        log "WARN: canonicalize failed for $p — denying as precaution"
+        echo "__CANONICALIZE_FAILED__"
+    fi
 }
 
 # is_same_repo <path> <repo> — true if <path> belongs to the SAME repository
-# as <repo> (i.e. it lives in the main checkout or in ANY linked worktree of it,
-# wherever that worktree is located). Walks up to the nearest existing directory,
-# then asks git which main repo owns it.
+# as <repo>. Validates that the target directory is a REGISTERED worktree
+# (listed in `git worktree list`) of <repo>, not just a directory with a
+# hand-crafted .git file pointing at <repo>'s .git.
 is_same_repo() {
     local dir="$1"
     local repo="$2"
@@ -78,13 +95,41 @@ is_same_repo() {
 
     local owner_repo
     owner_repo="$(canonicalize "$(dirname "$common_dir")")"
-    [[ "$owner_repo" == "$repo" ]]
+    [[ "$owner_repo" == "$repo" ]] || return 1
+
+    local candidate_wt
+    candidate_wt="$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null || true)"
+    [[ -n "$candidate_wt" ]] || return 1
+    candidate_wt="$(canonicalize "$candidate_wt")"
+
+    if [[ "$candidate_wt" == "$repo" ]]; then
+        return 0
+    fi
+
+    local registered
+    registered="$(git -C "$repo" worktree list --porcelain 2>/dev/null | grep '^worktree ' | sed 's/^worktree //')"
+    local wt
+    while IFS= read -r wt; do
+        [[ -n "$wt" ]] || continue
+        wt="$(canonicalize "$wt")"
+        if [[ "$candidate_wt" == "$wt" ]]; then
+            return 0
+        fi
+    done <<< "$registered"
+
+    log "BLOCKED: $dir claims repo $repo but is not a registered worktree"
+    return 1
 }
 
 # v2.69.0 FIX: Check if command is read-only (safe to run on external repos)
 # This prevents false positives blocking legitimate ls, cat, grep commands
 is_readonly_command() {
     local command="$1"
+
+    # A "read-only" command with a redirect is a write operation
+    if echo "$command" | grep -qE '>\s|>>' || echo "$command" | grep -qE '\|\s*tee\b'; then
+        return 1
+    fi
 
     # Extract base command (first word)
     local base_cmd
