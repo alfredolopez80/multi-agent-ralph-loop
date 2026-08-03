@@ -1,24 +1,27 @@
 #!/usr/bin/env bash
 umask 077
-# repo-boundary-guard.sh - Repository Isolation Enforcement
+# repo-boundary-guard.sh — Repository Isolation Enforcement
 # Hook: PreToolUse (Edit|Write|Bash)
-# Purpose: Prevent accidental work in external repositories
-# VERSION: 2.84.2
-# v2.66.8: SEC-051 - Use realpath for proper path canonicalization
+# VERSION: 2.98.1
+# v2.98.0: Security fixes — canonicalize ancestor-walk, worktree-list validation, fail-closed trap, redirect detection.
+# v2.98.1: Codex P2 fix — three-pattern alternation for quoted paths with spaces in grep extraction.
 
-# SEC-111: Read input from stdin with length limit (100KB max)
-# Prevents DoS from malicious input
+# SEC-111: stdin with 100KB limit
 INPUT=$(head -c 100000)
 
 
 set -euo pipefail
 
-# Error trap: Always output valid JSON for PreToolUse
-trap 'echo "{\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"allow\"}}"' ERR EXIT
+_emit_deny_on_crash() {
+    trap - ERR EXIT
+    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "[repo-boundary-guard] Guard crashed — failing closed. Check ~/.ralph/logs/repo-boundary.log"}}'
+}
+trap '_emit_deny_on_crash' ERR EXIT
 
 # Configuration
 LOG_FILE="${HOME}/.ralph/logs/repo-boundary.log"
 CURRENT_REPO=""
+PROJECT_ROOT=""
 GITHUB_DIR="${HOME}/Documents/GitHub"
 
 # Ensure log directory exists
@@ -32,17 +35,101 @@ log() {
 _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
   get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
-  get_main_repo() { get_project_root; }
+  # Resolve the MAIN repository via --git-common-dir (works in both plain
+  # checkouts and linked worktrees).
+  get_main_repo() {
+    local common_dir
+    common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+    if [[ -n "$common_dir" ]]; then
+      dirname "$common_dir"
+    else
+      get_project_root
+    fi
+  }
 }
 
 get_current_repo() {
     get_main_repo 2>/dev/null || git rev-parse --show-toplevel 2>/dev/null || echo ""
 }
 
+# canonicalize <path> — expand ~ and resolve via realpath.
+# For non-existent paths (Write's primary case), walks up to the nearest
+# existing ancestor and resolves THAT, then appends the remaining basename.
+# This collapses ".." sequences that realpath alone cannot resolve on macOS BSD
+# when the full path doesn't exist yet.
+canonicalize() {
+    local p="${1/#\~/$HOME}"
+    local out
+    if out="$(realpath "$p" 2>/dev/null)"; then echo "$out"; return; fi
+    if out="$(realpath -m "$p" 2>/dev/null)"; then echo "$out"; return; fi
+    local dir base
+    dir="$(dirname "$p")"
+    base="$(basename "$p")"
+    local rdir
+    if rdir="$(realpath "$dir" 2>/dev/null)"; then
+        echo "$rdir/$base"
+    elif rdir="$(realpath -m "$dir" 2>/dev/null)"; then
+        echo "$rdir/$base"
+    else
+        log "WARN: canonicalize failed for $p — denying as precaution"
+        echo "__CANONICALIZE_FAILED__"
+    fi
+}
+
+# is_same_repo <path> <repo> — true if <path> belongs to the SAME repository
+# as <repo>. Validates that the target directory is a REGISTERED worktree
+# (listed in `git worktree list`) of <repo>, not just a directory with a
+# hand-crafted .git file pointing at <repo>'s .git.
+is_same_repo() {
+    local dir="$1"
+    local repo="$2"
+    [[ -n "$repo" ]] || return 1
+    while [[ -n "$dir" && "$dir" != "/" && ! -d "$dir" ]]; do
+        dir="$(dirname "$dir")"
+    done
+    [[ -d "$dir" ]] || return 1
+
+    local common_dir
+    common_dir="$(git -C "$dir" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+    [[ -n "$common_dir" ]] || return 1
+
+    local owner_repo
+    owner_repo="$(canonicalize "$(dirname "$common_dir")")"
+    [[ "$owner_repo" == "$repo" ]] || return 1
+
+    local candidate_wt
+    candidate_wt="$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null || true)"
+    [[ -n "$candidate_wt" ]] || return 1
+    candidate_wt="$(canonicalize "$candidate_wt")"
+
+    if [[ "$candidate_wt" == "$repo" ]]; then
+        return 0
+    fi
+
+    local registered
+    registered="$(git -C "$repo" worktree list --porcelain 2>/dev/null | grep '^worktree ' | sed 's/^worktree //')"
+    local wt
+    while IFS= read -r wt; do
+        [[ -n "$wt" ]] || continue
+        wt="$(canonicalize "$wt")"
+        if [[ "$candidate_wt" == "$wt" ]]; then
+            return 0
+        fi
+    done <<< "$registered"
+
+    log "BLOCKED: $dir claims repo $repo but is not a registered worktree"
+    return 1
+}
+
 # v2.69.0 FIX: Check if command is read-only (safe to run on external repos)
 # This prevents false positives blocking legitimate ls, cat, grep commands
 is_readonly_command() {
     local command="$1"
+
+    # A "read-only" command with a redirect is a write operation
+    if echo "$command" | grep -qE '>\s|>>' || echo "$command" | grep -qE '\|\s*tee\b'; then
+        return 1
+    fi
 
     # Extract base command (first word)
     local base_cmd
@@ -84,18 +171,17 @@ is_allowed_path() {
     local path="$1"
     local current_repo="$2"
 
-    # SEC-051: Canonicalize path using realpath (handles ~, .., symlinks)
-    # First expand ~ manually, then use realpath for full canonicalization
-    path="${path/#\~/$HOME}"
-    path=$(realpath -m "$path" 2>/dev/null || echo "$path")
+    # SEC-051: Canonicalize path using realpath (handles ~, .., symlinks).
+    # current_repo arrives pre-canonicalized from main().
+    path="$(canonicalize "$path")"
 
-    # Allow global config directories
-    if [[ "$path" == "${HOME}/.claude"* ]] || \
-       [[ "$path" == "${HOME}/.ralph"* ]] || \
-       [[ "$path" == "${HOME}/.config"* ]] || \
-       [[ "$path" == "/tmp"* ]] || \
-       [[ "$path" == "/private/tmp"* ]] || \
-       [[ "$path" == "/var/tmp"* ]]; then
+    # Allow global config directories (boundary-safe: .claude but not .claude-evil)
+    if [[ "$path" == "${HOME}/.claude" || "$path" == "${HOME}/.claude/"* ]] || \
+       [[ "$path" == "${HOME}/.ralph" || "$path" == "${HOME}/.ralph/"* ]] || \
+       [[ "$path" == "${HOME}/.config" || "$path" == "${HOME}/.config/"* ]] || \
+       [[ "$path" == "/tmp" || "$path" == "/tmp/"* ]] || \
+       [[ "$path" == "/private/tmp" || "$path" == "/private/tmp/"* ]] || \
+       [[ "$path" == "/var/tmp" || "$path" == "/var/tmp/"* ]]; then
         return 0  # Allowed
     fi
 
@@ -104,13 +190,23 @@ is_allowed_path() {
         return 0
     fi
 
-    # Check if path is within current repo
-    if [[ "$path" == "$current_repo"* ]]; then
+    # Within the current MAIN repo (boundary-safe: repo/ but not repo-evil/).
+    # Worktrees under <main>/.claude/worktrees/ are covered by this prefix.
+    if [[ "$path" == "$current_repo" || "$path" == "$current_repo"/* ]]; then
         return 0  # Allowed - within current repo
     fi
 
+    # Within the CURRENT working tree (may live outside the main repo dir).
+    if [[ -n "$PROJECT_ROOT" ]] && \
+       [[ "$path" == "$PROJECT_ROOT" || "$path" == "$PROJECT_ROOT"/* ]]; then
+        return 0  # Allowed - within current working tree
+    fi
+
     # Check if path is in another GitHub repo
-    if [[ "$path" == "$GITHUB_DIR"* ]] && [[ "$path" != "$current_repo"* ]]; then
+    if [[ "$path" == "$GITHUB_DIR"/* ]]; then
+        if is_same_repo "$path" "$current_repo"; then
+            return 0  # Allowed - same repository (worktree or main checkout)
+        fi
         return 1  # BLOCKED - another repo
     fi
 
@@ -145,8 +241,19 @@ main() {
         exit 0
     fi
 
-    # Get current repo
+    # Get current repo (the MAIN repo — identical for main checkout and all its
+    # worktrees) and the current working tree root, both canonicalized so every
+    # later comparison is canonical-vs-canonical.
     CURRENT_REPO=$(get_current_repo)
+    [[ "$CURRENT_REPO" == "." ]] && CURRENT_REPO=""
+    if [[ -n "$CURRENT_REPO" ]]; then
+        CURRENT_REPO="$(canonicalize "$CURRENT_REPO")"
+    fi
+    PROJECT_ROOT=$(get_project_root 2>/dev/null || echo "")
+    [[ "$PROJECT_ROOT" == "." ]] && PROJECT_ROOT=""
+    if [[ -n "$PROJECT_ROOT" ]]; then
+        PROJECT_ROOT="$(canonicalize "$PROJECT_ROOT")"
+    fi
 
     if [[ -z "$CURRENT_REPO" ]]; then
         log "DEBUG: Not in a git repo, allowing"
@@ -187,7 +294,7 @@ main() {
             pipe_cmds=$(echo "$command" | tr '|' '\n')
             local has_write=false
             while IFS= read -r pipe_cmd; do
-                pipe_cmd=$(echo "$pipe_cmd" | xargs)
+                pipe_cmd=$(echo "$pipe_cmd" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
                 if [[ -n "$pipe_cmd" ]] && ! is_readonly_command "$pipe_cmd"; then
                     has_write=true
                     break
@@ -213,29 +320,34 @@ main() {
         # Only check repo boundaries for non-readonly (potentially destructive) commands
         # Look for patterns like /Users/.../GitHub/OtherRepo
         if echo "$command" | grep -qE "${GITHUB_DIR}/[^/]+/" 2>/dev/null; then
-            local mentioned_path
-            mentioned_path=$(echo "$command" | grep -oE "${GITHUB_DIR}/[^/[:space:]]+" | head -1)
-
-            if ! is_allowed_path "$mentioned_path" "$CURRENT_REPO"; then
-                log "BLOCKED: Bash command references external repo: $mentioned_path"
-                trap - ERR EXIT
-                # jq -n, not a heredoc: $mentioned_path comes from the payload, and a
-                # quote in it produced invalid JSON — a deny the harness cannot parse
-                # denies nothing.
-                jq -n --arg p "$mentioned_path" '{
-                  hookSpecificOutput: {
-                    hookEventName: "PreToolUse",
-                    permissionDecision: "deny",
-                    permissionDecisionReason: ("[repo-boundary-guard] REPO BOUNDARY: Command references external repository (" + $p + "). Use /repo-learn to learn from it instead, or explicitly switch repos.")
-                  }
-                }'
-                exit 0
-            fi
+            local mentioned_paths mentioned_path pattern
+            pattern="'${GITHUB_DIR}/[^']*'"
+            pattern+="|\"${GITHUB_DIR}/[^\"]*\""
+            pattern+="|${GITHUB_DIR}/[^[:space:]\"'\`;)&|]+"
+            mentioned_paths=$(echo "$command" | grep -oE "$pattern" | sed "s/^['\"]//;s/['\"]$//" || true)
+            while IFS= read -r mentioned_path; do
+                [[ -z "$mentioned_path" ]] && continue
+                if ! is_allowed_path "$mentioned_path" "$CURRENT_REPO"; then
+                    log "BLOCKED: Bash command references external repo: $mentioned_path"
+                    trap - ERR EXIT
+                    # jq -n, not a heredoc: $mentioned_path comes from the payload, and a
+                    # quote in it produced invalid JSON — a deny the harness cannot parse
+                    # denies nothing.
+                    jq -n --arg p "$mentioned_path" '{
+                      hookSpecificOutput: {
+                        hookEventName: "PreToolUse",
+                        permissionDecision: "deny",
+                        permissionDecisionReason: ("[repo-boundary-guard] REPO BOUNDARY: Command references external repository (" + $p + "). Use /repo-learn to learn from it instead, or explicitly switch repos.")
+                      }
+                    }'
+                    exit 0
+                fi
+            done <<< "$mentioned_paths"
         fi
     fi
 
     # Check extracted paths
-    for path in $paths; do
+    for path in "$paths"; do
         if [[ -n "$path" ]] && ! is_allowed_path "$path" "$CURRENT_REPO"; then
             log "BLOCKED: Access to external repo path: $path (current: $CURRENT_REPO)"
             trap - ERR EXIT
