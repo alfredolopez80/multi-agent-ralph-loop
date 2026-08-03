@@ -2,9 +2,9 @@
 umask 077
 # repo-boundary-guard.sh — Repository Isolation Enforcement
 # Hook: PreToolUse (Edit|Write|Bash)
-# VERSION: 2.98.0
-# v2.97.0: Review fixes — is_same_repo param, single-fire trap, sed trim, dedup canonicalize.
+# VERSION: 2.98.1
 # v2.98.0: Security fixes — canonicalize ancestor-walk, worktree-list validation, fail-closed trap, redirect detection.
+# v2.98.1: Codex P2 fix — three-pattern alternation for quoted paths with spaces in grep extraction.
 
 # SEC-111: stdin with 100KB limit
 INPUT=$(head -c 100000)
@@ -320,8 +320,11 @@ main() {
         # Only check repo boundaries for non-readonly (potentially destructive) commands
         # Look for patterns like /Users/.../GitHub/OtherRepo
         if echo "$command" | grep -qE "${GITHUB_DIR}/[^/]+/" 2>/dev/null; then
-            local mentioned_paths mentioned_path
-            mentioned_paths=$(echo "$command" | grep -oE "${GITHUB_DIR}/[^[:space:]\"'\`;)&|]+" || true)
+            local mentioned_paths mentioned_path pattern
+            pattern="'${GITHUB_DIR}/[^']*'"
+            pattern+="|\"${GITHUB_DIR}/[^\"]*\""
+            pattern+="|${GITHUB_DIR}/[^[:space:]\"'\`;)&|]+"
+            mentioned_paths=$(echo "$command" | grep -oE "$pattern" | sed "s/^['\"]//;s/['\"]$//" || true)
             while IFS= read -r mentioned_path; do
                 [[ -z "$mentioned_path" ]] && continue
                 if ! is_allowed_path "$mentioned_path" "$CURRENT_REPO"; then
