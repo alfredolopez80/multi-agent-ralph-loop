@@ -35,7 +35,7 @@ from aaak import AAAK  # noqa: E402 -- dynamic path setup above
 def _load_codec(config_path: str = None) -> AAAK:
     """Load codec, optionally with entity config."""
     if config_path:
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             cfg = json.load(f)
         return AAAK(
             entities=cfg.get("entities", {}),

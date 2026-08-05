@@ -94,7 +94,7 @@ def get_hook_type(hook_name: str, settings_json: dict = None) -> str:
     if settings_json is None:
         settings_path = Path.home() / ".claude" / "settings.json"
         if settings_path.exists():
-            with open(settings_path) as f:
+            with open(settings_path, encoding="utf-8") as f:
                 settings_json = json.load(f)
 
     # If settings.json is available, search for actual hook registration
@@ -197,7 +197,7 @@ class TestCriticalFormatRegression:
         settings_path = Path.home() / ".claude" / "settings.json"
         if not settings_path.exists():
             pytest.skip("settings.json not found")
-        with open(settings_path) as f:
+        with open(settings_path, encoding="utf-8") as f:
             return json.load(f)
 
     def test_no_decision_continue_in_any_hook(self, all_hooks):

@@ -92,7 +92,7 @@ def create_minimal_vault(base_dir):
 
     # Create _vault-index.md
     index_path = os.path.join(base_dir, "global", "_vault-index.md")
-    with open(index_path, "w") as f:
+    with open(index_path, "w", encoding="utf-8") as f:
         f.write("## Statistics\n- Total lessons: 5\n- Global wiki articles: 3\n")
 
     return base_dir
@@ -126,7 +126,7 @@ class TestL3VaultQuery:
 
     def test_smart_memory_search_has_l3_section(self):
         """Verify L3 query code was added to smart-memory-search."""
-        with open(os.path.join(HOOKS_DIR, "smart-memory-search.sh")) as f:
+        with open(os.path.join(HOOKS_DIR, "smart-memory-search.sh"), encoding="utf-8") as f:
             content = f.read()
         assert "layers.py" in content
         assert "last-query-hits" in content
@@ -182,7 +182,7 @@ class TestWingCompiler:
             os.makedirs(project_dir, exist_ok=True)
             today = subprocess.check_output(["date", "+%Y%m%d"]).decode().strip()
             facts_file = os.path.join(project_dir, f"facts-{today}.md")
-            with open(facts_file, "w") as f:
+            with open(facts_file, "w", encoding="utf-8") as f:
                 f.write("- [code_structure] Uses async/await pattern in handlers\n")
                 f.write("- [dependencies] Added pytest-cov for coverage\n")
 
@@ -247,7 +247,7 @@ class TestWriteback:
                 "summary": "This is a test summary for writeback.",
                 "category": "hooks",
             }])
-            with open(queue_file, "w") as f:
+            with open(queue_file, "w", encoding="utf-8") as f:
                 f.write(queue_data)
 
             stdin_data = json.dumps({})
@@ -279,7 +279,7 @@ class TestWriteback:
 
             # The draft must carry the writeback frontmatter + summary content.
             article = matches[0]
-            with open(article) as f:
+            with open(article, encoding="utf-8") as f:
                 content = f.read()
             assert "status: draft" in content
             assert "This is a test summary for writeback." in content
@@ -325,7 +325,7 @@ class TestDecisionFilter:
 
     def test_decision_extractor_has_global_filter(self):
         """Verify global decisions filter code was added."""
-        with open(os.path.join(HOOKS_DIR, "decision-extractor.sh")) as f:
+        with open(os.path.join(HOOKS_DIR, "decision-extractor.sh"), encoding="utf-8") as f:
             content = f.read()
         assert "IS_INFRASTRUCTURE" in content
         assert "global/decisions" in content
@@ -412,7 +412,7 @@ class TestVaultLogWriter:
             log_md = os.path.join(vault_dir, "log.md")
             assert os.path.exists(log_md), \
                 "vault-log-writer must create log.md under the vault"
-            with open(log_md) as f:
+            with open(log_md, encoding="utf-8") as f:
                 log_content = f.read()
             assert "test-log-123" in log_content, \
                 "log entry must record the session id"
@@ -445,7 +445,7 @@ class TestHookRegistration:
         settings_path = os.path.expanduser("~/.claude/settings.json")
         if not os.path.exists(settings_path):
             pytest.skip("settings.json not found")
-        with open(settings_path) as f:
+        with open(settings_path, encoding="utf-8") as f:
             return json.load(f)
 
     @pytest.mark.parametrize("hook_name,event", list(EXPECTED_HOOKS.items()))

@@ -260,7 +260,7 @@ def load_settings_json(settings_json_path):
 
     def _load():
         if os.path.exists(settings_json_path):
-            with open(settings_json_path) as f:
+            with open(settings_json_path, encoding="utf-8") as f:
                 return json.load(f)
         return {}
     return _load
@@ -284,7 +284,7 @@ def validate_skill_frontmatter():
             result["errors"].append(f"File not found: {skill_path}")
             return result
 
-        with open(skill_path) as f:
+        with open(skill_path, encoding="utf-8") as f:
             content = f.read()
 
         # Check for frontmatter

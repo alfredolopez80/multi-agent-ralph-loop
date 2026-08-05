@@ -206,7 +206,7 @@ def settings_json(isolated_home):
     settings = {"hooks": hooks_cfg}
     settings_path = isolated_home / ".claude" / "settings.json"
     settings_path.write_text(json.dumps(settings, indent=2), encoding="utf-8")
-    with open(settings_path) as f:
+    with open(settings_path, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -308,7 +308,7 @@ class TestHookFilesExist:
         for hook_name in HOOK_REGISTRY.keys():
             hook_path = os.path.join(global_hooks_dir, hook_name)
             if os.path.exists(hook_path):
-                with open(hook_path) as f:
+                with open(hook_path, encoding="utf-8") as f:
                     first_line = f.readline()
                 if not first_line.startswith("#!"):
                     missing_shebang.append(hook_name)
@@ -444,7 +444,7 @@ class TestVersionMarkers:
         for hook_name in HOOK_REGISTRY.keys():
             hook_path = os.path.join(global_hooks_dir, hook_name)
             if os.path.exists(hook_path):
-                with open(hook_path) as f:
+                with open(hook_path, encoding="utf-8") as f:
                     content = f.read()
                 if "VERSION" not in content:
                     missing_version.append(hook_name)
