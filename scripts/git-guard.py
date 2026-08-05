@@ -190,7 +190,7 @@ class GitGuard:
         """
         blocked = []
 
-        with open(script_path, 'r') as f:
+        with open(script_path, 'r', encoding="utf-8") as f:
             content = f.read()
 
         # Split by newlines and check each non-empty line

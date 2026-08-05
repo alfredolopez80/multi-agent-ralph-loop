@@ -26,7 +26,7 @@ def load_json(path: Path) -> dict:
     """Load JSON file, skip if missing."""
     if not path.exists():
         pytest.skip(f"File not found: {path}")
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 

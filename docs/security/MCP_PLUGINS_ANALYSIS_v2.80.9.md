@@ -77,7 +77,7 @@ After rollback issues in `/Users/alfredolopez/.claude-sneakpeek/zai`, there are 
     },
     "context7": {
       "headers": {
-        "CONTEXT7_API_KEY": "ctx7sk-c3b6b82c-0f6c-43c6-8881-2399e202e056"
+        "CONTEXT7_API_KEY": "<REDACTED — rotate at context7.com>"
       },
       "url": "https://mcp.context7.com/mcp"
     }
@@ -225,7 +225,7 @@ bun scripts/worker-service.cjs start
 npx @playwright/mcp@latest --version
 
 # Test context7
-curl -H "CONTEXT7_API_KEY: ctx7sk-c3b6b82c-0f6c-43c6-8881-2399e202e056" \
+curl -H "CONTEXT7_API_KEY: <REDACTED — rotate at context7.com>" \
      https://mcp.context7.com/mcp
 ```
 

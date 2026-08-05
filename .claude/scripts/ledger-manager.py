@@ -345,7 +345,7 @@ def main():
         # Load from JSON if provided
         if args.json:
             try:
-                with open(args.json, "r") as f:
+                with open(args.json, "r", encoding="utf-8") as f:
                     data = json.load(f)
             except json.JSONDecodeError as e:
                 print(f"Error: Invalid JSON in {args.json}: {e}", file=sys.stderr)

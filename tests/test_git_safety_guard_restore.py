@@ -275,7 +275,7 @@ def test_opaque_relocators_fail_closed(sample_repo, other_repo):
     the file is deleted). `move.sh` is written into other_repo and cds there.
     """
     move = os.path.join(other_repo, "move.sh")
-    with open(move, "w") as fh:
+    with open(move, "w", encoding="utf-8") as fh:
         fh.write(f"cd {other_repo}\n")
     for command in (
         f". {move} ; {RESTORE} deleted.txt",
@@ -382,7 +382,7 @@ def test_eval_dynamic_relocator_fails_closed(sample_repo, other_repo):
     than judged against the payload's cwd where the file happens to be deleted.
     """
     move = os.path.join(other_repo, "move.sh")
-    with open(move, "w") as fh:
+    with open(move, "w", encoding="utf-8") as fh:
         fh.write(f"cd {other_repo}\n")
     assert _decide(f"eval $(cat {move}) ; {RESTORE} deleted.txt", sample_repo) == "deny"
     assert _decide(f'M="cd {other_repo}" ; eval $M ; {RESTORE} deleted.txt', sample_repo) == "deny"

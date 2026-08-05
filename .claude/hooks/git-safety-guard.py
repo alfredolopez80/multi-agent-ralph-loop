@@ -186,33 +186,49 @@ WRAPPER = (
     r"^(?:\w+=\S*\s+)*"  # FOO=bar aws ...
     r"(?:(?:sudo|command|nohup|time|nice|env|eval|xargs)\s+(?:-\S+\s+)*(?:\w+=\S*\s+)*)*"
 )
-# CLI GLOBAL flags sit between the tool name and its subcommand/verb. The destructive
-# patterns anchor `tool\s+<verb>`, so ANY unenumerated global flag in between breaks the
-# adjacency and silently defeats every block (the `gcloud --project=…`, `kubectl -v=6`
-# bypass class found on PR #31). Rather than a fixed allowlist, each prefix now skips a
-# leading run of global flags GENERICALLY: value-taking flags are enumerated (so their
-# value token is consumed too), and every OTHER leading `-`/`--` token is treated as a
-# valueless global and skipped. Subcommands/verbs never start with `-`, so the verb is
-# never swallowed. Only LEADING flags are skipped, so a flag appearing after the verb
-# (`delete … --quiet`, `s3 ls --query "s3 rb"`) stays in the remainder and never widens
-# a match — the anchoring against `echo "aws s3 rb"` (quotes stripped) still holds.
-_GLOBAL_TAIL = r"|--[A-Za-z][\w-]*|-[A-Za-z]+)\s+)*"
-AWS = (
-    WRAPPER + r"aws\s+(?:(?:--(?:profile|region|output|endpoint-url|cli-connect-timeout"
-    r"|cli-read-timeout|color|ca-bundle|query|cli-binary-format)(?:=\S+|\s+\S+)" + _GLOBAL_TAIL
+# CLI GLOBAL flags sit between the tool name and its subcommand/verb.
+# Anti-ReDoS: branches are made mutually exclusive via negative lookahead so
+# that named value-taking flags cannot also match the generic --flag branch.
+# This eliminates exponential backtracking (O(2^N) → O(N)).
+_AWS_VFLAGS = (
+    r"profile|region|output|endpoint-url|cli-connect-timeout"
+    r"|cli-read-timeout|color|ca-bundle|query|cli-binary-format"
 )
-GCLOUD = (
-    WRAPPER + r"gcloud\s+(?:(?:alpha|beta|preview)\s+)?"
-    r"(?:(?:--(?:project|account|configuration|verbosity|format|flags-file|billing-project"
-    r"|impersonate-service-account|access-token-file)(?:=\S+|\s+\S+)" + _GLOBAL_TAIL
+_GCLOUD_VFLAGS = (
+    r"project|account|configuration|verbosity|format|flags-file|billing-project"
+    r"|impersonate-service-account|access-token-file"
 )
-GSUTIL = WRAPPER + r"gsutil\s+(?:-[mqD]\s+)*"
-KUBECTL = (
-    WRAPPER + r"kubectl\s+(?:(?:--(?:context|kubeconfig|namespace|server|token|user|cluster"
+_KUBECTL_VFLAGS = (
+    r"context|kubeconfig|namespace|server|token|user|cluster"
     r"|request-timeout|as|as-group|cache-dir|certificate-authority|client-certificate"
     r"|client-key|tls-server-name|v|log-flush-frequency|chunk-size|password|username"
-    r"|profile|profile-output)(?:=\S+|\s+\S+)|-[nsuvp](?:=\S+|\s+\S+)" + _GLOBAL_TAIL
+    r"|profile|profile-output"
 )
+
+
+def _flag_skip(named_long, named_short=None):
+    """Build a non-backtracking flag-skipping regex group."""
+    b1 = r"--(?:" + named_long + r")(?:=\S+|\s+\S+)"
+    b2 = (r"--(?!(?:" + named_long + r")(?:=|\s|$))"
+          r"[A-Za-z][\w-]*(?:=\S+)?")
+    if named_short:
+        b3 = r"-[" + named_short + r"](?:=\S+|\s+\S+)"
+        b4 = (r"-(?![" + named_short + r"](?:=|\s|$))"
+              r"[A-Za-z]+(?:=\S+)?")
+        inner = r"|".join([b1, b2, b3, b4])
+    else:
+        b3 = r"-[A-Za-z]+(?:=\S+)?"
+        inner = r"|".join([b1, b2, b3])
+    return r"(?:(?:" + inner + r")\s+)*"
+
+
+AWS = WRAPPER + r"aws\s+" + _flag_skip(_AWS_VFLAGS)
+GCLOUD = (
+    WRAPPER + r"gcloud\s+(?:(?:alpha|beta|preview)\s+)?"
+    + _flag_skip(_GCLOUD_VFLAGS)
+)
+GSUTIL = WRAPPER + r"gsutil\s+(?:-[mqD]\s+)*"
+KUBECTL = WRAPPER + r"kubectl\s+" + _flag_skip(_KUBECTL_VFLAGS, "nsuvp")
 
 # Destructive verbs used by the command-substitution / shell -c detectors
 DESTRUCTIVE_INNER = (
