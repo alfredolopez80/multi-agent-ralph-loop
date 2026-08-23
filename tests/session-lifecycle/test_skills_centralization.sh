@@ -1,118 +1,114 @@
-#!/bin/bash
-# test_skills_centralization.sh - Tests for proper skills centralization
-# VERSION: 2.86.0
+#!/usr/bin/env bash
+# test_skills_centralization.sh - Contrato vigente de distribucion de skills
 #
-# Validates that skills from all sources are available in ~/.claude/skills
+# La version anterior codificaba la politica v2.86: "centralizacion" significaba
+# tener >100 skills COPIADOS en ~/.claude/skills, y fallaba si ese directorio era
+# un symlink. Esa premisa quedo invertida: la politica actual poda duplicados y
+# distribuye por plugin/symlink (docs/architecture/DISTRIBUTION_POLICY.md), asi
+# que el test fallaba justamente cuando el sistema estaba SANO. Ademas contaba
+# skills en instalaciones retiradas (.claude-code-old, .claude-sneakpeek-old).
+#
+# Este test valida lo que hoy importa:
+#   1. ~/.claude/skills es accesible
+#   2. los skills nucleo de ralph resuelven a un SKILL.md legible
+#   3. no reaparecen copias byte-identicas a las que ya sirve un plugin
+#   4. los agentes ralph-* estan disponibles globalmente
 
-set -euo pipefail
+set -uo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+readonly GREEN='\033[0;32m'
+readonly RED='\033[0;31m'
+readonly YELLOW='\033[1;33m'
+readonly NC='\033[0m'
 
 TESTS_PASSED=0
 TESTS_FAILED=0
+TESTS_RUN=0
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-pass() { echo -e "${GREEN}✓${NC} $1"; ((TESTS_PASSED++)); }
-fail() { echo -e "${RED}✗${NC} $1"; ((TESTS_FAILED++)); }
-warn() { echo -e "${YELLOW}⚠${NC} $1"; }
+pass() { echo -e "  ${GREEN}✓${NC} $1"; TESTS_PASSED=$((TESTS_PASSED+1)); TESTS_RUN=$((TESTS_RUN+1)); }
+fail() { echo -e "  ${RED}✗${NC} $1"; TESTS_FAILED=$((TESTS_FAILED+1)); TESTS_RUN=$((TESTS_RUN+1)); }
+warn() { echo -e "  ${YELLOW}!${NC} $1"; }
 section() { echo ""; echo "=== $1 ==="; }
 
-count_skills() {
-    local dir="$1"
-    if [[ -d "$dir" ]]; then
-        find "$dir" -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' '
-    else
-        echo "0"
-    fi
-}
+SKILLS_DIR="${HOME}/.claude/skills"
+AGENTS_DIR="${HOME}/.claude/agents"
+MARKETING_PLUGIN="${HOME}/.claude/plugins/marketplaces/marketingskills/skills"
 
-section "Skills Centralization Audit"
+# --- 1. Directorio de skills accesible -------------------------------------
+section "Skills directory"
 
-# Count skills in each location
-echo "Skills count by location:"
-echo ""
-
-# Old Claude Code
-old_claude="/Users/alfredolopez/.claude-code-old/.claude-old/skills"
-count=$(count_skills "$old_claude")
-count=$((count - 1))
-echo "  old_claude: $count skills"
-
-# Old Zai
-old_zai="/Users/alfredolopez/.claude-sneakpeek-old/zai/skills"
-count=$(count_skills "$old_zai")
-count=$((count - 1))
-echo "  old_zai: $count skills"
-
-# Kimi shared
-kimi="/Users/alfredolopez/.config/agents/skills"
-count=$(count_skills "$kimi")
-count=$((count - 1))
-echo "  kimi_shared: $count skills"
-
-# Current
-current="$HOME/.claude/skills"
-count=$(count_skills "$current")
-count=$((count - 1))
-echo "  current: $count skills"
-
-# Check current ~/.claude/skills
-section "Current Configuration"
-
-if [[ -L "$current" ]]; then
-    target=$(readlink "$current")
-    warn "~/.claude/skills is a symlink to: $target"
-    warn "This means only repo skills are available (~40)"
-    warn "Skills from other locations (~1800+) are NOT accessible"
-    fail "Skills not centralized - symlink points to single repo"
-elif [[ -d "$current" ]]; then
-    if [[ $count -gt 100 ]]; then
-        pass "~/.claude/skills has $count skills (centralized)"
-    else
-        warn "~/.claude/skills has only $count skills"
-        fail "Skills not fully centralized"
-    fi
+if [[ -d "$SKILLS_DIR" ]]; then
+    n=$(find "$SKILLS_DIR" -mindepth 2 -maxdepth 2 -name SKILL.md 2>/dev/null | wc -l | tr -d ' ')
+    pass "~/.claude/skills accesible con $n skills cargables"
 else
-    fail "~/.claude/skills does not exist"
+    fail "~/.claude/skills no existe o no es accesible"
 fi
 
-# Check ralph-* agents availability
-section "Custom Agents Availability"
+# --- 2. Skills nucleo de ralph resuelven -----------------------------------
+# Symlink o directorio real dan igual: lo que importa es que SKILL.md se lea.
+section "Core ralph skills"
 
-agents_to_check=("ralph-coder" "ralph-reviewer" "ralph-tester" "ralph-researcher")
-
-for agent in "${agents_to_check[@]}"; do
-    if [[ -f "$HOME/.claude/agents/${agent}.md" ]]; then
-        pass "Agent available globally: $agent"
+for skill in orchestrator iterate gates adversarial security plan parallel autoresearch; do
+    if [[ -r "$SKILLS_DIR/$skill/SKILL.md" ]]; then
+        pass "skill '$skill' resuelve a un SKILL.md legible"
     else
-        if [[ -f "$REPO_ROOT/.claude/agents/${agent}.md" ]]; then
-            fail "Agent exists in repo but NOT in global: $agent"
-        else
-            fail "Agent missing entirely: $agent"
-        fi
+        fail "skill '$skill' no resuelve (falta $SKILLS_DIR/$skill/SKILL.md)"
     fi
 done
 
-# Summary
-section "Summary"
-echo "Passed: $TESTS_PASSED"
-echo "Failed: $TESTS_FAILED"
-echo ""
+# --- 3. Anti-regresion de la poda ------------------------------------------
+# Una copia byte-identica a la que ya sirve un plugin habilitado se paga dos
+# veces en el contexto de cada sesion y no aporta nada.
+section "No duplicate copies of plugin skills"
 
-if [[ $TESTS_FAILED -gt 0 ]]; then
-    echo "ISSUES FOUND:"
-    echo "1. Skills are not centralized - many skills from old locations are inaccessible"
-    echo "2. Custom agents (ralph-*) exist in repo but not globally"
-    echo ""
-    echo "RECOMMENDED FIX:"
-    echo "  Run: /Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/.claude/scripts/centralize-skills.sh"
-    exit 1
+if [[ -d "$MARKETING_PLUGIN" ]]; then
+    dupes=0
+    while IFS= read -r plugin_skill; do
+        name="$(basename "$(dirname "$plugin_skill")")"
+        local_skill="$SKILLS_DIR/$name/SKILL.md"
+        if [[ -f "$local_skill" ]] && cmp -s "$plugin_skill" "$local_skill"; then
+            warn "copia byte-identica al plugin: $name"
+            dupes=$((dupes+1))
+        fi
+    done < <(find "$MARKETING_PLUGIN" -mindepth 2 -maxdepth 2 -name SKILL.md 2>/dev/null)
+
+    if [[ $dupes -eq 0 ]]; then
+        pass "sin copias byte-identicas a skills del plugin marketingskills"
+    else
+        fail "$dupes skills duplicados del plugin (el plugin ya los sirve)"
+    fi
 else
-    echo "All skills and agents properly centralized!"
+    warn "plugin marketingskills no instalado; comprobacion omitida"
+fi
+
+# --- 4. Agentes ralph globales ---------------------------------------------
+section "Global ralph agents"
+
+for agent in ralph-coder ralph-reviewer ralph-tester ralph-researcher; do
+    if [[ -r "$AGENTS_DIR/$agent.md" ]]; then
+        pass "agente '$agent' disponible globalmente"
+    else
+        fail "agente '$agent' no encontrado en $AGENTS_DIR"
+    fi
+done
+
+# --- Resumen ---------------------------------------------------------------
+echo ""
+echo "=========================================="
+echo "  Total:  $TESTS_RUN"
+echo -e "  ${GREEN}Passed: $TESTS_PASSED${NC}"
+echo -e "  ${RED}Failed: $TESTS_FAILED${NC}"
+echo "=========================================="
+
+# Un run con cero comprobaciones nunca es exito.
+if [[ $TESTS_RUN -eq 0 ]]; then
+    echo -e "${RED}✗ FAIL: no se ejecuto ninguna comprobacion${NC}"
+    exit 1
+fi
+
+if [[ $TESTS_FAILED -eq 0 ]]; then
+    echo -e "${GREEN}✓ Distribucion de skills conforme al contrato vigente${NC}"
     exit 0
 fi
+
+exit 1

@@ -28,12 +28,12 @@ print_result() {
 
     if [[ "$status" == "PASS" ]]; then
         echo -e "${GREEN}✅ PASS${NC}: $message"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED+1))
     else
         echo -e "${RED}❌ FAIL${NC}: $message"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED+1))
     fi
-    ((TESTS_RUN++))
+    TESTS_RUN=$((TESTS_RUN+1))
 }
 
 # Calculate clarity score (extracted from hook)
@@ -164,12 +164,17 @@ run_tests() {
     echo "==========="
     echo ""
 
-    # Test empty prompt
+    # Test empty prompt.
+    # La expectativa anterior (90-100%) estaba invertida: contradecia la
+    # semantica del resto de la suite y del propio hook, donde un score ALTO
+    # significa prompt CLARO ("clarity score is 35% (below 50% threshold)").
+    # Un prompt vacio es el caso menos claro posible, asi que su score debe
+    # quedar por debajo del de un prompt de 2 palabras (<=60% justo abajo).
     score=$(calculate_clarity_score "")
-    if [[ $score -ge 90 && $score -le 100 ]]; then
-        print_result "PASS" "Empty prompt → $score% (expected: 90-100%)"
+    if [[ $score -le 30 ]]; then
+        print_result "PASS" "Empty prompt → $score% (expected: <=30%)"
     else
-        print_result "FAIL" "Empty prompt → $score% (expected: 90-100%)"
+        print_result "FAIL" "Empty prompt → $score% (expected: <=30%)"
     fi
 
     # Test very short prompts

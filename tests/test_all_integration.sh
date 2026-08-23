@@ -34,18 +34,18 @@ run_test() {
     if [ -x "$test_script" ]; then
         if output=$(bash "$test_script" 2>&1); then
             echo "  ✓ PASSED"
-            ((PASSED++))
+            PASSED=$((PASSED+1))
         else
             echo "  ✗ FAILED"
             if [ "$VERBOSE" = "--verbose" ]; then
                 echo "$output" | sed 's/^/    /'
             fi
-            ((FAILED++))
+            FAILED=$((FAILED+1))
         fi
     else
         echo "  ⚠ SKIPPED (not executable)"
     fi
-    ((TOTAL++))
+    TOTAL=$((TOTAL+1))
     echo ""
 }
 

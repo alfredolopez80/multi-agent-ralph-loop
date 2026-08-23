@@ -46,7 +46,7 @@ test_case() {
     if [[ $exit_code -ne 0 ]]; then
         echo -e "  ${RED}✗ FAIL${NC}: Exit code $exit_code"
         echo "  Output: $output"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED+1))
         return 1
     fi
 
@@ -54,7 +54,7 @@ test_case() {
     if ! echo "$output" | jq . > /dev/null 2>&1; then
         echo -e "  ${RED}✗ FAIL${NC}: Invalid JSON output"
         echo "  Output: $output"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED+1))
         return 1
     fi
 
@@ -65,7 +65,7 @@ test_case() {
     if [[ "$continue" != "true" ]]; then
         echo -e "  ${RED}✗ FAIL${NC}: Missing or invalid continue flag"
         echo "  Output: $output"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED+1))
         return 1
     fi
 
@@ -86,7 +86,7 @@ test_case() {
     fi
 
     echo -e "  ${GREEN}✓ PASS${NC}\n"
-    ((TESTS_PASSED++))
+    TESTS_PASSED=$((TESTS_PASSED+1))
 }
 
 # Validation tests
@@ -167,10 +167,10 @@ large_prompt=$(python3 -c "print('test ' * 30000)")  # ~150KB
 echo "{\"user_prompt\": \"$large_prompt\"}" | "$HOOK_SCRIPT" > /dev/null 2>&1
 if [[ $? -eq 0 ]]; then
     echo -e "${GREEN}✓ PASS${NC}: Large input handled correctly\n"
-    ((TESTS_PASSED++))
+    TESTS_PASSED=$((TESTS_PASSED+1))
 else
     echo -e "${RED}✗ FAIL${NC}: Large input caused error\n"
-    ((TESTS_FAILED++))
+    TESTS_FAILED=$((TESTS_FAILED+1))
 fi
 
 # Test sensitive data redaction (SEC-110)
@@ -178,10 +178,10 @@ echo "Testing sensitive data redaction..."
 output=$(echo '{"user_prompt": "My password is secret123 and api_key is abc123"}' | "$HOOK_SCRIPT" 2>&1)
 if echo "$output" | grep -q "REDACTED"; then
     echo -e "${GREEN}✓ PASS${NC}: Sensitive data redaction working\n"
-    ((TESTS_PASSED++))
+    TESTS_PASSED=$((TESTS_PASSED+1))
 else
     echo -e "${YELLOW}⚠ WARNING${NC}: Sensitive data redaction may not be working (check logs)\n"
-    ((TESTS_PASSED++))
+    TESTS_PASSED=$((TESTS_PASSED+1))
 fi
 
 # Test JSON output guarantee (error trap)
@@ -190,10 +190,10 @@ echo "Testing error trap for JSON output..."
 output=$(echo '' | "$HOOK_SCRIPT" 2>&1)
 if echo "$output" | jq . > /dev/null 2>&1; then
     echo -e "${GREEN}✓ PASS${NC}: Error trap produces valid JSON\n"
-    ((TESTS_PASSED++))
+    TESTS_PASSED=$((TESTS_PASSED+1))
 else
     echo -e "${RED}✗ FAIL${NC}: Error trap did not produce valid JSON\n"
-    ((TESTS_FAILED++))
+    TESTS_FAILED=$((TESTS_FAILED+1))
 fi
 
 # Summary

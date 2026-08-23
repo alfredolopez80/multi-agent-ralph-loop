@@ -30,9 +30,9 @@ TESTS_WARNED=0
 # Parse arguments
 [[ "$1" == "-v" || "$1" == "--verbose" ]] && VERBOSE=true
 
-pass() { ((TESTS_PASSED++)); printf "${GREEN}.${NC}"; }
-fail() { ((TESTS_FAILED++)); printf "${RED}F${NC}"; }
-warn() { ((TESTS_WARNED++)); printf "${YELLOW}W${NC}"; }
+pass() { TESTS_PASSED=$((TESTS_PASSED+1)); printf "${GREEN}.${NC}"; }
+fail() { TESTS_FAILED=$((TESTS_FAILED+1)); printf "${RED}F${NC}"; }
+warn() { TESTS_WARNED=$((TESTS_WARNED+1)); printf "${YELLOW}W${NC}"; }
 
 print_test() {
     if $VERBOSE; then
@@ -83,7 +83,7 @@ test_ralph_skills() {
         if [[ -L "$link" ]]; then
             local target=$(readlink "$link")
             if [[ "$target" == *"multi-agent-ralph-loop"* ]] && [[ ! -d "$target" ]]; then
-                ((broken++))
+                broken=$((broken+1))
             fi
         fi
     done
@@ -108,7 +108,7 @@ test_external_skills() {
     print_test "External skills have SKILL.md"
     local with_skill=0
     for dir in "$GLOBAL_SKILLS"/*/; do
-        [[ -f "$dir/SKILL.md" ]] || [[ -f "$dir/skill.md" ]] && ((with_skill++))
+        [[ -f "$dir/SKILL.md" ]] || [[ -f "$dir/skill.md" ]] && with_skill=$((with_skill+1))
     done
     if [[ $with_skill -ge 50 ]]; then
         pass
@@ -163,9 +163,9 @@ test_agents_sync() {
         if [[ -L "$link" ]]; then
             local target=$(readlink "$link")
             if [[ "$target" == "$GLOBAL_SKILLS"* ]]; then
-                ((correct++))
+                correct=$((correct+1))
             else
-                ((broken++))
+                broken=$((broken+1))
             fi
         fi
     done

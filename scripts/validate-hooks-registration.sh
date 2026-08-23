@@ -146,21 +146,30 @@ hook_is_executable() {
 }
 
 # Check if hook is registered in settings.json
+#
+# Compara por FICHERO FISICO (readlink -f), no por string: ~/.claude/hooks es un
+# symlink al repo, asi que el mismo hook puede registrarse por dos rutas distintas
+# (la comparacion literal daba falsos "not registered"). E itera TODOS los objetos
+# del matcher: `.[0].hooks` ignoraba bloques adicionales con el mismo matcher.
 hook_is_registered() {
     local event="$1"
     local matcher="$2"
     local script="$3"
 
-    local hook_path="${HOOKS_DIR}/${script}"
+    local want cmd resolved
+    want="$(readlink -f "${HOOKS_DIR}/${script}" 2>/dev/null)" || return 1
 
-    # Check if hook path exists in settings.json
-    jq -e --arg path "$hook_path" --arg event "$event" --arg matcher "$matcher" '
+    while IFS= read -r cmd; do
+        [[ -n "$cmd" ]] || continue
+        resolved="$(readlink -f "$cmd" 2>/dev/null)" || continue
+        [[ "$resolved" == "$want" ]] && return 0
+    done < <(jq -r --arg event "$event" --arg matcher "$matcher" '
         .hooks[$event] // [] |
         map(select(.matcher == $matcher)) |
-        .[0].hooks // [] |
-        map(select(.command == $path)) |
-        length > 0
-    ' "$SETTINGS_PATH" >/dev/null 2>&1
+        .[].hooks[].command
+    ' "$SETTINGS_PATH" 2>/dev/null)
+
+    return 1
 }
 
 # Validate a single hook

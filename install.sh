@@ -819,10 +819,10 @@ verify_installation() {
 
     local ERRORS=0
 
-    [ -x "$INSTALL_DIR/ralph" ] && log_success "ralph CLI installed" || { log_error "ralph not found"; ((ERRORS++)); }
-    [ -x "$INSTALL_DIR/mmc" ] && log_success "mmc CLI installed" || { log_error "mmc not found"; ((ERRORS++)); }
-    [ -d "${CLAUDE_DIR}/agents" ] && log_success "Agents directory OK" || { log_error "Agents missing"; ((ERRORS++)); }
-    [ -d "${CLAUDE_DIR}/commands" ] && log_success "Commands directory OK" || { log_error "Commands missing"; ((ERRORS++)); }
+    [ -x "$INSTALL_DIR/ralph" ] && log_success "ralph CLI installed" || { log_error "ralph not found"; ERRORS=$((ERRORS+1)); }
+    [ -x "$INSTALL_DIR/mmc" ] && log_success "mmc CLI installed" || { log_error "mmc not found"; ERRORS=$((ERRORS+1)); }
+    [ -d "${CLAUDE_DIR}/agents" ] && log_success "Agents directory OK" || { log_error "Agents missing"; ERRORS=$((ERRORS+1)); }
+    [ -d "${CLAUDE_DIR}/commands" ] && log_success "Commands directory OK" || { log_error "Commands missing"; ERRORS=$((ERRORS+1)); }
     [ -x "${CLAUDE_DIR}/hooks/git-safety-guard.py" ] && log_success "Git Safety Guard installed (ACTIVE)" || log_warn "Git Safety Guard may need chmod +x"
     [ -x "${CLAUDE_DIR}/hooks/quality-gates.sh" ] && log_success "Quality Gates installed" || log_warn "Quality Gates may need chmod +x"
     [ -f "${CLAUDE_DIR}/settings.json" ] && log_success "Settings with hooks configured" || log_warn "Settings.json missing"
@@ -837,14 +837,14 @@ verify_installation() {
         log_success "curator.sh installed"
     else
         log_error "curator.sh not found or not executable"
-        ((ERRORS++))
+        ERRORS=$((ERRORS+1))
     fi
 
     if [ -x "${RALPH_DIR}/scripts/repo-learn.sh" ]; then
         log_success "repo-learn.sh installed"
     else
         log_error "repo-learn.sh not found or not executable"
-        ((ERRORS++))
+        ERRORS=$((ERRORS+1))
     fi
 
     # Run validation script if available
@@ -854,7 +854,7 @@ verify_installation() {
             log_success "All validation tests passed"
         else
             log_warn "Some validation tests failed - check ${RALPH_DIR}/logs/"
-            ((ERRORS++))
+            ERRORS=$((ERRORS+1))
         fi
     fi
 
@@ -863,14 +863,14 @@ verify_installation() {
         log_success "ralph repo-learn command works"
     else
         log_error "ralph repo-learn command failed"
-        ((ERRORS++))
+        ERRORS=$((ERRORS+1))
     fi
 
     if "$INSTALL_DIR/ralph" curator > /dev/null 2>&1; then
         log_success "ralph curator command works"
     else
         log_error "ralph curator command failed"
-        ((ERRORS++))
+        ERRORS=$((ERRORS+1))
     fi
     return $ERRORS
 }

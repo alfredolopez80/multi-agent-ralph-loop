@@ -26,6 +26,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import resource
 import subprocess
 import time
 
@@ -87,8 +88,13 @@ def _all_sh_hooks(hooks_dir: str) -> list[str]:
     )
 
 
-def _run_hook(path: str, payload: str, timeout: float = 8.0) -> tuple[float, int]:
-    """Run a hook with JSON payload on stdin. Return (elapsed_ms, returncode)."""
+def _run_hook(path: str, payload: str, timeout: float = 8.0) -> tuple[float, float, int]:
+    """Run a hook con JSON en stdin. Devuelve (cpu_ms, wall_ms, returncode).
+
+    Los umbrales usan cpu_ms (RUSAGE_CHILDREN): el wall-clock se infla con la carga
+    de la maquina — fallaba en la corrida completa y pasaba re-ejecutado aislado.
+    """
+    before = resource.getrusage(resource.RUSAGE_CHILDREN)
     start = time.perf_counter()
     proc = subprocess.run(
         ["bash", path],
@@ -98,12 +104,35 @@ def _run_hook(path: str, payload: str, timeout: float = 8.0) -> tuple[float, int
         timeout=timeout,
         cwd=PROJECT_ROOT,
     )
-    return (time.perf_counter() - start) * 1000.0, proc.returncode
+    wall_ms = (time.perf_counter() - start) * 1000.0
+    after = resource.getrusage(resource.RUSAGE_CHILDREN)
+    cpu_ms = (
+        (after.ru_utime - before.ru_utime) + (after.ru_stime - before.ru_stime)
+    ) * 1000.0
+    return cpu_ms, wall_ms, proc.returncode
 
 
-def _best_ms(path: str, payload: str, runs: int = 2) -> float:
-    """Best-of-N elapsed ms (reduces noise from machine load)."""
-    return min(_run_hook(path, payload)[0] for _ in range(runs))
+def _best_ms(path: str, payload: str, runs: int = 3) -> tuple[float, float]:
+    """Best-of-N de CPU y wall tomados de LAS MISMAS ejecuciones.
+
+    Medirlos en pasadas separadas dejaba un agujero: un hook que solo bloquea en
+    el arranque en frio (primera conexion, cache vacia) se calentaba durante las
+    muestras de CPU, y para cuando se media el wall ya no bloqueaba. La invocacion
+    lenta no llegaba a observarse nunca.
+    """
+    samples = [_run_hook(path, payload) for _ in range(runs)]
+    return min(s[0] for s in samples), min(s[1] for s in samples)
+
+
+def _best_cpu_ms(path: str, payload: str, runs: int = 3) -> float:
+    """Best-of-N CPU ms del hijo (metrica de los umbrales; ver _run_hook)."""
+    return _best_ms(path, payload, runs)[0]
+
+
+def _best_wall_ms(path: str, payload: str, runs: int = 3) -> float:
+    """Best-of-N wall ms. Solo fork hooks: su contrato es "el padre retorna rapido"
+    (y el hijo se reparenta: su CPU ni aparece en RUSAGE_CHILDREN)."""
+    return _best_ms(path, payload, runs)[1]
 
 
 def _settings_path() -> str:
@@ -339,20 +368,38 @@ class TestSyntax:
 class TestPerformance:
     THRESHOLD_MS = 500
     FORK_THRESHOLD_MS = 200
+    # Los umbrales miden CPU, invariante a la carga. Pero un hook que BLOQUEA
+    # (sleep, I/O, red) gasta ~0 CPU y pasaria inadvertido, cuando bloquear el
+    # turno es justo lo que no debe hacer. Este techo de wall-clock, holgado
+    # para no reintroducir la flakiness, cierra ese punto ciego.
+    WALL_CEILING_MS = 2000
+
+    @pytest.fixture(autouse=True)
+    def _require_sequential_execution(self):
+        """RUSAGE_CHILDREN es por-proceso acumulativo: bajo xdist el delta mezclaria
+        la CPU de otros workers. Falla (no skip): un gate auto-desactivado no protege."""
+        assert not os.environ.get("PYTEST_XDIST_WORKER"), (
+            "TestPerformance mide CPU via RUSAGE_CHILDREN y exige ejecucion "
+            "secuencial; ejecutalo sin -n/xdist."
+        )
 
     def test_context_warning_under_threshold(self, hooks_dir):
-        ms = _best_ms(os.path.join(hooks_dir, "context-warning.sh"), '{"prompt":"test"}')
-        assert ms < self.THRESHOLD_MS, f"context-warning.sh took {ms:.0f}ms (>= {self.THRESHOLD_MS})"
+        path = os.path.join(hooks_dir, "context-warning.sh")
+        ms, wall = _best_ms(path, '{"prompt":"test"}')
+        assert ms < self.THRESHOLD_MS, f"context-warning.sh took {ms:.0f}ms CPU (>= {self.THRESHOLD_MS})"
+        assert wall < self.WALL_CEILING_MS, f"context-warning.sh bloqueo {wall:.0f}ms (>= {self.WALL_CEILING_MS})"
 
     @pytest.mark.parametrize("hook", PERF_FIXED_HOOKS)
     def test_perf_fixed_hooks_under_threshold(self, hooks_dir, hook):
         payload = '{"hook_event_name":"SessionStart","source":"startup","prompt":"t"}'
-        ms = _best_ms(os.path.join(hooks_dir, hook), payload)
-        assert ms < self.THRESHOLD_MS, f"{hook} took {ms:.0f}ms (>= {self.THRESHOLD_MS})"
+        path = os.path.join(hooks_dir, hook)
+        ms, wall = _best_ms(path, payload)
+        assert ms < self.THRESHOLD_MS, f"{hook} took {ms:.0f}ms CPU (>= {self.THRESHOLD_MS})"
+        assert wall < self.WALL_CEILING_MS, f"{hook} bloqueo {wall:.0f}ms (>= {self.WALL_CEILING_MS})"
 
     @pytest.mark.parametrize("hook", FORK_HOOKS)
     def test_fork_hooks_return_fast(self, hooks_dir, hook):
-        ms = _best_ms(os.path.join(hooks_dir, hook), '{"hook_event_name":"SessionStart"}')
+        ms = _best_wall_ms(os.path.join(hooks_dir, hook), '{"hook_event_name":"SessionStart"}')
         assert ms < self.FORK_THRESHOLD_MS, (
             f"{hook} returned in {ms:.0f}ms (>= {self.FORK_THRESHOLD_MS}); fork not effective"
         )
@@ -372,10 +419,16 @@ class TestPerformance:
         letting an empty parametrize silently collect zero cases."""
         if hook_path is None:
             pytest.skip("no UserPromptSubmit hooks resolved from settings.json (no ~/.claude/settings.json)")
-        ms = _best_ms(hook_path, '{"prompt":"test"}', runs=3)
+        ms, wall = _best_ms(hook_path, '{"prompt":"test"}')
         assert ms < self.THRESHOLD_MS, (
-            f"{os.path.basename(hook_path)} took {ms:.0f}ms (>= {self.THRESHOLD_MS}); "
+            f"{os.path.basename(hook_path)} took {ms:.0f}ms CPU (>= {self.THRESHOLD_MS}); "
             "likely a reintroduced slow subprocess (e.g. recursive `claude`)."
+        )
+        # Un hook que BLOQUEA (sleep, red, subproceso colgado) gasta ~0 CPU y
+        # pasaria el umbral anterior. Estos corren en CADA mensaje: el techo de
+        # wall-clock es imprescindible aqui, no solo en las listas fijas.
+        assert wall < self.WALL_CEILING_MS, (
+            f"{os.path.basename(hook_path)} bloqueo {wall:.0f}ms (>= {self.WALL_CEILING_MS})"
         )
 
     @pytest.mark.parametrize(
@@ -390,9 +443,13 @@ class TestPerformance:
         skip visibly instead of collecting zero cases."""
         if hook_path is None:
             pytest.skip("no Stop hooks resolved from settings.json (no ~/.claude/settings.json)")
-        ms = _best_ms(hook_path, "{}", runs=3)
+        ms, wall = _best_ms(hook_path, "{}")
         assert ms < self.THRESHOLD_MS, (
-            f"{os.path.basename(hook_path)} took {ms:.0f}ms (>= {self.THRESHOLD_MS})"
+            f"{os.path.basename(hook_path)} took {ms:.0f}ms CPU (>= {self.THRESHOLD_MS})"
+        )
+        # Mismo motivo que en UserPromptSubmit: estos corren al final de CADA turno.
+        assert wall < self.WALL_CEILING_MS, (
+            f"{os.path.basename(hook_path)} bloqueo {wall:.0f}ms (>= {self.WALL_CEILING_MS})"
         )
 
 

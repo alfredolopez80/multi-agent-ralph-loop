@@ -134,6 +134,13 @@ getOrCreateWorktree() {
     return 0
   fi
 
+  # Ghost registration recovery: un dir borrado a mano deja el worktree registrado
+  # y TODO `git worktree add` falla con "missing but already registered". prune es
+  # idempotente y solo toca registros stale, asi que no hace falta comprobar antes
+  # (el guard previo interpolaba la ruta como regex y fallaba con rutas que
+  # contuvieran `.` o `[`). No oculta nada: si algo sigue mal, el add falla ruidoso.
+  git -C "$main_repo" worktree prune 2>/dev/null || true
+
   # --- Create new worktree ---
   # Fetch latest (no interactive prompts)
   (cd "$main_repo" && git fetch --quiet --no-tags 2>/dev/null || true)

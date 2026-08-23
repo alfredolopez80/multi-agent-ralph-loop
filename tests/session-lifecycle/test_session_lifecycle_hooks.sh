@@ -151,11 +151,15 @@ test_session_end_matchers() {
 
     local matchers=("clear" "logout" "prompt_input_exit" "other")
 
+    # Cada reason debe estar CUBIERTA, por un matcher propio o por el comodin "*".
+    # Exigir los cuatro explicitos era sobre-especificar: settings.json usa una
+    # sola entrada con matcher "*" y los hooks se ejecutan (los handoffs de fin de
+    # sesion se escriben), asi que la cobertura es real.
     for matcher in "${matchers[@]}"; do
-        if jq -e ".hooks.SessionEnd[] | select(.matcher == \"$matcher\")" "$SETTINGS_FILE" > /dev/null 2>&1; then
-            pass "SessionEnd matcher '$matcher' registered"
+        if jq -e ".hooks.SessionEnd[] | select(.matcher == \"$matcher\" or .matcher == \"*\")" "$SETTINGS_FILE" > /dev/null 2>&1; then
+            pass "SessionEnd reason '$matcher' cubierta"
         else
-            fail "SessionEnd matcher '$matcher' NOT registered"
+            fail "SessionEnd reason '$matcher' SIN cubrir (ni matcher propio ni *)"
         fi
     done
 }

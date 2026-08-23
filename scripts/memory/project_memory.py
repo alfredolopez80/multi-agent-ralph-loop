@@ -65,7 +65,7 @@ _BLOCK_RE = re.compile(
     re.DOTALL,
 )
 DEFAULT_TOP_N = 10
-DEFAULT_CLAUDE_HOME = Path("~/.claude")
+DEFAULT_CLAUDE_HOME = Path("~/.claude")  # tilde-ok: se expande en el uso (claude_home=...expanduser())
 
 
 def now_iso() -> str:

@@ -10,7 +10,23 @@
 # Usage: bash scripts/validate-global-infrastructure.sh [--fix]
 set -euo pipefail
 
-REPO="~/Documents/GitHub/multi-agent-ralph-loop"
+# La tilde entre comillas NO se expande: `[[ -f "~/..." ]]` siempre era falso y
+# los 19 checks de drift caian a la rama "standalone (no repo source to compare)".
+# Fail-open en un validador. Derivar de BASH_SOURCE es ademas robusto a renombres.
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Emite el contenido de un fichero sin el header de sincronizacion que
+# sync-rules-from-source.sh anade a las copias globales. Sin header, emite el
+# fichero tal cual.
+strip_sync_header() {
+  awk '
+    NR==1 && /^<!-- SOURCE:/ { in_hdr=1 }
+    in_hdr && /-->/          { in_hdr=0; skip_blank=1; next }
+    in_hdr                   { next }
+    skip_blank && NF==0      { skip_blank=0; next }
+    { skip_blank=0; print }
+  ' "$1"
+}
 FIX_MODE="${1:-}"
 PASS=0
 FAIL=0
@@ -45,8 +61,12 @@ for rule in "${RULES[@]}"; do
 
   # File exists — validate content matches repo
   if [[ -f "$REPO_FILE" ]]; then
-    GLOBAL_SHA=$(shasum -a 256 "$GLOBAL_FILE" | cut -d' ' -f1)
-    REPO_SHA=$(shasum -a 256 "$REPO_FILE" | cut -d' ' -f1)
+    # La copia global lleva un header de sincronizacion que el fuente NO tiene
+    # por diseno (<!-- SOURCE: ... SYNCED: ... -->). Comparar el fichero entero
+    # marcaba las seis reglas como "content drift" para siempre. Se compara el
+    # contenido, descartando ese header.
+    GLOBAL_SHA=$(strip_sync_header "$GLOBAL_FILE" | shasum -a 256 | cut -d' ' -f1)
+    REPO_SHA=$(strip_sync_header "$REPO_FILE" | shasum -a 256 | cut -d' ' -f1)
     if [[ "$GLOBAL_SHA" == "$REPO_SHA" ]]; then
       pass "$rule → copy in sync"
     else

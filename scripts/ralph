@@ -7943,9 +7943,8 @@ main() {
             ;;
 
         # Utility
-        status)
-            cmd_status "$@"
-            ;;
+        # (`status` ya se despacha arriba como `status|st`; este case era
+        #  inalcanzable — shellcheck SC2221, oculto por un `|| true` en CI)
         health)
             # v2.55: Memory system health check
             cmd_health "$@"

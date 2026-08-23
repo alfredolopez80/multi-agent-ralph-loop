@@ -70,7 +70,7 @@ cleanup() {
 
 # Test: Domain Detection
 test_domain_detection() {
-    ((TESTS_RUN++))
+    TESTS_RUN=$((TESTS_RUN+1))
     log_test "Domain Detection"
 
     local script="${PROJECT_ROOT}/.claude/scripts/curator-learn.sh"
@@ -104,7 +104,7 @@ test_domain_detection() {
 
 # Test: Pattern Extraction
 test_pattern_extraction() {
-    ((TESTS_RUN++))
+    TESTS_RUN=$((TESTS_RUN+1))
     log_test "Pattern Extraction"
 
     local script="${PROJECT_ROOT}/.claude/scripts/curator-learn.sh"
@@ -129,7 +129,7 @@ test_pattern_extraction() {
 
 # Test: Manifest Files Population (GAP-C01)
 test_manifest_files_population() {
-    ((TESTS_RUN++))
+    TESTS_RUN=$((TESTS_RUN+1))
     log_test "Manifest Files[] Population (GAP-C01)"
 
     local script="${PROJECT_ROOT}/.claude/scripts/curator-learn.sh"
@@ -154,7 +154,7 @@ test_manifest_files_population() {
 
 # Test: Learning Gate Enforcement (GAP-C03)
 test_learning_gate_enforcement() {
-    ((TESTS_RUN++))
+    TESTS_RUN=$((TESTS_RUN+1))
     log_test "Learning Gate Enforcement (GAP-C03)"
 
     local script="${PROJECT_ROOT}/.claude/scripts/learning-gate-enforce.sh"
@@ -183,7 +183,7 @@ test_learning_gate_enforcement() {
 
 # Test: Lock Contention Fix (GAP-H01)
 test_lock_contention_fix() {
-    ((TESTS_RUN++))
+    TESTS_RUN=$((TESTS_RUN+1))
     log_test "Lock Contention Fix (GAP-H01)"
 
     local script="${PROJECT_ROOT}/.claude/scripts/procedural-inject-fixed.sh"
@@ -212,7 +212,7 @@ test_lock_contention_fix() {
 
 # Test: Rule Backfill (GAP-C02)
 test_rule_backfill() {
-    ((TESTS_RUN++))
+    TESTS_RUN=$((TESTS_RUN+1))
     log_test "Rule Backfill (GAP-C02)"
 
     local script="${PROJECT_ROOT}/.claude/scripts/backfill-domains.sh"
@@ -241,7 +241,7 @@ test_rule_backfill() {
 
 # Test: Orchestrator Auto-Learn Integration
 test_orchestrator_auto_learn() {
-    ((TESTS_RUN++))
+    TESTS_RUN=$((TESTS_RUN+1))
     log_test "Orchestrator Auto-Learn Integration"
 
     local script="${PROJECT_ROOT}/.claude/hooks/orchestrator-auto-learn.sh"
@@ -270,7 +270,7 @@ test_orchestrator_auto_learn() {
 
 # Test: Curator Scripts Exist
 test_curator_scripts_exist() {
-    ((TESTS_RUN++))
+    TESTS_RUN=$((TESTS_RUN+1))
     log_test "Curator Scripts Existence"
 
     local scripts=(
@@ -302,7 +302,7 @@ test_curator_scripts_exist() {
 
 # Test: JSON Schema Validation
 test_json_schema() {
-    ((TESTS_RUN++))
+    TESTS_RUN=$((TESTS_RUN+1))
     log_test "JSON Schema Validation"
 
     # Validate test rules.json

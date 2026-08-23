@@ -4,7 +4,7 @@
 # Date: 2026-02-14
 
 set -e
-# NOTE: use `VAR=$((VAR+1))`, never `((VAR++))`. With set -e, a post-increment on a
+# NOTE: use `VAR=$((VAR+1))`, never `VAR=$((VAR+1))`. With set -e, a post-increment on a
 # variable holding 0 evaluates to 0, which bash reports as exit status 1 and aborts
 # the script. That silently truncated this validator after its first check.
 

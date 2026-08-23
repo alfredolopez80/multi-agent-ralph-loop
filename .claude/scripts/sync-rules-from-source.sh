@@ -7,7 +7,19 @@ umask 077
 
 set -euo pipefail
 
-REPO="~/Documents/GitHub/multi-agent-ralph-loop"
+# La tilde entre comillas NO se expande: `REPO="~/..."` dejaba la ruta literal,
+# el directorio nunca existia y el script salia con exit 0 sin hacer nada.
+# Este fichero se instala como symlink en ~/.claude/scripts/, asi que hay que
+# resolver el symlink antes de derivar la raiz del repo desde su ubicacion real.
+SELF="${BASH_SOURCE[0]}"
+while [ -L "$SELF" ]; do
+  LINK_TARGET="$(readlink "$SELF")"
+  case "$LINK_TARGET" in
+    /*) SELF="$LINK_TARGET" ;;
+    *)  SELF="$(dirname "$SELF")/$LINK_TARGET" ;;
+  esac
+done
+REPO="$(cd "$(dirname "$SELF")/../.." && pwd)"
 RULES_DIR="$HOME/.claude/rules"
 DRY_RUN=false
 UPDATED=0
@@ -26,9 +38,10 @@ for arg in "$@"; do
 done
 
 if [ ! -d "$REPO/.claude/rules" ]; then
-  echo "SKIP: Repo rules directory not found at $REPO/.claude/rules"
-  echo "Standalone copies remain in place (no update needed)."
-  exit 0
+  # Con REPO derivado del propio fichero, que falte esto es una anomalia real,
+  # no un caso tolerable: salir 0 aqui oculto 4,5 meses sin sincronizar.
+  echo "FAIL: rules source not found at $REPO/.claude/rules — sync did NOT run" >&2
+  exit 1
 fi
 
 RULE_FILES=(
