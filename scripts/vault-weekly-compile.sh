@@ -20,6 +20,8 @@
 set -euo pipefail
 
 VAULT_DIR="${VAULT_DIR:-$HOME/Documents/Obsidian/MiVault}"
+# Raiz del repo derivada de la ubicacion real de este script, ANTES de cualquier cd.
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_DIR="$HOME/.ralph/logs"
 LOG_FILE="$LOG_DIR/vault-compile.log"
 LOCK_FILE="/tmp/vault-weekly-compile.lock"
@@ -144,11 +146,22 @@ log "Indices updated"
 # Sync learned rules to global (MemPalace v3.2)
 # Ensures Friday cron propagates local learnings to ~/.claude/rules/learned/
 # ──────────────────────────────────────────────
-REPO_ROOT="~/Documents/GitHub/multi-agent-ralph-loop"
 if [[ -f "${REPO_ROOT}/.claude/scripts/sync-rules-from-source.sh" ]]; then
     log "Syncing learned rules to global..."
-    bash "${REPO_ROOT}/.claude/scripts/sync-rules-from-source.sh" 2>/dev/null || true
-    log "Rules sync complete"
+    # El `2>/dev/null || true` anterior era un fallback silencioso: aunque la ruta
+    # se hubiera arreglado, un fallo del sync habria quedado enmascarado.
+    # NO bloqueante por contrato (el cron aun tiene que commitear el vault), pero
+    # el `2>/dev/null || true` anterior tampoco dejaba rastro del fallo. Aqui el
+    # error se registra de forma visible y el job continua.
+    sync_rc=0
+    bash "${REPO_ROOT}/.claude/scripts/sync-rules-from-source.sh" >> "$LOG_FILE" 2>&1 || sync_rc=$?
+    if [[ $sync_rc -eq 0 ]]; then
+        log "Rules sync complete"
+    else
+        log "ERROR: rules sync FAILED (exit $sync_rc) — see $LOG_FILE; continuing"
+    fi
+else
+    log "ERROR: sync script missing at ${REPO_ROOT}/.claude/scripts/ — repo layout broken; continuing"
 fi
 
 # Git commit + push

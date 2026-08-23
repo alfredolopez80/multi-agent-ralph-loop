@@ -18,6 +18,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y shellcheck jq curl
       
+      - name: Guard against literal tildes
+        # `~` entre comillas no se expande. Un commit copio REPO="~/..." a cuatro
+        # scripts fail-open: 4,5 meses sin sincronizar reglas, en verde. El guard
+        # va aqui ademas de en el pre-commit local, porque .git-hooks/ esta
+        # gitignoreado y no llega a los demas clones.
+        run: bash scripts/check-literal-tilde.sh --all
+
       - name: Validate shell syntax
         run: |
           # Validate ralph

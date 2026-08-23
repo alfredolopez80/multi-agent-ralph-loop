@@ -181,15 +181,28 @@ class TestFix2CronTriggersSync:
         assert "sync-rules-from-source.sh" in script
 
     def test_cron_sync_failure_does_not_block(self):
-        """sync-rules-from-source.sh failure uses || true — non-blocking."""
+        """Un fallo del sync no aborta el cron, pero SI queda registrado.
+
+        La version anterior exigia literalmente `|| true`, que ademas venia con
+        `2>/dev/null`: el fallo desaparecia sin rastro. El contrato real es
+        "no bloquear", no "no enterarse": el job debe seguir (aun tiene que
+        commitear el vault) y dejar el error en el log.
+        """
         script = (REPO_ROOT / "scripts" / "vault-weekly-compile.sh").read_text()
-        # Find the sync line
-        lines = script.split("\n")
-        sync_lines = [l for l in lines if "sync-rules-from-source.sh" in l]
-        assert len(sync_lines) > 0, "No sync-rules line found"
-        for line in sync_lines:
-            if "bash" in line:
-                assert "|| true" in line, f"Sync line missing || true: {line}"
+        sync_lines = [l for l in script.split("\n") if "sync-rules-from-source.sh" in l]
+        assert sync_lines, "No sync-rules line found"
+
+        bash_lines = [l for l in sync_lines if "bash" in l]
+        assert bash_lines, "No bash invocation of the sync script"
+        for line in bash_lines:
+            assert "2>/dev/null" not in line, (
+                f"El fallo del sync se silencia en: {line}"
+            )
+
+        # No bloquea: ningun `exit` en la rama de error del sync.
+        assert "sync_rc" in script, "El exit code del sync no se captura"
+        # Y el fallo se reporta.
+        assert "rules sync FAILED" in script, "El fallo del sync no se registra"
 
     def test_cron_sync_after_index_update_before_git_commit(self):
         """Sync happens AFTER index update, BEFORE git commit."""

@@ -7,7 +7,19 @@ umask 077
 
 set -euo pipefail
 
-REPO="~/Documents/GitHub/multi-agent-ralph-loop"
+# La tilde entre comillas NO se expande: `REPO="~/..."` dejaba la ruta literal,
+# el directorio nunca existia y el script salia con exit 0 sin hacer nada.
+# Este fichero se instala como symlink en ~/.claude/scripts/, asi que hay que
+# resolver el symlink antes de derivar la raiz del repo desde su ubicacion real.
+SELF="${BASH_SOURCE[0]}"
+while [ -L "$SELF" ]; do
+  LINK_TARGET="$(readlink "$SELF")"
+  case "$LINK_TARGET" in
+    /*) SELF="$LINK_TARGET" ;;
+    *)  SELF="$(dirname "$SELF")/$LINK_TARGET" ;;
+  esac
+done
+REPO="$(cd "$(dirname "$SELF")/../.." && pwd)"
 RULES_DIR="$HOME/.claude/rules"
 STALE=0
 FRESH=0
@@ -16,9 +28,9 @@ ERRORS=0
 
 # Graceful: skip if repo does not exist
 if [ ! -d "$REPO/.claude/rules" ]; then
-  echo "STALENESS CHECK: Cannot check — repo not found at $REPO"
-  echo "Standalone copies are the source of truth."
-  exit 0
+  # Un checker que ejecuto 0 comparaciones no puede salir verde.
+  echo "STALENESS CHECK FAILED: rules not found at $REPO/.claude/rules — 0 comparisons executed" >&2
+  exit 1
 fi
 
 RULE_FILES=(
