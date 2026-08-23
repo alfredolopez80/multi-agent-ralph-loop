@@ -116,7 +116,7 @@ echo "  → Found $LEDGER_COUNT ledgers, $HANDOFF_COUNT handoff sessions"
 # Check recent activity
 RECENT_LEDGER=$(ls -t ~/.ralph/ledgers/*.md 2>/dev/null | head -1)
 if [ -n "$RECENT_LEDGER" ]; then
-    AGE=$(( ($(date +%s) - $(stat -f %m "$RECENT_LEDGER" 2>/dev/null || stat -c %Y "$RECENT_LEDGER" 2>/dev/null)) / 3600 ))
+    AGE=$(( ($(date +%s) - $(stat -c %Y "$RECENT_LEDGER" 2>/dev/null || stat -f %m "$RECENT_LEDGER" 2>/dev/null)) / 3600 ))
     check "Recent ledger (< 24h old)" "[ $AGE -lt 24 ]"
     echo "  → Most recent ledger is ${AGE}h old"
 fi

@@ -2468,7 +2468,7 @@ cmd_memory_stats() {
     echo "  PROJECT MEMORY CONTEXT:"
     if [ -f "$PROJECT_MEMORY" ]; then
         local CONTEXT_AGE
-        CONTEXT_AGE=$(($(date +%s) - $(stat -f %m "$PROJECT_MEMORY" 2>/dev/null || stat -c %Y "$PROJECT_MEMORY" 2>/dev/null || echo 0)))
+        CONTEXT_AGE=$(($(date +%s) - $(stat -c %Y "$PROJECT_MEMORY" 2>/dev/null || stat -f %m "$PROJECT_MEMORY" 2>/dev/null || echo 0)))
         local CONTEXT_SIZE
         CONTEXT_SIZE=$(du -h "$PROJECT_MEMORY" 2>/dev/null | cut -f1)
         echo "    Status: Present"

@@ -10,6 +10,10 @@
 #
 # En JSON/YAML no se expande NUNCA, y en Python hace falta expanduser().
 #
+# El guard cubre la familia entera de "ruta que nunca se expandio y se materializo
+# literalmente". La tilde es una forma; la otra es una ruta ABSOLUTA escrita
+# relativa al cwd, que crea un arbol 'Users/<user>/...' dentro del repo.
+#
 # Historia que justifica este guard: un commit copio `REPO="~/Documents/..."` a
 # cuatro scripts. Los cuatro consumidores eran fail-open, asi que durante 4,5
 # meses la sincronizacion de reglas, su detector de deriva y un paso del cron
@@ -117,11 +121,22 @@ for f in "${FILES[@]:-}"; do
   scan_file "$f"
 done
 
+# Un path cuyo PRIMER componente es una raiz del sistema es una ruta absoluta que
+# se escribio relativa al cwd: '/Users/x/y' -> 'Users/x/y' dentro del repo.
+# Ninguno de estos nombres es un directorio legitimo de primer nivel aqui.
+ABS_ROOTS='^(Users|home|tmp|var|private|etc|opt|root|Volumes)(/|$)'
+
 # Anti-fantasma: ningun path puede tener un componente literal '~'.
 if [[ "$MODE" == "all" ]]; then
   while IFS= read -r p; do
     [[ -n "$p" ]] && report "$p" "-" "path trackeado con componente literal '~'"
   done < <(git ls-files | grep -E '(^|/)~(/|$)' || true)
+  while IFS= read -r p; do
+    [[ -n "$p" ]] && report "$p" "-" "path trackeado con pinta de ruta absoluta sin expandir"
+  done < <(git ls-files | grep -E "$ABS_ROOTS" || true)
+  while IFS= read -r p; do
+    [[ -n "$p" ]] && report "${p#./}" "-" "directorio raiz-absoluta en el arbol de trabajo"
+  done < <(find . -maxdepth 1 -type d 2>/dev/null | sed 's|^\./||' | grep -E "$ABS_ROOTS" || true)
   while IFS= read -r -d '' p; do
     report "${p#./}" "-" "directorio fantasma '~' en el arbol de trabajo"
   done < <(find . -name '~' -not -path './.git/*' -not -path './node_modules/*' -not -path './.claude/worktrees/*' -print0 2>/dev/null)
@@ -130,6 +145,9 @@ else
     [[ -z "$p" ]] && continue
     if [[ "/$p/" == *"/~/"* || "$p" == "~" ]]; then
       report "$p" "-" "intento de commitear un path con componente literal '~'"
+    fi
+    if echo "$p" | grep -qE "$ABS_ROOTS"; then
+      report "$p" "-" "intento de commitear una ruta absoluta sin expandir"
     fi
   done
 fi
@@ -143,8 +161,14 @@ fi
 if [[ "$VIOLATIONS" -gt 0 ]]; then
   echo ""
   echo "check-literal-tilde: $VIOLATIONS violacion(es) en $SCANNED fichero(s)."
-  echo "La tilde entre comillas NO se expande. Usa \$HOME, una raiz derivada de"
-  echo "BASH_SOURCE, Path.home()/expanduser() u os.homedir()."
+  echo ""
+  echo "  tilde literal   -> la tilde entre comillas NO se expande. Usa \$HOME, una"
+  echo "                     raiz derivada de BASH_SOURCE, Path.home()/expanduser()"
+  echo "                     u os.homedir()."
+  echo "  raiz-absoluta   -> una ruta '/Users/...' se escribio relativa al cwd y creo"
+  echo "                     el arbol dentro del repo. Corrige quien la genera; borrar"
+  echo "                     el directorio sin eso solo lo aplaza."
+  echo ""
   echo "Excepcion consciente: anota la linea con '# tilde-ok: <razon>'."
   exit 1
 fi

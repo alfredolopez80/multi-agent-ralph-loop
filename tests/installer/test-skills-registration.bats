@@ -62,9 +62,9 @@ teardown() {
     echo "$output" | jq -e '.skills.orchestrator' > /dev/null
 }
 
-@test "validates loop skill" {
+@test "validates iterate skill" {
     run env HOME="$ORIGINAL_HOME" "$VALIDATE_SCRIPT" --format json
-    echo "$output" | jq -e '.skills.loop' > /dev/null
+    echo "$output" | jq -e '.skills.iterate' > /dev/null
 }
 
 @test "validates gates skill" {

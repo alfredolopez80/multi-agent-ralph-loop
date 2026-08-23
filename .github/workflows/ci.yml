@@ -25,6 +25,15 @@ jobs:
         # gitignoreado y no llega a los demas clones.
         run: bash scripts/check-literal-tilde.sh --all
 
+      - name: Guard against claude-mem residue
+        # El check existia desde Wave 0 pero NINGUN runner lo invocaba: su unica
+        # referencia era su propia cabecera. Llevaba en rojo sin que nadie lo
+        # viera, mientras 26 CLAUDE.md seguian inyectando tablas de actividad de
+        # enero en el contexto de cada sesion. --repo-only omite las
+        # comprobaciones de la maquina local (vault, backup), que un runner
+        # limpio no puede satisfacer.
+        run: bash tests/security/test-claude-mem-removed.sh --repo-only
+
       - name: Validate shell syntax
         run: |
           # Validate ralph

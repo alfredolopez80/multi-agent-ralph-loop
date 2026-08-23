@@ -186,11 +186,6 @@ teardown() {
     echo "$output" | jq -e '.hooks["context-warning.sh"]' > /dev/null
 }
 
-@test "glm5-subagent-stop.sh is tested" {
-    run "$VALIDATE_SCRIPT" --format json --timeout 10
-    echo "$output" | jq -e '.hooks["glm5-subagent-stop.sh"]' > /dev/null
-}
-
 @test "pre-compact-handoff.sh is tested" {
     run "$VALIDATE_SCRIPT" --format json --timeout 10
     echo "$output" | jq -e '.hooks["pre-compact-handoff.sh"]' > /dev/null
@@ -315,12 +310,16 @@ teardown() {
     # Test with dangerous command
     run bash -c "cat '$FIXTURES_DIR/pre-tool-use-bash-dangerous.json' | '$HOOKS_DIR/git-safety-guard.py'"
 
-    # Should output JSON with permissionDecision: block (exit code != 0)
-    if echo "$output" | jq -e '.hookSpecificOutput.permissionDecision' >/dev/null 2>&1; then
-        local decision
-        decision=$(echo "$output" | jq -r '.hookSpecificOutput.permissionDecision')
-        [[ "$decision" == "block" ]]
-    fi
+    # PreToolUse usa permissionDecision: allow|deny|ask. "block" NUNCA es valido
+    # aqui — pertenece a los hooks Stop (decision: block). Ver la regla
+    # hook-json-format-sec039 y tests/HOOK_FORMAT_REFERENCE.md.
+    #
+    # La asercion iba dentro de un `if` sobre la existencia del campo: si el hook
+    # dejaba de emitirlo, el test pasaba en vacio. Ahora el campo es obligatorio.
+    echo "$output" | jq -e '.hookSpecificOutput.permissionDecision' >/dev/null
+    local decision
+    decision=$(echo "$output" | jq -r '.hookSpecificOutput.permissionDecision')
+    [[ "$decision" == "deny" ]]
 }
 
 @test "repo-boundary-guard.sh outputs valid JSON" {
@@ -336,15 +335,6 @@ teardown() {
     [[ ! -f "$HOOKS_DIR/context-warning.sh" ]] && skip "context-warning.sh not found"
 
     run bash -c "cat '$FIXTURES_DIR/user-prompt-submit.json' | '$HOOKS_DIR/context-warning.sh'"
-
-    # Should output valid JSON
-    echo "$output" | jq empty
-}
-
-@test "glm5-subagent-stop.sh outputs valid JSON" {
-    [[ ! -f "$HOOKS_DIR/glm5-subagent-stop.sh" ]] && skip "glm5-subagent-stop.sh not found"
-
-    run bash -c "cat '$FIXTURES_DIR/subagent-stop.json' | '$HOOKS_DIR/glm5-subagent-stop.sh'"
 
     # Should output valid JSON
     echo "$output" | jq empty
@@ -378,7 +368,6 @@ teardown() {
         "git-safety-guard.py"
         "repo-boundary-guard.sh"
         "context-warning.sh"
-        "glm5-subagent-stop.sh"
     )
 
     for hook in "${core_hooks[@]}"; do

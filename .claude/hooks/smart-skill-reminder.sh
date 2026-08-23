@@ -87,7 +87,7 @@ is_within_cooldown() {
     if [[ -f "$marker" ]]; then
         local marker_age
         # MEDIUM-001 FIX: Portable stat (macOS/BSD: -f %m, Linux: -c %Y)
-        marker_age=$(( $(date +%s) - $(stat -f %m "$marker" 2>/dev/null || stat -c %Y "$marker" 2>/dev/null || echo 0) ))
+        marker_age=$(( $(date +%s) - $(stat -c %Y "$marker" 2>/dev/null || stat -f %m "$marker" 2>/dev/null || echo 0) ))
         (( marker_age < COOLDOWN_MINUTES * 60 ))
     else
         return 1
@@ -107,7 +107,7 @@ skill_recently_invoked() {
     if [[ -f "$recent_skills" ]]; then
         local age
         # MEDIUM-001 FIX: Portable stat (macOS/BSD: -f %m, Linux: -c %Y)
-        age=$(( $(date +%s) - $(stat -f %m "$recent_skills" 2>/dev/null || stat -c %Y "$recent_skills" 2>/dev/null || echo 0) ))
+        age=$(( $(date +%s) - $(stat -c %Y "$recent_skills" 2>/dev/null || stat -f %m "$recent_skills" 2>/dev/null || echo 0) ))
         (( age < 300 ))  # Within last 5 minutes
     else
         return 1

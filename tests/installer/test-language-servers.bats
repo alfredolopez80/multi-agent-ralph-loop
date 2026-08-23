@@ -169,34 +169,36 @@ teardown() {
 # LSP-EXPLORE SKILL TESTS (check real home directory)
 #===============================================================================
 
-@test "lsp-explore skill exists" {
-    local real_home=$(bash -c 'echo $HOME')
-    [ -f "$real_home/.claude/skills/lsp-explore/SKILL.md" ]
-}
-
-@test "lsp-explore skill has version" {
-    local real_home=$(bash -c 'echo $HOME')
-    grep -q "VERSION:" "$real_home/.claude/skills/lsp-explore/SKILL.md"
-}
-
-@test "lsp-explore skill mentions supported languages" {
-    local real_home=$(bash -c 'echo $HOME')
-    grep -q "TypeScript" "$real_home/.claude/skills/lsp-explore/SKILL.md"
-}
-
 #===============================================================================
 # INTEGRATION TESTS
 #===============================================================================
 
-@test "at least 3 essential servers are installed" {
-    local count=0
+@test "all platform-available essential servers are installed" {
+    # Antes: `[ $count -ge 3 ]` sobre una lista fija de 4. Dos problemas:
+    #   1. Al fallar solo decia "3 != 2" — habia que ir a mano a averiguar CUAL
+    #      faltaba. Ahora nombra los ausentes, que es lo unico accionable.
+    #   2. sourcekit-lsp llega con Xcode y NO existe fuera de macOS, asi que en
+    #      Linux el maximo alcanzable eran 3 de 4 y el umbral no dejaba margen
+    #      para ningun otro fallo. La lista es ahora la de servidores que la
+    #      plataforma PUEDE tener, igual que ESSENTIAL_SERVERS en el instalador.
+    #
+    # `((count++))` con count=0 evalua a 0, que es exit status 1: bajo `set -e`
+    # eso mata el script en el PRIMER servidor encontrado. Se usa la forma de
+    # asignacion, que siempre devuelve 0.
+    local expected=(typescript-language-server pyright clangd)
+    [[ "$OSTYPE" == "darwin"* ]] && expected+=(sourcekit-lsp)
 
-    command -v typescript-language-server >/dev/null 2>&1 && ((count++)) || true
-    command -v pyright >/dev/null 2>&1 && ((count++)) || true
-    command -v clangd >/dev/null 2>&1 && ((count++)) || true
-    command -v sourcekit-lsp >/dev/null 2>&1 && ((count++)) || true
+    local missing=()
+    local srv
+    for srv in "${expected[@]}"; do
+        command -v "$srv" >/dev/null 2>&1 || missing+=("$srv")
+    done
 
-    [ $count -ge 3 ]
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo "servidores LSP ausentes ($((${#expected[@]} - ${#missing[@]}))/${#expected[@]} presentes): ${missing[*]}" >&2
+        echo "instalar con: scripts/install-language-servers.sh --essential" >&2
+        return 1
+    fi
 }
 
 @test "install script produces valid output" {

@@ -48,6 +48,7 @@ RULE_FILES=(
   "aristotle-methodology.md"
   "ast-grep-usage.md"
   "browser-automation.md"
+  "native-tools-first.md"
   "parallel-first.md"
   "plan-immutability.md"
   "zai-mcp-usage.md"
@@ -69,10 +70,19 @@ for rule_file in "${RULE_FILES[@]}"; do
     continue
   fi
 
+  # Un target ausente NO es motivo para saltar: una regla recien anadida a
+  # RULE_FILES nunca llegaba a instalarse, el sync reportaba "skipped" y
+  # validate-global-infrastructure.sh la marcaba como missing para siempre.
+  # Se crea la copia y se sigue al bloque normal, que le pone la cabecera.
   if [ ! -f "$TARGET" ]; then
-    echo "SKIP: $rule_file (target does not exist)"
-    SKIPPED=$((SKIPPED + 1))
-    continue
+    if [ "$DRY_RUN" = true ]; then
+      echo "WOULD: $rule_file (nueva — se crearia la copia)"
+      SKIPPED=$((SKIPPED + 1))
+      continue
+    fi
+    mkdir -p "$RULES_DIR"
+    : > "$TARGET"
+    echo "NEW:   $rule_file (copia creada)"
   fi
 
   SOURCE_CONTENT=$(cat "$SOURCE" 2>/dev/null || true)

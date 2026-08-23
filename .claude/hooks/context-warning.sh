@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 umask 077
 # ~/.claude/hooks/context-warning.sh
 # Context Monitoring Hook - v2.90.0
@@ -80,8 +80,8 @@ _transcript_fingerprint() {
     fi
     if [[ -n "$path" ]] && [[ -f "$path" ]]; then
         local mtime size
-        mtime=$(stat -f %m "$path" 2>/dev/null || stat -c %Y "$path" 2>/dev/null || echo 0)
-        size=$(stat -f %z "$path" 2>/dev/null || stat -c %s "$path" 2>/dev/null || echo 0)
+        mtime=$(stat -c %Y "$path" 2>/dev/null || stat -f %m "$path" 2>/dev/null || echo 0)
+        size=$(stat -c %s "$path" 2>/dev/null || stat -f %z "$path" 2>/dev/null || echo 0)
         echo "${mtime}:${size}"
     else
         echo ""

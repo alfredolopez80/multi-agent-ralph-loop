@@ -26,8 +26,22 @@ source "${_VC_DIR}/lib/validation-common.sh"
 FORMAT="${FORMAT:-text}"
 VERBOSE="${VERBOSE:-0}"
 
-# Project paths
-PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+# Project paths.
+#
+# El fallback a `pwd` ataba el validador al directorio desde el que se invocara:
+# lanzado desde fuera del repo buscaba en ${cwd}/.claude/hooks, no encontraba
+# nada, imprimia "Hooks directory not found" y devolvia 0. Un validador que no
+# encuentra ni un hook reportaba exito. Se deriva del propio fichero, que no
+# depende del cwd ni de que git responda.
+_SELF="${BASH_SOURCE[0]}"
+while [ -L "$_SELF" ]; do
+    _LINK="$(readlink "$_SELF")"
+    case "$_LINK" in
+        /*) _SELF="$_LINK" ;;
+        *)  _SELF="$(dirname "$_SELF")/$_LINK" ;;
+    esac
+done
+PROJECT_ROOT="$(cd "$(dirname "$_SELF")/.." && pwd)"
 HOOKS_DIR="${PROJECT_ROOT}/.claude/hooks"
 
 # Parse arguments

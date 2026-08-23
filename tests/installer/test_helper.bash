@@ -13,7 +13,23 @@
 # Project root detection
 get_project_root() {
     local root
-    root="$(git rev-parse --show-toplevel 2>/dev/null)" || root="$(cd "$(dirname "$BATS_TEST_FILENAME")/../../.." && pwd)"
+    # El fichero de test vive en <repo>/tests/installer/, asi que la raiz esta
+    # DOS niveles arriba, no tres: el fallback subia uno de mas y devolvia el
+    # directorio padre del repo. Como solo se usaba cuando `git rev-parse`
+    # fallaba, el error quedaba latente en cualquier maquina con git sano.
+    root="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
+
+    # Si git responde y discrepa, manda git (cubre worktrees y submodulos).
+    local git_root
+    git_root="$(git -C "$root" rev-parse --show-toplevel 2>/dev/null)" || git_root=""
+    [[ -n "$git_root" ]] && root="$git_root"
+
+    # Una raiz que no contiene el instalador no es la raiz: fallar aqui es mucho
+    # mas barato que ver 40 aserciones de ruta en rojo sin motivo aparente.
+    if [[ ! -f "$root/install.sh" || ! -d "$root/.claude" ]]; then
+        echo "get_project_root: '$root' no parece la raiz del repo (falta install.sh o .claude/)" >&2
+        return 1
+    fi
     echo "$root"
 }
 
@@ -150,6 +166,14 @@ EOF
 }
 
 # Assert a command exists
+# bats-support no se carga en estas suites, asi que `fail` no existia: cualquier
+# `... || fail "mensaje"` moria con 127 (command not found) en vez de fallar con
+# el motivo. El test seguia en rojo, pero por la razon equivocada y sin el mensaje.
+fail() {
+    echo "${1:-fallo sin motivo declarado}" >&2
+    return 1
+}
+
 assert_command_exists() {
     local cmd="$1"
     if ! command -v "$cmd" &>/dev/null; then

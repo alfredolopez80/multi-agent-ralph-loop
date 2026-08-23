@@ -44,7 +44,7 @@ echo "=========================================="
 # === 1. RULES (standalone copies — W5.1 copy strategy) ===
 echo ""
 echo "=== Rules (standalone copies with checksum validation) ==="
-RULES=(aristotle-methodology.md ast-grep-usage.md browser-automation.md parallel-first.md plan-immutability.md zai-mcp-usage.md)
+RULES=(aristotle-methodology.md ast-grep-usage.md browser-automation.md native-tools-first.md parallel-first.md plan-immutability.md zai-mcp-usage.md)
 for rule in "${RULES[@]}"; do
   GLOBAL_FILE=~/.claude/rules/"$rule"
   REPO_FILE="$REPO/.claude/rules/$rule"

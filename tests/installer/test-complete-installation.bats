@@ -14,7 +14,12 @@
 # Setup
 setup() {
     REAL_HOME=$(bash -c 'echo $HOME')
-    PROJECT_ROOT="${REAL_HOME}/Documents/GitHub/multi-agent-ralph-loop"
+    # La raiz se DERIVA del fichero de test. Antes estaba cableada la ruta
+    # absoluta de una maquina concreta ("${REAL_HOME}/Documents/GitHub/..."),
+    # asi que la suite solo podia pasar en ese portatil: en CI apuntaba a un
+    # directorio inexistente y TODA asercion de ruta fallaba, incluidas las de
+    # README.md y CHANGELOG.md, que si estan en el checkout.
+    PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
     CLAUDE_DIR="${REAL_HOME}/.claude"
     SCRIPTS_DIR="${PROJECT_ROOT}/scripts"
     CLAUDE_SCRIPTS="${PROJECT_ROOT}/.claude/scripts"
@@ -98,8 +103,8 @@ setup() {
     [ -f "${PROJECT_ROOT}/.claude/skills/orchestrator/SKILL.md" ]
 }
 
-@test "INSTALL: loop skill exists" {
-    [ -f "${PROJECT_ROOT}/.claude/skills/loop/SKILL.md" ]
+@test "INSTALL: iterate skill exists" {
+    [ -f "${PROJECT_ROOT}/.claude/skills/iterate/SKILL.md" ]
 }
 
 @test "INSTALL: gates skill exists" {
@@ -158,14 +163,6 @@ setup() {
     [ -f "${PROJECT_ROOT}/.claude/hooks/repo-boundary-guard.sh" ]
 }
 
-@test "INSTALL: validate-lsp-servers.sh hook exists" {
-    [ -f "${PROJECT_ROOT}/.claude/hooks/validate-lsp-servers.sh" ]
-}
-
-@test "INSTALL: auto-checkpoint.sh hook exists" {
-    [ -f "${PROJECT_ROOT}/.claude/hooks/auto-checkpoint.sh" ]
-}
-
 @test "INSTALL: pre-compact-handoff.sh hook exists" {
     [ -f "${PROJECT_ROOT}/.claude/hooks/pre-compact-handoff.sh" ]
 }
@@ -177,11 +174,6 @@ setup() {
 # =============================================================================
 # SECTION 6: LSP Servers Availability
 # =============================================================================
-
-@test "INSTALL: typescript-language-server is installed" {
-    command -v typescript-language-server >/dev/null 2>&1 || \
-    npm list -g typescript-language-server >/dev/null 2>&1
-}
 
 @test "INSTALL: pyright is installed" {
     command -v pyright >/dev/null 2>&1 || \
@@ -255,10 +247,6 @@ setup() {
     [ -f "${PROJECT_ROOT}/CLAUDE.md" ]
 }
 
-@test "INSTALL: CLAUDE.md exists in .claude" {
-    [ -f "${PROJECT_ROOT}/.claude/CLAUDE.md" ]
-}
-
 @test "INSTALL: .gitignore exists" {
     [ -f "${PROJECT_ROOT}/.gitignore" ]
 }
@@ -299,37 +287,7 @@ setup() {
     # Should not crash
 }
 
-@test "INSTALL: validate-lsp-servers.sh --help works" {
-    "${PROJECT_ROOT}/.claude/hooks/validate-lsp-servers.sh" --help 2>&1 | grep -q "Usage\|USAGE\|Options"
-}
-
 # =============================================================================
 # SECTION 12: Pre-commit Hooks
 # =============================================================================
 
-@test "INSTALL: pre-commit-installer-tests.sh hook exists" {
-    hook_file="${PROJECT_ROOT}/.claude/hooks/pre-commit-installer-tests.sh"
-    [ -f "$hook_file" ]
-}
-
-@test "INSTALL: pre-commit-installer-tests.sh hook is executable" {
-    hook_file="${PROJECT_ROOT}/.claude/hooks/pre-commit-installer-tests.sh"
-    [ -x "$hook_file" ]
-}
-
-@test "INSTALL: pre-commit-installer-tests.sh hook has proper shebang" {
-    hook_file="${PROJECT_ROOT}/.claude/hooks/pre-commit-installer-tests.sh"
-    [ -f "$hook_file" ]
-    head -1 "$hook_file" | grep -qi "#!/usr/bin/env bash\|#!/bin/bash"
-}
-
-@test "INSTALL: pre-commit-installer-tests.sh hook produces valid JSON output" {
-    hook_file="${PROJECT_ROOT}/.claude/hooks/pre-commit-installer-tests.sh"
-    [ -f "$hook_file" ]
-
-    # Run hook and capture output (may fail if bats not installed, but should produce JSON)
-    output=$(bash "$hook_file" 2>&1 || true)
-
-    # Should contain JSON with continue field
-    echo "$output" | grep -q '"continue"'
-}

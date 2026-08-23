@@ -37,7 +37,10 @@ GIT_COMMON_DIR="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/n
 if [[ -n "$GIT_COMMON_DIR" ]]; then
     PROJECT_ROOT="$(dirname "$GIT_COMMON_DIR")"
 else
-    PROJECT_ROOT="$(pwd)"
+    # Fallback a la ubicacion del propio script, no al cwd: invocado desde fuera
+    # de un repo (o desde un tarball sin .git) `pwd` apuntaba a un directorio
+    # cualquiera y el validador no encontraba ni un hook.
+    PROJECT_ROOT="$(cd "${_VC_DIR}/.." && pwd)"
 fi
 HOOKS_DIR="${PROJECT_ROOT}/.claude/hooks"
 
