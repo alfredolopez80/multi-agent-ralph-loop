@@ -738,18 +738,6 @@ install_gemini_config() {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# INSTALL CONFIG FILES
-# ═══════════════════════════════════════════════════════════════════════════════
-install_config() {
-    log_info "Installing configuration..."
-
-    # Copy models.json
-    cp "${SCRIPT_DIR}/config/models.json" "${RALPH_DIR}/config/"
-
-    log_success "Configuration installed"
-}
-
-# ═══════════════════════════════════════════════════════════════════════════════
 # CONFIGURE SHELL (Safe update with markers)
 # ═══════════════════════════════════════════════════════════════════════════════
 configure_shell() {
@@ -820,7 +808,6 @@ verify_installation() {
     local ERRORS=0
 
     [ -x "$INSTALL_DIR/ralph" ] && log_success "ralph CLI installed" || { log_error "ralph not found"; ERRORS=$((ERRORS+1)); }
-    [ -x "$INSTALL_DIR/mmc" ] && log_success "mmc CLI installed" || { log_error "mmc not found"; ERRORS=$((ERRORS+1)); }
     [ -d "${CLAUDE_DIR}/agents" ] && log_success "Agents directory OK" || { log_error "Agents missing"; ERRORS=$((ERRORS+1)); }
     [ -d "${CLAUDE_DIR}/commands" ] && log_success "Commands directory OK" || { log_error "Commands missing"; ERRORS=$((ERRORS+1)); }
     [ -x "${CLAUDE_DIR}/hooks/git-safety-guard.py" ] && log_success "Git Safety Guard installed (ACTIVE)" || log_warn "Git Safety Guard may need chmod +x"
@@ -830,22 +817,18 @@ verify_installation() {
 
 
 
-    # Verify curator and repo-learn scripts
     log_info "Running post-installation tests..."
 
-    if [ -x "${RALPH_DIR}/curator/curator.sh" ]; then
-        log_success "curator.sh installed"
-    else
-        log_error "curator.sh not found or not executable"
-        ERRORS=$((ERRORS+1))
-    fi
-
-    if [ -x "${RALPH_DIR}/scripts/repo-learn.sh" ]; then
-        log_success "repo-learn.sh installed"
-    else
-        log_error "repo-learn.sh not found or not executable"
-        ERRORS=$((ERRORS+1))
-    fi
+    # NOTA: aqui se verificaban ${RALPH_DIR}/curator/curator.sh y
+    # ${RALPH_DIR}/scripts/repo-learn.sh, mas los subcomandos `ralph repo-learn`
+    # y `ralph curator`. Este instalador NO copia ninguno de los dos: no existe
+    # ningun `cp` hacia esas rutas, y repo-learn.sh no existe en el repo. La
+    # consecuencia era que TODA instalacion terminaba en "completed with errors"
+    # y devolvia exit 1, aunque hubiera instalado correctamente todo lo demas.
+    #
+    # Una verificacion solo puede afirmar lo que este instalador instala. Si en
+    # el futuro se decide distribuir curator, el arreglo es anadir la copia y
+    # devolver aqui su verificacion — no reintroducir la comprobacion a secas.
 
     # Run validation script if available
     if [ -x "${RALPH_DIR}/tests/validate_commands.sh" ]; then
@@ -858,18 +841,13 @@ verify_installation() {
         fi
     fi
 
-    # Verify commands work
-    if "$INSTALL_DIR/ralph" repo-learn --help > /dev/null 2>&1; then
-        log_success "ralph repo-learn command works"
+    # Verify the CLI itself responds. `ralph help` es el unico subcomando que
+    # este instalador puede garantizar: instala el binario, no los backends de
+    # curator/repo-learn.
+    if "$INSTALL_DIR/ralph" help > /dev/null 2>&1; then
+        log_success "ralph CLI responds"
     else
-        log_error "ralph repo-learn command failed"
-        ERRORS=$((ERRORS+1))
-    fi
-
-    if "$INSTALL_DIR/ralph" curator > /dev/null 2>&1; then
-        log_success "ralph curator command works"
-    else
-        log_error "ralph curator command failed"
+        log_error "ralph CLI does not respond"
         ERRORS=$((ERRORS+1))
     fi
     return $ERRORS
@@ -886,7 +864,6 @@ main() {
     echo ""
     echo "  This will install:"
     echo "    • ralph CLI to ~/.local/bin/"
-    echo "    • mmc (MiniMax wrapper) to ~/.local/bin/"
     echo "    • 9 agents to ~/.claude/agents/"
     echo "    • 15 commands to ~/.claude/commands/"
     echo "    • 5 skills to ~/.claude/skills/ (including React Best Practices from Vercel)"
@@ -915,7 +892,6 @@ main() {
     install_claude_components
     install_codex_config
     install_gemini_config
-    install_config
     configure_shell
 
     echo ""
@@ -931,21 +907,14 @@ main() {
         echo "  1. Reload your shell:"
         echo "     ${CYAN}source ~/.zshrc${NC}  (or ~/.bashrc)"
         echo ""
-        echo "  2. (Optional) Configure MiniMax for 2-4x iterations:"
-        echo "     ${CYAN}mmc --setup${NC}"
-        echo ""
-        echo "  3. Start using Ralph:"
+        echo "  2. Start using Ralph:"
         echo "     ${CYAN}ralph help${NC}"
         echo "     ${CYAN}ralph orch \"Your task here\"${NC}"
         echo ""
-        echo "  4. Run quality gates manually when needed:"
+        echo "  3. Run quality gates manually when needed:"
         echo "     ${CYAN}ralph gates${NC}"
         echo ""
-        echo "  5. View usage statistics (hybrid logging):"
-        echo "     ${CYAN}mmc --stats all${NC}      # Global + project"
-        echo "     ${CYAN}mmc --stats project${NC}  # This repo only"
-        echo ""
-        echo "  6. (v2.20) Install WorkTrunk for git worktree workflow:"
+        echo "  4. (v2.20) Install WorkTrunk for git worktree workflow:"
         echo "     ${CYAN}brew install max-sixty/worktrunk/wt${NC}"
         echo "     ${CYAN}wt config shell install${NC}"
         echo "     ${CYAN}ralph worktree \"your feature\"${NC}"

@@ -100,11 +100,11 @@ teardown() {
     [[ "$status" == "PASS" || "$status" == "WARN" ]]
 }
 
-@test "validates loop skill" {
+@test "validates iterate skill" {
     run env HOME="$ORIGINAL_HOME" "$VALIDATE_SCRIPT" --format json
-    echo "$output" | jq -e '.skills.loop' > /dev/null
+    echo "$output" | jq -e '.skills.iterate' > /dev/null
     local status
-    status=$(echo "$output" | jq -r '.skills.loop.status')
+    status=$(echo "$output" | jq -r '.skills.iterate.status')
     [[ "$status" == "PASS" || "$status" == "WARN" ]]
 }
 
@@ -168,10 +168,10 @@ teardown() {
     [[ ${#desc} -ge 20 ]]
 }
 
-@test "loop has valid description" {
+@test "iterate has valid description" {
     run env HOME="$ORIGINAL_HOME" "$VALIDATE_SCRIPT" --format json
     local desc
-    desc=$(echo "$output" | jq -r '.skills.loop.description')
+    desc=$(echo "$output" | jq -r '.skills.iterate.description')
     [[ ${#desc} -ge 20 ]]
 }
 

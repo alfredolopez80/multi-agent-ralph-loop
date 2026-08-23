@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # context-windows.sh — Model-aware context window configuration (v3.1.0)
 #
 # Maps model names to their actual context windows for accurate compaction.

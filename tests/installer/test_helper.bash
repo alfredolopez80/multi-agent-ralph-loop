@@ -150,6 +150,14 @@ EOF
 }
 
 # Assert a command exists
+# bats-support no se carga en estas suites, asi que `fail` no existia: cualquier
+# `... || fail "mensaje"` moria con 127 (command not found) en vez de fallar con
+# el motivo. El test seguia en rojo, pero por la razon equivocada y sin el mensaje.
+fail() {
+    echo "${1:-fallo sin motivo declarado}" >&2
+    return 1
+}
+
 assert_command_exists() {
     local cmd="$1"
     if ! command -v "$cmd" &>/dev/null; then

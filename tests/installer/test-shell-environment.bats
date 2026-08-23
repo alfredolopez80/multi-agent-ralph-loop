@@ -127,11 +127,6 @@ teardown() {
     echo "$output" | jq -e '.checks.ralph_aliases' > /dev/null
 }
 
-@test "detects minimax aliases check" {
-    run "$VALIDATE_SCRIPT" --format json
-    echo "$output" | jq -e '.checks.minimax_aliases' > /dev/null
-}
-
 @test "detects claude env check" {
     run "$VALIDATE_SCRIPT" --format json
     echo "$output" | jq -e '.checks.claude_env' > /dev/null

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 umask 077
 # ~/.claude/hooks/context-warning.sh
 # Context Monitoring Hook - v2.90.0

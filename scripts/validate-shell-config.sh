@@ -49,7 +49,6 @@ Checks:
   - PATH contains ~/.local/bin
   - Shell rc file has Ralph markers
   - All Ralph aliases are defined
-  - MiniMax aliases are defined
   - Claude Code environment variables are set
 
 Exit codes:
@@ -104,8 +103,6 @@ RALPH_ALIASES=(
     "research"
     "parallel"
 )
-
-# MiniMax aliases
 
 # Ralph marker in rc file
 RALPH_MARKER="# RALPH CONFIGURATION"

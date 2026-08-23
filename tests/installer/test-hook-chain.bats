@@ -135,9 +135,12 @@ EOF
 @test "SessionStart hooks match all tools (matcher=*)" {
     [[ -f "$SETTINGS_FILE" ]] || skip "Real settings.json not found"
 
-    local matcher
-    matcher=$(jq -r '.hooks.SessionStart[0].matcher // ""' "$SETTINGS_FILE")
-    [[ "$matcher" == "*" ]]
+    # SessionStart tiene varios grupos de matcher (compact, *, default). Fijar
+    # el indice [0] ataba el test al orden del fichero: hoy el grupo 0 es
+    # "compact" y la asercion fallaba sobre configuracion correcta.
+    local has_wildcard
+    has_wildcard=$(jq -r '[.hooks.SessionStart[]? | select(.matcher == "*")] | length' "$SETTINGS_FILE")
+    [[ "$has_wildcard" -ge 1 ]]
 }
 
 @test "SessionStart hooks have valid command paths" {
@@ -169,7 +172,7 @@ EOF
     while IFS= read -r cmd; do
         # Extract basename
         hook_names+=("$(basename "$cmd" | cut -d' ' -f1)")
-    done < <(jq -r '.hooks.SessionStart[0].hooks[]?.command // empty' "$SETTINGS_FILE")
+    done < <(jq -r '.hooks.SessionStart[]?.hooks[]?.command // empty' "$SETTINGS_FILE")
 
     # Verify expected hooks are present
     local found_orchestrator_init=0
@@ -281,7 +284,9 @@ EOF
 
     run python3 "$hook_path" <<< "$mock_input"
     [[ $status -ne 0 ]]
-    [[ "$output" == *"block"* ]]
+    # PreToolUse usa permissionDecision: allow|deny|ask. "block" NUNCA es valido
+    # aqui (pertenece a decision: block de los hooks Stop). Ver hook-json-format-sec039.
+    [[ "$output" == *"deny"* ]]
 }
 
 @test "PreToolUse/Bash git-safety-guard allows safe commands" {
@@ -364,10 +369,12 @@ EOF
 @test "PreToolUse/Task hooks fire before Task tool" {
     [[ -f "$SETTINGS_FILE" ]] || skip "Real settings.json not found"
 
-    # Check for repo-boundary-guard in Task hooks
+    # repo-boundary-guard.sh esta registrado en matcher=Bash, no en Agent|Task.
+    # El hook de seguridad de la cadena de Task es promptify-security.sh, que
+    # redacta credenciales del prompt antes de que llegue al subagente.
     local found=0
     while IFS= read -r cmd; do
-        if [[ "$cmd" == *"repo-boundary-guard"* ]]; then
+        if [[ "$cmd" == *"promptify-security"* ]]; then
             found=1
             break
         fi
@@ -376,12 +383,12 @@ EOF
     [[ $found -eq 1 ]]
 }
 
-@test "PreToolUse/Task has procedural-inject hook" {
+@test "PreToolUse/Task has permission-guard hook" {
     [[ -f "$SETTINGS_FILE" ]] || skip "Real settings.json not found"
 
     local found=0
     while IFS= read -r cmd; do
-        if [[ "$cmd" == *"procedural-inject"* ]]; then
+        if [[ "$cmd" == *"permission-guard"* ]]; then
             found=1
             break
         fi
@@ -398,12 +405,12 @@ EOF
     [[ $count -gt 0 ]]
 }
 
-@test "PostToolUse/Task has auto-background-swarm hook" {
+@test "PostToolUse/Task has batch-progress-tracker hook" {
     [[ -f "$SETTINGS_FILE" ]] || skip "Real settings.json not found"
 
     local found=0
     while IFS= read -r cmd; do
-        if [[ "$cmd" == *"auto-background-swarm"* ]]; then
+        if [[ "$cmd" == *"batch-progress-tracker"* ]]; then
             found=1
             break
         fi
@@ -512,7 +519,7 @@ EOF
 
     # Get count of hooks for a specific event
     local hook_count
-    hook_count=$(jq '.hooks.SessionStart[0].hooks | length' "$SETTINGS_FILE")
+    hook_count=$(jq '[.hooks.SessionStart[]?.hooks[]?] | length' "$SETTINGS_FILE")
 
     # Having multiple hooks means the chain can continue even if one fails
     [[ $hook_count -gt 1 ]]
@@ -550,7 +557,11 @@ EOF
         # Skip plugin hooks
         [[ "$cmd" == *"/plugins/"* ]] && continue
 
-        local expanded_path="${cmd//\~/$ORIGINAL_HOME}"
+        # El comando puede venir citado ("/ruta/con espacios/x.mjs"): hay que
+        # quitar las comillas antes de comprobar el fichero, o toda entrada
+        # correctamente citada se reporta como ausente.
+        local bare="${cmd%\"}"; bare="${bare#\"}"
+        local expanded_path="${bare//\~/$ORIGINAL_HOME}"
         if [[ -n "$expanded_path" && ! -f "$expanded_path" ]]; then
             echo "Missing hook: $expanded_path"
             missing=1
@@ -568,7 +579,13 @@ EOF
         # Skip plugin hooks
         [[ "$cmd" == *"/plugins/"* ]] && continue
 
-        local expanded_path="${cmd//\~/$ORIGINAL_HOME}"
+        # El comando puede venir citado ("/ruta/x.mjs") y/o llevar argumentos.
+        # Sin desnudarlo, toda entrada correctamente citada se reporta ausente.
+        local bare="${cmd%\"}"
+        bare="${bare#\"}"
+        bare="${bare%% *}"
+        bare="${bare%\"}"
+        local expanded_path="${bare//\~/$ORIGINAL_HOME}"
         if [[ -n "$expanded_path" && ! -f "$expanded_path" ]]; then
             echo "Missing hook: $expanded_path"
             missing=1
@@ -586,7 +603,13 @@ EOF
         # Skip plugin hooks
         [[ "$cmd" == *"/plugins/"* ]] && continue
 
-        local expanded_path="${cmd//\~/$ORIGINAL_HOME}"
+        # El comando puede venir citado ("/ruta/x.mjs") y/o llevar argumentos.
+        # Sin desnudarlo, toda entrada correctamente citada se reporta ausente.
+        local bare="${cmd%\"}"
+        bare="${bare#\"}"
+        bare="${bare%% *}"
+        bare="${bare%\"}"
+        local expanded_path="${bare//\~/$ORIGINAL_HOME}"
         if [[ -n "$expanded_path" && ! -f "$expanded_path" ]]; then
             echo "Missing hook: $expanded_path"
             missing=1
@@ -604,7 +627,13 @@ EOF
         [[ "$cmd" == *"/plugins/"* ]] && continue
         [[ "$cmd" != *.sh ]] && continue
 
-        local expanded_path="${cmd//\~/$ORIGINAL_HOME}"
+        # El comando puede venir citado ("/ruta/x.mjs") y/o llevar argumentos.
+        # Sin desnudarlo, toda entrada correctamente citada se reporta ausente.
+        local bare="${cmd%\"}"
+        bare="${bare#\"}"
+        bare="${bare%% *}"
+        bare="${bare%\"}"
+        local expanded_path="${bare//\~/$ORIGINAL_HOME}"
         if [[ -f "$expanded_path" ]]; then
             assert_executable "$expanded_path"
         fi
@@ -619,7 +648,13 @@ EOF
         [[ "$cmd" == *"/plugins/"* ]] && continue
         [[ "$cmd" != *.py ]] && continue
 
-        local expanded_path="${cmd//\~/$ORIGINAL_HOME}"
+        # El comando puede venir citado ("/ruta/x.mjs") y/o llevar argumentos.
+        # Sin desnudarlo, toda entrada correctamente citada se reporta ausente.
+        local bare="${cmd%\"}"
+        bare="${bare#\"}"
+        bare="${bare%% *}"
+        bare="${bare%\"}"
+        local expanded_path="${bare//\~/$ORIGINAL_HOME}"
         if [[ -f "$expanded_path" ]]; then
             # Check for python shebang or executability
             local first_line
@@ -655,9 +690,11 @@ EOF
     # Verify SessionStart configuration
     [[ -f "$SETTINGS_FILE" ]] || skip "Real settings.json not found"
 
-    local session_start_count
-    session_start_count=$(jq '.hooks.SessionStart | length' "$SETTINGS_FILE")
-    [[ $session_start_count -eq 1 ]]
+    # Antes exigia exactamente UN grupo. Tener grupos por matcher (compact vs *)
+    # es configuracion valida y deseable, no un defecto.
+    local session_start_groups
+    session_start_groups=$(jq '.hooks.SessionStart | length' "$SETTINGS_FILE")
+    [[ $session_start_groups -ge 1 ]]
 }
 
 @test "Stop hooks fire at conversation end" {

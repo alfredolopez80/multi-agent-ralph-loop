@@ -84,7 +84,7 @@ done
 
 CORE_SKILLS=(
     "orchestrator"
-    "loop"
+    "iterate"
     "gates"
     "adversarial"
     "bugs"

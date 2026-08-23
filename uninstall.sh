@@ -73,8 +73,15 @@ RALPH_SKILLS=(
 remove_scripts() {
     log_info "Removing CLI scripts..."
 
-    [ -f "$INSTALL_DIR/ralph" ] && rm -f "$INSTALL_DIR/ralph" && log_success "Removed ralph"
-    [ -f "$INSTALL_DIR/mmc" ] && rm -f "$INSTALL_DIR/mmc" && log_success "Removed mmc"
+    # `[ -f x ] && rm x` como sentencia suelta devuelve 1 cuando x no existe. Si
+    # es la ULTIMA sentencia de la funcion, ese 1 es el valor de retorno y bajo
+    # `set -e` aborta el script entero. Eso ocurria con el CLI mmc (MiniMax,
+    # retirado en #36): al no existir el fichero, uninstall.sh moria aqui y NUNCA
+    # llegaba a borrar hooks, agentes, skills ni a limpiar settings.json.
+    if [ -f "$INSTALL_DIR/ralph" ]; then
+        rm -f "$INSTALL_DIR/ralph"
+        log_success "Removed ralph"
+    fi
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -360,7 +367,7 @@ main() {
     echo "═══════════════════════════════════════════════════════════════════════════════"
     echo ""
     echo "  This will remove:"
-    echo "    • ralph and mmc CLI from ~/.local/bin/"
+    echo "    • ralph CLI from ~/.local/bin/"
     echo "    • Ralph agents from ~/.claude/agents/"
     echo "    • Ralph commands from ~/.claude/commands/"
     echo "    • Ralph skills from ~/.claude/skills/"

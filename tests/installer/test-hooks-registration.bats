@@ -175,8 +175,8 @@ teardown() {
     [[ ! -f "$REAL_SETTINGS" ]] && skip "Real settings.json not found"
     run env HOME="$ORIGINAL_HOME" "$VALIDATE_SCRIPT" --format json
 
-    # Should have auto-migrate-plan-state.sh
-    echo "$output" | jq -e '.hooks["auto-migrate-plan-state.sh"]' > /dev/null
+    # wake-up-layer-stack.sh es el SessionStart de la lista critica
+    echo "$output" | jq -e '.hooks["wake-up-layer-stack.sh"]' > /dev/null
 }
 
 @test "validates PreToolUse Bash hooks" {
@@ -191,24 +191,29 @@ teardown() {
     [[ ! -f "$REAL_SETTINGS" ]] && skip "Real settings.json not found"
     run env HOME="$ORIGINAL_HOME" "$VALIDATE_SCRIPT" --format json
 
-    # Should have adversarial-auto-trigger.sh (a PostToolUse:Task hook)
-    echo "$output" | jq -e '.hooks["adversarial-auto-trigger.sh"]' > /dev/null
+    # status-auto-check.sh es el PostToolUse de la lista critica
+    echo "$output" | jq -e '.hooks["status-auto-check.sh"]' > /dev/null
 }
 
-@test "validates UserPromptSubmit hooks" {
+@test "critical hook set is non-empty and every entry passes" {
     [[ ! -f "$REAL_SETTINGS" ]] && skip "Real settings.json not found"
     run env HOME="$ORIGINAL_HOME" "$VALIDATE_SCRIPT" --format json
 
-    # Should have context-warning.sh
-    echo "$output" | jq -e '.hooks["context-warning.sh"]' > /dev/null
-}
+    # Invariante en lugar de nombres concretos: los tests anteriores fijaban
+    # basenames (auto-migrate-plan-state, adversarial-auto-trigger, context-warning,
+    # glm5-subagent-stop) que fueron saliendo de la lista critica o del repo, y
+    # quedaron en rojo sin que nadie lo viera. Esto no deriva.
+    local count
+    count=$(echo "$output" | jq -r '.hooks | length')
+    # Cero hooks comprobados no es "limpio": es que el validador no comprobo nada.
+    [[ "$count" -gt 0 ]]
 
-@test "validates SubagentStop hooks" {
-    [[ ! -f "$REAL_SETTINGS" ]] && skip "Real settings.json not found"
-    run env HOME="$ORIGINAL_HOME" "$VALIDATE_SCRIPT" --format json
-
-    # Should have glm5-subagent-stop.sh
-    echo "$output" | jq -e '.hooks["glm5-subagent-stop.sh"]' > /dev/null
+    local not_pass
+    not_pass=$(echo "$output" | jq -r '[.hooks | to_entries[] | select(.value.status != "PASS") | .key] | join(", ")')
+    [[ -z "$not_pass" ]] || {
+        echo "hooks criticos que no pasan: $not_pass" >&2
+        false
+    }
 }
 
 #===============================================================================

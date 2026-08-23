@@ -189,14 +189,29 @@ teardown() {
 #===============================================================================
 
 @test "at least 3 essential servers are installed" {
-    local count=0
+    # Antes: `[ $count -ge 3 ]`. Al fallar solo decia "3 != 2" — habia que ir a
+    # mano a averiguar CUAL faltaba. Ahora nombra los ausentes, que es lo unico
+    # accionable. Instalarlos: scripts/install-language-servers.sh --essential
+    #
+    # `((count++))` con count=0 evalua a 0, que es exit status 1: bajo `set -e`
+    # eso mata el script en el PRIMER servidor encontrado. Se usa la forma de
+    # asignacion, que siempre devuelve 0.
+    local found=0
+    local missing=()
+    local srv
+    for srv in typescript-language-server pyright clangd sourcekit-lsp; do
+        if command -v "$srv" >/dev/null 2>&1; then
+            found=$((found + 1))
+        else
+            missing+=("$srv")
+        fi
+    done
 
-    command -v typescript-language-server >/dev/null 2>&1 && ((count++)) || true
-    command -v pyright >/dev/null 2>&1 && ((count++)) || true
-    command -v clangd >/dev/null 2>&1 && ((count++)) || true
-    command -v sourcekit-lsp >/dev/null 2>&1 && ((count++)) || true
-
-    [ $count -ge 3 ]
+    if [ "$found" -lt 3 ]; then
+        echo "servidores LSP ausentes (${found}/4 presentes): ${missing[*]}" >&2
+        echo "instalar con: scripts/install-language-servers.sh --essential" >&2
+        return 1
+    fi
 }
 
 @test "install script produces valid output" {

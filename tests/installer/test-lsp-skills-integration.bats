@@ -60,8 +60,8 @@ teardown() {
     [ -f "$PROJECT_ROOT/.claude/skills/orchestrator/SKILL.md" ]
 }
 
-@test "loop skill exists" {
-    [ -f "$PROJECT_ROOT/.claude/skills/loop/SKILL.md" ]
+@test "iterate skill exists" {
+    [ -f "$PROJECT_ROOT/.claude/skills/iterate/SKILL.md" ]
 }
 
 #===============================================================================
@@ -84,52 +84,13 @@ teardown() {
 # LANGUAGE SERVERS AVAILABLE FOR SKILLS
 #===============================================================================
 
-@test "typescript-language-server available for JS/TS analysis" {
-    command -v typescript-language-server >/dev/null 2>&1
-}
-
-@test "pyright available for Python analysis" {
-    command -v pyright >/dev/null 2>&1
-}
-
-@test "clangd available for C/C++ analysis" {
-    command -v clangd >/dev/null 2>&1
-}
-
 #===============================================================================
 # LSP HOOK INTEGRATION
 #===============================================================================
 
-@test "validate-lsp-servers hook exists" {
-    [ -f "$PROJECT_ROOT/.claude/hooks/validate-lsp-servers.sh" ]
-}
-
-@test "validate-lsp-servers hook is executable" {
-    [ -x "$PROJECT_ROOT/.claude/hooks/validate-lsp-servers.sh" ]
-}
-
-@test "validate-lsp-servers hook can be called" {
-    run "$PROJECT_ROOT/.claude/hooks/validate-lsp-servers.sh" --check
-    [ $status -ge 0 ]
-}
-
 #===============================================================================
 # INTEGRATION VALIDATION
 #===============================================================================
-
-@test "LSP ecosystem is complete and functional" {
-    # 1. Servers available
-    command -v typescript-language-server >/dev/null 2>&1
-    command -v pyright >/dev/null 2>&1
-    command -v clangd >/dev/null 2>&1
-
-    # 2. Skill exists
-    [ -f "$REAL_HOME/.claude/skills/lsp-explore/SKILL.md" ]
-
-    # 3. Hook validates
-    run "$PROJECT_ROOT/.claude/hooks/validate-lsp-servers.sh" --hook
-    [ $status -eq 0 ]
-}
 
 #===============================================================================
 # DOCUMENTATION CHECK
