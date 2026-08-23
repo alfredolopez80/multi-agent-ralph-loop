@@ -155,29 +155,25 @@ create_plan_state() {
     plan_id="adaptive-$(date +%Y%m%d-%H%M%S)-$$"
 
     # Set parameters based on complexity
-    local complexity model max_iter step_name
+    local complexity max_iter step_name
     case "$complexity_mode" in
         FAST_PATH)
             complexity=2
-            model="sonnet"
             max_iter=3
             step_name="Direct implementation"
             ;;
         SIMPLE)
             complexity=4
-            model="sonnet"
             max_iter=10
             step_name="Execute task"
             ;;
         COMPLEX)
             complexity=7
-            model="opus"
             max_iter=25
             step_name="Phase 1: Analysis"
             ;;
         *)
             complexity=4
-            model="sonnet"
             max_iter=10
             step_name="Execute task"
             ;;
@@ -209,7 +205,6 @@ create_plan_state() {
   "task": $task_summary_json,
   "classification": {
     "complexity": $complexity,
-    "model_routing": "$model",
     "adversarial_required": $([ "$complexity_mode" = "COMPLEX" ] && echo "true" || echo "false"),
     "adaptive_mode": "$complexity_mode",
     "route": "$complexity_mode"

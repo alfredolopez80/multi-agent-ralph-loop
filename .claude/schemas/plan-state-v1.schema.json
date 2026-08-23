@@ -65,10 +65,6 @@
           "minimum": 1,
           "maximum": 10
         },
-        "model_routing": {
-          "type": "string",
-          "enum": ["opus", "sonnet", "haiku", "minimax", "codex", "gemini"]
-        },
         "adversarial_required": {
           "type": "boolean"
         },

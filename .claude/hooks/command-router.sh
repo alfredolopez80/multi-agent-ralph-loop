@@ -268,30 +268,24 @@ run_curator_suggestion() {
 
 # =============================================================================
 # SECTION 3: PROMPT ANALYSIS
-# Classify prompt complexity and suggest model routing
+# Classify prompt complexity and suggest PROCESS (never model routing)
 # =============================================================================
 
 run_prompt_analyzer() {
     local classification=""
 
-    # MUY SIMPLE - Haiku 4.5
-    if echo "$PROMPT_LOWER" | grep -qE '(^fix typo|^read |^search |^ls |^cat |^show |^what is|^find file|^grep |^view |^display |^list )'; then
-        classification="[Prompt Analysis] Tarea muy simple detectada. Modelo sugerido: Haiku 4.5 (ultra rapido y economico)."
-    # SIMPLE - Sonnet 4.5
-    elif echo "$PROMPT_LOWER" | grep -qE '(refactor small|simple test|update comment|rename |format code|move file|minor change|update function)'; then
-        classification="[Prompt Analysis] Tarea simple detectada. Modelo sugerido: Sonnet 4.5."
-    # MEDIA - Sonnet 4.5
-    elif echo "$PROMPT_LOWER" | grep -qE '(minor docs|small feature|basic implementation|medium refactor|update module)'; then
-        classification="[Prompt Analysis] Tarea media detectada. Modelo sugerido: Sonnet 4.5."
+    # Tareas triviales/simples: no se inyecta nada (su unico contenido era una
+    # sugerencia de modelo, prohibida por la politica global). Menos ruido y
+    # menos tokens por turno.
     # COMPLEJA TECNICA
-    elif echo "$PROMPT_LOWER" | grep -qE '(architecture|review|code review|security|vulnerabilities|unit test|coverage|bugs|codebase|analyze code|refactor|optimize|performance|implement|feature|api|integration)'; then
-        classification="[Prompt Analysis] Tarea COMPLEJA TECNICA detectada. Considerar modo plan con orquestacion de agentes. Agentes sugeridos: Codex (technical) + Opus (coordinator)."
+    if echo "$PROMPT_LOWER" | grep -qE '(architecture|review|code review|security|vulnerabilities|unit test|coverage|bugs|codebase|analyze code|refactor|optimize|performance|implement|feature|api|integration)'; then
+        classification="[Prompt Analysis] Tarea compleja (tecnica). Considerar Plan Mode y spawn paralelo de teammates (ralph-coder + ralph-tester; ralph-security si toca auth o entrada de usuario)."
     # COMPLEJA ESTRATEGICA
     elif echo "$PROMPT_LOWER" | grep -qE '(compare|decide|strategy|evaluate|pros cons|trade-offs|plan|roadmap|design|architect|choose)'; then
-        classification="[Prompt Analysis] Tarea COMPLEJA ESTRATEGICA detectada. Considerar modo plan con orquestacion. Agentes sugeridos: Opus (coordinator) + Codex (analysis)."
+        classification="[Prompt Analysis] Tarea compleja (estrategica). Considerar Plan Mode con orquestacion de agentes."
     # ULTRA-COMPLEJA
     elif echo "$PROMPT_LOWER" | grep -qE '(security audit|comprehensive|full analysis|deep dive|critical review|complete overhaul|system-wide)'; then
-        classification="[Prompt Analysis] TAREA ULTRA-COMPLEJA detectada. Considerar modo plan con Opus + UltraThink. ADVERTENCIA: Alto costo (15-20x vs Sonnet). Agentes sugeridos: Codex (audit) + Gemini (context) + Opus+UltraThink (synthesis)."
+        classification="[Prompt Analysis] Tarea ultra-compleja. Plan Mode + Aristotle 5 fases + validacion adversarial."
     fi
 
     if [[ -n "$classification" ]]; then

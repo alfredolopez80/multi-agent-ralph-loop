@@ -3,7 +3,7 @@
 name: architecture-strategist
 description: "Architectural compliance review and system design analysis. Evaluates changes against established patterns and component boundaries."
 tools: Read, Grep, Glob, Task, Bash(grep:*, awk:*, sort:*, uniq:*)
-model: opus
+model: inherit
 ---
 
 **ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.

@@ -192,11 +192,11 @@ Validation: `./scripts/validate-hooks-registration.sh`
 
 ## Model Routing
 
-| Complexity | Model |
-|------------|-------|
-| 1-4 | GLM-4.7 (primary) |
-| 5-6 | Claude Sonnet |
-| 7-10 | Claude Opus |
+No complexity-based model routing exists. The authoritative policy is
+`~/.claude/CLAUDE.md` -> "Model Routing": the task is handled by the active
+session model (Opus by default; the user decides with `/model`). Complexity
+thresholds trigger PROCESS (Plan Mode >= 4, Parallel-First >= 3, Aristotle >= 4),
+never model choice.
 
 ## Memory System (MemPalace v3.0)
 

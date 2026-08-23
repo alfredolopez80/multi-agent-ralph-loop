@@ -66,13 +66,6 @@ else
     fail "cmd_research does not reference WebSearch"
 fi
 
-echo "Test 4: cmd_research() has MiniMax fallback..."
-if grep -q 'mcp__MiniMax__web_search' "$PROJECT_ROOT/scripts/ralph"; then
-    pass "cmd_research has MiniMax fallback"
-else
-    fail "cmd_research missing MiniMax fallback"
-fi
-
 echo "Test 5: cmd_research() has help text..."
 if grep -A5 'cmd_research()' "$PROJECT_ROOT/scripts/ralph" | grep -q 'v2.25'; then
     pass "cmd_research has v2.25 version comment"
@@ -181,13 +174,6 @@ if grep -q 'WebSearch' "$PROJECT_ROOT/.claude/commands/research.md"; then
     pass "/research references WebSearch"
 else
     fail "/research does not reference WebSearch"
-fi
-
-echo "Test 19: /research has MiniMax fallback..."
-if grep -q 'MiniMax' "$PROJECT_ROOT/.claude/commands/research.md"; then
-    pass "/research has MiniMax fallback"
-else
-    fail "/research missing MiniMax fallback"
 fi
 
 # =============================================================================

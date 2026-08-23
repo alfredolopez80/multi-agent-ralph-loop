@@ -95,8 +95,6 @@ RALPH_CORE_SKILLS=(
 RALPH_OPTIONAL_SKILLS=(
     "curator"
     "codex-cli"
-    "minimax"
-    "minimax-mcp-usage"
     "openai-docs"
     "context7-usage"
     "gemini-cli"

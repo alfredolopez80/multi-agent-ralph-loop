@@ -5,7 +5,7 @@
 #
 # CHANGELOG v2.82.0:
 # - Model-adaptive display: detects active model via stdin JSON (.model.display_name)
-# - Provider badge: ZAI (glm-*), MMX (MiniMax*), CLD (Claude native)
+# - Provider badge: ZAI (glm-*), CLD (Claude native)
 # - Each provider gets distinct color + icon for instant identification
 # - Claude-hud output adapted per provider (suppressed when unavailable)
 # - Detection: .model.display_name > ANTHROPIC_MODEL env > fallback
@@ -109,11 +109,6 @@ detect_provider() {
         provider_label="ZAI"
         provider_icon="◆"
         provider_color="$CYAN"
-    elif [[ "$model_name" == MiniMax* ]] || [[ "$model_name" == minimax* ]]; then
-        provider_id="mmx"
-        provider_label="MMX"
-        provider_icon="◇"
-        provider_color="$MAGENTA"
     elif [[ "$model_name" == claude* ]]; then
         # Claude native models — always CLD provider
         provider_id="cld"
@@ -125,11 +120,6 @@ detect_provider() {
         provider_label="ZAI"
         provider_icon="◆"
         provider_color="$CYAN"
-    elif [[ -n "${ANTHROPIC_MODEL:-}" ]] && [[ "${ANTHROPIC_MODEL}" == MiniMax* ]]; then
-        provider_id="mmx"
-        provider_label="MMX"
-        provider_icon="◇"
-        provider_color="$MAGENTA"
     fi
 
     printf '%s\t%s\t%s\t%s' "$provider_id" "$provider_label" "$provider_icon" "$provider_color"

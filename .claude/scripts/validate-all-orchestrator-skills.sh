@@ -43,8 +43,6 @@ ALL_SKILLS=(
     "glm-mcp"
     "kaizen"
     "loop"
-    "minimax"
-    "minimax-mcp-usage"
     "openai-docs"
     "orchestrator"
     "parallel"

@@ -150,21 +150,10 @@ Consider running verification subagents before proceeding."
     OPTIMIZATION_APPLIED=true
 fi
 
-# 4. MODEL OPTIMIZATION
-# Check if using opus for simple tasks (could use sonnet)
-TASK_MODEL=$(echo "$INPUT" | jq -r '.tool_input.model // ""' 2>/dev/null || echo "")
-COMPLEXITY=$(echo "$PLAN_STATE_CONTENT" | jq -r '.classification.complexity // 5')
-
-if [[ "$TASK_MODEL" == "opus" ]] && [[ "$COMPLEXITY" -lt 5 ]]; then
-    log "Model optimization: opus used for low complexity ($COMPLEXITY) task"
-
-    SUGGESTIONS="${SUGGESTIONS}
-
-💡 **Model Optimization**
-Task complexity is $COMPLEXITY/10 but using opus model.
-Consider \`model: \"sonnet\"\` for cost efficiency."
-    OPTIMIZATION_APPLIED=true
-fi
+# NOTE: model routing by complexity threshold was removed here.
+# Model selection follows the global policy (~/.claude/CLAUDE.md -> Model Routing):
+# the session model handles the task; complexity thresholds drive PROCESS
+# (Plan Mode, Parallel-First, Aristotle), never model choice.
 
 # Build response
 trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output

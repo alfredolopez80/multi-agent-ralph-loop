@@ -523,11 +523,11 @@ PID2=$!
         exit 0
     }
 
-    # Check for API errors - with MiniMax fallback (Phase 5)
+    # Check for API errors (sin fallback externo)
     GLM_SUCCESS=false
     if echo "$WEB_RESULT" | jq -e '.error' >/dev/null 2>&1; then
         ERROR_MSG=$(echo "$WEB_RESULT" | jq -r '.error.message // .error.code // "Unknown"' 2>/dev/null)
-        echo "  [3/4] GLM web search: API error - $ERROR_MSG, trying MiniMax fallback..." >> "$LOG_FILE"
+        echo "  [3/4] GLM web search: API error - $ERROR_MSG (sin fallback; las fuentes locales son autoritativas)" >> "$LOG_FILE"
     elif echo "$WEB_RESULT" | jq -e '.choices[0].message' >/dev/null 2>&1; then
         # GLM-4.7 uses reasoning_content for reasoning models, content for standard
         CONTENT=$(echo "$WEB_RESULT" | jq -r '.choices[0].message.content // ""' 2>/dev/null)
@@ -543,15 +543,6 @@ PID2=$!
         fi
     fi
 
-    # Phase 5: MiniMax fallback if GLM failed
-    if [[ "$GLM_SUCCESS" != "true" ]]; then
-        echo "  [3/4] Attempting MiniMax fallback..." >> "$LOG_FILE"
-        # Try MiniMax M2.1 via mmc CLI if available
-        # The MiniMax CLI was retired on 2026-07-31. This branch used it behind
-        # `2>/dev/null || true`, so once the CLI vanished the search returned empty
-        # for ever without a single signal.
-        : # no external fallback: local sources above are authoritative
-    fi
 ) &
 PID3=$!
 
@@ -591,11 +582,11 @@ PID3=$!
         exit 0
     }
 
-    # Check for API errors - with MiniMax fallback (Phase 5)
+    # Check for API errors (sin fallback externo)
     GLM_SUCCESS=false
     if echo "$DOCS_RESULT" | jq -e '.error' >/dev/null 2>&1; then
         ERROR_MSG=$(echo "$DOCS_RESULT" | jq -r '.error.message // .error.code // "Unknown"' 2>/dev/null)
-        echo "  [4/4] GLM docs search: API error - $ERROR_MSG, trying MiniMax fallback..." >> "$LOG_FILE"
+        echo "  [4/4] GLM docs search: API error - $ERROR_MSG (sin fallback; las fuentes locales son autoritativas)" >> "$LOG_FILE"
     elif echo "$DOCS_RESULT" | jq -e '.choices[0].message' >/dev/null 2>&1; then
         # GLM-4.7 uses reasoning_content for reasoning models, content for standard
         CONTENT=$(echo "$DOCS_RESULT" | jq -r '.choices[0].message.content // ""' 2>/dev/null)
@@ -610,14 +601,6 @@ PID3=$!
         fi
     fi
 
-    # Phase 5: MiniMax fallback if GLM failed
-    if [[ "$GLM_SUCCESS" != "true" ]]; then
-        echo "  [4/4] Attempting MiniMax fallback..." >> "$LOG_FILE"
-        # The MiniMax CLI was retired on 2026-07-31. This branch used it behind
-        # `2>/dev/null || true`, so once the CLI vanished the search returned empty
-        # for ever without a single signal.
-        : # no external fallback: local sources above are authoritative
-    fi
 ) &
 PID4=$!
 

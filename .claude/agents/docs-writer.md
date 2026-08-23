@@ -3,7 +3,7 @@
 name: docs-writer
 description: "Documentation specialist. Writes long-form docs and READMEs directly with Claude — no external CLI required."
 tools: Bash, Read, Write, Task
-model: sonnet
+model: inherit
 ---
 
 **ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.

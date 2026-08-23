@@ -22,7 +22,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 SCRIPTS_DIR = REPO_ROOT / ".claude" / "scripts"
 HOOKS_DIR = REPO_ROOT / ".claude" / "hooks"
-MODELS_JSON = REPO_ROOT / "config" / "models.json"
 
 # Agent types resolved by the harness from outside .claude/agents/: built-ins and
 # plugin-provided agents. Listing them explicitly keeps the check strict without
@@ -108,19 +107,6 @@ def test_subagent_type_names_an_existing_agent(path: Path):
         f"{path.relative_to(REPO_ROOT)} orders subagent_type {sorted(unknown)}, which "
         f"resolve to no agent. The Task call fails and the caller improvises. Point them "
         f"at an existing agent or remove the instruction."
-    )
-
-
-def test_models_json_maps_only_existing_agents():
-    """`subagent_models` documents routing; naming an absent agent misleads the reader."""
-    if not MODELS_JSON.is_file():
-        pytest.skip("config/models.json not present")
-    mapping = json.loads(MODELS_JSON.read_text(encoding="utf-8")).get("subagent_models", {})
-    known = _known_agent_types()
-    ghosts = sorted(name for name in mapping if name not in known)
-    assert not ghosts, (
-        f"config/models.json maps agents that do not exist: {ghosts}. "
-        f"Remove the entries or restore the agents."
     )
 
 
