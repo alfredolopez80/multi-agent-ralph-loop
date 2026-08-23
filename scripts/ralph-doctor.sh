@@ -13,6 +13,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
 RALPH_DIR="${HOME}/.ralph"
+# Sin esto, `set -u` aborta el diagnostico a media ejecucion y jamas se
+# imprime el resumen final: un doctor que no llega a su veredicto.
+CLAUDE_DIR="${HOME}/.claude"
 VERSION="1.0.0"
 
 # Contadores globales
@@ -209,7 +212,7 @@ apply_fixes() {
             log_success "Permisos corregidos: $(basename "$hook_file")"
             fixes_applied=$((fixes_applied+1))
         fi
-    done < <(find "$hooks_dir" -name "*.sh" -type f)
+    done < <(find "$hooks_dir" -name "*.sh" -type f -not -path "*/lib/*")
     
     # Create missing directories
     local required_dirs=(
@@ -322,7 +325,7 @@ check_hooks() {
     fi
     
     # Count total hooks
-    total_hooks=$(find "$hooks_dir" -name "*.sh" -type f | wc -l)
+    total_hooks=$(find "$hooks_dir" -name "*.sh" -type f -not -path "*/lib/*" | wc -l)
     log_info "Total hooks encontrados: $total_hooks"
     
     # Check each hook
@@ -352,7 +355,7 @@ check_hooks() {
             CHECKS_PASSED=$((CHECKS_PASSED+1))
         fi
         
-    done < <(find "$hooks_dir" -name "*.sh" -type f)
+    done < <(find "$hooks_dir" -name "*.sh" -type f -not -path "*/lib/*")
     
     # Summary
     if [ $not_executable -gt 0 ]; then
