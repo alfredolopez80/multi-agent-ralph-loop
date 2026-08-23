@@ -158,6 +158,25 @@ jobs:
           echo "install.sh exit: $?"
           echo "::endgroup::"
 
+      - name: Debug — raw validator output (issue #44)
+        # La rama macOS falla con `jq: Invalid numeric literal at line 1, col ~100`.
+        # Linea 1 significa que $output no empieza por '{': algo escribe a stdout
+        # (o a stderr, que `run` de bats fusiona) ANTES del JSON. No se reproduce
+        # en una maquina de desarrollo macOS, asi que este paso captura los bytes
+        # reales en el runner. `cat -A` hace visible cualquier control char.
+        # Temporal: retirar cuando #44 se cierre.
+        continue-on-error: true
+        run: |
+          echo "::group::stdout only"
+          bash scripts/validate-directories.sh --format json 2>/dev/null | head -3 | cat -A
+          echo "::endgroup::"
+          echo "::group::stdout + stderr (lo que ve bats run)"
+          bash scripts/validate-directories.sh --format json 2>&1 | head -5 | cat -A
+          echo "::endgroup::"
+          echo "::group::hook context-warning"
+          ./.claude/hooks/context-warning.sh < tests/installer/fixtures/mock-tool-inputs/user-prompt-submit.json 2>&1 | head -3 | cat -A
+          echo "::endgroup::"
+
       - name: Run BATS tests
         id: run_tests
         env:
