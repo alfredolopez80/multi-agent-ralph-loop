@@ -147,15 +147,10 @@ hook_is_executable() {
 
 # Check if hook is registered in settings.json
 #
-# Compara por FICHERO FISICO, no por string. `~/.claude/hooks` es un symlink de
-# directorio al repo, asi que un mismo hook puede estar registrado como
-# `~/.claude/hooks/x.py` o como `<repo>/.claude/hooks/x.py`: rutas distintas, el
-# mismo fichero. La comparacion literal anterior daba un falso "not registered"
-# a los registrados por la ruta home (p. ej. git-safety-guard.py) mientras
-# aprobaba los registrados por la ruta del repo.
-#
-# Ademas itera TODOS los objetos con ese matcher: `.[0].hooks` ignoraba
-# cualquier bloque adicional con el mismo matcher.
+# Compara por FICHERO FISICO (readlink -f), no por string: ~/.claude/hooks es un
+# symlink al repo, asi que el mismo hook puede registrarse por dos rutas distintas
+# (la comparacion literal daba falsos "not registered"). E itera TODOS los objetos
+# del matcher: `.[0].hooks` ignoraba bloques adicionales con el mismo matcher.
 hook_is_registered() {
     local event="$1"
     local matcher="$2"
@@ -163,7 +158,6 @@ hook_is_registered() {
 
     local want cmd resolved
     want="$(readlink -f "${HOOKS_DIR}/${script}" 2>/dev/null)" || return 1
-    [[ -n "$want" ]] || return 1
 
     while IFS= read -r cmd; do
         [[ -n "$cmd" ]] || continue

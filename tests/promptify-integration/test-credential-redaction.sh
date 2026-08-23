@@ -33,22 +33,16 @@ print_result() {
     TESTS_RUN=$((TESTS_RUN+1))
 }
 
-# Credential redaction: se invoca la implementacion REAL de produccion.
-# La copia "simplified, cross-platform" que habia aqui NO incluia la regla
-# Bearer-espacio, ni sk_live_/sk_test_, gho_/ghu_, xoxp-, AKIA..., client_secret
-# ni client_id, y su charset de valor Bearer omitia `+/` (un JWT con `/` quedaba
-# sin redactar). Validaba una copia divergente: una regresion en produccion
-# habria dejado esta suite en verde.
-# El subshell aisla los `readonly` de promptify-security.sh, que colisionan
-# con los de este fichero al sourcear.
+# Se invoca la implementacion REAL de produccion, NUNCA una copia local: la copia
+# anterior divergia (sin regla Bearer-espacio, AKIA, gho_/ghu_, xoxp-, `+/` en JWT)
+# y una regresion en produccion dejaba esta suite en verde.
+# El subshell aisla los `readonly` de promptify-security.sh.
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 readonly PROMPTIFY_SECURITY="${PROJECT_ROOT}/.claude/hooks/promptify-security.sh"
 
+[[ -f "$PROMPTIFY_SECURITY" ]] || { echo "FATAL: no existe $PROMPTIFY_SECURITY" >&2; exit 1; }
+
 redact_credentials() {
-    if [[ ! -f "$PROMPTIFY_SECURITY" ]]; then
-        echo "FATAL: no existe $PROMPTIFY_SECURITY" >&2
-        return 1
-    fi
     bash -c 'source "$1" >/dev/null 2>&1; redact_credentials "$2"' _ "$PROMPTIFY_SECURITY" "$1"
 }
 

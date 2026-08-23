@@ -7,6 +7,7 @@ checkWorktreeTTL, retrySpawn, removeWorktree, and hook integration.
 
 import json
 import os
+import shutil
 import subprocess
 
 import pytest
@@ -336,10 +337,8 @@ class TestSubagentStartIntegration:
         r = subprocess.run(
             ["bash", hook],
             input=stdin_data, capture_output=True, text=True, timeout=30,
-            # cwd es OBLIGATORIO: get_main_repo() resuelve git-first desde el CWD
-            # y solo usa CLAUDE_PROJECT_DIR como ultimo recurso. Sin cwd, el hook
-            # heredaba el cwd del repo real y creaba los worktrees ALLI, dejando
-            # registros fantasma que hacian fallar las corridas siguientes.
+            # cwd OBLIGATORIO: get_main_repo() resuelve git-first desde CWD; sin el,
+            # el hook creaba worktrees en el repo REAL (registros fantasma).
             cwd=str(git_repo),
             env={**os.environ, "CLAUDE_PROJECT_DIR": str(git_repo)},
         )
@@ -361,10 +360,8 @@ class TestSubagentStartIntegration:
         r = subprocess.run(
             ["bash", hook],
             input=stdin_data, capture_output=True, text=True, timeout=30,
-            # cwd es OBLIGATORIO: get_main_repo() resuelve git-first desde el CWD
-            # y solo usa CLAUDE_PROJECT_DIR como ultimo recurso. Sin cwd, el hook
-            # heredaba el cwd del repo real y creaba los worktrees ALLI, dejando
-            # registros fantasma que hacian fallar las corridas siguientes.
+            # cwd OBLIGATORIO: get_main_repo() resuelve git-first desde CWD; sin el,
+            # el hook creaba worktrees en el repo REAL (registros fantasma).
             cwd=str(git_repo),
             env={**os.environ, "CLAUDE_PROJECT_DIR": str(git_repo)},
         )
@@ -397,10 +394,8 @@ class TestSubagentStopIntegration:
         r = subprocess.run(
             ["bash", hook],
             input=stdin_data, capture_output=True, text=True, timeout=30,
-            # cwd es OBLIGATORIO: get_main_repo() resuelve git-first desde el CWD
-            # y solo usa CLAUDE_PROJECT_DIR como ultimo recurso. Sin cwd, el hook
-            # heredaba el cwd del repo real y creaba los worktrees ALLI, dejando
-            # registros fantasma que hacian fallar las corridas siguientes.
+            # cwd OBLIGATORIO: get_main_repo() resuelve git-first desde CWD; sin el,
+            # el hook creaba worktrees en el repo REAL (registros fantasma).
             cwd=str(git_repo),
             env={**os.environ, "CLAUDE_PROJECT_DIR": str(git_repo)},
         )
@@ -436,3 +431,34 @@ class TestGCStaleWorktrees:
         assert r.returncode == 0
         # Accept both: normal dry-run output or early-exit when no worktrees exist
         assert "(dry-run mode" in r.stdout or "No worktrees" in r.stdout or r.stdout.strip() == ""
+
+
+# ============================================================
+# getOrCreateWorktree — recuperacion de registro fantasma
+# ============================================================
+
+
+class TestGhostRegistrationRecovery:
+    """Un worktree cuyo directorio se borro a mano sigue registrado en git.
+
+    En ese estado TODO `git worktree add` sobre ese slug falla con "missing but
+    already registered", y el hook se quedaba sin worktree en silencio: un agente
+    de escritura acababa trabajando en el repo principal sin aislamiento.
+    """
+
+    def test_recreates_after_directory_removed_by_hand(self, git_repo):
+        first = _run_bash(git_repo, 'getOrCreateWorktree "ghostslug"')
+        assert first.returncode == 0, first.stderr
+        path = json.loads(first.stdout.strip().splitlines()[-1])["path"]
+        assert os.path.isdir(path)
+
+        # Borrar el directorio deja el registro huerfano en .git/worktrees/
+        shutil.rmtree(path)
+        assert not os.path.isdir(path)
+
+        second = _run_bash(git_repo, 'getOrCreateWorktree "ghostslug"')
+        assert second.returncode == 0, second.stderr
+        data = json.loads(second.stdout.strip().splitlines()[-1])
+        assert "error" not in data, f"registro fantasma no recuperado: {data}"
+        assert os.path.isdir(data["path"])
+

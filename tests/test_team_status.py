@@ -50,6 +50,24 @@ def _run_subagent_start_hook(stdin_data: str = "",
 
     env["HOME"] = tmp_home
 
+    # Repo git desechable como cwd. El hook crea un worktree para los write
+    # agents (ralph-coder/frontend/tester) resolviendo el repo desde el CWD, asi
+    # que con cwd=REPO_ROOT cada corrida dejaba un worktree y una rama en el
+    # repo REAL. Lo que este modulo prueba es team-status.json, que vive bajo
+    # HOME y ya esta aislado: el repo solo tiene que existir.
+    tmp_repo = Path(tmp_home) / "repo"
+    tmp_repo.mkdir(parents=True, exist_ok=True)
+    for args in (
+        ["git", "init", "-q"],
+        ["git", "config", "user.email", "test@example.invalid"],
+        ["git", "config", "user.name", "test"],
+        ["git", "commit", "-q", "--allow-empty", "-m", "init"],
+    ):
+        subprocess.run(args, cwd=str(tmp_repo), check=True,
+                       capture_output=True, text=True, timeout=30)
+
+    env["CLAUDE_PROJECT_DIR"] = str(tmp_repo)
+
     if env_override:
         env.update(env_override)
 
@@ -60,7 +78,7 @@ def _run_subagent_start_hook(stdin_data: str = "",
         text=True,
         timeout=timeout,
         env=env,
-        cwd=str(REPO_ROOT),
+        cwd=str(tmp_repo),
     )
 
 

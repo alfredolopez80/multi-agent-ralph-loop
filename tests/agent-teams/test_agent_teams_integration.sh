@@ -6,7 +6,7 @@
 # Tests Agent Teams hooks and custom subagents integration:
 #   - TeammateIdle, TaskCompleted, SubagentStart, SubagentStop hooks
 #   - ralph-coder, ralph-reviewer, ralph-tester, ralph-researcher agents
-#   - GLM-5 model configuration
+#   - Model policy (inheritance, no per-tier routing)
 #   - Processing parallel capabilities
 
 set -e
@@ -150,18 +150,12 @@ else
     fail "SubagentStop with ralph-* matcher NOT registered"
 fi
 
-# Check SubagentStop for glm5-*
-if jq -e '.hooks.SubagentStop[] | select(.matcher == "glm5-*")' "$SETTINGS_FILE" > /dev/null 2>&1; then
-    pass "SubagentStop with glm5-* matcher registered"
+# El matcher glm5-* y glm5-subagent-stop.sh se retiraron en Wave H1 (d066c63):
+# su cometido lo cubre subagent-stop-universal.sh con el matcher "*".
+if jq -e '.hooks.SubagentStop[] | select(.matcher == "*")' "$SETTINGS_FILE" > /dev/null 2>&1; then
+    pass "SubagentStop with universal (*) matcher registered"
 else
-    fail "SubagentStop with glm5-* matcher NOT registered"
-fi
-
-# Check glm5-subagent-stop.sh exists
-if [ -f "$HOOKS_DIR/glm5-subagent-stop.sh" ] && [ -x "$HOOKS_DIR/glm5-subagent-stop.sh" ]; then
-    pass "glm5-subagent-stop.sh exists and executable"
-else
-    fail "glm5-subagent-stop.sh missing or not executable"
+    fail "SubagentStop with universal (*) matcher NOT registered"
 fi
 
 # =============================================================================
@@ -181,11 +175,13 @@ if [ -f "$RALPH_CODER" ]; then
         fail "ralph-coder missing name in frontmatter"
     fi
     
-    # Check model is glm-5
-    if grep -q "model: glm-5" "$RALPH_CODER"; then
-        pass "ralph-coder configured with glm-5 model"
+    # Politica vigente (~/.claude/CLAUDE.md -> Model Routing): sin enrutado por
+    # complejidad; los agentes heredan el modelo de la sesion. Un override de
+    # modelo en el frontmatter es lo que NO debe haber.
+    if grep -qE "^model: (glm|sonnet|haiku)" "$RALPH_CODER"; then
+        fail "ralph-coder fija un modelo en frontmatter (debe heredar)"
     else
-        fail "ralph-coder NOT configured with glm-5 model"
+        pass "ralph-coder hereda el modelo de la sesion"
     fi
     
     # Check tools
@@ -214,10 +210,10 @@ if [ -f "$RALPH_REVIEWER" ]; then
         fail "ralph-reviewer missing name in frontmatter"
     fi
     
-    if grep -q "model: glm-5" "$RALPH_REVIEWER"; then
-        pass "ralph-reviewer configured with glm-5 model"
+    if grep -qE "^model: (glm|sonnet|haiku)" "$RALPH_REVIEWER"; then
+        fail "ralph-reviewer fija un modelo en frontmatter (debe heredar)"
     else
-        fail "ralph-reviewer NOT configured with glm-5 model"
+        pass "ralph-reviewer hereda el modelo de la sesion"
     fi
 else
     fail "ralph-reviewer.md NOT found in $AGENTS_DIR"
@@ -239,10 +235,10 @@ if [ -f "$RALPH_TESTER" ]; then
         fail "ralph-tester missing name in frontmatter"
     fi
     
-    if grep -q "model: glm-5" "$RALPH_TESTER"; then
-        pass "ralph-tester configured with glm-5 model"
+    if grep -qE "^model: (glm|sonnet|haiku)" "$RALPH_TESTER"; then
+        fail "ralph-tester fija un modelo en frontmatter (debe heredar)"
     else
-        fail "ralph-tester NOT configured with glm-5 model"
+        pass "ralph-tester hereda el modelo de la sesion"
     fi
 else
     fail "ralph-tester.md NOT found in $AGENTS_DIR"
@@ -264,39 +260,27 @@ if [ -f "$RALPH_RESEARCHER" ]; then
         fail "ralph-researcher missing name in frontmatter"
     fi
     
-    if grep -q "model: glm-5" "$RALPH_RESEARCHER"; then
-        pass "ralph-researcher configured with glm-5 model"
+    if grep -qE "^model: (glm|sonnet|haiku)" "$RALPH_RESEARCHER"; then
+        fail "ralph-researcher fija un modelo en frontmatter (debe heredar)"
     else
-        fail "ralph-researcher NOT configured with glm-5 model"
+        pass "ralph-researcher hereda el modelo de la sesion"
     fi
 else
     fail "ralph-researcher.md NOT found in $AGENTS_DIR"
 fi
 
 # =============================================================================
-# TEST 10: GLM-5 Default Model Configuration
+# TEST 10: Model policy (no per-complexity routing)
 # =============================================================================
-section "TEST 10: GLM-5 Default Model Configuration"
+section "TEST 10: Model policy"
 
-# Check GLM-5 is default for Haiku
-if jq -e '.env.ANTHROPIC_DEFAULT_HAIKU_MODEL == "glm-5"' "$SETTINGS_FILE" > /dev/null 2>&1; then
-    pass "GLM-5 configured as default Haiku model"
+# La politica vigente (~/.claude/CLAUDE.md -> Model Routing) prohibe enrutar por
+# umbrales y fija Opus como ejecutor. Los ANTHROPIC_DEFAULT_*_MODEL=glm-5 que
+# este bloque exigia pertenecen a la era GLM-5, retirada.
+if jq -e '.env | has("ANTHROPIC_DEFAULT_HAIKU_MODEL") or has("ANTHROPIC_DEFAULT_SONNET_MODEL")' "$SETTINGS_FILE" > /dev/null 2>&1; then
+    fail "settings.json fija modelos por defecto por tier (routing retirado)"
 else
-    fail "GLM-5 NOT configured as default Haiku model"
-fi
-
-# Check GLM-5 is default for Sonnet
-if jq -e '.env.ANTHROPIC_DEFAULT_SONNET_MODEL == "glm-5"' "$SETTINGS_FILE" > /dev/null 2>&1; then
-    pass "GLM-5 configured as default Sonnet model"
-else
-    fail "GLM-5 NOT configured as default Sonnet model"
-fi
-
-# Check GLM-5 is default for Opus
-if jq -e '.env.ANTHROPIC_DEFAULT_OPUS_MODEL == "glm-5"' "$SETTINGS_FILE" > /dev/null 2>&1; then
-    pass "GLM-5 configured as default Opus model"
-else
-    fail "GLM-5 NOT configured as default Opus model"
+    pass "sin routing de modelo por tier en settings.json"
 fi
 
 # =============================================================================
@@ -304,11 +288,12 @@ fi
 # =============================================================================
 section "TEST 11: Quality Gates Integration"
 
-# Check quality-gates-v2.sh exists
-if [ -f "$HOOKS_DIR/quality-gates-v2.sh" ]; then
-    pass "quality-gates-v2.sh exists"
+# quality-gates-v2.sh se retiro en Wave H1 (d066c63): los quality gates viven hoy
+# en los hooks de evento TaskCompleted / TeammateIdle.
+if [ -f "$HOOKS_DIR/task-completed-quality-gate.sh" ] && [ -f "$HOOKS_DIR/teammate-idle-quality-gate.sh" ]; then
+    pass "quality gates presentes (task-completed + teammate-idle)"
 else
-    fail "quality-gates-v2.sh missing"
+    fail "faltan los hooks de quality gate (task-completed / teammate-idle)"
 fi
 
 # Check teammate-idle-quality-gate.sh references quality standards

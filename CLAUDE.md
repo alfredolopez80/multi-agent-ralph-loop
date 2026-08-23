@@ -210,9 +210,8 @@ never model choice.
 | L3 | Obsidian vault grep | on-demand | Full knowledge base queries |
 
 **Wake-up hook**: `.claude/hooks/wake-up-layer-stack.sh` runs at SessionStart and injects
-**~1950-2000 tokens** (measured with tiktoken cl100k_base, 2026-08-23). L0+L1 are only ~818 of
-those; the hook also appends recall_v2 top rules, Vault Stats and the project Wing (L2).
-The previously documented "~1050" counted L0+L1 alone and understated the real cost by ~2x.
+**~1950-2000 tokens** (tiktoken cl100k_base, 2026-08-23): ~818 are L0+L1; the rest is
+recall_v2 top rules, Vault Stats and the project Wing (L2) — count ALL of it, not just L0+L1.
 
 ### Learned Rules Taxonomy
 

@@ -35,19 +35,14 @@ print_result() {
     TESTS_RUN=$((TESTS_RUN+1))
 }
 
-# Credential redaction: se invoca la implementacion REAL de produccion.
-# Antes el test redefinia la funcion con perl mientras produccion usaba sed:
-# el test validaba una copia divergente y el bug real de sed en BSD/macOS
-# (RE error: invalid character range -> salida vacia) quedaba invisible.
-# El subshell aisla los `readonly` de promptify-security.sh, que colisionan
-# con los del propio test.
+# Se invoca la implementacion REAL de produccion, NUNCA una copia local: la copia
+# anterior divergia y dejo invisible el bug de sed en BSD/macOS (salida vacia).
+# El subshell aisla los `readonly` de promptify-security.sh.
 readonly PROMPTIFY_SECURITY="${PROJECT_ROOT}/.claude/hooks/promptify-security.sh"
 
+[[ -f "$PROMPTIFY_SECURITY" ]] || { echo "FATAL: no existe $PROMPTIFY_SECURITY" >&2; exit 1; }
+
 redact_credentials() {
-    if [[ ! -f "$PROMPTIFY_SECURITY" ]]; then
-        echo "FATAL: no existe $PROMPTIFY_SECURITY" >&2
-        return 1
-    fi
     bash -c 'source "$1" >/dev/null 2>&1; redact_credentials "$2"' _ "$PROMPTIFY_SECURITY" "$1"
 }
 
