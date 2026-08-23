@@ -40,7 +40,7 @@ jobs:
           shellcheck --severity=warning \
             scripts/ralph-doctor.sh \
             scripts/ralph \
-            install.sh || true
+            install.sh
       
       - name: Check executable permissions
         run: |
@@ -117,4 +117,5 @@ jobs:
       
       - name: Run ralph-doctor (quick mode)
         run: |
-          bash scripts/ralph-doctor.sh --quick || true
+          # Sin `|| true`: un doctor que no puede fallar es decorativo.
+          bash scripts/ralph-doctor.sh --quick
