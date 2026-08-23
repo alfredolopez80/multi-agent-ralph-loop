@@ -411,8 +411,15 @@ class TestPerformance:
             pytest.skip("no UserPromptSubmit hooks resolved from settings.json (no ~/.claude/settings.json)")
         ms = _best_cpu_ms(hook_path, '{"prompt":"test"}')
         assert ms < self.THRESHOLD_MS, (
-            f"{os.path.basename(hook_path)} took {ms:.0f}ms (>= {self.THRESHOLD_MS}); "
+            f"{os.path.basename(hook_path)} took {ms:.0f}ms CPU (>= {self.THRESHOLD_MS}); "
             "likely a reintroduced slow subprocess (e.g. recursive `claude`)."
+        )
+        # Un hook que BLOQUEA (sleep, red, subproceso colgado) gasta ~0 CPU y
+        # pasaria el umbral anterior. Estos corren en CADA mensaje: el techo de
+        # wall-clock es imprescindible aqui, no solo en las listas fijas.
+        wall = _best_wall_ms(hook_path, '{"prompt":"test"}')
+        assert wall < self.WALL_CEILING_MS, (
+            f"{os.path.basename(hook_path)} bloqueo {wall:.0f}ms (>= {self.WALL_CEILING_MS})"
         )
 
     @pytest.mark.parametrize(
@@ -429,7 +436,12 @@ class TestPerformance:
             pytest.skip("no Stop hooks resolved from settings.json (no ~/.claude/settings.json)")
         ms = _best_cpu_ms(hook_path, "{}")
         assert ms < self.THRESHOLD_MS, (
-            f"{os.path.basename(hook_path)} took {ms:.0f}ms (>= {self.THRESHOLD_MS})"
+            f"{os.path.basename(hook_path)} took {ms:.0f}ms CPU (>= {self.THRESHOLD_MS})"
+        )
+        # Mismo motivo que en UserPromptSubmit: estos corren al final de CADA turno.
+        wall = _best_wall_ms(hook_path, "{}")
+        assert wall < self.WALL_CEILING_MS, (
+            f"{os.path.basename(hook_path)} bloqueo {wall:.0f}ms (>= {self.WALL_CEILING_MS})"
         )
 
 

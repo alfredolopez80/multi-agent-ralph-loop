@@ -2,7 +2,7 @@
 
 ## Overview
 
-Ralph coordinates 46+ specialized agents across different domains. Uses GLM-5 as primary model for all tasks, with Agent Teams support for parallel execution.
+Ralph coordinates 46+ specialized agents across different domains. Agents inherit the session model; Agent Teams provides parallel execution.
 
 ## Changes in v2.89.2
 
@@ -23,15 +23,17 @@ Features: multiple tasks per batch, mandatory completion criteria, VERIFIED_DONE
 
 ## Model Configuration
 
-| Role | Model | Usage |
-|------|-------|-------|
-| Primary | GLM-5 | Main orchestration, code tasks |
-| Teammates | GLM-5 | Parallel subtasks via Agent Teams |
-| Fallback | Claude | Complex reasoning (optional) |
+No complexity-based routing. The authoritative policy is `~/.claude/CLAUDE.md`
+-> "Model Routing": the active session model handles the task (Opus by default,
+via the `opus` alias; the user decides with `/model`). Agents inherit it and must
+NOT pin a model in their frontmatter.
+
+Complexity thresholds drive PROCESS -- Plan Mode >= 4, Parallel-First >= 3,
+Aristotle >= 4 -- never model choice.
 
 ## Agent Teams (v2.86)
 
-Custom subagents for Agent Teams with GLM-5:
+Custom subagents for Agent Teams (they inherit the session model):
 
 | Agent | Role | Tools | Max Turns |
 |-------|------|-------|-----------|
@@ -60,30 +62,21 @@ Custom subagents for Agent Teams with GLM-5:
 | **agent-sdk-verifier-py** | Python SDK verification |
 | **statusline-setup** | Status line configuration |
 
-### GLM-5 Teammates
-
-| Agent | Purpose |
-|-------|---------|
-| `glm5-coder` | Code implementation with thinking mode |
-| `glm5-reviewer` | Code review with thinking mode |
-| `glm5-tester` | Test generation with thinking mode |
-| `glm5-orchestrator` | Task coordination |
-
 ## Usage Examples
 
 ```bash
 # Spawn ralph-coder teammate
 Task(subagent_type="ralph-coder", team_name="my-project")
 
-# Spawn GLM-5 teammate for code
-Task(subagent_type="glm5-coder", prompt="Implement feature X")
+# Spawn a reviewer alongside it
+Task(subagent_type="ralph-reviewer", team_name="my-project")
 ```
 
 ## Agent Selection Guide
 
 - **Quick file search** → Explore (quick mode)
-- **Code implementation** → ralph-coder or glm5-coder
-- **Code review** → ralph-reviewer or glm5-reviewer
-- **Testing** → ralph-tester or glm5-tester
+- **Code implementation** → ralph-coder
+- **Code review** → ralph-reviewer
+- **Testing** → ralph-tester
 - **Architecture design** → Plan
 - **Research task** → General-purpose or ralph-researcher
