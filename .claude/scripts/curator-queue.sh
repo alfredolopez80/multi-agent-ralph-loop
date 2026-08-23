@@ -143,7 +143,7 @@ show_queue_dir() {
 
     for subdir in "$dir"*/; do
         [[ -d "$subdir" ]] || continue
-        # CRIT-001 fix: Use $((var + 1)) instead of ((var++)) with set -e
+        # CRIT-001 fix: Use $((var + 1)) instead of var=$((var+1)) with set -e
         count=$((count + 1))
     done
 

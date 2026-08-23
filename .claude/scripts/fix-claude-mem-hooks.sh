@@ -141,7 +141,7 @@ fix_hooks_file() {
         if [[ "$line" =~ 'bun "\\${CLAUDE_PLUGIN_ROOT}/scripts/worker-service\.cjs"'(.*)'"' ]]; then
             local args="${BASH_REMATCH[1]}"
             new_line="            \"command\": \"(cd \\\"\\\${CLAUDE_PLUGIN_ROOT}\\\" \\&\\& bun scripts/worker-service.cjs${args})\","
-            ((fixed_count++))
+            fixed_count=$((fixed_count+1))
         fi
         echo "$new_line" >> "$temp_file"
     done < "$hooks_file"

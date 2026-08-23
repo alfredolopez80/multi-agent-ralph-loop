@@ -42,14 +42,14 @@ log_test() {
 }
 
 log_pass() {
-    ((TESTS_PASSED++))
-    ((TESTS_TOTAL++))
+    TESTS_PASSED=$((TESTS_PASSED+1))
+    TESTS_TOTAL=$((TESTS_TOTAL+1))
     echo -e "  ${GREEN}✓ PASS${RESET} $1"
 }
 
 log_fail() {
-    ((TESTS_FAILED++))
-    ((TESTS_TOTAL++))
+    TESTS_FAILED=$((TESTS_FAILED+1))
+    TESTS_TOTAL=$((TESTS_TOTAL+1))
     echo -e "  ${RED}✗ FAIL${RESET} $1"
     if [[ -n "$2" ]]; then
         echo -e "         ${DIM}Expected: $2${RESET}"
@@ -58,7 +58,7 @@ log_fail() {
 }
 
 log_skip() {
-    ((TESTS_TOTAL++))
+    TESTS_TOTAL=$((TESTS_TOTAL+1))
     echo -e "  ${YELLOW}⊘ SKIP${RESET} $1"
 }
 

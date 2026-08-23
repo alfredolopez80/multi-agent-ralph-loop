@@ -68,7 +68,7 @@ for agent in "$REPO_CLAUDE/agents"/*.md; do
     [ -f "$agent" ] || continue
     filename=$(basename "$agent")
     make_symlink "$agent" "$STD_CLAUDE/agents/$filename" "$filename"
-    ((count++))
+    count=$((count+1))
 done
 echo -e "   ${GREEN}✓ $count agents configurados${NC}"
 
@@ -81,7 +81,7 @@ for cmd in "$REPO_CLAUDE/commands"/*.md; do
     [ -f "$cmd" ] || continue
     filename=$(basename "$cmd")
     make_symlink "$cmd" "$STD_CLAUDE/commands/$filename" "$filename"
-    ((count++))
+    count=$((count+1))
 done
 echo -e "   ${GREEN}✓ $count commands configurados${NC}"
 
@@ -94,7 +94,7 @@ for skill in "$REPO_CLAUDE/skills"/*/; do
     [ -d "$skill" ] || continue
     skill_name=$(basename "$skill")
     make_symlink "$skill" "$STD_CLAUDE/skills/$skill_name" "$skill_name/"
-    ((count++))
+    count=$((count+1))
 done
 echo -e "   ${GREEN}✓ $count skills configurados${NC}"
 
@@ -143,7 +143,7 @@ count=0
 for script in "${CRITICAL_SCRIPTS[@]}"; do
     if [ -f "$REPO_CLAUDE/scripts/$script" ]; then
         make_symlink "$REPO_CLAUDE/scripts/$script" "$STD_CLAUDE/scripts/$script" "$script"
-        ((count++))
+        count=$((count+1))
     fi
 done
 echo -e "   ${GREEN}✓ $count scripts críticos configurados${NC}"

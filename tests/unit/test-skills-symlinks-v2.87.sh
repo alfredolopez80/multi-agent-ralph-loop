@@ -40,9 +40,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Helper functions
-pass() { ((TESTS_PASSED++)); printf "${GREEN}.${NC}"; }
-fail() { ((TESTS_FAILED++)); printf "${RED}F${NC}"; }
-warn() { ((TESTS_WARNED++)); printf "${YELLOW}W${NC}"; }
+pass() { TESTS_PASSED=$((TESTS_PASSED+1)); printf "${GREEN}.${NC}"; }
+fail() { TESTS_FAILED=$((TESTS_FAILED+1)); printf "${RED}F${NC}"; }
+warn() { TESTS_WARNED=$((TESTS_WARNED+1)); printf "${YELLOW}W${NC}"; }
 
 print_header() {
     echo -e "\n${BLUE}${BOLD}═══════════════════════════════════════════════════════════════${NC}"
@@ -88,7 +88,7 @@ test_repo_skills_structure() {
             local skill_file="${skill_dir}SKILL.md"
             [[ -f "$skill_file" ]] || skill_file="${skill_dir}skill.md"
             if ! head -5 "$skill_file" | grep -q "^---"; then
-                ((invalid++))
+                invalid=$((invalid+1))
             fi
         fi
     done
@@ -129,7 +129,7 @@ test_global_symlinks() {
     for skill_dir in "$REPO_SKILLS"/*/; do
         local skill_name=$(basename "$skill_dir")
         if [[ ! -L "$GLOBAL_SKILLS/$skill_name" ]]; then
-            ((missing_symlinks++))
+            missing_symlinks=$((missing_symlinks+1))
             if $VERBOSE; then echo "    ⚠ Missing symlink: $skill_name"; fi
         fi
     done
@@ -175,7 +175,7 @@ test_external_skills() {
     local found=0
     for skill in "${sample_skills[@]}"; do
         if [[ -L "$GLOBAL_SKILLS/$skill" ]] || [[ -d "$GLOBAL_SKILLS/$skill" ]]; then
-            ((found++))
+            found=$((found+1))
         fi
     done
     if [[ $found -ge 2 ]]; then
@@ -211,7 +211,7 @@ test_symlink_integrity() {
             local target=$(readlink "$link")
             if [[ "$target" == *"multi-agent-ralph-loop"* ]]; then
                 if [[ ! -d "$target" ]]; then
-                    ((invalid_targets++))
+                    invalid_targets=$((invalid_targets+1))
                 fi
             fi
         fi
@@ -230,7 +230,7 @@ test_symlink_integrity() {
             local target=$(readlink "$link" 2>/dev/null)
             if [[ "$target" == *"multi-agent-ralph-loop"* ]]; then
                 if [[ "$link" -ef "$(readlink -f "$link" 2>/dev/null)" ]]; then
-                    ((loops++))
+                    loops=$((loops+1))
                 fi
             fi
         fi
@@ -259,9 +259,9 @@ test_version_consistency() {
         if [[ -f "$skill_file" ]]; then
             local version=$(grep -m1 "# VERSION:" "$skill_file" 2>/dev/null | sed 's/.*VERSION: *//' | tr -d ' ')
             if [[ -z "$version" ]]; then
-                ((missing_version++))
+                missing_version=$((missing_version+1))
             elif [[ "$version" != "$EXPECTED_VERSION" ]]; then
-                ((wrong_version++))
+                wrong_version=$((wrong_version+1))
                 if $VERBOSE; then echo "    ⚠ $(basename $skill_dir): $version"; fi
             fi
         fi

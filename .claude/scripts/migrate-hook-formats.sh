@@ -132,14 +132,14 @@ migrate_hook() {
     # Check if file exists
     if [[ ! -f "$hook_file" ]]; then
         echo -e "${YELLOW}SKIP${NC}: File not found: $hook_file"
-        ((SKIPPED++))
+        SKIPPED=$((SKIPPED+1))
         return 1
     fi
 
     # Check if using old format
     if ! grep -q '{"decision": "allow"}' "$hook_file"; then
         echo -e "${YELLOW}SKIP${NC}: Not using old format"
-        ((SKIPPED++))
+        SKIPPED=$((SKIPPED+1))
         return 0
     fi
 
@@ -161,11 +161,11 @@ migrate_hook() {
         if [[ -s "$temp_file" ]]; then
             mv "$temp_file" "$hook_file"
             echo -e "${GREEN}SUCCESS${NC}: Migrated $hook_name"
-            ((MIGRATED++))
+            MIGRATED=$((MIGRATED+1))
         else
             rm -f "$temp_file"
             echo -e "${RED}ERROR${NC}: Failed to migrate $hook_name (temp file empty)"
-            ((ERROR++))
+            ERROR=$((ERROR+1))
             return 1
         fi
     fi

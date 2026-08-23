@@ -124,8 +124,8 @@ add_skills_from_dir() {
             make_symlink "$skill" "$dst"
         fi
 
-        ((count++))
-        ((total_skills++))
+        count=$((count+1))
+        total_skills=$((total_skills+1))
     done
 
     echo "     Added $count skills from $source_name"
@@ -158,7 +158,7 @@ for agent in "$REPO_AGENTS"/*.md; do
     dst="$AGENTS_DIR/$agent_name"
 
     make_symlink "$agent" "$dst"
-    ((agent_count++))
+    agent_count=$((agent_count+1))
 done
 
 echo "   Symlinked $agent_count agents from repository"

@@ -19,17 +19,17 @@ WARN=0
 # Functions
 pass() {
     echo -e "${GREEN}✅ PASS${NC}: $1"
-    ((PASS++))
+    PASS=$((PASS+1))
 }
 
 fail() {
     echo -e "${RED}❌ FAIL${NC}: $1"
-    ((FAIL++))
+    FAIL=$((FAIL+1))
 }
 
 warn() {
     echo -e "${YELLOW}⚠️  WARN${NC}: $1"
-    ((WARN++))
+    WARN=$((WARN+1))
 }
 
 info() {

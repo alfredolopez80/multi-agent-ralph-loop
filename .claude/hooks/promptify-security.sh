@@ -27,7 +27,8 @@ redact_credentials() {
     # Redact common credential patterns
     echo "$text" | sed -E \
         -e 's/(password|passwd|pwd|secret|token|api_key|apikey|access_token|auth_token|credential|client_secret|client_id)[[:space:]]*[:=][[:space:]]*[^[:space:]]+/\1: [REDACTED]/gi' \
-        -e 's/(bearer|authorization)[[:space:]]*:[[:space:]]*[A-Za-z0-9\-._~+/]+=*/\1: [REDACTED]/gi' \
+        -e 's/([Bb]earer)[[:space:]]+[A-Za-z0-9._~+/=-]+/\1 [REDACTED]/g' \
+        -e 's/(bearer|authorization)[[:space:]]*:[[:space:]]*[^[:space:]]+/\1: [REDACTED]/gi' \
         -e 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}/[EMAIL REDACTED]/g' \
         -e 's/[0-9]{3}-[0-9]{3}-[0-9]{4}/[PHONE REDACTED]/g' \
         -e 's/sk-[a-zA-Z0-9]{32,}/[SK-KEY REDACTED]/g' \
@@ -36,8 +37,8 @@ redact_credentials() {
         -e 's/ghp_[a-zA-Z0-9]{36,}/[GH-TOKEN REDACTED]/g' \
         -e 's/gho_[a-zA-Z0-9]{36,}/[GH-OAUTH-TOKEN REDACTED]/g' \
         -e 's/ghu_[a-zA-Z0-9]{36,}/[GH-USER-TOKEN REDACTED]/g' \
-        -e 's/xoxb-[a-zA-Z0-9\-]{10,}/[SLACK-BOT-TOKEN REDACTED]/g' \
-        -e 's/xoxp-[a-zA-Z0-9\-]{10,}/[SLACK-USER-TOKEN REDACTED]/g' \
+        -e 's/xoxb-[a-zA-Z0-9-]{10,}/[SLACK-BOT-TOKEN REDACTED]/g' \
+        -e 's/xoxp-[a-zA-Z0-9-]{10,}/[SLACK-USER-TOKEN REDACTED]/g' \
         -e 's/AKIA[0-9A-Z]{16}/[AWS-ACCESS-KEY REDACTED]/g' \
         -e 's/[0-9]{21}L/[AWS-SECRET-KEY REDACTED]/g'
 }
@@ -233,12 +234,12 @@ validate_prompt_security() {
     local issues=()
 
     # Check for potential injection attempts
-    if echo "$prompt" | grep -qiE "ignore.*instruction|override.*prompt|disregard.*system"; then
+    if echo "$prompt" | grep -qiE "(ignore|disregard|forget|override).*(instruction|prompt|system|rule|directive)"; then
         issues+=("Possible prompt injection attempt detected")
     fi
 
     # Check for jailbreak attempts
-    if echo "$prompt" | grep -qiE "jailbreak|bypass.*filter|ignore.*safety|developer.*mode"; then
+    if echo "$prompt" | grep -qiE "jailbreak|developer.*mode|(bypass|ignore|disregard|forget|override|circumvent).*(filter|safety|guideline|guardrail|restriction|policy)"; then
         issues+=("Possible jailbreak attempt detected")
     fi
 

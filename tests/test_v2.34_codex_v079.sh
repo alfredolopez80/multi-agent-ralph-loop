@@ -8,14 +8,14 @@ FAILED=0
 TOTAL=0
 
 test_pass() {
-    ((PASSED++))
-    ((TOTAL++))
+    PASSED=$((PASSED+1))
+    TOTAL=$((TOTAL+1))
     echo "✅ PASS: $1"
 }
 
 test_fail() {
-    ((FAILED++))
-    ((TOTAL++))
+    FAILED=$((FAILED+1))
+    TOTAL=$((TOTAL+1))
     echo "❌ FAIL: $1"
 }
 

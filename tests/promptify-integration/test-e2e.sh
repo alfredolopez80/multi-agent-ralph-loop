@@ -29,12 +29,12 @@ print_result() {
 
     if [[ "$status" == "PASS" ]]; then
         echo -e "${GREEN}✅ PASS${NC}: $message"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED+1))
     else
         echo -e "${RED}❌ FAIL${NC}: $message"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED+1))
     fi
-    ((TESTS_RUN++))
+    TESTS_RUN=$((TESTS_RUN+1))
 }
 
 # Simulate hook execution

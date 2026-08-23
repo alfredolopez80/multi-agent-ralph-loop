@@ -80,7 +80,7 @@ migrate_file() {
     if [[ -s "$temp_file" ]]; then
         mv "$temp_file" "$file"
         echo "  SUCCESS: Migrated"
-        ((MIGRATED++))
+        MIGRATED=$((MIGRATED+1))
         return 0
     else
         rm -f "$temp_file"

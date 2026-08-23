@@ -33,24 +33,24 @@ log_header() {
 
 log_test() {
   echo -e "${BLUE}▶${NC} $1"
-  ((TESTS_RUN++))
+  TESTS_RUN=$((TESTS_RUN+1))
 }
 
 log_pass() {
   echo -e "${GREEN}✓ PASS${NC} $1"
-  ((TESTS_PASSED++))
+  TESTS_PASSED=$((TESTS_PASSED+1))
   TEST_RESULTS+=("PASS: $1")
 }
 
 log_fail() {
   echo -e "${RED}✗ FAIL${NC} $1"
-  ((TESTS_FAILED++))
+  TESTS_FAILED=$((TESTS_FAILED+1))
   TEST_RESULTS+=("FAIL: $1")
 }
 
 log_skip() {
   echo -e "${YELLOW}⊘ SKIP${NC} $1"
-  ((TESTS_SKIPPED++))
+  TESTS_SKIPPED=$((TESTS_SKIPPED+1))
   TEST_RESULTS+=("SKIP: $1")
 }
 

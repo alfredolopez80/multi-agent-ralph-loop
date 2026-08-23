@@ -7,7 +7,7 @@
 # ============================================================================
 
 set -e
-# NOTE: use `VAR=$((VAR+1))`, never `((VAR++))`. Under set -e, a post-increment
+# NOTE: use `VAR=$((VAR+1))`, never `VAR=$((VAR+1))`. Under set -e, a post-increment
 # on a counter holding 0 evaluates to 0 -> exit status 1 -> the script aborts silently,
 # leaving zero counters and an apparent early success.
 

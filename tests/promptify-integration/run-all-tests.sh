@@ -54,17 +54,17 @@ print_suite_result() {
     local failed="$4"
     local total=$((passed + failed))
 
-    ((TOTAL_SUITES++))
+    TOTAL_SUITES=$((TOTAL_SUITES+1))
     ((TOTAL_TESTS += total))
     ((PASSED_TESTS += passed))
     ((FAILED_TESTS += failed))
 
     if [[ "$failed" -eq 0 ]]; then
         echo -e "${GREEN}✅ $suite_name: PASSED (${passed}/${total} tests)${NC}"
-        ((PASSED_SUITES++))
+        PASSED_SUITES=$((PASSED_SUITES+1))
     else
         echo -e "${RED}❌ $suite_name: FAILED (${passed}/${total} passed, ${failed} failed)${NC}"
-        ((FAILED_SUITES++))
+        FAILED_SUITES=$((FAILED_SUITES+1))
     fi
 }
 

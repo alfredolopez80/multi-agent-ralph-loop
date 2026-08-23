@@ -74,7 +74,7 @@ backup_hooks() {
         local hook_path="${HOOKS_DIR}/${hook}"
         if [[ -f "$hook_path" ]]; then
             cp "$hook_path" "$BACKUP_DIR/"
-            ((backed_up++))
+            backed_up=$((backed_up+1))
         fi
     done
 
@@ -94,21 +94,21 @@ remove_obsolete_hooks() {
 
         if [[ ! -f "$hook_path" ]]; then
             log_warning "  ⚠ $hook - NOT FOUND (already removed?)"
-            ((skipped++))
+            skipped=$((skipped+1))
             continue
         fi
 
         # Double-check it's not registered
         if is_hook_registered "$hook"; then
             log_error "  ✗ $hook - REGISTERED in settings.json, SKIPPED"
-            ((skipped++))
+            skipped=$((skipped+1))
             continue
         fi
 
         # Safe to remove
         rm -f "$hook_path"
         log_success "  ✓ $hook - REMOVED"
-        ((removed++))
+        removed=$((removed+1))
     done
 
     log_info ""
@@ -140,7 +140,7 @@ verify_active_hooks() {
         local hook_path="${HOOKS_DIR}/${hook}"
         if [[ ! -f "$hook_path" ]]; then
             log_error "  ✗ CRITICAL: $hook is MISSING!"
-            ((missing++))
+            missing=$((missing+1))
         fi
     done
 

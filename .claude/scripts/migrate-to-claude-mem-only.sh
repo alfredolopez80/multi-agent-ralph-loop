@@ -191,7 +191,7 @@ else
         echo ".ralph/" >> .gitignore
         echo ".ralph/**/*" >> .gitignore
         log_success "Added .ralph/ to .gitignore"
-        ((FILES_MODIFIED++))
+        FILES_MODIFIED=$((FILES_MODIFIED+1))
     else
         log_info "[DRY-RUN] Would add .ralph/ to .gitignore"
     fi
@@ -220,11 +220,11 @@ for hook in .claude/hooks/*.sh; do
                 sed -i.tmp 's|ralph memory-write|# Use claude-mem MCP instead|g' "$hook"
 
                 rm -f "${hook}.tmp"
-                ((HOOKS_UPDATED++))
+                HOOKS_UPDATED=$((HOOKS_UPDATED+1))
                 log_success "Updated: $(basename $hook)"
             else
                 log_info "[DRY-RUN] Would update: $(basename $hook)"
-                ((HOOKS_UPDATED++))
+                HOOKS_UPDATED=$((HOOKS_UPDATED+1))
             fi
         fi
     fi
@@ -240,10 +240,10 @@ if [ -d .ralph ]; then
     if [ "$DRY_RUN" = false ]; then
         rm -rf .ralph
         log_success "Removed .ralph/ directory"
-        ((DIRS_REMOVED++))
+        DIRS_REMOVED=$((DIRS_REMOVED+1))
     else
         log_info "[DRY-RUN] Would remove .ralph/ directory"
-        ((DIRS_REMOVED++))
+        DIRS_REMOVED=$((DIRS_REMOVED+1))
     fi
 fi
 
@@ -295,7 +295,7 @@ if [ "$DRY_RUN" = false ]; then
             echo "" >> CLAUDE.md
             echo "$DOC_UPDATE" >> CLAUDE.md
             log_success "Updated CLAUDE.md"
-            ((FILES_MODIFIED++))
+            FILES_MODIFIED=$((FILES_MODIFIED+1))
         fi
     fi
 else

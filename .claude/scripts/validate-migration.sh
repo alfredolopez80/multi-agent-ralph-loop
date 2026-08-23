@@ -28,7 +28,7 @@ if [ -d ~/.claude/plugins/cache/thedotmack/claude-mem ]; then
     echo -e "   ${GREEN}✓${NC} Plugin instalado: versiones $versions"
 else
     echo -e "   ${RED}✗${NC} Plugin NO encontrado"
-    ((ERRORS++))
+    ERRORS=$((ERRORS+1))
 fi
 
 # Verificar registro en installed_plugins.json
@@ -36,7 +36,7 @@ if grep -q "claude-mem@thedotmack" ~/.claude/plugins/installed_plugins.json 2>/d
     echo -e "   ${GREEN}✓${NC} Registrado en installed_plugins.json"
 else
     echo -e "   ${RED}✗${NC} NO registrado en installed_plugins.json"
-    ((ERRORS++))
+    ERRORS=$((ERRORS+1))
 fi
 
 # Verificar permiso en settings.json
@@ -44,7 +44,7 @@ if grep -q '"claude-mem@thedotmack"' ~/.claude/settings.json 2>/dev/null; then
     echo -e "   ${GREEN}✓${NC} Permiso configurado en settings.json"
 else
     echo -e "   ${YELLOW}⚠${NC} Permiso NO configurado en settings.json"
-    ((WARNINGS++))
+    WARNINGS=$((WARNINGS+1))
 fi
 
 echo ""
@@ -62,11 +62,11 @@ check_symlinks() {
             echo -e "   ${GREEN}✓${NC} $name: $total symlinks válidos"
         else
             echo -e "   ${RED}✗${NC} $name: $broken rotos de $total"
-            ((ERRORS++))
+            ERRORS=$((ERRORS+1))
         fi
     else
         echo -e "   ${RED}✗${NC} $name: directorio no existe"
-        ((ERRORS++))
+        ERRORS=$((ERRORS+1))
     fi
 }
 
@@ -80,7 +80,7 @@ if [ -L ~/.claude/hooks ]; then
     echo -e "   ${GREEN}✓${NC} Hooks: directorio symlink"
 else
     echo -e "   ${YELLOW}⚠${NC} Hooks: NO es symlink"
-    ((WARNINGS++))
+    WARNINGS=$((WARNINGS+1))
 fi
 
 # Rules
@@ -88,7 +88,7 @@ if [ -L ~/.claude/rules/CLAUDE.md ]; then
     echo -e "   ${GREEN}✓${NC} Rules: symlink válido"
 else
     echo -e "   ${YELLOW}⚠${NC} Rules: NO es symlink"
-    ((WARNINGS++))
+    WARNINGS=$((WARNINGS+1))
 fi
 
 echo ""
@@ -118,7 +118,7 @@ if [ "$repo_agents" = "$link_agents" ]; then
     echo -e "   ${GREEN}✓${NC} Agents alineados: $repo_agents archivos"
 else
     echo -e "   ${YELLOW}⚠${NC} Agents desalineados: repo=$repo_agents, links=$link_agents"
-    ((WARNINGS++))
+    WARNINGS=$((WARNINGS+1))
 fi
 
 repo_commands=$(ls $REPO/commands/*.md 2>/dev/null | wc -l | tr -d ' ')
@@ -127,7 +127,7 @@ if [ "$repo_commands" = "$link_commands" ]; then
     echo -e "   ${GREEN}✓${NC} Commands alineados: $repo_commands archivos"
 else
     echo -e "   ${YELLOW}⚠${NC} Commands desalineados: repo=$repo_commands, links=$link_commands"
-    ((WARNINGS++))
+    WARNINGS=$((WARNINGS+1))
 fi
 
 repo_skills=$(ls -d $REPO/skills/*/ 2>/dev/null | wc -l | tr -d ' ')
@@ -136,7 +136,7 @@ if [ "$repo_skills" = "$link_skills" ]; then
     echo -e "   ${GREEN}✓${NC} Skills alineados: $repo_skills directorios"
 else
     echo -e "   ${YELLOW}⚠${NC} Skills desalineados: repo=$repo_skills, links=$link_skills"
-    ((WARNINGS++))
+    WARNINGS=$((WARNINGS+1))
 fi
 
 echo ""
