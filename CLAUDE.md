@@ -243,7 +243,12 @@ Each ralph agent has a diary in Obsidian vault:
 - **AAAK rejected** for LLM context (see `docs/architecture/AAAK_LIMITATIONS_ADR_2026-04-07.md`): PUA encoding increases cl100k_base tokens by +19.8%. Selection beats encoding.
 - **claude-mem removed**: Full forensic removal (Wave 0). Data migrated to Obsidian vault.
 - **Drift audit**: 18 findings documented in `docs/audit/CLAUDE_MD_DRIFT_2026-04-07.md`
-- **Context deduplication**: Global rules are symlinks to repo (not copies), reducing context overhead by 29% (~10K tokens saved). Run `scripts/sync-rules.sh` to maintain.
+- **Context deduplication**: Claude Code deduplicates instruction blocks by REALPATH, not by content:
+  a symlink loads once, a copy is paid for again in full. The `learned/` taxonomy is symlinked to the
+  repo for that reason. The six top-level rules in `~/.claude/rules/` are header-stamped COPIES, synced
+  by `.claude/scripts/sync-rules-from-source.sh` and verified by `scripts/validate-global-infrastructure.sh`
+  (which strips the header before comparing). The previous claim that all global rules were symlinks was
+  false on disk, and a second symlink-based mechanism was competing with the copies — it has been retired.
 - **Distribution policy**: See `docs/architecture/DISTRIBUTION_POLICY.md` for symlink vs copy strategy per component type.
 
 ## Quality Gates

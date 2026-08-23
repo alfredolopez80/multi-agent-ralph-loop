@@ -234,6 +234,12 @@ tmp-review/
 .gemini/
 .git-hooks/
 .github/
+# Excepciones: los workflows de CI SI se versionan. Ignorar .github/ entero dejo
+# fuera test-installer.yml, que nunca llego a GitHub: sus 21 .bats no se han
+# ejecutado nunca, y install.sh quedo sin cobertura automatica.
+!.github/
+!.github/workflows/
+!.github/workflows/*.yml
 
 # External project directories
 apps/

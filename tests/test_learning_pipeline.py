@@ -204,27 +204,22 @@ class TestFix2CronTriggersSync:
         # Y el fallo se reporta.
         assert "rules sync FAILED" in script, "El fallo del sync no se registra"
 
-    def test_cron_sync_after_index_update_before_git_commit(self):
-        """Sync happens AFTER index update, BEFORE git commit."""
+    def test_cron_sync_before_git_commit(self):
+        """El sync ocurre ANTES del commit, para que sus cambios entren en el.
+
+        Antes se exigia ademas "despues de actualizar los indices", pero ese
+        bloque se retiro del script: los indices los mantiene el hook registrado
+        vault-index-updater.sh, y aqui se regeneraban por duplicado. Lo que sigue
+        siendo un contrato real es el orden respecto al commit.
+        """
         script = (REPO_ROOT / "scripts" / "vault-weekly-compile.sh").read_text()
         lines = script.split("\n")
 
-        index_line = None
-        sync_line = None
-        git_line = None
+        sync_line = next((i for i, l in enumerate(lines) if "sync-rules-from-source.sh" in l), None)
+        git_line = next((i for i, l in enumerate(lines) if "git add" in l), None)
 
-        for i, line in enumerate(lines):
-            if "Indices updated" in line:
-                index_line = i
-            if "sync-rules-from-source.sh" in line:
-                sync_line = i
-            if "git add" in line:
-                git_line = i
-
-        assert index_line is not None, "No 'Indices updated' line found"
         assert sync_line is not None, "No sync-rules line found"
         assert git_line is not None, "No 'git add' line found"
-        assert sync_line > index_line, "Sync should come after index update"
         assert sync_line < git_line, "Sync should come before git commit"
 
 

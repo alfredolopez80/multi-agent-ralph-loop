@@ -2,8 +2,10 @@
 # vault-weekly-compile.sh — Weekly vault compilation and backup
 # VERSION: 3.0.0
 #
-# Runs automatically via cron every Friday at 6PM.
-# If Friday was missed, Saturday/Sunday runs catch up.
+# Se dispara desde el hook SessionEnd, no desde cron: macOS (TCC) niega a cron
+# el acceso a ~/Documents, asi que las 22 ejecuciones desde abril fallaron con
+# 'Operation not permitted' sin ejecutar una linea. El guard semanal sigue
+# vigente: solo hace trabajo una vez por semana.
 #
 # What it does:
 # 1. Check if vault exists
@@ -74,73 +76,10 @@ for project_dir in projects/*/lessons/; do
 done
 log "New lessons since last compile: $new_lessons"
 
-# Update indices
-log "Updating vault indices..."
-
-# Update global wiki index
-{
-    echo "# Global Wiki Index"
-    echo ""
-    echo "Auto-updated: $(date '+%Y-%m-%d %H:%M')"
-    echo ""
-    for category_dir in global/wiki/*/; do
-        if [ -d "$category_dir" ]; then
-            category=$(basename "$category_dir")
-            count=$(find "$category_dir" -name "*.md" | wc -l)
-            if [ "$count" -gt 0 ]; then
-                echo "## $category ($count articles)"
-                find "$category_dir" -name "*.md" -exec basename {} .md \; | sort | while read article; do
-                    echo "- [[$category/$article]]"
-                done
-                echo ""
-            fi
-        fi
-    done
-} > global/wiki/_index.md
-
-# Update project index
-{
-    echo "# Project Index"
-    echo ""
-    echo "Auto-updated: $(date '+%Y-%m-%d %H:%M')"
-    echo ""
-    for project_dir in projects/*/; do
-        if [ -d "$project_dir" ] && [ "$(basename "$project_dir")" != "_project-index.md" ]; then
-            project=$(basename "$project_dir")
-            lesson_count=$(find "$project_dir/lessons" -name "*.md" 2>/dev/null | wc -l || echo 0)
-            wiki_count=$(find "$project_dir/wiki" -name "*.md" 2>/dev/null | wc -l || echo 0)
-            echo "## $project"
-            echo "- Lessons: $lesson_count"
-            echo "- Wiki articles: $wiki_count"
-            echo ""
-        fi
-    done
-} > projects/_project-index.md
-
-# Update vault master index
-{
-    echo "# Vault Index"
-    echo ""
-    echo "Auto-updated: $(date '+%Y-%m-%d %H:%M')"
-    echo ""
-    echo "## Statistics"
-    total_lessons=$(find projects -name "*.md" -path "*/lessons/*" 2>/dev/null | wc -l || echo 0)
-    total_wiki=$(find global/wiki -name "*.md" ! -name "_index.md" 2>/dev/null | wc -l || echo 0)
-    total_decisions=$(find . -name "*.md" -path "*/decisions/*" 2>/dev/null | wc -l || echo 0)
-    echo "- Total lessons: $total_lessons"
-    echo "- Wiki articles: $total_wiki"
-    echo "- Decisions: $total_decisions"
-    echo ""
-    echo "## Global Knowledge"
-    echo "- [Global Wiki](global/wiki/_index.md)"
-    echo "- [Raw Sources](global/raw/)"
-    echo "- [Decisions](global/decisions/)"
-    echo ""
-    echo "## Projects"
-    echo "- [Project Index](projects/_project-index.md)"
-} > _vault-index.md
-
-log "Indices updated"
+# Los indices (_vault-index.md, wiki/_index.md, projects/_project-index.md) los
+# mantiene el hook registrado vault-index-updater.sh en SessionEnd. Este bloque
+# los regeneraba por duplicado; ademas nunca corrio: el cron fallaba antes de
+# ejecutar una sola linea (22 disparos, 22 'Operation not permitted').
 
 # ──────────────────────────────────────────────
 # Sync learned rules to global (MemPalace v3.2)
