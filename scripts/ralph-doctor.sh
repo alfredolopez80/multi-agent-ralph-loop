@@ -118,9 +118,19 @@ check_skills() {
     # Iterate through skills
     for skill_path in "$skills_dir"/*; do
         [ -e "$skill_path" ] || continue
-        total_skills=$((total_skills+1))
-        
+
         local skill_name=$(basename "$skill_path")
+
+        # Claude Code solo carga <nombre>/SKILL.md. Un fichero suelto en skills/
+        # es formato legacy inerte: avisar con diagnostico veraz (no "falta
+        # SKILL.md", que sugiere un skill roto) y no contarlo como skill.
+        if [ ! -d "$skill_path" ]; then
+            log_warn "Entrada no-directorio en skills/ (formato legacy, no se carga): $skill_name"
+            WARNINGS=$((WARNINGS+1))
+            continue
+        fi
+
+        total_skills=$((total_skills+1))
         
         # Check if it's a broken symlink
         if [ -L "$skill_path" ] && [ ! -e "$skill_path" ]; then

@@ -134,6 +134,17 @@ getOrCreateWorktree() {
     return 0
   fi
 
+  # --- Ghost registration recovery ---
+  # El directorio no existe pero git aun lo tiene registrado (alguien borro el
+  # dir a mano, o una corrida de tests lo dejo asi). En ese estado TODO
+  # `git worktree add` sobre ese slug falla con "missing but already registered".
+  # No es un fallback silencioso: es el contrato reuse-or-create aplicado a un
+  # estado invalido que el propio ecosistema genera, y queda logueado.
+  if git -C "$main_repo" worktree list --porcelain 2>/dev/null | grep -qx "worktree $wt_dir"; then
+    echo "worktree-utils: pruning ghost registration for $wt_dir" >&2
+    git -C "$main_repo" worktree prune 2>/dev/null || true
+  fi
+
   # --- Create new worktree ---
   # Fetch latest (no interactive prompts)
   (cd "$main_repo" && git fetch --quiet --no-tags 2>/dev/null || true)

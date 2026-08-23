@@ -33,27 +33,33 @@ print_result() {
     TESTS_RUN=$((TESTS_RUN+1))
 }
 
-# Credential redaction function (simplified, cross-platform)
-redact_credentials() {
-    local text="$1"
+# Credential redaction: se invoca la implementacion REAL de produccion.
+# La copia "simplified, cross-platform" que habia aqui NO incluia la regla
+# Bearer-espacio, ni sk_live_/sk_test_, gho_/ghu_, xoxp-, AKIA..., client_secret
+# ni client_id, y su charset de valor Bearer omitia `+/` (un JWT con `/` quedaba
+# sin redactar). Validaba una copia divergente: una regresion en produccion
+# habria dejado esta suite en verde.
+# El subshell aisla los `readonly` de promptify-security.sh, que colisionan
+# con los de este fichero al sourcear.
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+readonly PROMPTIFY_SECURITY="${PROJECT_ROOT}/.claude/hooks/promptify-security.sh"
 
-    # Use multiple sed commands for better portability
-    echo "$text" | sed -E '
-        s/(password|passwd|pwd)[[:space:]]*[:=][[:space:]]*[^[:space:]]+/\1: [REDACTED]/gi;
-        s/(secret|token|api_key|apikey|access_token|auth_token|credential)[[:space:]]*[:=][[:space:]]*[^[:space:]]+/\1: [REDACTED]/gi;
-        s/(bearer|authorization)[[:space:]]*:[[:space:]]*[A-Za-z0-9._~=-]+/\1: [REDACTED]/gi;
-        s/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/[EMAIL REDACTED]/g;
-        s/[0-9]{3}-[0-9]{3}-[0-9]{4}/[PHONE REDACTED]/g;
-        s/sk-[a-zA-Z0-9]{32,}/[SK-KEY REDACTED]/g;
-        s/ghp_[a-zA-Z0-9]{36,}/[GH-TOKEN REDACTED]/g;
-        s/xoxb-[a-zA-Z0-9-]{10,}/[SLACK-TOKEN REDACTED]/g;
-    '
+redact_credentials() {
+    if [[ ! -f "$PROMPTIFY_SECURITY" ]]; then
+        echo "FATAL: no existe $PROMPTIFY_SECURITY" >&2
+        return 1
+    fi
+    bash -c 'source "$1" >/dev/null 2>&1; redact_credentials "$2"' _ "$PROMPTIFY_SECURITY" "$1"
 }
 
 # Test cases: (input, should_contain, should_not_contain)
 declare -a TEST_CASES=(
     # Basic patterns
     "password:secret123|[REDACTED]|secret123"
+    # Anti-regresion de los fixes 2026-08-23 (la copia anterior no los cubria):
+    "Authorization:Bearer eyJhbGciOiJIUzI1NiJ9.abc.def|[REDACTED]|eyJhbGciOiJIUzI1NiJ9"
+    "use Bearer ab/cd+ef=gh12345|[REDACTED]|ab/cd+ef"
+    "AKIAIOSFODNN7EXAMPLE|[AWS-ACCESS-KEY REDACTED]|AKIAIOSFODNN7"
     "token:abc456|[REDACTED]|abc456"
     "email:user@example.com|[EMAIL REDACTED]|user@example.com"
     "phone:123-456-7890|[PHONE REDACTED]|123-456-7890"

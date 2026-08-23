@@ -10,7 +10,10 @@
 # Usage: bash scripts/validate-global-infrastructure.sh [--fix]
 set -euo pipefail
 
-REPO="~/Documents/GitHub/multi-agent-ralph-loop"
+# La tilde entre comillas NO se expande: `[[ -f "~/..." ]]` siempre era falso y
+# los 19 checks de drift caian a la rama "standalone (no repo source to compare)".
+# Fail-open en un validador. Derivar de BASH_SOURCE es ademas robusto a renombres.
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FIX_MODE="${1:-}"
 PASS=0
 FAIL=0

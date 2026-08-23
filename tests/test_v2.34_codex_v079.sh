@@ -162,7 +162,9 @@ fi
 
 # Test 18: init_codex_schemas is called from startup_validation
 echo "Test: init_codex_schemas is called from startup_validation()"
-if grep -A 10 "^startup_validation()" scripts/ralph | grep -q "init_codex_schemas"; then
+# `grep -A 10` solo miraba 10 lineas: la llamada real esta ~50 lineas dentro
+# de la funcion, asi que el test daba un falso negativo sobre codigo correcto.
+if awk '/^startup_validation\(\)/,/^}/' scripts/ralph | grep -q "init_codex_schemas"; then
     test_pass "init_codex_schemas called from startup_validation"
 else
     test_fail "init_codex_schemas not called from startup_validation"

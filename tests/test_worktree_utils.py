@@ -336,6 +336,11 @@ class TestSubagentStartIntegration:
         r = subprocess.run(
             ["bash", hook],
             input=stdin_data, capture_output=True, text=True, timeout=30,
+            # cwd es OBLIGATORIO: get_main_repo() resuelve git-first desde el CWD
+            # y solo usa CLAUDE_PROJECT_DIR como ultimo recurso. Sin cwd, el hook
+            # heredaba el cwd del repo real y creaba los worktrees ALLI, dejando
+            # registros fantasma que hacian fallar las corridas siguientes.
+            cwd=str(git_repo),
             env={**os.environ, "CLAUDE_PROJECT_DIR": str(git_repo)},
         )
         assert r.returncode == 0
@@ -356,6 +361,11 @@ class TestSubagentStartIntegration:
         r = subprocess.run(
             ["bash", hook],
             input=stdin_data, capture_output=True, text=True, timeout=30,
+            # cwd es OBLIGATORIO: get_main_repo() resuelve git-first desde el CWD
+            # y solo usa CLAUDE_PROJECT_DIR como ultimo recurso. Sin cwd, el hook
+            # heredaba el cwd del repo real y creaba los worktrees ALLI, dejando
+            # registros fantasma que hacian fallar las corridas siguientes.
+            cwd=str(git_repo),
             env={**os.environ, "CLAUDE_PROJECT_DIR": str(git_repo)},
         )
         assert r.returncode == 0
@@ -387,6 +397,11 @@ class TestSubagentStopIntegration:
         r = subprocess.run(
             ["bash", hook],
             input=stdin_data, capture_output=True, text=True, timeout=30,
+            # cwd es OBLIGATORIO: get_main_repo() resuelve git-first desde el CWD
+            # y solo usa CLAUDE_PROJECT_DIR como ultimo recurso. Sin cwd, el hook
+            # heredaba el cwd del repo real y creaba los worktrees ALLI, dejando
+            # registros fantasma que hacian fallar las corridas siguientes.
+            cwd=str(git_repo),
             env={**os.environ, "CLAUDE_PROJECT_DIR": str(git_repo)},
         )
         assert r.returncode == 0

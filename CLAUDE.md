@@ -209,7 +209,10 @@ never model choice.
 | L2 | `.claude/rules/learned/{halls,rooms,wings}/` | on-demand | Project-specific taxonomy |
 | L3 | Obsidian vault grep | on-demand | Full knowledge base queries |
 
-**Wake-up hook**: `.claude/hooks/wake-up-layer-stack.sh` loads L0+L1 at session start (~1050 tokens).
+**Wake-up hook**: `.claude/hooks/wake-up-layer-stack.sh` runs at SessionStart and injects
+**~1950-2000 tokens** (measured with tiktoken cl100k_base, 2026-08-23). L0+L1 are only ~818 of
+those; the hook also appends recall_v2 top rules, Vault Stats and the project Wing (L2).
+The previously documented "~1050" counted L0+L1 alone and understated the real cost by ~2x.
 
 ### Learned Rules Taxonomy
 

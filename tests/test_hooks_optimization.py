@@ -26,6 +26,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import resource
 import subprocess
 import time
 
@@ -87,8 +88,19 @@ def _all_sh_hooks(hooks_dir: str) -> list[str]:
     )
 
 
-def _run_hook(path: str, payload: str, timeout: float = 8.0) -> tuple[float, int]:
-    """Run a hook with JSON payload on stdin. Return (elapsed_ms, returncode)."""
+def _run_hook(path: str, payload: str, timeout: float = 8.0) -> tuple[float, float, int]:
+    """Run a hook with JSON payload on stdin.
+
+    Returns (cpu_ms, wall_ms, returncode).
+
+    cpu_ms mide el tiempo de CPU consumido por el proceso hijo. Es la metrica
+    correcta para un umbral: esperar en la run-queue infla el wall-clock pero no
+    la CPU, asi que un hook que cumple en reposo sigue cumpliendo bajo carga.
+    Medir wall-clock hacia que estos tests fallasen en la corrida completa de la
+    suite y pasasen al re-ejecutarlos aislados: un gate que solo aprueba con la
+    maquina en reposo no es un gate.
+    """
+    before = resource.getrusage(resource.RUSAGE_CHILDREN)
     start = time.perf_counter()
     proc = subprocess.run(
         ["bash", path],
@@ -98,12 +110,27 @@ def _run_hook(path: str, payload: str, timeout: float = 8.0) -> tuple[float, int
         timeout=timeout,
         cwd=PROJECT_ROOT,
     )
-    return (time.perf_counter() - start) * 1000.0, proc.returncode
+    wall_ms = (time.perf_counter() - start) * 1000.0
+    after = resource.getrusage(resource.RUSAGE_CHILDREN)
+    cpu_ms = (
+        (after.ru_utime - before.ru_utime) + (after.ru_stime - before.ru_stime)
+    ) * 1000.0
+    return cpu_ms, wall_ms, proc.returncode
 
 
-def _best_ms(path: str, payload: str, runs: int = 2) -> float:
-    """Best-of-N elapsed ms (reduces noise from machine load)."""
+def _best_ms(path: str, payload: str, runs: int = 3) -> float:
+    """Best-of-N CPU ms del hijo."""
     return min(_run_hook(path, payload)[0] for _ in range(runs))
+
+
+def _best_wall_ms(path: str, payload: str, runs: int = 3) -> float:
+    """Best-of-N wall-clock ms.
+
+    Solo para los fork hooks, cuyo contrato es "retorna rapido": ahi lo que se
+    mide es precisamente que el padre no bloquea, no cuanta CPU gasta el hijo
+    (que ademas se reparenta y no cuenta en RUSAGE_CHILDREN).
+    """
+    return min(_run_hook(path, payload)[1] for _ in range(runs))
 
 
 def _settings_path() -> str:
@@ -340,6 +367,17 @@ class TestPerformance:
     THRESHOLD_MS = 500
     FORK_THRESHOLD_MS = 200
 
+    @pytest.fixture(autouse=True)
+    def _require_sequential_execution(self):
+        """RUSAGE_CHILDREN es acumulativo por proceso: con xdist, el delta
+        recogeria la CPU de los hooks que lancen los demas workers y la medida
+        dejaria de significar nada. Falla ruidosamente en vez de saltarse: un
+        gate que se auto-desactiva no protege nada."""
+        assert not os.environ.get("PYTEST_XDIST_WORKER"), (
+            "TestPerformance mide CPU via RUSAGE_CHILDREN y exige ejecucion "
+            "secuencial; ejecutalo sin -n/xdist."
+        )
+
     def test_context_warning_under_threshold(self, hooks_dir):
         ms = _best_ms(os.path.join(hooks_dir, "context-warning.sh"), '{"prompt":"test"}')
         assert ms < self.THRESHOLD_MS, f"context-warning.sh took {ms:.0f}ms (>= {self.THRESHOLD_MS})"
@@ -352,7 +390,7 @@ class TestPerformance:
 
     @pytest.mark.parametrize("hook", FORK_HOOKS)
     def test_fork_hooks_return_fast(self, hooks_dir, hook):
-        ms = _best_ms(os.path.join(hooks_dir, hook), '{"hook_event_name":"SessionStart"}')
+        ms = _best_wall_ms(os.path.join(hooks_dir, hook), '{"hook_event_name":"SessionStart"}')
         assert ms < self.FORK_THRESHOLD_MS, (
             f"{hook} returned in {ms:.0f}ms (>= {self.FORK_THRESHOLD_MS}); fork not effective"
         )
