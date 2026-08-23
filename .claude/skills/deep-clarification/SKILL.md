@@ -1,7 +1,8 @@
 ---
-# VERSION: 2.43.0
 name: deep-clarification
 description: "Intensive task clarification using AskUserQuestion - use when starting any non-trivial task"
+metadata:
+  version: 2.43.0
 ---
 
 **ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.

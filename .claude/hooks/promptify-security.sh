@@ -27,7 +27,8 @@ redact_credentials() {
     # Redact common credential patterns
     echo "$text" | sed -E \
         -e 's/(password|passwd|pwd|secret|token|api_key|apikey|access_token|auth_token|credential|client_secret|client_id)[[:space:]]*[:=][[:space:]]*[^[:space:]]+/\1: [REDACTED]/gi' \
-        -e 's/([Bb]earer)[[:space:]]+[A-Za-z0-9._~+/=-]+/\1 [REDACTED]/g' \
+        -e 's/([Bb]earer)[[:space:]]+[A-Za-z0-9._~+/=-]{12,}/\1 [REDACTED]/g' \
+        -e 's/([Bb]asic)[[:space:]]+[A-Za-z0-9+/=]{12,}/\1 [REDACTED]/g' \
         -e 's/(bearer|authorization)[[:space:]]*:[[:space:]]*[^[:space:]]+/\1: [REDACTED]/gi' \
         -e 's/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}/[EMAIL REDACTED]/g' \
         -e 's/[0-9]{3}-[0-9]{3}-[0-9]{4}/[PHONE REDACTED]/g' \

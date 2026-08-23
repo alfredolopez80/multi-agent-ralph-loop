@@ -1,8 +1,9 @@
 ---
-# VERSION: 1.0.0
 name: ethereum-rpc
 description: "Ethereum/EVM JSON-RPC call builder and validator - use when interacting with blockchain nodes via RPC"
 allowed-tools: Bash,Read,Write,WebFetch,WebSearch
+metadata:
+  version: 1.0.0
 ---
 
 **ultrathink** - Blockchain interactions require precision. One wrong hex, one missing zero, and the call fails silently.
