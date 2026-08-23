@@ -116,14 +116,14 @@ WARNINGS=0
 # Get directory permissions in octal
 get_dir_permissions() {
     local dir="$1"
-    stat -f "%Lp" "$dir" 2>/dev/null || stat -c "%a" "$dir" 2>/dev/null || echo "000"
+    stat -c "%a" "$dir" 2>/dev/null || stat -f "%Lp" "$dir" 2>/dev/null || echo "000"
 }
 
 # Check if directory is owned by current user
 is_owned_by_user() {
     local dir="$1"
     local owner
-    owner=$(stat -f "%Su" "$dir" 2>/dev/null || stat -c "%U" "$dir" 2>/dev/null)
+    owner=$(stat -c "%U" "$dir" 2>/dev/null || stat -f "%Su" "$dir" 2>/dev/null)
     [[ "$owner" == "$(whoami)" ]]
 }
 

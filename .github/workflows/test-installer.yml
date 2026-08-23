@@ -100,11 +100,14 @@ jobs:
       - name: Install essential language servers
         run: |
           echo "::group::Installing essential language servers"
-          # test-language-servers.bats exige >=3 de 4 servidores esenciales.
-          # clangd viene con el runner (apt en Ubuntu, Xcode en macOS) y
-          # sourcekit-lsp solo existe en macOS; los dos de npm se instalan aqui
-          # para que la asercion se cumpla por provision real y no relajandola.
+          # test-language-servers.bats exige TODOS los esenciales que la
+          # plataforma puede tener: typescript-language-server, pyright y clangd
+          # en ambos SO, mas sourcekit-lsp solo en macOS (viene con Xcode).
+          # Se aprovisionan de verdad en vez de relajar la asercion.
           npm install -g typescript-language-server typescript pyright
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get install -y clangd
+          fi
           for srv in typescript-language-server pyright clangd sourcekit-lsp; do
             if command -v "$srv" >/dev/null 2>&1; then
               echo "  presente: $srv"

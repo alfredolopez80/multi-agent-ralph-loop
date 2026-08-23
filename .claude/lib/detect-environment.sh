@@ -61,7 +61,7 @@ _env_marker_is_fresh() {
     local path="$1"
     [[ -f "$path" ]] || return 1
     local mtime now age
-    mtime=$(stat -f "%m" "$path" 2>/dev/null || stat -c "%Y" "$path" 2>/dev/null || echo 0)
+    mtime=$(stat -c "%Y" "$path" 2>/dev/null || stat -f "%m" "$path" 2>/dev/null || echo 0)
     now=$(date +%s)
     age=$(( (now - mtime) / 60 ))
     [[ "$age" -lt "$_RALPH_MARKER_TTL_MIN" ]]

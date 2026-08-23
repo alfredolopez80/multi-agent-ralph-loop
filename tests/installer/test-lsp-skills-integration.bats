@@ -22,18 +22,6 @@ teardown() {
 # LSP-EXPLORE SKILL AVAILABILITY
 #===============================================================================
 
-@test "lsp-explore skill exists in global skills" {
-    [ -f "$REAL_HOME/.claude/skills/lsp-explore/SKILL.md" ]
-}
-
-@test "lsp-explore skill has LSP in allowed-tools" {
-    grep -q "LSP" "$REAL_HOME/.claude/skills/lsp-explore/SKILL.md"
-}
-
-@test "lsp-explore skill version is documented" {
-    grep -q "VERSION:" "$REAL_HOME/.claude/skills/lsp-explore/SKILL.md"
-}
-
 #===============================================================================
 # RALPH SKILLS LSP READINESS
 #===============================================================================

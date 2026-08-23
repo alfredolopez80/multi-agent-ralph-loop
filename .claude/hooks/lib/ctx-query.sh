@@ -61,7 +61,7 @@ _ctx_source_signature() {
     local f="$CTX_RULES_JSON"
     [[ -f "$f" ]] || { echo "missing"; return 0; }
     # macOS: stat -f '%m %z'; Linux: stat -c '%Y %s'
-    stat -f '%m %z' "$f" 2>/dev/null || stat -c '%Y %s' "$f" 2>/dev/null || echo "nostat"
+    stat -c '%Y %s' "$f" 2>/dev/null || stat -f '%m %z' "$f" 2>/dev/null || echo "nostat"
 }
 
 # Detect backend: "sqlite" if sqlite3 present, else "tsv".

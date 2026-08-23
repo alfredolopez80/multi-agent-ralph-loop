@@ -33,8 +33,16 @@ ESSENTIAL_SERVERS=(
     "typescript|npm|typescript-language-server|typescript-language-server --version"
     "python|npm|pyright|pyright --version"
     "clangd|brew|llvm|clangd --version"
-    "swift|xcode||sourcekit-lsp --help"
 )
+
+# sourcekit-lsp llega con Xcode y NO existe fuera de macOS. Estaba en la lista de
+# esenciales incondicionalmente, y como --check devuelve el numero de esenciales
+# ausentes, en Linux siempre faltaba uno: el comando no podia salir 0 jamas, por
+# mucho que se instalara todo lo instalable. Un requisito imposible de satisfacer
+# no es un requisito, es un falso negativo permanente.
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    ESSENTIAL_SERVERS+=("swift|xcode||sourcekit-lsp --help")
+fi
 
 # Optional servers
 OPTIONAL_SERVERS=(
