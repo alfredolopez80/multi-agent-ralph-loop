@@ -4,7 +4,7 @@ name: gap-analyst
 description: "Analyzes feature requests for missing requirements, edge cases, and ambiguities BEFORE implementation. Prevents rework by finding gaps early."
 tools: Read, Grep, Glob, Bash, WebSearch
 disallowedTools: Write, Edit, Task
-model: opus
+model: inherit
 color: "#EF4444"
 ---
 

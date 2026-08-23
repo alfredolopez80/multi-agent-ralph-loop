@@ -140,11 +140,11 @@ check_tier() {
             return 0
             ;;
         economic)
-            # Check if MiniMax is available
-            if command -v minimax &>/dev/null || [[ -n "${MINIMAX_API_KEY:-}" ]]; then
+            # GLM es el proveedor economico disponible (Z_AI_API_KEY)
+            if [[ -n "${Z_AI_API_KEY:-}${ZAI_API_KEY:-}" ]]; then
                 return 0
             else
-                log_warn "MiniMax not available, falling back to free tier"
+                log_warn "Tier 'economic' no disponible: falta Z_AI_API_KEY"
                 return 1
             fi
             ;;

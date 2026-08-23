@@ -2,7 +2,6 @@
 # detect-environment.sh v3.0.1 - Execution environment detection
 #
 # Restored from .claude/backup-before-cleanup-20260127-170141/hooks/
-# and extended to cover Minimax as a third API backend.
 #
 # DUAL MODE
 #   Sourced  -> exports functions (no stdout, idempotent cache)
@@ -16,13 +15,12 @@
 #   vscode       Claude VS Code extension
 #   cursor       Claude Cursor extension
 #   glm-api      GLM-4.7 / Zhipu via Z.AI or BigModel endpoint
-#   minimax-api  MiniMax M-series via MiniMax API endpoint
 #   unknown      fallback
 #
 # Capability buckets
 #   full     claude-cli
 #   limited  vscode / cursor
-#   api      glm-api / minimax-api
+#   api      glm-api
 #   none     unknown
 #
 # Sourced function API (stable names used by current callers)
@@ -39,7 +37,6 @@ ENV_CLAUDE_CLI="claude-cli"
 ENV_VSCODE="vscode"
 ENV_CURSOR="cursor"
 ENV_GLM_API="glm-api"
-ENV_MINIMAX_API="minimax-api"
 ENV_UNKNOWN="unknown"
 
 CAP_FULL="full"
@@ -77,29 +74,13 @@ _env_base_url_is_zai() {
     [[ "$url" =~ dev\.bigmodel\.cn ]]
 }
 
-_env_base_url_is_minimax() {
-    local url="${ANTHROPIC_BASE_URL:-}"
-    [[ "$url" =~ api\.minimaxi?\.chat ]] || \
-    [[ "$url" =~ api\.minimax\.io ]]
-}
-
 _env_glm_marker_fresh() {
     local state_dir="${RALPH_DIR:-${HOME}/.ralph}/state"
     _env_marker_is_fresh "${state_dir}/glm-active"
 }
 
-_env_minimax_marker_fresh() {
-    local state_dir="${RALPH_DIR:-${HOME}/.ralph}/state"
-    _env_marker_is_fresh "${state_dir}/minimax-active"
-}
-
 _env_model_is_glm() {
     [[ "${ANTHROPIC_MODEL:-}" =~ glm-[0-9] ]]
-}
-
-_env_model_is_minimax() {
-    local m="${ANTHROPIC_MODEL:-}"
-    [[ "$m" =~ ^[Mm]ini[Mm]ax ]] || [[ "$m" =~ ^M2 ]] || [[ "$m" =~ abab ]]
 }
 
 _env_has_anthropic_base_url() {
@@ -115,11 +96,6 @@ _env_has_anthropic_base_url() {
 # native Claude regardless of stale marker files sitting in ~/.ralph/.
 detect_environment_type() {
     # P1: Explicit API backend override via base URL + auth
-    if _env_base_url_is_minimax; then
-        if [[ -n "${MINIMAX_API_KEY:-}${ANTHROPIC_AUTH_TOKEN:-}" ]]; then
-            echo "$ENV_MINIMAX_API"; return 0
-        fi
-    fi
     if _env_base_url_is_zai; then
         if [[ -n "${Z_AI_API_KEY:-}${ZAI_API_KEY:-}${ANTHROPIC_AUTH_TOKEN:-}" ]]; then
             echo "$ENV_GLM_API"; return 0
@@ -147,18 +123,12 @@ detect_environment_type() {
     fi
 
     # P5: Model-only hints (no base_url, no entrypoint) + matching auth
-    if _env_model_is_minimax && [[ -n "${MINIMAX_API_KEY:-}${ANTHROPIC_AUTH_TOKEN:-}" ]]; then
-        echo "$ENV_MINIMAX_API"; return 0
-    fi
     if _env_model_is_glm && [[ -n "${Z_AI_API_KEY:-}${ZAI_API_KEY:-}${ANTHROPIC_AUTH_TOKEN:-}" ]]; then
         echo "$ENV_GLM_API"; return 0
     fi
 
     # P6: Fresh marker files (TTL-bounded, fallback for headless scripts
     # launched outside Claude Code)
-    if _env_minimax_marker_fresh; then
-        echo "$ENV_MINIMAX_API"; return 0
-    fi
     if _env_glm_marker_fresh; then
         echo "$ENV_GLM_API"; return 0
     fi
@@ -170,7 +140,7 @@ determine_capabilities() {
     case "$1" in
         "$ENV_CLAUDE_CLI")                   echo "$CAP_FULL" ;;
         "$ENV_VSCODE"|"$ENV_CURSOR")         echo "$CAP_LIMITED" ;;
-        "$ENV_GLM_API"|"$ENV_MINIMAX_API")   echo "$CAP_API" ;;
+        "$ENV_GLM_API")                      echo "$CAP_API" ;;
         *)                                   echo "$CAP_NONE" ;;
     esac
 }
@@ -180,7 +150,7 @@ get_entrypoint() {
         "$ENV_CLAUDE_CLI")                   echo "cli" ;;
         "$ENV_VSCODE")                       echo "vscode" ;;
         "$ENV_CURSOR")                       echo "cursor" ;;
-        "$ENV_GLM_API"|"$ENV_MINIMAX_API")   echo "api" ;;
+        "$ENV_GLM_API")                      echo "api" ;;
         *)                                   echo "unknown" ;;
     esac
 }

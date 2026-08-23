@@ -3,7 +3,7 @@
 name: adversarial-plan-validator
 description: "Adversarial cross-validation that a plan's implementation covers ALL details: a Claude Opus pass plus an independent second pass — Codex GPT-5.2 when available (cross-model), otherwise a fresh-context Claude pass (cross-context). Each pass challenges the other's assessment. Never blocked by Codex."
 tools: Read, Grep, Glob, Bash, Task
-model: opus
+model: inherit
 color: "#DC2626"
 ---
 

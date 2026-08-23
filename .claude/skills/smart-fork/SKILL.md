@@ -4,7 +4,6 @@ name: smart-fork
 description: Smart Forking - Find and fork from relevant historical sessions using parallel memory search across vault, handoffs, and ledgers
 author: Multi-Agent Ralph
 version: 2.47.2
-model: sonnet
 context: fork
 allowed-tools:
   - Bash

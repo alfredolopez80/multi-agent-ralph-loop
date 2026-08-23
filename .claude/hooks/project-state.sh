@@ -129,7 +129,6 @@ detect_model() {
         env_type=$(echo "$env_json" | jq -r '.type // ""' 2>/dev/null || echo "")
         if [[ "$caps" == "api" ]]; then
             case "$env_type" in
-                minimax-api) echo "minimax" ;;
                 glm-api|*)   echo "glm" ;;
             esac
             return 0

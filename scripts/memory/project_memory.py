@@ -162,6 +162,9 @@ def select_green_nodes(
     return [node for _score, _nid, node in candidates[: max(0, top_n)]]
 
 
+SUMMARY_MAX_CHARS = 160
+
+
 def _escape_inline(text: str) -> str:
     """Collapse whitespace for a single markdown table/list cell."""
     return re.sub(r"\s+", " ", text).strip()
@@ -192,6 +195,11 @@ def render_block(nodes: list[dict[str, Any]], project_id: str) -> str:
             domain = _escape_inline(str(node.get("domain", "general")))
             confidence = _confidence(node)
             summary = _escape_inline(str(node.get("summary", "")))
+            # This block is an INDEX, not the source of truth: the full rule
+            # text already reaches the model via ~/.claude/rules/proven/*.md.
+            # Emitting it a second time in full is pure context duplication.
+            if len(summary) > SUMMARY_MAX_CHARS:
+                summary = summary[: SUMMARY_MAX_CHARS - 1].rstrip() + "…"
             # Keep cells single-line; markdown tables forbid raw pipes.
             summary = summary.replace("|", "\\|")
             node_id = node_id.replace("|", "\\|")

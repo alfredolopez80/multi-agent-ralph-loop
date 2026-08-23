@@ -4,7 +4,7 @@ name: plan-sync
 description: "Synchronizes downstream plan steps after implementation drift. Spawned by orchestrator after each step completes to patch stale references."
 tools: Read, Grep, Glob, Edit
 disallowedTools: Task, Write, Bash
-model: sonnet
+model: inherit
 color: "#8B5CF6"
 ---
 

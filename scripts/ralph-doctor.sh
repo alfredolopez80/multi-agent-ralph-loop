@@ -394,20 +394,6 @@ check_configuration() {
         fi
     done
     
-    # Check config files
-    if [ -f "${RALPH_DIR}/config/models.json" ]; then
-        if jq empty "${RALPH_DIR}/config/models.json" 2>/dev/null; then
-            log_success "config/models.json: válido"
-            CHECKS_PASSED=$((CHECKS_PASSED+1))
-        else
-            log_error "config/models.json: JSON inválido"
-            ERRORS=$((ERRORS+1))
-        fi
-    else
-        log_warn "config/models.json: no existe"
-        WARNINGS=$((WARNINGS+1))
-    fi
-    
     # Check settings.json.example exists in repo
     if [ -f "${REPO_DIR}/.claude/settings.json.example" ]; then
         log_success "settings.json.example: existe"

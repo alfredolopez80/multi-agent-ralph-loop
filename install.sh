@@ -2,7 +2,6 @@
 # install.sh - Multi-Agent Ralph Wiggum v2.24.1 Global Installer
 # Installs ralph CLI globally and integrates with Claude Code
 # v2.24.1: Security hardening (CWE-20, CWE-22, CWE-94, CWE-1325)
-# v2.24: MiniMax MCP integration (web_search + understand_image), 87% cost savings
 # v2.23: AST-grep integration for structural code search (~75% token savings)
 # v2.22: Tool validation (startup + on-demand), 9 language quality gates
 # v2.21: Self-update, pre-merge validation, integrations health check
@@ -211,13 +210,8 @@ create_directories() {
 install_scripts() {
     log_info "Installing CLI scripts..."
 
-    # Copy ralph and mmc
     cp "${SCRIPT_DIR}/scripts/ralph" "$INSTALL_DIR/ralph"
-    cp "${SCRIPT_DIR}/scripts/mmc" "$INSTALL_DIR/mmc"
-
-    # Make executable
     chmod +x "$INSTALL_DIR/ralph"
-    chmod +x "$INSTALL_DIR/mmc"
 
     log_success "CLI scripts installed to $INSTALL_DIR"
 }
@@ -806,18 +800,12 @@ alias rhb='ralph bugs'
 alias rhu='ralph unit-tests'
 alias rhf='ralph refactor'
 alias rhres='ralph research'
-alias rhm='ralph minimax'
 alias rhg='ralph gates'
 alias rha='ralph adversarial'
 alias rhl='ralph loop'
 alias rhc='ralph clarify'
 alias rhret='ralph retrospective'
 alias rhi='ralph improvements'
-
-# MiniMax aliases
-alias mm='mmc'
-alias mml='mmc --loop 30'
-alias mmlight='mmc --lightning'
 $END_MARKER
 RCEOF
     log_success "Shell aliases configured in $SHELL_RC"

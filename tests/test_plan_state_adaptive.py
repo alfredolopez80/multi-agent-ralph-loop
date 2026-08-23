@@ -182,7 +182,8 @@ class TestPlanStateAdaptiveClassification:
         classification = plan_state["classification"]
         assert "complexity" in classification
         assert "adaptive_mode" in classification
-        assert "model_routing" in classification
+        # model_routing retirado: la politica global prohibe enrutar modelo por complejidad
+        assert "model_routing" not in classification
 
     def test_plan_state_has_valid_step_structure(self, hook_path, temp_project_dir):
         """Created plan-state should have valid step structure."""

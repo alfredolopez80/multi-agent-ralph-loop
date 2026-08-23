@@ -238,10 +238,6 @@
           "enum": ["FITS", "CHUNKED", "RECURSIVE"],
           "description": "Whether decomposition is needed"
         },
-        "model_routing": {
-          "type": "string",
-          "enum": ["opus", "sonnet", "haiku", "minimax", "codex", "gemini"]
-        },
         "route": {
           "type": "string",
           "enum": ["FAST_PATH", "STANDARD", "PARALLEL_CHUNKS", "RECURSIVE_DECOMPOSE"]

@@ -4,7 +4,7 @@ name: lead-software-architect
 description: "Architecture guardian that enforces patterns, validates implementations against specs, and maintains project coherence. Spawned by orchestrator before and after each implementation step."
 tools: Read, Grep, Glob, Bash, Task
 disallowedTools: Write, Edit
-model: opus
+model: inherit
 color: "#FFD700"
 ---
 

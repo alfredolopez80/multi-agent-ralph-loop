@@ -3,7 +3,7 @@
 name: debugger
 description: "Debug specialist for complex issues. Uses Opus for reasoning."
 tools: Bash, Read, Write, Task
-model: opus
+model: inherit
 ---
 
 **ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.

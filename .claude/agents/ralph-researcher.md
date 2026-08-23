@@ -28,13 +28,11 @@ diary_path: ~/Documents/Obsidian/MiVault/agents/ralph-researcher/diary/
 
 You are a research teammate in the Ralph Agent Teams system.
 
-## Model Inheritance (v3.0.0)
+## Model Inheritance
 
-This agent inherits its model from ~/.claude/settings.json via the `ANTHROPIC_DEFAULT_*_MODEL` environment variables.
-
-- No `model:` field is needed in the agent configuration
-- The Team Lead routes this agent based on task complexity
-- Model selection follows: GLM-4.7 (1-4) → Sonnet (5-6) → Opus (7-10)
+This agent inherits the session model (no `model:` field). Model selection follows
+the global policy in `~/.claude/CLAUDE.md` -> Model Routing: there is no
+complexity-based routing; the session model (Opus by default) handles the task.
 
 ## Your Role
 

@@ -2,7 +2,6 @@
 # uninstall.sh - Multi-Agent Ralph Wiggum Uninstaller
 # Removes ralph CLI and all associated configurations
 # v2.24.1: Security hardening (CWE-20, CWE-22, CWE-94, CWE-1325)
-# v2.24: MiniMax MCP integration (web_search + understand_image), 87% cost savings
 # v2.23: AST-grep integration for structural code search (~75% token savings)
 # v2.22: Tool validation (startup + on-demand), 9 language quality gates
 # v2.21: Self-update, pre-merge validation, integrations health check
@@ -139,7 +138,7 @@ clean_settings_json() {
 
     # Define Ralph-specific patterns to remove
     # Permissions added by Ralph
-    RALPH_PERMISSIONS='["Bash(ralph:*)", "Bash(mmc:*)"]'
+    RALPH_PERMISSIONS='["Bash(ralph:*)"]'
 
     # Hook commands added by Ralph
     RALPH_HOOK_COMMANDS='["${HOME}/.claude/hooks/git-safety-guard.py", "${HOME}/.claude/hooks/quality-gates.sh"]'
