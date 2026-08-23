@@ -26,8 +26,19 @@ FORMAT="${FORMAT:-text}"
 TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-30}"
 VERBOSE="${VERBOSE:-0}"
 
-# Project paths
-PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+# Project paths.
+# Derivada del propio fichero: el fallback a `pwd` ataba el validador al
+# directorio de invocacion y, lanzado desde fuera del repo, no encontraba ni
+# hooks ni fixtures.
+_SELF="${BASH_SOURCE[0]}"
+while [ -L "$_SELF" ]; do
+    _LINK="$(readlink "$_SELF")"
+    case "$_LINK" in
+        /*) _SELF="$_LINK" ;;
+        *)  _SELF="$(dirname "$_SELF")/$_LINK" ;;
+    esac
+done
+PROJECT_ROOT="$(cd "$(dirname "$_SELF")/.." && pwd)"
 HOOKS_DIR="${PROJECT_ROOT}/.claude/hooks"
 FIXTURES_DIR="${PROJECT_ROOT}/tests/installer/fixtures/mock-tool-inputs"
 RESULTS_DIR="${PROJECT_ROOT}/tests/installer/results"

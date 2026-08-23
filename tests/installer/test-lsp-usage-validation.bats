@@ -12,7 +12,9 @@
 # Setup
 setup() {
     REAL_HOME=$(bash -c 'echo $HOME')
-    PROJECT_ROOT="${REAL_HOME}/Documents/GitHub/multi-agent-ralph-loop"
+    # Derivada del fichero de test, no cableada a una maquina concreta:
+    # ver la nota en test-complete-installation.bats.
+    PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
     SKILLS_DIR="${PROJECT_ROOT}/.claude/skills"
     AGENTS_DIR="${PROJECT_ROOT}/.claude/agents"
     HOOKS_DIR="${PROJECT_ROOT}/.claude/hooks"

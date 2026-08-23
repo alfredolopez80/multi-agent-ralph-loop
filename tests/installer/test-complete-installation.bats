@@ -14,7 +14,12 @@
 # Setup
 setup() {
     REAL_HOME=$(bash -c 'echo $HOME')
-    PROJECT_ROOT="${REAL_HOME}/Documents/GitHub/multi-agent-ralph-loop"
+    # La raiz se DERIVA del fichero de test. Antes estaba cableada la ruta
+    # absoluta de una maquina concreta ("${REAL_HOME}/Documents/GitHub/..."),
+    # asi que la suite solo podia pasar en ese portatil: en CI apuntaba a un
+    # directorio inexistente y TODA asercion de ruta fallaba, incluidas las de
+    # README.md y CHANGELOG.md, que si estan en el checkout.
+    PROJECT_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
     CLAUDE_DIR="${REAL_HOME}/.claude"
     SCRIPTS_DIR="${PROJECT_ROOT}/scripts"
     CLAUDE_SCRIPTS="${PROJECT_ROOT}/.claude/scripts"

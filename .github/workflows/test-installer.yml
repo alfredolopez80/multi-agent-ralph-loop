@@ -139,6 +139,22 @@ jobs:
 
           echo "::endgroup::"
 
+      - name: Run install.sh
+        run: |
+          echo "::group::Running install.sh"
+          # Buena parte de la suite VERIFICA estado post-instalacion en
+          # ~/.claude (agentes, skills, hooks, settings.json). El workflow se
+          # llamaba "Installer Tests" y nunca ejecutaba el instalador, asi que
+          # esas aserciones solo podian pasar en una maquina donde alguien lo
+          # hubiera corrido a mano. Instalar aqui es lo que convierte esto en una
+          # prueba del instalador y no en una prueba del portatil del autor.
+          #
+          # Sin `|| true`: si install.sh falla, la puerta debe ponerse roja. Es
+          # exactamente el fallo que esta rama arregla (salia 1 en cada ejecucion).
+          echo 'Y' | bash ./install.sh
+          echo "install.sh exit: $?"
+          echo "::endgroup::"
+
       - name: Run BATS tests
         id: run_tests
         env:
