@@ -178,10 +178,14 @@ if [ -f "$RALPH_CODER" ]; then
     # Politica vigente (~/.claude/CLAUDE.md -> Model Routing): sin enrutado por
     # complejidad; los agentes heredan el modelo de la sesion. Un override de
     # modelo en el frontmatter es lo que NO debe haber.
-    if grep -qE "^model: (glm|sonnet|haiku)" "$RALPH_CODER"; then
-        fail "ralph-coder fija un modelo en frontmatter (debe heredar)"
-    else
+    # Cualquier pin es una violacion, no solo unos alias concretos: enumerar
+    # (glm|sonnet|haiku) dejaba pasar `model: opus` y cualquier id futuro.
+    if grep -qE "^model:[[:space:]]*inherit[[:space:]]*$" "$RALPH_CODER"; then
         pass "ralph-coder hereda el modelo de la sesion"
+    elif grep -qE "^model:" "$RALPH_CODER"; then
+        fail "ralph-coder fija un modelo en frontmatter (solo se admite 'inherit')"
+    else
+        pass "ralph-coder sin campo model (hereda)"
     fi
     
     # Check tools
@@ -210,10 +214,14 @@ if [ -f "$RALPH_REVIEWER" ]; then
         fail "ralph-reviewer missing name in frontmatter"
     fi
     
-    if grep -qE "^model: (glm|sonnet|haiku)" "$RALPH_REVIEWER"; then
-        fail "ralph-reviewer fija un modelo en frontmatter (debe heredar)"
-    else
+    # Cualquier pin es una violacion, no solo unos alias concretos: enumerar
+    # (glm|sonnet|haiku) dejaba pasar `model: opus` y cualquier id futuro.
+    if grep -qE "^model:[[:space:]]*inherit[[:space:]]*$" "$RALPH_REVIEWER"; then
         pass "ralph-reviewer hereda el modelo de la sesion"
+    elif grep -qE "^model:" "$RALPH_REVIEWER"; then
+        fail "ralph-reviewer fija un modelo en frontmatter (solo se admite 'inherit')"
+    else
+        pass "ralph-reviewer sin campo model (hereda)"
     fi
 else
     fail "ralph-reviewer.md NOT found in $AGENTS_DIR"
@@ -235,10 +243,14 @@ if [ -f "$RALPH_TESTER" ]; then
         fail "ralph-tester missing name in frontmatter"
     fi
     
-    if grep -qE "^model: (glm|sonnet|haiku)" "$RALPH_TESTER"; then
-        fail "ralph-tester fija un modelo en frontmatter (debe heredar)"
-    else
+    # Cualquier pin es una violacion, no solo unos alias concretos: enumerar
+    # (glm|sonnet|haiku) dejaba pasar `model: opus` y cualquier id futuro.
+    if grep -qE "^model:[[:space:]]*inherit[[:space:]]*$" "$RALPH_TESTER"; then
         pass "ralph-tester hereda el modelo de la sesion"
+    elif grep -qE "^model:" "$RALPH_TESTER"; then
+        fail "ralph-tester fija un modelo en frontmatter (solo se admite 'inherit')"
+    else
+        pass "ralph-tester sin campo model (hereda)"
     fi
 else
     fail "ralph-tester.md NOT found in $AGENTS_DIR"
@@ -260,10 +272,14 @@ if [ -f "$RALPH_RESEARCHER" ]; then
         fail "ralph-researcher missing name in frontmatter"
     fi
     
-    if grep -qE "^model: (glm|sonnet|haiku)" "$RALPH_RESEARCHER"; then
-        fail "ralph-researcher fija un modelo en frontmatter (debe heredar)"
-    else
+    # Cualquier pin es una violacion, no solo unos alias concretos: enumerar
+    # (glm|sonnet|haiku) dejaba pasar `model: opus` y cualquier id futuro.
+    if grep -qE "^model:[[:space:]]*inherit[[:space:]]*$" "$RALPH_RESEARCHER"; then
         pass "ralph-researcher hereda el modelo de la sesion"
+    elif grep -qE "^model:" "$RALPH_RESEARCHER"; then
+        fail "ralph-researcher fija un modelo en frontmatter (solo se admite 'inherit')"
+    else
+        pass "ralph-researcher sin campo model (hereda)"
     fi
 else
     fail "ralph-researcher.md NOT found in $AGENTS_DIR"
