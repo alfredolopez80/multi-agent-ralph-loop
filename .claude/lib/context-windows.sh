@@ -11,23 +11,79 @@
 # Model → usable context window (tokens)
 # GLM-5.1: 256K usable oficialmente. Safety margin via thresholds, no reducción artificial.
 declare -A MODEL_CONTEXT_WINDOWS=(
+    ["glm-5.2"]=200000
     ["glm-5.1"]=256000
+    ["glm-5-turbo"]=128000
     ["glm-5"]=128000
     ["glm-4.7"]=128000
     ["glm-4.5-air"]=64000
     ["glm-4"]=128000
+    ["minimax-m2.7"]=200000
     ["claude-opus-5"]=950000
     ["claude-fable-5"]=950000
     ["claude-opus-4-8"]=950000
     ["claude-opus-4-7"]=950000
     ["claude-opus-4-6"]=950000
+    ["claude-sonnet-5"]=180000
     ["claude-sonnet-4-6"]=180000
     ["claude-haiku-4-5"]=180000
+    # Native Claude Code session whose model id was not exposed. 200K is the
+    # smallest window any current Claude model has, so it never over-promises.
+    ["claude-unknown"]=180000
 )
 
-# Detect current model from environment
+# Normalize a raw model id into a table key.
+# Strips vendor suffixes in brackets (e.g. "claude-opus-5[1m]" -> "claude-opus-5"),
+# which otherwise break associative-array subscripts, and lowercases the result.
+normalize_model_id() {
+    printf '%s' "$1" | sed -E 's/\[[^]]*\]//g; s/[[:space:]]+//g' | tr '[:upper:]' '[:lower:]'
+}
+
+# Detect the model actually serving THIS session.
+#
+# v3.2.0 — Z_AI_MODEL_DEEP / MINIMAX_MODEL_* are static provider configuration
+# exported by the user's shell profile. They are always set, in every session,
+# and say nothing about which model is answering. Reading them as a bare
+# fallback made every native Claude session report itself as GLM. An alternative
+# provider is only believed when ANTHROPIC_BASE_URL proves the session routes there.
 get_detected_model() {
-    echo "${ANTHROPIC_MODEL:-${Z_AI_MODEL_DEEP:-unknown}}"
+    local raw=""
+
+    # 1. Hook stdin JSON — authoritative when Claude Code provides it
+    if [[ -n "${INPUT:-}" ]] && command -v jq >/dev/null 2>&1; then
+        raw=$(printf '%s' "$INPUT" | jq -r '.model.id // empty' 2>/dev/null)
+    fi
+
+    # 1b. Transcript — UserPromptSubmit's stdin carries transcript_path but no
+    # model field (verified against Claude Code 2.1.241), and every assistant
+    # entry records the model that produced it. Last one wins.
+    if [[ -z "$raw" ]] && [[ -n "${INPUT:-}" ]] && command -v jq >/dev/null 2>&1; then
+        local tpath
+        tpath=$(printf '%s' "$INPUT" | jq -r '.transcript_path // empty' 2>/dev/null)
+        if [[ -n "$tpath" && -r "$tpath" ]]; then
+            raw=$(tail -n 40 "$tpath" 2>/dev/null \
+                | jq -rs 'map(.message.model // empty) | map(select(. != "")) | last // empty' 2>/dev/null)
+        fi
+    fi
+
+    # 2. Explicit per-session override (set by Zai/MiniMax wrappers)
+    [[ -z "$raw" ]] && raw="${ANTHROPIC_MODEL:-}"
+
+    # 3. Alternative providers — ONLY with routing evidence, never from bare config
+    if [[ -z "$raw" ]]; then
+        case "${ANTHROPIC_BASE_URL:-}" in
+            *z.ai*)     raw="${Z_AI_MODEL_DEEP:-}" ;;
+            *minimax*)  raw="${MINIMAX_MODEL_STANDARD:-}" ;;
+        esac
+    fi
+
+    # 4. Native Claude Code with no model in stdin: identify the family, not a guess
+    if [[ -z "$raw" ]] && [[ "${AI_AGENT:-}" == claude-code* ]]; then
+        raw="claude-unknown"
+    fi
+
+    [[ -z "$raw" ]] && { echo "unknown"; return; }
+    normalize_model_id "$raw"
 }
 
 # Get usable context window for current model (tokens)
@@ -41,13 +97,16 @@ get_context_window() {
         return
     fi
 
-    # Prefix match (e.g., glm-5.1-0123)
-    for known in "${!MODEL_CONTEXT_WINDOWS[@]}"; do
+    # Prefix match (e.g., glm-5.1-0123), longest key first so the most specific
+    # entry wins. Bash iterates associative keys in unspecified order, so an
+    # unsorted loop could match "glm-5" before "glm-5.2" and pick the wrong window.
+    local known
+    while IFS= read -r known; do
         if [[ "$model" == "${known}"* ]]; then
             echo "${MODEL_CONTEXT_WINDOWS[$known]}"
             return
         fi
-    done
+    done < <(printf '%s\n' "${!MODEL_CONTEXT_WINDOWS[@]}" | awk '{ print length, $0 }' | sort -rn | cut -d' ' -f2-)
 
     # Unknown model — conservative default (128K)
     echo "128000"

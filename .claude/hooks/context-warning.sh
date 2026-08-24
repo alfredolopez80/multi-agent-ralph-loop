@@ -49,8 +49,10 @@ trap 'output_json' EXIT
 
 # Configuration — v3.1.0: Model-aware thresholds
 if [[ "$_CONTEXT_LIB_LOADED" == "true" ]] && type get_compaction_thresholds &>/dev/null; then
-    read -r THRESHOLD CRITICAL_THRESHOLD _REST <<< "$(get_compaction_thresholds)"
-    INFO_THRESHOLD=$((THRESHOLD - 5))
+    # get_compaction_thresholds emits "INFO WARNING CRITICAL" (see lib contract).
+    # v3.2.0 — this used to read field 1 as WARNING and field 2 as CRITICAL,
+    # shifting every level one slot down and firing warnings at the info mark.
+    read -r INFO_THRESHOLD THRESHOLD CRITICAL_THRESHOLD <<< "$(get_compaction_thresholds)"
 else
     # Fallback to original values for unknown models
     THRESHOLD=75
@@ -386,12 +388,14 @@ main() {
     fi
 
     # v3.1.0: For GLM models, add explicit compaction instruction
+    # v3.2.0: report the model actually detected instead of a hardcoded "GLM-5.1"
     if [[ "$_CONTEXT_LIB_LOADED" == "true" ]] && type is_glm_model &>/dev/null && is_glm_model; then
         local window_info=""
         if type get_context_window &>/dev/null; then
-            local window
+            local window model_label
             window=$(get_context_window)
-            window_info=" (GLM-5.1 window: ~$((window / 1000))K tokens usable)"
+            model_label=$(get_detected_model 2>/dev/null || echo "unknown")
+            window_info=" (${model_label} window: ~$((window / 1000))K tokens usable)"
         fi
         if [[ "$level" == "critical" ]]; then
             warning_msg+="\n\n🔴 GLM MODEL DETECTED${window_info}\n"
