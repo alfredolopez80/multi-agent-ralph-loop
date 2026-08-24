@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://github.com/alfredolopez/multi-agent-ralph-loop#readme
+    about: Check the README for usage instructions and examples
+  - name: Discussions
+    url: https://github.com/alfredolopez/multi-agent-ralph-loop/discussions
+    about: Ask questions and share ideas with the community
