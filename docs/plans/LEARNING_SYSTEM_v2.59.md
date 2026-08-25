@@ -7,6 +7,10 @@
 - Gemini Alternative Perspective (a132553)
 - Adversarial Security Review (ad238c7)
 
+> **Historical record (2026-08-25 note)**: this plan documents v2.59.0 as of
+> 2026-01-22 and is kept as written. `ralph health --memory`, listed in the
+> success criteria, has since been removed from the CLI (issue #53).
+
 ---
 
 ## 📋 Executive Summary
@@ -1499,7 +1503,7 @@ if __name__ == "__main__":
 | **Rule Conflicts** | < 2% | `rule-conflict-detector.py --report` |
 | **Confidence Calibration** | All rules with details | Schema validation |
 | **Feedback Coverage** | > 50% rules with feedback | `learning-feedback-loop.py stats` |
-| **Memory Health** | No bloat > 10K rules | `ralph health --memory` |
+| **Memory Health** | No bloat > 10K rules | `ralph health --memory` *(removed since — see note at top)* |
 | **Claude Code Conversion** | Rules ≥0.9 converted | `convert-high-confidence-rules.py list` |
 | **Test Coverage** | > 80% | pytest --cov |
 

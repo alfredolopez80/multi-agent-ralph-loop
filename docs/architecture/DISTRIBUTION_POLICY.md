@@ -1,21 +1,21 @@
 # Distribution Policy — Symlink vs Copy Strategy
 
-**Version**: 1.0.0
-**Date**: 2026-04-09
-**Status**: Active
+**Version**: 1.1.0
+**Date**: 2026-08-25
+**Status**: Active (revised to match measured disk state — issue #53)
 
 ## Overview
 
-This document defines the definitive distribution strategy for Ralph infrastructure files. The goal is to make the system work independently of the source repository location.
+This document defines the distribution strategy for Ralph infrastructure files. The goal is to make the system work independently of the source repository location; where a component still depends on the repo checkout, this document says so explicitly (hooks currently do).
 
 ## Strategy Table
 
 | Component | Strategy | Justification |
 |-----------|----------|---------------|
-| Rules (~/.claude/rules/) | **COPY** | Must work without repo. Checksum-validated for drift detection. |
-| Universal Hooks (~/.claude/hooks/) | **COPY** | Must work without repo. Registered in settings.json with absolute paths. |
-| Agent Definitions (~/.claude/agents/) | **SYMLINK**, except the Claude-native set → **COPY** | Symlinked by design. EXCEPTION: the Codex→Claude review/bug agents are COPIED (see below) so a stale/moved repo checkout cannot resurrect their old Codex-dependent version. |
-| Skills (~/.claude/skills/) | **MIXED** | Key skills copied (task-classifier, curator); the Codex→Claude `bugs`/`security` skills are COPIED (see below); others symlinked. |
+| Rules (~/.claude/rules/) | **COPY** (top-level + `learned/`); `proven/` is global-only | The 7 top-level rules are header-stamped copies synced from the repo; `learned/` is copied by `rsync -a --delete`; `proven/` (15 files) exists only globally and has no repo source. |
+| Hooks (~/.claude/hooks/) | **SYMLINK** (directory-level) | `~/.claude/hooks` is a symlink to the repo's `.claude/hooks`, and 73 of 79 registrations in settings.json point into the repo by absolute path — hooks therefore REQUIRE the repo checkout (measured 2026-08-25). |
+| Agent Definitions (~/.claude/agents/) | **SYMLINK**, except the Claude-native set → **COPY** | Symlinked by design. EXCEPTION: the Codex→Claude review/bug agents are COPIED (see below) so a stale/moved repo checkout cannot resurrect their old Codex-dependent version. Measured 2026-08-25: 26 symlinks + 10 copies. |
+| Skills (~/.claude/skills/) | **MIXED — mostly COPY** | Key skills are copied by design (task-classifier, curator) and the Codex→Claude `bugs`/`security` skills are COPIED (see below) — but today the majority are copies: of 61 skills in the repo, only 11 are installed as symlinks (measured 2026-08-25). The earlier "others symlinked" description was inverted. |
 | Layer Files (~/.ralph/layers/) | **COPY** | Must work without repo. Updated by wake-up hook. |
 | Settings.json | **SINGLE** | ~/.claude/settings.json is the ONLY config. All models use this. |
 
@@ -26,14 +26,14 @@ Files using COPY strategy:
 2. Target: corresponding global directory (`~/.claude/`)
 3. Validation: checksum comparison via `scripts/validate-global-infrastructure.sh`
 4. Sync: one-way from repo → global (never reverse)
-5. Headers: each file gets `# Source: multi-agent-ralph-loop` comment
+5. Headers: each file gets an HTML-comment header — `<!-- SOURCE: multi-agent-ralph-loop/.claude/<path>` plus a `VERSION:` line (see any file in `~/.claude/rules/`)
 
 ## Symlink Rules
 
 Files using SYMLINK strategy:
 1. Must point to absolute repo path
 2. Validation: `find ~/.claude -type l ! -exec test -e {} \; -print` finds broken ones
-3. Acceptable breakage: agents won't work if repo is moved
+3. Acceptable breakage: agents and hooks won't work if the repo checkout is moved or removed (hooks resolve through the `~/.claude/hooks` directory symlink and via absolute paths in settings.json)
 4. Recovery: re-run `scripts/validate-global-infrastructure.sh --fix`
 
 ## Validation
@@ -56,7 +56,9 @@ Skills are distributed to 6 platform directories:
 - ~/.config/agents/skills/<name>
 
 Key skills (task-classifier, curator, orchestrator) are COPIED to all 6.
-Other skills are symlinked to repo source.
+Measured in `~/.claude/skills` (2026-08-25): of 61 repo skills, 11 are symlinks
+and the rest are copies — the earlier "other skills are symlinked" description
+was inverted.
 
 ## Claude-native Agents/Skills — COPY exception (Codex→Claude set)
 

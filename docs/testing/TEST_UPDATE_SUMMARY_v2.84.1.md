@@ -3,6 +3,10 @@
 **Date**: 2026-02-13
 **Task**: Update all unit tests, integration tests, and process cycle tests for multi-agent-ralph-loop
 
+> **Historical record (2026-08-25 note)**: this summary reflects v2.84.1 as of 2026-02-13
+> and is kept as written. `ralph health --fix`, recommended below, no longer exists
+> (removed together with the `ralph status` orchestration query — issue #53).
+
 ## Summary
 
 Updated test suite to validate correct functionality of the v2.84.1 codebase.
@@ -122,7 +126,7 @@ python3 -m pytest tests/test_hooks_*.py -v  # Hook tests only
 
 1. **Fix Hook JSON Format**: Update `todo-plan-sync.sh` and `stop-slop-hook.sh` to use correct output format
 2. **Create Missing Scripts**: Add required Python scripts to `~/.claude/scripts/`
-3. **Initialize Ralph State**: Run `ralph health --fix` to initialize `~/.ralph/` directory
+3. **Initialize Ralph State**: Run `ralph health --fix` to initialize `~/.ralph/` directory *(command since removed — see historical note at top)*
 4. **Version Alignment**: Ensure all test expectations match current v2.84.1 features
 
 ---

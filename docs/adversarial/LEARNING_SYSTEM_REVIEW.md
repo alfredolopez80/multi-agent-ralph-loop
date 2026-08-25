@@ -5,6 +5,10 @@
 **Version**: v2.58.0
 **Classification**: Security & Reliability Audit
 
+> **Historical record (2026-08-25 note)**: this review documents v2.58.0 as of
+> 2026-01-22 and is kept as written. `ralph health`, referenced by the monitoring
+> section, has since been removed from the CLI (issue #53).
+
 ---
 
 ## Executive Summary
@@ -425,7 +429,7 @@ ralph checkpoint restore pre-learn-$(date +%Y%m%d)
 ### 4.2 Monitoring Dashboard
 
 ```bash
-# Real-time metrics
+# Real-time metrics (command since removed — see historical note at top)
 ralph health --memory
 
 # Daily report

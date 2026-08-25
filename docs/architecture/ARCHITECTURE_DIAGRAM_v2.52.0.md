@@ -5,6 +5,12 @@
 
 > "Me fail English? That's unpossible!" - Ralph Wiggum
 
+> **Historical snapshot (2026-08-25 note)**: this diagram documents v2.52.0 as shipped
+> and is kept unchanged as a record of that version. Since then, `ralph status` no longer
+> queries orchestration progress (it lists active processes), `--compact` / `--steps` /
+> `--json` were removed, and `ralph health` was deleted (see CHANGELOG, "Removed -
+> `ralph status` orchestration query and `ralph health`", and issue #53).
+
 ---
 
 ## ═══════════════════════════════════════════════════════════════════════════════
