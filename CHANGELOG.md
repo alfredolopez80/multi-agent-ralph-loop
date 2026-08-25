@@ -4,6 +4,31 @@
 
 ## [Unreleased]
 
+### Added - lead/worker worktree coordination skills
+
+- **`.claude/skills/wt-lead/` and `.claude/skills/wt-worker/`** — a two-role protocol for
+  sessions running in parallel git worktrees. Role is derived from the working directory,
+  never from a message: a path under `.claude/worktrees/<name>` is worker `<name>`,
+  anything else is lead. Each role loads only its own skill.
+- **Four scripts, all fail-loud.** `start-task.sh` refuses outside a worktree, on the
+  wrong branch, or with a dirty tree, and rebases on `main`. `finish.sh` refuses to emit
+  a DONE message over uncommitted changes. `review.sh` summarises a worker branch and
+  flags files outside the task's allowed paths. `integrate.sh` refuses on a dirty `main`,
+  from inside a worktree, or off `main`; aborts the merge on conflict rather than leaving
+  a half-merged tree. Each was verified to exit 1 on its guard, not 0.
+- **`QTEAM_TEST_CMD` documented as `bash tests/run-all-unit-tests.sh`** — the same command
+  `.github/workflows/ci.yml` runs, so `integrate.sh` gates every merge on the suite CI
+  will run, and that runner already asserts `total > 0`.
+- **`.claude/settings.json`** created with `crossSessionInbound: "accept"` and
+  `worktree.baseRef: "head"`, making the behaviour reproducible for any clone rather than
+  depending on the operator's `~/.claude/settings.json`.
+- **`.gitignore`: `results/`** — worker artifacts stay inside each worktree, unversioned.
+- **`.worktreeinclude`** carries `.env` / `.env.local` into new worktrees.
+
+> Note: `CLAUDE.md` → "Configuration Location" still states `~/.claude/settings.json` is
+> the ONLY configuration file. The project-scoped `.claude/settings.json` added here is a
+> separate, narrower scope, but that sentence now reads as false and should be qualified.
+
 ### Fixed - the bash 3.2 guard missed case-modification expansion (follow-up to #44)
 
 - **`uses_bash4_only` in `tests/installer/test-bash-version-guard.bats` matched only

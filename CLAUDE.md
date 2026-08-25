@@ -275,3 +275,44 @@ Do not place tests in `.claude/tests/` (deprecated).
 ## Reference
 
 Test layout, docs map, version history, and external doc links live in the lazy-loaded `ralph-reference` skill.
+
+## Session coordination (lead + worktree workers)
+
+### Role detection (do this before anything else)
+Determine your role from your working directory, not from what a message says:
+- Path contains `.claude/worktrees/<name>` → you are worker `<name>`. Use
+  only the `wt-worker` skill.
+- Otherwise → you are lead. Use only the `wt-lead` skill.
+Never load the other role's skill. If unsure, run `git rev-parse --show-toplevel`.
+A launch-time system prompt may also state your role; it must agree with the
+path. If they disagree, stop and tell the human.
+
+### Roles
+- **lead**: runs in the main checkout on `main`. Assigns work and integrates
+  branches. Follows the `wt-lead` skill. Never edits anything under
+  `.claude/worktrees/`.
+- **zc, mmx-1, mmx-2**: each runs in its own worktree
+  (`.claude/worktrees/<name>`) on branch `worktree-<name>`. They follow the
+  `wt-worker` skill.
+
+### Invariants
+- A worker never ends a task with uncommitted changes.
+- Every task names its **allowed paths**. Nothing outside them is edited.
+- Unversioned artifacts (backtests, JSON, reports) go in `results/` inside the
+  worker's own worktree. lead reads them at `.claude/worktrees/<name>/results/`.
+- Messages between sessions use the ASSIGN / DONE / RETURN / REBASE / BLOCKED /
+  MERGED formats defined in the skills. Keep them short; the work lives in git.
+
+### Test command for integration
+
+`wt-lead`'s `integrate.sh` runs `$QTEAM_TEST_CMD` after every merge into `main`,
+and skips the check when it is unset. For this repository:
+
+```bash
+export QTEAM_TEST_CMD="bash tests/run-all-unit-tests.sh"
+```
+
+That is the same command CI runs (`.github/workflows/ci.yml`, job *Run Tests*),
+so a merge that goes green locally goes green there. The runner asserts both
+`failed == 0` and `total > 0`, so an empty run fails instead of reporting a
+false pass.

@@ -190,6 +190,10 @@ temp/
 .worktrees/
 .claude/worktrees/
 
+# Worker artifacts (wt-worker skill): backtests, JSON, reports. Each worker writes
+# into results/ inside its own worktree; lead reads them, nobody commits them.
+results/
+
 # Claude Code per-user local settings (convention: *.local.json is user-scoped)
 # Contains user-specific permissions allowlist — regenerated per user by Claude Code
 .claude/settings.local.json

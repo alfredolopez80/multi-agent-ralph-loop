@@ -1,0 +1,6 @@
+{
+  "crossSessionInbound": "accept",
+  "worktree": {
+    "baseRef": "head"
+  }
+}
