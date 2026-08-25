@@ -1,73 +1,46 @@
 #!/usr/bin/env bash
 # test-statusline-context.sh - End-to-end test for statusline context display
 #
-# VERSION: 2.0.0 - Hardened against the talking-tests class (#42 / PR #38).
+# VERSION: 3.0.0 - T38 (issue #60): e2e, hermetic, CI-wired.
 #
 # ----------------------------------------------------------------------------
-# Why this version differs from 1.0.0
+# History
 #
-# v1.0.0 read /tmp/ralph-statusline-context.json and asserted it was
-# well-formed (file exists, valid JSON, fields present, values in range,
-# percentage sane, remaining_percentage matches). All six assertions passed
-# against the zero-default cache that exists BEFORE the statusline ever
-# runs:
+# v1.0.0 — wrote its own cache fixture to /tmp/ralph-statusline-context.json
+#          and asserted on that same fixture (closed loop; the talking-tests
+#          defect PR #38 repaired across 30 other scripts).
 #
-#   {"used_tokens":0,"total_tokens":1000000,"percentage":0,"cumulative_tokens":0,
-#    "remaining_percentage":100,"timestamp":...}
+# v2.0.0 — kept the closed-loop fixture and added cumulative_tokens > 0 to
+#          fight the "well-formed but no real session" variant. Still a
+#          closed loop; intentionally OUTSIDE run-all-unit-tests.sh
+#          because it added a counter without a signal.
 #
-# That is the same talking-tests pattern PR #38 repaired across 30 other
-# scripts. v2.0.0 closes the loop by adding the missing assertion:
-# cumulative_tokens must be > 0, the field the statusline writes from
-# total_input_tokens + total_output_tokens and that is always positive
-# for any session that has consumed tokens. A zero-default cache
-# (cumulative_tokens = 0) FAILS this assertion.
+# v3.0.0 — e2e, hermetic, CI-wired. The statusline now honours
+#          RALPH_STATUSLINE_CACHE (added in T38 / issue #60 so each
+#          Claude session has its own cache file). This test:
+#            1. Picks a tmpdir unique to this run.
+#            2. Sets RALPH_STATUSLINE_CACHE=<tmpdir>/cache.json.
+#            3. Invokes the real statusline with mock stdin.
+#            4. Asserts against <tmpdir>/cache.json — not /tmp/...
+#            5. Cleans up.
+#          The test asserts on the REAL output of the REAL script, not
+#          on a fixture it wrote itself. A bug that writes the wrong
+#          field, writes to the wrong file, or skips the write will
+#          fail this test. STATUSLINE_TEST_MODE=zero is preserved.
 #
 # Mode flag:
-#   default (no flag): writes a real-data cache (cumulative=75000,
-#     total=200000, used_pct=37), validates. PASS expected.
-#   STATUSLINE_TEST_MODE=zero: writes a zero-default cache, validates.
-#     FAIL expected (this is the talking-test scenario).
+#   default (no flag): invokes the statusline with realistic data
+#     (cumulative=75000, total=200000, used_pct=37), validates.
+#     PASS expected.
+#   STATUSLINE_TEST_MODE=zero: invokes the statusline with zero
+#     data, validates. FAIL expected on cumulative_tokens > 0
+#     (this is the talking-test scenario the test was designed
+#     to catch).
 #
 # Usage:
 #   ./test-statusline-context.sh                            # default: PASS
 #   STATUSLINE_TEST_MODE=zero ./test-statusline-context.sh   # FAIL demo
 #   ./test-statusline-context.sh validate 50000 200000 25   # /context validation
-# ----------------------------------------------------------------------------
-#
-# ----------------------------------------------------------------------------
-# UNWIRED IN CI: UNBLOCKING CONDITION (T15-statusline feedback, 2026-08-25)
-#
-# This test is currently NOT wired into tests/run-all-unit-tests.sh. It
-# was tried and reverted because the same talking-tests defect came back
-# through the back door: the test writes its own cache fixture and then
-# asserts on that same fixture, so in default mode it is a closed loop
-# that can never fail. A passing CI run on a wiring like that adds a
-# counter without adding a signal.
-#
-# The unblocking condition for CI wiring is:
-#
-#   The statusline's cache path must become parameterizable so this test
-#   can invoke the *real* statusline against a temp file and assert on
-#   *its* output. The blocking line is:
-#
-#     .claude/scripts/statusline-ralph.sh:601
-#       cat > /tmp/ralph-statusline-context.json << EOF
-#
-# That hardcodes /tmp/ralph-statusline-context.json with no env-var
-# override. With the path fixed, the test cannot avoid a race against
-# session hooks that overwrite the same file, and it cannot prove the
-# statusline wrote what the test asked it to write.
-#
-# When that line gains an override (e.g. RALPH_STATUSLINE_CACHE), the
-# test can:
-#   1. Pick a tmpdir path unique to this run.
-#   2. Set RALPH_STATUSLINE_CACHE=<tmpdir>/cache.json.
-#   3. Invoke the statusline with mock stdin.
-#   4. Assert against <tmpdir>/cache.json (not /tmp/...).
-#   5. Remove the fixture when done.
-#
-# At that point this test can move from a closed-loop fixture test
-# (current) to a real end-to-end test, and it belongs in CI.
 # ----------------------------------------------------------------------------
 
 set -uo pipefail
@@ -76,14 +49,66 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 STATUSLINE_SCRIPT="$PROJECT_ROOT/.claude/scripts/statusline-ralph.sh"
-CACHE_FILE="/tmp/ralph-statusline-context.json"
 
-# Sentinel values: a real Claude Code session after ~75k cumulative
-# tokens consumed out of a 200k window. These are the values the test
-# writes to the cache in default mode. In STATUSLINE_TEST_MODE=zero the
-# cache is written with all-zero values to demonstrate FAIL.
-REAL_CACHE_JSON='{"used_tokens":75000,"total_tokens":200000,"percentage":37,"cumulative_tokens":75000,"remaining_percentage":63,"timestamp":'$(date +%s)'}'
-ZERO_CACHE_JSON='{"used_tokens":0,"total_tokens":1000000,"percentage":0,"cumulative_tokens":0,"remaining_percentage":100,"timestamp":'$(date +%s)'}'
+# T38 (issue #60): per-run tmpdir so the cache is hermetic. The OLD
+# /tmp/ralph-statusline-context.json is no longer used — the statusline
+# now defaults to a per-session file under /tmp/ralph-statusline/ and
+# honours RALPH_STATUSLINE_CACHE for explicit overrides (this test).
+TEST_TMPDIR=""
+
+# Cleanup: remove TEST_TMPDIR on exit, no matter how we exit.
+cleanup() {
+    if [[ -n "$TEST_TMPDIR" && -d "$TEST_TMPDIR" ]]; then
+        rm -rf "$TEST_TMPDIR"
+    fi
+}
+trap cleanup EXIT
+
+# Mock stdin: a realistic payload the statusline consumes. Fields
+# read by the script (see statusline-ralph.sh):
+#   .session_id           -> cache filename (T38)
+#   .cwd                  -> used as fallback
+#   .model.display_name   -> provider badge
+#   .context_window.*     -> cumulative/used/total/percentage
+#   .cost.total_cost_usd  -> cost in $ display
+build_stdin() {
+    local session_id="$1"
+    local used_pct="$2"
+    local total="$3"
+    local cumulative="$4"
+    local remaining_pct=$((100 - used_pct))
+    # NOTE: cumulative_tokens = total_input_tokens + total_output_tokens
+    # in the script. To produce a target cumulative in the cache, set
+    # total_input_tokens = cumulative and total_output_tokens = 0.
+    cat <<EOF
+{
+  "session_id": "${session_id}",
+  "cwd": "/tmp/hermetic-test",
+  "model": {"display_name": "claude-opus-4.5"},
+  "context_window": {
+    "used_percentage": ${used_pct},
+    "remaining_percentage": ${remaining_pct},
+    "context_window_size": ${total},
+    "total_input_tokens": ${cumulative},
+    "total_output_tokens": 0
+  },
+  "cost": {"total_cost_usd": 0.0}
+}
+EOF
+}
+
+# Invoke the real statusline with a mock stdin and a per-run cache
+# path. The script writes the cache; we read it back and assert.
+#
+# stdout is captured separately — the statusline renders a UI segment
+# to stdout which we don't need for the cache assertions.
+invoke_statusline() {
+    local stdin_json="$1"
+    local cache_path="$2"
+    RALPH_STATUSLINE_CACHE="$cache_path" \
+        bash "$STATUSLINE_SCRIPT" <<< "$stdin_json" >/dev/null 2>&1
+    return $?
+}
 
 # Colors
 RED='\033[0;31m'
@@ -117,23 +142,36 @@ log_fail() {
 }
 
 # ============================================
-# UNIT TESTS
+# E2E TESTS (v3.0.0)
 # ============================================
 
-test_cache_file_exists() {
-    log_test "Cache file exists at $CACHE_FILE"
+# Sanity: the e2e path is wired up. The statusline script must exist
+# (this test is meaningless without it) and the RALPH_STATUSLINE_CACHE
+# override must be honoured.
+test_e2e_writes_cache_to_override_path() {
+    log_test "Statusline writes cache to RALPH_STATUSLINE_CACHE path"
 
-    if [[ -f "$CACHE_FILE" ]]; then
-        log_pass "Cache file found"
+    TEST_TMPDIR="$(mktemp -d "${HOME}/.tmp-statusline-XXXXXX")"
+    local cache_path="$TEST_TMPDIR/cache.json"
+    local stdin_json
+    stdin_json="$(build_stdin "sess-e2e-1" 37 200000 75000)"
+
+    invoke_statusline "$stdin_json" "$cache_path"
+
+    if [[ -f "$cache_path" ]]; then
+        log_pass "Cache written to override path ($cache_path)"
     else
-        log_fail "Cache file missing" "$CACHE_FILE exists" "No file"
+        log_fail "Cache NOT written to override path" \
+            "file at $cache_path" "no file"
     fi
 }
 
-test_cache_file_valid_json() {
+# The statusline was invoked for session sess-e2e-2 and the test reads
+# the SAME file the script wrote. Talking-tests fail-open is gone.
+test_e2e_cache_is_valid_json() {
     log_test "Cache file is valid JSON"
 
-    if [[ ! -f "$CACHE_FILE" ]]; then
+    if [[ -z "$CACHE_FILE" || ! -f "$CACHE_FILE" ]]; then
         log_fail "Cannot validate (no cache)" "Valid JSON" "No file"
         return
     fi
@@ -145,10 +183,10 @@ test_cache_file_valid_json() {
     fi
 }
 
-test_cache_has_required_fields() {
+test_e2e_cache_has_required_fields() {
     log_test "Cache has required fields"
 
-    if [[ ! -f "$CACHE_FILE" ]]; then
+    if [[ -z "$CACHE_FILE" || ! -f "$CACHE_FILE" ]]; then
         log_fail "Cannot validate (no cache)" "Fields present" "No file"
         return
     fi
@@ -178,14 +216,12 @@ test_cache_has_required_fields() {
 
 # The anti-talking-tests assertion: distinguishes "well-formed cache" (any
 # JSON with the right keys passes) from "real session data" (cumulative_tokens
-# must be > 0). The statusline writes cumulative_tokens = total_input +
-# total_output, which is always > 0 for any session that has consumed
-# tokens. A zero-default cache (cumulative_tokens = 0) means the statusline
-# never processed real session data, and the test FAILS.
-test_cache_has_real_session_data() {
+# must be > 0). A zero-default cache (cumulative_tokens = 0) means the
+# statusline never processed real session data, and the test FAILS.
+test_e2e_cache_reflects_real_session() {
     log_test "Cache reflects a real session (cumulative_tokens > 0)"
 
-    if [[ ! -f "$CACHE_FILE" ]]; then
+    if [[ -z "$CACHE_FILE" || ! -f "$CACHE_FILE" ]]; then
         log_fail "Cannot validate (no cache)" "cumulative_tokens > 0" "No file"
         return
     fi
@@ -203,18 +239,18 @@ test_cache_has_real_session_data() {
     fi
 }
 
-test_values_in_valid_range() {
+test_e2e_values_in_valid_range() {
     log_test "Values are in valid range"
 
-    if [[ ! -f "$CACHE_FILE" ]]; then
+    if [[ -z "$CACHE_FILE" || ! -f "$CACHE_FILE" ]]; then
         log_fail "Cannot validate (no cache)" "0 <= used <= total" "No file"
         return
     fi
 
     local used total pct
-    used=$(jq -r '.used_tokens // -1'  "$CACHE_FILE")
+    used=$(jq -r '.used_tokens  // -1'  "$CACHE_FILE")
     total=$(jq -r '.total_tokens // -1' "$CACHE_FILE")
-    pct=$(jq -r '.percentage // -1'    "$CACHE_FILE")
+    pct=$(jq -r '.percentage    // -1' "$CACHE_FILE")
 
     local all_valid=true
 
@@ -230,13 +266,15 @@ test_values_in_valid_range() {
 
     if [[ "$all_valid" == true ]]; then
         log_pass "All values in valid range (used=$used, total=$total, pct=$pct%)"
+    else
+        log_fail "Values out of range" "see above" "see above"
     fi
 }
 
-test_percentage_calculation() {
+test_e2e_percentage_calculation() {
     log_test "Percentage calculation matches (used * 100 / total)"
 
-    if [[ ! -f "$CACHE_FILE" ]]; then
+    if [[ -z "$CACHE_FILE" || ! -f "$CACHE_FILE" ]]; then
         log_fail "Cannot validate (no cache)" "stored == used*100/total" "No file"
         return
     fi
@@ -262,10 +300,10 @@ test_percentage_calculation() {
     fi
 }
 
-test_remaining_percentage_matches() {
-    log_test "remaining_percentage matches /context (100 - pct)"
+test_e2e_remaining_percentage_matches() {
+    log_test "remaining_percentage matches (100 - pct)"
 
-    if [[ ! -f "$CACHE_FILE" ]]; then
+    if [[ -z "$CACHE_FILE" || ! -f "$CACHE_FILE" ]]; then
         log_fail "Cannot validate (no cache)" "remaining + pct == 100" "No file"
         return
     fi
@@ -286,14 +324,14 @@ test_remaining_percentage_matches() {
     if [[ $diff -le 1 ]]; then
         log_pass "remaining_percentage matches (${remaining}% left = ${pct}% used)"
     else
-        log_fail "remaining_percentage mismatch" "${expected_pct}%" "${pct}%"
+        log_fail "remaining_percentage mismatch" "${expected_pct}%" "$pct%"
     fi
 }
 
-test_timestamp_recent() {
+test_e2e_timestamp_recent() {
     log_test "Cache timestamp is recent (within 5 minutes)"
 
-    if [[ ! -f "$CACHE_FILE" ]]; then
+    if [[ -z "$CACHE_FILE" || ! -f "$CACHE_FILE" ]]; then
         log_fail "Cannot validate (no cache)" "fresh timestamp" "No file"
         return
     fi
@@ -317,6 +355,26 @@ test_timestamp_recent() {
     fi
 }
 
+# T38 (issue #60): REMOVED — was a placebo.
+#
+# The previous version of this file asserted "old hardcoded path mtime
+# unchanged after invocation" as a regression check. Lead correctly
+# flagged it: mtime on the host filesystem has 1-second resolution,
+# and the test's invoke + stat pair runs in well under a second. The
+# mtime value is captured before the invocation and re-read after;
+# if the script rewrote the file in the same wall-clock second, both
+# stat calls return the same value, the test passes, and the
+# regression (script writing to the OLD path) is undetected. A
+# placebo test is worse than no test because it occupies the slot
+# of a real assertion.
+#
+# The test that actually catches the regression is
+# `test_e2e_writes_cache_to_override_path`: if the script ignores
+# RALPH_STATUSLINE_CACHE, the override path stays empty, and that
+# test fails on `[[ -f $cache_path ]]`. The "did not touch old path"
+# assertion was a second check on the same property through a
+# different code path that turned out to be inert. Removed.
+
 # ============================================
 # VALIDATION AGAINST /CONTEXT (preserved from v1.0.0)
 # ============================================
@@ -331,7 +389,7 @@ validate_against_context() {
     echo -e "${CYAN}============================================================${RESET}"
     echo ""
 
-    if [[ ! -f "$CACHE_FILE" ]]; then
+    if [[ -z "$CACHE_FILE" || ! -f "$CACHE_FILE" ]]; then
         echo -e "${RED}\xe2\x9c\x97 No cache file found${RESET}"
         echo "  Run a Claude Code session first to generate cache data."
         exit 1
@@ -426,36 +484,48 @@ main() {
             ;;
         test|"")
             echo -e "${CYAN}============================================================${RESET}"
-            echo -e "${CYAN}Statusline Context Unit Tests (v2.0.0 hardened)${RESET}"
+            echo -e "${CYAN}Statusline Context Unit Tests (v3.0.0 e2e / T38)${RESET}"
             echo -e "${CYAN}============================================================${RESET}"
 
-            # Pick the cache fixture based on test mode. The test writes its
-            # OWN cache (not reading whatever hooks may have left in /tmp)
-            # so the assertion outcome is deterministic regardless of hook
-            # timing.
-            local cache_fixture="$REAL_CACHE_JSON"
+            # Pick a per-run tmpdir. The statusline will write its
+            # cache inside it (via RALPH_STATUSLINE_CACHE override).
+            TEST_TMPDIR="$(mktemp -d "${HOME}/.tmp-statusline-XXXXXX")"
+            CACHE_FILE="$TEST_TMPDIR/cache.json"
+
+            # Build the mock stdin for the statusline invocation.
+            # The session_id is part of the discriminator the statusline
+            # uses to compute the default cache path; with the override,
+            # it does not affect the path but is still parsed.
+            local stdin_json
             if [[ "${STATUSLINE_TEST_MODE:-}" == "zero" ]]; then
-                cache_fixture="$ZERO_CACHE_JSON"
                 echo ""
-                echo -e "${YELLOW}STATUSLINE_TEST_MODE=zero: writing zero-default cache${RESET}"
+                echo -e "${YELLOW}STATUSLINE_TEST_MODE=zero: invoking with zero context data${RESET}"
                 echo -e "${YELLOW}Expected: 1+ FAIL on 'Cache reflects a real session'${RESET}"
+                # Zero data: total_input_tokens=0, total_output_tokens=0.
+                # used_pct=0 to keep the script from doing arithmetic
+                # on absent percentages.
+                stdin_json="$(build_stdin "sess-zero-1" 0 1000000 0)"
+            else
+                # Realistic data: 75k cumulative, 200k window, 37% used.
+                stdin_json="$(build_stdin "sess-e2e-1" 37 200000 75000)"
             fi
             echo ""
 
-            # Refresh timestamp at write time so the recency check passes.
-            cache_fixture=$(echo "$cache_fixture" | sed "s/\"timestamp\":[0-9]*/\"timestamp\":$(date +%s)/")
+            # Invoke the REAL statusline. The script writes the cache
+            # to $CACHE_FILE (our per-run tmpdir path). We then assert
+            # on $CACHE_FILE below.
+            if ! invoke_statusline "$stdin_json" "$CACHE_FILE"; then
+                echo -e "${RED}\xe2\x9c\x97 Statusline exited non-zero — assertions will likely fail${RESET}"
+            fi
 
-            # Write the cache fixture.
-            echo "$cache_fixture" > "$CACHE_FILE"
-
-            test_cache_file_exists
-            test_cache_file_valid_json
-            test_cache_has_required_fields
-            test_cache_has_real_session_data
-            test_values_in_valid_range
-            test_percentage_calculation
-            test_remaining_percentage_matches
-            test_timestamp_recent
+            test_e2e_writes_cache_to_override_path
+            test_e2e_cache_is_valid_json
+            test_e2e_cache_has_required_fields
+            test_e2e_cache_reflects_real_session
+            test_e2e_values_in_valid_range
+            test_e2e_percentage_calculation
+            test_e2e_remaining_percentage_matches
+            test_e2e_timestamp_recent
 
             echo ""
             echo -e "${CYAN}-----------------------------------------------------------${RESET}"
