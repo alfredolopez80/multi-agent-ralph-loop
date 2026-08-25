@@ -1,8 +1,19 @@
 #!/usr/bin/env bash
 umask 077
 # ~/.claude/hooks/context-warning.sh
-# Context Monitoring Hook - v2.90.0
+# Context Monitoring Hook - v2.91.0
 # Executed on every user-prompt-submit to monitor context usage
+#
+# v2.91.0 (T7, issue #53 follow-up):
+#   - Method 1.5 (transcript-size estimation) RETIRED. Its numerator counted
+#     the ~100K-token injected startup payload (most of it deduplicated by
+#     REALPATH and never re-paid by the model) plus everything compaction had
+#     already evicted — error in both directions, none correctable by a
+#     constant. Observed live: a permanent false "CRITICAL 100%" on every
+#     prompt, which authorized an unnecessary /compact. A CRITICAL can now
+#     only originate from harness-provided numbers (Method 1).
+#   - Depends on context-windows.sh v3.3.0: "[1m]" resolves to a 1M window,
+#     current models (glm-5.3, minimax-m3) are in the table.
 #
 # v2.90.0 CRITICAL FIX:
 #   - FIXED: Read remaining_percentage from stdin JSON (matches /context exactly)
@@ -64,7 +75,7 @@ RALPH_DIR="${HOME}/.ralph"
 HOOKS_DIR="${HOME}/.claude/hooks"
 FEATURES_FILE="${HOME}/.ralph/config/features.json"
 
-# A1 (v3.1.1): debounce cache — avoid re-estimating context from the transcript
+# A1 (v3.1.1): debounce cache — avoid recomputing the context percentage
 # on every single UserPromptSubmit when the transcript hasn't changed.
 CACHE_DIR="${HOME}/.ralph/cache"
 DEBOUNCE_MARKER="${CACHE_DIR}/context-warning.debounce"
@@ -74,7 +85,7 @@ mkdir -p "$RALPH_DIR" "$CACHE_DIR" "$(dirname "$LOG_FILE" 2>/dev/null)" || true
 
 # Cheap fingerprint of the transcript file ("<mtime>:<size>"). When it matches
 # the stored marker, the previously computed percentage is still valid and the
-# expensive transcript estimation (Method 1.5) can be skipped.
+# recomputation below can be skipped.
 _transcript_fingerprint() {
     local path=""
     if [[ -n "$INPUT" ]] && command -v jq &>/dev/null; then
@@ -121,8 +132,8 @@ is_numeric() {
 
 # Get context usage percentage
 # Returns integer percentage (0-100)
-# v3.1.0: Model-aware with transcript-based estimation for GLM models
-# Priority: stdin JSON > transcript size > message count (model-calibrated)
+# v2.91.0: transcript-size estimation retired (was Method 1.5 — see header)
+# Priority: stdin JSON > message count (model-calibrated, capped at 65%)
 get_context_percentage() {
     local pct=""
 
@@ -152,50 +163,20 @@ get_context_percentage() {
         fi
     fi
 
-    # Method 1.5: Transcript-based estimation for GLM models (v3.1.0)
-    # When stdin JSON doesn't provide context_window (common for GLM),
-    # estimate from transcript file size against model's known context window.
-    if [[ -z "$pct" ]] && [[ "$_CONTEXT_LIB_LOADED" == "true" ]] && type is_glm_model &>/dev/null && is_glm_model; then
-        local transcript_path=""
-        if [[ -n "$INPUT" ]] && command -v jq &>/dev/null; then
-            transcript_path=$(echo "$INPUT" | jq -r '.transcript_path // empty' 2>/dev/null || true)
-        fi
-
-        if [[ -n "$transcript_path" ]] && [[ -f "$transcript_path" ]]; then
-            local estimated_tokens
-            estimated_tokens=$(estimate_tokens_from_file "$transcript_path")
-            pct=$(calculate_usage_pct "$estimated_tokens")
-            log_context "DEBUG" "Method 1.5 (transcript): path=$transcript_path, est_tokens=$estimated_tokens, pct=$pct%"
-        else
-            # Try to find transcript from session ID
-            local sid=""
-            if [[ -n "$INPUT" ]] && command -v jq &>/dev/null; then
-                sid=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null || true)
-            fi
-            # Try common transcript locations
-            local found_transcript=""
-            for candidate in \
-                "${HOME}/.claude/projects/-Users-alfredolopez-Documents-GitHub-multi-agent-ralph-loop/sessions/${sid}.jsonl" \
-                "${HOME}/.claude/projects/-Users-alfredolopez-Documents-GitHub-multi-agent-ralph-loop/transcript.jsonl"; do
-                if [[ -f "$candidate" ]]; then
-                    found_transcript="$candidate"
-                    break
-                fi
-            done
-
-            if [[ -n "$found_transcript" ]]; then
-                local estimated_tokens
-                estimated_tokens=$(estimate_tokens_from_file "$found_transcript")
-                pct=$(calculate_usage_pct "$estimated_tokens")
-                log_context "DEBUG" "Method 1.5 (session transcript): sid=$sid, tokens=$estimated_tokens, pct=$pct%"
-            fi
-        fi
-    fi
+    # Method 1.5: RETIRED (v2.91.0 / T7) — transcript-size estimation.
+    # Was: estimate_tokens_from_file(transcript) against get_context_window().
+    # The transcript on disk contains the full injected startup payload
+    # (multiple CLAUDE.md copies, rules, memory — largely deduplicated by
+    # REALPATH and never re-paid by the model) AND every token compaction has
+    # already evicted. Both errors point the wrong way; in this repo the
+    # payload alone exceeded the assumed window, so the hook fired a permanent
+    # false "CRITICAL 100%" on every prompt. Retired outright — do NOT
+    # reintroduce a bytes-based estimator here.
 
     # Method 2 (DISABLED v3.1.1 — PERF): recursive `claude --print "/context"` cost
-    # ~3-4s on EVERY UserPromptSubmit (CLI cold-start + 3s timeout cap). Transcript
-    # estimation (Method 1.5) and the message-count fallback (Method 3) replace it at
-    # ~zero cost. Kept as an explicit no-op to preserve method numbering and intent.
+    # ~3-4s on EVERY UserPromptSubmit (CLI cold-start + 3s timeout cap). The
+    # message-count fallback (Method 3) covers the no-stdin-JSON case at ~zero
+    # cost. Kept as an explicit no-op to preserve method numbering and intent.
     : # no-op — do NOT reintroduce a recursive `claude` subprocess in a hot-path hook
 
     # Method 3: Session-scoped message count (minimal fallback)
