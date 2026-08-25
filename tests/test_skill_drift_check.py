@@ -153,7 +153,13 @@ def ignore_file():
         backup = None
         had_pre_existing = False
     IGNORE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    IGNORE_FILE.write_text(f"{A_REAL_COPY_SKILL} | tampered drift test\n")
+    # T62: APPEND, never replace — a populated ignore (the T58 archive list)
+    # is legitimate state; clobbering it made the validator see 24 archived
+    # skills as drift and the exit-0 assertion failed. The fixture writes its
+    # own entry on top of whatever already exists, and the finally-block
+    # restores the original bytes as before.
+    existing = backup.decode() if had_pre_existing else ""
+    IGNORE_FILE.write_text(existing + f"{A_REAL_COPY_SKILL} | tampered drift test\n")
     try:
         yield IGNORE_FILE
     finally:

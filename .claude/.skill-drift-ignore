@@ -1,0 +1,27 @@
+# T62 (#70): repo skills deliberately absent from ~/.claude/skills.
+# User-approved archive (T58): catalog 392->62 entries. Reversing an
+# entry means restoring the skill AND deleting its line here.
+adr | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+attack-mutator | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+browser-test | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+checkpoint-manager | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+clean-slop | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+codex-cli | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+context-engineer | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+context7-usage | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+crafting-effective-readmes | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+deep-clarification | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+defense-profiler | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+design-system | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+diagram-design | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+ethereum-rpc | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+gemini-cli | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+openai-docs | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+perf | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+prd | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+research | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+research-blockchain | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+ship | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+tap-explorer | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+task-visualizer | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md
+vercel-react-best-practices | archived by user decision T58 (#70): zero invocations across 1,418 transcripts, no infra reference — see ~/.ralph/skills-archived-20260825/MANIFEST.md

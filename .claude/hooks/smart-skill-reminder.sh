@@ -1,5 +1,6 @@
 #!/bin/bash
 #!/usr/bin/env bash
+umask 077  # T62: repo rule applies to every hook file present, retired ones included
 #===============================================================================
 # Smart Skill Reminder Hook — RETIRED
 # PreToolUse hook - filesystem-derived skill suggestions BEFORE writing code

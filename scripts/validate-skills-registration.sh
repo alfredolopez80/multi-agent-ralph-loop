@@ -88,7 +88,9 @@ CORE_SKILLS=(
     "curator"
     "task-batch"
     "create-task-batch"
-    "research"
+    # "research" removed in T62: the skill was archived by user decision
+    # (T58 — zero invocations across 1,418 transcripts, no infra reference);
+    # the /research command is retired with it. Re-add if it is restored.
     "parallel"
 )
 
