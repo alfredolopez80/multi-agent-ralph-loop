@@ -22,10 +22,6 @@
 
 load test_helper
 
-# Captured before setup_installer_test redirects HOME: the validators inspect the
-# real home directory, so the JSON test has to hand it back to them.
-ORIGINAL_HOME="${HOME}"
-
 setup() {
     setup_installer_test
     VC_LIB="$PROJECT_ROOT/scripts/lib/validation-common.sh"
@@ -145,11 +141,18 @@ teardown() {
 #===============================================================================
 
 @test "guard: validators emit parseable JSON, not a bash error message" {
+    # Runs under the sandbox HOME that setup_installer_test provides, deliberately.
+    # An earlier draft handed the real $HOME back so the validators would find a
+    # provisioned install — which would have made this assertion depend on the
+    # developer's own machine, the exact category docs/testing/ORPHAN_TEST_AUDIT.md
+    # classifies as unfit for a gate. It buys nothing here: the claim under test is
+    # that the output is JSON at all, and a validator reporting "fail" against an
+    # empty home reports it in perfectly good JSON.
     local script
     for script in validate-directories validate-agents-registration \
                   validate-shell-config validate-skills-registration \
                   validate-system-requirements; do
-        run env HOME="$ORIGINAL_HOME" "$PROJECT_ROOT/scripts/$script.sh" --format json
+        run "$PROJECT_ROOT/scripts/$script.sh" --format json
         # Assert on the shape of the failure the issue actually had: output that
         # begins with a path instead of a brace.
         [[ "$output" != "$PROJECT_ROOT"* ]] || \

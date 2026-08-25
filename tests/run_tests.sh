@@ -36,16 +36,17 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_section() { echo -e "${CYAN}[SECTION]${NC} $1"; }
 
-# --- contabilidad de fases (issue #42) ----------------------------------------
-# Los modos `all` y `quick` envolvian CADA fase en `|| true`, de modo que el runner
-# imprimia "Test run complete" y salia 0 pasara lo que pasara. Los dos gates que el
-# issue nombra (las fases de pytest) eran solo la capa interior: arreglarlos sin
-# tocar esta no habria cambiado nada observable, porque el despachador se tragaba el
-# codigo igualmente.
+# --- phase accounting (issue #42) ---------------------------------------------
+# Modes `all` and `quick` wrapped EVERY phase in `|| true`, so the runner printed
+# "Test run complete" and exited 0 no matter what happened. The two gates the issue
+# names (the pytest phases) were only the inner layer: fixing them without touching
+# this one would have changed nothing observable, because the dispatcher swallowed
+# the exit code anyway.
 #
-# El `|| true` tenia una razon legitima -- que un fallo temprano no impida ejecutar
-# el resto de fases -- y esa razon se conserva. Lo que no se conserva es mentir al
-# final: se ejecutan todas, se anotan las que fallan y se sale != 0 si hay alguna.
+# The `|| true` had a legitimate reason -- an early failure should not stop the
+# remaining phases from running -- and that reason is preserved. What is not
+# preserved is lying at the end: every phase runs, failures are recorded, and the
+# runner exits non-zero if there were any.
 FAILED_PHASES=()
 
 run_phase() {
@@ -91,19 +92,19 @@ run_python_tests() {
     fi
 }
 
-# Ejecuta una fase de pytest sin fail-open y sin confundir "nada que ejecutar" con
-# "todo bien" (issue #42).
+# Runs a pytest phase without failing open, and without confusing "nothing to run"
+# with "all good" (issue #42).
 #
-# Estas dos fases llevaban `|| true` desde 5dbe635: pytest podia fallar entero y el
-# runner seguia anunciando exito. #38 quito los equivalentes en ci.yml y aquello
-# destapo codigo muerto que llevaba meses oculto; esto es el mismo arreglo aqui.
+# These two phases carried `|| true` since 5dbe635: pytest could fail outright and the
+# runner would still announce success. #38 removed the equivalents in ci.yml and that
+# exposed dead code hidden for months; this is the same fix, here.
 #
-# El matiz es el codigo 5 de pytest, que significa "no se recolecto ningun test" y no
-# "los tests pasaron". Hoy tests/unit/ y tests/integration/ no contienen ningun .py
-# (los 55 modulos de pytest viven en la raiz de tests/, y de ahi los recoge
-# run_python_tests), asi que un `set -e` sobre el codigo 5 tumbaria el runner por una
-# fase que nunca tuvo contenido Python. Se reporta en voz alta en vez de darse por
-# buena: un directorio vacio es informacion, no un aprobado.
+# The subtlety is pytest's exit code 5, which means "no tests were collected", not
+# "the tests passed". Today tests/unit/ and tests/integration/ contain no .py files at
+# all (the 55 pytest modules live at the root of tests/, where run_python_tests picks
+# them up), so a bare `set -e` on code 5 would take the runner down for a phase that
+# never had Python content. It is reported out loud instead of being taken as a pass:
+# an empty directory is information, not an approval.
 run_pytest_phase() {
     local target="$1"
     shift
@@ -113,8 +114,8 @@ run_pytest_phase() {
 
     case "$rc" in
         0) return 0 ;;
-        5) log_warn "pytest recolecto 0 tests en $target (fase sin contenido Python)"; return 0 ;;
-        *) log_error "pytest fallo en $target (exit $rc)"; return "$rc" ;;
+        5) log_warn "pytest collected 0 tests in $target (phase has no Python content)"; return 0 ;;
+        *) log_error "pytest failed in $target (exit $rc)"; return "$rc" ;;
     esac
 }
 
@@ -225,9 +226,9 @@ run_security_tests() {
     fi
 
     # Bash security tests
-    # Se siguen ejecutando las cuatro aunque una falle, pero el fallo ya no se
-    # descarta: queda anotado y el runner sale != 0. Una suite de seguridad cuyo
-    # resultado no puede poner nada en rojo no es una suite de seguridad.
+    # All four still run even if one fails, but the failure is no longer discarded:
+    # it is recorded and the runner exits non-zero. A security suite whose result
+    # cannot turn anything red is not a security suite.
     if command -v bats &>/dev/null; then
         run_phase security:ralph     bats tests/test_ralph_security.bats
         run_phase security:mmc       bats tests/test_mmc_security.bats
@@ -260,9 +261,9 @@ run_v218_tests() {
     fi
 
     # Run only v2.19 security fix tests using filter
-    # Mismo criterio que en run_security_tests: se recorren todas las VULN aunque
-    # una falle, pero un fallo cuenta. Antes, esta funcion no podia devolver != 0
-    # por ningun test: solo por que faltase bats.
+    # Same rule as in run_security_tests: every VULN is exercised even if one fails,
+    # but a failure counts. Before, this function could not return non-zero for any
+    # test at all -- only for bats being absent.
     echo ""
     log_info "Testing VULN-001: escape_for_shell() fixes..."
     run_phase VULN-001 bats tests/test_ralph_security.bats --filter "VULN-001"

@@ -159,25 +159,25 @@ jobs:
           echo "::endgroup::"
 
       - name: Verify bash 4+ is the interpreter for the validators (issue #44)
-        # Los validadores de scripts/ construyen sus tablas con `declare -A`, que
-        # exige bash 4. macOS sigue trayendo bash 3.2 como /bin/bash, y ahi
-        # `declare -A` no aborta: avisa por stderr, sigue, y colapsa cada
-        # RESULTS[clave] sobre el indice 0. De ahi los 7 suites en rojo solo en
-        # macOS. El paso de debug anterior no llego a contarlo porque usaba
-        # `cat -A`, que es de GNU coreutils y BSD cat no acepta.
+        # The scripts/ validators build their tables with `declare -A`, which needs
+        # bash 4. macOS still ships bash 3.2 as /bin/bash, and there `declare -A`
+        # does not abort: it warns on stderr, carries on, and collapses every
+        # RESULTS[key] onto index 0. Hence the 7 suites red on macOS only. The
+        # previous debug step never got to report this because it used `cat -A`,
+        # which is GNU coreutils and BSD cat rejects.
         #
-        # Se instala bash de verdad en vez de relajar la asercion. La libreria
-        # scripts/lib/validation-common.sh reejecuta bajo un bash >= 4 si lo
-        # encuentra y falla ruidosa si no, asi que este paso deja el runner en el
-        # camino rapido y ademas documenta que version acabo usandose.
+        # bash is actually installed rather than relaxing the assertion. The library
+        # scripts/lib/validation-common.sh re-execs under a bash >= 4 when it finds
+        # one and fails loudly when it does not, so this step puts the runner on the
+        # fast path and also records which version ended up being used.
         run: |
           echo "::group::bash provisioning"
           if [ "$RUNNER_OS" = "macOS" ]; then
-            # bash: para `declare -A` (ver arriba).
-            # coreutils: aporta gtimeout. validate-hooks-execution.sh acota cada hook
-            # con timeout(1), que es de GNU y macOS no trae, asi que salia 2 con
-            # "timeout command not found"; bats fusiona stderr en $output y ese
-            # mensaje era lo que los tests intentaban parsear como JSON.
+            # bash: for `declare -A` (see above).
+            # coreutils: provides gtimeout. validate-hooks-execution.sh bounds each
+            # hook with timeout(1), which is GNU and macOS does not ship, so it exited
+            # 2 with "timeout command not found"; bats merges stderr into $output and
+            # that message was what the tests then tried to parse as JSON.
             brew install bash coreutils
           fi
           echo "PATH bash:   $(command -v bash)"
@@ -186,9 +186,9 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::validator smoke test"
-          # Falla el paso si el validador no emite JSON parseable: es exactamente
-          # la asercion que rompia dentro de bats, comprobada aqui sin bats de por
-          # medio para que el diagnostico no dependa de como `run` captura salida.
+          # Fails the step if the validator does not emit parseable JSON: exactly the
+          # assertion that broke inside bats, checked here without bats in the way so
+          # the diagnosis does not depend on how `run` captures output.
           scripts/validate-directories.sh --format json | jq empty
           echo "validate-directories.sh: JSON OK"
           echo "::endgroup::"

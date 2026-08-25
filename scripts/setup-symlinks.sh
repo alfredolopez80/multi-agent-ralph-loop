@@ -8,9 +8,9 @@
 set -e
 
 # Configuracion
-# Derivado de la ubicacion del script, no fijado a una maquina concreta: aqui habia
-# una ruta absoluta al portatil del autor, de modo que el script solo podia funcionar
-# en un unico ordenador aunque los tests afirmasen que existe y es ejecutable.
+# Derived from the script's own location rather than pinned to one machine: this held
+# an absolute path into the author's laptop, so the script could only work on a single
+# computer even though the tests asserted it exists and is executable.
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_CLAUDE="$REPO_ROOT/.claude"
 STD_CLAUDE="$HOME/.claude"

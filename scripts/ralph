@@ -7612,8 +7612,12 @@ main() {
     shift || true
 
     # v2.22: Startup validation (skip for instant commands)
+    # `health` used to be listed here. Its command was removed in #42 (it dispatched
+    # to a script that never existed), so naming it only bought an unknown command a
+    # faster route to its own error message. `ps`/`processes` are added instead:
+    # they reach the same cmd_process_status as `status` and are just as instant.
     case "$CMD" in
-        help|-h|--help|version|-v|--version|status|health) ;;
+        help|-h|--help|version|-v|--version|status|st|ps|processes) ;;
         *) startup_validation ;;
     esac
 
@@ -7931,9 +7935,9 @@ main() {
             ;;
 
         # Utility
-        # `status`, `st`, `ps` y `processes` se despachan juntos mas arriba. El
-        # case duplicado que habia aqui era inalcanzable (shellcheck SC2221) y
-        # solo lo tapaba un `|| true` en CI, ya retirado.
+        # `status`, `st`, `ps` and `processes` are dispatched together further up.
+        # The duplicate case that used to sit here was unreachable (shellcheck
+        # SC2221) and only a `|| true` in CI, since removed, was hiding it.
         version|-v|--version)
             cmd_version
             ;;
