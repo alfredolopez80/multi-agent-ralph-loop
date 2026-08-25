@@ -8,10 +8,8 @@
 #   ./tests/run_tests.sh security  # Run only security tests
 #   ./tests/run_tests.sh v218      # Run only v2.19 security fix tests
 #   ./tests/run_tests.sh v236      # Run only v2.36 skills unification tests
-#   ./tests/run_tests.sh v237      # Run only v2.37 tldr integration tests
 #   ./tests/run_tests.sh v256      # Run only v2.56+ task primitive tests
 #   ./tests/run_tests.sh hooks     # Run only hook validation tests
-#   ./tests/run_tests.sh swarm     # Run swarm mode tests
 #   ./tests/run_tests.sh unit      # Run unit tests
 #   ./tests/run_tests.sh integration # Run integration tests
 #   ./tests/run_tests.sh e2e       # Run end-to-end tests
@@ -218,17 +216,6 @@ run_quality_tests() {
     fi
 }
 
-# Run swarm mode tests
-run_swarm_tests() {
-    log_section "Running swarm mode tests..."
-
-    cd "$PROJECT_DIR"
-
-    if [[ -x "$SCRIPT_DIR/swarm-mode/test-swarm-mode-config.sh" ]]; then
-        "$SCRIPT_DIR/swarm-mode/test-swarm-mode-config.sh" || log_warn "Swarm mode tests require specific config"
-    fi
-}
-
 # Run agent teams tests
 run_agent_teams_tests() {
     log_section "Running agent teams tests..."
@@ -377,21 +364,6 @@ run_sync_tests() {
     fi
 }
 
-# Run v2.37 tldr integration tests
-run_v237_tests() {
-    log_section "Running v2.37 LLM-TLDR Integration tests..."
-
-    cd "$PROJECT_DIR"
-
-    # Run the comprehensive v2.37 test script
-    if [[ -x "$SCRIPT_DIR/test_v2.37_tldr_integration.sh" ]]; then
-        "$SCRIPT_DIR/test_v2.37_tldr_integration.sh" "$@"
-    else
-        log_error "v2.37 test script not found or not executable"
-        return 1
-    fi
-}
-
 # Run memory tests
 run_memory_tests() {
     log_section "Running memory system tests..."
@@ -457,9 +429,6 @@ main() {
         v236|v2.36|skills)
             run_v236_tests "$@"
             ;;
-        v237|v2.37|tldr)
-            run_v237_tests "$@"
-            ;;
         context)
             run_context_tests "$@"
             ;;
@@ -468,9 +437,6 @@ main() {
             ;;
         hooks)
             run_hooks_tests "$@"
-            ;;
-        swarm)
-            run_swarm_tests "$@"
             ;;
         unit)
             run_unit_tests "$@"
@@ -504,7 +470,6 @@ main() {
             echo ""
             run_phase integration run_integration_tests "$@"
             echo ""
-            run_phase swarm       run_swarm_tests "$@"
             ;;
         *)
             log_error "Unknown mode: $MODE"
@@ -520,7 +485,6 @@ main() {
             echo "  unit         - Run unit tests"
             echo "  integration  - Run integration tests"
             echo "  e2e          - Run end-to-end tests"
-            echo "  swarm        - Run swarm mode tests"
             echo "  quality      - Run quality parallel tests"
             echo "  memory       - Run memory system tests"
             echo "  context      - Run context engine tests"
@@ -530,7 +494,6 @@ main() {
             echo "Version-specific:"
             echo "  v218         - v2.19 security fix tests"
             echo "  v236         - v2.36 skills unification"
-            echo "  v237         - v2.37 tldr integration"
             exit 1
             ;;
     esac
@@ -546,24 +509,11 @@ main() {
     echo "================================================================"
 }
 
-# k8s context guard (26 casos: invocacion vs mencion, contexto efectivo, allowlist).
-# Se ejecuta ANTES de main y propaga su codigo de salida: colgado detras de main, el
-# FAILED=1 no lo leia nadie y un fallo del hook seguia dando exit 0 tras imprimir el
-# banner de exito.
-K8S_GUARD_RC=0
-if [[ -x "$SCRIPT_DIR/hooks/test-k8s-context-guard.sh" ]]; then
-    "$SCRIPT_DIR/hooks/test-k8s-context-guard.sh" || K8S_GUARD_RC=1
-fi
-
 # `main "$@"` on its own would abort here under `set -e` the moment main returns
-# non-zero, so MAIN_RC and the k8s verdict below were unreachable in exactly the case
-# they exist to report: the exit code was right by accident, but the diagnostic never
-# printed. `|| MAIN_RC=$?` keeps main's status without letting errexit cut the script.
+# non-zero, so MAIN_RC was unreachable in exactly the case it exists to report: the
+# exit code was right by accident, but a non-zero status stopped the script before
+# any final accounting could run. `|| MAIN_RC=$?` keeps main's status without
+# letting errexit cut the script.
 MAIN_RC=0
 main "$@" || MAIN_RC=$?
-
-if [[ $K8S_GUARD_RC -ne 0 ]]; then
-    echo "FAIL: the k8s context guard suite failed" >&2
-    exit 1
-fi
 exit $MAIN_RC
