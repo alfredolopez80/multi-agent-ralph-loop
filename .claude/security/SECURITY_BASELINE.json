@@ -1,0 +1,146 @@
+{
+  "version": "1.0.0",
+  "date": "2026-08-25",
+  "issue": 46,
+  "phase": "STEP B (manifest + regression tests). STEP A (diagnostic shutdown) deliberately NOT done: ruled unsafe as drafted; B goes first.",
+  "description": "Declarative inventory of the security plane. Every control names its hook, its registration (event + matchers), the files it sources, the properties that make it trustworthy, and a fixture that demonstrates it firing. A control absent from this manifest is not protected by the regression tests; a control present here cannot be unregistered or deleted silently. The gaps array names what #45 demands and does not exist yet — a manifest that lists only what exists would fake coverage.",
+  "invariants": [
+    "Fail-closed on every path: permission-guard v2.1.0 (#58), repo-boundary _emit_deny_on_crash trap, k8s gate blocks kubectl without an explicit --context",
+    "Delegate contracts verified in source before enforcement (T16): git-safety-guard.py emits JSON on every terminal path (deny = JSON + exit 1; the JSON is authoritative)",
+    "Direct registration of repo-boundary-guard.sh on Edit|Write and Agent|Task in addition to Bash: the boundary does not depend on a single wrapper"
+  ],
+  "controls": [
+    {
+      "id": "permission-pipeline",
+      "kind": "hook",
+      "hook": ".claude/hooks/permission-guard.sh",
+      "event": "PreToolUse",
+      "matchers": ["Bash", "Edit|Write", "Agent|Task"],
+      "sources": [
+        ".claude/hooks/git-safety-guard.py",
+        ".claude/hooks/repo-boundary-guard.sh"
+      ],
+      "properties": [
+        "v2.1.0, hardened in #58 (T16+T19): fail-closed on every path — delegate missing/crashed/empty/unparseable denies; unparseable stdin denies; premature death denies via idempotent ERR/EXIT trap (a naive trap double-echoes the deny under set -e, producing unparseable output = a bypass; the flag prevents it)",
+        "Dispatches to both guards below; a real deny arriving as JSON + exit 1 is propagated intact (JSON is authoritative, not the exit code)",
+        "Delegate stderr preserved: logged to ~/.ralph/permission-guard.log and re-emitted"
+      ],
+      "fixture": {
+        "run": "printf '' | bash .claude/hooks/permission-guard.sh",
+        "expect_decision": "deny",
+        "expect_reason_contains": "unparseable"
+      }
+    },
+    {
+      "id": "git-safety",
+      "kind": "hook",
+      "hook": ".claude/hooks/git-safety-guard.py",
+      "event": "PreToolUse",
+      "matchers": ["Bash"],
+      "sources": [],
+      "properties": [
+        "Blocks destructive git (reset --hard, push --force), destructive fs (rm -rf /, clean -f) and command chaining (;, &&, eval, xargs rm)",
+        "Stdlib-only python (json/os/re/shlex/subprocess/sys) — no repo files sourced, no hidden dependencies",
+        "Contract (verified T16): allow/ask print JSON + exit 0, deny prints JSON + exit 1 — JSON on every terminal path (CRIT-002 allow_and_exit)"
+      ],
+      "fixture": {
+        "run": "printf '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git reset --hard HEAD\"}}' | python3 .claude/hooks/git-safety-guard.py",
+        "expect_decision": "deny",
+        "expect_reason_contains": "BLOCKED by git-safety-guard"
+      }
+    },
+    {
+      "id": "repo-boundary",
+      "kind": "hook",
+      "hook": ".claude/hooks/repo-boundary-guard.sh",
+      "event": "PreToolUse",
+      "matchers": ["Bash", "Edit|Write", "Agent|Task"],
+      "sources": [".claude/hooks/lib/worktree-utils.sh"],
+      "properties": [
+        "Registered DIRECTLY on Edit|Write and Agent|Task (inserted before the permission pipeline) in addition to Bash — the boundary survives a broken wrapper",
+        "Own fail-closed trap _emit_deny_on_crash on ERR/EXIT (lines 15-18): a crash denies, logged to ~/.ralph/logs/repo-boundary.log",
+        "Its source of lib/worktree-utils.sh (line 36) carries a '|| { inline fallback implementations }' that is NOT fail-open: it defines in-repo replacements for get_project_root/get_main_repo and the script still fails closed — it degrades with dignity",
+        "Boundary semantics: the guard denies paths inside OTHER git repos under GITHUB_DIR (~/Documents/GitHub, line 25) and allows everything else BY DESIGN (is_allowed_path tail: 'Allow other paths (system, etc.)') — it is a GitHub-repo boundary, not a filesystem boundary. A path outside GITHUB_DIR is never denied, no matter what it is; fixtures must target another repo under GITHUB_DIR (the fixture isolates it by overriding HOME for the guard invocation)",
+        "KNOWN DEFECT (found by this baseline's fixture work, 2026-08-25, fix out of T20 scope): canonicalize() failure emits the sentinel __CANONICALIZE_FAILED__ which is NEVER checked downstream — the log says 'denying as precaution' but the sentinel flows into 'Allow other paths' and the verdict is ALLOW. Repro: Edit/Write to a nonexistent out-of-repo path with a nonexistent parent dir (e.g. an invented nested path). Additionally the second fallback 'realpath -m' is a no-op on macOS ('illegal option -- m', verified rc=1), so on stock macOS canonicalize relies solely on the dir+base chain. Adjacent asymmetry: GITHUB_DIR (line 25) is built from raw $HOME without canonicalization while paths ARE canonicalized — through a symlinked HOME/Documents the other-repo branch can silently fail to match (observed with symlinked /tmp and /var on macOS)"
+      ],
+      "fixture": {
+        "run": "d=\"$(cd \"$(mktemp -d)\" && pwd -P)\" && mkdir -p \"$d/Documents/GitHub/fr\" && git -C \"$d/Documents/GitHub/fr\" init -q && printf '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"%s/Documents/GitHub/fr/x.md\"}}' \"$d\" | HOME=\"$d\" bash .claude/hooks/repo-boundary-guard.sh; rc=$?; rm -rf \"$d\"; exit $rc",
+        "expect_decision": "deny",
+        "expect_reason_contains": "REPO BOUNDARY"
+      }
+    },
+    {
+      "id": "k8s-context",
+      "kind": "hook",
+      "hook": ".claude/hooks/k8s-context-guard-v2.py",
+      "event": "PreToolUse",
+      "matchers": ["Bash"],
+      "sources": [
+        ".claude/hooks/k8s_context_guard/cloud_operation_gate.py",
+        ".claude/hooks/k8s_context_guard/context_classification.py",
+        ".claude/hooks/k8s_context_guard/minikube_context.py",
+        ".claude/hooks/k8s_context_guard/script_operation_inspector.py"
+      ],
+      "properties": [
+        "Context-aware: every kubectl/helm/minikube command must declare --context explicitly (kubectl_context_required otherwise); --context must be a static name (kubectl_context_not_static)",
+        "Factual minikube verification rather than name-matching; kubectl verbs delegated from git-safety by design (handoff)",
+        "Known over-reach, cataloged (QTEAM_FAILURE_MODES #22): can block unrelated commands that merely reference hook scripts — visible, not silent"
+      ],
+      "fixture": {
+        "run": "printf '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"kubectl get pods\"}}' | python3 .claude/hooks/k8s-context-guard-v2.py",
+        "expect_decision": "deny",
+        "expect_reason_contains": "kubectl_context_required"
+      }
+    },
+    {
+      "id": "worktree-utils",
+      "kind": "lib",
+      "hook": ".claude/hooks/lib/worktree-utils.sh",
+      "event": null,
+      "matchers": [],
+      "sources": [],
+      "sourced_by": [".claude/hooks/repo-boundary-guard.sh"],
+      "properties": [
+        "Provides get_project_root / get_main_repo (worktree-aware, via --git-common-dir) to the boundary guard and the worktree guards",
+        "Not registered itself: consumed via source. repo-boundary-guard.sh carries inline fallbacks if this lib is unreachable (see repo-boundary properties)"
+      ],
+      "fixture": {
+        "run": "bash -c 'source .claude/hooks/lib/worktree-utils.sh && get_project_root'",
+        "expect_kind": "bash_function",
+        "expect_stdout_contains": "multi-agent-ralph-loop"
+      }
+    }
+  ],
+  "gaps": [
+    {
+      "id": "secrets-ordinary-work",
+      "from_issue": 45,
+      "status": "no-hook",
+      "description": "#45 demands preventing secrets from entering ordinary (non-audit) work. audit-secrets.js only LOGS 20+ secret patterns post-execution (PostToolUse detection); nothing blocks or warns at write time. Detection-after-the-fact is not the demanded control."
+    },
+    {
+      "id": "red-toxic",
+      "from_issue": 45,
+      "status": "no-hook",
+      "description": "No control screens for RED/toxic content in what the agent produces or relays. Nothing exists to register."
+    },
+    {
+      "id": "mcp-egress",
+      "from_issue": 45,
+      "status": "no-hook",
+      "description": "No control governs MCP egress (which servers may be called with what payload). MCP tool calls bypass the Bash/Edit permission surface entirely."
+    },
+    {
+      "id": "package-manager",
+      "from_issue": 45,
+      "status": "no-hook",
+      "description": "brew/pip/npm installs are governed by a RULE (global CLAUDE.md approval requirement) but by no hook — rules constrain the model, not the tool call. git-safety does not cover package managers."
+    },
+    {
+      "id": "symlink-escape",
+      "from_issue": 45,
+      "status": "partial",
+      "description": "repo-boundary-guard.sh checks paths, but symlink-following escapes (an in-repo symlink pointing outside) are only partially covered. Declared partial until a fixture proves symlink resolution is boundary-checked."
+    }
+  ]
+}
