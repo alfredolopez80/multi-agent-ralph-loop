@@ -1,38 +1,59 @@
 #!/bin/bash
 #!/usr/bin/env bash
 #===============================================================================
-# Smart Skill Reminder Hook (v2.0.0)
-# PreToolUse hook - Context-aware skill suggestions BEFORE writing code
+# Smart Skill Reminder Hook (v3.0.0)
+# PreToolUse hook - filesystem-derived skill suggestions BEFORE writing code
 #===============================================================================
 #
-# VERSION: 2.69.0
+# VERSION: 3.0.0
 # TRIGGER: PreToolUse (Edit|Write)
-# PURPOSE: Intelligently suggest relevant skills based on file context
+# PURPOSE: Suggest relevant skills based on file context
 #
-# IMPROVEMENTS OVER v1.0.0:
-# - Fires on PreToolUse (BEFORE code is written, not after)
-# - Session gating: only reminds once per session
-# - Context-aware: suggests specific skills based on file type/path
-# - Rate limiting: respects cooldown period
-# - Skill invocation detection: skips if skill was recently used
+# v3.0.0 changes vs v2.69.0:
+# - Hand-coded 14-skill list REMOVED. 13 of 14 skills in v2 didn't exist;
+#   suggesting them was a violation of "no inventar" inside the hook whose
+#   job is to help select skills. v3 sources from a filesystem-derived index
+#   at ~/.ralph/cache/skill-index.tsv, built by
+#   .claude/hooks/lib/build-skill-index.sh from the actual ~/.claude/skills
+#   and .claude/skills/ trees.
+# - The index is regenerated only when a root's mtime is newer than the
+#   index file. Zero tokens cost; CPU local.
+# - Match by file path tokens (extension + key words from the basename).
+# - DOUBLE VERIFICATION at emit time: test -f <skill_dir>/SKILL.md. A skill
+#   deleted between index regeneration and emit time cannot be suggested.
+# - Hard cap of 3 emissions per session (was 1).
+# - Cooldown (30 min) and recently-invoked (5 min) gates KEEP.
+# - No match -> output {"permissionDecision": "allow"} only. Zero bytes of
+#   context pollution. No log line.
+# - Match -> output {"permissionDecision": "allow", "permissionDecisionReason":
+#   "<suggestion>"} so the suggestion reaches the user via the
+#   permission prompt. additionalContext is NOT used because Claude Code's
+#   PreToolUse does not honor it (per tests/HOOK_FORMAT_REFERENCE.md);
+#   the rationale is documented in the audit doc.
 #
-# Based on adversarial review by Claude Opus + OpenAI Codex gpt-5.2
+# Three tests must hold:
+# - Skill present in fixture -> suggests.
+# - Skill deleted + index fresh -> same call silent.
+# - Skill deleted + index stale -> same call silent (double-verify).
+# - Fourth emission within a session -> silent.
+# - Regression grep: zero literal skill names in hook code outside the
+#   template strings.
 
 # SEC-111: Read input from stdin with length limit (100KB max)
-# Prevents DoS from malicious input
 INPUT=$(head -c 100000)
-
 
 set -euo pipefail
 umask 077
 
-readonly VERSION="2.0.0"
+readonly VERSION="3.0.0"
 readonly HOOK_NAME="smart-skill-reminder"
-
-# Configuration
-readonly MARKERS_DIR="${HOME}/.ralph/markers"
+readonly MARKERS_DIR="${SMART_SKILL_MARKERS_DIR:-${HOME}/.ralph/markers}"
 readonly COOLDOWN_MINUTES=30
-readonly LOG_FILE="${HOME}/.ralph/logs/skill-reminder.log"
+readonly LOG_FILE="${SMART_SKILL_LOG_FILE:-${HOME}/.ralph/logs/skill-reminder.log}"
+# SMART_SKILL_INDEX allows tests to inject a fixture index without polluting
+# the real ~/.ralph/cache. Production uses the real path.
+readonly INDEX_FILE="${SMART_SKILL_INDEX:-${HOME}/.ralph/cache/skill-index.tsv}"
+readonly MAX_EMISSIONS_PER_SESSION=3
 
 # Ensure directories exist
 mkdir -p "$MARKERS_DIR" "$(dirname "$LOG_FILE")" 2>/dev/null || true
@@ -48,45 +69,57 @@ log() {
     echo "[$(date -Iseconds)] [$HOOK_NAME] $*" >> "$LOG_FILE" 2>/dev/null || true
 }
 
-# Get session ID (use PPID as proxy for session)
+# Get session ID from stdin payload (with stable cwd+date digest fallback).
 get_session_id() {
-    # BUG-6: CLAUDE_SESSION_ID is not exported to hooks, so the old
-    # `${CLAUDE_SESSION_ID:-$$}` fallback used the hook's own PID — a new value
-    # on every invocation. Markers were written under a key that could never be
-    # read back, so per-session deduplication never worked at all.
-    # The session id comes from the hook's stdin payload; the fallback is a
-    # stable cwd+date digest, never $$.
     local sid
     sid=$(printf '%s' "${INPUT:-}" | jq -r '.session_id // empty' 2>/dev/null || true)
     if [[ -z "$sid" ]]; then
         sid="cwd-$(printf '%s|%s' "$PWD" "$(date -u +%Y%m%d)" | shasum -a 256 | cut -c1-16)"
     fi
-    # The value becomes part of a filename: strip anything that is not safe.
     printf '%s' "$sid" | tr -cd 'a-zA-Z0-9_-' | head -c 64
 }
 
-# Check if we've already reminded this session
-already_reminded_this_session() {
+# Emission counter for the hard cap (3 per session).
+emission_count() {
     local session_id
     session_id=$(get_session_id)
-    local marker="${MARKERS_DIR}/skill-reminded-${session_id}"
-    [[ -f "$marker" ]]
+    local marker="${MARKERS_DIR}/skill-emissions-${session_id}"
+    if [[ -f "$marker" ]]; then
+        cat "$marker" 2>/dev/null | tr -cd '0-9' | head -c 4
+    else
+        echo 0
+    fi
 }
 
-# Mark session as reminded
-mark_session_reminded() {
+# Bump the emission counter (with a leading timestamp to avoid stale carry-over).
+bump_emission_count() {
     local session_id
     session_id=$(get_session_id)
-    local marker="${MARKERS_DIR}/skill-reminded-${session_id}"
-    touch "$marker" 2>/dev/null || true
+    local marker="${MARKERS_DIR}/skill-emissions-${session_id}"
+    local n
+    n=$(emission_count)
+    n=$((n + 1))
+    # Atomic write: write to temp then move.
+    local tmp
+    tmp=$(mktemp)
+    printf '%s\n' "$n" > "$tmp"
+    mv "$tmp" "$marker"
 }
 
-# Check cooldown (rate limiting)
+# True iff we've already hit the cap.
+at_emission_cap() {
+    local n
+    n=$(emission_count)
+    [[ "$n" -ge "$MAX_EMISSIONS_PER_SESSION" ]]
+}
+
+# Cooldown: refuse to emit if last emission was less than N minutes ago.
 is_within_cooldown() {
+    local session_id
+    session_id=$(get_session_id)
     local marker="${MARKERS_DIR}/skill-reminder-cooldown"
     if [[ -f "$marker" ]]; then
         local marker_age
-        # MEDIUM-001 FIX: Portable stat (macOS/BSD: -f %m, Linux: -c %Y)
         marker_age=$(( $(date +%s) - $(stat -c %Y "$marker" 2>/dev/null || stat -f %m "$marker" 2>/dev/null || echo 0) ))
         (( marker_age < COOLDOWN_MINUTES * 60 ))
     else
@@ -94,184 +127,137 @@ is_within_cooldown() {
     fi
 }
 
-# Update cooldown marker
 update_cooldown() {
     local marker="${MARKERS_DIR}/skill-reminder-cooldown"
     touch "$marker" 2>/dev/null || true
 }
 
-# Check if a skill was recently invoked (within last 5 tool calls)
+# True iff the Skill tool was used within the last 5 minutes.
 skill_recently_invoked() {
-    # Check if Skill tool was used recently by looking at recent logs
     local recent_skills="${MARKERS_DIR}/recent-skill-invocation"
     if [[ -f "$recent_skills" ]]; then
         local age
-        # MEDIUM-001 FIX: Portable stat (macOS/BSD: -f %m, Linux: -c %Y)
         age=$(( $(date +%s) - $(stat -c %Y "$recent_skills" 2>/dev/null || stat -f %m "$recent_skills" 2>/dev/null || echo 0) ))
-        (( age < 300 ))  # Within last 5 minutes
+        (( age < 300 ))
     else
         return 1
     fi
 }
 
-# Determine suggested skill based on file path
-# PRIORITY ORDER: Tests > Security > Language > Architecture
-suggest_skill_for_file() {
+# Look up the best-matching skill for the file path.
+# Reads the index TSV (built by .claude/hooks/lib/build-skill-index.sh) and
+# returns the first skill whose match tokens are a substring of the file path
+# (case-insensitive). If the index is missing, returns no match silently.
+#
+# Double-verify: a row whose SKILL.md no longer exists is silently skipped
+# (this is the second test of T49: index-stale + skill-deleted -> silent).
+match_skill() {
     local file_path="$1"
-    local filename
-    filename=$(basename "$file_path" 2>/dev/null || echo "")
-    local dir_path
-    dir_path=$(dirname "$file_path" 2>/dev/null || echo "")
-
-    # HIGHEST PRIORITY: Test files (check first to avoid false positives like test_auth.py)
-    # SC2221/SC2222 FIX: Removed redundant patterns (*test* already covers *.test.* and *__tests__*)
-    case "$file_path" in
-        *test*|*spec*)
-            echo "/test-driven-development for test files"
-            return 0
-            ;;
-    esac
-
-    # Security-sensitive files
-    # SC2221/SC2222 FIX: Removed *oauth* (already covered by *auth*)
-    case "$file_path" in
-        *auth*|*login*|*password*|*credential*|*secret*|*token*|*jwt*)
-            echo "/security-loop for security-sensitive code"
-            return 0
-            ;;
-        *payment*|*billing*|*stripe*|*checkout*|*transaction*)
-            echo "/security-loop for payment/financial code"
-            return 0
-            ;;
-    esac
-
-    # Language-specific suggestions
-    case "$filename" in
-        *.py)
-            echo "/python-pro for Python best practices"
-            return 0
-            ;;
-        *.ts|*.tsx)
-            echo "/typescript-pro for TypeScript patterns"
-            return 0
-            ;;
-        *.js|*.jsx)
-            echo "/javascript-pro for JavaScript patterns"
-            return 0
-            ;;
-        *.sh|*.bash)
-            echo "/bash-pro for shell scripting"
-            return 0
-            ;;
-        *.sol)
-            echo "/blockchain-web3:blockchain-developer for Solidity"
-            return 0
-            ;;
-        *.rs)
-            echo "/rust-pro for Rust patterns"
-            return 0
-            ;;
-        *.go)
-            echo "/go-pro for Go patterns"
-            return 0
-            ;;
-    esac
-
-    # Architecture/config files
-    case "$filename" in
-        Dockerfile*|docker-compose*|*.dockerfile)
-            echo "/cicd-automation:deployment-engineer for Docker"
-            return 0
-            ;;
-        *.tf|*.tfvars)
-            echo "/cicd-automation:terraform-specialist for Terraform"
-            return 0
-            ;;
-        *.yaml|*.yml)
-            if [[ "$file_path" == *k8s* ]] || [[ "$file_path" == *kubernetes* ]]; then
-                echo "/kubernetes-operations:kubernetes-architect for K8s"
+    [[ -f "$INDEX_FILE" ]] || return 1
+    local file_lower
+    file_lower=$(printf '%s' "$file_path" | tr '[:upper:]' '[:lower:]')
+    while IFS=$'\t' read -r name tokens desc skill_dir; do
+        [[ -z "$name" ]] && continue
+        # Double-verify: SKILL.md must exist at emit time.
+        [[ -f "${skill_dir}/SKILL.md" ]] || continue
+        for token in $tokens; do
+            if [[ "$file_lower" == *"$token"* ]]; then
+                printf '%s\t%s\n' "$name" "${skill_dir}"
                 return 0
             fi
-            ;;
-    esac
-
-    # API/Backend patterns
-    case "$dir_path" in
-        *api*|*routes*|*controllers*|*handlers*)
-            echo "/backend-development:backend-architect for API design"
-            return 0
-            ;;
-        *components*|*pages*|*views*)
-            echo "/frontend-mobile-development:frontend-developer for UI components"
-            return 0
-            ;;
-    esac
-
-    # No specific suggestion
+        done
+    done < "$INDEX_FILE"
     return 1
 }
 
 # Main logic
 main() {
-    # v2.69: Use $INPUT from SEC-111 read instead of second cat (fixes CRIT-001 double-read bug)
     local input="$INPUT"
 
-    # Extract file path from tool input
+    # Gate 0: file path required.
     local file_path
     file_path=$(echo "$input" | jq -r '.tool_input.file_path // .tool_input.path // empty' 2>/dev/null || echo "")
-
-    # Gate 1: Skip if no file path (can't make context-aware suggestion)
     if [[ -z "$file_path" ]]; then
-        log "No file path in input, skipping"
-        trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+        log "no file path; silent"
+        trap - ERR EXIT
+        output_empty
         exit 0
     fi
 
-    # Gate 2: Skip if already reminded this session
-    if already_reminded_this_session; then
-        log "Already reminded this session, skipping"
-        trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+    # Gate 1: hard cap of 3 emissions per session.
+    if at_emission_cap; then
+        log "at emission cap; silent"
+        trap - ERR EXIT
+        output_empty
         exit 0
     fi
 
-    # Gate 3: Skip if within cooldown period
+    # Gate 2: cooldown (rate limit between emissions).
     if is_within_cooldown; then
-        log "Within cooldown period, skipping"
-        trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+        log "within cooldown; silent"
+        trap - ERR EXIT
+        output_empty
         exit 0
     fi
 
-    # Gate 4: Skip if a skill was recently invoked
+    # Gate 3: skill was recently invoked (user silence after Skill use).
     if skill_recently_invoked; then
-        log "Skill recently invoked, skipping"
-        trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+        log "skill recently invoked; silent"
+        trap - ERR EXIT
+        output_empty
         exit 0
     fi
 
-    # Get context-aware suggestion
-    local suggestion
-    if suggestion=$(suggest_skill_for_file "$file_path"); then
-        # Mark as reminded and update cooldown
-        mark_session_reminded
-        update_cooldown
-
-        log "Suggesting: $suggestion for $file_path"
-
-        # Output suggestion
-        # v2.70.0: Using new hookSpecificOutput format with hookEventName
-        trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-        jq -n --arg ctx "Consider using $suggestion" \
-            '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "additionalContext": $ctx}}'
-    else
-        # No suggestion for this file type
-        log "No specific skill suggestion for: $file_path"
-        trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+    # No match -> silent allow. Zero bytes of context pollution. AND no log
+    # line: the silent case is the normal case, and a log per silent case
+    # would dwarf the cost of the (rare) match. Output and exit.
+    local match_line
+    if ! match_line=$(match_skill "$file_path"); then
+        trap - ERR EXIT
+        output_empty
+        exit 0
     fi
+
+    local skill_name
+    local skill_dir
+    skill_name=$(printf '%s' "$match_line" | cut -f1)
+    skill_dir=$(printf '%s' "$match_line" | cut -f2)
+
+    # Double-verify: defensive. If a race made SKILL.md disappear between
+    # the index read and the emit, treat as no-match.
+    if [[ ! -f "${skill_dir}/SKILL.md" ]]; then
+        log "skill $skill_name vanished between index read and emit; silent"
+        trap - ERR EXIT
+        output_empty
+        exit 0
+    fi
+
+    # File extension for the message.
+    local ext="${file_path##*.}"
+    if [[ "$ext" == "$file_path" ]]; then
+        ext=""
+    fi
+
+    # Single message template (lead's spec: ≤120 chars, plantilla única).
+    if [[ -n "$ext" ]]; then
+        local msg="Use $skill_name for .$ext"
+    else
+        local msg="Use $skill_name"
+    fi
+
+    # Bump counters and emit.
+    bump_emission_count
+    update_cooldown
+    log "emitted: $skill_name for $file_path (count=$(emission_count))"
+
+    trap - ERR EXIT
+    # The PreToolUse channel that Claude Code GUARANTEES is
+    # permissionDecision + permissionDecisionReason. hookEventName is
+    # omitted to stay under the 35 tokens/emission budget (the validation
+    # function in tests/HOOK_FORMAT_REFERENCE.md does not require it
+    # for PreToolUse; only continue/permissionDecision are validated).
+    jq -n --arg reason "$msg" \
+        '{"hookSpecificOutput": {"permissionDecision": "allow", "permissionDecisionReason": $reason}}'
 }
 
 main "$@"
