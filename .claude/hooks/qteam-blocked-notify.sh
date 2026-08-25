@@ -33,7 +33,7 @@ emit_and_exit() {
     echo '{"continue": true}'
     exit 0
 }
-trap emit_and_exit ERR EXIT
+trap emit_and_exit ERR
 
 command -v jq >/dev/null 2>&1 || emit_and_exit
 
