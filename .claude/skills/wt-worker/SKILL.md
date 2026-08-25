@@ -43,6 +43,12 @@ Then:
      `git rebase --continue`.
    - If it conflicts outside your allowed paths, `git rebase --abort` and tell
      lead exactly which files conflict. Wait.
+
+   **Note**: if your branch is behind `main` at this point, that is the **normal**
+   state after each integration — the lead merges your branch into `main` and
+   the merge handles the lag. You do not rebase to "catch up"; you rebase to
+   **start a new task** or to **resolve a conflict**. If `start-task.sh` reports
+   the rebase succeeded, you are up to date: keep working.
 2. Read the allowed paths. Everything else is read-only for you.
 3. If the task is ambiguous, ask lead one precise question before starting.
    Do not guess on scope.
@@ -96,8 +102,17 @@ sentence in `notes` and stop.
 REBASE <task-id>
 ```
 
-Run `git rebase main`. Resolve conflicts (same rule as section 1), re-run
-tests, and resend DONE with the new hash.
+Lead sends REBASE **only on a merge conflict**, not for ordinary "behind
+main" state — that is covered by §1 on every task start. Being behind `main`
+is the normal post-integration state of a worker branch; the lead merges
+your branch and the merge handles the lag. REBASE means: there is a real
+conflict you must resolve.
+
+Run `scripts/start-task.sh` (same entry point as section 1). It does the
+rebase with the same conflict handling. Resolve conflicts per the rules in
+section 1, re-run tests, and resend DONE with the new hash. Do NOT invoke
+`git rebase` directly — the script wraps it with the worktree/branch
+checks the guard also enforces.
 
 ## 6. Escalate, don't improvise
 
