@@ -99,7 +99,12 @@ scan_file() {
       matches+=$'\n'$(grep -nE '(^|[[:space:]&|;(`])(mkdir|cp|mv|ln|rm|touch|cd|find|cat|source|stat|chmod|chown)([[:space:]]+-[^[:space:]]+)*[[:space:]]+["'"'"']~' -- "$f" || true)
       matches+=$'\n'$(grep -nE '\-[defxrwsLh][[:space:]]+["'"'"']~/' -- "$f" || true)
       matches+=$'\n'$(grep -nE '\$\{[A-Za-z_][A-Za-z0-9_]*:?-~/' -- "$f" || true)
+      # Issue #55: '/Users/<x>' y '/home/<user>' crean un arbol 'Users/<user>/...'
+      # dentro del repo cuando se materializan relativas al cwd. La misma linea
+      # sigue siendo silenciable con '# tilde-ok: <razon>' (escape hatch compartido).
+      matches_abspath=$(grep -nE '["'"'"']/(Users|home)/[a-z]' -- "$f" || true)
       emit "$f" "$matches" "shell: tilde citada no expande — usa \$HOME" '#'
+      emit "$f" "$matches_abspath" "shell: ruta absoluta hardcodeada — usa \${REPO_ROOT} o BASH_SOURCE" '#'
       ;;
     *.py)
       matches=$(grep -nE '(Path|open|os\.path\.[a-z_]+|os\.makedirs|os\.listdir|shutil\.[a-z_]+)\(["'"'"']~|=[[:space:]]*["'"'"']~/' -- "$f" | grep -v 'expanduser' || true)
