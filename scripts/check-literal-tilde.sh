@@ -109,6 +109,11 @@ scan_file() {
     *.py)
       matches=$(grep -nE '(Path|open|os\.path\.[a-z_]+|os\.makedirs|os\.listdir|shutil\.[a-z_]+)\(["'"'"']~|=[[:space:]]*["'"'"']~/' -- "$f" | grep -v 'expanduser' || true)
       emit "$f" "$matches" "python: falta expanduser() / Path.home()" '#'
+      # Issue #55 extension: '/Users/<x>' y '/home/<user>' como literales en .py.
+      # Mismo escape hatch '# tilde-ok: <razon>'. Cubre tests de datos
+      # (fixtures, EVIL_PATH, aserciones que DETECTAN la clase).
+      matches_abspath=$(grep -nE '["'"'"']/(Users|home)/[a-z]' -- "$f" || true)
+      emit "$f" "$matches_abspath" "python: ruta absoluta hardcodeada — usa \$HOME o Path.home()" '#'
       ;;
     *.js|*.ts)
       matches=$(grep -nE '["'"'"'`]~/' -- "$f" | grep -v 'homedir' || true)
@@ -127,7 +132,7 @@ for f in "${FILES[@]:-}"; do
 done
 
 # Un path cuyo PRIMER componente es una raiz del sistema es una ruta absoluta que
-# se escribio relativa al cwd: '/Users/x/y' -> 'Users/x/y' dentro del repo.
+# se escribio relativa al cwd: '/Users/x/y' -> 'Users/x/y' dentro del repo.  # tilde-ok: comentario dentro del propio guard que describe el patron que detecta
 # Ninguno de estos nombres es un directorio legitimo de primer nivel aqui.
 ABS_ROOTS='^(Users|home|tmp|var|private|etc|opt|root|Volumes)(/|$)'
 

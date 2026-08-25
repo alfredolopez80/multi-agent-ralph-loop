@@ -170,7 +170,7 @@ echo "--- Test 8: No hardcoded paths ---"
 COORDINATOR=".claude/lib/agent-teams-coordinator.sh"
 if [[ ! -f "$COORDINATOR" ]]; then
   fail "$COORDINATOR not found — this check cannot validate anything"
-elif grep -q "/Users/alfredolopez" "$COORDINATOR"; then
+elif grep -q "/Users/alfredolopez" "$COORDINATOR"; then  # tilde-ok: assertion that DETECTS hardcoded user paths in agent-teams-coordinator.sh
   fail "agent-teams-coordinator.sh still contains hardcoded /Users/alfredolopez"
 else
   pass "agent-teams-coordinator.sh has no hardcoded user paths"

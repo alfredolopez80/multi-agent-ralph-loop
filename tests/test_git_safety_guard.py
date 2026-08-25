@@ -259,7 +259,7 @@ class TestBypassPrevention:
         [
             'rm -rf "/etc"',  # Quoted path
             "rm -rf '/etc'",  # Single-quoted path
-            'rm -rf "/home/user"',  # Various paths
+            'rm -rf "/home/user"',  # Various paths  # tilde-ok: test data — quoted path the safety guard must REJECT
         ],
     )
     def test_quoted_path_bypass_blocked(self, bypass_attempt):

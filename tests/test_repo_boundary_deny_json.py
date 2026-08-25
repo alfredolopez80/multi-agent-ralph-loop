@@ -19,7 +19,7 @@ GUARD = REPO_ROOT / ".claude" / "hooks" / "repo-boundary-guard.sh"
 
 # A path outside the current repo, under ~/Documents/GitHub, with a double quote in the
 # name — the character that broke the interpolated heredoc.
-EVIL_PATH = '/Users/alfredolopez/Documents/GitHub/OtherRepo/a"b.txt'
+EVIL_PATH = '/Users/alfredolopez/Documents/GitHub/OtherRepo/a"b.txt'  # tilde-ok: EVIL_PATH fixture the boundary guard must REJECT (path outside repo + breaking the heredoc interpolation)
 
 
 def _run(payload: dict) -> subprocess.CompletedProcess:

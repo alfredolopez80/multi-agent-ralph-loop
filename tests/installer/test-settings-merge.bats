@@ -30,58 +30,7 @@ setup() {
 
     # Define Ralph settings template (what installer would merge)
     RALPH_TEMPLATE="$TEST_TMPDIR/ralph_template.json"
-    cat > "$RALPH_TEMPLATE" << 'EOF'
-{
-  "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "permissions": {
-    "allow": [
-      "Bash(git:*)",
-      "Bash(ralph:*)",
-      "Bash(mmc:*)",
-      "Read",
-      "Write",
-      "Edit"
-    ]
-  },
-  "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
-  },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/home/user/.claude/hooks/git-safety-guard.py",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "Task",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/home/user/.claude/hooks/repo-boundary-guard.sh"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write|Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/home/user/.claude/hooks/quality-gates-v2.sh"
-          }
-        ]
-      }
-    ]
-  }
-}
-EOF
+    cp "$FIXTURES_DIR/ralph_template.json" "$RALPH_TEMPLATE"
 }
 
 teardown() {
