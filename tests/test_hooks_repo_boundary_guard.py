@@ -9,6 +9,7 @@ GITHUB_DIR (HOME override on a PHYSICALLY resolved temp dir — macOS symlinks
 """
 import json
 import os
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -175,10 +176,10 @@ def test_t28_f_value_is_still_a_path(external_repo_dir):
 
 def test_t28_git_dash_c_value_is_still_a_path(external_repo_dir):
     # `git -C <dir>` is a directory flag: blanking -c/-C payloads would
-    # blind exactly this. Must keep denying. NOTE: uses a SUBDIRECTORY —
-    # the mention gate regex (GITHUB_DIR/[^/]+/) requires at least one
-    # level INSIDE the external repo, so the repo ROOT itself is a
-    # pre-existing gate gap (reported), not something this test can lean on.
+    # blind exactly this. Must keep denying. (Historically used a
+    # SUBDIRECTORY because the pre-T29 mention gate required one level
+    # INSIDE the external repo — the root gap it left, closed in T29/#65,
+    # has its own tests below.)
     d, fr = external_repo_dir
     sub = fr / "pkg"
     sub.mkdir()
@@ -190,3 +191,35 @@ def test_t28_python_dash_c_code_still_scanned(external_repo_dir):
     d, fr = external_repo_dir
     result = run_boundary_bash(d, f"python3 -c \"open('{fr}/x.md')\"")
     assert decision_of(result) == "deny"
+
+
+# --- T29 (#65): the sibling-repo ROOT must trigger the mention check ---
+# The mention gate required GITHUB_DIR/<repo>/ — one level INSIDE the
+# external repo — so `git -C <sibling-root> ...` never reached extraction
+# and was immune to the whole check. The gate now fires on the root. The
+# second test pins the fix to the component-boundary shape: a directory
+# merely NAMED LIKE a sibling (`<fr>-evil`) must be extracted and evaluated
+# as the whole component — collapsing it into `<fr>` would trade the gap
+# for the prefix collision (repo vs repo-evil) the gate shape exists to
+# prevent. The exact-equality assert on the deny reason is what tells the
+# two apart: a collapse would name `<fr>`, not `<fr>-evil`.
+
+def test_t29_sibling_repo_root_git_dash_c_denies(external_repo_dir):
+    d, fr = external_repo_dir
+    result = run_boundary_bash(d, f'git -C "{fr}" commit -m x')
+    assert decision_of(result) == "deny"
+
+
+def test_t29_prefix_named_dir_evaluated_whole_not_collapsed(external_repo_dir):
+    d, fr = external_repo_dir
+    evil = fr.parent / f"{fr.name}-evil"
+    evil.mkdir()
+    subprocess.run(["git", "-C", str(evil), "init", "-q"], check=True)
+    result = run_boundary_bash(d, f'git -C "{evil}" commit -m x')
+    assert decision_of(result) == "deny"
+    reason = json.loads(result.stdout)["hookSpecificOutput"]["permissionDecisionReason"]
+    m = re.search(r"external repository \(([^)]+)\)\. Use", reason)
+    assert m, f"deny reason does not name the evaluated path: {reason!r}"
+    assert m.group(1) == str(evil), (
+        f"expected the WHOLE component {evil} to be evaluated, got {m.group(1)}"
+    )
