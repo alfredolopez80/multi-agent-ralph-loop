@@ -39,6 +39,15 @@
     ],
     "PreToolUse": [
       {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/skill-validator.sh"
+          }
+        ]
+      },
+      {
         "matcher": "Task",
         "hooks": [
           {
