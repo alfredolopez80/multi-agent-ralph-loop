@@ -131,6 +131,7 @@ TEST_SUITES=(
     "unit/test_validation_common.sh:Unit: validation-common library"
     "unit/test-wt-lead-scripts.sh:Unit: wt-lead scope and provenance guards"
     "unit/test-statusline-context.sh:Unit: statusline context (e2e, T38 / issue #60)"
+    "../scripts/skill-lint-wrapper.sh:Skill lint corpus (T50)"
 )
 
 # Opt-in: these assert against a provisioned machine -- symlinks under ~/.claude,
