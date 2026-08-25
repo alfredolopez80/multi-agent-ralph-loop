@@ -210,6 +210,30 @@ def test_delegate_stderr_preserved_and_logged(tmp_path):
     assert "git-safety-guard.py" in log.read_text()      # logged
 
 
+# --- T19: unparseable input denies; valid-but-uncovered tool allows ---
+# "Could not read the input" is NOT "read it and have no objection".
+
+def test_empty_stdin_denies(tmp_path):
+    hooks = build_sandbox(tmp_path)
+    result = run_guard(hooks, "")
+    assert decision_of(result) == "deny"
+    assert "unparseable" in result.stdout
+
+def test_garbage_stdin_denies(tmp_path):
+    hooks = build_sandbox(tmp_path)
+    result = run_guard(hooks, "no-soy-json{{{")
+    assert decision_of(result) == "deny"
+    assert "unparseable" in result.stdout
+
+def test_valid_payload_for_uncovered_tool_allows(tmp_path):
+    # Read is a real tool this guard does not cover: a VALID payload for it
+    # must still allow — this is the distinction T19 exists to draw.
+    hooks = build_sandbox(tmp_path)
+    result = run_guard(
+        hooks, '{"tool_name": "Read", "tool_input": {"file_path": "/tmp/x"}}')
+    assert decision_of(result) == "allow"
+
+
 # --- PreToolUse JSON contract (tests/HOOK_FORMAT_REFERENCE.md) ---
 
 @pytest.mark.parametrize("scenario,stdin,env", [
