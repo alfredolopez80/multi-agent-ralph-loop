@@ -15,6 +15,20 @@ CUR="$(git branch --show-current)"
 [[ -z "$(git status --porcelain)" ]] || { echo "ERROR: $MAIN is dirty. Commit or stash first."; git status --short; exit 1; }
 git rev-parse --verify -q "$BRANCH" >/dev/null || { echo "ERROR: branch $BRANCH not found"; exit 1; }
 
+# T33: a gate that silently skips when unset is a gate that does not exist.
+# A session restart after compaction loses this export (observed integrating
+# T29/b09cfb2: the merge was stamped "OK" and no test ever ran). "Unset"
+# cannot be told apart from "lost", so the script must not guess — refuse
+# BEFORE main moves, because after the merge a missing gate and a green gate
+# print the same "OK". The error prints the exact export, so the retry cost
+# is one line. A deliberate no-test integration would need an explicit
+# opt-out value; no such case exists today, so none is implemented.
+[[ -n "${QTEAM_TEST_CMD:-}" ]] || {
+  echo "ERROR: QTEAM_TEST_CMD is unset — refusing to integrate without a test gate."
+  echo "       export QTEAM_TEST_CMD=\"bash tests/run-all-unit-tests.sh\" and retry."
+  exit 1
+}
+
 if [[ $# -gt 0 ]]; then
   # "from $BRANCH" has to be true, not just claimed. git cherry-pick takes any commit it
   # can resolve, so a stale or mistyped sha lands an unreviewed commit on main and the
