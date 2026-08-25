@@ -230,23 +230,7 @@ EOF
 
 @test "Preserves user's MCP server configuration" {
     # Create user settings with MCP servers
-    cat > "${CLAUDE_DIR}/settings.json" << 'EOF'
-{
-  "permissions": {
-    "allow": ["Read"]
-  },
-  "mcpServers": {
-    "filesystem": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/user"]
-    },
-    "github": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"]
-    }
-  }
-}
-EOF
+    cp "${SCRIPT_DIR}/tests/installer/fixtures/preserves_user_mcp_settings.json" "${CLAUDE_DIR}/settings.json"
 
     local result=$(do_merge "$RALPH_SETTINGS" "${CLAUDE_DIR}/settings.json")
 

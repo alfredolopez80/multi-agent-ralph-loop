@@ -78,8 +78,7 @@ class TestSetupObsidianVault:
                        "${VAULT_DIR:-" in line or "$VAULT_DIR" in line, \
                     f"VAULT_DIR must use $HOME or env var, not hardcoded path: {line}"
                 # Ensure no literal /Users/<username>
-                assert "/Users/alfredolopez" not in line, \
-                    f"Must not hardcode /Users/alfredolopez in VAULT_DIR: {line}"
+                assert "/Users/alfredolopez" not in line, f"Must not hardcode /Users/alfredolopez in VAULT_DIR: {line}"  # tilde-ok: asserts the hardcoded /Users string is NOT used
                 break
 
     def test_mkdir_commands_use_vault_dir_variable(self):
