@@ -56,11 +56,29 @@ simulate_hook() {
 run_e2e_tests() {
     print_header "End-to-End Integration Tests v${VERSION}"
 
-    # Check if hook exists
+    # Check if hook exists. The original `return 0` here was a silent skip
+    # that let the suite print "Tests Run: 0 / Tests Passed: 0" and still
+    # exit 0, which the runner counted as ✓. That is exactly the same
+    # fail-open class as test_quality_gates.bats (T30) and the same fix:
+    # fail loudly with the concrete reason. The hook was retired in 498556f
+    # (Unified Herding Blanket v3.0); see docs/testing/ORPHAN_TEST_AUDIT.md
+    # for the verdict and the runner-level T34 guard.
     if [[ ! -f "$HOOK_FILE" ]]; then
-        echo -e "${YELLOW}WARNING${NC}: Hook file not found: $HOOK_FILE"
-        echo "Skipping hook execution tests..."
-        return 0
+        echo -e "${RED}FAIL${NC}: required hook missing: $HOOK_FILE"
+        echo "This suite tests .claude/hooks/promptify-auto-detect.sh, retired in"
+        echo "498556f (Unified Herding Blanket v3.0). With its target gone, the"
+        echo "suite cannot run any of its 10 assertions; reporting green over"
+        echo "zero assertions would be a silent-skip — see T30/T34 in"
+        echo "docs/testing/ORPHAN_TEST_AUDIT.md."
+        echo ""
+        echo "Verdict options:"
+        echo "  (a) Restore the hook if its functionality is needed."
+        echo "  (b) Retire this suite per the #50 precedent (tests/.../test-e2e.sh"
+        echo "      was already partially obsoleted in v3.0)."
+        echo "  (c) Replace this suite with one that exercises a live hook."
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+        TESTS_RUN=$((TESTS_RUN + 1))
+        return 1
     fi
 
     # Test 1: Hook file exists and is executable
