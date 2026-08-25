@@ -25,6 +25,34 @@
 #   vc_verdict "My Validator" || exit 1
 #   exit 0
 
+# BASH 4+ IS REQUIRED, and this is where that is enforced.
+#
+# Every caller of this library builds its result tables with `declare -A`. Bash 3.2 — what
+# macOS still ships as /bin/bash — has no associative arrays. It does not abort: it writes
+# "declare: -A: invalid option" to stderr, carries on, and then collapses every
+# RESULTS[key]=... onto index 0, because an unset name in an array subscript evaluates
+# arithmetically to 0. The run produces confident nonsense.
+#
+# That is how this reached CI as `jq: parse error: Invalid numeric literal at line 1,
+# column N`, with N differing per script and matching nothing in any emitter — N was simply
+# the length of the failing script's own absolute path, because $output began with
+# "/Users/.../validate-<name>.sh: line 85: declare: -A: invalid option" instead of "{".
+#
+# Re-exec under a newer bash when the machine has one; refuse to run when it does not.
+# Degrading quietly is the one option available here that must not be taken.
+if [ "${BASH_VERSINFO:-0}" -lt 4 ]; then
+    for _vc_bash in /opt/homebrew/bin/bash /usr/local/bin/bash /usr/bin/bash; do
+        [ -x "$_vc_bash" ] || continue
+        _vc_major="$("$_vc_bash" -c 'echo "${BASH_VERSINFO:-0}"' 2>/dev/null || echo 0)"
+        if [ "${_vc_major:-0}" -ge 4 ]; then
+            exec "$_vc_bash" "$0" "$@"
+        fi
+    done
+    echo "ERROR: $0 requires bash 4.0+ for associative arrays (found ${BASH_VERSION:-unknown})." >&2
+    echo "       macOS ships bash 3.2. Install a newer one:  brew install bash" >&2
+    exit 78
+fi
+
 # Idempotent under re-source; no `readonly` so a second `source` cannot abort the caller.
 # Color is emitted unconditionally (matching every current script) unless NO_COLOR is set,
 # so piped output looks exactly as it did before this library existed.

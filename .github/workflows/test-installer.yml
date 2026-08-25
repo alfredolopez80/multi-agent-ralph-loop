@@ -158,23 +158,34 @@ jobs:
           echo "install.sh exit: $?"
           echo "::endgroup::"
 
-      - name: Debug — raw validator output (issue #44)
-        # La rama macOS falla con `jq: Invalid numeric literal at line 1, col ~100`.
-        # Linea 1 significa que $output no empieza por '{': algo escribe a stdout
-        # (o a stderr, que `run` de bats fusiona) ANTES del JSON. No se reproduce
-        # en una maquina de desarrollo macOS, asi que este paso captura los bytes
-        # reales en el runner. `cat -A` hace visible cualquier control char.
-        # Temporal: retirar cuando #44 se cierre.
-        continue-on-error: true
+      - name: Verify bash 4+ is the interpreter for the validators (issue #44)
+        # Los validadores de scripts/ construyen sus tablas con `declare -A`, que
+        # exige bash 4. macOS sigue trayendo bash 3.2 como /bin/bash, y ahi
+        # `declare -A` no aborta: avisa por stderr, sigue, y colapsa cada
+        # RESULTS[clave] sobre el indice 0. De ahi los 7 suites en rojo solo en
+        # macOS. El paso de debug anterior no llego a contarlo porque usaba
+        # `cat -A`, que es de GNU coreutils y BSD cat no acepta.
+        #
+        # Se instala bash de verdad en vez de relajar la asercion. La libreria
+        # scripts/lib/validation-common.sh reejecuta bajo un bash >= 4 si lo
+        # encuentra y falla ruidosa si no, asi que este paso deja el runner en el
+        # camino rapido y ademas documenta que version acabo usandose.
         run: |
-          echo "::group::stdout only"
-          bash scripts/validate-directories.sh --format json 2>/dev/null | head -3 | cat -A
+          echo "::group::bash provisioning"
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            brew install bash
+          fi
+          echo "PATH bash:   $(command -v bash)"
+          bash -c 'echo "PATH bash version: ${BASH_VERSION}"'
+          echo "/bin/bash:   $(/bin/bash -c 'echo ${BASH_VERSION}')"
           echo "::endgroup::"
-          echo "::group::stdout + stderr (lo que ve bats run)"
-          bash scripts/validate-directories.sh --format json 2>&1 | head -5 | cat -A
-          echo "::endgroup::"
-          echo "::group::hook context-warning"
-          ./.claude/hooks/context-warning.sh < tests/installer/fixtures/mock-tool-inputs/user-prompt-submit.json 2>&1 | head -3 | cat -A
+
+          echo "::group::validator smoke test"
+          # Falla el paso si el validador no emite JSON parseable: es exactamente
+          # la asercion que rompia dentro de bats, comprobada aqui sin bats de por
+          # medio para que el diagnostico no dependa de como `run` captura salida.
+          scripts/validate-directories.sh --format json | jq empty
+          echo "validate-directories.sh: JSON OK"
           echo "::endgroup::"
 
       - name: Run BATS tests
