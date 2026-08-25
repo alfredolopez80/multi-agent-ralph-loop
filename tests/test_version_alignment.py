@@ -128,10 +128,18 @@ class TestVersionAlignment:
         )
 
     def test_rules_files_exist(self):
-        """V3.0 rule files must exist."""
+        """V3.0 rule files must exist.
+
+        The source moved to .claude/rules-src/ in T40 (F1+F2): Claude Code
+        auto-loads .claude/rules/, so keeping the source there made every
+        session pay for the same text twice — once from the repo and once
+        from the header-stamped copy in ~/.claude/rules/, which is what the
+        sync script writes and what actually applies. The rules did not go
+        away; only the location the repo keeps them in did.
+        """
         v3_rules = [
-            ".claude/rules/plan-immutability.md",
-            ".claude/rules/aristotle-methodology.md",
+            ".claude/rules-src/plan-immutability.md",
+            ".claude/rules-src/aristotle-methodology.md",
         ]
         for rule_path in v3_rules:
             full_path = REPO_ROOT / rule_path

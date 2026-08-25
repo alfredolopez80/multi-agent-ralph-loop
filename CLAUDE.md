@@ -44,7 +44,9 @@ nothing. This bounds the trigger; when it fires, it fires in full. Measured cost
 signal-to-noise, never token savings. Full table in `~/.claude/CLAUDE.md`.
 
 Reference: `docs/reference/aristotle-first-principles.md`
-Rule: `.claude/rules/aristotle-methodology.md`
+Rule: `.claude/rules-src/aristotle-methodology.md` (source; the copy that
+applies is `~/.claude/rules/aristotle-methodology.md`, written by
+`.claude/scripts/sync-rules-from-source.sh`)
 
 ## Configuration Location
 
