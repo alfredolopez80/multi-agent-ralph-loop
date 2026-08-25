@@ -403,3 +403,45 @@ class TestEdgeCases:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestT59SubstitutionProse:
+    """T59 (#71): markdown prose is not command substitution.
+
+    The backtick branch used a greedy `.*`, so ONE opening backtick plus a
+    destructive verb ANYWHERE later matched — even outside every backtick
+    pair. The T37/T59 false-positive write-ups themselves ("the FP was
+    `rm ` matching inside *confirm*") were denied as "command substitution".
+    The line this must NOT cross: a REAL substitution inside a text payload
+    still denies, because inside double quotes the shell executes it.
+    """
+
+    LEAD_CASE = ('gh issue close 66 --comment "Cerrado: el falso positivo era '
+                 '`rm ` casando dentro de *confirm/platform/perform*."')
+
+    @staticmethod
+    def _blocked(cmd):
+        # The substitution check lives in main(), not check_blocked_pattern —
+        # exercise the whole hook, the same path production takes.
+        import subprocess as sp
+        payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": cmd}})
+        r = sp.run(["python3", os.path.join(os.path.dirname(__file__), "..",
+                     ".claude", "hooks", "git-safety-guard.py")],
+                   input=payload, capture_output=True, text=True, timeout=30)
+        return '"permissionDecision": "deny"' in r.stdout.replace(" ", "").replace(chr(10), "") \
+            or json.loads(r.stdout)["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+    def test_t59_lead_case_bare_rm_in_markdown_allows(self):
+        assert not self._blocked(self.LEAD_CASE)
+
+    def test_t59_bare_rm_dollar_paren_allows(self):
+        assert not self._blocked('gh issue close 66 --comment "el patron $(rm ) sin args era el FP"')
+
+    def test_t59_real_substitution_dollar_paren_denies(self):
+        assert self._blocked('gh issue close 66 --comment "$(rm -rf /tmp/x)"')
+
+    def test_t59_real_substitution_backticks_denies(self):
+        assert self._blocked('gh issue close 66 --comment "`rm -rf /tmp/x`"')
+
+    def test_t59_real_git_reset_in_backticks_denies(self):
+        assert self._blocked('gh issue close 66 --comment "`git reset --hard` citado"')

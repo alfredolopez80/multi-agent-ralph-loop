@@ -242,8 +242,12 @@ KUBECTL = WRAPPER + r"kubectl\s+" + _flag_skip(_KUBECTL_VFLAGS, "nsuvp")
 # Destructive verbs used by the command-substitution / shell -c detectors
 # v2.71.0: `rm` is word-anchored (\brm\s) — unanchored it matched the tail of
 # "confirm", "platform", "perform", "transform" and misclassified plain text.
+# T59 (#71): \brm\s+\S — a substitution running BARE `rm` (no argument) prints
+# usage and deletes nothing; markdown prose citing "`rm `" (the T37/T59 false
+# positive write-ups) must not trip the substitution detector. With an
+# argument (`rm -rf /`) it is genuinely destructive and stays covered.
 DESTRUCTIVE_INNER = (
-    r"(?:\brm\s|git\s+reset|git\s+clean|git\s+checkout\s+--"
+    r"(?:\brm\s+[^\s`)]|git\s+reset|git\s+clean|git\s+checkout\s+--"
     r"|aws\s+[\w-]+\s+(?:delete|terminate|purge|destroy|remove|deregister)"
     r"|aws\s+s3\s+(?:rm|rb|sync)\b"
     r"|gcloud\s+.*\bdelete\b"
@@ -942,8 +946,17 @@ def main():
         # These can hide destructive commands inside seemingly safe ones
         # v2.70.0: DESTRUCTIVE_INNER covers aws/gcloud/gsutil verbs (kubectl handed off to
         # k8s-context-guard-v2, which itself detects cloud tools inside $()/backticks)
-        if re.search(r'\$\(.*' + DESTRUCTIVE_INNER, command) or \
-           re.search(r'`.*' + DESTRUCTIVE_INNER, command):
+        # T59 (#71): the backtick branch used `.*` — greedy ANY — so one opening
+        # backtick plus a destructive verb ANYWHERE later matched, even outside
+        # every backtick pair: markdown prose in --comment payloads ("the FP was
+        # `rm ` matching inside *confirm*" — the T37/T59 write-ups themselves)
+        # was denied as "command substitution". Both branches now demand the
+        # destructive verb INSIDE the substitution: no other backtick/closing
+        # paren between the opener and the verb. A REAL substitution inside a
+        # text payload still denies — inside double quotes the shell executes
+        # it — which is the line this fix must not cross.
+        if re.search(r'\$\([^)]*' + DESTRUCTIVE_INNER, command) or \
+           re.search(r'`[^`]*' + DESTRUCTIVE_INNER, command):
             log_security_event("BLOCKED", original_command, "Command substitution with destructive command detected")
             response = {
                 "hookSpecificOutput": {
