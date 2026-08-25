@@ -7,10 +7,18 @@
 ### Fixed - the bash 3.2 guard missed case-modification expansion (follow-up to #44)
 
 - **`uses_bash4_only` in `tests/installer/test-bash-version-guard.bats` matched only
-  `declare -A`, `mapfile` and `readarray`.** `${x^^}` / `${x,,}` (and the single-char
-  `${x^}` / `${x,}`) are bash 4.0 too, and their absence let two live files through the
-  guard added to catch exactly this class. `local -A` is now matched alongside
-  `declare -A`; only the keyword differed.
+  `declare -A`, `mapfile` and `readarray`.** Case-modification expansion is bash 4.0 too,
+  and its absence let two live files through the guard added to catch exactly this class.
+  The detector now covers every form the operator accepts — `${x^^}` / `${x,,}` /
+  `${x^}` / `${x,}`, the optional match pattern (`${x^^[a-z]}`), positional parameters
+  (`${1^^}`), indirect expansion (`${!ref^^}`) and array subscripts (`${arr[@]^^}`) —
+  plus `local -A` alongside `declare -A`. `${arr[@]^^}` is the dangerous one: under 3.2
+  it does not even say `bad substitution`, it returns the value unmodified.
+- **The detector now has tests of its own.** It gates every other test in the file and
+  had none, so an incomplete pattern read as a clean tree. Two tests assert it directly
+  against 14 bash-4-only forms and 12 bash-3-valid expansions (`${x:-a,b}`, `${x%,}`,
+  `${x//,/;}`, `${!arr[@]}`, …). A false positive is not harmless: it would push a
+  bash-3-clean file into declaring `VC_REQUIRE_BASH4`, which the converse test then fails.
 - **`.claude/hooks/aristotle-analysis-display.sh` used `${prompt,,}`.** Under bash 3.2
   this is not a crash: the assignment aborts with `bad substitution`, `lower_prompt`
   stays empty, every keyword match below fails, and a prompt scoring complexity 10
