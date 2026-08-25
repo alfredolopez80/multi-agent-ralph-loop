@@ -263,7 +263,6 @@ __GNU_ONLY_ALLOWLIST_START__
 .claude/backup/hooks/unified-context-tracker.sh|timeout
 .claude/hooks/ai-code-audit.sh|stat-bsd
 .claude/hooks/ai-code-audit.sh|stat-c
-.claude/hooks/auto-format-prettier.sh|realpath-m
 .claude/hooks/anti-rationalization-gate.sh|date-d
 .claude/hooks/anti-rationalization-gate.sh|stat-bsd
 .claude/hooks/anti-rationalization-gate.sh|stat-c
@@ -275,7 +274,6 @@ __GNU_ONLY_ALLOWLIST_START__
 .claude/hooks/lib/worktree-utils.sh|stat-c
 .claude/hooks/orchestrator-auto-learn.sh|timeout
 .claude/hooks/parallel-explore.sh|timeout
-.claude/hooks/plan-sync-post-step.sh|realpath-m
 .claude/hooks/plan-state-adaptive.sh|stat-bsd
 .claude/hooks/plan-state-adaptive.sh|stat-c
 .claude/hooks/plan-state-lifecycle.sh|stat-bsd
