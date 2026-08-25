@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "date": "2026-08-25",
   "issue": 46,
   "phase": "STEP B (manifest + regression tests). STEP A (diagnostic shutdown) deliberately NOT done: ruled unsafe as drafted; B goes first.",
@@ -15,7 +15,11 @@
       "kind": "hook",
       "hook": ".claude/hooks/permission-guard.sh",
       "event": "PreToolUse",
-      "matchers": ["Bash", "Edit|Write", "Agent|Task"],
+      "matchers": [
+        "Bash",
+        "Edit|Write",
+        "Agent|Task"
+      ],
       "sources": [
         ".claude/hooks/git-safety-guard.py",
         ".claude/hooks/repo-boundary-guard.sh"
@@ -36,7 +40,9 @@
       "kind": "hook",
       "hook": ".claude/hooks/git-safety-guard.py",
       "event": "PreToolUse",
-      "matchers": ["Bash"],
+      "matchers": [
+        "Bash"
+      ],
       "sources": [],
       "properties": [
         "Blocks destructive git (reset --hard, push --force), destructive fs (rm -rf /, clean -f) and command chaining (;, &&, eval, xargs rm)",
@@ -54,8 +60,14 @@
       "kind": "hook",
       "hook": ".claude/hooks/repo-boundary-guard.sh",
       "event": "PreToolUse",
-      "matchers": ["Bash", "Edit|Write", "Agent|Task"],
-      "sources": [".claude/hooks/lib/worktree-utils.sh"],
+      "matchers": [
+        "Bash",
+        "Edit|Write",
+        "Agent|Task"
+      ],
+      "sources": [
+        ".claude/hooks/lib/worktree-utils.sh"
+      ],
       "properties": [
         "Registered DIRECTLY on Edit|Write and Agent|Task (inserted before the permission pipeline) in addition to Bash — the boundary survives a broken wrapper",
         "Own fail-closed trap _emit_deny_on_crash on ERR/EXIT (lines 15-18): a crash denies, logged to ~/.ralph/logs/repo-boundary.log",
@@ -74,7 +86,9 @@
       "kind": "hook",
       "hook": ".claude/hooks/k8s-context-guard-v2.py",
       "event": "PreToolUse",
-      "matchers": ["Bash"],
+      "matchers": [
+        "Bash"
+      ],
       "sources": [
         ".claude/hooks/k8s_context_guard/cloud_operation_gate.py",
         ".claude/hooks/k8s_context_guard/context_classification.py",
@@ -99,7 +113,9 @@
       "event": null,
       "matchers": [],
       "sources": [],
-      "sourced_by": [".claude/hooks/repo-boundary-guard.sh"],
+      "sourced_by": [
+        ".claude/hooks/repo-boundary-guard.sh"
+      ],
       "properties": [
         "Provides get_project_root / get_main_repo (worktree-aware, via --git-common-dir) to the boundary guard and the worktree guards",
         "Not registered itself: consumed via source. repo-boundary-guard.sh carries inline fallbacks if this lib is unreachable (see repo-boundary properties)"
@@ -108,6 +124,29 @@
         "run": "bash -c 'source .claude/hooks/lib/worktree-utils.sh && get_project_root'",
         "expect_kind": "bash_function",
         "expect_stdout_contains": "multi-agent-ralph-loop"
+      }
+    },
+    {
+      "id": "skill-security",
+      "kind": "hook",
+      "hook": ".claude/hooks/skill-validator.sh",
+      "event": "PreToolUse",
+      "matchers": [
+        "Skill"
+      ],
+      "sources": [
+        ".claude/hooks/skill-validator.allowlist"
+      ],
+      "properties": [
+        "T48 (#68): six deterministic patterns over the ONE SKILL.md about to load (invisible unicode, base64+exec, exfil IOCs, pipe-to-shell, secret literals, quote-aware override); context-awareness is a REQUIREMENT - the macos-cleaner extracts (real third-party file matching attack patterns while teaching the defense) are the regression fixture",
+        "Auditable allowlist: an entry without a written reason is invalid (ignored, skill stays blocked - fail-closed); an exempted pattern matching nothing is reported STALE so the list cannot rot",
+        "T44 (#67): the H70 skill.yaml domain is preserved - present-but-invalid skill.yaml denies; nameless and out-of-domain names allow silently",
+        "T62 (#72): FAILS OPEN BY DESIGN, deliberately - a validator bug must not take down the skill system (permission-guard covers unparseable payloads on the same matcher); empty/unparseable stdin emits allow with a clean exit 0, never by crashing (the accidental rc-1 allow is fixed)"
+      ],
+      "fixture": {
+        "run": "D=$(mktemp -d) && mkdir -p \"$D/.claude/skills/evil\" && printf '# evil\\n\\342\\200\\213zwsp payload\\n' > \"$D/.claude/skills/evil/SKILL.md\" && printf '{\"tool_input\":{\"skill\":\"evil\"}}' | HOME=\"$D\" bash .claude/hooks/skill-validator.sh; R=$?; rm -rf \"$D\"; exit $R",
+        "expect_decision": "deny",
+        "expect_reason_contains": "unicode_invisible"
       }
     }
   ],

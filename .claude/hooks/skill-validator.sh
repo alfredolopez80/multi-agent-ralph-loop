@@ -73,6 +73,21 @@ emit_json() {
 }
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     trap 'emit_json' ERR EXIT
+
+    # T62 (#72): empty stdin is the deterministic "nothing to validate"
+    # case. The old path died at the JSON extraction under set -e (rc 1)
+    # and the ERR trap emitted the allow BY ACCIDENT — fail-open by crash.
+    # The contract is now explicit and deliberate: this validator FAILS
+    # OPEN BY DESIGN — a bug here must not take down the skill system
+    # (permission-guard covers unparseable payloads) — with a clean exit 0,
+    # never by crashing. NOTE: inside the run-directly guard — validate_skill
+    # sources this file with stdin already drained, and a top-level copy of
+    # this block made the inner process emit a SECOND allow (double JSON).
+    if [[ -z "$INPUT" ]]; then
+        trap - ERR EXIT
+        emit_json '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
+        exit 0
+    fi
 fi
 
 # Configuration
@@ -540,7 +555,10 @@ try:
     name = ti.get('skill') or data.get('skill', '')
     print(name if isinstance(name, str) else '')
 except:
-    sys.exit(1)
+    # T62 (#72): garbage stdin degrades to nameless — the silent allow —
+    # instead of exiting 1 (which under set -e killed the hook and made the
+    # ERR trap emit the allow by accident: rc 1 + allow, the worst of both).
+    print("")
 " 2>/dev/null)
 
     if [[ -z "$skill_name" ]]; then
