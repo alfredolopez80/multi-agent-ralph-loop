@@ -81,9 +81,19 @@ Read the full diff (`git diff main...worktree-<name>`) and decide:
 |---|---|
 | Files outside allowed paths | RETURN — worker must revert them |
 | Tests not run or failing | RETURN with the failing command |
-| Branch behind `main` | REBASE, then re-review |
+| Branch behind `main` | **Nothing.** Integrate — the merge handles it |
+| Merge conflict on integrate | REBASE (section 5) |
 | Design or quality problem | RETURN with a precise fix |
 | Good | integrate (section 4) |
+
+A branch behind `main` is the **normal** state after every integration, not a
+condition to correct: you merged the previous one and `main` moved. Sending
+REBASE for mere behind-ness sends the worker into `git rebase main`, which for
+a long time this repo's own `git-safety-guard` denied — the single most blocked
+command of any session, ×16 in one day, and the reason two workers independently
+improvised a way around it. The guard is now context-aware, but the instruction
+was wrong on its own terms: a `--no-ff` merge resolves a behind branch without
+the worker doing anything.
 
 ## 4. Integrating
 

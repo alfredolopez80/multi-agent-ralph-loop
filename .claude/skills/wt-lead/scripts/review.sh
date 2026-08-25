@@ -11,7 +11,12 @@ git rev-parse --verify -q "$BRANCH" >/dev/null || { echo "ERROR: branch $BRANCH 
 AHEAD="$(git rev-list --count "$MAIN".."$BRANCH")"
 BEHIND="$(git rev-list --count "$BRANCH".."$MAIN")"
 echo "== $BRANCH: +$AHEAD ahead / -$BEHIND behind $MAIN"
-[[ "$BEHIND" -gt 0 ]] && echo "   NOTE: behind $MAIN — consider sending REBASE before integrating."
+# Deliberately NOT advising a REBASE here. Being behind main is the normal
+# state after every integration, and a --no-ff merge resolves it without the
+# worker touching anything. The old note sent workers into `git rebase main`,
+# which git-safety-guard denied — ×16 blocks in one day and the reason two
+# workers independently improvised a way around the guard.
+[[ "$BEHIND" -gt 0 ]] && echo "   (behind $MAIN — normal; the merge handles it)"
 
 echo
 echo "== commits"
