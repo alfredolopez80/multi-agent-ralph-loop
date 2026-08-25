@@ -181,6 +181,13 @@ generate_markdown_report() {
         *) status_emoji="📋" ;;
     esac
 
+    # Uppercased once here, not as `${status^^}` in the heredoc below: case-modification
+    # expansion is bash 4.0, and this file is pinned to `#!/bin/bash` — bash 3.2 on
+    # macOS whatever PATH says, so no re-exec can rescue it. There the expansion fails
+    # with "bad substitution" and the report is written with an empty Status field.
+    local status_upper
+    status_upper=$(printf '%s' "$status" | tr '[:lower:]' '[:upper:]')
+
     # Extract details
     local duration=$(echo "$details_json" | jq -r '.duration // "N/A"')
     local iterations=$(echo "$details_json" | jq -r '.iterations // "N/A"')
@@ -193,7 +200,7 @@ generate_markdown_report() {
 # ${status_emoji} Action Report: ${skill_name}
 
 **Generated**: ${timestamp}
-**Status**: ${status^^}
+**Status**: ${status_upper}
 **Session**: \`${session_id}\`
 
 ---

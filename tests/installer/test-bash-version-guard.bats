@@ -39,8 +39,23 @@ teardown() {
 # `declare -A` in prose, and a text-only grep would demand a flag it does not need.
 # `mapfile`/`readarray` are bash 4+ too, and one script under scripts/memory/ was
 # already using mapfile outside the original scripts/*.sh glob.
+#
+# Case-modification expansion (`${x^^}`, `${x,,}`, and the single-char `${x^}`/`${x,}`)
+# is bash 4.0 as well, and its absence from the first version of this detector let two
+# live files through — the same failure mode this suite exists to catch, one of them a
+# registered hook. Under 3.2 it is not a crash: the expansion aborts with "bad
+# substitution", the variable stays empty, and the script keeps going with wrong data.
+# `local -A` is included for the same reason `declare -A` is; only the keyword differs.
+#
+# The expansion arm covers every form the operator accepts, not just a bare name
+# followed by `}`: the optional `!` of indirect expansion (`${!ref^^}`), positional
+# parameters (`${1^^}`), `@`/`*`, an array subscript (`${arr[@]^^}`), and the optional
+# match pattern after the operator (`${name^^[a-z]}`). All are bash 4.0; a detector
+# anchored on `name}` would call a file clean while 3.2 fails on it. `${arr[@]^^}` is
+# the worst of them — under 3.2 it does not even say `bad substitution`, it silently
+# returns the value unmodified.
 uses_bash4_only() {
-    sed 's/#.*//' "$1" | grep -qE '(declare[[:space:]]+-A\b|\bmapfile\b|\breadarray\b)'
+    sed 's/#.*//' "$1" | grep -qE '((declare|local)[[:space:]]+-A\b|\bmapfile\b|\breadarray\b|\$\{!?[A-Za-z_0-9@*][A-Za-z_0-9]*(\[[^]]*\])?(\^\^?|,,?)[^}]*\})'
 }
 
 # Comments stripped here too: the library's usage header shows `VC_REQUIRE_BASH4=1`
@@ -89,13 +104,64 @@ scripts_under_test() {
 # every action report filed under the wrong skill, every domain tag reading "0", and a
 # "Specialization detected" line appended to a user's Obsidian vault on three unrelated
 # tasks. All four were rewritten to need no associative arrays. This keeps them that way.
+#
+# `.claude/worktrees/` is excluded because it is not this repo: it is gitignored
+# (.gitignore:191), holds zero tracked files, and contains separate checkouts pinned to
+# whatever commit their branch is on. Scanning them made the test report pre-fix copies
+# of the very files this commit repaired — a red that says nothing about the working
+# tree, and one that only ever fires for developers who use worktrees, never in CI.
 @test "guard: no .claude/ shell file uses bash-4-only syntax" {
     local offenders="" f
     while read -r f; do
         uses_bash4_only "$f" && offenders="$offenders ${f#$PROJECT_ROOT/}"
     done < <(find "$PROJECT_ROOT/.claude" -type f -name '*.sh' \
-                  -not -path '*/archive/*' -not -path '*/_archived/*' | sort)
+                  -not -path '*/archive/*' -not -path '*/_archived/*' \
+                  -not -path '*/worktrees/*' | sort)
     [[ -z "$offenders" ]] || fail "bash-4-only syntax under .claude/ (hooks cannot re-exec or exit 78):$offenders"
+}
+
+#===============================================================================
+# The detector itself. Everything above is only as good as `uses_bash4_only`, and
+# its first version was anchored on a bare name followed by `}` — which let
+# `${1^^}`, `${!ref^^}`, `${name^^[a-z]}` and `${arr[@]^^}` through. A scan that
+# reports "clean" over syntax that breaks on 3.2 is worse than no scan, so the
+# detector gets asserted directly rather than only through the tree it walks.
+#
+# Each positive below was executed under /bin/bash 3.2 before being listed here.
+#===============================================================================
+
+# Writes $2 into a throwaway file and reports whether the detector flags it.
+detects() {
+    local snippet="$1" f="$TEST_TMPDIR/detector-probe.sh"
+    printf '#!/bin/bash\n%s\n' "$snippet" > "$f"
+    uses_bash4_only "$f"
+}
+
+@test "detector: flags every bash-4-only form, not just \${name^^}" {
+    local missed="" s
+    # `${arr[@]^^}` is listed last deliberately: it is the only one that does not
+    # even print `bad substitution` under 3.2. It returns the value unmodified and
+    # the script carries on — no diagnostic anywhere.
+    for s in 'x="${name^^}"' 'x="${name,,}"' 'x="${name^}"' 'x="${name,}"' \
+             'x="${name^^[a-z]}"' 'x="${1^^}"' 'x="${!ref^^}"' 'x="${10^^}"' \
+             'x="${arr[i],,}"' 'declare -A t' 'local -A t' 'mapfile -t a < f' \
+             'readarray -t a < f' 'x="${arr[@]^^}"'; do
+        detects "$s" || missed="$missed [$s]"
+    done
+    [[ -z "$missed" ]] || fail "detector missed bash-4-only syntax:$missed"
+}
+
+@test "detector: does not flag expansions that are valid on bash 3.2" {
+    local wrong="" s
+    # The commas and carets here all sit in positions the case-modification
+    # operator cannot occupy. A detector that fires on these would push authors
+    # to declare VC_REQUIRE_BASH4 on bash-3-clean files, which test 2 then fails.
+    for s in 'x="${name}"' 'x="${name:-a,b}"' 'x="${name%,}"' 'x="${name#,}"' \
+             'x="${name//,/;}"' 'x="${#name}"' 'x="${!arr[@]}"' 'x="${name:0:1}"' \
+             'x="${arr[@]}"' 'x="${name/,/ }"' 'echo "a,b^c"' 'declare -a t'; do
+        detects "$s" && wrong="$wrong [$s]"
+    done
+    [[ -z "$wrong" ]] || fail "detector flagged bash-3-valid syntax:$wrong"
 }
 
 @test "guard: validation-common.sh carries the version check, gated on the flag" {

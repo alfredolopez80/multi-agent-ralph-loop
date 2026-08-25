@@ -22,8 +22,12 @@ estimate_complexity() {
     local complexity=1
     local lower_prompt
 
-    # Convert to lowercase (Bash 4+ native, no subprocess)
-    lower_prompt="${prompt,,}"
+    # Convert to lowercase. `tr`, not `${prompt,,}`: case-modification expansion is
+    # bash 4.0, and on stock macOS (bash 3.2) it does not crash the hook — it aborts
+    # the assignment with "bad substitution", leaves lower_prompt empty, every match
+    # below fails, and the hook returns complexity 1 for a prompt that scores 10.
+    # The Aristotle phases then never fire, silently, with exit 0.
+    lower_prompt=$(printf '%s' "$prompt" | tr '[:upper:]' '[:lower:]')
 
     # High complexity indicators (4+)
     if [[ "$lower_prompt" =~ refactor ]]; then ((complexity+=4)); fi
