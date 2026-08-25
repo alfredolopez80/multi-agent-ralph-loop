@@ -386,6 +386,19 @@ measurements) lives in `docs/qteam/QTEAM_FAILURE_MODES.md`.
 7. Before acting on a warning, establish who emits it: a harness message and
    a repo hook have different reliability and different fixes. No unknown
    model silently gets a default context window.
+8. When in doubt, ask — always through `AskUserQuestion`, never as prose at
+   the end of a reply. In a Q-team, notify first and ask second: lead emits
+   an OSC 777 to its own pane TTY, then calls the tool. The escape must be
+   wrapped in tmux's DCS passthrough with every inner ESC doubled, and
+   written to the TTY — a hook's stdout is captured for its JSON and never
+   reaches the terminal (failure mode 28). Requires `allow-passthrough all`.
+   OSC 9 does not work here; OSC 777 carries a title and a body, no subtitle.
+```bash
+printf '\033Ptmux;\033\033]777;notify;TITLE;BODY\033\033\\\033\\' > "$(tmux display -p -t "$TMUX_PANE" '#{pane_tty}')"
+```
+   Ask only what you cannot measure: if git, the tests or the code answer it,
+   answering it yourself is the job. The universal half of this rule lives in
+   `~/.claude/CLAUDE.md`; what is Q-team-specific is the notification.
 
 ### Required settings
 
