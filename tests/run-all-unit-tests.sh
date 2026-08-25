@@ -128,6 +128,7 @@ TEST_SUITES=(
     "unit/test-quality-gates-v2.90.sh:Unit: quality gates"
     "unit/test_validation_common.sh:Unit: validation-common library"
     "unit/test-wt-lead-scripts.sh:Unit: wt-lead scope and provenance guards"
+    "unit/test-statusline-context.sh:Unit: statusline context (hardened against talking-tests #42)"
 )
 
 # Opt-in: these assert against a provisioned machine -- symlinks under ~/.claude,
