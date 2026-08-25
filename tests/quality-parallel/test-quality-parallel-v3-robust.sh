@@ -1,6 +1,24 @@
 #!/usr/bin/env bash
 # Quality Parallel System - End-to-End Test v3 (ROBUST)
 # VERSION: 3.0.1 - Fixed JSON input handling
+#
+# ----------------------------------------------------------------------------
+# DIAGNOSTIC 2026-08-25 (T14-runtests2, #51 part 2): OPT-IN (candidate)
+# What I see after mmx-2's sandbox fix in T1 (#52): the real defect.
+#   Test 1 (clean file):   PASS  -> detector correctly returns 0 findings
+#   Test 2 (API key+SQLi): FAIL  -> detector returns 0, expected >0
+#   Test 3 (orch SQLi):    FAIL  -> WARN "no findings", then coordinator runs
+#                                 but TEST3_PASS stays false (logic bug)
+# Root cause: ee2f95f dropped 3 of 4 registered quality checks
+# (sec-context-validate.sh, quality-gates-v2.sh, deslop-auto-clean.sh) because
+# they pointed at .claude/archive/ scripts. The detector now only does
+# stop-slop. Test 2 fixture's secrets/SQLi patterns are out of scope for the
+# current detector; Test 3 has the same out-of-scope fixture plus a logic bug
+# (no TEST3_PASS=true after coordinator success).
+# Verdict: opt-in. Wired requires either fixture update (to a stop-slop
+# pattern) or detector expansion (re-registering equivalent checks). Both are
+# out of scope for this task.
+# ----------------------------------------------------------------------------
 set -euo pipefail
 
 PR=$(git rev-parse --show-toplevel)
