@@ -4,6 +4,32 @@
 
 ## [Unreleased]
 
+### Fixed - the bash 3.2 guard missed case-modification expansion (follow-up to #44)
+
+- **`uses_bash4_only` in `tests/installer/test-bash-version-guard.bats` matched only
+  `declare -A`, `mapfile` and `readarray`.** `${x^^}` / `${x,,}` (and the single-char
+  `${x^}` / `${x,}`) are bash 4.0 too, and their absence let two live files through the
+  guard added to catch exactly this class. `local -A` is now matched alongside
+  `declare -A`; only the keyword differed.
+- **`.claude/hooks/aristotle-analysis-display.sh` used `${prompt,,}`.** Under bash 3.2
+  this is not a crash: the assignment aborts with `bad substitution`, `lower_prompt`
+  stays empty, every keyword match below fails, and a prompt scoring complexity 10
+  returns 1 — the Aristotle five-phase analysis silently never fires, with
+  `{"continue": true}` and exit 0. Measured before the fix: complexity 10 under bash 5.3,
+  no analysis at all under `/bin/bash` 3.2. Both now return 10.
+- **`.claude/lib/action-report-generator.sh` used `${status^^}` inside its heredoc.**
+  The file is pinned to `#!/bin/bash` — bash 3.2 on macOS whatever `PATH` says, so no
+  re-exec could reach it — and every report it wrote there carried an empty **Status**
+  field. Uppercased once into `status_upper` before the heredoc; output is now
+  byte-identical under 3.2 and 5.3.
+- **The guard test no longer scans `.claude/worktrees/`.** That path is gitignored
+  (`.gitignore:191`) with zero tracked files and holds separate checkouts pinned to
+  their own commits; scanning it reported pre-fix copies of the very files #44 repaired.
+  The red fired only for developers using worktrees and never in CI.
+
+> Why CI did not catch any of this is tracked in #54: the macOS leg is no longer stock,
+> so it no longer exercises the bash 3.2 path this class lives on.
+
 ### Removed - `ralph status` orchestration query and `ralph health` (#42)
 
 - **`ralph health` deleted.** It dispatched to `~/.claude/scripts/ralph-health.sh`, a file

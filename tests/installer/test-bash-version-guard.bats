@@ -39,8 +39,15 @@ teardown() {
 # `declare -A` in prose, and a text-only grep would demand a flag it does not need.
 # `mapfile`/`readarray` are bash 4+ too, and one script under scripts/memory/ was
 # already using mapfile outside the original scripts/*.sh glob.
+#
+# Case-modification expansion (`${x^^}`, `${x,,}`, and the single-char `${x^}`/`${x,}`)
+# is bash 4.0 as well, and its absence from the first version of this detector let two
+# live files through — the same failure mode this suite exists to catch, one of them a
+# registered hook. Under 3.2 it is not a crash: the expansion aborts with "bad
+# substitution", the variable stays empty, and the script keeps going with wrong data.
+# `local -A` is included for the same reason `declare -A` is; only the keyword differs.
 uses_bash4_only() {
-    sed 's/#.*//' "$1" | grep -qE '(declare[[:space:]]+-A\b|\bmapfile\b|\breadarray\b)'
+    sed 's/#.*//' "$1" | grep -qE '((declare|local)[[:space:]]+-A\b|\bmapfile\b|\breadarray\b|\$\{[A-Za-z_][A-Za-z_0-9]*(\[[^]]*\])?(\^\^?|,,?)\})'
 }
 
 # Comments stripped here too: the library's usage header shows `VC_REQUIRE_BASH4=1`
@@ -89,12 +96,19 @@ scripts_under_test() {
 # every action report filed under the wrong skill, every domain tag reading "0", and a
 # "Specialization detected" line appended to a user's Obsidian vault on three unrelated
 # tasks. All four were rewritten to need no associative arrays. This keeps them that way.
+#
+# `.claude/worktrees/` is excluded because it is not this repo: it is gitignored
+# (.gitignore:191), holds zero tracked files, and contains separate checkouts pinned to
+# whatever commit their branch is on. Scanning them made the test report pre-fix copies
+# of the very files this commit repaired — a red that says nothing about the working
+# tree, and one that only ever fires for developers who use worktrees, never in CI.
 @test "guard: no .claude/ shell file uses bash-4-only syntax" {
     local offenders="" f
     while read -r f; do
         uses_bash4_only "$f" && offenders="$offenders ${f#$PROJECT_ROOT/}"
     done < <(find "$PROJECT_ROOT/.claude" -type f -name '*.sh' \
-                  -not -path '*/archive/*' -not -path '*/_archived/*' | sort)
+                  -not -path '*/archive/*' -not -path '*/_archived/*' \
+                  -not -path '*/worktrees/*' | sort)
     [[ -z "$offenders" ]] || fail "bash-4-only syntax under .claude/ (hooks cannot re-exec or exit 78):$offenders"
 }
 
