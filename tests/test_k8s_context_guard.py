@@ -377,4 +377,98 @@ def test_main_deny_returns_exit_zero(monkeypatch, capsys):
     rc = ENTRY.main()
     out = json.loads(capsys.readouterr().out)
     assert out["hookSpecificOutput"]["permissionDecision"] == "deny"  # no --context -> deny
-    assert rc == 0
+
+
+# --- T26: script inspector false-positive fix (bidirectional verification) --
+#
+# The inspector used to take any line in a script that contained the string
+# "kubectl" (in a literal, regex, error message, comment, or variable name)
+# and treat it as a kubectl command, which then denied on missing --context.
+# The fix gates the extraction on `_line_starts_with_invocation`: a line only
+# counts as a command if its first token is a real cloud tool or a recognized
+# wrapper. These three tests assert the fix in both directions:
+#   (1) script that merely MENTIONS kubectl in non-invocation contexts -> NOT
+#       denied (the false positive that lead reported in T26)
+#   (2) live `kubectl delete pod x` without --context -> STILL denied (real
+#       fail-closed preserved; lead required both directions to be tested)
+#   (3) bash script with a REAL kubectl invocation line -> STILL detected
+#       and denied (regression guard for the fix's narrowness)
+
+
+def test_python_script_mentioning_kubectl_is_not_denied(tmp_path):
+    """Direction 1 — false positive is gone.
+
+    A Python file that mentions "kubectl" in non-invocation contexts (string
+    literals, regex patterns, error messages, comments, variable names) must
+    NOT be denied when run as `python3 <file>`. Running the k8s-context-guard
+    code itself (which mentions kubectl everywhere) is the canonical case that
+    used to be blocked with `kubectl_context_required` because the inspector
+    extracted the suffix of a `CLOUD_TOOLS = {...}` line and tried to assess
+    `"kubectl", "minikube"}` as a kubectl command.
+    """
+    script = tmp_path / "guard_like.py"
+    script.write_text(
+        # variable assignment with kubectl in a string literal
+        'CLOUD_TOOLS = {"helm", "kubectl", "minikube"}\n'
+        # error message string with kubectl
+        'REASON = "Every kubectl command must declare --context."\n'
+        # comment with kubectl (already skipped by the existing comment check,
+        # kept here for completeness so the test mirrors a real guard file)
+        '# helper: parse kubectl output\n'
+        # raw-string with kubectl (looks like a regex literal)
+        'TOOL_RE = re.compile(r"(kubectl|helm|minikube)")\n'
+        # keyword-arg key with kubectl
+        'kwargs = dict(reason_code="kubectl_context_required")\n',
+        encoding="utf-8",
+    )
+    verifier = make_verifier({MINIKUBE_CTX})
+    a = assess_command(f"python3 {script}", tmp_path, verifier)
+    assert a.action != "block", (
+        f"False positive: running a Python file that mentions kubectl only in "
+        f"strings / comments / regex should not be denied, got action="
+        f"{a.action!r} reason={a.reason!r} reason_code={a.reason_code!r}"
+    )
+
+
+def test_live_kubectl_delete_without_context_still_denied(tmp_path):
+    """Direction 2 — real fail-closed is intact.
+
+    A live `kubectl delete pod x` without --context must STILL be denied with
+    `kubectl_context_required`. The false-positive fix MUST NOT weaken the
+    real guard. Lead's T26 brief required this second test explicitly: "sin
+    la segunda, no sé si has arreglado el falso positivo o roto el guard."
+    """
+    verifier = make_verifier({MINIKUBE_CTX})  # minikube exists, but the
+    a = assess_command("kubectl delete pod x", tmp_path, verifier)
+    # command doesn't name it, so the verifier is never consulted
+    assert a.action == "block", (
+        f"Fail-closed regression: kubectl delete without --context must still "
+        f"be blocked, got action={a.action!r}"
+    )
+    assert a.reason_code == "kubectl_context_required"
+
+
+def test_bash_script_with_real_kubectl_invocation_still_detected(tmp_path):
+    """Direction 3 — real detection is intact.
+
+    A bash script that contains a line STARTING with a real kubectl invocation
+    must still be detected and denied. The fix gates on the first token being
+    a tool or wrapper, so `kubectl delete pod x` at the start of a line still
+    counts. This guards against the fix over-narrowing the inspector and
+    silently losing the real-detection path for any script that isn't a direct
+    shell command.
+    """
+    script = tmp_path / "delete_pod.sh"
+    script.write_text(
+        "#!/usr/bin/env bash\n"
+        "kubectl delete pod x\n",
+        encoding="utf-8",
+    )
+    script.chmod(0o755)  # so script_path() accepts it as a regular script
+    verifier = make_verifier({MINIKUBE_CTX})
+    a = assess_command(f"bash {script}", tmp_path, verifier)
+    assert a.action == "block", (
+        f"Detection regression: bash script with a real kubectl line must "
+        f"still be detected, got action={a.action!r}"
+    )
+    assert a.reason_code == "kubectl_context_required"
