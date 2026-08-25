@@ -12,7 +12,16 @@ set -e
 # laptop, which made the validator report on whatever happened to be at that path —
 # nothing, on every other machine — while still exiting through its normal verdict.
 _VC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_PATH="$(cd "${_VC_DIR}/.." && pwd)"
+# T62: compare against the MAIN repo, not whichever checkout this script
+# happens to run from. From a worktree, BASH_SOURCE resolves inside the
+# worktree and every global symlink pointing at the main checkout's skills
+# reads as "wrong target" — launcher-dependence, the T35/T61 family.
+_VC_GIT_COMMON="$(git -C "$_VC_DIR" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+if [[ -n "$_VC_GIT_COMMON" ]]; then
+    REPO_PATH="$(cd "$(dirname "$_VC_GIT_COMMON")" && pwd)"
+else
+    REPO_PATH="$(cd "${_VC_DIR}/.." && pwd)"
+fi
 GLOBAL_SKILLS="$HOME/.claude/skills"
 GLOBAL_COMMANDS="$HOME/.claude/commands"
 
