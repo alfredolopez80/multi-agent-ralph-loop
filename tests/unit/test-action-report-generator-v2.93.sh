@@ -292,10 +292,48 @@ else
     log_fail "Report output missing header"
 fi
 
-if echo "$STDOUT_OUTPUT" | grep -q "Report saved:"; then
+if echo "$STDOUT_OUTPUT" | grep -q '\*\*Report saved\*\*'; then
     log_pass "Report output includes file location"
 else
     log_fail "Report output missing file location"
+fi
+
+# ============================================
+# REGRESSION TESTS (Bug A + Bug C from T18)
+# ============================================
+# Bug A: bash ${4:-{}} tokenizes as ${4:-{ + } + }, returning $4 plus a
+# hanging `}`. Input `{}` becomes `{}}` and breaks every `jq --argjson`
+# downstream. The fix replaces the parameter expansion with an explicit
+# empty-string check that defaults to a literal `{}`.
+
+# Bug C: `find -printf` is GNU-only. On a stock macOS runner without
+# `bfs` or `findutils`, `-printf` returns "unknown primary" and 2>/dev/null
+# swallows the error, leaving the pipeline empty. The fix replaces it with
+# POSIX-portable `ls -t` / `ls -tr`.
+
+# Test 15: Bug A regression — `details_json` for `{}` input is 2 chars,
+# not the buggy 3. Done by calling generate_metadata directly with `{}`
+# and asserting the result is valid JSON (the buggy form produces an
+# empty string that fails jq parsing).
+echo ""
+echo "Test 15: Bug A regression — generate_metadata with '{}' input"
+GENERATED_metadata=$(generate_metadata "regression-test" "completed" "desc" "{}" "2026-08-25T00:00:00Z" "/tmp/regression-test.md" 2>&1)
+if echo "$GENERATED_metadata" | jq empty 2>/dev/null; then
+    log_pass "Bug A regression: '{}' input produces valid JSON (no hanging })"
+else
+    log_fail "Bug A regression: '{}' input produced invalid JSON — Bug A has returned"
+fi
+
+# Test 16: Bug C regression — no `find -printf` in the generator lib.
+# The bug returns to bite when any future contributor reintroduces a
+# GNU-only construct; this guard fails fast and points at the line.
+echo ""
+echo "Test 16: Bug C regression — no GNU-only find -printf in lib"
+if grep -nE 'find .* -printf' .claude/lib/action-report-generator.sh >/dev/null 2>&1; then
+    log_fail "Bug C regression: find -printf reappeared in action-report-generator.sh — fix is broken or reverted"
+    grep -nE 'find .* -printf' .claude/lib/action-report-generator.sh | head -3 | sed 's/^/         /'
+else
+    log_pass "Bug C regression: no find -printf (portable alternative in place)"
 fi
 
 # ============================================
