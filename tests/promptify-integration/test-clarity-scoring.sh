@@ -1,14 +1,35 @@
 #!/bin/bash
 # test-clarity-scoring.sh - Test clarity scoring algorithm
-# VERSION: 1.0.0
-# Part of Promptify Integration Test Suite
+# VERSION: 2.0.0  (T36: repointed to live command-router.sh)
+#
+# T36 history:
+#   The original (v1.0.0) suite declared HOOK_FILE (pointing at the now-
+#   retired .claude/hooks/promptify-auto-detect.sh) and shipped its own
+#   local copy of calculate_clarity_score() — extracted at script load.
+#   That copy had THREE word-count tiers (<5, <10, <15); the live function
+#   in .claude/hooks/command-router.sh (consolidated in 498556f) has only
+#   TWO (<5, <10). The 3rd tier never existed in production; git log -S
+#   'word_count' on command-router.sh returns only 498556f, and the
+#   pre-consolidation promptify-auto-detect.sh (94cbf59) also had two
+#   tiers. So the test was MORE permissive than production for 10-14
+#   word prompts, with no way to detect its own drift (the copy cannot
+#   see changes to the live function).
+#
+#   v2.0.0 follows the wrapper convention already established in this
+#   directory by test-credential-redaction.sh, test-security-functions.sh,
+#   and the validate_prompt_security path: source command-router.sh
+#   SECTION 4 at runtime via awk, never inline a function body. The 20
+#   existing test cases pass against the live function (verified by
+#   score-divergence.sh). The new case that exercises the 10-14 word
+#   tier boundary is deferred until the production intent is confirmed.
 
 set -euo pipefail
 
-readonly VERSION="1.0.0"
+readonly VERSION="2.0.0"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-readonly HOOK_FILE="${PROJECT_ROOT}/.claude/hooks/promptify-auto-detect.sh"
+# The live home of calculate_clarity_score() after the 498556f consolidation.
+readonly ROUTER_FILE="${PROJECT_ROOT}/.claude/hooks/command-router.sh"
 
 # Colors for output
 readonly RED='\033[0;31m'
@@ -36,74 +57,50 @@ print_result() {
     TESTS_RUN=$((TESTS_RUN+1))
 }
 
-# Calculate clarity score (extracted from hook)
-calculate_clarity_score() {
-    local prompt="$1"
-    local score=100
-    local prompt_lower=$(echo "$prompt" | tr '[:upper:]' '[:lower:]')
+# Source calculate_clarity_score from the LIVE command-router.sh SECTION 4.
+# This is the same extraction pattern test-e2e.sh uses (T34b). The wrapper
+# convention in this directory (test-credential-redaction.sh:45,
+# test-security-functions.sh:45 and :288) is `bash -c 'source "$1"; fn "$2"'`;
+# this script extracts the section once into a temp file rather than
+# spawning a subshell per call because the 20 test cases invoke
+# calculate_clarity_score in-process.
+source_live_clarity_score() {
+    local promptify_src
+    promptify_src=$(mktemp)
+    trap 'rm -f "${promptify_src:-}"' EXIT
 
-    # 1. Word count penalty (too short = vague)
-    local word_count=$(echo "$prompt" | wc -w | tr -d ' ')
-    if [[ $word_count -lt 5 ]]; then
-        score=$((score - 40))
-    elif [[ $word_count -lt 10 ]]; then
-        score=$((score - 20))
-    elif [[ $word_count -lt 15 ]]; then
-        score=$((score - 10))
+    if [[ ! -f "$ROUTER_FILE" ]]; then
+        echo -e "${RED}FAIL${NC}: command-router.sh missing: $ROUTER_FILE" >&2
+        echo "This suite exercises the live calculate_clarity_score() which" >&2
+        echo "lives in command-router.sh SECTION 4. If the router itself is" >&2
+        echo "absent, no assertion can be made — the wrapper fails loud." >&2
+        exit 1
     fi
 
-    # 2. Vague word penalty
-    local vague_words=("thing" "stuff" "something" "anything" "nothing" "fix it" "make it better" "help me" "whatsit" "thingy" "whatever")
-    for word in "${vague_words[@]}"; do
-        if echo "$prompt_lower" | grep -qE "$word"; then
-            score=$((score - 15))
-        fi
-    done
+    awk '
+        /SECTION 4: PROMPTIFY/ { in_section = 1 }
+        in_section { print }
+        /^# MAIN EXECUTION$/ { exit }
+    ' "$ROUTER_FILE" > "$promptify_src"
 
-    # 3. Pronoun penalty (ambiguous references)
-    if echo "$prompt_lower" | grep -qE "\b(this|that|it|they|them)\s+\b"; then
-        score=$((score - 10))
+    if [[ ! -s "$promptify_src" ]]; then
+        echo -e "${RED}FAIL${NC}: SECTION 4: PROMPTIFY empty in $ROUTER_FILE" >&2
+        exit 1
     fi
 
-    # 4. Missing structure penalty
-    local has_role=false
-    local has_task=false
-    local has_constraints=false
-
-    # Check for role indicators
-    if echo "$prompt_lower" | grep -qE "(you are|act as|role|persona|you.re a|you are an?)"; then
-        has_role=true
-    fi
-
-    # Check for task indicators
-    if echo "$prompt_lower" | grep -qE "(implement|create|build|write|analyze|design|fix|add|make|develop|code)"; then
-        has_task=true
-    fi
-
-    # Check for constraint indicators
-    if echo "$prompt_lower" | grep -qE "(must|should|constraint|requirement|limit|except|but|however)"; then
-        has_constraints=true
-    fi
-
-    if [[ "$has_role" == false ]]; then
-        score=$((score - 15))
-    fi
-    if [[ "$has_task" == false ]]; then
-        score=$((score - 20))
-    fi
-    if [[ "$has_constraints" == false ]]; then
-        score=$((score - 10))
-    fi
-
-    # Ensure score is within 0-100 range
-    if [[ $score -lt 0 ]]; then
-        score=0
-    elif [[ $score -gt 100 ]]; then
-        score=100
-    fi
-
-    echo "$score"
+    # PROMPTIFY_CONFIG_FILE is defined at command-router.sh:40 (preamble
+    # above SECTION 4). Sandbox HOME has no ~/.ralph/config/promptify.json
+    # so the function falls back to its built-in defaults.
+    : "${PROMPTIFY_CONFIG_FILE:=/nonexistent/promptify-test-fallback.json}"
+    # log_message is also in the preamble. The function is called inside
+    # calculate_clarity_score only when DEBUG is enabled; the test
+    # never sets that, so a no-op stub is correct.
+    log_message() { :; }
+    # shellcheck disable=SC1090
+    source "$promptify_src"
 }
+
+source_live_clarity_score
 
 # Run tests
 run_tests() {
@@ -138,6 +135,16 @@ run_tests() {
 
         # Very high clarity prompts (90-100%)
         "You are a senior backend engineer specialized in authentication. Implement OAuth2 login with PKCE flow, handle token refresh with retry logic, log all authentication events, write unit tests with 80 percent coverage, and document the API endpoints|90|100"
+
+        # 10-14 word tier guard (T36): the local calculate_clarity_score copy
+        # in v1.0.0 had THREE word-count tiers (<5, <10, <15 -> -40/-20/-10).
+        # Production (command-router.sh SECTION 4) has only TWO; the 3rd tier
+        # was an invention of the test copy and never existed in production.
+        # This case exercises the 12-word band where the two diverge, with a
+        # NARROW [98,100] range (2-point tolerance) so any future regression
+        # that re-adds the 3rd tier in production fails loudly here. Score:
+        # local copy -> 90 (FAIL), live function -> 100 (PASS).
+        "You are an engineer. Implement OAuth2 login with PKCE. Must use JWT.|98|100"
     )
 
     # Run standard test cases
