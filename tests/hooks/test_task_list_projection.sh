@@ -26,7 +26,16 @@ new_repo() {
 
 send() {
     local repo="$1"; shift
-    ( cd "$repo" && echo "$1" | "$HOOK" >/dev/null )
+    # T35: pin CLAUDE_PROJECT_DIR to the sandbox. get_project_root() falls
+    # back to this variable when CWD is not a git repo, and the harness of
+    # the session RUNNING the suite exports it pointing at its own tree —
+    # launched from a worktree, the hook wrote tasks.json into the worker's
+    # tree ({a,b} ghosts observed in .claude/worktrees/zc) and this suite
+    # died red in Test 1 while staying green on a bare terminal. Pointing
+    # the variable AT the sandbox makes the destination deterministic no
+    # matter who launches the suite, and keeps every write inside the
+    # sandbox by construction.
+    ( cd "$repo" && echo "$1" | CLAUDE_PROJECT_DIR="$repo" "$HOOK" >/dev/null )
 }
 
 # ─────────────────────────────────────────────
@@ -84,6 +93,24 @@ IDS_R2=$(jq -r '[.tasks[].id] | sort | join(",")' "$R2/.claude/tasks.json")
 assert "R1 sees only r1-only" "[[ \"$IDS_R1\" == 'r1-only' ]]"
 assert "R2 sees only r2-only" "[[ \"$IDS_R2\" == 'r2-only' ]]"
 rm -rf "$R1" "$R2"
+
+# ─────────────────────────────────────────────
+echo "=== Test 5: git context wins — projection lands at the repo ROOT, not the CWD subdir ==="
+# The contract Test 1-4 cannot express: with a real git repo, the projection
+# belongs to the working-tree ROOT even when the event fires from a
+# subdirectory, and a stale CLAUDE_PROJECT_DIR (frozen at session start,
+# pointing somewhere else) must NOT override live git context — that order
+# is the v2.96.0 guarantee of worktree-utils.sh.
+R=$(new_repo)
+git -C "$R" init -q
+git -C "$R" config user.email test@example.invalid
+git -C "$R" config user.name "tlp test"
+mkdir -p "$R/pkg"
+( cd "$R/pkg" && echo '{"hook_event_name":"TaskCreated","taskId":"rooted","subject":"x","status":"pending","owner":"claude"}' | CLAUDE_PROJECT_DIR=/nonexistent-t35 "$HOOK" >/dev/null )
+assert "tasks.json at repo root"    "[[ -f \"$R/.claude/tasks.json\" ]]"
+assert "no projection in the subdir" "[[ ! -f \"$R/pkg/.claude/tasks.json\" ]]"
+assert "stale CLAUDE_PROJECT_DIR ignored under git" "[[ ! -e /nonexistent-t35 ]]"
+rm -rf "$R"
 
 echo
 echo "=========================================="

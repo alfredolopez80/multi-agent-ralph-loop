@@ -4,7 +4,11 @@
 # Events: TaskCreated, TaskCompleted
 #
 # Consolidates task tracking into ONE event-sourced projection at
-# $CWD/.claude/tasks.json. Replaces task-plan-sync.sh (which duplicated
+# <project-root>/.claude/tasks.json, where the root resolves as the current
+# git working tree first (worktrees included — each worktree keeps its OWN
+# projection; nothing crosses to the main checkout or sibling worktrees),
+# then CLAUDE_PROJECT_DIR, then bare $CWD when neither exists.
+# Replaces task-plan-sync.sh (which duplicated
 # tracking into plan-state.json). plan-state.json is reserved for
 # orchestrator metadata (classification, workflow_route).
 #
@@ -16,7 +20,9 @@
 #
 # Output stdout: {"continue": true}
 #
-# Projection schema ($CWD/.claude/tasks.json):
+# Projection schema (<project-root>/.claude/tasks.json — see resolution
+# order above; $CWD only when there is neither git context nor
+# CLAUDE_PROJECT_DIR):
 #   {
 #     "version": "1.0",
 #     "last_updated": "ISO-UTC",
