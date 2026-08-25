@@ -101,7 +101,7 @@ for rule_file in "${RULE_FILES[@]}"; do
       TODAY=$(date +%Y-%m-%d)
       TEMP=$(mktemp)
       {
-        echo "<!-- SOURCE: multi-agent-ralph-loop/.claude/rules/$rule_file"
+        echo "<!-- SOURCE: multi-agent-ralph-loop/.claude/rules-src/$rule_file"
         echo "     VERSION: 3.2.0"
         echo "     SYNCED: $TODAY"
         echo "     UPDATE: bash ~/.claude/scripts/sync-rules-from-source.sh -->"
