@@ -20,9 +20,15 @@ cd "$REPO_ROOT" || exit 1
 HOOKS_DIR=".claude/hooks"
 
 # Hooks that key a marker file on the session id.
+# smart-skill-reminder.sh was removed from this list in T52: the hook is
+# retired (deregistered, body reduced to a no-op) because no PreToolUse
+# channel reaches the model — additionalContext delivered 0/1343 and
+# allow+permissionDecisionReason has no delivery path at all. It no longer
+# keys anything on a session id, so asserting that it does was testing a
+# mechanism that had been deliberately removed. See
+# tests/archive/smart-skill-reminder/README.md.
 DEDUP_HOOKS=(
     "adversarial-auto-trigger.sh"
-    "smart-skill-reminder.sh"
     "ai-code-audit.sh"
     "code-review-auto.sh"
 )
