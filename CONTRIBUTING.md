@@ -35,7 +35,7 @@ We love new ideas! Enhancement suggestions are tracked as GitHub issues.
 
 1. **Fork the repo** and create your branch from `main`
 2. **Follow the existing code style** - bash scripts should pass shellcheck
-3. **Test your changes** - run the test suite with `bats tests/`
+3. **Test your changes** - run the test suite with `bash tests/run-all-unit-tests.sh`
 4. **Update documentation** - if you change functionality, update CLAUDE.md and README.md
 5. **Write a good commit message** - follow conventional commits format
 
@@ -50,7 +50,7 @@ cd multi-agent-ralph-loop
 ./install.sh
 
 # Run tests
-bats tests/
+bash tests/run-all-unit-tests.sh
 
 # Check bash scripts
 shellcheck scripts/ralph scripts/mmc install.sh uninstall.sh
@@ -127,13 +127,13 @@ All changes should include tests where applicable:
 
 ```bash
 # Run all tests
-bats tests/
+bash tests/run-all-unit-tests.sh
 
 # Run specific test file
 bats tests/test_ralph_security.bats
 
 # Run with verbose output
-bats -v tests/
+bash tests/run-all-unit-tests.sh --verbose
 ```
 
 ## CI/CD Pipeline
@@ -150,7 +150,7 @@ All PRs must pass the automated CI pipeline before merging:
 
 ```bash
 # Run locally before submitting PR
-./tests/run_tests.sh           # All tests
+bash tests/run-all-unit-tests.sh         # All tests
 ruff check .claude/hooks/*.py tests/*.py   # Python lint
 shellcheck scripts/ralph scripts/mmc       # Shell lint
 ```
