@@ -1,6 +1,6 @@
 ---
 name: wt-lead
-description: Lead protocol for the session running in the main checkout that delegates write tasks to the zc, mmx-1 and mmx-2 sessions (each in its own worktree and worktree-<name> branch) and integrates their branches into main. Use this skill whenever delegating work to another session, composing an ASSIGN message, receiving a DONE or BLOCKED message, reviewing or merging any worktree-* branch, resolving conflicts between worker branches, resyncing workers after an integration, or reading worker results under .claude/worktrees/. Always consult it before running git merge or git cherry-pick.
+description: Lead protocol for the session running in the main checkout that delegates write tasks to the zc-1, zc-2 and mmx sessions (each in its own worktree and worktree-<name> branch) and integrates their branches into main. Use this skill whenever delegating work to another session, composing an ASSIGN message, receiving a DONE or BLOCKED message, reviewing or merging any worktree-* branch, resolving conflicts between worker branches, resyncing workers after an integration, or reading worker results under .claude/worktrees/. Always consult it before running git merge or git cherry-pick.
 ---
 
 # wt-lead
@@ -28,7 +28,7 @@ Never merge with a dirty `main`. Never edit files under `.claude/worktrees/`.
 Partition by directory, not by topic. Each worker owns disjoint paths for the
 duration of a task. Overlaps are the only source of merge conflicts, so:
 
-- Prefer: `zc` → `strategies/`, `mmx-1` → `backtest/`, `mmx-2` → `tests/`.
+- Prefer: `zc-1` → `strategies/`, `zc-2` → `backtest/`, `mmx` → `tests/`.
 - If two tasks must touch the same file, sequence them: assign the first,
   integrate it, then assign the second (the worker rebases automatically
   via `start-task.sh`).

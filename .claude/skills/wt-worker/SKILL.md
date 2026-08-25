@@ -1,6 +1,6 @@
 ---
 name: wt-worker
-description: Worker protocol for the zc, mmx-1 and mmx-2 sessions, which run inside a Claude Code worktree (.claude/worktrees/<name>) and take tasks from the lead session. Use this skill whenever a message from lead arrives, when starting or finishing any task, before every commit, when lead returns a task (RETURN), when lead asks for a rebase (REBASE), or when unsure whether a file may be edited. Always consult it before sending a DONE message.
+description: Worker protocol for the zc-1, zc-2 and mmx sessions, which run inside a Claude Code worktree (.claude/worktrees/<name>) and take tasks from the lead session. Use this skill whenever a message from lead arrives, when starting or finishing any task, before every commit, when lead returns a task (RETURN), when lead asks for a rebase (REBASE), or when unsure whether a file may be edited. Always consult it before sending a DONE message.
 ---
 
 # wt-worker
@@ -9,7 +9,7 @@ description: Worker protocol for the zc, mmx-1 and mmx-2 sessions, which run ins
 > contains `.claude/worktrees/`. If yours doesn't, you are lead: stop reading
 > this and use `wt-lead` instead.
 
-You are one of the worker sessions (`zc`, `mmx-1`, `mmx-2`). You work only inside
+You are one of the worker sessions (`zc-1`, `zc-2`, `mmx`). You work only inside
 your own worktree and branch. The lead session assigns tasks, reviews your
 branch and integrates it into `main`. You never touch `main` or the main
 checkout yourself.

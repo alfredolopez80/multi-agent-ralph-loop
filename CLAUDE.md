@@ -308,9 +308,9 @@ prompt naming its role:
 | Pane | Launched as | Worktree |
 |---|---|---|
 | lead | `claude --name lead` | main checkout |
-| zc | `zc --worktree zc --name zc` | `.claude/worktrees/zc` |
-| mmx-1 | `mmx --worktree mmx-1 --name mmx-1` | `.claude/worktrees/mmx-1` |
-| mmx-2 | `mmx --worktree mmx-2 --name mmx-2` | `.claude/worktrees/mmx-2` |
+| zc-1 | `zc --worktree zc-1 --name zc-1` | `.claude/worktrees/zc-1` |
+| zc-2 | `zc --worktree zc-2 --name zc-2` | `.claude/worktrees/zc-2` |
+| mmx | `mmx --worktree mmx --name mmx` | `.claude/worktrees/mmx` |
 
 You are in a Q-team only if you were launched that way. The working directory
 is the authority (see *Role detection*); the appended system prompt must agree
@@ -329,7 +329,7 @@ path. If they disagree, stop and tell the human.
 - **lead**: runs in the main checkout on `main`. Assigns work and integrates
   branches. Follows the `wt-lead` skill. Never edits anything under
   `.claude/worktrees/`.
-- **zc, mmx-1, mmx-2**: each runs in its own worktree
+- **zc-1, zc-2, mmx**: each runs in its own worktree
   (`.claude/worktrees/<name>`) on branch `worktree-<name>`. They follow the
   `wt-worker` skill.
 
@@ -345,16 +345,31 @@ not about switching a running session's model.
 |---|---|---|
 | **Opus 5** | `claude` (lead pane) | Coordinator and lead. Splits the work, writes every ASSIGN, carries messages between panes, reviews branches and is the only session that merges into `main`. |
 | **Fable 5** | consulted on demand | Specialist. Not a standing pane — lead consults it **punctually**, for something complex or consequential where a second, stronger read is worth the round trip. Not for routine work. |
-| **zc** (`zai-claude`) | worker pane | Medium and medium-high complexity. Slower per task, so it earns the work that needs the reasoning, not the volume. |
-| **mmx-1**, **mmx-2** (`minimax-claude`) | worker panes | Low complexity. Faster, so they take the throughput: mechanical edits, repetitive changes, wide-but-shallow sweeps. |
+| **zc-1**, **zc-2** (`zai-claude`) | worker panes | Medium and medium-high complexity. Slower per task, so they earn the work that needs the reasoning, not the volume. Two of them: deep capacity is the plural side now. |
+| **mmx** (`minimax-claude`) | worker pane | Low complexity. Faster, so it takes what throughput there is: mechanical edits, repetitive changes, wide-but-shallow sweeps. |
+
+**Composition changed 2026-08-26** (was `zc` + `mmx`×2). MiniMax hit rate
+limits under the token volume this team produces — a worker that stalls
+mid-task costs more than the speed it was chosen for. The evidence also
+pointed the same way: on the day the catalogue grew from 26 to 34 failure
+modes, the work that found root causes was overwhelmingly `zc`'s, while the
+`mmx` panes did well on bounded mechanical tasks and needed a RETURN whenever
+a task carried real ambiguity.
 
 Lead is expected to route deliberately, not round-robin:
 
 - **Size the task to the worker before assigning it.** A mechanical sweep sent
   to `zc` wastes the slow worker; a task needing real reasoning sent to `mmx`
   comes back needing a RETURN, which costs more than assigning it correctly.
-- **Keep both `mmx` panes busy.** They are the cheap parallelism. Two shallow
-  tasks running beside one deep `zc` task is the shape to aim for.
+- **Keep both `zc` panes busy.** They are now the plural side, so the shape to
+  aim for inverted with the composition: two tasks needing real reasoning
+  running beside one mechanical `mmx` task. Deep work is no longer the
+  bottleneck — mechanical throughput is, so batch shallow work rather than
+  trickling it.
+- **Cross-verification is cheaper now, and it earned its place.** With two
+  panes of the same tier, one `zc` can verify the other's work without the
+  verdict being limited by the verifier's tier. Every large finding of
+  2026-08-25 came from a worker checking someone else's code, never its own.
 - **Split by directory, never by topic** (see *Splitting work* in `wt-lead`),
   so the three workers never contend for the same file.
 - **One task per worker at a time.** Do not queue; queueing hides idle panes.
