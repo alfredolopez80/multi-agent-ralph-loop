@@ -20,8 +20,18 @@
 #   and the validate_prompt_security path: source command-router.sh
 #   SECTION 4 at runtime via awk, never inline a function body. The 20
 #   existing test cases pass against the live function (verified by
-#   score-divergence.sh). The new case that exercises the 10-14 word
-#   tier boundary is deferred until the production intent is confirmed.
+#   score-divergence.sh).
+#
+#   A 21st case is added that exercises the 10-14 word tier boundary:
+#   the prompt "You are an engineer. Implement OAuth2 login with PKCE.
+#   Must use JWT." (12 words, fully structured). Assertion range is
+#   NARROWLY [98, 100] (2-point tolerance), not the 10-point ranges
+#   that masked the original drift in test #14. Live function gives
+#   100 (PASS); the v1.0.0 local copy would have given 90 (FAIL).
+#   The narrow range catches any future regression that re-adds the
+#   `< 15 -> -10` tier to production. See test-clarity-scoring.sh
+#   around line 147 for the WHY-12 and WHY-narrow comments inline
+#   with the case.
 
 set -euo pipefail
 
