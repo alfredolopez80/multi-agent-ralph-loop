@@ -126,12 +126,11 @@ extract_tokens() {
 should_regenerate() {
     [[ ! -f "$INDEX_FILE" ]] && return 0
     local index_mtime
-    index_mtime=$(stat -c %Y "$INDEX_FILE" 2>/dev/null || stat -f %m "$INDEX_FILE" 2>/dev/null || echo 0)
+    index_mtime=$(stat -c %Y "$INDEX_FILE" 2>/dev/null || stat -f %m "$INDEX_FILE" 2>/dev/null || echo 0)  # gnu-ok: GNU-first, BSD fallback, same line (T61)
     for root in "$GLOBAL_ROOT" "$PROJECT_ROOT"; do
         [[ -d "$root" ]] || continue
         local root_max
-        root_max=$(find -L "$root" -name 'SKILL.md' -type f -exec stat -f %m {} \; 2>/dev/null \
-            | sort -n | tail -1)
+        root_max=$(find -L "$root" -name 'SKILL.md' -type f -exec stat -f %m {} \; 2>/dev/null | sort -n | tail -1)  # gnu-ok: BSD probe; on GNU it fails empty -> skip regen (T61)
         [[ -z "$root_max" ]] && continue
         if [[ "$root_max" -gt "$index_mtime" ]]; then
             return 0

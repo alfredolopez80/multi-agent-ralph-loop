@@ -285,8 +285,6 @@ __GNU_ONLY_ALLOWLIST_START__
 .claude/hooks/smart-memory-search.sh|stat-bsd
 .claude/hooks/smart-memory-search.sh|stat-c
 .claude/hooks/smart-memory-search.sh|timeout
-.claude/hooks/smart-skill-reminder.sh|stat-bsd
-.claude/hooks/smart-skill-reminder.sh|stat-c
 .claude/hooks/wake-up-layer-stack.sh|date-d
 .claude/lib/detect-environment.sh|stat-bsd
 .claude/lib/detect-environment.sh|stat-c

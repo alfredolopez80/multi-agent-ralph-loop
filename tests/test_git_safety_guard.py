@@ -122,8 +122,10 @@ class TestBlockedPatterns:
             ("git stash clear", "permanently deletes ALL stashed changes"),
             ("rm -rf /home/user/important", "recursive deletion"),
             ("rm -rf ./src", "recursive deletion"),
-            ("git rebase main", "rebasing shared branches"),
-            ("git rebase origin/master", "rebasing shared branches"),
+            # T61: the rebase cases moved to TestT61RebaseContext — the block is
+            # context-aware since T25 (deny from main, allow from worktree-*),
+            # and this parametrized unit runs with the rama pytest happens to
+            # sit on, measuring the wrong context (the CI-visible failures).
         ],
     )
     def test_blocked_commands_detected(self, command, expected_reason):
