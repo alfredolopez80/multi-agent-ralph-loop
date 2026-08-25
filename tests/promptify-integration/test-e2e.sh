@@ -1,14 +1,33 @@
 #!/bin/bash
 # test-e2e.sh - End-to-end integration test for Promptify
-# VERSION: 1.0.0
+# VERSION: 2.0.0  (T34b: repointed to live consolidated code)
+#
+# T34b history:
+#   The original (v1.0.0) suite targeted `.claude/hooks/promptify-auto-detect.sh`,
+#   which the runner counted as ✓ PASSED with zero assertions because the
+#   suite's setup bailed out with `return 0` when that file was missing.
+#   T30 closed the silent-skip class for the bats branch; T34 closed it for
+#   the shell branch and made THIS suite fail loudly with the reason.
+#
+#   Lead then corrected T34: the hook was not retired in 498556f — it was
+#   CONSOLIDATED into `.claude/hooks/command-router.sh`. `calculate_clarity_score()`
+#   and `run_promptify_auto_detect()` live there now (functions at lines 302
+#   and 377; invocation at line 434). v2.0.0 repoints the suite to exercise
+#   the live function via a runtime extraction of SECTION 4: PROMPTIFY.
+#
+#   The T34 fail-loud verdict is preserved for the genuine "missing target"
+#   case: if command-router.sh itself is gone, we still fail loud rather
+#   than minting "Tests Run: 0 / Tests Passed: 0".
+#
 # Part of Promptify Integration Test Suite
 
 set -euo pipefail
 
-readonly VERSION="1.0.0"
+readonly VERSION="2.0.0"
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-readonly HOOK_FILE="${PROJECT_ROOT}/.claude/hooks/promptify-auto-detect.sh"
+# The Promptify logic was consolidated into command-router.sh in 498556f.
+readonly ROUTER_FILE="${PROJECT_ROOT}/.claude/hooks/command-router.sh"
 
 # Colors for output
 readonly RED='\033[0;31m'
@@ -37,250 +56,191 @@ print_result() {
     TESTS_RUN=$((TESTS_RUN+1))
 }
 
-# Simulate hook execution
-simulate_hook() {
-    local user_prompt="$1"
+print_header() {
+    echo ""
+    echo "========================================"
+    echo "$1"
+    echo "========================================"
+}
 
-    # Create JSON input
-    local json_input=$(jq -n --arg prompt "$user_prompt" '{"user_prompt": $prompt}')
-
-    # Execute hook
-    if [[ -x "$HOOK_FILE" ]]; then
-        echo "$json_input" | "$HOOK_FILE" 2>/dev/null || echo '{"continue": true}'
-    else
-        echo '{"continue": true}'
-    fi
+# Extract SECTION 4: PROMPTIFY from command-router.sh to a temp file and
+# source it. We do NOT `source` command-router.sh directly because its
+# bottom invokes run_command_router, run_curator_suggestion,
+# run_prompt_analyzer and emits JSON to stdout — side effects we don't
+# want from a unit test. The extraction is line-range based; SECTION 4
+# is bounded by SECTION 5 (or end-of-file).
+extract_promptify_functions() {
+    local out="$1"
+    # Extract SECTION 4: PROMPTIFY AUTO-DETECT only. command-router.sh does
+#    not have a SECTION 5 — the next boundary is the `# MAIN EXECUTION`
+#    banner that calls every analyzer and emits JSON. We do NOT want any
+#    of that in a unit test.
+    awk '
+        /SECTION 4: PROMPTIFY/ { in_section = 1 }
+        in_section { print }
+        /^# MAIN EXECUTION$/ { exit }
+    ' "$ROUTER_FILE" > "$out"
 }
 
 # Run E2E tests
 run_e2e_tests() {
     print_header "End-to-End Integration Tests v${VERSION}"
 
-    # Check if hook exists. The original `return 0` here was a silent skip
-    # that let the suite print "Tests Run: 0 / Tests Passed: 0" and still
-    # exit 0, which the runner counted as ✓. That is exactly the same
-    # fail-open class as test_quality_gates.bats (T30) and the same fix:
-    # fail loudly with the concrete reason. The hook was retired in 498556f
-    # (Unified Herding Blanket v3.0); see docs/testing/ORPHAN_TEST_AUDIT.md
-    # for the verdict and the runner-level T34 guard.
-    if [[ ! -f "$HOOK_FILE" ]]; then
-        echo -e "${RED}FAIL${NC}: required hook missing: $HOOK_FILE"
-        echo "This suite tests .claude/hooks/promptify-auto-detect.sh, retired in"
-        echo "498556f (Unified Herding Blanket v3.0). With its target gone, the"
-        echo "suite cannot run any of its 10 assertions; reporting green over"
-        echo "zero assertions would be a silent-skip — see T30/T34 in"
-        echo "docs/testing/ORPHAN_TEST_AUDIT.md."
-        echo ""
+    # The T34 fail-loud verdict — kept for the genuine missing-target case.
+    # command-router.sh is the LIVE consolidated home of the Promptify
+    # logic; if it is gone, the suite cannot exercise the behaviour it
+    # claims to test, and reporting green over zero assertions would be
+    # the same fail-open T34 closed. See docs/testing/ORPHAN_TEST_AUDIT.md.
+    if [[ ! -f "$ROUTER_FILE" ]]; then
+        echo -e "${RED}FAIL${NC}: command-router.sh missing: $ROUTER_FILE"
+        echo "This suite tests the Promptify logic consolidated into"
+        echo "command-router.sh (originally promptify-auto-detect.sh, retired"
+        echo "as a standalone path in 498556f). If the router itself is"
+        echo "absent, the suite cannot exercise any of the live behaviour."
         echo "Verdict options:"
-        echo "  (a) Restore the hook if its functionality is needed."
-        echo "  (b) Retire this suite per the #50 precedent (tests/.../test-e2e.sh"
-        echo "      was already partially obsoleted in v3.0)."
-        echo "  (c) Replace this suite with one that exercises a live hook."
+        echo "  (a) Restore command-router.sh."
+        echo "  (b) Update ROUTER_FILE in this suite if the logic moved again."
+        echo "  (c) Retire this suite per the #50 precedent."
         TESTS_FAILED=$((TESTS_FAILED + 1))
         TESTS_RUN=$((TESTS_RUN + 1))
         return 1
     fi
 
-    # Test 1: Hook file exists and is executable
+    # Extract Promptify functions to a temp file we can source safely.
+    # Declared in the function's scope so it is unset once we return; the
+    # trap uses ${promptify_src:-} so it survives the unset and never errors.
+    local promptify_src
+    promptify_src=$(mktemp)
+    trap 'rm -f "${promptify_src:-}"' EXIT
+
+    if ! extract_promptify_functions "$promptify_src"; then
+        echo -e "${RED}FAIL${NC}: could not extract Promptify functions from $ROUTER_FILE"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+        TESTS_RUN=$((TESTS_RUN + 1))
+        return 1
+    fi
+
+    if [[ ! -s "$promptify_src" ]]; then
+        echo -e "${RED}FAIL${NC}: Promptify section empty in $ROUTER_FILE"
+        echo "Expected SECTION 4: PROMPTIFY between the marker comment and"
+        echo "the next section. Either the layout drifted or the SECTION 4"
+        "marker is missing."
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+        TESTS_RUN=$((TESTS_RUN + 1))
+        return 1
+    fi
+
+    # Source the extracted functions. We do NOT want command-router.sh's
+    # bottom (run_command_router + emit JSON), only the promptify block.
+    # PROMPTIFY_CONFIG_FILE is defined at line 40 (above SECTION 4) in
+    # command-router.sh; our extraction doesn't include it, so set a
+    # fallback here. The test sandbox has no ~/.ralph/config/promptify.json
+    # so the functions fall back to their built-in defaults.
+    : "${PROMPTIFY_CONFIG_FILE:=/nonexistent/promptify-test-fallback.json}"
+    # log_message is defined in command-router.sh's preamble (above SECTION 4).
+    # The SECTION 4 functions call it but we don't want to bring the whole
+    # preamble in (it has side effects like sourcing other libs). Stub it
+    # so the call sites resolve; the test asserts the promptify behaviour,
+    # not the log output.
+    log_message() { :; }
+    # ALL_SUGGESTIONS is the global aggregator populated by every analyzer.
+    # run_promptify_auto_detect appends to it; declaring it here keeps the
+    # call site working without the rest of command-router.sh.
+    ALL_SUGGESTIONS=()
+    # shellcheck disable=SC1090
+    source "$promptify_src"
+
+    # Test 1: calculate_clarity_score exists and is callable
     echo ""
-    echo "Test 1: Hook File Setup"
-    echo "======================="
-
-    if [[ -f "$HOOK_FILE" ]]; then
-        print_result "PASS" "Hook file exists"
+    echo "Test 1: Live calculate_clarity_score() available"
+    echo "================================================="
+    if [[ "$(type -t calculate_clarity_score)" == "function" ]]; then
+        print_result "PASS" "calculate_clarity_score() is defined in command-router.sh SECTION 4"
     else
-        print_result "FAIL" "Hook file not found"
+        print_result "FAIL" "calculate_clarity_score() missing from SECTION 4"
+        return 1
     fi
 
-    if [[ -x "$HOOK_FILE" ]]; then
-        print_result "PASS" "Hook file is executable"
-    else
-        print_result "FAIL" "Hook file is not executable"
-    fi
-
-    # Test 2: Hook returns valid JSON
+    # Test 2: a well-structured prompt scores high
     echo ""
-    echo "Test 2: Hook JSON Output"
-    echo "======================="
-
-    local hook_output=$(simulate_hook "test prompt")
-    local continue_value=$(echo "$hook_output" | jq -r '.continue // empty' 2>/dev/null || echo "")
-
-    if [[ "$continue_value" == "true" ]]; then
-        print_result "PASS" "Hook returns valid JSON with continue=true"
+    echo "Test 2: Structured prompt clarity"
+    echo "================================="
+    local score
+    score=$(calculate_clarity_score "You are a senior backend engineer. Implement a rate limiter for the /api/users endpoint. Must handle 1000 req/s. Constraint: use Redis with sliding window.")
+    if [[ "$score" -ge 80 && "$score" -le 100 ]]; then
+        print_result "PASS" "structured prompt scores in [80,100]: $score"
     else
-        print_result "FAIL" "Hook does not return valid JSON"
+        print_result "FAIL" "structured prompt expected in [80,100], got $score"
     fi
 
-    # Test 3: Configuration file
+    # Test 3: a vague prompt scores low
     echo ""
-    echo "Test 3: Configuration File"
-    echo "========================="
-
-    local config_file="$HOME/.ralph/config/promptify.json"
-
-    if [[ -f "$config_file" ]]; then
-        print_result "PASS" "Configuration file exists"
-
-        local enabled=$(jq -r '.enabled // true' "$config_file" 2>/dev/null || echo "true")
-        if [[ "$enabled" == "true" ]]; then
-            print_result "PASS" "Promptify is enabled in config"
-        else
-            print_result "FAIL" "Promptify is disabled in config"
-        fi
-
-        local threshold=$(jq -r '.vagueness_threshold // 50' "$config_file" 2>/dev/null || echo "50")
-        if [[ "$threshold" =~ ^[0-9]+$ ]] && [[ "$threshold" -ge 0 ]] && [[ "$threshold" -le 100 ]]; then
-            print_result "PASS" "Vagueness threshold is valid: $threshold"
-        else
-            print_result "FAIL" "Vagueness threshold is invalid: $threshold"
-        fi
+    echo "Test 3: Vague prompt clarity"
+    echo "============================"
+    score=$(calculate_clarity_score "fix the thing")
+    if [[ "$score" -lt 50 ]]; then
+        print_result "PASS" "vague prompt scores below threshold: $score < 50"
     else
-        print_result "FAIL" "Configuration file not found"
+        print_result "FAIL" "vague prompt expected < 50, got $score"
     fi
 
-    # Test 4: Log directory
+    # Test 4: vague-words list is present and applied
     echo ""
-    echo "Test 4: Log Directory"
-    echo "===================="
-
-    local log_dir="$HOME/.ralph/logs"
-
-    if [[ -d "$log_dir" ]]; then
-        print_result "PASS" "Log directory exists"
+    echo "Test 4: Vague-words penalty"
+    echo "============================"
+    # Two prompts identical except for one containing a vague word.
+    # The vague-word version must score lower (penalty -15 per vague word).
+    local base_score
+    base_score=$(calculate_clarity_score "Implement a clear migration plan for the legacy service")
+    local vague_score
+    vague_score=$(calculate_clarity_score "Implement a clear migration plan for the legacy thing")
+    local diff=$((base_score - vague_score))
+    if [[ "$diff" -ge 15 ]]; then
+        print_result "PASS" "vague word 'thing' reduces score by $diff (>= 15)"
     else
-        print_result "FAIL" "Log directory not found"
+        print_result "FAIL" "vague word penalty expected >= 15, got $diff"
     fi
 
-    # Test 5: Security library
+    # Test 5: score is bounded to [0, 100]
     echo ""
-    echo "Test 5: Security Library"
-    echo "======================="
-
-    local security_lib="${PROJECT_ROOT}/.claude/hooks/promptify-security.sh"
-
-    if [[ -f "$security_lib" ]]; then
-        print_result "PASS" "Security library exists"
+    echo "Test 5: Score bounds"
+    echo "==================="
+    # Empty prompt hits every penalty; score should clamp to >= 0.
+    local empty_score
+    empty_score=$(calculate_clarity_score "")
+    if [[ "$empty_score" -ge 0 && "$empty_score" -le 100 ]]; then
+        print_result "PASS" "empty prompt score clamped to [0,100]: $empty_score"
     else
-        print_result "FAIL" "Security library not found"
+        print_result "FAIL" "empty prompt score out of bounds: $empty_score"
     fi
 
-    # Test 6: Hook integration
+    # Test 6: command-router.sh actually invokes run_promptify_auto_detect
+    # (the live wiring — without this, the function is dead code).
     echo ""
-    echo "Test 6: Hook Integration"
-    echo "======================="
-
-    # Test that hook can be sourced
-    if bash -c "source '$HOOK_FILE' && type -t calculate_clarity_score" &>/dev/null; then
-        print_result "PASS" "Hook can be sourced and has calculate_clarity_score function"
+    echo "Test 6: Live wiring in command-router.sh"
+    echo "=========================================="
+    if grep -qE '^run_promptify_auto_detect(\b|[[:space:]]*$)' "$ROUTER_FILE"; then
+        print_result "PASS" "command-router.sh invokes run_promptify_auto_detect"
     else
-        print_result "FAIL" "Hook cannot be sourced or missing calculate_clarity_score function"
+        print_result "FAIL" "command-router.sh does not invoke run_promptify_auto_detect (live wiring broken)"
     fi
 
-    # Test 7: Configuration override test
+    # Test 7: integration — calling run_promptify_auto_detect with
+    # USER_PROMPT set should not error out (returns 0 even when the
+    # clarity score is high enough not to suggest /promptify).
     echo ""
-    echo "Test 7: Configuration Override"
-    echo "==============================="
-
-    # Save current config
-    local config_backup=""
-    if [[ -f "$config_file" ]]; then
-        config_backup=$(cat "$config_file")
-    fi
-
-    # Create test config with promptify disabled
-    mkdir -p "$(dirname "$config_file")"
-    echo '{"enabled": false}' > "$config_file"
-
-    # Hook should still work but not suggest anything
-    local hook_output=$(simulate_hook "vague prompt")
-    local continue_value=$(echo "$hook_output" | jq -r '.continue // false' 2>/dev/null || echo "false")
-
-    if [[ "$continue_value" == "true" ]]; then
-        print_result "PASS" "Hook continues when disabled"
-    else
-        print_result "FAIL" "Hook does not continue when disabled"
-    fi
-
-    # Restore config
-    if [[ -n "$config_backup" ]]; then
-        echo "$config_backup" > "$config_file"
-    else
-        rm -f "$config_file"
-    fi
-
-    # Test 8: Error handling
-    echo ""
-    echo "Test 8: Error Handling"
-    echo "====================="
-
-    # Test with invalid JSON input
-    local invalid_input="not valid json"
-    local hook_output=$(echo "$invalid_input" | "$HOOK_FILE" 2>/dev/null || echo '{"continue": true}')
-    local continue_value=$(echo "$hook_output" | jq -r '.continue // false' 2>/dev/null || echo "false")
-
-    if [[ "$continue_value" == "true" ]]; then
-        print_result "PASS" "Invalid input handled gracefully"
-    else
-        print_result "FAIL" "Invalid input caused error"
-    fi
-
-    # Test 9: Large input handling
-    echo ""
-    echo "Test 9: Large Input Handling"
-    echo "==========================="
-
-    # Create large prompt (>100KB)
-    local large_prompt="fix "
-    for i in {1..1000}; do
-        large_prompt+="the thing "
-    done
-
-    local hook_output=$(echo "$large_prompt" | head -c 100000 | simulate_hook "$(cat)")
-    local continue_value=$(echo "$hook_output" | jq -r '.continue // false' 2>/dev/null || echo "false")
-
-    if [[ "$continue_value" == "true" ]]; then
-        print_result "PASS" "Large input handled without error"
-    else
-        print_result "FAIL" "Large input caused error"
-    fi
-
-    # Test 10: Files and directories structure
-    echo ""
-    echo "Test 10: File Structure"
-    echo "======================="
-
-    local required_files=(
-        "$HOOK_FILE"
-        "$security_lib"
-        "${PROJECT_ROOT}/tests/promptify-integration/run-all-tests.sh"
-        "${PROJECT_ROOT}/tests/promptify-integration/test-clarity-scoring.sh"
-        "${PROJECT_ROOT}/tests/promptify-integration/test-credential-redaction.sh"
-        "${PROJECT_ROOT}/tests/promptify-integration/test-security-functions.sh"
-    )
-
-    local all_files_exist=true
-    for file in "${required_files[@]}"; do
-        if [[ ! -f "$file" ]]; then
-            all_files_exist=false
-            break
-        fi
-    done
-
-    if [[ "$all_files_exist" == "true" ]]; then
-        print_result "PASS" "All required files exist"
-    else
-        print_result "FAIL" "Some required files are missing"
-    fi
-
-    echo ""
-}
-
-print_header() {
-    echo ""
+    echo "Test 7: run_promptify_auto_detect smoke"
     echo "========================================"
-    echo "$1"
-    echo "========================================"
+    USER_PROMPT="You are an API designer. Implement a /health endpoint that returns JSON. Must check DB and Redis."
+    local rc=0
+    run_promptify_auto_detect || rc=$?
+    if [[ "$rc" -eq 0 ]]; then
+        print_result "PASS" "run_promptify_auto_detect returned 0 on a structured prompt"
+    else
+        print_result "FAIL" "run_promptify_auto_detect exited with rc=$rc on a structured prompt"
+    fi
+
+    echo ""
 }
 
 # Print summary
