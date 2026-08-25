@@ -2,9 +2,18 @@
 umask 077
 # repo-boundary-guard.sh — Repository Isolation Enforcement
 # Hook: PreToolUse (Edit|Write|Bash)
-# VERSION: 2.98.1
+# VERSION: 2.99.0
 # v2.98.0: Security fixes — canonicalize ancestor-walk, worktree-list validation, fail-closed trap, redirect detection.
 # v2.98.1: Codex P2 fix — three-pattern alternation for quoted paths with spaces in grep extraction.
+# v2.99.0 (#61, found by SECURITY_BASELINE fixture work): (1) the
+#          __CANONICALIZE_FAILED__ sentinel is now CONSULTED in
+#          is_allowed_path and denies — it was emitted and never compared, so
+#          an unresolvable path logged "denying as precaution" and then
+#          ALLOWED; (2) both GNU-only `realpath -m` branches replaced with a
+#          portable deepest-existing-ancestor walk (stock macOS realpath:
+#          "illegal option -- m"); (3) GITHUB_DIR canonicalized with the same
+#          function as the paths it is compared against (raw $HOME broke the
+#          match through symlinked directories).
 
 # SEC-111: stdin with 100KB limit
 INPUT=$(head -c 100000)
@@ -61,20 +70,38 @@ canonicalize() {
     local p="${1/#\~/$HOME}"
     local out
     if out="$(realpath "$p" 2>/dev/null)"; then echo "$out"; return; fi
-    if out="$(realpath -m "$p" 2>/dev/null)"; then echo "$out"; return; fi
-    local dir base
+    # v2.99.0 (#61): both `realpath -m` branches removed — -m is GNU-only and
+    # stock macOS realpath rejects it ("illegal option -- m", rc=1), so those
+    # branches never ran here. Portable resolution of a missing tail: walk up
+    # to the deepest EXISTING ancestor, realpath THAT, re-append the missing
+    # remainder. Handles multi-level misses the old single dirname+basename
+    # fallback could not.
+    local dir base missing part cur
     dir="$(dirname "$p")"
     base="$(basename "$p")"
-    local rdir
-    if rdir="$(realpath "$dir" 2>/dev/null)"; then
-        echo "$rdir/$base"
-    elif rdir="$(realpath -m "$dir" 2>/dev/null)"; then
-        echo "$rdir/$base"
-    else
-        log "WARN: canonicalize failed for $p — denying as precaution"
-        echo "__CANONICALIZE_FAILED__"
+    missing=""
+    cur="$dir"
+    while [[ -n "$cur" && "$cur" != "/" && ! -e "$cur" ]]; do
+        part="$(basename "$cur")"
+        missing="$part${missing:+/$missing}"
+        cur="$(dirname "$cur")"
+    done
+    if out="$(realpath "$cur" 2>/dev/null)"; then
+        echo "$out${missing:+/$missing}/$base"
+        return
     fi
+    log "WARN: canonicalize failed for $p — denying as precaution"
+    echo "__CANONICALIZE_FAILED__"
 }
+
+# v2.99.0 (#61): canonicalize GITHUB_DIR with the SAME function used for the
+# paths it is compared against — built from raw $HOME, it silently failed to
+# match paths resolved through symlinked directories (/tmp -> /private/tmp,
+# observed live). If even this canonicalization fails, fall back to the raw
+# value rather than to the sentinel (which would match nothing).
+_GITHUB_DIR_RAW="${HOME}/Documents/GitHub"
+GITHUB_DIR="$(canonicalize "$_GITHUB_DIR_RAW")"
+[[ "$GITHUB_DIR" == "__CANONICALIZE_FAILED__" ]] && GITHUB_DIR="$_GITHUB_DIR_RAW"
 
 # is_same_repo <path> <repo> — true if <path> belongs to the SAME repository
 # as <repo>. Validates that the target directory is a REGISTERED worktree
@@ -174,6 +201,14 @@ is_allowed_path() {
     # SEC-051: Canonicalize path using realpath (handles ~, .., symlinks).
     # current_repo arrives pre-canonicalized from main().
     path="$(canonicalize "$path")"
+
+    # v2.99.0 (#61): the sentinel is now CONSULTED. Before, it was emitted
+    # and never compared anywhere: an unresolvable path logged "denying as
+    # precaution" and then flowed into 'Allow other paths' → ALLOW. A path we
+    # cannot resolve cannot be trusted — block it.
+    if [[ "$path" == "__CANONICALIZE_FAILED__" ]]; then
+        return 1  # BLOCKED — unresolvable path
+    fi
 
     # Allow global config directories (boundary-safe: .claude but not .claude-evil)
     if [[ "$path" == "${HOME}/.claude" || "$path" == "${HOME}/.claude/"* ]] || \
