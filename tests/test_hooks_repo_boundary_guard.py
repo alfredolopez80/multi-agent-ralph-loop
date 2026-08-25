@@ -223,3 +223,43 @@ def test_t29_prefix_named_dir_evaluated_whole_not_collapsed(external_repo_dir):
     assert m.group(1) == str(evil), (
         f"expected the WHOLE component {evil} to be evaluated, got {m.group(1)}"
     )
+
+
+# --- T37 (#66): a Bash COMMAND is not a path ---
+# The lead's exact blocked command (verbatim, from the guard's own log at
+# 20:46:04): `gh issue close 64 --comment` with multiline prose. extract_paths
+# returned .command, so the ENTIRE command went through is_allowed_path as if
+# it were one path; canonicalize's ancestor walk died on the multiline string
+# (dirname is line-oriented and returned nothing), the sentinel fired, and the
+# #61 rule (sentinel denies) blocked it as "Path <the entire command>".
+# Issue #65 passed the same shape because ITS prose canonicalized back under
+# the CWD — the boundary depended on the prose content, not the command.
+
+def test_t37_gh_comment_multiline_prose_allows(external_repo_dir):
+    d, fr = external_repo_dir
+    cmd = '''gh issue close 64 --comment "Cerrado por tres tareas, porque el agujero tenía dos ramas y una víctima concreta.
+
+**T30** (`1598484`, main `80c4e4c`) — rama bats del runner. bats sale 0 cuando no hay líneas `not ok`, incluido el caso en que TODOS los tests son `# skip`. El guard parsea el plan TAP y falla con `ZERO ASSERTIONS` cuando `assertions_run <= 0` aunque bats salga 0. `test_quality_gates.bats` archivado en `tests/archive/v2-suite/`. Verificado con TAP sintético, 6 casos: todo-skip → ZERO ASSERTIONS; plan vacío → ZERO ASSERTIONS; sin plan → ZERO ASSERTIONS; 2 reales + 1 skip → PASSED(2); 3 reales → PASSED; fallo real → FAILED.
+
+**T34** (`c47bc5a`) — rama shell, que seguía abierta y tenía una víctima viva. La Suite 12 (`test-e2e.sh`) imprimía `Skipping hook execution tests...`, reportaba 0 passed / 0 failed y el runner la contaba como ✓. La ruta shell decidía solo por exit code. El guard nuevo captura la salida y exige un indicador de aserción; se catalogaron los 8 formatos distintos de las 26 suites ANTES de escribir el parser (la primera regex extrajo `897448` de un SHA — cazado por la encuesta, no por main).
+
+**T34b** (`ed1d22a`, main `c809165`) — la corrección del veredicto. `promptify-auto-detect.sh` no estaba retirado: se había **consolidado** en `command-router.sh` (`run_promptify_auto_detect()` en la línea 377, invocado en la 434). Retirar la Suite 12 habría borrado cobertura de código que corre hoy en cada prompt. La suite se repunta a la función viva, con 7 aserciones.
+
+Suite completa: 31/31, exit 0." 2>&1 | tail -2'''
+    result = run_boundary_bash(d, cmd)
+    assert decision_of(result) == "allow", (
+        "a Bash command must never be evaluated as a path — the mention gate "
+        "owns Bash; canonicalize dying on multiline prose denied this as "
+        "'Path <the entire command>'"
+    )
+
+
+def test_t37_comment_with_real_external_path_still_denies(external_repo_dir):
+    # The fresh violation the fix must NOT blind: a REAL external repo path
+    # inside --comment prose still trips the mention gate (which since T29
+    # covers the sibling root too). Blinding the payload would trade a false
+    # positive for a hole; this pins that the fix removed the command-as-path
+    # branch without widening any other.
+    d, fr = external_repo_dir
+    result = run_boundary_bash(d, f'gh issue close 64 --comment "repro: ver {fr}/src/foo.sh del vecino"')
+    assert decision_of(result) == "deny"

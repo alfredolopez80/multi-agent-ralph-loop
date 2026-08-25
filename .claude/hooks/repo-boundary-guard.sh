@@ -2,7 +2,18 @@
 umask 077
 # repo-boundary-guard.sh — Repository Isolation Enforcement
 # Hook: PreToolUse (Edit|Write|Bash)
-# VERSION: 2.101.0
+# VERSION: 2.102.0
+# v2.102.0 (#66/T37): extract_paths no longer returns .command — a Bash
+#          COMMAND is not a path. Feeding the whole command through
+#          is_allowed_path ran it through canonicalize: multiline prose
+#          with slashes killed the ancestor walk (dirname is line-oriented
+#          and returned nothing), the sentinel fired, and the #61 rule
+#          (sentinel denies) blocked `gh issue close 64 --comment
+#          "<prosa>"` as "Path <the entire command>". Same false-positive
+#          family the same day: plain `echo`, `cd <this very repo>`,
+#          `git commit -F /dev/stdin <<EOF`, `python3 -c "..."`.
+#          Bash paths are the mention gate's job (and since T29 it covers
+#          the sibling-repo root too); Edit/Write keep .file_path/.path.
 # v2.101.0 (#65/T29): the mention gate no longer requires a '/' after the
 #          component. `GITHUB_DIR/<repo>/` (one level INSIDE) left the repo
 #          ROOT itself outside the gate — `git -C <sibling-root> ...` never
@@ -289,14 +300,19 @@ is_allowed_path() {
 }
 
 # Extract paths from tool input
+# T37 (#66): .command REMOVED from the extraction. It fed the entire Bash
+# command into is_allowed_path as if it were one path — canonicalize died on
+# multiline prose (see v2.102.0 header) and the sentinel denied the whole
+# command. A command is not a path; Bash path mentions are checked by the
+# mention gate in main(). Only real path fields are extracted here.
 extract_paths() {
     local input="$1"
 
-    # Extract file_path, path, or command paths
+    # Extract file_path or path fields (NOT .command — see T37 above)
     echo "$input" | jq -r '
         .tool_input // . |
         if type == "object" then
-            (.file_path // .path // .command // "")
+            (.file_path // .path // "")
         else
             ""
         end
