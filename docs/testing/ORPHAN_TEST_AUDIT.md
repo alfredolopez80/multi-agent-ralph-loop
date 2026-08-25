@@ -660,3 +660,170 @@ the silent-skip class.
   repoint to live `command-router.sh` SECTION 4, keep fail-loud verdict
   for genuine missing-router case)
 - `docs/testing/ORPHAN_TEST_AUDIT.md` (this T34b section)
+
+## T36: stale-copy drift in `test-clarity-scoring.sh` (issue #64, 2026-08-25)
+
+T34b closed the silent-skip class for the promptify integration. T36
+closes the **stale-copy drift** class — tests that ship their own copy
+of a production function instead of sourcing the live code. The drift
+is more pernicious than the silent skip: a test that skips makes no
+claims, a test that runs against a stale copy makes false claims.
+
+### The finding: 3rd word-count tier never existed in production
+
+The v1.0.0 of `tests/promptify-integration/test-clarity-scoring.sh`
+declared `HOOK_FILE` (pointing at the now-retired
+`promptify-auto-detect.sh`) and shipped its own local copy of
+`calculate_clarity_score()`. The copy had THREE word-count tiers:
+
+```bash
+if [[ $word_count -lt 5 ]];  then score=$((score - 40))
+elif [[ $word_count -lt 10 ]]; then score=$((score - 20))
+elif [[ $word_count -lt 15 ]]; then score=$((score - 10))   # ← copy only
+fi
+```
+
+The live function in `.claude/hooks/command-router.sh` has only TWO:
+
+```bash
+if [[ $word_count -lt 5 ]];  then score=$((score - 40))
+elif [[ $word_count -lt 10 ]]; then score=$((score - 20))
+                                # ← no third tier
+fi
+```
+
+The 3rd tier never existed in production. Verified by:
+
+```bash
+$ git log -S 'word_count' --oneline -- .claude/hooks/command-router.sh
+498556f feat: implement Unified Herding Blanket plan v3.0 — 16/16 items complete
+
+$ git show 498556f -- .claude/hooks/command-router.sh | grep -nE 'word_count|lt 5|lt 10'
+301: local word_count
+303: if [[ $word_count -lt 5 ]]; then
+305: elif [[ $word_count -lt 10 ]]; then
+
+$ git log --all --oneline -- .claude/hooks/promptify-auto-detect.sh
+498556f feat: implement Unified Herding Blanket plan v3.0 ...
+4c40f7b fix(hooks): correct 9 critical bash syntax errors
+e29eaca fix(security): Remediate 12 audit findings v2.90.1
+94cbf59 feat: complete Promptify integration with Ralph Loop v2.82.0
+
+$ git show 94cbf59 -- .claude/hooks/promptify-auto-detect.sh \
+    | grep -nE 'word_count|lt 5|lt 10|lt 15'
+138: local word_count=$(...)
+139: if [[ $word_count -lt 5 ]]; then
+142: elif [[ $word_count -lt 10 ]]; then
+```
+
+Lead independently re-verified with a broader sweep over every commit
+of both files in every ref — zero matches for `word_count -lt 15`.
+The 3rd tier is an invention of the test copy, not a regression of
+production. There is no production behavior to restore.
+
+### The direction of the drift (why it never made noise)
+
+The drift is inverted from the usual: the test was **more permissive**
+than production, so 10–14-word prompts that should have been penalised
+were not. Most test ranges were wide enough to absorb the 10-point
+delta, so the test stayed green. A test that only ever errs on the
+"more lenient than reality" side produces no signal — nobody notices
+that promptify is more generous with vague prompts than the test claims.
+A strict-but-red test (the usual direction) is at least noisy.
+
+### The 20-case diff table
+
+Computed by `scratchpad/score-divergence.sh`. Local copy vs live
+function on every test case in v1.0.0:
+
+| test | prompt (excerpt)                     | exp range | local | live | delta |
+|-----:|--------------------------------------|----------:|------:|-----:|------:|
+| 1    | "fix the thing"                      | 0–30      | 20    | 20   | 0     |
+| 2    | "stuff"                              | 0–20      | 0     | 0    | 0     |
+| 3    | "help me"                            | 0–25      | 0     | 0    | 0     |
+| 4    | "do this"                            | 0–30      | 15    | 15   | 0     |
+| 5    | "make it better"                     | 0–30      | 10    | 10   | 0     |
+| 6    | "add auth"                           | 30–50     | 35    | 35   | 0     |
+| 7    | "create login"                       | 35–55     | 35    | 35   | 0     |
+| 8    | "fix error"                          | 30–50     | 35    | 35   | 0     |
+| 9    | "implement oauth"                    | 35–55     | 35    | 35   | 0     |
+| 10   | "implement OAuth2 login for my app"  | 55–75     | 55    | 55   | 0     |
+| 11   | "create a REST API with auth"        | 50–70     | 55    | 55   | 0     |
+| 12   | "add user auth to the system"        | 55–75     | 55    | 55   | 0     |
+| 13   | "You are a backend engineer..."      | 70–90     | 90    | 90   | 0     |
+| 14   | "Create a REST API using Express.js..." (13 words) | **75–95** | **80** | **90** | **−10** |
+| 15   | "You are a senior backend engineer..." | 90–100   | 90    | 90   | 0     |
+| edge | empty                                | ≤30       | 5     | 5    | 0     |
+| edge | "hi" (1 word)                        | ≤60       | 40    | 40   | 0     |
+| edge | structure bonuses (relative scores)  | compared  | 35/50/70 | 35/50/70 | 0 |
+| edge | "thing stuff something..."           | 0–100     | 0     | 0    | 0     |
+
+Only **test 14** falls in the divergent 10–14-word band. Both versions
+pass the `[75, 95]` range (local=80, live=90), confirming the drift
+was silent because the ranges were too wide. The 21st test (the new
+case added in T36 — see below) uses a narrow `[98, 100]` range that
+catches the same 10-point divergence.
+
+### The wrapper convention already established in the directory
+
+The repoint is not inventing a new pattern — it aligns with three
+precedents that already exist in `tests/promptify-integration/`:
+
+| File | Line | Pattern |
+|---|---:|---|
+| `test-credential-redaction.sh` | 45 | `redact_credentials() { bash -c 'source "$1"; redact_credentials "$2"' _ "$PROMPTIFY_SECURITY" "$1"; }` |
+| `test-security-functions.sh` | 45 | same wrapper for `redact_credentials` |
+| `test-security-functions.sh` | 288 | same wrapper for `validate_prompt_security` |
+
+The wrapper delegates to the live file at runtime. If the live file
+disappears, the wrapper fails with `bash: <fn>: command not found` —
+loud. If the live file changes its signature, the wrapper's first
+call site fails. The wrapper cannot silently drift.
+
+`test-clarity-scoring.sh` was the **only** file in the directory that
+shipped an inline copy. Its 20-green output looked healthy from the
+outside but was running against a stale version. Three of four well,
+one mal — and the one mal was the only one whose mechanism could not
+detect its own drift.
+
+### What changed in v2.0.0
+
+1. `tests/promptify-integration/test-clarity-scoring.sh`:
+   - The local copy of `calculate_clarity_score` (v1.0.0 lines 40–106)
+     is **deleted**.
+   - The script now sources command-router.sh SECTION 4 at runtime via
+     the same `awk '/SECTION 4: PROMPTIFY/,/^# MAIN EXECUTION$/'`
+     extraction used by `test-e2e.sh` (T34b). `PROMPTIFY_CONFIG_FILE`
+     defaults to a non-existent path so the sandbox HOME's missing
+     config triggers the function's built-in defaults. `log_message`
+     is stubbed (only invoked under DEBUG log level; not exercised here).
+   - A new 21st assertion is added: a 12-word fully-structured prompt
+     with a **narrow `[98, 100]` range** (2-point tolerance, not the
+     10-point ranges that masked the drift). Live score: 100. Local
+     copy score: 90. The narrow range ensures any future regression
+     that re-adds the `< 15 -> -10` tier to production fails loudly
+     here.
+   - The case is annotated with WHY 12 (the divergent band) and WHY
+     narrow (the lesson from test 14's wide range).
+
+2. `bash tests/promptify-integration/test-clarity-scoring.sh`
+   standalone: 21/21 PASS, exit 0.
+3. `bash tests/run-all-unit-tests.sh`: 31/31 PASS, exit 0 (the new
+   case bumps the suite from 20 → 21, but the suite-count and
+   pass/fail/total are unchanged).
+
+### What was NOT changed
+
+- Production code (`command-router.sh` SECTION 4) is untouched. The
+  3rd tier was never in production; nothing to restore.
+- The other three promptify tests (test-credential-redaction,
+  test-security-functions, test-phase3-ralph-integration) are
+  unchanged — they were either already using the correct wrapper
+  pattern or are dead-path-but-loud and out of T36 scope.
+
+### Files touched
+
+- `tests/promptify-integration/test-clarity-scoring.sh` (v1.0.0 →
+  v2.0.0: delete local copy, source live function via awk extraction,
+  add 21st assertion with narrow range and explanation)
+- `docs/testing/ORPHAN_TEST_AUDIT.md` (this T36 section)
