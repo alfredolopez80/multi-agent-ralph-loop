@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-# VERSION: 2.70.0
+# VERSION: 2.71.0
+# v2.71.0: (1) rebase on shared branches is CONTEXT-AWARE: `git rebase
+#          main|master|develop` is allowed when the current branch is a
+#          worktree-* branch (the documented wt-worker protocol runs exactly
+#          that) and denied on any other branch — main itself above all,
+#          which is the case the rule existed for. It was the most-blocked
+#          command of the day (16x) purely from protocol friction.
+#          (2) DESTRUCTIVE_INNER `rm\s` anchored to `\brm\s`: "confirm the
+#          change", "platform notes", "perform a check", "transform data"
+#          all matched the unanchored token and were classified destructive.
 # Trigger: PreToolUse (Bash)
 # v2.70.0: Cloud CLI coverage (aws/gcloud/gsutil/kubectl) with deny+ask tiers;
 #          BLOCKED evaluated before CONFIRMATION; env-var escape hatches can
@@ -231,8 +240,10 @@ GSUTIL = WRAPPER + r"gsutil\s+(?:-[mqD]\s+)*"
 KUBECTL = WRAPPER + r"kubectl\s+" + _flag_skip(_KUBECTL_VFLAGS, "nsuvp")
 
 # Destructive verbs used by the command-substitution / shell -c detectors
+# v2.71.0: `rm` is word-anchored (\brm\s) — unanchored it matched the tail of
+# "confirm", "platform", "perform", "transform" and misclassified plain text.
 DESTRUCTIVE_INNER = (
-    r"(?:rm\s|git\s+reset|git\s+clean|git\s+checkout\s+--"
+    r"(?:\brm\s|git\s+reset|git\s+clean|git\s+checkout\s+--"
     r"|aws\s+[\w-]+\s+(?:delete|terminate|purge|destroy|remove|deregister)"
     r"|aws\s+s3\s+(?:rm|rb|sync)\b"
     r"|gcloud\s+.*\bdelete\b"
@@ -420,11 +431,10 @@ GIT_FS_BLOCKED_PATTERNS = [
         r"rm\s+(-rf|-fr|--recursive)\s+\.\./",
         "relative path deletion with ../ is unsafe",
     ),
-    # Rebase on shared branches (ISSUE-011: removed extra \s+ before branch name)
-    (
-        r"git\s+rebase\s+.*(main|master|develop)\b",
-        "rebasing shared branches can cause issues for collaborators",
-    ),
+    # Rebase on shared branches moved OUT of this static list in v2.71.0:
+    # it is context-aware now (see REBASE_SHARED in check_blocked_pattern) —
+    # allowed on worktree-* branches (wt-worker protocol), denied elsewhere.
+
     # HARDENING: recursive deletion via interpreter libraries (bypasses the `rm` token).
     # Covers shutil.rmtree / os.removedirs / bare `rmtree(` (from-import) / keyword `path=` /
     # getattr indirection. Same temp-dir exemption as the rm patterns above; literal absolute
@@ -667,6 +677,34 @@ RESTORE_LIKE = re.compile(
     r"^\s*git\s+(?:restore|checkout\s+--)\s+(?P<targets>.+)$", re.IGNORECASE
 )
 
+# v2.71.0: rebase onto a shared branch, evaluated CONTEXT-AWARE in
+# check_blocked_pattern — allowed from a worktree-* branch (the wt-worker
+# protocol runs exactly this via start-task.sh), denied from any other
+# branch. Formerly a static BLOCKED_PATTERNS entry and the day's single
+# most-blocked command (16x) purely from protocol friction.
+REBASE_SHARED = re.compile(r"git\s+rebase\s+.*(main|master|develop)\b", re.IGNORECASE)
+
+
+def _current_branch(cwd: str) -> str:
+    """Current git branch at cwd ('' if unborn/detached, not a repo, or git fails).
+
+    Empty fails closed in the caller: an unknown branch never gets the
+    worktree exemption.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "branch", "--show-current"],
+            cwd=cwd or None,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    if result.returncode != 0:
+        return ""
+    return result.stdout.strip()
+
 
 # A trackable `cd`: bare (→ $HOME) or exactly one target token. Anything else — a target
 # that needed quoting (normalize_command strips the quotes, so `cd "a b"` arrives as the
@@ -827,6 +865,19 @@ def check_blocked_pattern(command: str, cwd: str = "") -> tuple[bool, str]:
             if RESTORE_LIKE.match(command) and _restore_targets_are_all_deleted(command, cwd):
                 continue  # recovering a deleted file — nothing to overwrite
             return True, reason
+    # v2.71.0: rebase on shared branches, context-aware. The static rule was
+    # the single largest source of protocol friction (wt-worker's start-task.sh
+    # runs `git rebase main` by design) while the danger it guards against is
+    # rebasing a shared branch while ON it — main above all. Allowed when the
+    # current branch is a worktree-* branch; denied on every other branch,
+    # including unborn/detached HEAD (empty branch name fails closed).
+    if REBASE_SHARED.search(command):
+        branch = _current_branch(cwd)
+        if not branch.startswith("worktree-"):
+            return True, (
+                "rebasing shared branches can cause issues for collaborators "
+                f"(current branch: {branch!r}; allowed only from worktree-* branches)"
+            )
     return False, ""
 
 
