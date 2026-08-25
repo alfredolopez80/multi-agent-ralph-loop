@@ -34,18 +34,22 @@ FAILED_SUITES=0
 # Options
 VERBOSE=false
 COVERAGE=false
+WITH_INSTALL=false
 
 # Parse arguments
 for arg in "$@"; do
     case $arg in
         --verbose|-v) VERBOSE=true ;;
         --coverage|-c) COVERAGE=true ;;
+        --with-install) WITH_INSTALL=true ;;
         --help|-h)
-            echo "Usage: $0 [--verbose] [--coverage]"
+            echo "Usage: $0 [--verbose] [--coverage] [--with-install]"
             echo ""
             echo "Options:"
-            echo "  --verbose   Show detailed output from each test"
-            echo "  --coverage  Generate coverage report (future feature)"
+            echo "  --verbose        Show detailed output from each test"
+            echo "  --coverage       Generate coverage report (future feature)"
+            echo "  --with-install   Also run suites that require a provisioned"
+            echo "                   ~/.claude / ~/.ralph / vault (fail on a clean runner)"
             exit 0
             ;;
     esac
@@ -62,10 +66,74 @@ echo "Verbose: $VERBOSE"
 echo "Started: $(date)"
 echo ""
 
-# Test suites to run
+# Test suites to run (issue #42)
+#
+# This array held exactly ONE entry, and that entry was already covered by
+# pre-commit. Meanwhile 62 shell/bats suites under tests/ were invoked by nothing at
+# all -- not CI, not pre-commit, not any aggregate runner. They were not obsolete;
+# they simply had no way to run, so nobody could tell which of them still worked.
+#
+# All 62 were executed to find out. The split below is that measurement, not a guess:
+#
+#   TEST_SUITES                  23 suites that pass on a bare checkout. Safe for CI.
+#   TEST_SUITES_REQUIRE_INSTALL  suites that assert on a provisioned machine --
+#                                symlinks under ~/.claude, ~/.codex, ~/.ralph, or an
+#                                Obsidian vault. They fail on any clean runner by
+#                                construction, so they are opt-in via --with-install
+#                                rather than wired into the gate.
+#
+# The remaining suites are neither list: see docs/testing/ORPHAN_TEST_AUDIT.md for the
+# per-suite verdict. Nothing was deleted on the strength of "it had no runner".
 TEST_SUITES=(
-    "unit/test-skills-unification-v2.87.sh:Skills Unification"
+    "hooks/test_no_hook_hangs_or_blocks.sh:Hooks: no hangs or blocks"
+    "hooks/test_plan_state_writer.sh:Hooks: plan-state writer"
+    "hooks/test_quality_check_registry.sh:Hooks: quality check registry"
+    "hooks/test_react_doctor_runner_failures.sh:Hooks: react-doctor runner failures"
+    "hooks/test_session_dedup_key.sh:Hooks: session dedup key"
+    "hooks/test_single_json_emission.sh:Hooks: single JSON emission"
+    "hooks/test_task_list_projection.sh:Hooks: task list projection"
+    "memory/test-seed-dev-prohibitions.sh:Memory: seed dev prohibitions"
+    "promptify-integration/test-clarity-scoring.sh:Promptify: clarity scoring"
+    "promptify-integration/test-credential-redaction.sh:Promptify: credential redaction"
+    "promptify-integration/test-e2e.sh:Promptify: end to end"
+    "promptify-integration/test-security-functions.sh:Promptify: security functions"
+    "security/test-command-injection-prevention.sh:Security: command injection prevention"
+    "security/test-environment-validation.sh:Security: environment validation"
+    "security/test-json-error-handling.sh:Security: JSON error handling"
+    "security/test-logging-standards.sh:Security: logging standards"
+    "security/test-shell-syntax-validation.sh:Security: shell syntax validation"
+    "skills/test-autoresearch-smart-setup.sh:Skills: autoresearch smart setup"
+    "stop-hook/test-ralph-stop-quality-gate.sh:Stop hook: quality gate"
+    "stop-hook/test-ralph-subagent-stop.sh:Stop hook: subagent stop"
+    "unit/test-context-warning-v2.90.sh:Unit: context warning"
+    "unit/test-quality-gates-v2.90.sh:Unit: quality gates"
+    "unit/test_validation_common.sh:Unit: validation-common library"
 )
+
+# Opt-in: these assert against a provisioned machine -- symlinks under ~/.claude,
+# ~/.codex, ~/.ralph, ~/.config/agents, or an Obsidian vault -- so they fail on a clean
+# runner by construction, not because anything is broken. Run with --with-install.
+#
+# They were classified from their failure diagnostics on a bare checkout; they have NOT
+# been verified green on a fully provisioned machine, so treat a failure here as
+# "investigate", not "regression". Verdict per suite: docs/testing/ORPHAN_TEST_AUDIT.md
+TEST_SUITES_REQUIRE_INSTALL=(
+    "unit/test-skills-unification-v2.87.sh:Skills Unification (needs global symlinks)"
+    "orchestrator-validation/test-suite.sh:Orchestrator validation (needs ~/.claude/agents)"
+    "session-lifecycle/test_skills_centralization.sh:Skills centralization (needs ~/.claude/skills)"
+    "skills/test-iterate.sh:Skills: iterate (needs global symlinks)"
+    "skills/test-autoresearch.sh:Skills: autoresearch (needs global symlinks)"
+    "skills/test-autoresearch-integrations.sh:Skills: autoresearch integrations (needs global symlinks)"
+    "skills/test-batch-skills-integration.sh:Skills: batch integration (needs global symlinks)"
+    "skills/test-task-batch.sh:Skills: task-batch (needs global symlinks)"
+    "skills/test-create-task-batch.sh:Skills: create-task-batch (needs global symlinks)"
+    "vault/test-vault-health.sh:Vault health (needs an Obsidian vault)"
+    "test_v2.33_sentry_integration.sh:Sentry integration (needs global config)"
+)
+
+if $WITH_INSTALL; then
+    TEST_SUITES+=("${TEST_SUITES_REQUIRE_INSTALL[@]}")
+fi
 
 #######################################
 # Run a test suite
@@ -164,6 +232,18 @@ fi
 
 echo -e "  ${BOLD}Pass Rate: ${pass_rate}%${NC}"
 echo ""
+
+# A run that executed nothing is not a pass. Without this, an empty or mis-pathed
+# TEST_SUITES array reports "ALL TEST SUITES PASSED" over zero suites -- which is how
+# this runner could sit at one entry for months and still look healthy.
+if [[ $TOTAL_SUITES -eq 0 ]]; then
+    echo -e "${RED}${BOLD}✗ NO TEST SUITES RAN${NC}"
+    echo ""
+    echo "TEST_SUITES is empty or every path was unresolvable. That is a failure,"
+    echo "not a clean run."
+    echo ""
+    exit 2
+fi
 
 if [[ $FAILED_SUITES -eq 0 ]]; then
     echo -e "${GREEN}${BOLD}✓ ALL TEST SUITES PASSED${NC}"

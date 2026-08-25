@@ -8,7 +8,10 @@
 set -e
 
 # Configuracion
-REPO_ROOT="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+# Derivado de la ubicacion del script, no fijado a una maquina concreta: aqui habia
+# una ruta absoluta al portatil del autor, de modo que el script solo podia funcionar
+# en un unico ordenador aunque los tests afirmasen que existe y es ejecutable.
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_CLAUDE="$REPO_ROOT/.claude"
 STD_CLAUDE="$HOME/.claude"
 BACKUP_DIR="$HOME/.claude-backup-$(date +%Y%m%d-%H%M%S)"

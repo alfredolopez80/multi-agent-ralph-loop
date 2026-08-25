@@ -118,6 +118,20 @@ jobs:
             python -m pytest tests/harness/ -v --tb=short
           fi
 
+      - name: Install shell suite dependencies
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Run orphaned shell unit suites
+        # 62 suites bajo tests/ no las invocaba NADIE: ni CI, ni pre-commit, ni ningun
+        # runner agregado (#42). run-all-unit-tests.sh existia pero declaraba un
+        # TEST_SUITES de una sola entrada, y esa entrada ya corria en pre-commit.
+        #
+        # Aqui corren las 23 que se verificaron verdes sobre un checkout limpio. Las
+        # que exigen una maquina aprovisionada quedan detras de --with-install, y el
+        # veredicto por suite del resto esta en docs/testing/ORPHAN_TEST_AUDIT.md.
+        # El runner sale != 0 tanto si falla una suite como si no corre ninguna.
+        run: bash tests/run-all-unit-tests.sh
+
   health-check:
     name: Ralph Doctor
     runs-on: ubuntu-latest

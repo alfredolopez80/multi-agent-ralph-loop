@@ -530,8 +530,13 @@ test_settings_registration() {
 test_setup_scripts() {
     print_header "Test 10: Setup and Validation Scripts"
 
+    # setup-skill-symlinks.sh (singular) was retired in favour of
+    # setup-skills-symlinks.sh (plural): the singular one hardcoded an absolute path
+    # to the author's laptop and carried a frozen list of skill names that had gone
+    # stale. The plural one derives the repo root from its own location and walks
+    # whatever skills are actually present.
     local scripts=(
-        "$REPO_ROOT/scripts/setup-skill-symlinks.sh"
+        "$REPO_ROOT/scripts/setup-skills-symlinks.sh"
         "$REPO_ROOT/scripts/validate-skills-unification.sh"
     )
 

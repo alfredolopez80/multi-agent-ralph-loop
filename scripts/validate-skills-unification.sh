@@ -8,12 +8,15 @@ set -e
 # variable holding 0 evaluates to 0, which bash reports as exit status 1 and aborts
 # the script. That silently truncated this validator after its first check.
 
-REPO_PATH="/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop"
+# Derived from the script's own location. This was an absolute path into the author's
+# laptop, which made the validator report on whatever happened to be at that path —
+# nothing, on every other machine — while still exiting through its normal verdict.
+_VC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_PATH="$(cd "${_VC_DIR}/.." && pwd)"
 GLOBAL_SKILLS="$HOME/.claude/skills"
 GLOBAL_COMMANDS="$HOME/.claude/commands"
 
 # Shared colors, counters and the zero-checks verdict guard.
-_VC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${_VC_DIR}/lib/validation-common.sh"
 
 PASS=0
