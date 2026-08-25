@@ -358,6 +358,13 @@ Lead is expected to route deliberately, not round-robin:
 - **One task per worker at a time.** Do not queue; queueing hides idle panes.
 - **Consult Fable 5 before committing to an expensive split**, not after a
   worker has already produced the wrong thing.
+- **Research and web search go to a worker, never to a Claude subagent.** A
+  subagent spawned by lead bills against the Claude MAX subscription; `zc` and
+  the two `mmx` panes do not, and they carry the z.ai MCP servers
+  (`web-search-prime`, `web-reader`, `zread`) for exactly this. Reading docs,
+  surveying a library, checking what a flag does, sweeping an unfamiliar
+  codebase — all of it is worker work. Spawning a Claude subagent to search is
+  spending the subscription this whole team exists to conserve.
 - Lead does not implement delegated work itself. If lead is coding, the split
   was wrong.
 
