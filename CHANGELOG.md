@@ -19,15 +19,32 @@
 - **`QTEAM_TEST_CMD` documented as `bash tests/run-all-unit-tests.sh`** — the same command
   `.github/workflows/ci.yml` runs, so `integrate.sh` gates every merge on the suite CI
   will run, and that runner already asserts `total > 0`.
-- **`.claude/settings.json`** created with `crossSessionInbound: "accept"` and
-  `worktree.baseRef: "head"`, making the behaviour reproducible for any clone rather than
-  depending on the operator's `~/.claude/settings.json`.
+- **`crossSessionInbound: "accept"` and `worktree.baseRef: "head"` added to
+  `.claude/settings.json.example`**, not to a new `.claude/settings.json`. The bundle's
+  INTEGRATE.md asked for the latter; this repository cannot take it. `install.sh:641`
+  runs `merge_settings` only `if [ -f .claude/settings.json ]`, and `install.sh:114`
+  copies that file **verbatim** over `~/.claude/settings.json` when the user has none —
+  so a three-key file installs a settings file with no hooks. Committing it turned 36
+  hook-chain assertions red in CI on the first run. The keys live in the example, and
+  `CLAUDE.md` documents that they belong in the user's global settings.
+- **Scoped the whole coordination section to an active `qteam` tmux session**, with the
+  four panes and their launch commands written down, plus a model contract for that mode
+  only: Opus 5 leads and routes, Fable 5 is consulted punctually on complex decisions,
+  `zc` (`zai-claude`) takes medium/medium-high complexity, `mmx-1`/`mmx-2`
+  (`minimax-claude`) take the fast shallow volume. Outside a Q-team nothing changes.
 - **`.gitignore`: `results/`** — worker artifacts stay inside each worktree, unversioned.
 - **`.worktreeinclude`** carries `.env` / `.env.local` into new worktrees.
 
-> Note: `CLAUDE.md` → "Configuration Location" still states `~/.claude/settings.json` is
-> the ONLY configuration file. The project-scoped `.claude/settings.json` added here is a
-> separate, narrower scope, but that sentence now reads as false and should be qualified.
+> Found while integrating, pre-existing, **not fixed here**: `install.sh` writes
+> `~/.claude/settings.json` only through `merge_settings`, which is gated on
+> `.claude/settings.json` existing in the repo — and it does not. So the installer has
+> never installed settings or hooks, `install.sh:815` reports that as a WARN rather than
+> a failure, and the 36 assertions in `tests/installer/test-hook-chain.bats` guarded by
+> `[[ -f "$SETTINGS_FILE" ]] || skip` have been skipping in every CI run since
+> 2026-02-15 (`f7dcf866`). The workflow that runs `install.sh` says doing so is "lo que
+> convierte esto en una prueba del instalador"; for settings it still is not. A skip that
+> reads as a pass over an unexercised installer path is the same fail-open family as
+> `zero-tests-is-never-success`.
 
 ### Fixed - the bash 3.2 guard missed case-modification expansion (follow-up to #44)
 

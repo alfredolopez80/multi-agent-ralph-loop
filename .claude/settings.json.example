@@ -14,11 +14,26 @@
       {
         "matcher": "*",
         "hooks": [
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/command-router.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/context-warning.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/memory-write-trigger.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/prompt-analyzer.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/statusline-health-monitor.sh" }
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/command-router.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/context-warning.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/memory-write-trigger.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/prompt-analyzer.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/statusline-health-monitor.sh"
+          }
         ]
       }
     ],
@@ -26,26 +41,56 @@
       {
         "matcher": "Task",
         "hooks": [
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/smart-memory-search.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/agent-memory-auto-init.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/procedural-inject.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/orchestrator-auto-learn.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/fast-path-check.sh" }
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/smart-memory-search.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/agent-memory-auto-init.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/procedural-inject.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/orchestrator-auto-learn.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/fast-path-check.sh"
+          }
         ]
       },
       {
         "matcher": "Edit|Write",
         "hooks": [
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/lsa-pre-step.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/checkpoint-smart-save.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/inject-session-context.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/ralph-context-injector.sh" }
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/lsa-pre-step.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/checkpoint-smart-save.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/inject-session-context.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/ralph-context-injector.sh"
+          }
         ]
       },
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/pre-commit-command-validation.sh" }
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/pre-commit-command-validation.sh"
+          }
         ]
       }
     ],
@@ -53,34 +98,73 @@
       {
         "matcher": "Edit|Write",
         "hooks": [
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/plan-sync-post-step.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/decision-extractor.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/semantic-realtime-extractor.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/status-auto-check.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/sec-context-validate.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/quality-gates-v2.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/checkpoint-auto-save.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/ralph-quality-gates.sh" }
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/plan-sync-post-step.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/decision-extractor.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/semantic-realtime-extractor.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/status-auto-check.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/sec-context-validate.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/quality-gates-v2.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/checkpoint-auto-save.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/ralph-quality-gates.sh"
+          }
         ]
       },
       {
         "matcher": "Task",
         "hooks": [
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/parallel-explore.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/recursive-decompose.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/plan-analysis-cleanup.sh" }
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/parallel-explore.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/recursive-decompose.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/plan-analysis-cleanup.sh"
+          }
         ]
       },
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/post-commit-command-verify.sh" }
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/post-commit-command-verify.sh"
+          }
         ]
       },
       {
         "matcher": "TodoWrite",
         "hooks": [
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/todo-plan-sync.sh" }
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/todo-plan-sync.sh"
+          }
         ]
       }
     ],
@@ -88,7 +172,10 @@
       {
         "matcher": "*",
         "hooks": [
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/pre-compact-handoff.sh" }
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/pre-compact-handoff.sh"
+          }
         ]
       }
     ],
@@ -96,12 +183,30 @@
       {
         "matcher": "*",
         "hooks": [
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/session-start-ledger.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/session-start-restore-context.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/auto-migrate-plan-state.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/session-start-welcome.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/session-start-tldr.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/skill-pre-warm.sh" }
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/session-start-ledger.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/session-start-restore-context.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/auto-migrate-plan-state.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/session-start-welcome.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/session-start-tldr.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/skill-pre-warm.sh"
+          }
         ]
       }
     ],
@@ -109,12 +214,30 @@
       {
         "matcher": "*",
         "hooks": [
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/sentry-report.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/reflection-engine.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/semantic-auto-extractor.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/episodic-auto-convert.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/orchestrator-report.sh" },
-          { "type": "command", "command": "$HOME/.ralph/.claude/hooks/stop-verification.sh" }
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/sentry-report.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/reflection-engine.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/semantic-auto-extractor.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/episodic-auto-convert.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/orchestrator-report.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/stop-verification.sh"
+          }
         ]
       }
     ]
@@ -128,5 +251,9 @@
     "RALPH_VERSION": "2.82.0",
     "RALPH_MODEL_PRIMARY": "glm-4.7",
     "RALPH_MODEL_FALLBACK": "claude-sonnet"
+  },
+  "crossSessionInbound": "accept",
+  "worktree": {
+    "baseRef": "head"
   }
 }

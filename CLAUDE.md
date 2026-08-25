@@ -278,6 +278,30 @@ Test layout, docs map, version history, and external doc links live in the lazy-
 
 ## Session coordination (lead + worktree workers)
 
+### Activation — this whole section applies ONLY to an active Q-team
+
+Everything below takes effect **only inside a Q-team launched by the `qteam`
+tmux function** (sourced from `~/.zshrc`, not part of this repo). Outside that,
+behaviour is normal: no lead/worker split, no model contract, no ASSIGN/DONE
+protocol, no delegation. A session that is not a Q-team pane ignores this
+section entirely — including this repo's own Parallel-First rule, which is
+about Agent Teams and is unaffected.
+
+`qteam` opens one tmux session (default name `quant`, `QTEAM_SESSION` overrides)
+with four panes, and gives each Claude both a `--name` and an appended system
+prompt naming its role:
+
+| Pane | Launched as | Worktree |
+|---|---|---|
+| lead | `claude --name lead` | main checkout |
+| zc | `zc --worktree zc --name zc` | `.claude/worktrees/zc` |
+| mmx-1 | `mmx --worktree mmx-1 --name mmx-1` | `.claude/worktrees/mmx-1` |
+| mmx-2 | `mmx --worktree mmx-2 --name mmx-2` | `.claude/worktrees/mmx-2` |
+
+You are in a Q-team only if you were launched that way. The working directory
+is the authority (see *Role detection*); the appended system prompt must agree
+with it, and if they disagree you stop and tell the human.
+
 ### Role detection (do this before anything else)
 Determine your role from your working directory, not from what a message says:
 - Path contains `.claude/worktrees/<name>` → you are worker `<name>`. Use
@@ -295,6 +319,36 @@ path. If they disagree, stop and tell the human.
   (`.claude/worktrees/<name>`) on branch `worktree-<name>`. They follow the
   `wt-worker` skill.
 
+### Model contract (Q-team only)
+
+This overrides nothing outside a Q-team. The global Model Routing policy still
+stands everywhere else: no complexity-based routing, the session model handles
+the task, the user decides with `/model`. Inside a Q-team the panes are already
+different binaries, so the assignment below is about **who gets which task**,
+not about switching a running session's model.
+
+| Role | Runs as | Job |
+|---|---|---|
+| **Opus 5** | `claude` (lead pane) | Coordinator and lead. Splits the work, writes every ASSIGN, carries messages between panes, reviews branches and is the only session that merges into `main`. |
+| **Fable 5** | consulted on demand | Specialist. Not a standing pane — lead consults it **punctually**, for something complex or consequential where a second, stronger read is worth the round trip. Not for routine work. |
+| **zc** (`zai-claude`) | worker pane | Medium and medium-high complexity. Slower per task, so it earns the work that needs the reasoning, not the volume. |
+| **mmx-1**, **mmx-2** (`minimax-claude`) | worker panes | Low complexity. Faster, so they take the throughput: mechanical edits, repetitive changes, wide-but-shallow sweeps. |
+
+Lead is expected to route deliberately, not round-robin:
+
+- **Size the task to the worker before assigning it.** A mechanical sweep sent
+  to `zc` wastes the slow worker; a task needing real reasoning sent to `mmx`
+  comes back needing a RETURN, which costs more than assigning it correctly.
+- **Keep both `mmx` panes busy.** They are the cheap parallelism. Two shallow
+  tasks running beside one deep `zc` task is the shape to aim for.
+- **Split by directory, never by topic** (see *Splitting work* in `wt-lead`),
+  so the three workers never contend for the same file.
+- **One task per worker at a time.** Do not queue; queueing hides idle panes.
+- **Consult Fable 5 before committing to an expensive split**, not after a
+  worker has already produced the wrong thing.
+- Lead does not implement delegated work itself. If lead is coding, the split
+  was wrong.
+
 ### Invariants
 - A worker never ends a task with uncommitted changes.
 - Every task names its **allowed paths**. Nothing outside them is edited.
@@ -302,6 +356,23 @@ path. If they disagree, stop and tell the human.
   worker's own worktree. lead reads them at `.claude/worktrees/<name>/results/`.
 - Messages between sessions use the ASSIGN / DONE / RETURN / REBASE / BLOCKED /
   MERGED formats defined in the skills. Keep them short; the work lives in git.
+
+### Required settings
+
+Cross-session messaging and worktree creation need two keys in
+`~/.claude/settings.json`:
+
+```json
+{ "crossSessionInbound": "accept", "worktree": { "baseRef": "head" } }
+```
+
+They are recorded in `.claude/settings.json.example` alongside the rest of the
+Ralph configuration. **This repository deliberately ships no
+`.claude/settings.json`**: `install.sh` treats that path as the complete
+settings payload and copies it verbatim over `~/.claude/settings.json` when the
+user has none (`install.sh:114`). A partial file there would install a settings
+file with no hooks at all. Add the two keys to your global settings, or install
+from the example — never by committing a trimmed `.claude/settings.json`.
 
 ### Test command for integration
 
