@@ -296,3 +296,6 @@ pytest-of-*/
 # curated documents under docs/actions/ stay tracked; the per-run dumps do not.
 .claude/metadata/actions/
 docs/actions/orchestrator/
+
+# Local review consolidations (/review-pr output). Never committed.
+.local-notes/
