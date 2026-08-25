@@ -213,8 +213,12 @@ else
     log_fail "Hook failed on error case (exit code: $HOOK_EXIT)"
 fi
 
-# Verify report shows failed status
-ERROR_REPORT=$(find docs/actions/orchestrator -name "*.md" -type f 2>/dev/null | tail -1)
+# Verify report shows failed status. ls -1t sorts by mtime (newest first);
+# `find ... | tail -1` is non-deterministic on macOS where find's order is
+# inode-based. By Test 8 there are 4 SUCCESS reports from Tests 4-7 in this
+# dir — tail -1 would pick one of those, not the FAILED one. Mirrors
+# find_latest_report (action-report-generator.sh:303).
+ERROR_REPORT=$(ls -1t docs/actions/orchestrator/*.md 2>/dev/null | head -1)
 if [[ -n "$ERROR_REPORT" && -f "$ERROR_REPORT" ]]; then
     if grep -qi "failed" "$ERROR_REPORT"; then
         log_pass "Error report shows failed status"
@@ -226,7 +230,7 @@ fi
 # Test 9: Test hook tracks run_in_background
 echo ""
 echo "Test 9: Test hook records run_in_background flag"
-BG_INPUT='{"tool_name":"Task","tool_input":{"subagent_type":"orchestrator","description":"Background task","run_in_background":true},"tool_result":"Background complete","session_id="test678"}'
+BG_INPUT='{"tool_name":"Task","tool_input":{"subagent_type":"orchestrator","description":"Background task","run_in_background":true},"tool_result":"Background complete","session_id":"test678"}'
 
 HOOK_OUTPUT=$(echo "$BG_INPUT" | .claude/hooks/action-report-tracker.sh 2>&1)
 HOOK_EXIT=$?
@@ -237,8 +241,11 @@ else
     log_fail "Hook failed processing background task (exit code: $HOOK_EXIT)"
 fi
 
-# Check metadata JSON
-BG_METADATA=$(find .claude/metadata/actions/orchestrator -name "*.json" -type f 2>/dev/null | tail -1)
+# Check metadata JSON. ls -1t sorts by mtime (newest first) and head -1 picks
+# the most recent — `find ... | tail -1` is non-deterministic on macOS where
+# find's order is inode/creation-based, not chronological. Mirrors the
+# production helper find_latest_report (action-report-generator.sh:303).
+BG_METADATA=$(ls -1t .claude/metadata/actions/orchestrator/*.json 2>/dev/null | head -1)
 if [[ -n "$BG_METADATA" && -f "$BG_METADATA" ]]; then
     BG_FLAG=$(jq -r '.details.run_in_background // "false"' "$BG_METADATA" 2>/dev/null)
     if [[ "$BG_FLAG" == "true" ]]; then
@@ -262,7 +269,11 @@ else
     log_fail "Hook does not output visible report"
 fi
 
-if echo "$HOOK_OUTPUT" | grep -q "Report saved:"; then
+# Production emits the location as `**Report saved**: \`path\`` with markdown
+# bold around "Report saved", so the literal "Report saved:" is NOT a
+# substring (the closing "**" sits between "saved" and ":"). Match without
+# the trailing colon to assert the location line is present.
+if echo "$HOOK_OUTPUT" | grep -q "Report saved"; then
     log_pass "Hook outputs file location"
 else
     log_fail "Hook does not output file location"
