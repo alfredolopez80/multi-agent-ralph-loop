@@ -1,0 +1,13 @@
+# skill-validator.allowlist — T48 (#68) auditable exemptions
+#
+# Format (one entry per line):
+#   <skill-name> <pattern-id>[,<pattern-id>...] # <reason — MANDATORY>
+#
+# Rules enforced by the scanner:
+#   - An entry without a written reason is INVALID: ignored and logged as an
+#     error (fail-closed — the skill is NOT exempted).
+#   - An entry whose pattern-id matches no current finding for that skill is
+#     logged as STALE so the list cannot rot. Prune stale entries.
+# Pattern ids: unicode_invisible, base64_exec, exfil_ioc, pipe_to_shell,
+#              secret_literal, override_instructions
+attack-mutator unicode_invisible # red-team skill: its ZWSP/base64 literals ARE the attack samples under test — the patterns are genuinely present, on purpose (T47 report §5.2)
