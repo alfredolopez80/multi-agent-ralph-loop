@@ -37,10 +37,14 @@ for arg in "$@"; do
   esac
 done
 
-if [ ! -d "$REPO/.claude/rules" ]; then
+if [ ! -d "$REPO/.claude/rules-src" ]; then
   # Con REPO derivado del propio fichero, que falte esto es una anomalia real,
   # no un caso tolerable: salir 0 aqui oculto 4,5 meses sin sincronizar.
-  echo "FAIL: rules source not found at $REPO/.claude/rules — sync did NOT run" >&2
+  # T40: source moved out of .claude/rules/ to .claude/rules-src/ so the repo
+  # stops auto-loading the 7 rules twice (once from the repo path, once from
+  # ~/.claude/rules/ — Claude Code deduplicates by REALPATH and both have
+  # different realpaths, so both were paid).
+  echo "FAIL: rules source not found at $REPO/.claude/rules-src — sync did NOT run" >&2
   exit 1
 fi
 
@@ -61,7 +65,7 @@ fi
 echo ""
 
 for rule_file in "${RULE_FILES[@]}"; do
-  SOURCE="$REPO/.claude/rules/$rule_file"
+  SOURCE="$REPO/.claude/rules-src/$rule_file"
   TARGET="$RULES_DIR/$rule_file"
 
   if [ ! -f "$SOURCE" ] || [ -L "$SOURCE" ]; then
@@ -118,7 +122,11 @@ echo ""
 # MemPalace v3.2: Propagates local learned rules to global scope
 # Security: taxonomy was filtered in W3.1 (46% noise excluded, no secrets)
 # ──────────────────────────────────────────────
-LEARNED_SOURCE="${REPO}/.claude/rules/learned"
+# T40: learned/ source moved from .claude/rules/learned to .claude/learned-src/learned
+# so the repo stops auto-loading it twice. Claude Code only auto-loads
+# .claude/rules/** — moving the source to .claude/learned-src/ takes it out
+# of the auto-load path while keeping it versioned.
+LEARNED_SOURCE="${REPO}/.claude/learned-src/learned"
 LEARNED_TARGET="${HOME}/.claude/rules/learned"
 
 if [[ -d "$LEARNED_SOURCE" ]]; then
