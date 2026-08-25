@@ -29,14 +29,14 @@
 #===============================================================================
 set -uo pipefail
 
-# Isolate the test's subprocess env from any $QTEAM_TEST_CMD the parent shell
-# (a Q-team lead pane) exports. integrate.sh in this repo consumes the variable
-# as a post-merge smoke test; on a Q-team machine that means running the full
-# unit suite INSIDE this test's fixture repo, where the script does not exist,
-# so integrate.sh exits 3 and the control case (legit sha accepted, expects 0)
-# flips red. Stripping the variable here keeps the test green on every
-# machine, including the only one where the Q-team is actually used.
-unset QTEAM_TEST_CMD
+# Pin $QTEAM_TEST_CMD to a trivially green command instead of inheriting or
+# unsetting it. Inheriting the parent's (a Q-team lead pane exports the real
+# suite) would run the full unit suite INSIDE this fixture repo, where the
+# script does not exist, flipping every happy-path rc to 3. Unsetting it
+# stopped being an option in T33: integrate.sh REFUSES to run without a test
+# gate, so unset would fail every case below by design. `true` keeps the gate
+# present and green — which is also what exercises the gate-present paths.
+export QTEAM_TEST_CMD=true
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -105,10 +105,23 @@ bash "$INTEGRATE" worktree-zc "$ALIEN" > /dev/null 2>&1
 check "alien sha refused" 1 $?
 [[ "$(git log -1 --format=%s)" == "init" ]]; check "main is untouched after the refusal" 0 $?
 
+echo "== integrate.sh: no test gate means no integration (T33)"
+out="$(env -u QTEAM_TEST_CMD bash "$INTEGRATE" worktree-zc 2>&1)"; rc=$?
+check "unset QTEAM_TEST_CMD refuses (rc=$rc)" 1 "$rc"
+grep -q "refusing to integrate" <<< "$out"; check "the refusal says why" 0 $?
+[[ "$(git log -1 --format=%s)" == "init" ]]; check "main untouched without a gate" 0 $?
+
 echo "== control: a sha that IS on the branch still integrates"
-bash "$INTEGRATE" worktree-zc "$LEGIT" > /dev/null 2>&1
-check "legitimate sha accepted" 0 $?
+out="$(bash "$INTEGRATE" worktree-zc "$LEGIT" 2>&1)"; rc=$?
+check "legitimate sha accepted (rc=$rc)" 0 "$rc"
 [[ -f allowed/filter.py ]]; check "the cherry-picked file landed on main" 0 $?
+
+echo "== integrate.sh: a failing suite is exit 3, never OK (T33)"
+before="$(git rev-parse --short HEAD)"
+out="$(QTEAM_TEST_CMD=false bash "$INTEGRATE" worktree-zc 2>&1)"; rc=$?
+check "failing suite is exit 3 (rc=$rc)" 3 "$rc"
+grep -q "TESTS FAILED" <<< "$out"; check "failure says TESTS FAILED" 0 $?
+[[ "$(git rev-parse --short HEAD)" != "$before" ]]; check "merge happened; the gate runs post-merge" 0 $?
 
 TOTAL=$((PASS + FAIL))
 echo
