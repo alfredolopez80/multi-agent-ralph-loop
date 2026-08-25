@@ -29,6 +29,15 @@
 #===============================================================================
 set -uo pipefail
 
+# Isolate the test's subprocess env from any $QTEAM_TEST_CMD the parent shell
+# (a Q-team lead pane) exports. integrate.sh in this repo consumes the variable
+# as a post-merge smoke test; on a Q-team machine that means running the full
+# unit suite INSIDE this test's fixture repo, where the script does not exist,
+# so integrate.sh exits 3 and the control case (legit sha accepted, expects 0)
+# flips red. Stripping the variable here keeps the test green on every
+# machine, including the only one where the Q-team is actually used.
+unset QTEAM_TEST_CMD
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 REVIEW="${REPO_ROOT}/.claude/skills/wt-lead/scripts/review.sh"
