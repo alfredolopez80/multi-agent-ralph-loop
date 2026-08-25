@@ -283,7 +283,6 @@ __GNU_ONLY_ALLOWLIST_START__
 .claude/hooks/smart-skill-reminder.sh|stat-bsd
 .claude/hooks/smart-skill-reminder.sh|stat-c
 .claude/hooks/wake-up-layer-stack.sh|date-d
-.claude/lib/action-report-generator.sh|find-printf
 .claude/lib/detect-environment.sh|stat-bsd
 .claude/lib/detect-environment.sh|stat-c
 .claude/run-tests-simple.sh|timeout

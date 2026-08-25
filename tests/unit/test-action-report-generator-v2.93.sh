@@ -328,12 +328,17 @@ fi
 # The bug returns to bite when any future contributor reintroduces a
 # GNU-only construct; this guard fails fast and points at the line.
 echo ""
-echo "Test 16: Bug C regression — no GNU-only find -printf in lib"
-if grep -nE 'find .* -printf' .claude/lib/action-report-generator.sh >/dev/null 2>&1; then
-    log_fail "Bug C regression: find -printf reappeared in action-report-generator.sh — fix is broken or reverted"
-    grep -nE 'find .* -printf' .claude/lib/action-report-generator.sh | head -3 | sed 's/^/         /'
+# Every line below names the construct it forbids, so check-gnu-only-commands.sh
+# flags this test as a violation of the very rule it enforces — the same
+# self-reference tests/hooks/test-worktree-utils.sh:173 has against the tilde
+# guard. Annotated, not rewritten: obscuring the pattern would make the test
+# unreadable and would not stop the next detector from finding it.
+echo "Test 16: Bug C regression — no GNU-only find -printf in lib"  # gnu-ok: names the forbidden construct
+if grep -nE 'find .* -printf' .claude/lib/action-report-generator.sh >/dev/null 2>&1; then  # gnu-ok: this IS the detector
+    log_fail "Bug C regression: find -printf reappeared in action-report-generator.sh — fix is broken or reverted"  # gnu-ok: failure message
+    grep -nE 'find .* -printf' .claude/lib/action-report-generator.sh | head -3 | sed 's/^/         /'  # gnu-ok: this IS the detector
 else
-    log_pass "Bug C regression: no find -printf (portable alternative in place)"
+    log_pass "Bug C regression: no find -printf (portable alternative in place)"  # gnu-ok: pass message
 fi
 
 # ============================================
