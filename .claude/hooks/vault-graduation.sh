@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# vault-graduation.sh — Promotes high-confidence vault learnings to .claude/rules/learned/
+# vault-graduation.sh — Promotes high-confidence vault learnings to .claude/learned-src/learned/
 # Event: SessionStart (*)
 # VERSION: 3.0.0
 #
 # Scans vault wiki articles for learnings with confidence >= 0.7 and >= 3 session confirmations.
-# Promotes them to .claude/rules/learned/{category}.md for auto-loading by Claude.
+# Promotes them to .claude/learned-src/learned/{category}.md (the T40 source tree).
+# .claude/rules/** is auto-loaded per session: nothing may write there (T62 #73).
 # The user sees changes in git diff at commit time.
 
 set -euo pipefail
@@ -27,8 +28,14 @@ fi
 trap 'echo "{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"vault-graduation: error\"}}"' ERR INT TERM
 
 VAULT_DIR="${VAULT_DIR:-$HOME/Documents/Obsidian/MiVault}"
-RULES_DIR=".claude/rules/learned"
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo ".")
+# T62 (#73): graduated learnings go to the SOURCE tree (.claude/learned-src/),
+# NOT .claude/rules/learned — T40 moved that tree out of the auto-load
+# path precisely so it stops being paid per-session; writing here again
+# was silently undoing the ~9.7k-token saving on every graduation
+# (observed live: hooks.md and security.md repopulated 12 minutes after
+# the T40 merge).
+RULES_DIR="${REPO_ROOT}/.claude/learned-src/learned"
 
 # Skip if vault doesn't exist
 if [[ ! -d "$VAULT_DIR/global/wiki" ]]; then
@@ -73,7 +80,7 @@ while IFS= read -r article; do
         fi
 
         # Ensure rules directory exists
-        mkdir -p "$REPO_ROOT/$RULES_DIR" 2>/dev/null || true
+        mkdir -p "$RULES_DIR" 2>/dev/null || true
 
         # Append to category rules file
         {
@@ -111,7 +118,7 @@ if [[ -d "$VAULT_DIR/projects" ]]; then
                 continue
             fi
 
-            mkdir -p "$REPO_ROOT/$RULES_DIR" 2>/dev/null || true
+            mkdir -p "$RULES_DIR" 2>/dev/null || true
             {
                 echo ""
                 echo "- $title (confidence: $confidence, sessions: $sessions, source: $article)"
