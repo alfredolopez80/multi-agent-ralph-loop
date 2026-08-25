@@ -87,6 +87,31 @@ teardown() {
 }
 
 #===============================================================================
+# GNU-only tooling: the other half of #44
+#===============================================================================
+
+# Same failure shape, different command. validate-hooks-execution.sh bounds each hook
+# with timeout(1), which is GNU coreutils; macOS ships neither it nor an equivalent, so
+# the script exited 2 with "timeout command not found". bats' `run` merges stderr into
+# $output, so that sentence is what the tests then fed to jq -- hence
+# `Invalid literal at line 1, column 8`, "timeout" being seven characters long.
+#
+# This is the third instance of the same class in this file's history: `stat -f` in #43
+# and `cat -A` in the debug step meant to diagnose #44.
+
+@test "gnu-tooling: hooks-execution validator accepts gtimeout as a fallback" {
+    local script="$PROJECT_ROOT/scripts/validate-hooks-execution.sh"
+    assert_file_exists "$script"
+    grep -q 'gtimeout' "$script"
+    # The bare command must not survive: it is what broke on macOS.
+    ! grep -qE '\$\(timeout "\$TIMEOUT_SECONDS"' "$script"
+}
+
+@test "gnu-tooling: hooks-execution validator names the remedy when neither exists" {
+    grep -q 'brew install coreutils' "$PROJECT_ROOT/scripts/validate-hooks-execution.sh"
+}
+
+#===============================================================================
 # END TO END: the symptom from issue #44 itself
 #===============================================================================
 

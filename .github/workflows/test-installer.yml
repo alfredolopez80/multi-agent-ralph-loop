@@ -173,7 +173,12 @@ jobs:
         run: |
           echo "::group::bash provisioning"
           if [ "$RUNNER_OS" = "macOS" ]; then
-            brew install bash
+            # bash: para `declare -A` (ver arriba).
+            # coreutils: aporta gtimeout. validate-hooks-execution.sh acota cada hook
+            # con timeout(1), que es de GNU y macOS no trae, asi que salia 2 con
+            # "timeout command not found"; bats fusiona stderr en $output y ese
+            # mensaje era lo que los tests intentaban parsear como JSON.
+            brew install bash coreutils
           fi
           echo "PATH bash:   $(command -v bash)"
           bash -c 'echo "PATH bash version: ${BASH_VERSION}"'
