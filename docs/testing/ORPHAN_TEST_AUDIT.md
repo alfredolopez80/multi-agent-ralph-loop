@@ -20,11 +20,11 @@ install, no vault). Passing suites were re-run a second time to rule out flakes.
 |---|---:|---|
 | Passes on a bare checkout | 30 | Wired into `tests/run-all-unit-tests.sh` and into CI (24 shell + 6 bats; the two security suites were repaired into green by #50 — see below) |
 | Fails: needs a provisioned machine | 12 | The 10 shell suites moved to the opt-in `--with-install` bucket; the 2 bats suites left out, since that bucket is invoked with `bash` |
-| Fails: tests an implementation that no longer exists | 7 | Documented below; **not deleted** |
-| Fails: not root-caused | 13 | Documented below; **not deleted** (15 before #50 reclassified the two security suites) |
+| Fails: tests an implementation that no longer exists | 11 | Documented below; **archived (not deleted)** — 7 originally, plus 4 v2.2x shell suites moved to `tests/archive/v2-suite/` by #50 part 2 |
+| Fails: not root-caused | 9 | Documented below; **not deleted** (15 before #50 reclassified the two security suites and 4 v2.2x were archived as superseded-wrapper, not root-cause) |
 | Timed out | 0 | — |
 
-28 + 12 + 7 + 15 = 62. Every orphan is accounted for.
+28 + 12 + 11 + 11 = 62. Every orphan is accounted for.
 
 > **The first version of this table did not add up, and the reason belongs in the
 > record.** It reported 23 passing and totalled 58 against a stated 62. Four suites had
@@ -80,6 +80,10 @@ findings rather than stale tests.
 | `security/test_security_hooks.sh` | Implementation retired | `sanitize-secrets.js` — archived |
 | `test_cli_commands.bats` | Implementation retired | `cmd_minimax` — MiniMax surface retired in dc926fe |
 | `unit/test-convert-rules-v2.89.sh` | Implementation retired | `.claude/scripts/convert-rules-to-claude.sh` — no longer in the repo (not even archived) |
+| `test_v2.25_search_hierarchy.sh` | Implementation retired | v2.25 wrapper layer (3 `.md` + 2 markers) — archived in `tests/archive/v2-suite/`; 16/23 assertions still pass against live `cmd_research` core |
+| `test_v2.26_prefix_commands.sh` | Implementation retired | v2.26 prefix commands (7 `.md` + `.ralph/` + 5 directives + 3 markers) — archived; 3/31 against live core |
+| `test_v2.27_security_loop.sh` | Implementation retired | v2.27 security-loop wrapper (1 `.md` + 4 markers + 4 README sections) — archived; 20/32 against live `cmd_security_loop` core |
+| `test_v2.28_comprehensive.sh` | Implementation retired | byte-identical copy of v2.27 (12 736 bytes) — archived with the same justification |
 | `orchestrator-validation/test-suite.sh` | Needs provisioned machine | ~/.claude/agents/orchestrator.md |
 | `security/test-security-hardening-v2.89.bats` | Needs provisioned machine | ~/.claude/settings.json |
 | `session-lifecycle/test_skills_centralization.sh` | Needs provisioned machine | ~/.claude/skills/*/SKILL.md |
@@ -98,10 +102,6 @@ findings rather than stale tests.
 | `security/test-sql-injection-blocking.sh` | **Wired (repaired)** — issue #50 | grep exit code poisoned by a dead path; markers exist. Root cause below |
 | `test-command-router-quick.sh` | Not root-caused | "additionalContext": "[Command Router] Detecte una tarea de debugging. Considera usar `/bug` pa |
 | `test_all_integration.sh` | Not root-caused | ✗ FAILED |
-| `test_v2.25_search_hierarchy.sh` | Not root-caused | (no diagnostic line) |
-| `test_v2.26_prefix_commands.sh` | Not root-caused | (no diagnostic line) |
-| `test_v2.27_security_loop.sh` | Not root-caused | (no diagnostic line) |
-| `test_v2.28_comprehensive.sh` | Not root-caused | (no diagnostic line) |
 | `test_v2_68_22_cli_commands.bats` | Not root-caused | not ok 1 ralph CLI command exists and is executable |
 | `unit/test-action-report-generator-v2.93.sh` | Not root-caused | ✗ FAIL JSON missing or incorrect skill_name: |
 | `unit/test-action-report-integration-v2.93.sh` | Not root-caused | ✗ FAIL adr missing Action Reporting section |
