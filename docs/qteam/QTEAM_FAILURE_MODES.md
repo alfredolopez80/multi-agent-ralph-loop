@@ -77,6 +77,32 @@ by reflex.
 - **Evidence (lead)**: lead's answer was that no rebase was needed at all.
 - **Fix**: none needed — this entry is the "done right" twin of 5 and 6.
 
+### 22. A guard blocked the smoke-test of another guard's hardening (zc, T16/T19)
+- **What happened**: while hardening `permission-guard.sh`, zc could not run
+  `git-safety-guard.py` directly: `k8s-context-guard` vetoed the inner call
+  with `kubectl_context_required`, even though no `kubectl` was in the
+  command line.
+- **Evidence**: bisect on the file — `wc -l <file>` passes (no block);
+  `python3 <file>` blocked at `k8s-context-guard` with
+  `kubectl_context_required`. zc did not dodge the pattern: smoke-tested
+  through the wrapper (`hooks/wrap-safety-guard.sh`) and ran the unit
+  suite with stub delegate hooks.
+- **Fix**: rule 2 — a guard that blocks the smoke-test of another guard is
+  itself a finding, not a routing obstacle. Report BLOCKED, do not look for
+  a wrapper.
+
+### 23. macOS `mktemp` silently ignores an invalid `TMPDIR` (zc, T16)
+- **What happened**: an early simulation for `permission-guard.sh` set a
+  `TMPDIR` that did not exist; `mktemp -t` accepted the input and fell
+  back to the real temp directory with `rc=0`.
+- **Evidence**: zc's own test caught it on the first run returning `allow`
+  for a path that should have been rejected. On macOS, `mktemp -t` does
+  not validate `TMPDIR` until write time — a missing parent produces
+  success while using a different directory than the one requested.
+- **Fix**: rule 2 — pre-create the parent before calling `mktemp -t`, and
+  assert the resolved directory equals what was requested. Trusting
+  `mktemp`'s exit code is not enough.
+
 ---
 
 ## Rule 3 — Gates (validated as CI runs them)
@@ -154,6 +180,22 @@ by reflex.
   `grep -n audit-secrets CLAUDE.md` → already listed at line 75 (not missing).
 - **Fix**: rule 5 — verify a teammate's numbers before documenting them.
 
+### 26. Two credentials, same provider, same shape, different value
+- **What happened**: the safe env-var pattern "did not work" because the
+  variable being read was the wrong one, not because the pattern was
+  wrong. Two tokens issued by the same provider had identical length and
+  same character set, so a visual diff could not tell them apart.
+- **Evidence**:
+  ```
+  Z_AI_API_KEY               len=49  sha256[:12]=f3b03fc4f0d0
+  Z_AI_ANTHROPIC_AUTH_TOKEN  len=49  sha256[:12]=befce3404e73
+  ```
+  Same length, same charset, different content; the launcher picked one,
+  the script read the other. A 12-byte sha256 prefix disambiguates in one
+  command; reading by eye does not.
+- **Fix**: rule 5 — when two values look identical, compare by truncated
+  hash, not by sight. Visual identity is not evidence of equality.
+
 ---
 
 ## Rule 6 — Launchers (the harness prompt is load-bearing)
@@ -175,6 +217,40 @@ by reflex.
   stripped bracket suffixes, so nothing downstream ever saw the marker;
   the fix parses it explicitly from the model id (`--model`).
 - **Fix**: rule 6 — the marker goes in `--model`.
+
+### 24. `~/.zshrc` aliases do not exist in non-interactive shells (lead relaunch)
+- **What happened**: the relaunch command relied on the `mmx`/`zc`/`claude`
+  functions defined in `~/.zshrc`; a bare `tmux respawn-pane -k -t <pane>
+  'mmx ...'` spawned a non-interactive shell that could not find `mmx`, so
+  the pane died with `command not found` and the worker session was lost.
+- **Evidence**:
+  ```
+  zsh -c  'command -v mmx'  → no existe
+  zsh -ic 'command -v mmx'  → existe
+  ```
+  Non-interactive shells source `~/.zshenv`/`~/.zprofile`, not `~/.zshrc`;
+  aliases and functions only load with `-i` or explicit sourcing. Same
+  trap applies to `ssh host cmd`, `cron`, and git hooks.
+- **Fix**: rule 6 — run relaunch and remote commands through
+  `zsh -ic "..."`, or use absolute paths in the command string. The
+  command must be self-contained, not assume the user's interactive
+  environment.
+
+### 25. tmux pane index vs pane ID
+- **What happened**: an operation addressed a worker pane by its visible
+  index (`-t 0.2`) instead of its stable pane id (`%2`). Closing another
+  pane renumbered `0.2`; the subsequent `-k` killed the lead pane instead
+  of the intended worker.
+- **Evidence**:
+  ```
+  tmux display-message -p -t %2  '#{pane_title}'  →  mmx-1  (stable)
+  tmux display-message -p -t 0.2 '#{pane_title}'  →  mmx-2  (after renumber)
+  ```
+  `%<id>` survives until the pane dies; `<session>.<index>` is a snapshot
+  of the current list and shifts whenever any pane closes.
+- **Fix**: rule 6 — verify pane identity with `display-message -t %<id>`
+  before any `-k` operation, and prefer the `%id` form in scripts.
+  Indices are for humans, ids are for tools.
 
 ---
 
