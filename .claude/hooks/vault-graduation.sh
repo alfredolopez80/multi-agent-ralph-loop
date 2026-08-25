@@ -61,8 +61,14 @@ while IFS= read -r article; do
         title=$(grep "^# " "$article" 2>/dev/null | head -1 | sed 's/^# //')
         [[ -z "$title" ]] && continue
 
-        # Check if already graduated (avoid duplicates)
-        if [[ -f "$RULES_FILE" ]] && grep -qF "$title" "$RULES_FILE" 2>/dev/null; then
+        # Dedup by SOURCE (vault article path), not by title. T40-extra:
+        # the previous check used $title, which was too lenient when two
+        # articles shared a title (canonical case: learned/hooks.md had
+        # the same bullet twice because re-graduation passed the title
+        # check). Each vault article has a unique path; matching on
+        # $article catches re-graduations while letting two distinct
+        # articles with similar titles through.
+        if [[ -f "$RULES_FILE" ]] && grep -qF "$article" "$RULES_FILE" 2>/dev/null; then
             continue
         fi
 
@@ -100,7 +106,8 @@ if [[ -d "$VAULT_DIR/projects" ]]; then
             title=$(grep "^# " "$article" 2>/dev/null | head -1 | sed 's/^# //')
             [[ -z "$title" ]] && continue
 
-            if [[ -f "$RULES_FILE" ]] && grep -qF "$title" "$RULES_FILE" 2>/dev/null; then
+            # Dedup by SOURCE — see comment in the global/wiki loop above.
+            if [[ -f "$RULES_FILE" ]] && grep -qF "$article" "$RULES_FILE" 2>/dev/null; then
                 continue
             fi
 
