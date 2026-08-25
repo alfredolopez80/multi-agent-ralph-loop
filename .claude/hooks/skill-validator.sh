@@ -18,6 +18,24 @@ INPUT=$(head -c 100000)
 
 
 # VERSION: 2.84.3
+# T44 (#67): nameless invocations are the NORMAL case, not an error. The live
+#          registration is PreToolUse Agent|Task — a payload that never carries
+#          a skill name — so every Task/Agent launch logged "No skill name
+#          provided" as ERROR: 4,693 of 4,786 log lines over 8 months, drowning
+#          the 93 real validation lines (all from manual {"skill": ...} calls in
+#          January). As a REGISTERED hook the validator never validated
+#          anything. Three fixes: (1) nameless input now exits silently —
+#          nothing is wrong, there is just nothing to validate; (2) the name is
+#          read from tool_input.skill first (the field a real PreToolUse
+#          Skill event carries), falling back to the root-level "skill" of
+#          manual invocations; (3) a name that resolves to no skill.yaml is
+#          OUT OF DOMAIN (the ecosystem migrated to SKILL.md; the two live
+#          skill.yaml files sit in ~/.ralph/skills while SKILLS_DIR points at
+#          ~/.claude/skills, so the effective domain was empty) — allowed with
+#          an informational line, because denying would veto every modern
+#          skill the day the registration is pointed at the Skill tool. A
+#          PRESENT but invalid skill.yaml remains the violation this gate
+#          exists for and still denies.
 # v2.68.9: SEC-103 FIX - Use sys.argv for file path instead of string interpolation
 # v2.68.2: FIX CRIT-004b - Only set trap when not sourced to prevent subshell JSON duplication
 # v2.68.1: FIX CRIT-004 - Clear EXIT trap before explicit JSON output to prevent duplicate JSON
@@ -46,6 +64,10 @@ fi
 # Configuration
 SKILLS_DIR="${HOME}/.claude/skills"
 LOG_FILE="${HOME}/.ralph/skill-validation.log"
+# T44: on a clean HOME the log directory does not exist and every log line
+# silently vanished (|| true swallowed it) — validations ran with no trace.
+# Same pattern as repo-boundary-guard.sh.
+mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
 VALIDATION_TIMEOUT=10
 
 # Security: Sanitize skill name to prevent command injection
@@ -296,17 +318,23 @@ validate_skill() {
     local skill_name="$1"
     local skill_dir="$SKILLS_DIR/$skill_name"
 
+    # T44 (#67): not-found is OUT OF DOMAIN, not a violation. The skill
+    # ecosystem migrated to SKILL.md; a name with no directory or no
+    # skill.yaml is a modern skill with nothing for THIS validator to check.
+    # Denying here would veto every SKILL.md-era skill the day the
+    # registration is pointed at the Skill tool. A PRESENT-but-invalid
+    # skill.yaml is the violation this gate exists for — that still denies.
     if [[ ! -d "$skill_dir" ]]; then
-        log_error "Skill directory not found: $skill_dir"
-        return 1
+        log "Not an H70 skill (no directory): $skill_dir — nothing to validate"
+        return 0
     fi
 
     log "Starting validation for skill: $skill_name"
 
-    # Validate skill.yaml (required)
+    # Validate skill.yaml (required for H70 skills; absent means out of domain)
     if [[ ! -f "$skill_dir/skill.yaml" ]]; then
-        log_error "skill.yaml not found in $skill_dir"
-        return 1
+        log "Not an H70 skill (no skill.yaml): $skill_dir — nothing to validate"
+        return 0
     fi
 
     if ! validate_skill_yaml "$skill_dir/skill.yaml"; then
@@ -328,24 +356,29 @@ main() {
     local input="$INPUT"
 
     # Extract skill name from input
-    # For now, assume input is JSON: {"skill": "skill-name", "action": "load"}
+    # T44 (#67): a real PreToolUse payload nests the name in tool_input.skill
+    # (Skill tool); the flat {"skill": ...} shape only exists in manual/test
+    # invocations. tool_input first, root fallback.
     local skill_name
     skill_name=$(echo "$input" | python3 -c "
 import json
 import sys
 try:
     data = json.load(sys.stdin)
-    print(data.get('skill', ''))
+    ti = data.get('tool_input') or {}
+    name = ti.get('skill') or data.get('skill', '')
+    print(name if isinstance(name, str) else '')
 except:
     sys.exit(1)
 " 2>/dev/null)
 
     if [[ -z "$skill_name" ]]; then
-        log_error "No skill name provided in hook input"
-        # v2.69.0: Removed stderr output (causes hook error warnings in UI)
-        trap - ERR EXIT  # CRIT-004: Clear trap before explicit output
+        # T44 (#67): silent allow. The live registration (PreToolUse
+        # Agent|Task) produces this on EVERY invocation — logging it as ERROR
+        # buried the real validation lines under 4,693 copies of noise.
+        trap - ERR EXIT
         emit_json '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
-        exit 0  # Don't block if no skill specified
+        exit 0  # Nothing to validate — not an error, not even worth a log line
     fi
 
     # SECURITY FIX v2.57.0: Sanitize skill_name to prevent command injection
