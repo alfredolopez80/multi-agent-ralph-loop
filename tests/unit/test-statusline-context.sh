@@ -22,12 +22,6 @@
 # for any session that has consumed tokens. A zero-default cache
 # (cumulative_tokens = 0) FAILS this assertion.
 #
-# The test is hermetic: it WRITES the cache to /tmp (with known sentinel
-# values) rather than reading whatever happens to be there. This decouples
-# it from the timing of session hooks, which can reset the cache to
-# zero-default during test execution. The test still exercises the same
-# assertions v1.0.0 ran; it just controls the input.
-#
 # Mode flag:
 #   default (no flag): writes a real-data cache (cumulative=75000,
 #     total=200000, used_pct=37), validates. PASS expected.
@@ -38,6 +32,42 @@
 #   ./test-statusline-context.sh                            # default: PASS
 #   STATUSLINE_TEST_MODE=zero ./test-statusline-context.sh   # FAIL demo
 #   ./test-statusline-context.sh validate 50000 200000 25   # /context validation
+# ----------------------------------------------------------------------------
+#
+# ----------------------------------------------------------------------------
+# UNWIRED IN CI: UNBLOCKING CONDITION (T15-statusline feedback, 2026-08-25)
+#
+# This test is currently NOT wired into tests/run-all-unit-tests.sh. It
+# was tried and reverted because the same talking-tests defect came back
+# through the back door: the test writes its own cache fixture and then
+# asserts on that same fixture, so in default mode it is a closed loop
+# that can never fail. A passing CI run on a wiring like that adds a
+# counter without adding a signal.
+#
+# The unblocking condition for CI wiring is:
+#
+#   The statusline's cache path must become parameterizable so this test
+#   can invoke the *real* statusline against a temp file and assert on
+#   *its* output. The blocking line is:
+#
+#     .claude/scripts/statusline-ralph.sh:601
+#       cat > /tmp/ralph-statusline-context.json << EOF
+#
+# That hardcodes /tmp/ralph-statusline-context.json with no env-var
+# override. With the path fixed, the test cannot avoid a race against
+# session hooks that overwrite the same file, and it cannot prove the
+# statusline wrote what the test asked it to write.
+#
+# When that line gains an override (e.g. RALPH_STATUSLINE_CACHE), the
+# test can:
+#   1. Pick a tmpdir path unique to this run.
+#   2. Set RALPH_STATUSLINE_CACHE=<tmpdir>/cache.json.
+#   3. Invoke the statusline with mock stdin.
+#   4. Assert against <tmpdir>/cache.json (not /tmp/...).
+#   5. Remove the fixture when done.
+#
+# At that point this test can move from a closed-loop fixture test
+# (current) to a real end-to-end test, and it belongs in CI.
 # ----------------------------------------------------------------------------
 
 set -uo pipefail
