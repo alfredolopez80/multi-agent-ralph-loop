@@ -271,9 +271,8 @@ Observabilidad sin dependencias externas usando archivos locales:
 CAPA 1: StatusLine (Pasiva)
 ⎇ main* │ 📊 3/7 42% │ [métricas claude-hud]
 
-CAPA 2: ralph status (Bajo Demanda)
-$ ralph status --compact
-📊 STANDARD Paso 3/7 (42%) - Implementando OAuth2
+CAPA 2: ralph plan status (Bajo Demanda)
+$ ralph plan status   # Estado actual del plan (lee .claude/plan-state.json)
 
 CAPA 3: ralph trace (Histórico)
 $ ralph trace show       # Eventos recientes
@@ -281,6 +280,11 @@ $ ralph trace search     # Buscar eventos
 $ ralph trace timeline   # Línea de tiempo visual
 $ ralph trace export     # Exportar JSON/CSV
 ```
+
+> **Nota (2026-08-25)**: `ralph status` ya no consulta el progreso de orquestación
+> (ahora lista procesos activos) y `--compact`/`--steps`/`--json` se eliminaron;
+> `ralph health` fue eliminado. La consulta de progreso bajo demanda es
+> `ralph plan status` (véase issue #53).
 
 **Fuentes de Datos**:
 | Fuente | Propósito |

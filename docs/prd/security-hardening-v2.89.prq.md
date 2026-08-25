@@ -5,6 +5,10 @@
 **Timeframe**: Multi-session (prioritized execution)
 **Status**: PENDING EXECUTION
 
+> **Historical record (2026-08-25 note)**: this PRD documents the v2.89 hardening effort
+> as of 2026-02-15 and is kept as written. `ralph health`, referenced by the rollback
+> plan below, has since been removed from the CLI (issue #53).
+
 ## Priority: CRITICAL
 
 ## Overview
@@ -388,7 +392,7 @@ If any fix causes issues:
 1. `cp ~/.claude/settings.json.pre-hardening-backup ~/.claude/settings.json`
 2. `git revert <commit-hash>` if code changes needed
 3. Restart Claude Code
-4. Verify system functional with `ralph health`
+4. Verify system functional with `ralph health` *(command since removed — see historical note at top)*
 
 ### Testing Strategy
 

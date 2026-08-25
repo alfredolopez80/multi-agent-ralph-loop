@@ -489,8 +489,12 @@ log_promptify_invocation() {
 # In promptify command, after agent dispatch
 RALPH_CONTEXT=""
 
-# Check if we're in a Ralph project
-if [[ -f ".claude/plan-state.json" ]] || ralph status &>/dev/null; then
+# Check if we're in a Ralph project: probe ONLY for the plan-state file.
+# Never use `ralph status &>/dev/null` as a project test — its exit code says
+# nothing about the project (it only "worked" while the subcommand was broken
+# and always exited 1; once repaired, the probe matched every directory).
+# See issue #53.
+if [[ -f ".claude/plan-state.json" ]]; then
     # Get Ralph context
     RALPH_CONTEXT=$(ralph context show 2>/dev/null || echo "")
 
