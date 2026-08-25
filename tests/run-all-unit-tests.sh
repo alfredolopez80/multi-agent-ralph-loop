@@ -173,7 +173,6 @@ fi
 # nothing ran it.
 BATS_SUITES=(
     "test_cross_platform.bats:Cross-platform portability (GNU vs BSD)"
-    "test_quality_gates.bats:Quality gates"
     "test_security_functions.bats:Security functions"
     "test_settings_merge.bats:Settings merge"
     "test_worktree_workflow.bats:Worktree workflow"
@@ -274,13 +273,49 @@ if command -v bats &>/dev/null; then
             echo -e "  ${RED}✗ Test script not found${NC}"
             FAILED_SUITES=$((FAILED_SUITES + 1))
             FAILED_TESTS="$FAILED_TESTS $name"
-        elif bats "$full" < /dev/null; then
-            echo -e "  ${GREEN}✓ PASSED${NC}"
-            PASSED_SUITES=$((PASSED_SUITES + 1))
         else
-            echo -e "  ${RED}✗ FAILED${NC}"
-            FAILED_SUITES=$((FAILED_SUITES + 1))
-            FAILED_TESTS="$FAILED_TESTS $name"
+            # Assertion-granularity guard (T30-skippedsuite, issue #64).
+            #
+            # bats exits 0 whenever the suite produced no `not ok` lines —
+            # including when every test was `# skip` (as `setup()`-driven
+            # `skip` does for a missing target file). A suite whose entire
+            # plan is skipped, or whose plan is empty, contributes 0 real
+            # assertions to the gate. Counting that as ✓ was the fail-open
+            # that hid 23 silent skips behind test_quality_gates.bats.
+            #
+            # TAP plan `1..N` gives expected count; `ok N ... # skip` lines
+            # are skips; non-skip `ok N ...` are real assertions. If the
+            # suite ran nothing real, fail it — even if bats exited 0.
+            bats_output=$(bats "$full" < /dev/null 2>&1)
+            bats_exit=$?
+
+            expected=$(printf '%s\n' "$bats_output" | sed -n 's/^1\.\.\([0-9]*\).*/\1/p' | head -1)
+            [[ -z "$expected" ]] && expected=0
+
+            ok_count=$(printf '%s\n' "$bats_output" | grep -cE '^ok [0-9]+' || true)
+            skip_count=$(printf '%s\n' "$bats_output" | grep -cE '^ok [0-9]+.*# skip' || true)
+            assertions_run=$((ok_count - skip_count))
+
+            if [[ "$bats_exit" -ne 0 ]]; then
+                echo -e "  ${RED}✗ FAILED${NC}"
+                FAILED_SUITES=$((FAILED_SUITES + 1))
+                FAILED_TESTS="$FAILED_TESTS $name"
+            elif [[ "$expected" -eq 0 || "$assertions_run" -le 0 ]]; then
+                # Silent skip: bats exited 0 but the suite ran no real
+                # assertions. Treat as a failure — this is the exact
+                # fail-open the guard exists to close.
+                echo -e "  ${RED}✗ ZERO ASSERTIONS${NC}"
+                if [[ "$expected" -gt 0 ]]; then
+                    echo -e "  ${YELLOW}  bats reported $expected planned test(s), all skipped${NC}"
+                else
+                    echo -e "  ${YELLOW}  bats reported no test plan (empty suite)${NC}"
+                fi
+                FAILED_SUITES=$((FAILED_SUITES + 1))
+                FAILED_TESTS="$FAILED_TESTS $name"
+            else
+                echo -e "  ${GREEN}✓ PASSED${NC}"
+                PASSED_SUITES=$((PASSED_SUITES + 1))
+            fi
         fi
         echo ""
         echo -e "${BLUE}───────────────────────────────────────────────────────────────${NC}"
