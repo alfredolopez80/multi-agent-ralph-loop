@@ -18,8 +18,9 @@ umask 077
 # 3. Restoring plan state if exists
 # 4. Injecting context into the new session
 
-# VERSION: 3.3.0
-# UPDATED: 2026-04-17 (worktree-safe path resolution via worktree-utils.sh)
+# VERSION: 3.3.1
+# UPDATED: 2026-08-26 (T67: ledger selection by worktree identity, fail-closed;
+#          RALPH_RESTORE_CROSS_WORKTREE feature restores legacy behaviour)
 set -euo pipefail
 
 # Worktree-safe path resolution
@@ -30,11 +31,12 @@ source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
 }
 
 # Configuration
-LOG_FILE="${HOME}/.ralph/logs/session-start-restore.log"
-LEDGER_DIR="${HOME}/.ralph/ledgers"
-HANDOFF_DIR="${HOME}/.ralph/handoffs"
+# RALPH_* overrides exist for tests only; production always uses ~/.ralph.
+LOG_FILE="${RALPH_LOG_FILE:-${HOME}/.ralph/logs/session-start-restore.log}"
+LEDGER_DIR="${RALPH_LEDGER_DIR:-${HOME}/.ralph/ledgers}"
+HANDOFF_DIR="${RALPH_HANDOFF_DIR:-${HOME}/.ralph/handoffs}"
 PLAN_STATE_FILE=".claude/plan-state.json"
-FEATURES_FILE="${HOME}/.ralph/config/features.json"
+FEATURES_FILE="${RALPH_FEATURES_FILE:-${HOME}/.ralph/config/features.json}"
 MAX_SUMMARY_LINES=50
 MAX_CONTEXT_SIZE=8000  # Limit context size to avoid jq issues
 
@@ -127,6 +129,40 @@ get_most_recent_file() {
     echo "$recent"
 }
 
+# T67: ledger identity = the worktree toplevel the writer ran in.
+# Writer contract (context-extractor.py): "Project: <cwd>" under ## Environment.
+# "## Project:" is accepted for forward compatibility; nothing emits it today.
+get_ledger_identity() {
+    local identity
+    identity=$(sed -n 's/^Project: //p' "$1" 2>/dev/null | head -1)
+    if [[ -z "$identity" ]]; then
+        identity=$(sed -n 's/^## Project: //p' "$1" 2>/dev/null | head -1)
+    fi
+    printf '%s' "${identity%/}"
+}
+
+# T67: filter by identity FIRST, pick most recent AFTER. The previous order
+# (global most-recent, then a project check) both restored foreign ledgers
+# when the check failed open AND masked our own older ledger behind a newer
+# foreign one.
+get_most_recent_ledger_for_identity() {
+    local dir="$1"
+    local identity="${2%/}"
+    local recent=""
+    local file ledger_id
+
+    while IFS= read -r -d '' file; do
+        ledger_id="$(get_ledger_identity "$file")"
+        if [[ "$ledger_id" == "$identity" ]]; then
+            if [[ -z "$recent" ]] || [[ "$file" -nt "$recent" ]]; then
+                recent="$file"
+            fi
+        fi
+    done < <(find "$dir" -maxdepth 1 -name "CONTINUITY_RALPH-*.md" -type f -print0 2>/dev/null)
+
+    echo "$recent"
+}
+
 # SEC-111: Read stdin with length limit (100KB max) to prevent DoS
 INPUT=$(head -c 100000)
 
@@ -192,29 +228,43 @@ if [[ -f "${PROJECT_DIR}/${PLAN_STATE_FILE}" ]]; then
     fi
 fi
 
-# 2. Look for recent ledger for this project
-# FIXED v2.84.2: Use custom function to avoid pipefail+head SIGPIPE issue
-MOST_RECENT_LEDGER=$(get_most_recent_file "$LEDGER_DIR" "CONTINUITY_RALPH-*.md")
+# 2. Look for recent ledger for this worktree
+# FIXED v3.3.1 (T67): select by worktree identity, not global mtime.
+# ~/.ralph/ledgers is shared by every session of every worktree, so "most
+# recent file" restored whichever session ended last (measured 2026-08-26:
+# 4,668 of 7,916 restores since 2026-01-30 crossed identities). The old
+# project check was dead code twice over: it grepped "^## Project:", a
+# format no writer emits (fail-open on empty), and compared against
+# get_main_repo, which collapses every worktree to the repo root.
+# Identity on the read side is get_project_root — this worktree's toplevel.
+RESTORE_IDENTITY="$(get_project_root 2>/dev/null || pwd)"
+
+if check_feature_enabled "RALPH_RESTORE_CROSS_WORKTREE" "false"; then
+    # Annotated escape hatch: legacy behaviour — most recent ledger globally.
+    MOST_RECENT_LEDGER=$(get_most_recent_file "$LEDGER_DIR" "CONTINUITY_RALPH-*.md")
+    if [[ -n "$MOST_RECENT_LEDGER" ]]; then
+        log "INFO" "Cross-worktree restore enabled via features.json: $MOST_RECENT_LEDGER"
+    fi
+else
+    MOST_RECENT_LEDGER=$(get_most_recent_ledger_for_identity "$LEDGER_DIR" "$RESTORE_IDENTITY")
+fi
 
 if [[ -n "$MOST_RECENT_LEDGER" && -f "$MOST_RECENT_LEDGER" ]]; then
-    log "INFO" "Found recent ledger: $MOST_RECENT_LEDGER"
+    log "INFO" "Found recent ledger (identity: $RESTORE_IDENTITY): $MOST_RECENT_LEDGER"
 
-    # Extract project from ledger if available
-    LEDGER_PROJECT=$(grep "^## Project:" "$MOST_RECENT_LEDGER" 2>/dev/null | head -1 | sed 's/^## Project: //' || echo "")
+    CONTEXT+="### Recent Session Context\n\n"
+    CONTEXT+="Context restored from most recent ledger:\n\n"
 
-    if [[ -z "$LEDGER_PROJECT" || "$LEDGER_PROJECT" == "$PROJECT_NAME" ]]; then
-        CONTEXT+="### Recent Session Context\n\n"
-        CONTEXT+="Context restored from most recent ledger:\n\n"
+    # Add ledger summary (first MAX_SUMMARY_LINES lines)
+    LEDGER_SUMMARY=$(head -n "$MAX_SUMMARY_LINES" "$MOST_RECENT_LEDGER" 2>/dev/null || echo "Unable to read ledger")
+    CONTEXT+="\`\`\`\n${LEDGER_SUMMARY}\n\`\`\`\n\n"
 
-        # Add ledger summary (first MAX_SUMMARY_LINES lines)
-        LEDGER_SUMMARY=$(head -n "$MAX_SUMMARY_LINES" "$MOST_RECENT_LEDGER" 2>/dev/null || echo "Unable to read ledger")
-        CONTEXT+="\`\`\`\n${LEDGER_SUMMARY}\n\`\`\`\n\n"
-
-        FOUND_CONTEXT=true
-        log "INFO" "Ledger context added"
-    else
-        log "INFO" "Ledger project mismatch - ledger: $LEDGER_PROJECT, current: $PROJECT_NAME"
-    fi
+    FOUND_CONTEXT=true
+    log "INFO" "Ledger context added"
+else
+    # Fail-closed: no ledger belongs to this worktree. Restoring a foreign
+    # one injects another session's task state (T67); restore nothing.
+    log "INFO" "No ledger for identity ${RESTORE_IDENTITY}; skipping cross-worktree restore"
 fi
 
 # 3. Look for recent handoff

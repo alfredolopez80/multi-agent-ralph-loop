@@ -110,6 +110,7 @@ TEST_SUITES=(
     "hooks/test_quality_check_registry.sh:Hooks: quality check registry"
     "hooks/test_react_doctor_runner_failures.sh:Hooks: react-doctor runner failures"
     "hooks/test_session_dedup_key.sh:Hooks: session dedup key"
+    "hooks/test_session_restore_identity.sh:Hooks: session restore worktree identity"
     "hooks/test_single_json_emission.sh:Hooks: single JSON emission"
     "hooks/test_task_list_projection.sh:Hooks: task list projection"
     "memory/test-seed-dev-prohibitions.sh:Memory: seed dev prohibitions"
