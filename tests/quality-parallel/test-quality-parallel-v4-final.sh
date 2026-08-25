@@ -5,9 +5,14 @@ set -euo pipefail
 
 PR=$(git rev-parse --show-toplevel)
 RESULTS_DIR="$PR/.claude/quality-results"
-TEST_DIR="$PR/tests/quality-parallel"
 
-mkdir -p "$TEST_DIR" "$RESULTS_DIR"
+# Sandbox: copy fixtures into a fresh temp dir so the suite never mutates
+# the tracked files under tests/quality-parallel/ (issue #52).
+SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/quality-parallel-v4.XXXXXX")
+trap 'rm -rf "$SCRATCH"' EXIT
+TEST_DIR="$SCRATCH"
+
+mkdir -p "$RESULTS_DIR"
 
 # FIX: Clean results directory before starting all tests
 rm -rf "$RESULTS_DIR"/*
