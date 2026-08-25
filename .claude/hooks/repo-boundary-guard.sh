@@ -2,7 +2,15 @@
 umask 077
 # repo-boundary-guard.sh — Repository Isolation Enforcement
 # Hook: PreToolUse (Edit|Write|Bash)
-# VERSION: 2.100.0
+# VERSION: 2.101.0
+# v2.101.0 (#65/T29): the mention gate no longer requires a '/' after the
+#          component. `GITHUB_DIR/<repo>/` (one level INSIDE) left the repo
+#          ROOT itself outside the gate — `git -C <sibling-root> ...` never
+#          reached extraction and was immune to the whole check. The gate
+#          now fires on any `GITHUB_DIR/<component>` mention; the component
+#          boundary (never a bare prefix, so `repo-evil` is never `repo`)
+#          is enforced downstream by the token charset and by
+#          is_allowed_path's `$repo || $repo/*` shape.
 # v2.100.0 (#63/T28): mentioned-path extraction is argument-context aware.
 #          The v2.98.1 "quoted path with spaces" alternation matched the
 #          PAYLOAD of `git commit -m "<prose>"` as if it were a path, and
@@ -386,9 +394,15 @@ main() {
         # Only check repo boundaries for non-readonly (potentially destructive) commands
         # Look for patterns like /Users/.../GitHub/OtherRepo — on the
         # T28-sanitized command (free-text payloads blanked), never on prose.
+        # T29 (#65): the trailing '/' in this gate (`[^/]+/`) demanded one
+        # level INSIDE the external repo, so the repo ROOT itself never
+        # triggered extraction. `[^/]+` fires on the root too; the component
+        # boundary (never a bare prefix, so `repo-evil` is not `repo`) is
+        # enforced by the token charset below and by is_allowed_path's
+        # `$repo || $repo/*` comparisons.
         local scan_command
         scan_command=$(_strip_freetext_args "$command")
-        if echo "$scan_command" | grep -qE "${GITHUB_DIR}/[^/]+/" 2>/dev/null; then
+        if echo "$scan_command" | grep -qE "${GITHUB_DIR}/[^/]+" 2>/dev/null; then
             local mentioned_paths mentioned_path pattern
             pattern="'${GITHUB_DIR}/[^']*'"
             pattern+="|\"${GITHUB_DIR}/[^\"]*\""
