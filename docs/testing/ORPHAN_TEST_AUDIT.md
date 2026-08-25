@@ -425,3 +425,238 @@ below.
   (moved, not deleted; per #50 precedent)
 - `tests/run-all-unit-tests.sh` (BATS_SUITES list, bats loop)
 - `docs/testing/ORPHAN_TEST_AUDIT.md` (this section)
+
+## T34: silent-skip in `test-e2e.sh` and the shell-branch guard (issue #64, 2026-08-25)
+
+T30 closed the silent-skip class on the **bats** branch of the runner.
+T34 closes it on the **shell** branch. The mechanism is different but
+the failure mode is the same: a suite whose result is `✓ PASSED` while
+zero assertions ran.
+
+### The live instance: `tests/promptify-integration/test-e2e.sh`
+
+The pre-T34 runner decided pass/fail on exit code alone. Suite 12, the
+Promptify end-to-end suite, exploited this with a built-in bypass at
+lines 60-64:
+
+```bash
+if [[ ! -f "$HOOK_FILE" ]]; then
+    echo -e "${YELLOW}WARNING${NC}: Hook file not found: $HOOK_FILE"
+    echo "Skipping hook execution tests..."
+    return 0
+fi
+```
+
+When `.claude/hooks/promptify-auto-detect.sh` (the hook the suite tests)
+does not exist — and it does not, having been retired in 498556f
+(Unified Herding Blanket v3.0) — the suite prints the warning, prints
+"Skipping hook execution tests...", `return 0`, and main's
+`print_summary` reports:
+
+```
+Tests Run:    0
+Tests Passed: 0
+Tests Failed: 0
+
+✅ All E2E tests passed!
+```
+
+Exit code 0. Runner counts it as `✓ PASSED`. +1 to passed, +1 to total,
+zero assertions executed. Same fail-open class as T30, different code
+path: the bats branch was hidden by `setup()` calling `skip`; this one
+is hidden by the suite itself bailing early with `return 0`.
+
+### The fix: two layers
+
+**Layer 1 — the suite itself fails loudly with the reason.** The same
+defect was possible in any future promptify-style suite; the structural
+fix is at the source. The pre-T34 `return 0` is replaced with a
+`TESTS_FAILED=$((TESTS_FAILED + 1))`, a printed verdict pointing at the
+retired implementation (498556f), and a list of the three options
+(restore, retire, replace). `return 1` propagates the failure up.
+
+**Layer 2 — the runner's shell branch parses assertion indicators.**
+Even with Layer 1, any future suite that bails early with `return 0`
+over an unmet precondition would still slip through if no one noticed
+the silent skip. The runner now closes the class:
+
+`run_test_suite()` captures stdout+stderr into a variable, then parses
+it for an assertion indicator. Three strategies, tried in order:
+
+| Strategy | Pattern | Format caught |
+|---|---|---|
+| 1 | `passed:[[:space:]]*[0-9]` | `Tests Passed: N` (4 promptify) |
+| 1 | `pass:[[:space:]]*[0-9]` | `Passed: N \| Failed: N` (3 hooks); `Pass: N` (wt-lead); `Total: N \| Pass: N \| Fail: N` |
+| 1 | `[0-9]+[[:space:]]*passed\b` | `Results: N passed, N failed` (2 unit) |
+| 1 | `all ok[[:space:]]*\([[:space:]]*[0-9]` | `ALL OK (N cases)` (validation-common outlier) |
+| 1 | `results:[[:space:]]*[0-9]` | `RESULTS: N/N passed, N failed` (autoresearch-smart-setup) |
+| 2 | `✅ PASS` line in an exit-0 suite | Single-shot grep-style suites (6 security) |
+| 3 | None of the above | **ZERO ASSERTIONS → fail loud** |
+
+The T34 parser was **measured, not assumed**: the 26 shell suites use 8
+distinct summary formats, catalogued by `scratchpad/survey-suites.sh`
+before any regex was written. The first attempt at `grep -iE 'passed'`
+matched per-test `PASS: <description>` lines as well as summary lines,
+extracting unrelated numbers (e.g. 897448 from a SHA-like string in the
+session-dedup suite's output). The final regex requires a digit
+adjacent to the pass-related keyword so that per-test PASS lines (no
+number after the colon) do not match.
+
+`set -uo pipefail` is preserved. The four `((VAR++))` post-increments
+that exist in the runner (TOTAL_SUITES, PASSED_SUITES, FAILED_SUITES)
+remain safe: under `set -uo pipefail` without `-e`, `((VAR++))`
+evaluates to 0 when VAR was 0 but does not abort. Adding `-e` without
+converting them would have been a follow-on failure mode (it would
+have killed the runner silently on the first counter update).
+
+### Verification: probe-and-revert, both directions
+
+A temporary `_probe_zero_assertions.sh` (exits 0, prints no parseable
+assertion indicator) and a `_probe_real_assertion.sh` (exits 0, prints
+`Tests Passed: 1`) were added to `TEST_SUITES` and the runner was
+invoked on a clean checkout:
+
+```
+[Test Suite 1] PROOF: zero-assertion suite must fail the runner
+  Script: _probe_zero_assertions.sh
+
+  This probe prints nothing parseable as an assertion count.
+  It exits 0 to mimic the silent-skip failure mode that the T34 guard
+  exists to detect.
+
+  ✗ ZERO ASSERTIONS (0s)
+
+[Test Suite 2] PROOF: real-assertion suite must pass the runner
+  Script: _probe_real_assertion.sh
+
+  PROOF: This is a real assertion.
+  Tests Passed: 1
+
+  ✓ PASSED (0s)
+
+...
+
+  Passed: 31
+  Failed: 2       ← _probe_zero_assertions.sh + test-e2e.sh
+  Total:  33      ← 26 real shell + 2 probes + 5 bats
+
+✗ SOME TEST SUITES FAILED
+```
+
+`bash tests/run-all-unit-tests.sh; echo $?` → `1`. Both probes then
+removed; final state below.
+
+### What is in the runner now
+
+- `TEST_SUITES` (26): unchanged in count from pre-T34; Suite 12
+  (`test-e2e.sh`) now fails loudly with the reason printed inline
+  rather than `return 0`-ing past the bypass. The other 25 pass as
+  before.
+- `BATS_SUITES` (5): unchanged.
+- Final clean run: 30/31 (was 31/31 in T30; one extra failure is
+  Suite 12, which now correctly reports the missing
+  `promptify-auto-detect.sh`). Exit 1.
+- Real assertion count across the shell block: 1,011+ (sum of the
+  individual `count=N` from the probe-parser run; the per-suite exact
+  counts are recorded in scratchpad for that pass).
+
+### The pre-existing failure from main (still present)
+
+`tests/hooks/test_no_hook_hangs_or_blocks.sh` continues to fail because
+`.claude/hooks/qteam-blocked-notify.sh` (introduced by #66 / commit
+38451b2 in main) emits two JSON objects concatenated, which the
+no-hangs test rejects as a multi-emission. T34 did not introduce this
+and does not address it. The fix is in scope for a separate task
+(retire the hook, fix the double-emit, or amend the no-hangs test to
+recognise the new hook).
+
+### Files touched
+
+- `tests/run-all-unit-tests.sh` (`run_test_suite` body — capture,
+  parse, decision tree; comment block documenting the three strategies)
+- `tests/promptify-integration/test-e2e.sh` (lines 60-79 — replace
+  silent `return 0` with a fail-loud verdict)
+- `docs/testing/ORPHAN_TEST_AUDIT.md` (this section)
+
+## T34b: the hook was consolidated, not retired (issue #64, 2026-08-25)
+
+Lead's correction: my T34 assumption was wrong. The hook was not deleted in
+498556f — it was **consolidated** into `.claude/hooks/command-router.sh`.
+`calculate_clarity_score()` lives at line 302 of that file and is invoked
+through `run_promptify_auto_detect()` (line 377), which itself is invoked
+at line 434 of the same file. The behaviour runs on every UserPromptSubmit
+right now; only the file path changed.
+
+That meant retiring Suite 12 — the natural-looking option after T34 — would
+have **deleted live coverage of live code**. And merging T34 with Suite 12
+red would have blocked T33's gate for the three workers, not just one. Both
+A and B were the wrong move.
+
+### What changed in T34b
+
+`tests/promptify-integration/test-e2e.sh` v2.0.0 extracts SECTION 4:
+PROMPTIFY AUTO-DETECT from `command-router.sh` at runtime into a temp file
+and sources it. The extraction uses awk with the boundary
+`/^# MAIN EXECUTION$/` — command-router.sh does not have a SECTION 5; the
+next banner is the `MAIN EXECUTION` block that runs every analyzer and
+emits JSON, which a unit test must NOT execute.
+
+Three pre-SECTION-4 dependencies are stubbed or defaulted:
+
+| Symbol | Where defined in command-router.sh | How handled |
+|---|---|---|
+| `PROMPTIFY_CONFIG_FILE` | line 40 (preamble) | `${PROMPTIFY_CONFIG_FILE:=/nonexistent/promptify-test-fallback.json}` before sourcing. The sandbox HOME has no config file, so the function falls back to its built-in defaults (enabled=true, threshold=50, log_level=INFO). |
+| `log_message()` | preamble | stubbed as `log_message() { :; }` before sourcing. The test asserts Promptify behaviour, not log output. |
+| `ALL_SUGGESTIONS` | main aggregator | declared as `ALL_SUGGESTIONS=()` before sourcing so `run_promptify_auto_detect`'s `ALL_SUGGESTIONS+=(...)` call site resolves. |
+
+The trap uses `${promptify_src:-}` defensively so it survives the unset
+local variable when the function returns under `set -u`.
+
+### What Suite 12 tests now
+
+Seven assertions, all reading from the **live** `command-router.sh`:
+
+1. `calculate_clarity_score()` is defined in SECTION 4 (function exists).
+2. A structured prompt (role + task + constraints) scores in [80, 100].
+3. A vague prompt ("fix the thing") scores below the 50 threshold.
+4. Replacing "service" with "thing" reduces the score by ≥ 15 (the
+   per-vague-word penalty).
+5. An empty prompt's score is clamped to [0, 100].
+6. `command-router.sh` actually invokes `run_promptify_auto_detect`
+   (live wiring — without this the function is dead code).
+7. `run_promptify_auto_detect` returns 0 on a structured prompt (smoke).
+
+### Survey of the other five references
+
+The lead listed six other files for the same dead-path audit. I measured
+each:
+
+| File | Class | Action |
+|---|---|---|
+| `tests/promptify-integration/test-clarity-scoring.sh` | stale-copy drift | **OUT of T34b scope.** The file declares `HOOK_FILE` at line 11 but never uses it — the test runs its own copy of `calculate_clarity_score` (extracted at script load). It passes with count=20 in the runner, but the test is testing its own copy, not the live function. Different class: drift risk, not silent-skip. A follow-up T-number should source command-router.sh the same way test-e2e.sh does, then delete the local copy. |
+| `tests/promptify-integration/test-phase3-ralph-integration.sh` | dead-path-but-loud | Not in TEST_SUITES. Uses `print_result FAIL` correctly when the dead path is missing. Not in this class. |
+| `tests/promptify-integration/run-promptify-tests.sh` | dead-path-but-loud | Not in TEST_SUITES. Same shape as above. |
+| `tests/promptify-integration/run-all-complete-tests.sh` | comment-only | Line 123 is a `Phase 1: Hook Integration (promptify-auto-detect.sh)` echo. Just a label. |
+| `tests/security/test-bug-fixes-v2.90.bats` | comment-only | Lines 15 and 31 are explicit notes from the #50 audit: "BUG-001c (promptify-auto-detect.sh) retired: the hook was deleted in 498556f". The corresponding assertions were already removed in #50. |
+| `tests/promptify-integration/README.md` | documentation | Historical setup notes (lines 128, 165, 169, etc.). Not code. |
+| `docs/promptify-integration/*`, `docs/security/PROMPTIFY_SECURITY_AUDIT_v1.0.0.md` | documentation | Historical. Not code. |
+
+Only `test-e2e.sh` was in the T34 silent-skip class. The rest are a mix
+of stale-copy drift (test-clarity-scoring.sh — the most worrying), loud
+dead-path assertions (test-phase3, run-promptify-tests), and historical
+documentation. None of them silently skip today, so none of them are
+T34 instances.
+
+### Final state
+
+`bash tests/run-all-unit-tests.sh` → **31/31 PASS, exit 0**. Suite 12 is
+green and exercises live code. The T34 runner guard is untouched — it
+remains the backstop that prevents any future suite from re-introducing
+the silent-skip class.
+
+### Files touched
+
+- `tests/promptify-integration/test-e2e.sh` (rewrite: v1.0.0 → v2.0.0,
+  repoint to live `command-router.sh` SECTION 4, keep fail-loud verdict
+  for genuine missing-router case)
+- `docs/testing/ORPHAN_TEST_AUDIT.md` (this T34b section)

@@ -212,24 +212,91 @@ run_test_suite() {
     local verbose_flag=""
     $VERBOSE && verbose_flag="--verbose"
 
-    if "$full_path" $verbose_flag; then
-        local end_time
-        end_time=$(date +%s)
-        local duration=$((end_time - start_time))
+    # Assertion-granularity guard (T34 silent-skip class, issue #64).
+    #
+    # The pre-T34 branch decided pass/fail on exit code only — exit 0 meant
+    # ✓, regardless of whether the suite actually ran any assertion. A suite
+    # that prints "Skipping hook execution tests..." and `return 0` is the
+    # same fail-open as test_quality_gates.bats in the bats branch: the
+    # counter advances over a result that should never have been counted.
+    #
+    # We capture stdout+stderr into a variable so we can both display it and
+    # parse it for an assertion indicator. `set -uo pipefail` is in effect
+    # but `-e` is NOT, so the existing `((PASSED_SUITES++))` / `((FAILED_…)`
+    # post-increments remain safe even when the counter is at 0.
+    local suite_output suite_rc duration end_time
+    suite_output=$("$full_path" $verbose_flag 2>&1)
+    suite_rc=$?
+    end_time=$(date +%s)
+    duration=$((end_time - start_time))
 
-        echo ""
-        echo -e "  ${GREEN}✓ PASSED${NC} (${duration}s)"
-        ((PASSED_SUITES++))
-        return 0
-    else
-        local end_time
-        end_time=$(date +%s)
-        local duration=$((end_time - start_time))
+    # Display the captured output verbatim.
+    printf '%s\n' "$suite_output"
+    echo ""
 
-        echo ""
+    # Parse an assertion count from the captured output. Format is NOT uniform
+    # across the 26 shell suites (measured in T34; 8 distinct summary formats).
+    # The strategies, in order, fall through when an earlier one yields 0:
+    #
+    #   1. Find a line that contains BOTH a number AND a pass-related keyword
+    #      ("pass" / "PASS" / "Passed" / "passed", case-insensitive). Catches
+    #      "Tests Passed: N", "Passed: N | Failed: N", "passed: N  failed: N",
+    #      "Pass: N" (without ed — used by tests/wt-lead-scripts.sh),
+    #      "Total: N | Pass: N | Fail: N", "Results: N passed",
+    #      "RESULTS: N/N passed, N failed", and similar.
+    #
+    #   2. Fallback for the one outlier without "pass" in its summary:
+    #      "ALL OK (N cases)" / "(N cases)" — used by
+    #      tests/unit/test_validation_common.sh.
+    #
+    #   3. Fallback for Group H (grep-style single-shot suites that print
+    #      `✅ PASS: <message>` and `exit 0` with no numeric counter): a
+    #      `✅ PASS` line in an exit-0 suite counts as 1 assertion.
+    #
+    #   4. No parseable indicator AND no `✅ PASS` line → zero assertions.
+    #      The suite must have failed — fail loud with the same ZERO ASSERTIONS
+    #      verdict the bats branch already uses (T30).
+    local assertion_count pass_line extracted clean_output
+    assertion_count=0
+
+    clean_output=$(printf '%s\n' "$suite_output" | sed $'s/\033\\[[0-9;]*[a-zA-Z]//g')
+
+    pass_line=$(printf '%s\n' "$clean_output" | grep -iE 'passed:[[:space:]]*[0-9]|pass:[[:space:]]*[0-9]|[0-9]+[[:space:]]*passed\b|all ok[[:space:]]*\([[:space:]]*[0-9]|results:[[:space:]]*[0-9]' | head -1 || true)
+
+    # Strategy 2: outlier format "ALL OK (N cases)" — already covered by the
+    # broader pattern above (`all ok (`), but kept as a clear fallback.
+    if [[ -z "$pass_line" ]]; then
+        pass_line=$(printf '%s\n' "$clean_output" | grep -iE 'cases\)' | head -1 || true)
+    fi
+
+    if [[ -n "$pass_line" ]]; then
+        extracted=$(printf '%s\n' "$pass_line" | grep -oE '[0-9]+' | head -1 || true)
+        if [[ -n "$extracted" ]]; then
+            assertion_count="$extracted"
+        fi
+    fi
+
+    if [[ "$assertion_count" -eq 0 && "$suite_rc" -eq 0 ]]; then
+        if printf '%s\n' "$clean_output" | grep -q '✅ PASS'; then
+            assertion_count=1
+        fi
+    fi
+
+    if [[ "$suite_rc" -ne 0 ]]; then
         echo -e "  ${RED}✗ FAILED${NC} (${duration}s)"
         ((FAILED_SUITES++))
         return 1
+    elif [[ "$assertion_count" -le 0 ]]; then
+        # Silent skip: suite exited 0 but produced no parseable assertion
+        # indicator. The exact T30 failure mode applied to the shell branch.
+        echo -e "  ${RED}✗ ZERO ASSERTIONS${NC} (${duration}s)"
+        echo -e "  ${YELLOW}  no parseable assertion indicator in suite output${NC}"
+        ((FAILED_SUITES++))
+        return 1
+    else
+        echo -e "  ${GREEN}✓ PASSED${NC} (${duration}s)"
+        ((PASSED_SUITES++))
+        return 0
     fi
 }
 
