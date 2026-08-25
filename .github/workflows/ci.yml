@@ -25,6 +25,15 @@ jobs:
         # gitignoreado y no llega a los demas clones.
         run: bash scripts/check-literal-tilde.sh --all
 
+      - name: Guard against GNU-only commands
+        # Siete commits en nueve semanas introdujeron GNU-isms (stat -c/-f,
+        # declare -A, timeout, cat -A, find -printf...) visibles solo mientras
+        # el runner macOS era stock. #49 instalo bash+coreutils ahi para
+        # ponerlo verde; este guard estatico restituye la deteccion que esa
+        # pata ya no hace. Allowlist interno con la deuda existente que solo
+        # puede encogerse (ratchet). Escape hatch: '# gnu-ok: <razon>'.
+        run: bash scripts/check-gnu-only-commands.sh --all
+
       - name: Guard against claude-mem residue
         # El check existia desde Wave 0 pero NINGUN runner lo invocaba: su unica
         # referencia era su propia cabecera. Llevaba en rojo sin que nadie lo
