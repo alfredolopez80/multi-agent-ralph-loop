@@ -178,6 +178,62 @@ hook_is_registered() {
     return 1
 }
 
+# Sweep EVERY registration in settings.json, not just HOOK_DEFINITIONS.
+#
+# HOOK_DEFINITIONS above covers the 9 hooks that must exist; settings.json holds
+# ~79 registrations. Nothing asserted that the other ~70 resolve to a real file.
+# A registration pointing at a deleted script does not error loudly — the hook
+# simply never fires, and the capability disappears without a signal.
+#
+# Zero registrations is a FAILURE, not a pass: it means the query found nothing,
+# which is indistinguishable from "settings.json has no hooks at all".
+validate_all_registrations() {
+    local cmd tok path total=0 dead=0 dead_list=""
+
+    while IFS= read -r cmd; do
+        [[ -n "$cmd" ]] || continue
+        total=$((total + 1))
+        path=""
+        for tok in $cmd; do
+            case "$tok" in
+                -*) continue ;;
+                */*.sh|*/*.py|*/*.mjs|*/*.js) path="$tok"; break ;;
+            esac
+        done
+        [[ -n "$path" ]] || continue
+        path="${path//\$CLAUDE_PROJECT_DIR/$PROJECT_ROOT}"
+        path="${path//\$\{CLAUDE_PROJECT_DIR\}/$PROJECT_ROOT}"
+        path="${path//\$HOME/$HOME}"
+        path="${path//\"/}"
+        if [[ ! -f "$path" ]]; then
+            dead=$((dead + 1))
+            dead_list="${dead_list}${dead_list:+, }${path}"
+        fi
+    done < <(jq -r '.hooks // {} | to_entries[] | .value[]? | .hooks[]? | .command // empty' \
+                "$SETTINGS_PATH" 2>/dev/null)
+
+    local status message
+    if [[ "$total" -eq 0 ]]; then
+        status="FAIL"
+        message="0 registrations found — the sweep checked nothing (settings.json shape changed?)"
+    elif [[ "$dead" -gt 0 ]]; then
+        status="FAIL"
+        message="${dead}/${total} registrations point at a missing file: ${dead_list}"
+    else
+        status="PASS"
+        message="all ${total} registrations resolve to an existing file"
+    fi
+
+    RESULTS["_all_registrations"]="$status"
+    MESSAGES["_all_registrations"]="$message"
+
+    case "$status" in
+        PASS) PASSED=$((PASSED + 1)) ;;
+        FAIL) FAILED=$((FAILED + 1)) ;;
+    esac
+    TOTAL=$((TOTAL + 1))
+}
+
 # Validate a single hook
 validate_hook() {
     local def="$1"
@@ -260,6 +316,17 @@ print_text_output() {
             WARN) echo -e "${YELLOW}⚠${NC} $script: $message" ;;
         esac
     done
+
+    # Sweep over every registration, beyond the required set above
+    if [[ -n "${RESULTS[_all_registrations]:-}" ]]; then
+        echo ""
+        echo -e "${BLUE}All registrations${NC}"
+        echo "───────────────────────────────────────────────────────────────"
+        case "${RESULTS[_all_registrations]}" in
+            PASS) echo -e "${GREEN}✓${NC} settings.json: ${MESSAGES[_all_registrations]}" ;;
+            FAIL) echo -e "${RED}✗${NC} settings.json: ${MESSAGES[_all_registrations]}" ;;
+        esac
+    fi
 
     echo ""
     echo "═══════════════════════════════════════════════════════════════"
@@ -350,6 +417,9 @@ fi
 for def in "${HOOK_DEFINITIONS[@]}"; do
     validate_hook "$def"
 done
+
+# Sweep every registration, not only the required ones
+validate_all_registrations
 
 # Output results
 case "$FORMAT" in

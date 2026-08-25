@@ -103,6 +103,7 @@ echo ""
 # The remaining suites are neither list: see docs/testing/ORPHAN_TEST_AUDIT.md for the
 # per-suite verdict. Nothing was deleted on the strength of "it had no runner".
 TEST_SUITES=(
+    "hooks/test_anti_rationalization_gate.sh:Hooks: anti-rationalization gate"
     "hooks/test_no_hook_hangs_or_blocks.sh:Hooks: no hangs or blocks"
     "hooks/test_plan_state_writer.sh:Hooks: plan-state writer"
     "hooks/test_quality_check_registry.sh:Hooks: quality check registry"
