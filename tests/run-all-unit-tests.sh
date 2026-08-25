@@ -93,7 +93,7 @@ echo ""
 #
 # All 62 were executed to find out. The split below is that measurement, not a guess:
 #
-#   TEST_SUITES                  23 suites that pass on a bare checkout. Safe for CI.
+#   TEST_SUITES                  28 suites that pass on a bare checkout. Safe for CI.
 #   TEST_SUITES_REQUIRE_INSTALL  suites that assert on a provisioned machine --
 #                                symlinks under ~/.claude, ~/.codex, ~/.ralph, or an
 #                                Obsidian vault. They fail on any clean runner by
@@ -103,6 +103,7 @@ echo ""
 # The remaining suites are neither list: see docs/testing/ORPHAN_TEST_AUDIT.md for the
 # per-suite verdict. Nothing was deleted on the strength of "it had no runner".
 TEST_SUITES=(
+    "hook-integration/test-hook-integration-v2.88.sh:Hooks: integration end-to-end (5 findings)"
     "hooks/test_anti_rationalization_gate.sh:Hooks: anti-rationalization gate"
     "hooks/test_no_hook_hangs_or_blocks.sh:Hooks: no hangs or blocks"
     "hooks/test_plan_state_writer.sh:Hooks: plan-state writer"
