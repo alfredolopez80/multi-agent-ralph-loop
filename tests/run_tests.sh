@@ -36,6 +36,53 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_section() { echo -e "${CYAN}[SECTION]${NC} $1"; }
 
+# --- phase accounting (issue #42) ---------------------------------------------
+# Modes `all` and `quick` wrapped EVERY phase in `|| true`, so the runner printed
+# "Test run complete" and exited 0 no matter what happened. The two gates the issue
+# names (the pytest phases) were only the inner layer: fixing them without touching
+# this one would have changed nothing observable, because the dispatcher swallowed
+# the exit code anyway.
+#
+# The `|| true` had a legitimate reason -- an early failure should not stop the
+# remaining phases from running -- and that reason is preserved. What is not
+# preserved is lying at the end: every phase runs, failures are recorded, and the
+# runner exits non-zero if there were any.
+#
+# CAUTION for anyone extending this: calling a shell FUNCTION through run_phase puts
+# that function on the left of `||`, which switches `errexit` OFF for its entire body.
+# A phase function therefore cannot rely on `set -e` to stop at its first failing
+# command -- it will run to the end and return the status of its LAST statement. Every
+# phase function below accumulates its own `rc` and returns it explicitly for that
+# reason. A phase that ends on something like `|| log_warn ...` returns 0 and reports
+# success no matter what happened earlier inside it.
+FAILED_PHASES=()
+
+run_phase() {
+    local name="$1"
+    shift
+    local rc=0
+    "$@" || rc=$?
+    if [[ $rc -ne 0 ]]; then
+        FAILED_PHASES+=("$name")
+    fi
+    return 0
+}
+
+# Runs a suite only if its file is present, and says so when it is not.
+# `bats <missing file>` exits non-zero, so wiring a suite that does not exist would
+# turn the runner permanently red for a reason that has nothing to do with the code
+# under test -- while a silent skip would be the fail-open this file is fixing.
+run_bats_suite() {
+    local name="$1"
+    local file="$2"
+    shift 2
+    if [[ ! -f "$file" ]]; then
+        log_warn "suite not present, skipping: $file"
+        return 0
+    fi
+    run_phase "$name" bats "$file" "$@"
+}
+
 # Check dependencies
 check_deps() {
     local MISSING=()
@@ -73,15 +120,47 @@ run_python_tests() {
     fi
 }
 
+# Runs a pytest phase without failing open, and without confusing "nothing to run"
+# with "all good" (issue #42).
+#
+# These two phases carried `|| true` since 5dbe635: pytest could fail outright and the
+# runner would still announce success. #38 removed the equivalents in ci.yml and that
+# exposed dead code hidden for months; this is the same fix, here.
+#
+# The subtlety is pytest's exit code 5, which means "no tests were collected", not
+# "the tests passed". Today tests/unit/ and tests/integration/ contain no .py files at
+# all (the 55 pytest modules live at the root of tests/, where run_python_tests picks
+# them up), so a bare `set -e` on code 5 would take the runner down for a phase that
+# never had Python content. It is reported out loud instead of being taken as a pass:
+# an empty directory is information, not an approval.
+run_pytest_phase() {
+    local target="$1"
+    shift
+
+    local rc=0
+    pytest "$target" -v --tb=short "$@" || rc=$?
+
+    case "$rc" in
+        0) return 0 ;;
+        5) log_warn "pytest collected 0 tests in $target (phase has no Python content)"; return 0 ;;
+        *) log_error "pytest failed in $target (exit $rc)"; return "$rc" ;;
+    esac
+}
+
 # Run unit tests
 run_unit_tests() {
     log_section "Running unit tests..."
 
     cd "$PROJECT_DIR"
 
+    # `rc` is explicit because errexit is off inside a run_phase callee (see run_phase).
+    # Without it this function would return the status of the statusline block below,
+    # which is 0 by construction, and a failing pytest run would be reported as a pass.
+    local rc=0
+
     # Python unit tests
     if command -v pytest &>/dev/null; then
-        pytest tests/unit/ -v --tb=short "$@" || true
+        run_pytest_phase tests/unit/ "$@" || rc=$?
     fi
 
     # Shell unit tests
@@ -89,6 +168,8 @@ run_unit_tests() {
         log_info "Running statusline context tests..."
         "$SCRIPT_DIR/unit/test-statusline-context.sh" || log_warn "Statusline tests require active session"
     fi
+
+    return $rc
 }
 
 # Run integration tests
@@ -97,9 +178,12 @@ run_integration_tests() {
 
     cd "$PROJECT_DIR"
 
+    # Same explicit rc as run_unit_tests, for the same reason.
+    local rc=0
+
     # Python integration tests
     if command -v pytest &>/dev/null; then
-        pytest tests/integration/ -v --tb=short "$@" || true
+        run_pytest_phase tests/integration/ "$@" || rc=$?
     fi
 
     # Shell integration tests
@@ -107,6 +191,8 @@ run_integration_tests() {
         log_info "Running learning integration tests..."
         "$SCRIPT_DIR/integration/test-learning-integration-v1.sh" || log_warn "Learning integration tests skipped"
     fi
+
+    return $rc
 }
 
 # Run end-to-end tests
@@ -173,19 +259,29 @@ run_security_tests() {
 
     cd "$PROJECT_DIR"
 
-    # Python security tests
+    # Explicit rc: errexit is off inside a run_phase callee, and the bats block below
+    # ends on a conditional that returns 0.
+    local rc=0
+
+    # Python security tests. The fallback is a narrower rerun, not a get-out: if BOTH
+    # the marker-selected run and the explicit-file run fail, the phase fails.
     if command -v pytest &>/dev/null; then
         pytest tests/ -v -m security --tb=short 2>/dev/null || \
-        pytest tests/test_git_safety_guard.py tests/test_security_scan.py -v --tb=short
+        pytest tests/test_git_safety_guard.py tests/test_security_scan.py -v --tb=short || rc=1
     fi
 
     # Bash security tests
+    # All four still run even if one fails, but the failure is no longer discarded:
+    # it is recorded and the runner exits non-zero. A security suite whose result
+    # cannot turn anything red is not a security suite.
     if command -v bats &>/dev/null; then
-        bats tests/test_ralph_security.bats || true
-        bats tests/test_mmc_security.bats || true
-        bats tests/test_install_security.bats || true
-        bats tests/test_uninstall_security.bats || true
+        run_bats_suite security:ralph     tests/test_ralph_security.bats
+        run_bats_suite security:mmc       tests/test_mmc_security.bats
+        run_bats_suite security:install   tests/test_install_security.bats
+        run_bats_suite security:uninstall tests/test_uninstall_security.bats
     fi
+
+    return $rc
 }
 
 # Run hook validation tests
@@ -212,28 +308,31 @@ run_v218_tests() {
     fi
 
     # Run only v2.19 security fix tests using filter
+    # Same rule as in run_security_tests: every VULN is exercised even if one fails,
+    # but a failure counts. Before, this function could not return non-zero for any
+    # test at all -- only for bats being absent.
     echo ""
     log_info "Testing VULN-001: escape_for_shell() fixes..."
-    bats tests/test_ralph_security.bats --filter "VULN-001" || true
+    run_phase VULN-001 bats tests/test_ralph_security.bats --filter "VULN-001"
 
     echo ""
     log_info "Testing VULN-004: validate_path() fixes..."
-    bats tests/test_ralph_security.bats --filter "VULN-004" || true
+    run_phase VULN-004 bats tests/test_ralph_security.bats --filter "VULN-004"
 
     echo ""
     log_info "Testing VULN-005: Log file permissions..."
-    bats tests/test_mmc_security.bats --filter "VULN-005" || true
+    run_phase VULN-005 bats tests/test_mmc_security.bats --filter "VULN-005"
 
     echo ""
     log_info "Testing VULN-008: umask 077 fixes..."
-    bats tests/test_ralph_security.bats --filter "VULN-008" || true
-    bats tests/test_mmc_security.bats --filter "VULN-008" || true
-    bats tests/test_install_security.bats --filter "VULN-008" || true
+    run_phase VULN-008:ralph   bats tests/test_ralph_security.bats --filter "VULN-008"
+    run_phase VULN-008:mmc     bats tests/test_mmc_security.bats --filter "VULN-008"
+    run_phase VULN-008:install bats tests/test_install_security.bats --filter "VULN-008"
 
     echo ""
     log_info "Testing git-safety-guard.py (VULN-003)..."
     if command -v pytest &>/dev/null; then
-        pytest tests/test_git_safety_guard.py -v --tb=short || true
+        run_phase VULN-003 pytest tests/test_git_safety_guard.py -v --tb=short
     fi
 }
 
@@ -393,19 +492,19 @@ main() {
             ;;
         quick)
             # Quick test run - core tests only
-            run_hooks_tests "$@" || true
-            run_security_tests "$@" || true
+            run_phase hooks    run_hooks_tests "$@"
+            run_phase security run_security_tests "$@"
             ;;
         all|"")
-            run_python_tests "$@" || true
+            run_phase python      run_python_tests "$@"
             echo ""
-            run_bash_tests "$@" || true
+            run_phase bash        run_bash_tests "$@"
             echo ""
-            run_unit_tests "$@" || true
+            run_phase unit        run_unit_tests "$@"
             echo ""
-            run_integration_tests "$@" || true
+            run_phase integration run_integration_tests "$@"
             echo ""
-            run_swarm_tests "$@" || true
+            run_phase swarm       run_swarm_tests "$@"
             ;;
         *)
             log_error "Unknown mode: $MODE"
@@ -438,6 +537,11 @@ main() {
 
     echo ""
     echo "================================================================"
+    if [[ ${#FAILED_PHASES[@]} -gt 0 ]]; then
+        log_error "Test run FAILED in: ${FAILED_PHASES[*]}"
+        echo "================================================================"
+        return 1
+    fi
     log_success "Test run complete"
     echo "================================================================"
 }
@@ -451,11 +555,15 @@ if [[ -x "$SCRIPT_DIR/hooks/test-k8s-context-guard.sh" ]]; then
     "$SCRIPT_DIR/hooks/test-k8s-context-guard.sh" || K8S_GUARD_RC=1
 fi
 
-main "$@"
-MAIN_RC=$?
+# `main "$@"` on its own would abort here under `set -e` the moment main returns
+# non-zero, so MAIN_RC and the k8s verdict below were unreachable in exactly the case
+# they exist to report: the exit code was right by accident, but the diagnostic never
+# printed. `|| MAIN_RC=$?` keeps main's status without letting errexit cut the script.
+MAIN_RC=0
+main "$@" || MAIN_RC=$?
 
 if [[ $K8S_GUARD_RC -ne 0 ]]; then
-    echo "FAIL: la suite del k8s context guard fallo" >&2
+    echo "FAIL: the k8s context guard suite failed" >&2
     exit 1
 fi
 exit $MAIN_RC

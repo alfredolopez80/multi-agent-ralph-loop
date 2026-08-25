@@ -118,6 +118,26 @@ jobs:
             python -m pytest tests/harness/ -v --tb=short
           fi
 
+      - name: Install shell suite dependencies
+        # jq: used by 8 of the wired shell suites.
+        # bats: runs the 5 bats suites, among them test_cross_platform.bats -- 30 tests
+        #       of portable stat/date/realpath/mktemp, which is the repo's own guard
+        #       against the GNU-vs-BSD class behind #43 and #44. It existed and nothing
+        #       ran it. Ubuntu's bats 1.10 is sufficient; none of the five needs
+        #       bats-support or bats-assert.
+        run: sudo apt-get update && sudo apt-get install -y jq bats
+
+      - name: Run orphaned shell unit suites
+        # 62 suites under tests/ were invoked by NOBODY: not CI, not pre-commit, not any
+        # aggregate runner (#42). run-all-unit-tests.sh existed but declared a
+        # single-entry TEST_SUITES, and that entry already ran in pre-commit.
+        #
+        # This runs the 23 verified green on a clean checkout. The ones needing a
+        # provisioned machine sit behind --with-install, and the per-suite verdict for
+        # the rest is in docs/testing/ORPHAN_TEST_AUDIT.md. The runner exits non-zero
+        # both when a suite fails and when no suite runs at all.
+        run: bash tests/run-all-unit-tests.sh
+
   health-check:
     name: Ralph Doctor
     runs-on: ubuntu-latest

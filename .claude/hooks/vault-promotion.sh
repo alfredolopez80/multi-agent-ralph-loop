@@ -143,31 +143,40 @@ for agent in $KNOWN_AGENTS; do
     diary_dir="${AGENTS_DIR}/${agent}/diary"
     [[ ! -d "$diary_dir" ]] && continue
 
-    # Count task categories across all monthly diaries
-    declare -A category_counts
-    for diary_file in "${diary_dir}"/*.md; do
-        [[ ! -f "$diary_file" ]] && continue
-        while IFS= read -r line; do
-            cat_name=$(echo "$line" | grep -oE 'Task category.*:.*' 2>/dev/null | sed 's/Task category.*: *//' | tr -d '*' | head -c 30 || true)
-            [[ -z "$cat_name" ]] && continue
-            category_counts["$cat_name"]=$(( ${category_counts["$cat_name"]:-0} + 1 ))
-        done < "$diary_file"
-    done
+    # Count task categories across all monthly diaries.
+    #
+    # `sort | uniq -c`, NOT `declare -A` (#42/#44). This hook has `#!/bin/bash`, which
+    # on macOS is unconditionally bash 3.2 — no associative arrays, and no abort: every
+    # key collapses onto index 0, so ALL categories shared one counter. Three diary
+    # entries of three DIFFERENT categories would total 3 and trip the `>= 3` test,
+    # appending a "Specialization detected" line that no evidence supports. This one
+    # writes to the user's Obsidian vault, so the bash-3.2 behaviour was not merely
+    # wrong output — it was fabricated data in a file the user reads and trusts.
+    #
+    # Counting through sort/uniq needs no bash 4 and is exact.
+    category_tally=$(
+        for diary_file in "${diary_dir}"/*.md; do
+            [[ -f "$diary_file" ]] || continue
+            while IFS= read -r line; do
+                cat_name=$(echo "$line" | grep -oE 'Task category.*:.*' 2>/dev/null | sed 's/Task category.*: *//' | tr -d '*' | head -c 30 || true)
+                [[ -z "$cat_name" ]] && continue
+                printf '%s\n' "$cat_name"
+            done < "$diary_file"
+        done | sort | uniq -c
+    )
 
     # Check for specialization (3+ same category)
-    for cat in "${!category_counts[@]}"; do
-        if [[ ${category_counts[$cat]} -ge 3 ]]; then
-            # Update agent _index.md with specialization
-            agent_index="${AGENTS_DIR}/${agent}/_index.md"
-            if [[ -f "$agent_index" ]] && ! grep -q "Specialization.*${cat}" "$agent_index" 2>/dev/null; then
-                echo "- Specialization detected: ${cat} (${category_counts[$cat]} tasks)" >> "$agent_index"
-                log "INFO specialization updated: ${agent} → ${cat} (${category_counts[$cat]})"
-                SPECIALIZATIONS=$((SPECIALIZATIONS + 1))
-            fi
+    while read -r count cat; do
+        [[ -n "$cat" ]] || continue
+        [[ "$count" -ge 3 ]] || continue
+        # Update agent _index.md with specialization
+        agent_index="${AGENTS_DIR}/${agent}/_index.md"
+        if [[ -f "$agent_index" ]] && ! grep -q "Specialization.*${cat}" "$agent_index" 2>/dev/null; then
+            echo "- Specialization detected: ${cat} (${count} tasks)" >> "$agent_index"
+            log "INFO specialization updated: ${agent} → ${cat} (${count})"
+            SPECIALIZATIONS=$((SPECIALIZATIONS + 1))
         fi
-    done
-
-    unset category_counts
+    done <<< "$category_tally"
 done
 
 # ---------------------------------------------------------------------------

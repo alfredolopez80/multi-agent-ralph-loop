@@ -158,23 +158,52 @@ jobs:
           echo "install.sh exit: $?"
           echo "::endgroup::"
 
-      - name: Debug — raw validator output (issue #44)
-        # La rama macOS falla con `jq: Invalid numeric literal at line 1, col ~100`.
-        # Linea 1 significa que $output no empieza por '{': algo escribe a stdout
-        # (o a stderr, que `run` de bats fusiona) ANTES del JSON. No se reproduce
-        # en una maquina de desarrollo macOS, asi que este paso captura los bytes
-        # reales en el runner. `cat -A` hace visible cualquier control char.
-        # Temporal: retirar cuando #44 se cierre.
-        continue-on-error: true
+      - name: Verify bash 4+ is the interpreter for the validators (issue #44)
+        # The scripts/ validators build their tables with `declare -A`, which needs
+        # bash 4. macOS still ships bash 3.2 as /bin/bash, and there `declare -A`
+        # does not abort: it warns on stderr, carries on, and collapses every
+        # RESULTS[key] onto index 0. Hence the 7 suites red on macOS only. The
+        # previous debug step never got to report this because it used `cat -A`,
+        # which is GNU coreutils and BSD cat rejects.
+        #
+        # bash is actually installed rather than relaxing the assertion. The library
+        # scripts/lib/validation-common.sh re-execs under a bash >= 4 when it finds
+        # one and fails loudly when it does not, so this step puts the runner on the
+        # fast path and also records which version ended up being used.
         run: |
-          echo "::group::stdout only"
-          bash scripts/validate-directories.sh --format json 2>/dev/null | head -3 | cat -A
+          echo "::group::bash provisioning"
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            # bash: for `declare -A` (see above).
+            # coreutils: provides gtimeout. validate-hooks-execution.sh bounds each
+            # hook with timeout(1), which is GNU and macOS does not ship, so it exited
+            # 2 with "timeout command not found"; bats merges stderr into $output and
+            # that message was what the tests then tried to parse as JSON.
+            brew install bash coreutils
+          fi
+          echo "PATH bash:   $(command -v bash)"
+          bash -c 'echo "PATH bash version: ${BASH_VERSION}"'
+          echo "/bin/bash:   $(/bin/bash -c 'echo ${BASH_VERSION}')"
           echo "::endgroup::"
-          echo "::group::stdout + stderr (lo que ve bats run)"
-          bash scripts/validate-directories.sh --format json 2>&1 | head -5 | cat -A
-          echo "::endgroup::"
-          echo "::group::hook context-warning"
-          ./.claude/hooks/context-warning.sh < tests/installer/fixtures/mock-tool-inputs/user-prompt-submit.json 2>&1 | head -3 | cat -A
+
+          echo "::group::validator smoke test"
+          # Fails the step if the validator does not emit parseable JSON: exactly the
+          # assertion that broke inside bats, checked here without bats in the way so
+          # the diagnosis does not depend on how `run` captures output.
+          #
+          # NOT `... | jq empty`. GitHub runs `run:` under `bash -e` with no pipefail,
+          # so a pipeline reports only jq's status -- and `jq empty` on EMPTY stdin
+          # exits 0. A validator that refuses to start (the bash-4 guard exits 78 with
+          # nothing on stdout) would have sailed through the very check meant to catch
+          # it. Capture, check the exit code, then parse.
+          set -o pipefail
+          out="$(scripts/validate-directories.sh --format json)" || {
+            echo "validate-directories.sh exited $? -- output was:" >&2
+            printf '%s\n' "$out" >&2
+            exit 1
+          }
+          [ -n "$out" ] || { echo "validator produced no output at all" >&2; exit 1; }
+          printf '%s' "$out" | jq empty
+          echo "validate-directories.sh: JSON OK"
           echo "::endgroup::"
 
       - name: Run BATS tests

@@ -221,7 +221,10 @@ run_cli() {
 @test "cmd_image function exists" { grep -qE "^cmd_image\(\)" "$RALPH_SCRIPT"; }
 @test "cmd_minimax function exists" { grep -qE "^cmd_minimax\(\)" "$RALPH_SCRIPT"; }
 @test "cmd_improvements function exists" { grep -qE "^cmd_improvements\(\)" "$RALPH_SCRIPT"; }
-@test "cmd_status function exists" { grep -qE "^cmd_status\(\)" "$RALPH_SCRIPT"; }
+# cmd_status was removed in #42: it dispatched to ~/.claude/scripts/ralph-status.sh,
+# absent from this repository, so the command could only ever fail. `status` now reaches
+# cmd_process_status, which is what `ralph help` documents.
+@test "cmd_process_status function exists" { grep -qE "^cmd_process_status\(\)" "$RALPH_SCRIPT"; }
 @test "cmd_version function exists" { grep -qE "^cmd_version\(\)" "$RALPH_SCRIPT"; }
 @test "cmd_help function exists" { grep -qE "^cmd_help\(\)" "$RALPH_SCRIPT"; }
 
@@ -481,9 +484,12 @@ run_cli() {
     [ "$status" -eq 0 ]
 }
 
-@test "cmd_status basic invocation" {
-    # status command may depend on runtime state
-    run_cli status 2>/dev/null || true
+@test "status lists processes and succeeds" {
+    # Was `run_cli status 2>/dev/null || true` -- an assertion-free test that could not
+    # fail. Since #42 `status` reaches cmd_process_status, which has a defined result.
+    run_cli status
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Active ralph processes"* ]]
 }
 
 @test "cmd_version basic invocation" {

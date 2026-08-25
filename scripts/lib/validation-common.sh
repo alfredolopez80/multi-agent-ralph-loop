@@ -25,6 +25,66 @@
 #   vc_verdict "My Validator" || exit 1
 #   exit 0
 
+# BASH 4+ GUARD — OPT-IN. Set VC_REQUIRE_BASH4=1 *before* sourcing this file.
+#
+#   VC_REQUIRE_BASH4=1
+#   source "${SCRIPT_DIR}/lib/validation-common.sh"
+#
+# Ten of this library's twenty callers build their result tables with `declare -A`.
+# Bash 3.2 — what macOS still ships as /bin/bash — has no associative arrays. It does
+# not abort: it writes "declare: -A: invalid option" to stderr, carries on, and then
+# collapses every RESULTS[key]=... onto index 0, because an unset name in an array
+# subscript evaluates arithmetically to 0. The run produces confident nonsense.
+#
+# That is how this reached CI as `jq: parse error: Invalid numeric literal at line 1,
+# column N`, with N differing per script and matching nothing in any emitter — N was
+# simply the length of the failing script's own absolute path, because $output began
+# with "/Users/.../validate-<name>.sh: line 85: declare: -A: invalid option", not "{".
+#
+# The other ten callers are bash-3 clean and some say so in their headers
+# (install-language-servers.sh: "COMPAT: Bash 3.2+ (macOS native)"). Enforcing this
+# unconditionally would have broken every one of them on stock macOS to fix a problem
+# they do not have, so the requirement is declared per caller rather than assumed.
+#
+# The flag is read at source time on purpose: "$@" here is the calling script's own
+# argument list, so the re-exec below preserves it. A function form would see its own
+# arguments instead, and would silently drop the caller's on bash 3 only — the exact
+# class of platform-specific silent failure this guard exists to end.
+#
+# Re-exec under a newer bash when the machine has one; refuse to run when it does not.
+# Degrading quietly is the one option available here that must not be taken.
+if [ "${VC_REQUIRE_BASH4:-0}" = "1" ] && [ "${BASH_VERSINFO:-0}" -lt 4 ]; then
+    # Loop breaker. The guard trusts a `bash -c` probe to predict how the same binary
+    # will behave with a script operand. A shim where those two diverge would re-exec
+    # forever -- measured at ~3000 invocations in 8s with a deliberately lying stub.
+    # One marker turns an unbounded loop into a single honest error.
+    if [ "${VC_BASH4_REEXEC:-0}" = "1" ]; then
+        echo "ERROR: $0 re-executed under '${BASH:-unknown}' and still sees bash ${BASH_VERSINFO:-?}." >&2
+        echo "       Refusing to re-exec again. Check for a wrapper on PATH pretending to be bash." >&2
+        exit 78
+    fi
+
+    # `command -v bash` first: the fixed list misses MacPorts (/opt/local/bin), nix,
+    # asdf/mise shims and any --prefix build, so a user with a perfectly good bash 5
+    # could be told to `brew install bash` they had already installed.
+    # Kept on one line so a test can substitute the whole candidate set with one edit.
+    _vc_candidates="$(command -v bash 2>/dev/null) /opt/homebrew/bin/bash /usr/local/bin/bash /usr/bin/bash"
+    for _vc_bash in $_vc_candidates; do
+        [ -n "$_vc_bash" ] && [ -x "$_vc_bash" ] || continue
+        _vc_major="$("$_vc_bash" -c 'echo "${BASH_VERSINFO:-0}"' 2>/dev/null || echo 0)"
+        case "$_vc_major" in
+            ''|*[!0-9]*) continue ;;
+        esac
+        if [ "$_vc_major" -ge 4 ]; then
+            VC_BASH4_REEXEC=1 export VC_BASH4_REEXEC
+            exec "$_vc_bash" "$0" "$@"
+        fi
+    done
+    echo "ERROR: $0 requires bash 4.0+ for associative arrays (found ${BASH_VERSION:-unknown})." >&2
+    echo "       macOS ships bash 3.2. Install a newer one:  brew install bash" >&2
+    exit 78
+fi
+
 # Idempotent under re-source; no `readonly` so a second `source` cannot abort the caller.
 # Color is emitted unconditionally (matching every current script) unless NO_COLOR is set,
 # so piped output looks exactly as it did before this library existed.

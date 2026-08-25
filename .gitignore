@@ -290,3 +290,12 @@ pytest-of-*/
 
 # Local archive dirs (never committed)
 .claude/**/_archived/
+
+# Action reports written by the v2.93 tracker on every skill/suite run. Wiring the
+# orphaned suites into a runner (#42) made these appear on every `git status`. The
+# curated documents under docs/actions/ stay tracked; the per-run dumps do not.
+.claude/metadata/actions/
+docs/actions/orchestrator/
+
+# Local review consolidations (/review-pr output). Never committed.
+.local-notes/

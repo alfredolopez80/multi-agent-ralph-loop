@@ -24,6 +24,15 @@ set -euo pipefail
 umask 077
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+
+# Requires bash 4+: `mapfile` below is bash 4.0. On macOS's bash 3.2 it is simply not a
+# builtin, so under `set -e` this aborts at that line with "mapfile: command not found"
+# after having already done work. This script's suite runs in CI, so declaring the
+# requirement also puts it under the structural guard in
+# tests/installer/test-bash-version-guard.bats.
+VC_REQUIRE_BASH4=1
+source "$SCRIPT_DIR/../lib/validation-common.sh"
+
 SEED_FILE="${SEED_FILE:-$SCRIPT_DIR/seed-data/dev-prohibitions.json}"
 
 MIGRATE="$SCRIPT_DIR/migrate_rules_to_nodes.py"

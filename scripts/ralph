@@ -3266,34 +3266,19 @@ cmd_events() {
 }
 
 # ===============================================================================
-# v2.52: STATUS - Orchestration Status Query
+# v2.52 `cmd_status` and v2.55 `cmd_health` lived here and are gone (issue #42).
+#
+# Both dispatched to a script under ~/.claude/scripts/ -- ralph-status.sh and
+# ralph-health.sh -- that exists nowhere in this repository and in no release
+# tag, so neither command could ever do anything but fail. Both then advised
+# `ralph self-update`, which syncs scripts/ into ~/.local/bin and has never
+# written to ~/.claude/scripts/: the one remedy they offered could not work.
+#
+# `status` now resolves to cmd_process_status, which is what `ralph help` has
+# been documenting all along ("Show active processes") and what `ralph ps`
+# already ran. `health` is removed outright rather than aliased to something it
+# never meant.
 # ===============================================================================
-cmd_status() {
-    local STATUS_SCRIPT="${HOME}/.claude/scripts/ralph-status.sh"
-
-    if [ ! -x "$STATUS_SCRIPT" ]; then
-        log_error "Status script not found: $STATUS_SCRIPT"
-        log_info "Install with: ralph self-update"
-        exit 1
-    fi
-
-    "$STATUS_SCRIPT" "$@"
-}
-
-# ===============================================================================
-# v2.55: HEALTH - Memory System Health Check
-# ===============================================================================
-cmd_health() {
-    local HEALTH_SCRIPT="${HOME}/.claude/scripts/ralph-health.sh"
-
-    if [ ! -x "$HEALTH_SCRIPT" ]; then
-        log_error "Health script not found: $HEALTH_SCRIPT"
-        log_info "Install with: ralph self-update"
-        exit 1
-    fi
-
-    "$HEALTH_SCRIPT" "$@"
-}
 
 # ===============================================================================
 # v2.52: TRACE - Local Traceability System
@@ -7401,7 +7386,10 @@ cmd_uninstall() {
 # ===============================================================================
 # UTILITY COMMANDS
 # ===============================================================================
-# v2.54: Renamed from cmd_status() to avoid conflict with v2.52 orchestration status
+# Renamed from cmd_status() in v2.54 to avoid a clash with the v2.52 orchestration
+# status command. That command was removed in #42 (it dispatched to a script that
+# never existed), so this is once again the only status ralph has, and `status`,
+# `st`, `ps` and `processes` all reach it.
 cmd_process_status() {
     log_info "Active ralph processes:"
     ps aux | grep -E "(codex|gemini|mmc|ralph)" | grep -v grep || echo "  None"
@@ -7624,8 +7612,12 @@ main() {
     shift || true
 
     # v2.22: Startup validation (skip for instant commands)
+    # `health` used to be listed here. Its command was removed in #42 (it dispatched
+    # to a script that never existed), so naming it only bought an unknown command a
+    # faster route to its own error message. `ps`/`processes` are added instead:
+    # they reach the same cmd_process_status as `status` and are just as instant.
     case "$CMD" in
-        help|-h|--help|version|-v|--version|status|health) ;;
+        help|-h|--help|version|-v|--version|status|st|ps|processes) ;;
         *) startup_validation ;;
     esac
 
@@ -7891,9 +7883,9 @@ main() {
         events|event|ev)
             cmd_events "$@"
             ;;
-        # v2.52: Orchestration status query
-        status|st)
-            cmd_status "$@"
+        # Active ralph processes -- the behaviour `ralph help` documents.
+        status|st|ps|processes)
+            cmd_process_status
             ;;
         # v2.52: Local traceability system
         trace|tr)
@@ -7943,16 +7935,15 @@ main() {
             ;;
 
         # Utility
-        # (`status` ya se despacha arriba como `status|st`; este case era
-        #  inalcanzable — shellcheck SC2221, oculto por un `|| true` en CI)
-        health)
-            # v2.55: Memory system health check
-            cmd_health "$@"
-            ;;
-        ps|processes)
-            # v2.54: Process status (was cmd_status before v2.52 conflict)
-            cmd_process_status
-            ;;
+        # `ps` and `processes` used to have their own case here; they now share the
+        # `status|st|ps|processes` case above, which reaches the same function.
+        #
+        # The comment that stood here claimed this case was unreachable per shellcheck
+        # SC2221 and that a `|| true` in CI was hiding it. None of that is true, and it
+        # was repeated into this PR before being checked: `shellcheck --severity=warning`
+        # reports no SC2221 on the pre-PR file, the ci.yml shellcheck step has no
+        # `|| true`, and `ralph ps` worked. The `health` case removed alongside it WAS
+        # dead, but for an unrelated reason -- its command was deleted in #42.
         version|-v|--version)
             cmd_version
             ;;

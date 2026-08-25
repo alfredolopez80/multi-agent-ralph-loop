@@ -19,6 +19,9 @@ set -euo pipefail
 
 # Shared colors, counters and the zero-checks verdict guard.
 _VC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Requires bash 4+: the result tables below are associative arrays. Declared here so
+# the library can enforce it; bash-3-clean callers of the same library are unaffected.
+VC_REQUIRE_BASH4=1
 source "${_VC_DIR}/lib/validation-common.sh"
 
 # Configuration
@@ -193,13 +196,21 @@ test_hook() {
 
     if [[ -n "$fixture" && -f "$fixture" ]]; then
         # Run with input fixture
-        stdout_output=$(timeout "$TIMEOUT_SECONDS" "$hook_path" < "$fixture" 2>"$stderr_file") || exit_code=$?
+        stdout_output=$("$TIMEOUT_CMD" "$TIMEOUT_SECONDS" "$hook_path" < "$fixture" 2>"$stderr_file") || exit_code=$?
     elif uses_empty_input "$hook"; then
         # Run with empty input
-        stdout_output=$(timeout "$TIMEOUT_SECONDS" "$hook_path" < /dev/null 2>"$stderr_file") || exit_code=$?
+        stdout_output=$("$TIMEOUT_CMD" "$TIMEOUT_SECONDS" "$hook_path" < /dev/null 2>"$stderr_file") || exit_code=$?
     else
-        # Run with minimal empty JSON input
-        stdout_output=$(timeout "$TIMEOUT_SECONDS" echo '{}' | "$hook_path" 2>"$stderr_file") || exit_code=$?
+        # Run with minimal empty JSON input.
+        #
+        # This used to read `$TIMEOUT_CMD $TIMEOUT_SECONDS echo '{}' | "$hook_path"`,
+        # which bounded `echo` -- a command that finishes instantly -- and left the hook
+        # itself, the downstream stage, completely unbounded. A hook sleeping 25s under
+        # --timeout 2 was scored PASS, and .summary.timeouts could never rise for any
+        # hook taking this branch (every hook not in HOOK_INPUT_MAP nor in
+        # HOOKS_WITH_EMPTY_INPUT). The timeout now wraps the hook, as the other two
+        # branches already did.
+        stdout_output=$("$TIMEOUT_CMD" "$TIMEOUT_SECONDS" "$hook_path" <<< '{}' 2>"$stderr_file") || exit_code=$?
     fi
 
     end_time=$(date +%s%N 2>/dev/null || gdate +%s%N 2>/dev/null || echo "0")
@@ -445,15 +456,37 @@ if [[ ! -d "$HOOKS_DIR" ]]; then
     exit 2
 fi
 
-# Check if timeout command exists
-if ! command -v timeout &>/dev/null; then
-    echo "timeout command not found (required for this script)" >&2
+# Resolve the timeout command (issue #44).
+#
+# `timeout(1)` is GNU coreutils and macOS does not ship it; Homebrew's coreutils
+# installs it as `gtimeout`. This script already does the same dance for date/gdate a
+# few lines up, but not here, so on macOS it exited 2 with
+# "timeout command not found" -- and since bats' `run` merges stderr into $output,
+# that message became the thing the tests parsed as JSON. Hence
+# `jq: Invalid literal at line 1, column 8`: "timeout" is seven characters.
+if command -v timeout &>/dev/null; then
+    TIMEOUT_CMD="timeout"
+elif command -v gtimeout &>/dev/null; then
+    TIMEOUT_CMD="gtimeout"
+else
+    echo "Neither 'timeout' nor 'gtimeout' found; both are required to bound hook execution." >&2
+    echo "On macOS install GNU coreutils:  brew install coreutils" >&2
     exit 2
 fi
 
-# Test each hook
+# Test each hook.
+#
+# `|| true` is load-bearing here, and is the opposite of a fail-open. test_hook returns
+# 1 for every MISSING / NOT_EXECUTABLE / TIMEOUT / FAIL, and a bare `test_hook "$hook"`
+# under this file's `set -e` aborted the whole run at the FIRST bad hook -- before
+# print_json_output ever ran. The validator emitted zero bytes and exit 1, so a hook
+# failure produced no report of the hook failure. Consumers piping that into `jq` then
+# saw a parse error with no cause in it.
+#
+# The verdict is not lost: every result is already recorded in HOOK_RESULTS and counted
+# into FAILED/TIMEOUT/ERRORS, and the exit code is computed from those counters below.
 for hook in $(get_hooks_to_test); do
-    test_hook "$hook"
+    test_hook "$hook" || true
 done
 
 # Output results
