@@ -892,3 +892,102 @@ The smart-skill-reminder design itself does NOT survive: the
 catalog in the model's context (246 skills, 19,705 tokens already
 paid) replaces any substring-based selector. The retired hook has
 no successor.
+
+## T52 follow-up — `tests/hooks/test_session_dedup_key.sh` (shared test broke on the retirement)
+
+**Status**: silent on my branch (PASS), red on main after the merge
+of T52 (commit 24b09a1 in main, two assertions failing). Lead fixed
+it inline with a comment in the array; I am here to make sure the
+CLASS of failure is recorded, not just this instance.
+
+**The class**: a test that covers multiple components simultaneously.
+Retiring ONE of those components breaks the test for everyone. The
+test file's name does not reveal which component it depends on; the
+component's name is buried in an array or a loop inside the test
+body. A grep for the component's tests in the test's own directory
+finds nothing — the test is in `tests/hooks/`, the component is
+named `smart-skill-reminder`, and the component's "own" tests are
+in `tests/test_smart_skill_reminder_v3.sh` (which I correctly
+archived in T52). The shared test was in a different file entirely.
+
+**The instance** (the one that fired):
+
+  tests/hooks/test_session_dedup_key.sh asserts that FOUR hooks
+  index their session markers correctly:
+    - adversarial-auto-trigger.sh
+    - ai-code-audit.sh
+    - code-review-auto.sh
+    - smart-skill-reminder.sh  ← retired in T52, this is the broken one
+  When T52 replaced the hook body with a no-op, the two assertions
+  on smart-skill-reminder.sh went red:
+    FAIL  smart-skill-reminder.sh: get_session_id produced nothing
+    FAIL  smart-skill-reminder.sh: fallback produced nothing
+  The other three hooks still pass. From the test file's POV the
+  failure looks like one entry in an array; from the retirement's
+  POV it's exactly the kind of test that should have been retired
+  ALONGSIDE the component.
+
+**The rule that should have been in the T30/T36/T52 prior
+findings**: before retiring a component, do
+
+    grep -rn "<component-name>" tests/
+
+Not `grep -rn "<component-name>" tests/<component-own-dir>/`. The
+own-dir grep finds the dedicated tests; only the whole-dir grep
+finds the shared tests. For T52, the right command was
+
+    grep -rn "smart-skill-reminder" tests/
+
+which surfaces BOTH the dedicated test (which I archived) AND the
+shared test (which I missed). The shared test was invisible to the
+own-dir grep because it's in a different directory with a name
+that doesn't reveal the dependency.
+
+**Why shared tests exist** (for the record, since the rule's
+rationale should be on file): shared tests are the right call when
+the behavior under test is a CROSS-CUTTING concern (here, session
+id dedup). A per-component test would duplicate the dedup logic; a
+shared test verifies it once. The trade-off is that retirement
+becomes coupled: a shared test of N components is a shared blast
+radius. The audit (this entry) is the surface where the trade-off
+is recorded, not where it is fixed.
+
+**The three previous entries (T30 / T36 / T52-self)** were all
+dedicated tests. This is the first shared one. The class is the
+same — silent test for a retired component — but the surface is
+different. The next search for "the smart-skill-reminder tests"
+in a future retirement must do the whole-dir grep, not the own-dir
+grep, or this exact failure mode repeats.
+
+### What I did
+
+Lead fixed the immediate gate (commit 24b09a1 in main) with a
+comment in the array. The test file is now correct — its
+smart-skill-reminder entry is marked as the T52 retirement, and
+the four-hooks coverage claim is reduced to three live hooks. My
+commit (T52 follow-up, branch worktree-mmx-1) is this audit entry
+ONLY. The code change in the shared test is lead's, not mine — I
+didn't author a fix for a test I didn't read, and the
+remove-the-broken-entry work was lead's call because the lint
+would not be in a sane state without a coordinator.
+
+### What the next retirement must do
+
+1. Read the audit from the top. The previous entries (T30, T36,
+   T52-self) document patterns; this one (T52 follow-up) adds the
+   "shared test" class.
+2. `grep -rn "<component-name>" tests/` — full directory, not the
+   component's own subtree.
+3. For each hit, decide:
+   - Own-dir hits: archive the dedicated test (precedent T30/T36/T52-self).
+   - Shared-test hits: comment in the test why this component is
+     skipped, or remove the component's entry from the array (the
+     test no longer claims coverage it can't verify). Lead did the
+     latter for this one.
+4. Do BOTH archive AND comment BEFORE committing. The merge that
+   drops the dedicated test without the shared-test comment breaks
+   the gate, as T52's first integration did.
+
+This is the durable record of why this class keeps happening. The
+audit doc, not the individual archives, is the place the next
+retirement looks first.
