@@ -40,7 +40,17 @@ generate_action_report() {
     local skill_name="$1"
     local status="$2"        # completed | failed | partial | in_progress
     local description="$3"
-    local details_json="${4:-{}}"
+    # Bug A fix: the previous `${4:-{}}` is a bash parsing trap — bash
+    # tokenizes the parameter expansion as `${4:-{ + } + }`, so when $4 is
+    # set the result is `$4` PLUS a hanging `}` (e.g. `"{}"` → `"{}}"`),
+    # which breaks `jq --argjson details …` downstream. The same trap
+    # appears whether the fallback is quoted or not (`'{}}'` also
+    # re-introduces ambiguity in bash parsing). The reliable fix is an
+    # explicit empty-string check that defaults to a literal `{}`.
+    local details_json="$4"
+    if [[ -z "$details_json" ]]; then
+        details_json='{}'
+    fi
 
     # Validate inputs
     if [[ -z "$skill_name" || -z "$status" || -z "$description" ]]; then
@@ -286,8 +296,11 @@ find_latest_report() {
     local skill_dir="${ACTION_REPORTS_DIR}/${skill_name}"
 
     if [[ -d "$skill_dir" ]]; then
-        find "$skill_dir" -name "*.md" -type f -printf '%T@ %p\n' 2>/dev/null | \
-            sort -rn | head -1 | cut -d' ' -f2-
+        # Portable: `ls -t` sorts by mtime (newest first) and works on both
+        # BSD find (macOS) and GNU findutils. Replaces the previous
+        # `find -printf '%T@ %p\n'` which was GNU-only and silently returned
+        # empty on stock macOS.
+        ls -1t "$skill_dir"/*.md | head -1
     fi
 }
 
@@ -302,8 +315,10 @@ cleanup_old_reports() {
         # Remove oldest reports
         local to_delete=$((count - MAX_REPORTS_PER_SKILL))
 
-        find "$skill_dir" -name "*.md" -type f -printf '%T@ %p\n' 2>/dev/null | \
-            sort -n | head -"$to_delete" | cut -d' ' -f2- | \
+        # Portable: `ls -tr` returns oldest first; head -n takes the N oldest.
+        # Replaces GNU-only `find -printf '%T@ %p\n'` (silent fail on stock
+        # macOS).
+        ls -1tr "$skill_dir"/*.md | head -n "$to_delete" | \
             while read -r old_report; do
                 local basename=$(basename "$old_report" .md)
                 rm -f "$old_report"
