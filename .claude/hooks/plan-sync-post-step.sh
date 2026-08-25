@@ -56,7 +56,7 @@ validate_file_path() {
     fi
 
     # Resolve to absolute path and verify it's under project root
-    resolved=$(realpath -m "$path" 2>/dev/null || echo "")
+    resolved=$(realpath "$path" 2>/dev/null || echo "")
     local project_root
     project_root="$(get_main_repo 2>/dev/null || pwd)"
 

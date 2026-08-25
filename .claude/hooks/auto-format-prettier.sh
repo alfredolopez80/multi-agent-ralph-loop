@@ -47,7 +47,7 @@ fi
 
 # SEC-102 FIX: Validate FILE_PATH to prevent command injection
 # Use realpath to canonicalize and reject paths with dangerous characters
-FILE_PATH_REAL=$(realpath -m "$FILE_PATH" 2>/dev/null) || {
+FILE_PATH_REAL=$(realpath "$FILE_PATH" 2>/dev/null) || {
     trap - ERR EXIT
     echo '{"continue": true}'
     exit 0
