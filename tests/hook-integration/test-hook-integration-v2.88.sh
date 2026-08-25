@@ -18,6 +18,23 @@ BOLD='\033[1m'
 
 # Configuration
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo ".")"
+
+# T39: hermetic HOME. Standalone (pre-commit Phase 8) this suite used to run
+# against the REAL home: fixtures under ~/.ralph/state and ~/.claude/teams
+# raced with live sessions — including another instance of THIS suite in a
+# concurrent pane sharing the fixed names test-team/test-session (cleanup in
+# one run deletes the other's fixture mid-test) — and cleanup_test_state
+# rm -rf'd paths on the live tree. Same pattern run-all-unit-tests.sh uses
+# (its lines ~71-78): mktemp home, trap, export. RALPH_TEST_KEEP_HOME=1 opts
+# out for debugging against a provisioned home; under run-all this creates a
+# nested sandbox, which is redundant but harmless.
+if [[ "${RALPH_TEST_KEEP_HOME:-0}" != "1" ]]; then
+    _SANDBOX_HOME="$(mktemp -d -t hookint-XXXXXX)"
+    trap 'rm -rf "$_SANDBOX_HOME"' EXIT
+    export HOME="$_SANDBOX_HOME"
+    mkdir -p "$HOME/.ralph" "$HOME/.claude"
+fi
+
 STATE_DIR="$HOME/.ralph/state"
 LOG_DIR="$HOME/.ralph/logs"
 TEAMS_DIR="$HOME/.claude/teams"
@@ -396,6 +413,12 @@ print_summary() {
     echo "  #4 (MEDIUM): SubagentStart registers state"
     echo "  #5 (MEDIUM): Session isolation and cleanup"
 
+    if [[ $total -eq 0 ]]; then
+        # T39: zero-tests is never success (same family as T33). A run that
+        # asserted nothing must not print ALL PASSED over an empty set.
+        echo -e "\n${RED}${BOLD}✗ ZERO TESTS EXECUTED${NC}"
+        return 1
+    fi
     if [[ $TESTS_FAILED -eq 0 ]]; then
         echo -e "\n${GREEN}${BOLD}✓ ALL HOOK INTEGRATION TESTS PASSED${NC}"
         return 0

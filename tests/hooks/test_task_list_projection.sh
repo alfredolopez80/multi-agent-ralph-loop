@@ -106,10 +106,17 @@ git -C "$R" init -q
 git -C "$R" config user.email test@example.invalid
 git -C "$R" config user.name "tlp test"
 mkdir -p "$R/pkg"
-( cd "$R/pkg" && echo '{"hook_event_name":"TaskCreated","taskId":"rooted","subject":"x","status":"pending","owner":"claude"}' | CLAUDE_PROJECT_DIR=/nonexistent-t35 "$HOOK" >/dev/null )
+# The stale variable must point at a REAL, WRITABLE directory: asserting
+# against /nonexistent (lead's review of T35) could never fail on macOS,
+# where / is not writable — the write would be impossible even if the hook
+# HONORED the variable. Pointing it at a ready-to-write dir inside the
+# sandbox gives the assert teeth: honoring the variable would materialize
+# $STALE/.claude/tasks.json, and only "git wins" keeps it absent.
+STALE="$R/stale-project"; mkdir -p "$STALE/.claude"
+( cd "$R/pkg" && echo '{"hook_event_name":"TaskCreated","taskId":"rooted","subject":"x","status":"pending","owner":"claude"}' | CLAUDE_PROJECT_DIR="$STALE" "$HOOK" >/dev/null )
 assert "tasks.json at repo root"    "[[ -f \"$R/.claude/tasks.json\" ]]"
 assert "no projection in the subdir" "[[ ! -f \"$R/pkg/.claude/tasks.json\" ]]"
-assert "stale CLAUDE_PROJECT_DIR ignored under git" "[[ ! -e /nonexistent-t35 ]]"
+assert "stale CLAUDE_PROJECT_DIR ignored under git" "[[ ! -f \"$STALE/.claude/tasks.json\" ]]"
 rm -rf "$R"
 
 echo
