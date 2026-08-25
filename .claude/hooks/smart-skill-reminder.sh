@@ -1,277 +1,88 @@
 #!/bin/bash
 #!/usr/bin/env bash
 #===============================================================================
-# Smart Skill Reminder Hook (v2.0.0)
-# PreToolUse hook - Context-aware skill suggestions BEFORE writing code
+# Smart Skill Reminder Hook — RETIRED
+# PreToolUse hook - filesystem-derived skill suggestions BEFORE writing code
 #===============================================================================
 #
-# VERSION: 2.69.0
-# TRIGGER: PreToolUse (Edit|Write)
-# PURPOSE: Intelligently suggest relevant skills based on file context
+# STATUS: RETIRED. NOT REGISTERED in ~/.claude/settings.json. DO NOT RE-REGISTER.
 #
-# IMPROVEMENTS OVER v1.0.0:
-# - Fires on PreToolUse (BEFORE code is written, not after)
-# - Session gating: only reminds once per session
-# - Context-aware: suggests specific skills based on file type/path
-# - Rate limiting: respects cooldown period
-# - Skill invocation detection: skips if skill was recently used
+# Lead's desregistro is the canonical state. Re-registering this hook
+# without reading this header would re-introduce a no-op that consumes
+# tokens and produces nothing. Read the three nails below first.
 #
-# Based on adversarial review by Claude Opus + OpenAI Codex gpt-5.2
+# WHY RETIRED (T49 / T52, 2026-08-25) — three independent nails, each
+# sufficient on its own:
+#
+# 1. additionalContext not honored in PreToolUse.
+#    v2.69.0 emitted additionalContext. zc verified empirically across
+#    250 sessions and 1.343 hook invocations on this machine: 0 deliveries.
+#    The mechanism was a no-op from day one. tests/HOOK_FORMAT_REFERENCE.md
+#    lists additionalContext as "optional" but the PreToolUse validation
+#    function only checks for continue or permissionDecision.
+#
+# 2. permissionDecisionReason for allow has no slot.
+#    v3.0.0 switched to {"permissionDecision":"allow",
+#    "permissionDecisionReason":"..."}. zc verified: 0 of 25 cases where
+#    the reason reached the model. The reason: a PreToolUse `allow`
+#    executes the tool, and the tool_result IS the visible output.
+#    There is no physical slot in the harness where the reason lands
+#    before the model sees the next turn. The field is honored only for
+#    deny (the model needs the reason to understand the block); for allow
+#    there is no functional requirement and no implementation.
+#
+# 3. Matching by generic extension produces alphabetical selection, not
+#    relevance. v3.0.0 matched file extensions from the description
+#    (".py", ".ts", etc.) as a substring of the file path. With 60+
+#    skills, every `.py` edit would match every skill whose description
+#    mentions `.py`. The effective selector was the order of the file
+#    walk, which is alphabetical — not the skill's relevance to the
+#    task. A selector that decides by alphabetical order is not a
+#    selector; it is a noise generator with a 30-minute cooldown.
+#
+# WHAT REPLACES IT
+# The skill catalog is already in the model's context. mmx-2's lint
+# ensures it stays in sync with the filesystem (check #4 of T54: no hook
+# references a skill that doesn't have its SKILL.md). The catalog is a
+# better guide than any substring-based suggestion could be: it has all
+# 246 skills with descriptions, costs 19,705 tokens already paid, and
+# the model can match its own context. A 1.5k-token / 1-emission / 30-min
+# substring selector added nothing the catalog didn't already cover.
+#
+# WHY THE FILE IS STILL HERE
+# Lead's explicit instruction: "NO lo borres del disco; déjalo con una
+# nota de cabecera diciendo que está retirado, por qué (los tres clavos,
+# con las cifras), y que el catálogo en contexto lo sustituye. Que el
+# próximo que lo encuentre no reviva la idea sin leer esto." This header
+# is that note. The body below is a NO-OP; the v3.0.0 functional body
+# was removed so the 13 names exist ONLY in the prose above (the lint
+# ignores comments; the lint would NOT have ignored the executable
+# body that referenced them). The file exists so the next reader sees
+# this note before re-registering.
+#
+# IF YOU'RE READING THIS AND THINKING "MAYBE I CAN MAKE IT WORK"
+# 1. additionalContext: the docs say optional; the validation ignores
+#    it; the harness has no slot for it. Three independent failures.
+# 2. permissionDecisionReason + allow: no slot in the tool_result flow.
+#    Verified, not a guess.
+# 3. Extension matching: the index order IS the selector. Even if the
+#    channel delivered, the suggestion would be alphabetical noise.
+# Any of the three is fatal. Build something different.
+#
+# Useful artifact kept on disk: the v3.0.0 build process and tests
+# (tests/test_smart_skill_reminder_v3.sh) — those demonstrated the
+# enumerator works (the build-skill-index.sh piece survived as the
+# mmx-2 lint enumerator in T52). The hook itself does not.
 
-# SEC-111: Read input from stdin with length limit (100KB max)
-# Prevents DoS from malicious input
-INPUT=$(head -c 100000)
+# ----------------------------------------------------------------------------
+# NO-OP BODY. Replaces the v3.0.0 functional code. The hook is retired.
+# The only thing this body does is consume stdin (SEC-111) and emit
+# the empty allow. No skill names referenced in code. The lint check
+# for "skill reference without SKILL.md" passes trivially.
+# ----------------------------------------------------------------------------
 
+# SEC-111: limit input size (DoS protection — keep the existing pattern).
+head -c 100000 >/dev/null
 
-set -euo pipefail
-umask 077
-
-readonly VERSION="2.0.0"
-readonly HOOK_NAME="smart-skill-reminder"
-
-# Configuration
-readonly MARKERS_DIR="${HOME}/.ralph/markers"
-readonly COOLDOWN_MINUTES=30
-readonly LOG_FILE="${HOME}/.ralph/logs/skill-reminder.log"
-
-# Ensure directories exist
-mkdir -p "$MARKERS_DIR" "$(dirname "$LOG_FILE")" 2>/dev/null || true
-
-# Guaranteed JSON output on any error
-output_empty() {
-    echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
-}
-trap 'output_empty' ERR EXIT
-
-# Logging (silent by default)
-log() {
-    echo "[$(date -Iseconds)] [$HOOK_NAME] $*" >> "$LOG_FILE" 2>/dev/null || true
-}
-
-# Get session ID (use PPID as proxy for session)
-get_session_id() {
-    # BUG-6: CLAUDE_SESSION_ID is not exported to hooks, so the old
-    # `${CLAUDE_SESSION_ID:-$$}` fallback used the hook's own PID — a new value
-    # on every invocation. Markers were written under a key that could never be
-    # read back, so per-session deduplication never worked at all.
-    # The session id comes from the hook's stdin payload; the fallback is a
-    # stable cwd+date digest, never $$.
-    local sid
-    sid=$(printf '%s' "${INPUT:-}" | jq -r '.session_id // empty' 2>/dev/null || true)
-    if [[ -z "$sid" ]]; then
-        sid="cwd-$(printf '%s|%s' "$PWD" "$(date -u +%Y%m%d)" | shasum -a 256 | cut -c1-16)"
-    fi
-    # The value becomes part of a filename: strip anything that is not safe.
-    printf '%s' "$sid" | tr -cd 'a-zA-Z0-9_-' | head -c 64
-}
-
-# Check if we've already reminded this session
-already_reminded_this_session() {
-    local session_id
-    session_id=$(get_session_id)
-    local marker="${MARKERS_DIR}/skill-reminded-${session_id}"
-    [[ -f "$marker" ]]
-}
-
-# Mark session as reminded
-mark_session_reminded() {
-    local session_id
-    session_id=$(get_session_id)
-    local marker="${MARKERS_DIR}/skill-reminded-${session_id}"
-    touch "$marker" 2>/dev/null || true
-}
-
-# Check cooldown (rate limiting)
-is_within_cooldown() {
-    local marker="${MARKERS_DIR}/skill-reminder-cooldown"
-    if [[ -f "$marker" ]]; then
-        local marker_age
-        # MEDIUM-001 FIX: Portable stat (macOS/BSD: -f %m, Linux: -c %Y)
-        marker_age=$(( $(date +%s) - $(stat -c %Y "$marker" 2>/dev/null || stat -f %m "$marker" 2>/dev/null || echo 0) ))
-        (( marker_age < COOLDOWN_MINUTES * 60 ))
-    else
-        return 1
-    fi
-}
-
-# Update cooldown marker
-update_cooldown() {
-    local marker="${MARKERS_DIR}/skill-reminder-cooldown"
-    touch "$marker" 2>/dev/null || true
-}
-
-# Check if a skill was recently invoked (within last 5 tool calls)
-skill_recently_invoked() {
-    # Check if Skill tool was used recently by looking at recent logs
-    local recent_skills="${MARKERS_DIR}/recent-skill-invocation"
-    if [[ -f "$recent_skills" ]]; then
-        local age
-        # MEDIUM-001 FIX: Portable stat (macOS/BSD: -f %m, Linux: -c %Y)
-        age=$(( $(date +%s) - $(stat -c %Y "$recent_skills" 2>/dev/null || stat -f %m "$recent_skills" 2>/dev/null || echo 0) ))
-        (( age < 300 ))  # Within last 5 minutes
-    else
-        return 1
-    fi
-}
-
-# Determine suggested skill based on file path
-# PRIORITY ORDER: Tests > Security > Language > Architecture
-suggest_skill_for_file() {
-    local file_path="$1"
-    local filename
-    filename=$(basename "$file_path" 2>/dev/null || echo "")
-    local dir_path
-    dir_path=$(dirname "$file_path" 2>/dev/null || echo "")
-
-    # HIGHEST PRIORITY: Test files (check first to avoid false positives like test_auth.py)
-    # SC2221/SC2222 FIX: Removed redundant patterns (*test* already covers *.test.* and *__tests__*)
-    case "$file_path" in
-        *test*|*spec*)
-            echo "/test-driven-development for test files"
-            return 0
-            ;;
-    esac
-
-    # Security-sensitive files
-    # SC2221/SC2222 FIX: Removed *oauth* (already covered by *auth*)
-    case "$file_path" in
-        *auth*|*login*|*password*|*credential*|*secret*|*token*|*jwt*)
-            echo "/security-loop for security-sensitive code"
-            return 0
-            ;;
-        *payment*|*billing*|*stripe*|*checkout*|*transaction*)
-            echo "/security-loop for payment/financial code"
-            return 0
-            ;;
-    esac
-
-    # Language-specific suggestions
-    case "$filename" in
-        *.py)
-            echo "/python-pro for Python best practices"
-            return 0
-            ;;
-        *.ts|*.tsx)
-            echo "/typescript-pro for TypeScript patterns"
-            return 0
-            ;;
-        *.js|*.jsx)
-            echo "/javascript-pro for JavaScript patterns"
-            return 0
-            ;;
-        *.sh|*.bash)
-            echo "/bash-pro for shell scripting"
-            return 0
-            ;;
-        *.sol)
-            echo "/blockchain-web3:blockchain-developer for Solidity"
-            return 0
-            ;;
-        *.rs)
-            echo "/rust-pro for Rust patterns"
-            return 0
-            ;;
-        *.go)
-            echo "/go-pro for Go patterns"
-            return 0
-            ;;
-    esac
-
-    # Architecture/config files
-    case "$filename" in
-        Dockerfile*|docker-compose*|*.dockerfile)
-            echo "/cicd-automation:deployment-engineer for Docker"
-            return 0
-            ;;
-        *.tf|*.tfvars)
-            echo "/cicd-automation:terraform-specialist for Terraform"
-            return 0
-            ;;
-        *.yaml|*.yml)
-            if [[ "$file_path" == *k8s* ]] || [[ "$file_path" == *kubernetes* ]]; then
-                echo "/kubernetes-operations:kubernetes-architect for K8s"
-                return 0
-            fi
-            ;;
-    esac
-
-    # API/Backend patterns
-    case "$dir_path" in
-        *api*|*routes*|*controllers*|*handlers*)
-            echo "/backend-development:backend-architect for API design"
-            return 0
-            ;;
-        *components*|*pages*|*views*)
-            echo "/frontend-mobile-development:frontend-developer for UI components"
-            return 0
-            ;;
-    esac
-
-    # No specific suggestion
-    return 1
-}
-
-# Main logic
-main() {
-    # v2.69: Use $INPUT from SEC-111 read instead of second cat (fixes CRIT-001 double-read bug)
-    local input="$INPUT"
-
-    # Extract file path from tool input
-    local file_path
-    file_path=$(echo "$input" | jq -r '.tool_input.file_path // .tool_input.path // empty' 2>/dev/null || echo "")
-
-    # Gate 1: Skip if no file path (can't make context-aware suggestion)
-    if [[ -z "$file_path" ]]; then
-        log "No file path in input, skipping"
-        trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
-        exit 0
-    fi
-
-    # Gate 2: Skip if already reminded this session
-    if already_reminded_this_session; then
-        log "Already reminded this session, skipping"
-        trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
-        exit 0
-    fi
-
-    # Gate 3: Skip if within cooldown period
-    if is_within_cooldown; then
-        log "Within cooldown period, skipping"
-        trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
-        exit 0
-    fi
-
-    # Gate 4: Skip if a skill was recently invoked
-    if skill_recently_invoked; then
-        log "Skill recently invoked, skipping"
-        trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
-        exit 0
-    fi
-
-    # Get context-aware suggestion
-    local suggestion
-    if suggestion=$(suggest_skill_for_file "$file_path"); then
-        # Mark as reminded and update cooldown
-        mark_session_reminded
-        update_cooldown
-
-        log "Suggesting: $suggestion for $file_path"
-
-        # Output suggestion
-        # v2.70.0: Using new hookSpecificOutput format with hookEventName
-        trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-        jq -n --arg ctx "Consider using $suggestion" \
-            '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "additionalContext": $ctx}}'
-    else
-        # No suggestion for this file type
-        log "No specific skill suggestion for: $file_path"
-        trap - ERR EXIT  # CRIT-003b: Clear trap before explicit output
-        echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
-    fi
-}
-
-main "$@"
+# Empty allow. Same shape every PreToolUse hook outputs. 22 tokens.
+echo '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}'
