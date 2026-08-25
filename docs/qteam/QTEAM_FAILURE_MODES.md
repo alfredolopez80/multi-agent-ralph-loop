@@ -291,3 +291,88 @@ by reflex.
   (`glm-5.3 1000000` per docs.z.ai, `minimax-m3 512000` per minimax.io).
 - **Fix**: rule 7 — no unknown model silently gets a default window; the
   default must be loud or the entry must exist.
+
+### 27. The lead reintroduced a bug it had cited hours earlier
+- **What happened**: `qteam-blocked-notify.sh` was written with
+  `trap emit_and_exit ERR EXIT` AND an explicit `emit_and_exit` at the end.
+  Both fired, so the hook emitted two concatenated JSON objects and the
+  runtime rejected it. This is the same double-emit `zc` closed in T16 on
+  `permission-guard.sh` — the lead quoted that very case in a message hours
+  before writing this one.
+- **Evidence**: `main` went red on `38451b2`; `zc` and `mmx-1` diagnosed it
+  independently, each first proving the fault was not theirs (`zc` reproduced
+  on a clean worktree of `main`; `mmx-1` used `git show HEAD -- <file>` to
+  show its own commit touched neither file). Fixed in `beb3a79` by dropping
+  `EXIT` from the trap, leaving one emission point.
+- **Fix**: knowing a failure mode does not prevent repeating it — only an
+  assertion does. `test_no_hook_hangs_or_blocks.sh` caught it because its
+  invariant is exactly one JSON object on stdout. When citing a failure mode,
+  grep the pattern in what you are about to write, not after.
+
+### 28. A terminal escape written to stdout never reaches the terminal
+- **What happened**: an earlier attempt concluded, in a comment inside the
+  hook itself, that "both OSC 9 and OSC 777 were tested through tmux with
+  `allow-passthrough on` and neither arrived; `osascript` did". The
+  conclusion was wrong and its cause misattributed. A hook's stdout is
+  captured by Claude Code to read its JSON, so an escape sequence written
+  there never reaches the terminal. It was the file descriptor, not the
+  passthrough.
+- **Evidence**: with `allow-passthrough all` and the sequence written to the
+  pane's own TTY (from `tmux list-panes -a -F '#{pane_id} #{pane_tty}'`), the
+  native notification arrives — confirmed by the user on an isolated single
+  send. An earlier test sending OSC 777 and OSC 9 thirteen seconds apart was
+  inconclusive because the user could not tell which had arrived; repeating
+  with one sequence alone resolved it. OSC 777 works (title + body, two
+  fields — there is no subtitle); OSC 9 does not.
+```bash
+printf '\033Ptmux;\033\033]777;notify;TITLE;BODY\033\033\\\033\\' > /dev/ttys001
+```
+- **Fix**: rule 5 — when a result admits two readings, isolate before
+  concluding. And a negative measurement ("X does not work") must name the
+  channel it was measured on; a comment recording the wrong cause is worse
+  than none, because it forecloses the retry.
+
+### 29. `integrate.sh` skipped its own gate in silence
+- **What happened**: `integrate.sh` ran `$QTEAM_TEST_CMD` only `if [[ -n ... ]]`,
+  so with the variable unset it merged into `main`, printed `OK: main at
+  <sha>` and returned 0 — indistinguishable from a verified merge. A session
+  restart after compaction loses the export, which is the realistic trigger.
+- **Evidence**: T29 was merged this way (`b09cfb2`); the absence of any test
+  output in the log was the only tell. `echo "${QTEAM_TEST_CMD:-<UNSET>}"`
+  confirmed it. The suite was run by hand afterwards (32/32), so `main` was
+  in fact fine — by diligence, not by the gate.
+- **Fix**: T33 refuses to integrate at all when the variable is unset, and
+  refuses BEFORE `main` moves: after the merge, a missing gate and a green
+  gate print the same `OK`. A gate whose absence is indistinguishable from
+  its success is not a gate.
+
+### 30. A guard cannot resolve shell variables
+- **What happened**: `git-safety-guard.py` denied `rm -rf "$OLD"` where
+  `$OLD` had been assigned a scratchpad path one line earlier. The guard's
+  deny pattern explicitly allowlists `/private/tmp/`, and the path was under
+  it — but the guard matches text, so the negative lookahead saw `$OLD` and
+  denied.
+- **Evidence**: pattern at `git-safety-guard.py:417` is
+  `rm\s+(-rf|-fr|--recursive)\s+(?!(/tmp/|/var/tmp/|\$TMPDIR/|/private/tmp/))\S`.
+  Scratchpad paths are long, so assigning them to a variable is the natural
+  thing to do, which defeats the allowlist every time.
+- **Fix**: the block was correct as a STOP, and the resolution was to remove
+  the destructive operation entirely (`mktemp -d`, delete nothing) rather
+  than rewrite the command to dodge the pattern — rule 2. The guard's own
+  limitation is the finding: an allowlist that only matches literals creates
+  pressure to inline dangerous literals.
+
+### 31. A quality hook flagged the rule that forbids the thing it looks for
+- **What happened**: a `PostToolUse` quality hook reported
+  `DEAD_CODE:placeholder_todo` over three files, demanding a `/deslop` run.
+  Two independent false-positive causes.
+- **Evidence**: the matches were (a) the Spanish word *todo* ("todo problema
+  complejo") — an ordinary word in a repo whose user writes in Spanish, and
+  (b) the text of `rule_dev-no-placeholders` itself, which necessarily
+  contains `TODO/FIXME` and `placeholder`. Additionally `git status` was
+  empty: the three "modified files" were outside the repository, so the hook
+  did not scope its scan.
+- **Fix**: same family as #20 — a guard whose corpus can contain its own
+  markers. Establish the emitter and inspect what it actually matched before
+  acting on it (rule 7); a case-insensitive `todo` match is not viable in a
+  Spanish-language repository.

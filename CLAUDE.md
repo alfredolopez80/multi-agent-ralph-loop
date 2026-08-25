@@ -407,7 +407,10 @@ from the example — never by committing a trimmed `.claude/settings.json`.
 ### Test command for integration
 
 `wt-lead`'s `integrate.sh` runs `$QTEAM_TEST_CMD` after every merge into `main`,
-and skips the check when it is unset. For this repository:
+and **refuses to integrate at all** when it is unset — before `main` moves, so a
+missing gate can never be mistaken for a passing one (T33). Export it once per
+shell; a session restart after compaction loses it, which is exactly how a merge
+once landed stamped `OK` with no test ever run. For this repository:
 
 ```bash
 export QTEAM_TEST_CMD="bash tests/run-all-unit-tests.sh"
