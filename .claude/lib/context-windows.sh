@@ -1,8 +1,18 @@
 #!/usr/bin/env bash
-# context-windows.sh — Model-aware context window configuration (v3.1.0)
+# context-windows.sh — Model-aware context window configuration (v3.3.0)
 #
 # Maps model names to their actual context windows for accurate compaction.
 # Used by context-warning.sh and other hooks that need context awareness.
+#
+# v3.3.0 (T7, issue #53 follow-up):
+#   - "[1m]" is parsed EXPLICITLY: any model carrying it resolves to a 1M window,
+#     independent of the table (normalize_model_id used to strip it silently).
+#   - glm-5.3 (1M native, docs.z.ai) and minimax-m3 (512K guaranteed floor,
+#     1M via [1m], minimax.io) added to the table; old entries kept.
+#   - get_context_window accepts an optional raw model id (unit-testable; the
+#     no-arg detection path is unchanged for existing callers).
+#   - estimate_tokens_from_file / calculate_usage_pct removed together with
+#     context-warning.sh "Method 1.5" (transcript-size estimation retired).
 #
 # GLM-5.1: 256K official, 220K usable (system prompt + overhead + response buffer)
 # Claude Opus: 1M official, ~950K usable
@@ -23,8 +33,16 @@
 # `#!/bin/bash` to `#!/usr/bin/env bash`. That only helps when PATH already has a
 # bash 4; on stock macOS it resolves straight back to 3.2. A lookup table does not
 # need associative arrays, so the requirement is removed rather than guarded.
+#
+# Window sources (checked 2026-08-25):
+#   glm-5.3    — 1M-token context window natively (docs.z.ai/guides/llm/glm-5.3).
+#                The "[1m]" marker is consistent with, not additional to, this.
+#   minimax-m3 — up to 1M with a GUARANTEED minimum of 512K
+#                (minimax.io/models/text/m3). The base entry is the guaranteed
+#                floor; "[1m]" selects the full 1M configuration.
 _model_context_table() {
     cat <<'TABLE'
+glm-5.3 1000000
 glm-5.2 200000
 glm-5.1 256000
 glm-5-turbo 128000
@@ -32,6 +50,7 @@ glm-5 128000
 glm-4.7 128000
 glm-4.5-air 64000
 glm-4 128000
+minimax-m3 512000
 minimax-m2.7 200000
 claude-opus-5 950000
 claude-fable-5 950000
@@ -52,14 +71,24 @@ normalize_model_id() {
     printf '%s' "$1" | sed -E 's/\[[^]]*\]//g; s/[[:space:]]+//g' | tr '[:upper:]' '[:lower:]'
 }
 
-# Detect the model actually serving THIS session.
+# True when the RAW model id carries the "[1m]" 1M-context marker.
+# normalize_model_id strips bracket suffixes for table lookup, so the marker
+# must be read on the raw id BEFORE that strip — it changes the window outright
+# rather than selecting a table row (T7: glm-5.3[1m] used to normalize down to
+# a bare id and could never reach 1M through the table alone).
+has_1m_context() {
+    printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | grep -q '\[1m\]'
+}
+
+# Detect the model actually serving THIS session — RAW id, un-normalized, so
+# callers can still see markers like "[1m]".
 #
 # v3.2.0 — Z_AI_MODEL_DEEP / MINIMAX_MODEL_* are static provider configuration
 # exported by the user's shell profile. They are always set, in every session,
 # and say nothing about which model is answering. Reading them as a bare
 # fallback made every native Claude session report itself as GLM. An alternative
 # provider is only believed when ANTHROPIC_BASE_URL proves the session routes there.
-get_detected_model() {
+get_raw_model() {
     local raw=""
 
     # 1. Hook stdin JSON — authoritative when Claude Code provides it
@@ -95,14 +124,38 @@ get_detected_model() {
         raw="claude-unknown"
     fi
 
-    [[ -z "$raw" ]] && { echo "unknown"; return; }
-    normalize_model_id "$raw"
+    echo "${raw:-unknown}"
 }
 
-# Get usable context window for current model (tokens)
+# Table key for the detected model (lowercased, bracket suffixes stripped).
+# Behavior is identical to the pre-v3.3.0 single function.
+get_detected_model() {
+    normalize_model_id "$(get_raw_model)"
+}
+
+# Get usable context window (tokens).
+# Optional arg: a RAW model id (e.g. "glm-5.3[1m]") so tests can exercise the
+# mapping directly. Without an arg, the current session's model is detected —
+# the production path, unchanged for existing callers.
 get_context_window() {
+    local raw
+    if [[ -n "${1:-}" ]]; then
+        raw="$1"
+    else
+        raw=$(get_raw_model)
+        [[ -z "$raw" ]] && raw="unknown"
+    fi
+
+    # "[1m]" marker: 1M window for ANY model carrying it — an explicit rule,
+    # deliberately NOT a table row (an unknown model with [1m] must still
+    # resolve to 1M; the table alone can never guarantee that).
+    if has_1m_context "$raw"; then
+        echo "1000000"
+        return
+    fi
+
     local model
-    model=$(get_detected_model)
+    model=$(normalize_model_id "$raw")
 
     # Exact match
     local val
@@ -131,9 +184,10 @@ get_context_window() {
 # Get compaction thresholds as percentage of usable context
 # Returns space-separated: INFO_PCT WARNING_PCT CRITICAL_PCT
 #
-# These are applied against whatever base Claude Code reports.
-# For GLM models with broken stdin JSON, the transcript-based
-# estimator converts to absolute tokens first.
+# These are applied against whatever base Claude Code reports in the hook's
+# stdin JSON (context-warning.sh Method 1). The transcript-size estimator that
+# used to convert them to absolute tokens was retired in v3.3.0 — see
+# context-warning.sh "Method 1.5".
 get_compaction_thresholds() {
     local window
     window=$(get_context_window)
@@ -151,37 +205,7 @@ get_compaction_thresholds() {
     fi
 }
 
-# Estimate tokens from a file path (rough BPE: bytes / 4)
-estimate_tokens_from_file() {
-    local filepath="$1"
-    if [[ -f "$filepath" && -r "$filepath" ]]; then
-        local bytes
-        bytes=$(wc -c < "$filepath" 2>/dev/null || echo "0")
-        echo $((bytes / 4))
-    else
-        echo "0"
-    fi
-}
-
-# Calculate context usage percentage from estimated tokens
-# Args: estimated_tokens
-# Returns: percentage (0-100)
-calculate_usage_pct() {
-    local tokens="$1"
-    local window
-    window=$(get_context_window)
-    if [[ "$window" -eq 0 ]]; then
-        echo "50"
-        return
-    fi
-    local pct=$((tokens * 100 / window))
-    # Clamp to 0-100
-    [[ $pct -gt 100 ]] && pct=100
-    [[ $pct -lt 0 ]] && pct=0
-    echo "$pct"
-}
-
-# Check if current model is a GLM variant (needs transcript-based estimation)
+# Check if current model is a GLM variant
 is_glm_model() {
     local model
     model=$(get_detected_model)
