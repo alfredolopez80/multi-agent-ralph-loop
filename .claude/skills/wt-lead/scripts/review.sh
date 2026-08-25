@@ -30,10 +30,16 @@ if [[ -n "$ALLOWED" ]]; then
     ok=0
     for p in "${PATHS[@]}"; do
       p="$(echo "$p" | xargs)"   # trim
+      while [[ "$p" == */ ]]; do p="${p%/}"; done   # `strategies/` is the documented form
       [[ "$f" == "$p" || "$f" == "$p"/* ]] && ok=1 && break
     done
     if [[ $ok -eq 0 ]]; then echo "   OUTSIDE: $f"; VIOL=1; fi
-  done < <(git diff --name-only "$MAIN"..."$BRANCH")
+    # --no-renames is load-bearing: with detection on (git's default) a rename collapses
+    # to the destination alone, so moving outside/secrets.env into an allowed directory
+    # deletes an out-of-scope file and this check still prints OK. Both endpoints must
+    # be seen for the scope guarantee to mean anything. The --stat display above keeps
+    # rename detection, where it is a readability win rather than a hole.
+  done < <(git diff --no-renames --name-only "$MAIN"..."$BRANCH")
   [[ $VIOL -eq 0 ]] && echo "   OK: all changed files inside allowed paths"
 fi
 

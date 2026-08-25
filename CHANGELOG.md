@@ -34,6 +34,25 @@
   (`minimax-claude`) take the fast shallow volume. Outside a Q-team nothing changes.
 - **`.gitignore`: `results/`** — worker artifacts stay inside each worktree, unversioned.
 - **`.worktreeinclude`** carries `.env` / `.env.local` into new worktrees.
+- **Three fail-open guards in the bundled `wt-lead` scripts closed**, each reproduced
+  against the unfixed script first:
+  - `review.sh` ran `git diff --name-only` with rename detection on (git's default), which
+    collapses a rename to its **destination** alone. A worker could delete any file in the
+    repository by moving it into its own allowed directory and the allowed-paths check
+    still printed `OK: all changed files inside allowed paths`. The scope check now uses
+    `--no-renames`; the `--stat` display keeps detection, where it aids reading.
+  - `review.sh` compared an allowed path written in the directory form the skill itself
+    documents (`strategies/`) as `strategies//*`, matching nothing — in-scope work was
+    reported OUTSIDE and would have been returned for no reason. Trailing slashes are
+    stripped before matching.
+  - `integrate.sh` passed `"$@"` straight to `git cherry-pick`, which resolves any commit
+    it is handed. A stale or mistyped sha landed an unreviewed commit from an unrelated
+    branch on `main` while the script printed OK. Every sha is now required to be a commit
+    **and** reachable from the named branch.
+- **`tests/unit/test-wt-lead-scripts.sh`** (8 checks, registered in `run-all-unit-tests.sh`,
+  so CI runs it) locks all three down, plus a control that a legitimate cherry-pick still
+  succeeds — a fix that refused everything would pass the other three and be useless. The
+  runner asserts `total > 0` before reporting success.
 
 > Found while integrating, pre-existing, **not fixed here**: `install.sh` writes
 > `~/.claude/settings.json` only through `merge_settings`, which is gated on

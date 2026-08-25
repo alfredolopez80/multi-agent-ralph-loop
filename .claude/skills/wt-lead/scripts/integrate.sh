@@ -16,6 +16,15 @@ CUR="$(git branch --show-current)"
 git rev-parse --verify -q "$BRANCH" >/dev/null || { echo "ERROR: branch $BRANCH not found"; exit 1; }
 
 if [[ $# -gt 0 ]]; then
+  # "from $BRANCH" has to be true, not just claimed. git cherry-pick takes any commit it
+  # can resolve, so a stale or mistyped sha lands an unreviewed commit on main and the
+  # script still prints OK — the review in section 3 covered the branch, not that sha.
+  for sha in "$@"; do
+    git rev-parse --verify -q "${sha}^{commit}" >/dev/null \
+      || { echo "ERROR: $sha is not a commit"; exit 1; }
+    git merge-base --is-ancestor "$sha" "$BRANCH" \
+      || { echo "ERROR: $sha is not reachable from $BRANCH — refusing to cherry-pick"; exit 1; }
+  done
   echo "cherry-picking $* from $BRANCH into $MAIN ..."
   if ! git cherry-pick "$@"; then
     echo "CONFLICT. Aborting cherry-pick."; git diff --name-only --diff-filter=U
