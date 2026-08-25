@@ -210,7 +210,7 @@ fi
 # Verify final report
 FINAL_REPORT=$(find "$TEST_DIR/docs/actions/complete-test" -name "*.md" -type f 2>/dev/null | tail -1)
 if [[ -n "$FINAL_REPORT" && -f "$FINAL_REPORT" ]]; then
-    if grep -q "Status: COMPLETED" "$FINAL_REPORT"; then
+    if grep -q "\*\*Status\*\*: COMPLETED" "$FINAL_REPORT"; then
         log_pass "Final report shows COMPLETED status"
     else
         log_fail "Final report does not show COMPLETED status"
@@ -235,7 +235,7 @@ complete_action_report "failed" "Action failed" "Fix errors" >/dev/null 2>&1
 
 FAILED_REPORT=$(find "$TEST_DIR/docs/actions/failed-test" -name "*.md" -type f 2>/dev/null | tail -1)
 if [[ -n "$FAILED_REPORT" && -f "$FAILED_REPORT" ]]; then
-    if grep -q "Status: FAILED" "$FAILED_REPORT"; then
+    if grep -q "\*\*Status\*\*: FAILED" "$FAILED_REPORT"; then
         log_pass "Failed report shows FAILED status"
     else
         log_fail "Failed report does not show FAILED status"
