@@ -23,6 +23,11 @@ TEST_PROMPTS=(
     "Hola que tal"
 )
 
+# After Promptify integration in the Command Router hook (the hook now emits
+# /promptify suggestions for vague prompts), the "Hola que tal" case correctly
+# triggers a Promptify suggestion. The expectation is updated to match the
+# new (deliberate) behavior, not to mask a bug. The other 9 cases still
+# validate Command Router detection.
 TEST_EXPECTED=(
     "bug"
     "edd"
@@ -33,7 +38,7 @@ TEST_EXPECTED=(
     "security"
     "parallel"
     "audit"
-    "none"
+    "promptify"
 )
 
 PASSED=0
@@ -48,9 +53,14 @@ for i in "${!TEST_PROMPTS[@]}"; do
 
     result=$(echo "{\"user_prompt\": \"$prompt\"}" | "$HOOK_SCRIPT" 2>&1)
 
-    # Extract command from suggestion (using sed for macOS compatibility)
+    # Extract command from suggestion. The hook may emit multiple
+    # backtick-delimited /cmd suggestions (Command Router + Promptify, etc.),
+    # so we take the FIRST one — Command Router runs before Promptify in the
+    # hook, so the first /cmd is always the Command Router suggestion when
+    # it has one. grep -oE avoids the sed-greedy trap that used to pick up
+    # only /promptify.
     if echo "$result" | grep -q "additionalContext"; then
-        detected=$(echo "$result" | sed -n 's/.*`\/\([a-z]*\)`.*/\1/p')
+        detected=$(echo "$result" | grep -oE '`/[a-z]+`' | head -1 | sed 's/[`/]//g')
         if [[ "$detected" == "$expected" ]]; then
             echo -e "  ✅ PASS: Detected /$detected\n"
             ((PASSED++))
