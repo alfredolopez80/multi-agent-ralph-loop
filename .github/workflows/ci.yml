@@ -119,7 +119,13 @@ jobs:
           fi
 
       - name: Install shell suite dependencies
-        run: sudo apt-get update && sudo apt-get install -y jq
+        # jq: used by 8 of the wired shell suites.
+        # bats: runs the 5 bats suites, among them test_cross_platform.bats -- 30 tests
+        #       of portable stat/date/realpath/mktemp, which is the repo's own guard
+        #       against the GNU-vs-BSD class behind #43 and #44. It existed and nothing
+        #       ran it. Ubuntu's bats 1.10 is sufficient; none of the five needs
+        #       bats-support or bats-assert.
+        run: sudo apt-get update && sudo apt-get install -y jq bats
 
       - name: Run orphaned shell unit suites
         # 62 suites under tests/ were invoked by NOBODY: not CI, not pre-commit, not any

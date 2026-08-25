@@ -56,16 +56,20 @@ mkdir -p "$LOG_DIR" "$STATE_DIR"
 # ============================================
 
 # Check if we're in a Ralph project
+#
+# The `ralph status --compact` fallback that used to sit here is gone (#42). It was
+# never a probe: it answered "not a Ralph project" only because `ralph status`
+# dispatched to ~/.claude/scripts/ralph-status.sh, a file absent from this repository,
+# and exited 1. The right answer arrived by way of a broken command.
+#
+# That made it a trap for anyone repairing the command. `status` now reaches
+# cmd_process_status, which ends in `ps aux | grep ... || echo "  None"` and therefore
+# always exits 0 -- so the branch would have reported EVERY directory on a machine with
+# `ralph` on PATH as a Ralph project, and injected context into every subagent
+# everywhere. Since the branch could never succeed before, deleting it preserves the
+# previous behaviour exactly rather than changing it.
 is_ralph_project() {
-    if [[ -f ".claude/plan-state.json" ]]; then
-        return 0
-    fi
-    if command -v ralph &>/dev/null; then
-        if ralph status --compact &>/dev/null; then
-            return 0
-        fi
-    fi
-    return 1
+    [[ -f ".claude/plan-state.json" ]]
 }
 
 # Get Ralph active context

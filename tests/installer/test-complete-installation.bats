@@ -41,8 +41,19 @@ setup() {
     [ -x "$script" ]
 }
 
-@test "INSTALL: setup-symlinks.sh exists and is executable" {
-    script="${SCRIPTS_DIR}/setup-symlinks.sh"
+# setup-symlinks.sh was retired in #42. It whole-directory-symlinked ~/.claude/rules
+# and ~/.claude/hooks, which DISTRIBUTION_POLICY.md requires to be COPIES, and
+# CLAUDE.md records that competing symlink mechanism as already retired. Nothing
+# invoked it; this assertion was the only thing keeping it in the tree. The sanctioned
+# mechanisms are asserted instead.
+@test "INSTALL: validate-global-infrastructure.sh exists and is executable" {
+    script="${SCRIPTS_DIR}/validate-global-infrastructure.sh"
+    [ -f "$script" ]
+    [ -x "$script" ]
+}
+
+@test "INSTALL: sync-rules-from-source.sh exists and is executable" {
+    script="${PROJECT_ROOT}/.claude/scripts/sync-rules-from-source.sh"
     [ -f "$script" ]
     [ -x "$script" ]
 }

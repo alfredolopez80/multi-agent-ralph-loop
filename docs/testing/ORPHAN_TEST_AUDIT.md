@@ -18,30 +18,45 @@ install, no vault). Passing suites were re-run a second time to rule out flakes.
 
 | Outcome | Count | Action taken in this PR |
 |---|---:|---|
-| Passes on a bare checkout | 23 | Wired into `tests/run-all-unit-tests.sh` and into CI |
-| Passes but needs `bats` | 1 | Left out — `ci.yml` does not provision bats (see below) |
-| Fails: needs a provisioned machine | 12 | The 10 shell suites moved to the opt-in `--with-install` bucket; the 2 bats suites left out, since the runner invokes suites with `bash` |
+| Passes on a bare checkout | 28 | Wired into `tests/run-all-unit-tests.sh` and into CI (23 shell + 5 bats) |
+| Fails: needs a provisioned machine | 12 | The 10 shell suites moved to the opt-in `--with-install` bucket; the 2 bats suites left out, since that bucket is invoked with `bash` |
 | Fails: tests an implementation that no longer exists | 7 | Documented below; **not deleted** |
 | Fails: not root-caused | 15 | Documented below; **not deleted** |
 | Timed out | 0 | — |
+
+28 + 12 + 7 + 15 = 62. Every orphan is accounted for.
+
+> **The first version of this table did not add up, and the reason belongs in the
+> record.** It reported 23 passing and totalled 58 against a stated 62. Four suites had
+> silently vanished from the measurement: the classification loop was
+> `while read -r f; do bats "$f"; done < list`, and `bats` reads stdin — so it consumed
+> four lines of the very list driving it. A document arguing "nothing was deleted
+> because everything was measured" had four suites nobody measured. They are
+> `test_cross_platform.bats`, `test_quality_gates.bats`, `test_security_functions.bats`
+> and `test_settings_merge.bats`; all four pass, and all four are now in CI. The
+> `< /dev/null` in the runner's bats loop is what stops this recurring.
 
 Nothing was deleted. `#42` is explicit that a missing runner does not prove a suite is
 dead, and the seven "implementation retired" entries are the only ones where that case
 is actually made — each names a file that is gone from the repository.
 
-## Now running in CI (23)
+## Now running in CI (28)
 
-See the `TEST_SUITES` array in `tests/run-all-unit-tests.sh`. These cover hook
-behaviour (single JSON emission, no-hang guarantees, plan-state writes, task-list
-projection, dedup keys), the promptify integration, five security suites, the stop-hook
-pair, and the `validation-common` library.
+`TEST_SUITES` (23 shell suites) covers hook behaviour — single JSON emission, no-hang
+guarantees, plan-state writes, task-list projection, dedup keys — plus the promptify
+integration, five security suites, the stop-hook pair, and the `validation-common`
+library.
 
-## Left out: needs bats
+`BATS_SUITES` (5) adds cross-platform portability, quality gates, security functions,
+settings merge and the worktree workflow: 157 assertions.
 
-`tests/test_worktree_workflow.bats` passes, but `ci.yml` installs no bats and Ubuntu's
-packaged version lags the 1.11 the installer workflow pins. Adding a second bats
-provisioning path to get one suite was not worth the risk of a red gate; it belongs
-with the installer workflow's bats setup whenever that is consolidated.
+**`test_cross_platform.bats` is the one that matters most.** Its 30 tests cover portable
+`stat`, portable `date`, `realpath` fallback and `mktemp` permissions — precisely the
+GNU-vs-BSD class that produced #43 (`stat -f`), #44 (`declare -A`, then `timeout`), and
+the `cat -A` debug step that was itself too GNU-specific to diagnose #44. The repo
+already owned a guard against its own most recurrent bug, and nothing ran it. Ubuntu's
+packaged bats 1.10 is sufficient; none of the five suites needs `bats-support` or
+`bats-assert`.
 
 ## Per-suite verdicts for the 34 that fail
 
@@ -111,6 +126,33 @@ casually:
 
 The 23 suites in the CI set were checked for this specifically: two consecutive runs
 leave the working tree byte-identical.
+
+## Known scope boundary: `.claude/` still carries the bash-3.2 hazard
+
+Stated explicitly so the next reader does not mistake silence for safety. The structural
+guard in `tests/installer/test-bash-version-guard.bats` sweeps `scripts/**` only. Four
+files outside it use bash-4-only syntax:
+
+| File | Shebang | Exposure on macOS |
+|---|---|---|
+| `.claude/hooks/action-report-tracker.sh` | `#!/bin/bash` | Unconditionally bash 3.2 |
+| `.claude/hooks/vault-promotion.sh` | `#!/bin/bash` | Unconditionally bash 3.2 |
+| `.claude/scripts/curator-learn.sh` | `#!/bin/bash` | Unconditionally bash 3.2 |
+| `.claude/lib/context-windows.sh` | `#!/usr/bin/env bash` | Only when PATH bash < 4 |
+
+The three `#!/bin/bash` files are **more** exposed than the validators this PR fixed, not
+less: a hard-pinned `/bin/bash` cannot reach a Homebrew bash 5 no matter how the user's
+PATH is set. Under bash 3.2 each associative array collapses onto index 0, so
+`action-report-tracker.sh` files every report under the last table entry and
+`vault-promotion.sh` can append a fabricated "specialization detected" line to a user's
+Obsidian index. `context-windows.sh` is the #43 defect still live in a hook that runs on
+every prompt.
+
+These are left untouched deliberately: fixing a hook means choosing what it should do
+when it cannot run correctly, and a hook that exits non-zero blocks the tool. That is a
+design decision, not a mechanical port, and it does not belong in a PR about #42/#44.
+The guard's glob is written as a `find` over `scripts/`, so extending it to `.claude/` is
+a one-line change once that decision is made.
 
 ## Follow-up
 

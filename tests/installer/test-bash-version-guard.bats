@@ -35,25 +35,43 @@ teardown() {
 # STRUCTURAL: the guard cannot be bypassed by adding a new validator
 #===============================================================================
 
-@test "guard: every scripts/ script using declare -A declares VC_REQUIRE_BASH4" {
-    local offenders=""
-    local f
-    for f in "$PROJECT_ROOT"/scripts/*.sh; do
-        grep -q 'declare -A' "$f" || continue
-        grep -q 'VC_REQUIRE_BASH4=1' "$f" || offenders="$offenders $(basename "$f")"
-    done
-    # declare -A without the declaration is a script that will silently corrupt its
-    # own result tables on macOS — the #44 failure mode, reintroduced.
-    [[ -z "$offenders" ]] || fail "declare -A without VC_REQUIRE_BASH4=1:$offenders"
+# Comments are stripped before matching: the library's own header documents
+# `declare -A` in prose, and a text-only grep would demand a flag it does not need.
+# `mapfile`/`readarray` are bash 4+ too, and one script under scripts/memory/ was
+# already using mapfile outside the original scripts/*.sh glob.
+uses_bash4_only() {
+    sed 's/#.*//' "$1" | grep -qE '(declare[[:space:]]+-A\b|\bmapfile\b|\breadarray\b)'
+}
+
+# Comments stripped here too: the library's usage header shows `VC_REQUIRE_BASH4=1`
+# as an example, which would otherwise make the library flag itself as a caller.
+declares_bash4() {
+    sed 's/#.*//' "$1" | grep -q 'VC_REQUIRE_BASH4=1'
+}
+
+# `find`, not `scripts/*.sh`: the top-level glob missed scripts/lib/ and
+# scripts/memory/, which is where the one unguarded `mapfile` was hiding.
+scripts_under_test() {
+    find "$PROJECT_ROOT/scripts" -type f -name '*.sh' -not -path '*/archive/*' | sort
+}
+
+@test "guard: every scripts/ script using bash-4-only syntax declares VC_REQUIRE_BASH4" {
+    local offenders="" f
+    while read -r f; do
+        uses_bash4_only "$f" || continue
+        declares_bash4 "$f" || offenders="$offenders ${f#$PROJECT_ROOT/}"
+    done < <(scripts_under_test)
+    # bash-4-only syntax without the declaration is a script that will silently
+    # corrupt itself on macOS — the #44 failure mode, reintroduced.
+    [[ -z "$offenders" ]] || fail "bash-4-only syntax without VC_REQUIRE_BASH4=1:$offenders"
 }
 
 @test "guard: no bash-3-clean script opts into the bash 4 requirement" {
-    local offenders=""
-    local f
-    for f in "$PROJECT_ROOT"/scripts/*.sh; do
-        grep -q 'VC_REQUIRE_BASH4=1' "$f" || continue
-        grep -q 'declare -A' "$f" || offenders="$offenders $(basename "$f")"
-    done
+    local offenders="" f
+    while read -r f; do
+        declares_bash4 "$f" || continue
+        uses_bash4_only "$f" || offenders="$offenders ${f#$PROJECT_ROOT/}"
+    done < <(scripts_under_test)
     # The converse matters just as much. Ten of the library's twenty callers are
     # bash-3 clean and one advertises "COMPAT: Bash 3.2+ (macOS native)" in its
     # header; making them require bash 4 would break them on stock macOS to solve a
@@ -87,7 +105,7 @@ teardown() {
     # Same library, with the candidate interpreters pointed at nothing. This is
     # the only part that has to be simulated: the machine running the suite has a
     # usable bash by definition, so the refusal path cannot be reached honestly.
-    sed 's#^[[:space:]]*for _vc_bash in .*#    for _vc_bash in /nonexistent/bash; do#' \
+    sed 's#^[[:space:]]*_vc_candidates=.*#    _vc_candidates="/nonexistent/bash"#' \
         "$VC_LIB" > "$stub"
     grep -q '/nonexistent/bash' "$stub" || fail "stub rewrite did not apply"
 
@@ -99,7 +117,7 @@ teardown() {
 
 @test "guard: a caller that does not opt in is never blocked by the version check" {
     local stub="$TEST_TMPDIR/vc-no-candidates-unflagged.sh"
-    sed 's#^[[:space:]]*for _vc_bash in .*#    for _vc_bash in /nonexistent/bash; do#' \
+    sed 's#^[[:space:]]*_vc_candidates=.*#    _vc_candidates="/nonexistent/bash"#' \
         "$VC_LIB" > "$stub"
     grep -q '/nonexistent/bash' "$stub" || fail "stub rewrite did not apply"
 

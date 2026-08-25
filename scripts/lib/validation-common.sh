@@ -54,10 +54,29 @@
 # Re-exec under a newer bash when the machine has one; refuse to run when it does not.
 # Degrading quietly is the one option available here that must not be taken.
 if [ "${VC_REQUIRE_BASH4:-0}" = "1" ] && [ "${BASH_VERSINFO:-0}" -lt 4 ]; then
-    for _vc_bash in /opt/homebrew/bin/bash /usr/local/bin/bash /usr/bin/bash; do
-        [ -x "$_vc_bash" ] || continue
+    # Loop breaker. The guard trusts a `bash -c` probe to predict how the same binary
+    # will behave with a script operand. A shim where those two diverge would re-exec
+    # forever -- measured at ~3000 invocations in 8s with a deliberately lying stub.
+    # One marker turns an unbounded loop into a single honest error.
+    if [ "${VC_BASH4_REEXEC:-0}" = "1" ]; then
+        echo "ERROR: $0 re-executed under '${BASH:-unknown}' and still sees bash ${BASH_VERSINFO:-?}." >&2
+        echo "       Refusing to re-exec again. Check for a wrapper on PATH pretending to be bash." >&2
+        exit 78
+    fi
+
+    # `command -v bash` first: the fixed list misses MacPorts (/opt/local/bin), nix,
+    # asdf/mise shims and any --prefix build, so a user with a perfectly good bash 5
+    # could be told to `brew install bash` they had already installed.
+    # Kept on one line so a test can substitute the whole candidate set with one edit.
+    _vc_candidates="$(command -v bash 2>/dev/null) /opt/homebrew/bin/bash /usr/local/bin/bash /usr/bin/bash"
+    for _vc_bash in $_vc_candidates; do
+        [ -n "$_vc_bash" ] && [ -x "$_vc_bash" ] || continue
         _vc_major="$("$_vc_bash" -c 'echo "${BASH_VERSINFO:-0}"' 2>/dev/null || echo 0)"
-        if [ "${_vc_major:-0}" -ge 4 ]; then
+        case "$_vc_major" in
+            ''|*[!0-9]*) continue ;;
+        esac
+        if [ "$_vc_major" -ge 4 ]; then
+            VC_BASH4_REEXEC=1 export VC_BASH4_REEXEC
             exec "$_vc_bash" "$0" "$@"
         fi
     done

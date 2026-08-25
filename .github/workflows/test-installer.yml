@@ -189,7 +189,20 @@ jobs:
           # Fails the step if the validator does not emit parseable JSON: exactly the
           # assertion that broke inside bats, checked here without bats in the way so
           # the diagnosis does not depend on how `run` captures output.
-          scripts/validate-directories.sh --format json | jq empty
+          #
+          # NOT `... | jq empty`. GitHub runs `run:` under `bash -e` with no pipefail,
+          # so a pipeline reports only jq's status -- and `jq empty` on EMPTY stdin
+          # exits 0. A validator that refuses to start (the bash-4 guard exits 78 with
+          # nothing on stdout) would have sailed through the very check meant to catch
+          # it. Capture, check the exit code, then parse.
+          set -o pipefail
+          out="$(scripts/validate-directories.sh --format json)" || {
+            echo "validate-directories.sh exited $? -- output was:" >&2
+            printf '%s\n' "$out" >&2
+            exit 1
+          }
+          [ -n "$out" ] || { echo "validator produced no output at all" >&2; exit 1; }
+          printf '%s' "$out" | jq empty
           echo "validate-directories.sh: JSON OK"
           echo "::endgroup::"
 

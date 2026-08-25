@@ -7935,9 +7935,15 @@ main() {
             ;;
 
         # Utility
-        # `status`, `st`, `ps` and `processes` are dispatched together further up.
-        # The duplicate case that used to sit here was unreachable (shellcheck
-        # SC2221) and only a `|| true` in CI, since removed, was hiding it.
+        # `ps` and `processes` used to have their own case here; they now share the
+        # `status|st|ps|processes` case above, which reaches the same function.
+        #
+        # The comment that stood here claimed this case was unreachable per shellcheck
+        # SC2221 and that a `|| true` in CI was hiding it. None of that is true, and it
+        # was repeated into this PR before being checked: `shellcheck --severity=warning`
+        # reports no SC2221 on the pre-PR file, the ci.yml shellcheck step has no
+        # `|| true`, and `ralph ps` worked. The `health` case removed alongside it WAS
+        # dead, but for an unrelated reason -- its command was deleted in #42.
         version|-v|--version)
             cmd_version
             ;;

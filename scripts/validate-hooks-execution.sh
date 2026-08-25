@@ -201,8 +201,16 @@ test_hook() {
         # Run with empty input
         stdout_output=$("$TIMEOUT_CMD" "$TIMEOUT_SECONDS" "$hook_path" < /dev/null 2>"$stderr_file") || exit_code=$?
     else
-        # Run with minimal empty JSON input
-        stdout_output=$("$TIMEOUT_CMD" "$TIMEOUT_SECONDS" echo '{}' | "$hook_path" 2>"$stderr_file") || exit_code=$?
+        # Run with minimal empty JSON input.
+        #
+        # This used to read `$TIMEOUT_CMD $TIMEOUT_SECONDS echo '{}' | "$hook_path"`,
+        # which bounded `echo` -- a command that finishes instantly -- and left the hook
+        # itself, the downstream stage, completely unbounded. A hook sleeping 25s under
+        # --timeout 2 was scored PASS, and .summary.timeouts could never rise for any
+        # hook taking this branch (every hook not in HOOK_INPUT_MAP nor in
+        # HOOKS_WITH_EMPTY_INPUT). The timeout now wraps the hook, as the other two
+        # branches already did.
+        stdout_output=$("$TIMEOUT_CMD" "$TIMEOUT_SECONDS" "$hook_path" <<< '{}' 2>"$stderr_file") || exit_code=$?
     fi
 
     end_time=$(date +%s%N 2>/dev/null || gdate +%s%N 2>/dev/null || echo "0")
@@ -466,9 +474,19 @@ else
     exit 2
 fi
 
-# Test each hook
+# Test each hook.
+#
+# `|| true` is load-bearing here, and is the opposite of a fail-open. test_hook returns
+# 1 for every MISSING / NOT_EXECUTABLE / TIMEOUT / FAIL, and a bare `test_hook "$hook"`
+# under this file's `set -e` aborted the whole run at the FIRST bad hook -- before
+# print_json_output ever ran. The validator emitted zero bytes and exit 1, so a hook
+# failure produced no report of the hook failure. Consumers piping that into `jq` then
+# saw a parse error with no cause in it.
+#
+# The verdict is not lost: every result is already recorded in HOOK_RESULTS and counted
+# into FAILED/TIMEOUT/ERRORS, and the exit code is computed from those counters below.
 for hook in $(get_hooks_to_test); do
-    test_hook "$hook"
+    test_hook "$hook" || true
 done
 
 # Output results
