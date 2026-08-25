@@ -2,7 +2,20 @@
 umask 077
 # repo-boundary-guard.sh — Repository Isolation Enforcement
 # Hook: PreToolUse (Edit|Write|Bash)
-# VERSION: 2.99.0
+# VERSION: 2.100.0
+# v2.100.0 (#63/T28): mentioned-path extraction is argument-context aware.
+#          The v2.98.1 "quoted path with spaces" alternation matched the
+#          PAYLOAD of `git commit -m "<prose>"` as if it were a path, and
+#          while the __CANONICALIZE_FAILED__ sentinel went unconsulted
+#          (fixed v2.99.0/#61) that pseudo-path fell into 'Allow other
+#          paths': every command carrying a long quoted string was silently
+#          IMMUNE to the whole mentioned-paths check. The over-block that
+#          surfaced after v2.99.0 is the symptom of having closed that hole,
+#          not a regression — the guard started working. Free-text flag
+#          payloads (-m, --message, --reedit-message, --author) are now
+#          blanked from the scan target only; -F values stay scanned (their
+#          VALUE is a path), and so do -c/-C (`git -C <dir>` is a directory
+#          flag; `python3 -c` is operative code whose paths must be checked).
 # v2.98.0: Security fixes — canonicalize ancestor-walk, worktree-list validation, fail-closed trap, redirect detection.
 # v2.98.1: Codex P2 fix — three-pattern alternation for quoted paths with spaces in grep extraction.
 # v2.99.0 (#61, found by SECURITY_BASELINE fixture work): (1) the
@@ -193,6 +206,24 @@ is_readonly_command() {
     esac
 }
 
+# T28 (#63): blank free-text flag payloads from the mentioned-paths SCAN
+# TARGET. The value of these flags is text by documentation, never a path
+# the command operates on. Deliberately NOT blanked:
+#   -F        its value IS a path (the message file) — stays scanned
+#   -c/-C     `git -C <dir>` is a directory flag (blanking would blind
+#             `git -C /external/repo ...`); `git commit -c <sha>` payloads
+#             are SHAs, not free text, so no over-block arises; `python3 -c`
+#             is operative CODE — paths inside it MUST stay scanned.
+_strip_freetext_args() {
+    printf '%s' "$1" | sed -E \
+        -e 's/(^|[[:space:]])-m[[:space:]]+"[^"]*"/\1-m/g' \
+        -e "s/(^|[[:space:]])-m[[:space:]]+['\\\"][^'\\\"]*['\\\"]/\1-m/g" \
+        -e "s/(^|[[:space:]])-m['\\\"][^'\\\"]*['\\\"]/\1-m/g" \
+        -e "s/(^|[[:space:]])-m[[:space:]]+[^[:space:]\\\"';&|]+/\1-m/g" \
+        -e "s/(^|[[:space:]])--(message|reedit-message|author)(=|[[:space:]]+)['\\\"][^'\\\"]*['\\\"]/\1--\2/g" \
+        -e "s/(^|[[:space:]])--(message|reedit-message|author)[=[:space:]]+[^[:space:]\\\"';&|]+/\1--\2/g"
+}
+
 # Check if a path is within the current repo or allowed locations
 is_allowed_path() {
     local path="$1"
@@ -353,13 +384,16 @@ main() {
         fi
 
         # Only check repo boundaries for non-readonly (potentially destructive) commands
-        # Look for patterns like /Users/.../GitHub/OtherRepo
-        if echo "$command" | grep -qE "${GITHUB_DIR}/[^/]+/" 2>/dev/null; then
+        # Look for patterns like /Users/.../GitHub/OtherRepo — on the
+        # T28-sanitized command (free-text payloads blanked), never on prose.
+        local scan_command
+        scan_command=$(_strip_freetext_args "$command")
+        if echo "$scan_command" | grep -qE "${GITHUB_DIR}/[^/]+/" 2>/dev/null; then
             local mentioned_paths mentioned_path pattern
             pattern="'${GITHUB_DIR}/[^']*'"
             pattern+="|\"${GITHUB_DIR}/[^\"]*\""
             pattern+="|${GITHUB_DIR}/[^[:space:]\"'\`;)&|]+"
-            mentioned_paths=$(echo "$command" | grep -oE "$pattern" | sed "s/^['\"]//;s/['\"]$//" || true)
+            mentioned_paths=$(echo "$scan_command" | grep -oE "$pattern" | sed "s/^['\"]//;s/['\"]$//" || true)
             while IFS= read -r mentioned_path; do
                 [[ -z "$mentioned_path" ]] && continue
                 if ! is_allowed_path "$mentioned_path" "$CURRENT_REPO"; then

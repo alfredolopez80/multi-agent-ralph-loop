@@ -111,3 +111,82 @@ def test_in_repo_edit_still_allows():
     # No over-blocking: a legitimate in-repo Edit with the real HOME allows.
     result = run_boundary(Path.home(), REPO / "CLAUDE.md")
     assert decision_of(result) == "allow"
+
+
+# --- T28 (#63): free-text flag payloads are not paths ---
+# The extractor's "quoted path with spaces" alternation matched the payload
+# of `git commit -m "<prose>"` as a path — and while the sentinel fail-open
+# existed, every long-quoted command was silently immune to the whole
+# mentioned-paths check. Payloads of -m/--message/--reedit-message/--author
+# are now blanked from the scan; -F values, -C values and -c code stay
+# scanned. Both directions tested.
+
+def run_boundary_bash(home, command):
+    payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}})
+    env = dict(os.environ)
+    env["HOME"] = str(home)
+    return subprocess.run(
+        ["bash", str(GUARD)],
+        input=payload, capture_output=True, text=True,
+        env=env, cwd=str(REPO), timeout=30,
+    )
+
+
+@pytest.fixture
+def external_repo_dir():
+    d = _tmpdir_physical()
+    fr = d / "Documents" / "GitHub" / "fr"
+    fr.mkdir(parents=True)
+    subprocess.run(["git", "-C", str(fr), "init", "-q"], check=True)
+    return d, fr
+
+
+def test_t28_long_quoted_commit_message_allows(external_repo_dir):
+    d, fr = external_repo_dir
+    cmd = f'git commit -m "fix: align docs at {fr}/x.md with tests (prose, not a path)"'
+    result = run_boundary_bash(d, cmd)
+    assert decision_of(result) == "allow"
+
+
+@pytest.mark.parametrize("cmd_builder", [
+    lambda fr: f'git commit --message "touching {fr}/x.md in prose only"',
+    lambda fr: f"git commit -m'{fr}/x.md in prose'",
+    lambda fr: f'git commit --author="a <dev>; see {fr}/x.md" -m t',
+    lambda fr: f'git commit --reedit-message={fr}/x.md',
+    lambda fr: f'git commit -m {fr}/x.md',
+], ids=["--message-quoted", "-m-attached", "--author", "--reedit-message=", "-m-bare"])
+def test_t28_freetext_variants_allow(external_repo_dir, cmd_builder):
+    d, fr = external_repo_dir
+    result = run_boundary_bash(d, cmd_builder(fr))
+    assert decision_of(result) == "allow"
+
+
+def test_t28_real_quoted_path_still_denies(external_repo_dir):
+    d, fr = external_repo_dir
+    result = run_boundary_bash(d, f'cp a.txt "{fr}/x.md"')
+    assert decision_of(result) == "deny"
+
+
+def test_t28_f_value_is_still_a_path(external_repo_dir):
+    d, fr = external_repo_dir
+    result = run_boundary_bash(d, f'git commit -F "{fr}/msg.txt"')
+    assert decision_of(result) == "deny"
+
+
+def test_t28_git_dash_c_value_is_still_a_path(external_repo_dir):
+    # `git -C <dir>` is a directory flag: blanking -c/-C payloads would
+    # blind exactly this. Must keep denying. NOTE: uses a SUBDIRECTORY —
+    # the mention gate regex (GITHUB_DIR/[^/]+/) requires at least one
+    # level INSIDE the external repo, so the repo ROOT itself is a
+    # pre-existing gate gap (reported), not something this test can lean on.
+    d, fr = external_repo_dir
+    sub = fr / "pkg"
+    sub.mkdir()
+    result = run_boundary_bash(d, f'git -C "{sub}" commit -m x')
+    assert decision_of(result) == "deny"
+
+
+def test_t28_python_dash_c_code_still_scanned(external_repo_dir):
+    d, fr = external_repo_dir
+    result = run_boundary_bash(d, f"python3 -c \"open('{fr}/x.md')\"")
+    assert decision_of(result) == "deny"
