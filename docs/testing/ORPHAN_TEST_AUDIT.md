@@ -33,8 +33,12 @@ install, no vault). Passing suites were re-run a second time to rule out flakes.
 > four lines of the very list driving it. A document arguing "nothing was deleted
 > because everything was measured" had four suites nobody measured. They are
 > `test_cross_platform.bats`, `test_quality_gates.bats`, `test_security_functions.bats`
-> and `test_settings_merge.bats`; all four pass, and all four are now in CI. The
-> `< /dev/null` in the runner's bats loop is what stops this recurring.
+> and `test_settings_merge.bats`; **three** of the four pass, and **three** are in
+> CI as runnable suites. `test_quality_gates.bats` is the exception this paragraph
+> could not have caught: it produced 23 `ok N ... # skip` lines and exit 0, and the
+> runner counted that as ✓ — see the **T30** section below. The `< /dev/null` in
+> the runner's bats loop is what stops the stdin-collision class from recurring;
+> the T30 fix is what stops the silent-skip class.
 
 Nothing was deleted. `#42` is explicit that a missing runner does not prove a suite is
 dead, and the seven "implementation retired" entries are the only ones where that case
@@ -47,16 +51,19 @@ guarantees, plan-state writes, task-list projection, dedup keys — plus the pro
 integration, five security suites, the stop-hook pair, and the `validation-common`
 library.
 
-`BATS_SUITES` (5) adds cross-platform portability, quality gates, security functions,
-settings merge and the worktree workflow: 157 assertions.
+`BATS_SUITES` (5 after T30, with one of them `security/test-bug-fixes-v2.90.bats` added by
+#50) covers cross-platform portability, security functions, settings merge, the worktree
+workflow and the v2.90 bug fixes. The 157-assertion total above included 23 silent
+skips from `test_quality_gates.bats`; after T30 that suite is retired (see below) and
+the live count is **134 real assertions** across the 5 current suites.
 
 **`test_cross_platform.bats` is the one that matters most.** Its 30 tests cover portable
 `stat`, portable `date`, `realpath` fallback and `mktemp` permissions — precisely the
 GNU-vs-BSD class that produced #43 (`stat -f`), #44 (`declare -A`, then `timeout`), and
 the `cat -A` debug step that was itself too GNU-specific to diagnose #44. The repo
 already owned a guard against its own most recurrent bug, and nothing ran it. Ubuntu's
-packaged bats 1.10 is sufficient; none of the five suites needs `bats-support` or
-`bats-assert`.
+packaged bats 1.10 is sufficient; none of the current five suites needs `bats-support`
+or `bats-assert`.
 
 ## Per-suite verdicts for the 34 that fail
 
@@ -288,3 +295,133 @@ the evidence to it.
 Three suites stay **blocked** on two production defects in
 `.claude/lib/action-report-generator.sh` and the quality detector, both filed as #59.
 Nothing was patched in production to turn a test green.
+
+## T30: silent-skip in `test_quality_gates.bats` (issue #64, 2026-08-25)
+
+The audit above stated that four bats suites — `test_cross_platform.bats`,
+`test_quality_gates.bats`, `test_security_functions.bats`, `test_settings_merge.bats`
+— "all four pass, and all four are now in CI". Three of the four did. The fourth
+counted as a pass only because the wrong unit was being measured: **the runner added
++1 to passed and +1 to total without exercising a single assertion in the suite**.
+
+### What the suite actually did
+
+`test_quality_gates.bats:setup()` short-circuited every test when its target hook was
+absent:
+
+```bash
+setup() {
+    TEST_DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" && pwd)"
+    PROJECT_DIR="$(dirname "$TEST_DIR")"
+    GATES_SCRIPT="$PROJECT_DIR/.claude/hooks/quality-gates.sh"
+    [ -f "$GATES_SCRIPT" ] || skip "quality-gates.sh not found at $GATES_SCRIPT"
+    ...
+}
+```
+
+`.claude/hooks/quality-gates.sh` does not exist in the live tree (an archived copy
+lives at `.claude/archive/quality-gates-v2.sh`; the four surviving hooks
+`quality-parallel-async.sh`, `ralph-stop-quality-gate.sh`,
+`task-completed-quality-gate.sh`, `teammate-idle-quality-gate.sh` have different APIs
+and none implements the language-detection / JSON-validation / blocking-mode coverage
+the bats suite tested). With the target absent, bats emitted:
+
+```
+1..23
+ok 1 ... # skip quality-gates.sh not found at ...
+ok 2 ... # skip quality-gates.sh not found at ...
+...
+```
+
+…and exited 0. The runner saw `bats ...; then ✓ PASSED`. 23 silent skips, zero
+assertions, +1/+1 in the counters.
+
+### Why the original measurement missed it
+
+This audit ran every orphan with `bats "$f" < /dev/null`, recorded exit code, and
+classified. exit 0 → "passes". That classification is correct **as long as the suite
+produced real assertions**; it is wrong when the entire plan was skipped. The
+`((VAR++))` + `set -e` trap documented above at the wrapper layer is the analogous
+failure mode at the runner layer: a counter is incremented over a result that should
+never have been counted at all. Same root pattern, different code path, different
+counter, same end signal — a green checkmark over an empty result.
+
+### Verdict: case (c) — disappeared
+
+The script the suite tested no longer exists. The four surviving hooks collectively
+cover part of its surface but with different inputs, outputs, and integration points
+— there is no "renamed" or "split" mapping that would let the existing 23 assertions
+run unmodified against live code. Suite retired to
+`tests/archive/v2-suite/test_quality_gates.bats` per the #50 precedent (the same
+direction the four v2.2x shell suites took).
+
+The retired coverage — JSON validation, language detection
+(TypeScript/Python/Go/Rust/Foundry/GitHub Actions), blocking-mode behaviour,
+`node_modules` / `.git` exclusions, files-with-spaces — is real and was previously
+uncovered. It is not picked up by `tests/unit/test-quality-gates-v2.90.sh`, which
+only asserts on `files_modified` extraction and version markers in the v2.90 hooks.
+That is an open coverage gap, not a hidden green.
+
+### Runner fix: extend the discipline to assertion granularity
+
+`tests/run-all-unit-tests.sh` already treats `TOTAL_SUITES == 0` as fatal (exit 2).
+The same discipline was missing at the assertion layer: a suite that contributed
+zero assertions still counted as one passed. The bats loop now parses the TAP output:
+
+| TAP line | meaning |
+|---|---|
+| `1..N` | plan — expected test count |
+| `ok N ... # skip` | skipped (does not count as an assertion) |
+| `ok N ...` | passed (counts as one real assertion) |
+| `not ok N ...` | failed (already handled by bats exit code) |
+
+The loop captures `bats_output`, derives `expected`, `ok_count`, `skip_count`, and
+`assertions_run = ok_count - skip_count`. The pass branch only fires when
+`bats_exit == 0 && expected > 0 && assertions_run > 0`. A suite whose plan is empty
+or whose plan is entirely skipped fails as `ZERO ASSERTIONS`, with the plan count
+echoed so the diagnostic is concrete.
+
+The discipline now mirrors `failed == 0 && total > 0` at the assertion layer: zero
+real assertions is a failure, not a quiet green.
+
+### Proof: a 6th, all-skip suite made the runner exit 1
+
+A temporary `_probe_skip_all.bats` was added to `BATS_SUITES` with `setup() { skip
+"probe: every test is skipped"; }`. The runner was invoked on a clean checkout:
+
+```
+[Test Suite 32] PROOF: all-skip suite must fail the runner
+  Script: _probe_skip_all.bats (bats)
+
+  ✗ ZERO ASSERTIONS
+    bats reported 2 planned test(s), all skipped
+
+...
+
+  Passed: 31
+  Failed: 1
+  Total:  32
+
+✗ SOME TEST SUITES FAILED
+Failed suites: PROOF: all-skip suite must fail the runner
+```
+
+`bash tests/run-all-unit-tests.sh; echo $?` → `1`. Probe then removed; final state
+below.
+
+### What is in the runner now
+
+- `TEST_SUITES` (23): unchanged.
+- `BATS_SUITES` (5): `test_cross_platform.bats`, `test_security_functions.bats`,
+  `test_settings_merge.bats`, `test_worktree_workflow.bats`,
+  `security/test-bug-fixes-v2.90.bats`. `test_quality_gates.bats` removed.
+- Final run: 31/31 PASS, 0 failed, 0 silent skips. Exit 0.
+- Live assertion count across the bats block: 134 (was 157, with 23 of those being
+  silent skips).
+
+### Files touched
+
+- `tests/test_quality_gates.bats` → `tests/archive/v2-suite/test_quality_gates.bats`
+  (moved, not deleted; per #50 precedent)
+- `tests/run-all-unit-tests.sh` (BATS_SUITES list, bats loop)
+- `docs/testing/ORPHAN_TEST_AUDIT.md` (this section)
