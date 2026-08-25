@@ -186,6 +186,14 @@ def check_hook_references(
     second element tracks violations even on ignored hooks, so the
     obsolete-entry check can confirm the ignore entry is silencing
     something real.
+
+    IMPORTANT: comments are stripped before searching. A hook that is
+    desregistered may keep a historical comment that names the
+    13 skills the old version used to suggest — that is documentation
+    of what the hook USED to do, not a live reference. Stripping
+    comments before matching prevents the documentation from triggering
+    the lint. Same lesson as T31: the test must not fire on the
+    invariant's own documentation.
     """
     if ignored is None:
         ignored = set()
@@ -203,12 +211,22 @@ def check_hook_references(
         # (mirrors how SKILL.md paths are relative to skills_dir).
         rel_hook = str(hook_path.relative_to(hooks_dir))
         ignored_for_report = rel_hook in ignored
-        for match in HOOK_SKILL_REF_RE.finditer(text):
+        # Strip full-line comments. A line that, after stripping leading
+        # whitespace, starts with `#` is a comment in bash. We do NOT
+        # handle inline comments (e.g. `cmd # tail comment`) because
+        # the emission pattern is very specific (`"/<name> for <text>"`)
+        # and a stray inline comment is unlikely to false-positive.
+        code_lines = [
+            line for line in text.splitlines()
+            if not line.lstrip().startswith("#")
+        ]
+        code_text = "\n".join(code_lines)
+        for match in HOOK_SKILL_REF_RE.finditer(code_text):
             name = match.group("name") or match.group("name2")
             if not name:
                 continue
             if name not in valid_skill_names:
-                line_no = text[:match.start()].count("\n") + 1
+                line_no = code_text[:match.start()].count("\n") + 1
                 # Always track the violation, even on ignored hooks, so
                 # the obsolete check can confirm the ignore entry is
                 # doing something useful.
