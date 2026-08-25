@@ -107,17 +107,20 @@ findings rather than stale tests.
 | `unit/test-action-report-integration-v2.93.sh` | Not root-caused | ✗ FAIL adr missing Action Reporting section |
 | `unit/test-action-report-lib-v2.93.sh` | Not root-caused | ✗ FAIL Failed report does not show FAILED status |
 | `unit/test-action-report-tracker-v2.93.sh` | Not root-caused | ✗ FAIL Background flag not recorded correctly: |
+
 ## Two side effects found while running them
 
 Worth recording, because both are reasons a suite should not be wired into a gate
 casually:
 
-1. **`quality-parallel/test-quality-parallel-v4-final.sh` mutates tracked fixtures.**
-   Running it empties 17 lines out of each of `tests/quality-parallel/orch.js` and
-   `tests/quality-parallel/vuln.js`, which are committed files. Its own reported
-   failure ("Expected findings, got 0") is consistent with it having eaten the very
-   fixtures it then scans. It is not in the CI set, and should not be until it stops
-   writing to the working tree.
+1. **Both `quality-parallel` suites mutate tracked fixtures.**
+   `test-quality-parallel-v4-final.sh` empties 17 lines out of each of
+   `tests/quality-parallel/orch.js` and `vuln.js`; `test-quality-parallel-v3-robust.sh`
+   does the same to `orchestrator-test.js` and `vulnerable-test.js`. All four are
+   committed files. Their reported failures ("Expected findings, got 0") are consistent
+   with each having eaten the very fixtures it then scans — which also means a second
+   run can never reproduce the first. Neither is in the CI set, and neither should be
+   until it stops writing to the working tree.
 
 2. **The v2.93 action-report tracker writes into the repo on every run**, under
    `.claude/metadata/actions/` and `docs/actions/orchestrator/`. Neither path had any
@@ -127,32 +130,69 @@ casually:
 The 23 suites in the CI set were checked for this specifically: two consecutive runs
 leave the working tree byte-identical.
 
-## Known scope boundary: `.claude/` still carries the bash-3.2 hazard
+## Evaluated and declined: giving `tests/run_tests.sh` a CI gate
 
-Stated explicitly so the next reader does not mistake silence for safety. The structural
-guard in `tests/installer/test-bash-version-guard.bats` sweeps `scripts/**` only. Four
-files outside it use bash-4-only syntax:
+A reviewer noted that the fail-open fixes in `run_tests.sh` cannot turn any gate red,
+because nothing invokes it. That is true. The question is whether it should be wired
+into CI, and the answer — from measurement, not preference — is **not yet**.
 
-| File | Shebang | Exposure on macOS |
+What it uniquely covers, versus what CI already runs directly:
+
+| Suite it alone invokes | Exists? | Result on a bare checkout |
 |---|---|---|
-| `.claude/hooks/action-report-tracker.sh` | `#!/bin/bash` | Unconditionally bash 3.2 |
-| `.claude/hooks/vault-promotion.sh` | `#!/bin/bash` | Unconditionally bash 3.2 |
-| `.claude/scripts/curator-learn.sh` | `#!/bin/bash` | Unconditionally bash 3.2 |
-| `.claude/lib/context-windows.sh` | `#!/usr/bin/env bash` | Only when PATH bash < 4 |
+| `end-to-end/test-e2e-learning-complete-v1.sh` | yes | exit 1 |
+| `integration/test-learning-integration-v1.sh` | yes | exit 1 |
+| `quality-parallel/test-quality-parallel-v3-robust.sh` | yes | exit 1 |
+| `test_v2.36_skills_unification.sh` | yes | exit 1 |
+| `unit/test-statusline-context.sh` | yes | exit 1 |
+| `hooks/test-k8s-context-guard.sh` | **no** | — |
+| `swarm-mode/test-swarm-mode-config.sh` | **no** | — |
+| `test_v2.37_tldr_integration.sh` | **no** | — |
 
-The three `#!/bin/bash` files are **more** exposed than the validators this PR fixed, not
-less: a hard-pinned `/bin/bash` cannot reach a Homebrew bash 5 no matter how the user's
-PATH is set. Under bash 3.2 each associative array collapses onto index 0, so
-`action-report-tracker.sh` files every report under the last table entry and
-`vault-promotion.sh` can append a fabricated "specialization detected" line to a user's
-Obsidian index. `context-windows.sh` is the #43 defect still live in a hook that runs on
-every prompt.
+Everything else it runs — `pytest tests/`, `bats tests/*.bats` — CI already runs more
+directly. So wiring it would add five suites that are red today and three references to
+files that do not exist. It would turn CI red on the first push and teach the next
+contributor that red is normal, which is the failure mode this whole PR is about.
 
-These are left untouched deliberately: fixing a hook means choosing what it should do
-when it cannot run correctly, and a hook that exits non-zero blocks the tool. That is a
-design decision, not a mechanical port, and it does not belong in a PR about #42/#44.
-The guard's glob is written as a `find` over `scripts/`, so extending it to `.claude/` is
-a one-line change once that decision is made.
+Those five belong with the 15 "not root-caused" orphans below: diagnose first, wire
+after. The runner's own three dangling references should be repaired or removed in the
+same pass.
+
+**The fail-open fix was still worth making**, and not as consolation. `TESTING.md` opens
+with `./tests/run_tests.sh` as the project's documented way to run the suite — it is the
+human entry point even though no machine calls it. A contributor following the
+documentation was told "Test run complete" no matter what happened, including when the
+four bash security suites failed. That lie is worth removing whether or not a gate ever
+consumes the exit code.
+
+## `.claude/` carried the same hazard — now fixed, and pinned
+
+Four files outside `scripts/` used bash-4-only syntax. Three were pinned to
+`#!/bin/bash`, which on macOS is bash 3.2 no matter how PATH is set, so they were
+**more** exposed than any validator this PR fixed and could not be helped by the
+re-exec guard at all. What they produced under bash 3.2 was not a crash but plausible,
+wrong data:
+
+| File | Under bash 3.2 it produced | Fix |
+|---|---|---|
+| `.claude/hooks/action-report-tracker.sh` | every subagent type mapped to the last table entry, filing every action report under the wrong skill | `case` |
+| `.claude/hooks/vault-promotion.sh` | one shared counter for all categories, so three *unrelated* tasks tripped the `>= 3` rule and appended a fabricated "Specialization detected" line to the user's Obsidian vault | `sort \| uniq -c` |
+| `.claude/scripts/curator-learn.sh` | `detect_domain` iterating the single key `0` and returning the literal string `"0"` as a domain tag | table + `while read` |
+| `.claude/lib/context-windows.sh` | wrong context window for every model, so compaction warnings fired at the wrong point on every prompt — #43's defect, still live | lookup table |
+
+None of them needs associative arrays: three are static key→value tables and one is a
+counter. So the requirement was **removed** rather than guarded — no `VC_REQUIRE_BASH4`,
+no re-exec, no exit 78. That matters for hooks specifically: a hook that exits non-zero
+blocks the tool, so "refuse to run" is not an option the way it is for a validator.
+
+Behaviour was verified unchanged: all 18 model lookups in `context-windows.sh` return
+byte-identical values, all 10 subagent mappings match the original table, `detect_domain`
+returns the correct domain for four sample repositories, and the rewritten counter trips
+on three identical categories while three distinct ones leave it alone.
+
+`tests/installer/test-bash-version-guard.bats` now enforces a **stricter** rule for
+`.claude/` than for `scripts/`: no bash-4-only syntax at all, since neither escape hatch
+is available there.
 
 ## Follow-up
 

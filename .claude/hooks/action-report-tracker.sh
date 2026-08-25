@@ -71,21 +71,26 @@ RUN_IN_BACKGROUND=$(echo "$TOOL_INPUT" | jq -r '.run_in_background // false' 2>/
 
 log "Task completed: subagent=$SUBAGENT_TYPE, background=$RUN_IN_BACKGROUND"
 
-# Map subagent types to skill names
-declare -A SKILL_MAPPING=(
-    ["orchestrator"]="orchestrator"
-    ["ralph-coder"]="orchestrator"
-    ["ralph-reviewer"]="gates"
-    ["ralph-tester"]="gates"
-    ["ralph-researcher"]="curator"
-    ["general-purpose"]="loop"
-    ["security-scanner"]="security"
-    ["bug-scanner"]="bugs"
-    ["codex-reviewer"]="code-reviewer"
-)
-
-# Determine skill name
-SKILL_NAME="${SKILL_MAPPING[$SUBAGENT_TYPE]:-$SUBAGENT_TYPE}"
+# Map subagent types to skill names.
+#
+# A `case`, NOT `declare -A` (#42/#44). This hook has `#!/bin/bash`, which on macOS is
+# unconditionally bash 3.2 — a hard-pinned interpreter cannot reach a Homebrew bash 5
+# however the user's PATH is set, so this file was strictly more exposed than the
+# scripts/ validators. Bash 3.2 has no associative arrays and does not abort on one: it
+# warns to stderr, continues, and collapses every key onto index 0 because an unset name
+# in an array subscript evaluates arithmetically to 0. Every subagent type would have
+# resolved to whichever entry landed last, filing every action report under the wrong
+# skill — quietly, on every Task completion. A `case` needs no bash 4 at all.
+case "$SUBAGENT_TYPE" in
+    orchestrator|ralph-coder)   SKILL_NAME="orchestrator" ;;
+    ralph-reviewer|ralph-tester) SKILL_NAME="gates" ;;
+    ralph-researcher)           SKILL_NAME="curator" ;;
+    general-purpose)            SKILL_NAME="loop" ;;
+    security-scanner)           SKILL_NAME="security" ;;
+    bug-scanner)                SKILL_NAME="bugs" ;;
+    codex-reviewer)             SKILL_NAME="code-reviewer" ;;
+    *)                          SKILL_NAME="$SUBAGENT_TYPE" ;;
+esac
 
 # Skip if unknown skill
 if [[ -z "$SKILL_NAME" || "$SKILL_NAME" == "null" ]]; then

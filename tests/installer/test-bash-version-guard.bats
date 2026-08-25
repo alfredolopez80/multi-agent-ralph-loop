@@ -79,6 +79,25 @@ scripts_under_test() {
     [[ -z "$offenders" ]] || fail "opted into bash 4 without needing it:$offenders"
 }
 
+# `.claude/` gets a STRICTER rule than scripts/: no bash-4-only syntax at all.
+#
+# The scripts/ answer is "re-exec under a newer bash, or exit 78". A hook cannot take
+# that deal — a non-zero exit blocks the tool, and the three offenders here were pinned
+# to `#!/bin/bash`, which on macOS is bash 3.2 no matter what PATH says, so re-exec was
+# never even reachable for them. They were therefore MORE exposed than anything the
+# scripts/ guard covers, and what they produced was not a crash but fabricated data:
+# every action report filed under the wrong skill, every domain tag reading "0", and a
+# "Specialization detected" line appended to a user's Obsidian vault on three unrelated
+# tasks. All four were rewritten to need no associative arrays. This keeps them that way.
+@test "guard: no .claude/ shell file uses bash-4-only syntax" {
+    local offenders="" f
+    while read -r f; do
+        uses_bash4_only "$f" && offenders="$offenders ${f#$PROJECT_ROOT/}"
+    done < <(find "$PROJECT_ROOT/.claude" -type f -name '*.sh' \
+                  -not -path '*/archive/*' -not -path '*/_archived/*' | sort)
+    [[ -z "$offenders" ]] || fail "bash-4-only syntax under .claude/ (hooks cannot re-exec or exit 78):$offenders"
+}
+
 @test "guard: validation-common.sh carries the version check, gated on the flag" {
     assert_file_exists "$VC_LIB"
     grep -q 'BASH_VERSINFO' "$VC_LIB"

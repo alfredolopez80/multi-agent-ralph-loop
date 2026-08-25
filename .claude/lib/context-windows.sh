@@ -9,28 +9,41 @@
 # Claude Sonnet/Haiku: 200K official, ~180K usable
 
 # Model → usable context window (tokens)
-# GLM-5.1: 256K usable oficialmente. Safety margin via thresholds, no reducción artificial.
-declare -A MODEL_CONTEXT_WINDOWS=(
-    ["glm-5.2"]=200000
-    ["glm-5.1"]=256000
-    ["glm-5-turbo"]=128000
-    ["glm-5"]=128000
-    ["glm-4.7"]=128000
-    ["glm-4.5-air"]=64000
-    ["glm-4"]=128000
-    ["minimax-m2.7"]=200000
-    ["claude-opus-5"]=950000
-    ["claude-fable-5"]=950000
-    ["claude-opus-4-8"]=950000
-    ["claude-opus-4-7"]=950000
-    ["claude-opus-4-6"]=950000
-    ["claude-sonnet-5"]=180000
-    ["claude-sonnet-4-6"]=180000
-    ["claude-haiku-4-5"]=180000
-    # Native Claude Code session whose model id was not exposed. 200K is the
-    # smallest window any current Claude model has, so it never over-promises.
-    ["claude-unknown"]=180000
-)
+# GLM-5.1: 256K usable officially. Safety margin via thresholds, no artificial reduction.
+#
+# A plain "key value" table, NOT `declare -A` (#42/#44). This file is sourced by
+# context-warning.sh, which runs on UserPromptSubmit — every message. Associative
+# arrays are bash 4, macOS ships bash 3.2, and there `declare -A` does not abort: it
+# warns to stderr and then collapses every key onto index 0, because an unset name in
+# an array subscript evaluates arithmetically to 0. Every lookup would return whichever
+# entry landed last, so a Claude session could be told it had a 64K window and get
+# compaction warnings at entirely the wrong point — silently, on every prompt.
+#
+# This is #43's defect, which was treated then by changing the shebang from
+# `#!/bin/bash` to `#!/usr/bin/env bash`. That only helps when PATH already has a
+# bash 4; on stock macOS it resolves straight back to 3.2. A lookup table does not
+# need associative arrays, so the requirement is removed rather than guarded.
+_model_context_table() {
+    cat <<'TABLE'
+glm-5.2 200000
+glm-5.1 256000
+glm-5-turbo 128000
+glm-5 128000
+glm-4.7 128000
+glm-4.5-air 64000
+glm-4 128000
+minimax-m2.7 200000
+claude-opus-5 950000
+claude-fable-5 950000
+claude-opus-4-8 950000
+claude-opus-4-7 950000
+claude-opus-4-6 950000
+claude-sonnet-5 180000
+claude-sonnet-4-6 180000
+claude-haiku-4-5 180000
+claude-unknown 180000
+TABLE
+}
 
 # Normalize a raw model id into a table key.
 # Strips vendor suffixes in brackets (e.g. "claude-opus-5[1m]" -> "claude-opus-5"),
@@ -92,21 +105,24 @@ get_context_window() {
     model=$(get_detected_model)
 
     # Exact match
-    if [[ -n "${MODEL_CONTEXT_WINDOWS[$model]:-}" ]]; then
-        echo "${MODEL_CONTEXT_WINDOWS[$model]}"
+    local val
+    val=$(_model_context_table | awk -v m="$model" '$1 == m { print $2; exit }')
+    if [[ -n "$val" ]]; then
+        echo "$val"
         return
     fi
 
-    # Prefix match (e.g., glm-5.1-0123), longest key first so the most specific
-    # entry wins. Bash iterates associative keys in unspecified order, so an
-    # unsorted loop could match "glm-5" before "glm-5.2" and pick the wrong window.
+    # Prefix match (e.g., glm-5.1-0123), longest key first so the most specific entry
+    # wins — an unsorted pass could match "glm-5" before "glm-5.2" and pick the wrong
+    # window. The table's own order is not relied upon.
     local known
-    while IFS= read -r known; do
+    while read -r known val; do
+        [[ -n "$known" ]] || continue
         if [[ "$model" == "${known}"* ]]; then
-            echo "${MODEL_CONTEXT_WINDOWS[$known]}"
+            echo "$val"
             return
         fi
-    done < <(printf '%s\n' "${!MODEL_CONTEXT_WINDOWS[@]}" | awk '{ print length, $0 }' | sort -rn | cut -d' ' -f2-)
+    done < <(_model_context_table | awk 'NF { print length($1), $0 }' | sort -rn | cut -d' ' -f2-)
 
     # Unknown model — conservative default (128K)
     echo "128000"

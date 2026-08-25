@@ -41,15 +41,25 @@ readonly VALID_INPUT_PATTERN='^[a-zA-Z0-9_-]+$'
 readonly VALID_REPO_PATTERN='^[a-zA-Z0-9_-]+/[a-zA-Z0-9_.-]+$'
 
 # GAP-C02 FIX: Domain detection keywords
-declare -A DOMAIN_KEYWORDS
-DOMAIN_KEYWORDS["backend"]="api|server|rest|graphql|microservice|endpoint|controller|service|repository|middleware|express|fastapi|django|nestjs|spring"
-DOMAIN_KEYWORDS["frontend"]="react|vue|angular|component|hook|state|css|styled|jsx|tsx|dom|render|props|context|redux"
-DOMAIN_KEYWORDS["database"]="sql|query|schema|migration|orm|prisma|sequelize|typeorm|knex|postgres|mysql|mongodb|redis|index|transaction"
-DOMAIN_KEYWORDS["security"]="auth|jwt|token|encrypt|decrypt|hash|password|csrf|xss|injection|sanitize|validate|permission|role|rbac"
-DOMAIN_KEYWORDS["testing"]="test|spec|jest|vitest|mocha|cypress|playwright|mock|stub|assert|coverage|unit|integration|e2e"
-DOMAIN_KEYWORDS["devops"]="docker|kubernetes|ci|cd|pipeline|deploy|container|helm|terraform|ansible|jenkins|github.actions|gitlab.ci"
-DOMAIN_KEYWORDS["hooks"]="hook|lifecycle|callback|trigger|event|listener|middleware|interceptor|pre|post|init|destroy"
-DOMAIN_KEYWORDS["general"]="config|util|helper|common|shared|lib|types|interface|enum|constant"
+#
+# A "domain<TAB>keywords" table, NOT `declare -A` (#42/#44). This script has
+# `#!/bin/bash`, which on macOS is unconditionally bash 3.2 — no associative arrays,
+# and no abort either: `declare -A` warns to stderr and then every key collapses onto
+# index 0. `for domain in "${!DOMAIN_KEYWORDS[@]}"` would have iterated the single key
+# `0`, so detect_domain returned the literal string "0" and corrupt domain tags flowed
+# into the learning system. A table read line by line needs no bash 4.
+_domain_keywords_table() {
+    cat <<'TABLE'
+backend api|server|rest|graphql|microservice|endpoint|controller|service|repository|middleware|express|fastapi|django|nestjs|spring
+frontend react|vue|angular|component|hook|state|css|styled|jsx|tsx|dom|render|props|context|redux
+database sql|query|schema|migration|orm|prisma|sequelize|typeorm|knex|postgres|mysql|mongodb|redis|index|transaction
+security auth|jwt|token|encrypt|decrypt|hash|password|csrf|xss|injection|sanitize|validate|permission|role|rbac
+testing test|spec|jest|vitest|mocha|cypress|playwright|mock|stub|assert|coverage|unit|integration|e2e
+devops docker|kubernetes|ci|cd|pipeline|deploy|container|helm|terraform|ansible|jenkins|github.actions|gitlab.ci
+hooks hook|lifecycle|callback|trigger|event|listener|middleware|interceptor|pre|post|init|destroy
+general config|util|helper|common|shared|lib|types|interface|enum|constant
+TABLE
+}
 
 # SEC-010: Validate input against pattern
 validate_input() {
@@ -78,8 +88,9 @@ detect_domain() {
     sample_content+=" $(cat "$repo_dir"/*.md "$repo_dir"/package.json "$repo_dir"/README.md 2>/dev/null | tr '[:upper:]' '[:lower:]' | head -c 10000)"
 
     # Count keyword matches for each domain
-    for domain in "${!DOMAIN_KEYWORDS[@]}"; do
-        local keywords="${DOMAIN_KEYWORDS[$domain]}"
+    local keywords
+    while read -r domain keywords; do
+        [[ -n "$domain" ]] || continue
         local matches=0
 
         IFS='|' read -ra KW_ARRAY <<< "$keywords"
@@ -92,7 +103,7 @@ detect_domain() {
             max_matches=$matches
             detected_domain="$domain"
         fi
-    done
+    done < <(_domain_keywords_table)
 
     echo "$detected_domain"
 }

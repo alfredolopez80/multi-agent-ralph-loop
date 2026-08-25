@@ -4,6 +4,64 @@
 
 ## [Unreleased]
 
+### Removed - `ralph status` orchestration query and `ralph health` (#42)
+
+- **`ralph health` deleted.** It dispatched to `~/.claude/scripts/ralph-health.sh`, a file
+  present in no commit of this repository, then advised `ralph self-update` — which syncs
+  into `~/.local/bin` and has never written to `~/.claude/scripts/`. The one remedy it
+  offered could not work.
+- **`ralph status` no longer queries orchestration progress.** It had the same defect
+  (`ralph-status.sh`, equally absent) and now resolves to `cmd_process_status`, which is
+  what `ralph help` has documented all along: "Show active processes". `st`, `ps` and
+  `processes` reach the same function. **`--compact`, `--steps` and `--json` are no longer
+  accepted** — the output shown for them in `README.es.md` and
+  `docs/architecture/ARCHITECTURE_DIAGRAM_v2.52.0.md` was never producible from this tree.
+- **`scripts/setup-symlinks.sh` deleted.** It whole-directory-symlinked `~/.claude/rules`
+  and `~/.claude/hooks`, which `DISTRIBUTION_POLICY.md` requires to be COPIES and
+  `CLAUDE.md` records as a retired mechanism, moving the real directories to a backup on
+  the way. Nothing invoked it. Use `scripts/validate-global-infrastructure.sh --fix` and
+  `.claude/scripts/sync-rules-from-source.sh`.
+- **`scripts/setup-skill-symlinks.sh` deleted** in favour of the portable
+  `setup-skills-symlinks.sh`; the singular hardcoded an absolute path to one machine.
+
+### Fixed - bash 3.2 silent corruption on macOS (#44)
+
+- **`scripts/lib/validation-common.sh` gained an opt-in bash 4 guard.** Ten validators
+  build result tables with `declare -A`; macOS ships bash 3.2, which does not abort on
+  one — it warns, continues, and collapses every key onto index 0. Callers declare
+  `VC_REQUIRE_BASH4=1` before sourcing; the library re-execs under a bash ≥ 4 or exits 78.
+  The other ten sourcers are bash-3 clean and unaffected.
+- **`validate-hooks-execution.sh`** now resolves `gtimeout` when GNU `timeout` is absent;
+  bounds the **hook** rather than `echo` on its default branch (a 6 s hook under a 2 s
+  budget was scored PASS); and no longer aborts under `set -e` at the first failing hook,
+  which used to produce zero output and exit 1 — a hook failure with no report of it.
+- **Four `.claude/` files rewritten to need no associative arrays**:
+  `hooks/action-report-tracker.sh` (every report filed under the wrong skill),
+  `hooks/vault-promotion.sh` (a fabricated "Specialization detected" line appended to the
+  user's Obsidian vault on three *unrelated* tasks), `scripts/curator-learn.sh`
+  (`detect_domain` returning the literal `0`), and `lib/context-windows.sh` (wrong context
+  window on every prompt — #43's defect, still live). Three were pinned to `#!/bin/bash`,
+  which on macOS is bash 3.2 regardless of PATH, so they could not be fixed by re-exec.
+
+### Fixed - test runners that could not report failure (#42)
+
+- **`tests/run_tests.sh`**: modes `all` and `quick` wrapped every phase in `|| true`, so
+  the runner exited 0 whatever happened. Phases now record failures and the runner exits
+  non-zero naming them. Security and VULN suites included. `pytest` exit 5 ("no tests
+  collected") is reported rather than treated as a pass.
+- **`tests/run-all-unit-tests.sh`**: `TEST_SUITES` held one entry, already covered by
+  pre-commit. 62 suites under `tests/` were invoked by nothing; all were run and
+  classified. 28 now run in CI (23 shell + 5 bats, 157 bats assertions), among them
+  `test_cross_platform.bats` — 30 tests of portable `stat`/`date`/`realpath`/`mktemp`,
+  the repo's own guard against the GNU-vs-BSD class behind #43 and #44, which existed and
+  was never executed. Suites needing a provisioned machine sit behind `--with-install`.
+  The runner sandboxes `HOME`: one suite appended fabricated entries to the real
+  `~/.ralph/logs/promptify-audit.log` at 0644 and overwrote a consent file.
+  Per-suite verdicts: `docs/testing/ORPHAN_TEST_AUDIT.md`.
+- **`tests/installer/test-bash-version-guard.bats`** (new) pins the contract in both
+  directions for `scripts/**`, and forbids bash-4-only syntax outright under `.claude/`,
+  where a hook can neither re-exec nor exit non-zero.
+
 ### Added - Cloud CLI destructive-command guard (git-safety-guard v2.70.0)
 
 - **AWS CLI / gcloud / gsutil / kubectl coverage** in `git-safety-guard.py` — 3 tiers per CLI:
