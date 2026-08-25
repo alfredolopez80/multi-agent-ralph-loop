@@ -47,7 +47,11 @@ echo "=== Rules (standalone copies with checksum validation) ==="
 RULES=(aristotle-methodology.md ast-grep-usage.md browser-automation.md native-tools-first.md parallel-first.md plan-immutability.md zai-mcp-usage.md)
 for rule in "${RULES[@]}"; do
   GLOBAL_FILE=~/.claude/rules/"$rule"
-  REPO_FILE="$REPO/.claude/rules/$rule"
+  # T40: source moved to .claude/rules-src/ (no longer auto-loaded by Claude
+  # Code from the repo path — only the sync-script-generated header-stamped
+  # copy in ~/.claude/rules/ is loaded). The validator still compares the
+  # repo source against the global copy to detect drift.
+  REPO_FILE="$REPO/.claude/rules-src/$rule"
 
   if [[ ! -f "$GLOBAL_FILE" ]]; then
     if [[ "$FIX_MODE" == "--fix" ]] && [[ -f "$REPO_FILE" ]]; then
