@@ -4,6 +4,67 @@
 
 ## [Unreleased]
 
+### Added - lead/worker worktree coordination skills
+
+- **`.claude/skills/wt-lead/` and `.claude/skills/wt-worker/`** — a two-role protocol for
+  sessions running in parallel git worktrees. Role is derived from the working directory,
+  never from a message: a path under `.claude/worktrees/<name>` is worker `<name>`,
+  anything else is lead. Each role loads only its own skill.
+- **Four scripts, all fail-loud.** `start-task.sh` refuses outside a worktree, on the
+  wrong branch, or with a dirty tree, and rebases on `main`. `finish.sh` refuses to emit
+  a DONE message over uncommitted changes. `review.sh` summarises a worker branch and
+  flags files outside the task's allowed paths. `integrate.sh` refuses on a dirty `main`,
+  from inside a worktree, or off `main`; aborts the merge on conflict rather than leaving
+  a half-merged tree. Each was verified to exit 1 on its guard, not 0.
+- **`QTEAM_TEST_CMD` documented as `bash tests/run-all-unit-tests.sh`** — the same command
+  `.github/workflows/ci.yml` runs, so `integrate.sh` gates every merge on the suite CI
+  will run, and that runner already asserts `total > 0`.
+- **`crossSessionInbound: "accept"` and `worktree.baseRef: "head"` added to
+  `.claude/settings.json.example`**, not to a new `.claude/settings.json`. The bundle's
+  INTEGRATE.md asked for the latter; this repository cannot take it. `install.sh:641`
+  runs `merge_settings` only `if [ -f .claude/settings.json ]`, and `install.sh:114`
+  copies that file **verbatim** over `~/.claude/settings.json` when the user has none —
+  so a three-key file installs a settings file with no hooks. Committing it turned 36
+  hook-chain assertions red in CI on the first run. The keys live in the example, and
+  `CLAUDE.md` documents that they belong in the user's global settings.
+- **Scoped the whole coordination section to an active `qteam` tmux session**, with the
+  four panes and their launch commands written down, plus a model contract for that mode
+  only: Opus 5 leads and routes, Fable 5 is consulted punctually on complex decisions,
+  `zc` (`zai-claude`) takes medium/medium-high complexity, `mmx-1`/`mmx-2`
+  (`minimax-claude`) take the fast shallow volume. Outside a Q-team nothing changes.
+- **`.gitignore`: `results/`** — worker artifacts stay inside each worktree, unversioned.
+- **`.worktreeinclude`** carries `.env` / `.env.local` into new worktrees.
+- **Three fail-open guards in the bundled `wt-lead` scripts closed**, each reproduced
+  against the unfixed script first:
+  - `review.sh` ran `git diff --name-only` with rename detection on (git's default), which
+    collapses a rename to its **destination** alone. A worker could delete any file in the
+    repository by moving it into its own allowed directory and the allowed-paths check
+    still printed `OK: all changed files inside allowed paths`. The scope check now uses
+    `--no-renames`; the `--stat` display keeps detection, where it aids reading.
+  - `review.sh` compared an allowed path written in the directory form the skill itself
+    documents (`strategies/`) as `strategies//*`, matching nothing — in-scope work was
+    reported OUTSIDE and would have been returned for no reason. Trailing slashes are
+    stripped before matching.
+  - `integrate.sh` passed `"$@"` straight to `git cherry-pick`, which resolves any commit
+    it is handed. A stale or mistyped sha landed an unreviewed commit from an unrelated
+    branch on `main` while the script printed OK. Every sha is now required to be a commit
+    **and** reachable from the named branch.
+- **`tests/unit/test-wt-lead-scripts.sh`** (8 checks, registered in `run-all-unit-tests.sh`,
+  so CI runs it) locks all three down, plus a control that a legitimate cherry-pick still
+  succeeds — a fix that refused everything would pass the other three and be useless. The
+  runner asserts `total > 0` before reporting success.
+
+> Found while integrating, pre-existing, **not fixed here**: `install.sh` writes
+> `~/.claude/settings.json` only through `merge_settings`, which is gated on
+> `.claude/settings.json` existing in the repo — and it does not. So the installer has
+> never installed settings or hooks, `install.sh:815` reports that as a WARN rather than
+> a failure, and the 36 assertions in `tests/installer/test-hook-chain.bats` guarded by
+> `[[ -f "$SETTINGS_FILE" ]] || skip` have been skipping in every CI run since
+> 2026-02-15 (`f7dcf866`). The workflow that runs `install.sh` says doing so is "lo que
+> convierte esto en una prueba del instalador"; for settings it still is not. A skip that
+> reads as a pass over an unexercised installer path is the same fail-open family as
+> `zero-tests-is-never-success`.
+
 ### Fixed - the bash 3.2 guard missed case-modification expansion (follow-up to #44)
 
 - **`uses_bash4_only` in `tests/installer/test-bash-version-guard.bats` matched only
