@@ -2,21 +2,16 @@
 
 This document describes the comprehensive test suite for Multi-Agent Ralph Loop.
 
-> **Two runners, two audiences.** `./tests/run_tests.sh` is the human interface —
-> a multi-mode dispatcher (`python`, `bash`, `security`, etc.) with no fixed CI
-> caller. `./tests/run-all-unit-tests.sh` is the CI runner — invoked by
-> `.github/workflows/ci.yml` and `tests/installer/test-settings-merge.bats`.
-> Each covers a different subset; `run_tests.sh` adds 5 suites that
-> `run-all-unit-tests.sh` does not (`end-to-end/test-e2e-learning-complete-v1.sh`,
-> `integration/test-learning-integration-v1.sh`,
-> `quality-parallel/test-quality-parallel-v3-robust.sh`,
-> `test_v2.36_skills_unification.sh`, `unit/test-statusline-context.sh`).
-> The 5 are being triaged in issue #51 part 2 (T14-runtests2). Until that
-> pass settles, treat the two runners as complementary, not as substitutes.
->
-> Reproduction for the triage: `bash tests/run_tests.sh integration` exercises
-> the red suites individually; `bash tests/run-all-unit-tests.sh` is the CI
-> surface and passes 31/31 today.
+> **One runner.** `./tests/run-all-unit-tests.sh` is the canonical entry
+> point — invoked by `.github/workflows/ci.yml` and documented here for
+> contributors. The older `./tests/run_tests.sh` was retired in T17-retire
+> (issue #51 part 2); its 5 unique suites were either archived (the two
+> `learning-integration` scripts, in `tests/archive/learning-integration/`)
+> or moved to the `--with-install` opt-in bucket (the `quality-parallel-v3`
+> and `test_v2.36_skills` suites, which assert against a provisioned
+> machine or a retired detector scope). See
+> `tests/archive/v2-suite/README.md` and `tests/archive/learning-integration/README.md`
+> for the retirement rationale.
 
 ## Overview
 
@@ -33,14 +28,16 @@ This document describes the comprehensive test suite for Multi-Agent Ralph Loop.
 pip install pytest pytest-cov
 brew install bats-core
 
-# Run all tests
-./tests/run_tests.sh
+# Run all tests (the canonical entry point)
+./tests/run-all-unit-tests.sh
 
-# Run specific categories
-./tests/run_tests.sh python    # Python only
-./tests/run_tests.sh bash      # Bash only
-./tests/run_tests.sh security  # Security tests
-./tests/run_tests.sh v218      # v2.19 security fixes
+# Run with --with-install to also exercise suites that need a
+# fully-provisioned install (~/.claude/* symlinks, Obsidian vault, etc.).
+# These suites are skipped by default; pass --with-install to opt in.
+./tests/run-all-unit-tests.sh --with-install
+
+# Verbose mode (shows each test's output)
+./tests/run-all-unit-tests.sh --verbose
 ```
 
 ## Test Files
@@ -191,10 +188,16 @@ bats tests/test_settings_merge.bats
 
 ## V2.19 Security Tests
 
-The `v218` test mode runs only tests that verify security vulnerability fixes:
+V2.19 security vulnerability fixes are exercised by the bats suites
+`tests/test_ralph_security.bats` and `tests/test_mmc_security.bats`,
+both wired into `TEST_SUITES` in `run-all-unit-tests.sh`. To run them
+individually:
 
 ```bash
-./tests/run_tests.sh v218
+./tests/run-all-unit-tests.sh
+# or directly:
+bats tests/test_ralph_security.bats
+bats tests/test_mmc_security.bats
 ```
 
 ### VULN-001: Command Injection via escape_for_shell()
@@ -317,7 +320,7 @@ jobs:
           sudo apt-get install -y bats
 
       - name: Run tests
-        run: ./tests/run_tests.sh
+        run: ./tests/run-all-unit-tests.sh
 ```
 
 ## Test Coverage Goals
@@ -351,12 +354,12 @@ Ensure you're running from the project root:
 
 ```bash
 cd /path/to/multi-agent-ralph-loop
-./tests/run_tests.sh
+./tests/run-all-unit-tests.sh
 ```
 
 ### Permission denied
 
 ```bash
-chmod +x tests/run_tests.sh
+chmod +x tests/run-all-unit-tests.sh
 chmod +x tests/*.bats
 ```
