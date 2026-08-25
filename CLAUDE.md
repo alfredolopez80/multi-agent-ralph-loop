@@ -47,7 +47,7 @@ This is the ONLY configuration file for Claude Code (all models: Claude, Zai, Mi
 
 ### Global Infrastructure Validation
 
-All rules, skills, and agents are symlinked from this repo to global directories (`~/.claude/`). Validate/repair:
+Global directories (`~/.claude/`) receive a **mixed** distribution from this repo: the 7 top-level rules and the `learned/` taxonomy are header-stamped COPIES, `hooks/` is a directory symlink, and agents/skills are a mix of symlinks and copies. Per-component strategy: `docs/architecture/DISTRIBUTION_POLICY.md`. Validate/repair:
 ```bash
 bash ./scripts/validate-global-infrastructure.sh        # check
 bash ./scripts/validate-global-infrastructure.sh --fix  # auto-fix broken symlinks
@@ -75,7 +75,6 @@ Rule: `.claude/rules/browser-automation.md`
 | `audit-secrets.js` | Audit logging for 20+ secret patterns | PostToolUse |
 | `teammate-idle-quality-gate.sh` | Blocks idle with secrets/debug code (CWE-798, CWE-321) | TeammateIdle |
 | `task-completed-quality-gate.sh` | 7 quality gates including hardcoded secrets + SQL injection | TaskCompleted |
-| `cleanup-secrets-db.js` | Scans DB for exposed secrets | Manual |
 
 ## Session Lifecycle Hooks (v2.86)
 
@@ -206,7 +205,7 @@ never model choice.
 |-------|------|-----------------|---------|
 | L0 | `~/.ralph/layers/L0_identity.md` | ~239 | Agent identity + principles |
 | L1 | `~/.ralph/layers/L1_essential.md` | ~579 | 9 actionable rules (filtered from 1003) |
-| L2 | `.claude/rules/learned/{halls,rooms,wings}/` | on-demand | Project-specific taxonomy |
+| L2 | `.claude/rules/learned/{halls,rooms}/` | on-demand | Project-specific taxonomy |
 | L3 | Obsidian vault grep | on-demand | Full knowledge base queries |
 
 **Wake-up hook**: `.claude/hooks/wake-up-layer-stack.sh` runs at SessionStart and injects
@@ -221,7 +220,7 @@ Rules organized in 3 dimensions for flexible retrieval:
 |-----------|-----------|--------------|
 | **Halls** (by type) | `.claude/rules/learned/halls/` | decisions, patterns, anti-patterns, fixes |
 | **Rooms** (by topic) | `.claude/rules/learned/rooms/` | hooks, memory, agents, security, testing |
-| **Wings** (by scope) | `.claude/rules/learned/wings/` | `_global/`, `multi-agent-ralph-loop/` |
+| **Wings** (by scope) | no directory — compiled at session start | Wing (L2) content is generated from the Obsidian vault by the wake-up hook (`vault-wing-compiler.sh`); `.claude/rules/learned/wings/` does not exist |
 
 **L1 Filter**: Mechanical noise excluded (`ep-auto-*`, `ep-rule-*`), substantive filter (behavior >= 20 chars), criticality bonus (1.5x for CRITICAL/MUST/NEVER).
 
@@ -244,11 +243,15 @@ Each ralph agent has a diary in Obsidian vault:
 - **claude-mem removed**: Full forensic removal (Wave 0). Data migrated to Obsidian vault.
 - **Drift audit**: 18 findings documented in `docs/audit/CLAUDE_MD_DRIFT_2026-04-07.md`
 - **Context deduplication**: Claude Code deduplicates instruction blocks by REALPATH, not by content:
-  a symlink loads once, a copy is paid for again in full. The `learned/` taxonomy is symlinked to the
-  repo for that reason. The six top-level rules in `~/.claude/rules/` are header-stamped COPIES, synced
-  by `.claude/scripts/sync-rules-from-source.sh` and verified by `scripts/validate-global-infrastructure.sh`
-  (which strips the header before comparing). The previous claim that all global rules were symlinks was
-  false on disk, and a second symlink-based mechanism was competing with the copies — it has been retired.
+  a symlink loads once, a copy is paid for again in full. The `learned/` taxonomy is distributed as a
+  COPY (rsync `-a --delete`), not a symlink. The seven top-level rules in `~/.claude/rules/` are
+  header-stamped COPIES, synced by `.claude/scripts/sync-rules-from-source.sh` and verified by
+  `scripts/validate-global-infrastructure.sh` (which strips the header before comparing). The previous
+  claim that all global rules were symlinks was false on disk, and a second symlink-based mechanism was
+  competing with the copies — it has been retired. Known drift (2026-08-25): the rsync'd `learned/`
+  copies have diverged — the repo and global `learned/hooks.md` both carry a duplicated "Hook Stdin
+  Protocol" bullet (the generator emits duplicates); the `~/Documents/.claude/` copy, which has it
+  once, is the rare clean one.
 - **Distribution policy**: See `docs/architecture/DISTRIBUTION_POLICY.md` for symlink vs copy strategy per component type.
 
 ## Quality Gates
@@ -356,6 +359,33 @@ Lead is expected to route deliberately, not round-robin:
   worker's own worktree. lead reads them at `.claude/worktrees/<name>/results/`.
 - Messages between sessions use the ASSIGN / DONE / RETURN / REBASE / BLOCKED /
   MERGED formats defined in the skills. Keep them short; the work lives in git.
+
+### Q-team contract rules
+
+Each rule condenses real failures from this setup; the evidence (commands and
+measurements) lives in `docs/qteam/QTEAM_FAILURE_MODES.md`.
+
+1. Address `SendMessage` to `<name> [ref]` (ref from `ListAgents`). Delivered
+   only if the result says "another Claude session on this machine" —
+   `success: true` is the sender's receipt, never proof of delivery. Panel
+   text is invisible to other sessions: every PONG/DONE/BLOCKED/RETURN is a
+   tool call.
+2. A blocked guard is a STOP: report BLOCKED and wait. Never craft a command
+   variant that dodges the guard's pattern. If the guard is wrong, fix the guard.
+3. Validate a gate exactly as CI invokes it. Accepting a gate change requires
+   three results: passes over the tree, FAILS on a fresh violation, and the
+   escape hatch silences. Zero-scope is failure, not pass.
+4. A worker's real state is `git diff main...<branch>`, never `git status`:
+   a clean tree is as compatible with "never started" as with "done".
+5. Every reported bug carries a repro command and its output. When a diff
+   admits two readings, count before concluding. Verify a teammate's numbers
+   before they become documentation.
+6. Worker panes never use `--system-prompt-file` (it REPLACES the harness
+   prompt): use `--append-system-prompt[-file]`. The `[1m]` marker goes in
+   `--model`; the environment variable alone is not enough.
+7. Before acting on a warning, establish who emits it: a harness message and
+   a repo hook have different reliability and different fixes. No unknown
+   model silently gets a default context window.
 
 ### Required settings
 
