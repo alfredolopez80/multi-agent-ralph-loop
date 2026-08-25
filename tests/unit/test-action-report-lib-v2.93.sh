@@ -309,6 +309,7 @@ fi
 # Test 14: Test state reset after completion
 echo ""
 echo "Test 14: Test state reset after complete_action_report"
+start_action_report "reset-test" "Final test" >/dev/null 2>&1
 complete_action_report "success" "Final test" "" >/dev/null 2>&1
 
 if [[ -z "$CURRENT_ACTION_SKILL" ]]; then

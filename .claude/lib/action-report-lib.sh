@@ -165,7 +165,7 @@ format_duration() {
     elif [[ $seconds -lt 3600 ]]; then
         echo "$((seconds / 60))m $((seconds % 60))s"
     else
-        echo "$((seconds / 3600))h $(( (seconds % 3600) / 60 ))m"
+        echo "$((seconds / 3600))h $(( (seconds % 3600) / 60 ))m $((seconds % 60))s"
     fi
 }
 
