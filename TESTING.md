@@ -2,6 +2,22 @@
 
 This document describes the comprehensive test suite for Multi-Agent Ralph Loop.
 
+> **Two runners, two audiences.** `./tests/run_tests.sh` is the human interface —
+> a multi-mode dispatcher (`python`, `bash`, `security`, etc.) with no fixed CI
+> caller. `./tests/run-all-unit-tests.sh` is the CI runner — invoked by
+> `.github/workflows/ci.yml` and `tests/installer/test-settings-merge.bats`.
+> Each covers a different subset; `run_tests.sh` adds 5 suites that
+> `run-all-unit-tests.sh` does not (`end-to-end/test-e2e-learning-complete-v1.sh`,
+> `integration/test-learning-integration-v1.sh`,
+> `quality-parallel/test-quality-parallel-v3-robust.sh`,
+> `test_v2.36_skills_unification.sh`, `unit/test-statusline-context.sh`).
+> The 5 are being triaged in issue #51 part 2 (T14-runtests2). Until that
+> pass settles, treat the two runners as complementary, not as substitutes.
+>
+> Reproduction for the triage: `bash tests/run_tests.sh integration` exercises
+> the red suites individually; `bash tests/run-all-unit-tests.sh` is the CI
+> surface and passes 31/31 today.
+
 ## Overview
 
 | Category | Framework | Tests | Coverage |

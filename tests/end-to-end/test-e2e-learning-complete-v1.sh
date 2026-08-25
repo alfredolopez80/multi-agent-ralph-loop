@@ -3,6 +3,15 @@
 # Version 1.0.0
 # Part of Ralph Multi-Agent System Testing Suite
 #
+# ----------------------------------------------------------------------------
+# DIAGNOSTIC 2026-08-25 (T14-runtests2, #51 part 2): REMOVED (candidate)
+# First failure is Suite 1.4 "Learning gate registered" which greps
+# $HOME/.claude-sneakpeek/zai/config/settings.json — sneakpeek never installed
+# in this repo. Earlier suites (1.1-1.3) pass because they check $HOME paths
+# that exist by default in the dev environment.
+# Verdict: removed (asserts against retired sneakpeek architecture).
+# ----------------------------------------------------------------------------
+#
 # Purpose: Complete end-to-end validation of Learning System
 # Tests the entire flow from discovery to rule application
 #

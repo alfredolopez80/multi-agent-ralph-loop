@@ -2,6 +2,22 @@
 # Test suite for Multi-Agent Ralph v2.36 - Skills Unification
 # Tests: Commands→Skills migration, Agent hooks, Context thresholds, PostCompact recovery
 #
+# ----------------------------------------------------------------------------
+# DIAGNOSTIC 2026-08-25 (T14-runtests2, #51 part 2): OPT-IN (candidate)
+# Failure mode on a bare checkout:
+#   Test 1.1 (skills dir): PASS    (path is real: $HOME/.claude/skills)
+#   Test 1.2 (loop skill): FAIL    (loop not installed at user $HOME)
+#   Test 1.4 (context:fork): FAIL  (adversarial skill missing frontmatter tag)
+#   Test 1.5 (count>=100): FAIL    (96 < 100)
+#   Test 1.7 (migration script): FAIL (scripts/migrate-commands-to-skills.sh absent)
+#   Test 2.1-2.2 (agent hooks): FAIL (frontmatter hooks missing on 5 agents)
+# All failures trace to "the user's $HOME install is not the v2.36 reference
+# state" — i.e., needs provisioned machine. None are production defects.
+# Astro note: scripts/migrate-commands-to-skills.sh being absent in the repo is
+# the strongest single signal that the migration tool was retired; this is
+# "needs installed machine + retired migration tool", which leans removed.
+# Verdict: opt-in (works on a fully-installed v2.36 dev box; otherwise red).
+# ----------------------------------------------------------------------------
 # Usage:
 #   ./tests/test_v2.36_skills_unification.sh           # Run all v2.36 tests
 #   ./tests/test_v2.36_skills_unification.sh skills    # Run only skills tests
