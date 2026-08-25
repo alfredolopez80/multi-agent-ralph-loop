@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "date": "2026-08-25",
   "issue": 46,
   "phase": "STEP B (manifest + regression tests). STEP A (diagnostic shutdown) deliberately NOT done: ruled unsafe as drafted; B goes first.",
@@ -61,7 +61,7 @@
         "Own fail-closed trap _emit_deny_on_crash on ERR/EXIT (lines 15-18): a crash denies, logged to ~/.ralph/logs/repo-boundary.log",
         "Its source of lib/worktree-utils.sh (line 36) carries a '|| { inline fallback implementations }' that is NOT fail-open: it defines in-repo replacements for get_project_root/get_main_repo and the script still fails closed — it degrades with dignity",
         "Boundary semantics: the guard denies paths inside OTHER git repos under GITHUB_DIR (~/Documents/GitHub, line 25) and allows everything else BY DESIGN (is_allowed_path tail: 'Allow other paths (system, etc.)') — it is a GitHub-repo boundary, not a filesystem boundary. A path outside GITHUB_DIR is never denied, no matter what it is; fixtures must target another repo under GITHUB_DIR (the fixture isolates it by overriding HOME for the guard invocation)",
-        "KNOWN DEFECT (found by this baseline's fixture work, 2026-08-25, fix out of T20 scope): canonicalize() failure emits the sentinel __CANONICALIZE_FAILED__ which is NEVER checked downstream — the log says 'denying as precaution' but the sentinel flows into 'Allow other paths' and the verdict is ALLOW. Repro: Edit/Write to a nonexistent out-of-repo path with a nonexistent parent dir (e.g. an invented nested path). Additionally the second fallback 'realpath -m' is a no-op on macOS ('illegal option -- m', verified rc=1), so on stock macOS canonicalize relies solely on the dir+base chain. Adjacent asymmetry: GITHUB_DIR (line 25) is built from raw $HOME without canonicalization while paths ARE canonicalized — through a symlinked HOME/Documents the other-repo branch can silently fail to match (observed with symlinked /tmp and /var on macOS)"
+        "v2.99.0 (#61, defects found by this baseline's fixture work, all fixed with per-defect regression tests in tests/test_hooks_repo_boundary_guard.py): (1) the __CANONICALIZE_FAILED__ sentinel is now CONSULTED in is_allowed_path and denies — it used to be emitted and never compared, logging 'denying as precaution' while ALLOWING (repro: symlink loop, tested); (2) both GNU-only 'realpath -m' branches replaced by a portable deepest-existing-ancestor walk ('realpath -m' was dead on stock macOS, 'illegal option -- m'); (3) GITHUB_DIR canonicalized with the same canonicalize() used for the paths it is compared against (raw $HOME failed to match through symlinked directories)"
       ],
       "fixture": {
         "run": "d=\"$(cd \"$(mktemp -d)\" && pwd -P)\" && mkdir -p \"$d/Documents/GitHub/fr\" && git -C \"$d/Documents/GitHub/fr\" init -q && printf '{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"%s/Documents/GitHub/fr/x.md\"}}' \"$d\" | HOME=\"$d\" bash .claude/hooks/repo-boundary-guard.sh; rc=$?; rm -rf \"$d\"; exit $rc",

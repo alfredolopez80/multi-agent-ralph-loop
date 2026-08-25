@@ -31,6 +31,10 @@
 #   declare-A     `declare/typeset -A` necesita bash 4; macOS /bin/bash es 3.2
 #                 (ver el detalle en .claude/lib/context-windows.sh).
 #   readlink-f    `readlink -f` es GNU; BSD readlink no lo garantiza.
+#   realpath-m   `realpath -m` (resolve missing) es GNU; el realpath de stock
+#                 macOS responde "illegal option -- m" (rc=1). Agnadido en
+#                 #61 tras descubrirse muerto-en-macOS dentro de un guard de
+#                 seguridad (repo-boundary-guard.sh, arreglado en v2.99.0).
 #   sort-V        `sort -V` (version sort) es GNU.
 #   cat-A         `cat -A` es GNU; BSD cat no lo trae (fue el commit 7d5e19e,
 #                 en el paso de diagnostico del bug anterior, ironicamente).
@@ -109,6 +113,7 @@ timeout	(^|[^[:alnum:]_-])timeout[[:space:]]+([0-9]+|\$)
 sed-gnu-class	(^|[^[:alnum:]_-])sed[[:space:]][^;|]*['\"][^'\"]*\\[dw]
 declare-A	(^|[^[:alnum:]_-])(declare|typeset)[[:space:]]+-[A-Za-z]*A([^[:alpha:]]|$)
 readlink-f	(^|[^[:alnum:]_-])readlink[[:space:]]+([^;|]*[[:space:]])?-f([^[:alnum:]]|$)
+realpath-m	(^|[^[:alnum:]_-])realpath[[:space:]]+([^;|]*[[:space:]])?-m([^[:alnum:]]|$)
 sort-V	(^|[^[:alnum:]_-])sort[[:space:]]+([^;|]*[[:space:]])?-V([[:space:]]|$)
 cat-A	(^|[^[:alnum:]_-])cat[[:space:]]+([^;|]*[[:space:]])?-A([^[:alnum:]]|$)
 RULES
@@ -258,6 +263,7 @@ __GNU_ONLY_ALLOWLIST_START__
 .claude/backup/hooks/unified-context-tracker.sh|timeout
 .claude/hooks/ai-code-audit.sh|stat-bsd
 .claude/hooks/ai-code-audit.sh|stat-c
+.claude/hooks/auto-format-prettier.sh|realpath-m
 .claude/hooks/anti-rationalization-gate.sh|date-d
 .claude/hooks/anti-rationalization-gate.sh|stat-bsd
 .claude/hooks/anti-rationalization-gate.sh|stat-c
@@ -269,6 +275,7 @@ __GNU_ONLY_ALLOWLIST_START__
 .claude/hooks/lib/worktree-utils.sh|stat-c
 .claude/hooks/orchestrator-auto-learn.sh|timeout
 .claude/hooks/parallel-explore.sh|timeout
+.claude/hooks/plan-sync-post-step.sh|realpath-m
 .claude/hooks/plan-state-adaptive.sh|stat-bsd
 .claude/hooks/plan-state-adaptive.sh|stat-c
 .claude/hooks/plan-state-lifecycle.sh|stat-bsd
