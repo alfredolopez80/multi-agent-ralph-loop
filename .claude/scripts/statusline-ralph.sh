@@ -596,9 +596,29 @@ if [[ -n "$context_info" ]] && [[ "$context_info" != "null" ]] && [[ "$context_i
         fi
     fi
 
-    # Write to cache for validation
-    mkdir -p /tmp 2>/dev/null
-    cat > /tmp/ralph-statusline-context.json << EOF
+    # v2.83.0 (T38, issue #60): per-session cache file. The previous
+    # default (/tmp/ralph-statusline-context.json) was shared by every
+    # Claude session on the machine; with N panes, the statusline in
+    # one pane could be reading another pane's data. session_id is in
+    # the statusline payload (same as the hook payload), and each
+    # Claude session has a unique one. Sanitization follows SEC-029
+    # (same as pre-compact-handoff.sh) to prevent path traversal.
+    #
+    # Lifecycle: /tmp is ephemeral on macOS (cleared on reboot and
+    # by the system periodically). One file per session; bounded
+    # by the number of Claude sessions on this machine. No TTL
+    # cleanup is added because /tmp is the conventional place for
+    # ephemeral state.
+    #
+    # Override: RALPH_STATUSLINE_CACHE=/full/path (used by
+    # tests/unit/test-statusline-context.sh to keep its
+    # assertions hermetic).
+    SESSION_ID=$(echo "$stdin_data" | jq -r '.session_id // empty' 2>/dev/null)
+    SESSION_ID=$(printf '%s' "$SESSION_ID" | tr -cd 'a-zA-Z0-9_-' | head -c 64)
+    [[ -z "$SESSION_ID" ]] && SESSION_ID="unknown"
+    CACHE_FILE="${RALPH_STATUSLINE_CACHE:-/tmp/ralph-statusline/context-${SESSION_ID}.json}"
+    mkdir -p "$(dirname "$CACHE_FILE")" 2>/dev/null || true
+    cat > "$CACHE_FILE" << EOF
 {
   "used_tokens": ${used_tokens},
   "total_tokens": ${context_size},
