@@ -120,6 +120,7 @@ TEST_SUITES=(
     "security/test-json-error-handling.sh:Security: JSON error handling"
     "security/test-logging-standards.sh:Security: logging standards"
     "security/test-shell-syntax-validation.sh:Security: shell syntax validation"
+    "security/test-sql-injection-blocking.sh:Security: SQL injection blocking"
     "skills/test-autoresearch-smart-setup.sh:Skills: autoresearch smart setup"
     "stop-hook/test-ralph-stop-quality-gate.sh:Stop hook: quality gate"
     "stop-hook/test-ralph-subagent-stop.sh:Stop hook: subagent stop"
@@ -173,6 +174,7 @@ BATS_SUITES=(
     "test_security_functions.bats:Security functions"
     "test_settings_merge.bats:Settings merge"
     "test_worktree_workflow.bats:Worktree workflow"
+    "security/test-bug-fixes-v2.90.bats:Security: v2.90 bug fixes"
 )
 
 #######################################

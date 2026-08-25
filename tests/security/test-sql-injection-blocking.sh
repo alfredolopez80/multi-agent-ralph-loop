@@ -22,8 +22,12 @@ else
   echo "  ℹ️  No src/ directory found (skipping production check)"
 fi
 
-# Check that test files are marked with warnings
-if ! grep -r "INTENTIONAL SECURITY VULNERABILITIES" tests/ .claude/tests/ 2>/dev/null; then
+# Check that test files are marked with warnings.
+# NOTE (issue #50 audit): this grep used to include .claude/tests/, a directory
+# that no longer exists (deprecated). grep reports a missing operand as an
+# error exit even when it found matches in tests/ — so the suite printed the
+# marked files and still failed with "not marked". Only tests/ is scanned now.
+if ! grep -rq "INTENTIONAL SECURITY VULNERABILITIES" tests/ 2>/dev/null; then
   echo "❌ FAIL: Test files not marked with warnings"
   exit 1
 fi

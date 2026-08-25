@@ -18,10 +18,10 @@ install, no vault). Passing suites were re-run a second time to rule out flakes.
 
 | Outcome | Count | Action taken in this PR |
 |---|---:|---|
-| Passes on a bare checkout | 28 | Wired into `tests/run-all-unit-tests.sh` and into CI (23 shell + 5 bats) |
+| Passes on a bare checkout | 30 | Wired into `tests/run-all-unit-tests.sh` and into CI (24 shell + 6 bats; the two security suites were repaired into green by #50 — see below) |
 | Fails: needs a provisioned machine | 12 | The 10 shell suites moved to the opt-in `--with-install` bucket; the 2 bats suites left out, since that bucket is invoked with `bash` |
 | Fails: tests an implementation that no longer exists | 7 | Documented below; **not deleted** |
-| Fails: not root-caused | 15 | Documented below; **not deleted** |
+| Fails: not root-caused | 13 | Documented below; **not deleted** (15 before #50 reclassified the two security suites) |
 | Timed out | 0 | — |
 
 28 + 12 + 7 + 15 = 62. Every orphan is accounted for.
@@ -94,8 +94,8 @@ findings rather than stale tests.
 | `vault/test-vault-health.sh` | Needs provisioned machine | Obsidian vault (global wiki, root index, templates) |
 | `hooks/test_anti_rationalization_gate.sh` | Not root-caused | (no diagnostic line) |
 | `quality-parallel/test-quality-parallel-v4-final.sh` | Not root-caused | ❌ FAIL: Expected findings, got 0 |
-| `security/test-bug-fixes-v2.90.bats` | Not root-caused | not ok 1 BUG-001a: ralph-subagent-stop.sh uses head -c 100000 |
-| `security/test-sql-injection-blocking.sh` | Not root-caused | ❌ FAIL: Test files not marked with warnings |
+| `security/test-bug-fixes-v2.90.bats` | **Wired (repaired)** — issue #50 | The test lied, in five ways; the code is alive. Root cause below |
+| `security/test-sql-injection-blocking.sh` | **Wired (repaired)** — issue #50 | grep exit code poisoned by a dead path; markers exist. Root cause below |
 | `test-command-router-quick.sh` | Not root-caused | "additionalContext": "[Command Router] Detecte una tarea de debugging. Considera usar `/bug` pa |
 | `test_all_integration.sh` | Not root-caused | ✗ FAILED |
 | `test_v2.25_search_hierarchy.sh` | Not root-caused | (no diagnostic line) |
@@ -107,6 +107,52 @@ findings rather than stale tests.
 | `unit/test-action-report-integration-v2.93.sh` | Not root-caused | ✗ FAIL adr missing Action Reporting section |
 | `unit/test-action-report-lib-v2.93.sh` | Not root-caused | ✗ FAIL Failed report does not show FAILED status |
 | `unit/test-action-report-tracker-v2.93.sh` | Not root-caused | ✗ FAIL Background flag not recorded correctly: |
+
+## The two security suites: root cause (issue #50)
+
+Both were classified "Not root-caused" above. The verdict for both is the same:
+**the test was wrong, the code is right.** No production file was touched. The
+evidence, per suite:
+
+### `security/test-sql-injection-blocking.sh` — grep exit code poisoned by a dead path
+
+The failing assertion (line 26 before the repair):
+
+```bash
+if ! grep -r "INTENTIONAL SECURITY VULNERABILITIES" tests/ .claude/tests/ 2>/dev/null; then
+  echo "❌ FAIL: Test files not marked with warnings"
+```
+
+Reproduce with: `bash tests/security/test-sql-injection-blocking.sh` — the
+suite printed the marked files (`tests/quality-parallel/vuln.js`,
+`test-vulnerable.js`, … all carrying the `INTENTIONAL SECURITY VULNERABILITIES`
+banner added in 7675ae7) and still failed. The reason: `.claude/tests/` is a
+directory that no longer exists (deprecated), and `grep` treats a missing
+operand as an error, so it exits non-zero **even though it found matches in
+`tests/`**. The test reported "not marked" about files it had just printed.
+The markers exist; the expectation was correct; the operand list was not.
+Repaired by scanning `tests/` only, with `-q`.
+
+### `security/test-bug-fixes-v2.90.bats` — five distinct defects, zero production bugs
+
+The suite was written right after the v2.90.1 audit (e29eaca) and never
+followed the tree. 22 of 35 assertions still passed; every failure was the
+test, each for a different reason:
+
+| Defect | Evidence |
+|---|---|
+| **Absolute REPO_ROOT** (line 7) | `REPO_ROOT="/Users/alfredolopez/..."` — on any other machine (including CI) every assertion fails with "No such file or directory". This alone explains the original `not ok 1 BUG-001a` diagnostic. Repair note: the usual `BASH_SOURCE` pattern does **not** work under bats-core (it runs each test from a generated script in `$TMPDIR`, so `BASH_SOURCE[0]` resolves to `/var/folders/...`); the bats-canonical `$BATS_TEST_DIRNAME` does. |
+| **Retired implementation: `promptify-auto-detect.sh`** | Deleted in 498556f (Unified Herding Blanket v3.0, −218 lines). Its live successor is `run_promptify_auto_detect()` in `.claude/hooks/command-router.sh:377`. BUG-001c removed; BUG-001f loop no longer lists it. |
+| **Renamed implementation: `sanitize-secrets.js`** | Renamed to `audit-secrets.js` in 5ac3547. BUG-008a/b and two STRUCT assertions now target the new name. The `sk-proj-` ordering survives (line 46 before line 52). |
+| **Moved implementation: `handoff-integrity.sh`** | Moved from `.claude/hooks/` to `.claude/lib/` in 498556f. `umask 077` and `chmod 600` survived the move (`.claude/lib/handoff-integrity.sh:22-23`) — verified by BUG-009c, which sources the lib and checks the created sidecar is mode 600. BUG-009a/b/c retargeted to `$LIB_DIR`. |
+| **Retired implementation: `cleanup-secrets-db.js`** | Deleted in e580a8b (MemPalace v3.0, claude-mem forensic removal); only an archived copy remains under `.claude/archive/`. BUG-011 removed. **Drift note:** the root `CLAUDE.md` still lists `cleanup-secrets-db.js` as a live manual hook — that table is stale and needs its own pass. |
+| **Obsolete output format (BUG-007b/c/d)** | The assertions grepped for `'"block"'`, a value `permissionDecision` never had (see `tests/HOOK_FORMAT_REFERENCE.md`; PreToolUse uses allow/deny). The live guard emits `{"hookSpecificOutput": {..., "permissionDecision": "deny", ...}}` for `$(rm -rf …)` and backticks, `permissionDecision: "allow"` for `$(date)` — verified by direct invocation. The semantics (block destructive substitution, allow safe substitution) are unchanged and still asserted. |
+| **stderr discarded (BUG-008b)** | `audit-secrets.js` prints the classification ("OpenAI Project Key: 1") to **stderr** and the hook JSON to stdout; the old assertion piped through `2>/dev/null` and grepped the stream it had thrown away. |
+
+After repair: 32/32 pass in a worktree checkout (a path the old hardcoded
+`REPO_ROOT` could never have reached). Both suites are wired into
+`tests/run-all-unit-tests.sh` — the shell suite into `TEST_SUITES`, the bats
+suite into `BATS_SUITES`.
 
 ## Two side effects found while running them
 
@@ -196,8 +242,9 @@ is available there.
 
 ## Follow-up
 
-The 15 "not root-caused" suites are the remaining work from `#42` item 4. Four of them
-are the `action-report-v2.93` family and two are security assertions
-(`test-bug-fixes-v2.90`, `test-sql-injection-blocking`) — those two should be looked at
-first, since a security test failing on current code is either a real finding or a test
-that has been lying.
+The 13 remaining "not root-caused" suites are the remaining work from `#42` item 4,
+tracked in #50. The two security suites (`test-bug-fixes-v2.90`,
+`test-sql-injection-blocking`) were resolved first — both were lying tests over live
+code, both repaired and wired (see "The two security suites: root cause" above). The
+four `action-report-v2.93` suites and `quality-parallel/test-quality-parallel-v4-final.sh`
+(tied to the fixture-destruction side effect) are the natural next targets.
