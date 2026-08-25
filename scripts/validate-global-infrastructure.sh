@@ -176,6 +176,69 @@ for skill in "${SKILLS[@]}"; do
   fi
 done
 
+# === 3b. SKILLS DRIFT vs repo source (T57) ===
+# T57: detect when a STANDALONE COPY in ~/.claude/skills/ has drifted
+# from the repo source. Symlinks cannot drift (they ARE the source)
+# and count as pass; independent copies are diff-compared.
+# A symlink that points well is NOT drift — counting it as such would
+# be permanent noise.
+# T55/T56 finding: 11 of 61 skills had been frozen at 4 distinct
+# dates across April-June 2026; zero was content-only-in-global.
+# Fail-loud: a zero-scan run reports failure (zero-tests-is-never-success).
+# Escape hatch: list names in $REPO/.claude/.skill-drift-ignore
+# (one per line, optionally ' | reason'); ignored skills print
+# as PASS (ignored) and are excluded from the drift count.
+echo ""
+echo "=== Skills Drift (repo vs ~/.claude/skills) ==="
+DRIFT_SCANNED=0
+DRIFT_IGNORE_FILE="$REPO/.claude/.skill-drift-ignore"
+DRIFT_IGNORE_NAMES=""
+if [[ -f "$DRIFT_IGNORE_FILE" ]]; then
+  while IFS= read -r line; do
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    DRIFT_IGNORE_NAMES+=" ${line%%|*}"
+  done < "$DRIFT_IGNORE_FILE"
+fi
+
+for skill_dir in "$REPO/.claude/skills/"*/; do
+  [[ ! -d "$skill_dir" ]] && continue
+  skill_name=$(basename "$skill_dir")
+  [[ "$skill_name" == .* ]] && continue
+  [[ ! -f "$skill_dir/SKILL.md" ]] && continue
+  if [[ " ${DRIFT_IGNORE_NAMES} " == *" ${skill_name} "* ]]; then
+    pass "$skill_name → ignored (escape hatch)"
+    continue
+  fi
+  DRIFT_SCANNED=$((DRIFT_SCANNED + 1))
+  global_path="$HOME/.claude/skills/$skill_name"
+  global_skill_md="$global_path/SKILL.md"
+  if [[ -L "$global_path" ]]; then
+    # Symlink at the directory level — cannot drift
+    if [[ -e "$global_path" ]]; then
+      pass "$skill_name → symlinked (cannot drift)"
+    else
+      fail "$skill_name → broken symlink"
+    fi
+  elif [[ -d "$global_path" && -f "$global_skill_md" ]]; then
+    # Standalone copy — diff against repo
+    if diff -q "$skill_dir/SKILL.md" "$global_skill_md" > /dev/null 2>&1; then
+      pass "$skill_name → in sync"
+    else
+      fail "$skill_name → DRIFT (repo and ~/.claude copy differ)"
+    fi
+  elif [[ -d "$global_path" ]]; then
+    fail "$skill_name → directory exists but no SKILL.md inside"
+  else
+    fail "$skill_name → missing from ~/.claude/skills/ (repo has it)"
+  fi
+done
+
+# Fail-loud on zero-scan: if the repo has no skills, the check is meaningless.
+# Same principle as testing-zero-tests-is-never-success.
+if [[ "$DRIFT_SCANNED" -eq 0 ]]; then
+  fail "skills drift scan found 0 skills — validator cannot honestly report success"
+fi
+
 # === 4. KEY AGENTS (must be symlinks) ===
 # NOTE: the Codex->Claude review/bug agents (orchestrator, ralph-security, and the rest of
 # the set) are distributed as COPIES, not symlinks — validated separately in section 4b.
