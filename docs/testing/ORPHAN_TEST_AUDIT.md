@@ -240,11 +240,51 @@ on three identical categories while three distinct ones leave it alone.
 `.claude/` than for `scripts/`: no bash-4-only syntax at all, since neither escape hatch
 is available there.
 
-## Follow-up
+## Closure of the 15 not-root-caused suites (issue #50, 2026-08-25)
 
-The 13 remaining "not root-caused" suites are the remaining work from `#42` item 4,
-tracked in #50. The two security suites (`test-bug-fixes-v2.90`,
-`test-sql-injection-blocking`) were resolved first — both were lying tests over live
-code, both repaired and wired (see "The two security suites: root cause" above). The
-four `action-report-v2.93` suites and `quality-parallel/test-quality-parallel-v4-final.sh`
-(tied to the fixture-destruction side effect) are the natural next targets.
+All fifteen now hold one of the three states #50 required. "Still failing, still
+unexplained" is no longer the state of any of them.
+
+| Suite | Verdict | Root cause |
+|---|---|---|
+| `security/test-bug-fixes-v2.90.bats` | **wired** | Five distinct test defects over live code. Production untouched |
+| `security/test-sql-injection-blocking.sh` | **wired** | `grep` include pointed at the dead `.claude/tests/` dir, poisoning the exit code even while printing matches |
+| `unit/test-action-report-generator-v2.93.sh` | **blocked** | Production: `${4:-{}}` yields `{}}`, corrupting the metadata JSON (#59) |
+| `unit/test-action-report-lib-v2.93.sh` | **wired** (partial) | Test grepped `Status:` while the library writes `**Status**:`. Two further failures are production (#59) |
+| `unit/test-action-report-tracker-v2.93.sh` | **blocked** | Production, cascading from the same expansion bug (#59) |
+| `unit/test-action-report-integration-v2.93.sh` | **removed / opt-in** | 48 of 61 `SKILL.md` files lack the Action Reporting section — documentation debt, orthogonal to the code bugs |
+| `quality-parallel/test-quality-parallel-v4-final.sh` | **blocked** | Production: the detector does not flag the SQL-injection and hardcoded-key fixtures. Previously masked by the suite eating its own fixtures (#52) |
+| `hooks/test_anti_rationalization_gate.sh` | **wired** | No bug. 9/9 green — the earlier verdict was stale and the suite had never actually been executed |
+| `test-command-router-quick.sh` | **wired with caveat** | Test bug (greedy `sed` captured only the last suggestion) plus a deliberate behaviour change (Promptify integration). Three residual failures are hook keyword defects — not promoted to a gate |
+| `test_all_integration.sh` | **wired** | No bug. 2/2 green |
+| `test_v2.25_search_hierarchy.sh` | **removed** (archived) | Tests the v2.x wrapper layer the repo superseded at v3.0 |
+| `test_v2.26_prefix_commands.sh` | **removed** (archived) | Same |
+| `test_v2.27_security_loop.sh` | **removed** (archived) | Same |
+| `test_v2.28_comprehensive.sh` | **removed** (archived) | Same, and byte-for-byte the same size as v2.27 with an identical header — a copy |
+| `test_v2_68_22_cli_commands.bats` | **opt-in** | Assumes an installed, current `ralph` CLI. The hardcoded path was removed (#55); the installed binary is stale |
+
+### What the four archived suites actually prove
+
+They are in `tests/archive/v2-suite/` with a README, not deleted. The core code they
+exercise (`cmd_research`, `cmd_library`, `cmd_browse`, `cmd_security_loop` in
+`scripts/ralph`) **still exists and their assertions against it pass**. What is absent
+is the wrapper layer: slash-command `.md` files, doc version markers, README sections,
+and `.ralph/` inside the repo. They describe a world the project left behind, not a
+broken one.
+
+A latent hazard is recorded in that README: all four carry `((VAR++))` under
+`set -uo pipefail`. Without `-e` it is inert today; adding `set -e` would kill them
+silently on the first counter update.
+
+### Corrected along the way
+
+The `((VAR++))` + `set -e` hypothesis was proposed for the four v2.x suites and
+**refuted**: they use `set -uo pipefail`, no `-e`. The pattern is present but does not
+abort. The refutation was reached by testing the hypothesis first rather than fitting
+the evidence to it.
+
+### Remaining, tracked elsewhere
+
+Three suites stay **blocked** on two production defects in
+`.claude/lib/action-report-generator.sh` and the quality detector, both filed as #59.
+Nothing was patched in production to turn a test green.
