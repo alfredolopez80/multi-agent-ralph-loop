@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# permission-guard.sh — Unified permission pipeline (v2.0)
+# permission-guard.sh — Unified permission pipeline (v2.1)
 # Hook: PreToolUse (Bash|Edit|Write + Agent|Task)
-# VERSION: 2.0.0
+# VERSION: 2.1.0
 #
 # v2.0.0 (issue #58): FAIL-CLOSED — every failure path now denies.
 #   - Delegate exits non-zero with empty/unparseable output -> deny
@@ -12,6 +12,12 @@
 #     death, so a syntax error in this file WAS a permission bypass. The
 #     trap's virtue is kept (Claude Code always receives parseable JSON);
 #     only its default changed: no conclusion reached => not allowed.
+#   - v2.1.0 (T19): unparseable or EMPTY stdin payload -> deny. "Could not
+#     read the input" is not "read it and have no objection": a malformed
+#     payload reaching this guard means something upstream broke, and
+#     answering allow to something unread is the exact shape of the bug
+#     this guard exists to fix. A VALID payload for a tool this guard does
+#     not cover still allows (the phases key on tool_name).
 # v1.1.0: propagate permissionDecision "ask" from git-safety-guard.py
 #         (cloud CLI confirmation tier) in addition to "deny"
 #
@@ -89,6 +95,15 @@ deny_no_decision() {  # $1 = delegate name, $2 = exit code, $3 = stderr file
 
 # SEC-111: Read input once from stdin (100KB max)
 INPUT=$(head -c 100000)
+
+# T19 (issue #58): the payload itself must be parseable JSON. Empty stdin or
+# garbage means the transport broke — deny, distinguishably from a VALID
+# payload for a tool this guard does not cover (which allows below).
+if [[ -z "$INPUT" ]] || ! echo "$INPUT" | jq -e . >/dev/null 2>&1; then
+    trap - ERR EXIT
+    deny_json "permission-guard: unparseable or empty stdin payload — cannot evaluate the operation (fail-closed)"
+    exit 0
+fi
 
 HOOKS_DIR="$(cd "$(dirname "$0")" && pwd)"
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
