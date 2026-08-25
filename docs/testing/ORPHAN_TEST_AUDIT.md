@@ -827,3 +827,68 @@ detect its own drift.
   v2.0.0: delete local copy, source live function via awk extraction,
   add 21st assertion with narrow range and explanation)
 - `docs/testing/ORPHAN_TEST_AUDIT.md` (this T36 section)
+
+## T52 — `tests/test_smart_skill_reminder_v3.sh` (smart-skill-reminder hook retired)
+
+**Status**: archived (not deleted) per the T30 / T52 decision.
+
+**The mechanism is retired, not the test broken.** The v3 hook was
+empirically shown to not deliver its suggestion to the model in any of
+the three channels it tried:
+
+1. `additionalContext` not honored in `PreToolUse` (zc: 0/1343 deliveries)
+2. `permissionDecisionReason` for `allow` has no slot in the tool_result
+   flow (zc: 0/25)
+3. Matching by generic extension produces alphabetical selection, not
+   relevance (the index order IS the selector)
+
+The hook is now a deprecation header plus a no-op body, NOT registered
+in `~/.claude/settings.json`. The 5 tests in v3 file
+(`tests/test_smart_skill_reminder_v3.sh`) all assert the v3 code emits
+a `permissionDecisionReason` with a skill suggestion. After T52, the
+v3 code is gone — the no-op body doesn't emit anything the tests check
+for. A failing test for a retired mechanism is worse than no test: it
+adds a "red in the gate" entry that nobody acts on, but a red
+test under `bash tests/run-all-unit-tests.sh` is the SAME red
+regardless of whether it's a regression or a retirement.
+
+**Why archive, not delete**: the 240 lines document the design intent
+and the failure modes of v3. The next person who considers rebuilding
+a skill reminder on this enumerator will find the test file more
+concrete than the commit message. The design itself is the lesson,
+not the failure.
+
+**Three appearances of the same shape** (silent tests for retired
+mechanisms is the audit's recurring finding):
+
+1. T30: `test_quality_gates.bats` (smart-skill-reminder failed every
+   test, 4 of 4). Mechanism retired; suite archived.
+2. T36: `tests/hooks/test_no_hook_hangs_or_blocks.sh` measure
+   patterns (1 of 3)
+3. **T52: `tests/test_smart_skill_reminder_v3.sh` (5 of 5)** —
+   mechanism retired; suite archived. The 5 tests in this file were
+   the most thorough demonstration of the v3 attempt; the audit moves
+   the test (not just a subset) because the entire hypothesis is
+   retired, not just one path through it.
+
+**Three appearances of the same shape, three different
+recommendations** — this audit is the right place to draw the
+line that says: an "all green" archive is archaeology; a "red"
+archive is regression-shaped. v3's tests were red — they got archived.
+v2's tests were red — they got archived. v1 hooks (T30) were red —
+they got archived. None were re-fixed in place; all went to
+`tests/archive/` with a README that names the retirement, not the
+failure.
+
+### What survived the v3 attempt
+
+`build-skill-index.sh` (the enumerator) survived as the standalone
+T52 enumerator used by mmx-2's lint (T50, check #4). The enumerator
+is the canonical "what skills can the model invoke" answer. Its
+T52 header documents the alphabetical-order caveat so the next
+selector-on-this-index knows what failure mode it inherits.
+
+The smart-skill-reminder design itself does NOT survive: the
+catalog in the model's context (246 skills, 19,705 tokens already
+paid) replaces any substring-based selector. The retired hook has
+no successor.
