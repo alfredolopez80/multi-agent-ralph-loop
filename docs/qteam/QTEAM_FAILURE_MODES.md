@@ -132,6 +132,20 @@ by reflex.
   all in `tests/test_gnu_only_guard.py` (6/6).
 - **Fix**: rule 3 — this is now the acceptance bar for any gate change.
 
+### 32. A test can be right in its assertion and destructive in its setup (mmx-2 drift fixture)
+- **What happened**: the skill-drift test rebuilt `.claude/.skill-drift-ignore` from
+  scratch in its fixture. Once T58's archive policy populated that file with 24 real
+  entries, running the test CLOBBERED them: every subsequent gate in the session saw
+  a gutted ignore list, and the test kept passing because it asserted against the
+  state it had just written.
+- **Evidence**: fixed in `577c5ea` (T62 block A) — `git show 577c5ea --
+  tests/test_skill_drift_check.py` shows the fixture changing from overwrite to
+  backup + APPEND (`existing = backup.decode() if had_pre_existing else ""`). The
+  assertion never changed: only the setup was destructive.
+- **Fix**: rule 3 corollary — a fixture must APPEND to legitimate state (or back it
+  up and restore it), never replace it. A green test that ran on state it
+  manufactured itself validates nothing about the tree.
+
 ---
 
 ## Rule 4 — State (done ≠ not started)
@@ -251,6 +265,21 @@ by reflex.
 - **Fix**: rule 6 — verify pane identity with `display-message -t %<id>`
   before any `-k` operation, and prefer the `%id` form in scripts.
   Indices are for humans, ids are for tools.
+
+### 33. Taking the repo's identity from the launcher instead of asking git (3rd occurrence)
+- **What happened**: three different scripts, on three different days, each derived
+  the repository root from how they happened to be launched — and each broke the
+  first time the launcher changed. T35: `CLAUDE_PROJECT_DIR` (unset when the hook is
+  invoked outside Claude Code). T61: pytest's cwd (differs per branch checkout).
+  T62: `BASH_SOURCE` (points at a worktree, not the main checkout, inside
+  `scripts/validate-skills-unification.sh`).
+- **Evidence**: three fixes, one shape — T62's is `git -C "$_VC_DIR" rev-parse
+  --path-format=absolute --git-common-dir` (commit `577c5ea`), which resolves the
+  main repository from any worktree or cwd. Each fix landed only after CI failed on
+  a machine whose launcher differed from the author's.
+- **Fix**: rule 6 corollary — a script's identity (which repo, which root) is asked
+  from git (`rev-parse`), never inherited from an environment variable, a cwd, or
+  `BASH_SOURCE`. Third occurrence makes it a class, not a slip.
 
 ---
 
@@ -376,3 +405,26 @@ printf '\033Ptmux;\033\033]777;notify;TITLE;BODY\033\033\\\033\\' > /dev/ttys001
   markers. Establish the emitter and inspect what it actually matched before
   acting on it (rule 7); a case-insensitive `todo` match is not viable in a
   Spanish-language repository.
+
+### 34. The double-emit class, three entry paths in three weeks
+- **What happened**: the same failure — a hook emitting two JSON objects on
+  stdout, which the runtime rejects — arrived through three structurally
+  different doors. (1) T16, `permission-guard.sh`: first sighting, closed by
+  zc. (2) Entry 27, `qteam-blocked-notify.sh`: `trap emit_and_exit ERR EXIT`
+  plus an explicit final call — two reachable emission points in one process.
+  (3) T62 block B, `skill-validator.sh`: the empty-stdin allow block sat at TOP
+  LEVEL, outside the `BASH_SOURCE[0] == $0` run-directly guard;
+  `validate_skill()` sources the hook with drained stdin, so the sourced copy
+  emitted a second allow.
+- **Evidence**: for (3), 12 tests failed with `Extra data` (two concatenated
+  JSON objects); measuring raw stdout of the sourced call showed the double
+  emission before any fix was attempted. Fix: moving the block inside the
+  guard — commit `a813569`. Entry 27 was caught by
+  `test_no_hook_hangs_or_blocks.sh`'s invariant: exactly one JSON object on
+  stdout.
+- **Fix**: generalize from entry 27 — the class is "more than one reachable
+  emission point", and the doors are traps, top-level code outside the
+  run-directly guard, and sourced-execution side effects. The assertion that
+  catches ALL of them is the count-the-objects invariant, which is why it must
+  exist for every JSON-emitting hook, not just the ones that already burned
+  us.
