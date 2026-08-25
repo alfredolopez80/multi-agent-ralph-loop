@@ -19,6 +19,9 @@ set -euo pipefail
 
 # Shared colors, counters and the zero-checks verdict guard.
 _VC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Requires bash 4+: the result tables below are associative arrays. Declared here so
+# the library can enforce it; bash-3-clean callers of the same library are unaffected.
+VC_REQUIRE_BASH4=1
 source "${_VC_DIR}/lib/validation-common.sh"
 
 # Configuration

@@ -39,21 +39,36 @@ teardown() {
 # STRUCTURAL: the guard cannot be bypassed by adding a new validator
 #===============================================================================
 
-@test "guard: every scripts/ validator using declare -A sources validation-common.sh" {
+@test "guard: every scripts/ script using declare -A declares VC_REQUIRE_BASH4" {
     local offenders=""
     local f
     for f in "$PROJECT_ROOT"/scripts/*.sh; do
         grep -q 'declare -A' "$f" || continue
-        grep -q 'validation-common.sh' "$f" || offenders="$offenders $(basename "$f")"
+        grep -q 'VC_REQUIRE_BASH4=1' "$f" || offenders="$offenders $(basename "$f")"
     done
-    # A validator with declare -A and no shared library is a validator with no
-    # version guard — that is precisely the #44 failure mode, reintroduced.
-    [[ -z "$offenders" ]] || fail "declare -A without the bash 4+ guard:$offenders"
+    # declare -A without the declaration is a script that will silently corrupt its
+    # own result tables on macOS — the #44 failure mode, reintroduced.
+    [[ -z "$offenders" ]] || fail "declare -A without VC_REQUIRE_BASH4=1:$offenders"
 }
 
-@test "guard: validation-common.sh carries the version check" {
+@test "guard: no bash-3-clean script opts into the bash 4 requirement" {
+    local offenders=""
+    local f
+    for f in "$PROJECT_ROOT"/scripts/*.sh; do
+        grep -q 'VC_REQUIRE_BASH4=1' "$f" || continue
+        grep -q 'declare -A' "$f" || offenders="$offenders $(basename "$f")"
+    done
+    # The converse matters just as much. Ten of the library's twenty callers are
+    # bash-3 clean and one advertises "COMPAT: Bash 3.2+ (macOS native)" in its
+    # header; making them require bash 4 would break them on stock macOS to solve a
+    # problem they do not have.
+    [[ -z "$offenders" ]] || fail "opted into bash 4 without needing it:$offenders"
+}
+
+@test "guard: validation-common.sh carries the version check, gated on the flag" {
     assert_file_exists "$VC_LIB"
     grep -q 'BASH_VERSINFO' "$VC_LIB"
+    grep -q 'VC_REQUIRE_BASH4' "$VC_LIB"
 }
 
 #===============================================================================
@@ -65,7 +80,7 @@ teardown() {
 # literal interpreter that caused the bug. Either way the guard's condition holds.
 
 @test "guard: re-execs under a newer bash when one is available" {
-    run sh "$VC_LIB"
+    run env VC_REQUIRE_BASH4=1 sh "$VC_LIB"
     # If the guard did not exec a real bash, the shell would reach `[[` further
     # down the library and die: reaching exit 0 is itself the proof it re-execed.
     [[ $status -eq 0 ]]
@@ -76,14 +91,28 @@ teardown() {
     # Same library, with the candidate interpreters pointed at nothing. This is
     # the only part that has to be simulated: the machine running the suite has a
     # usable bash by definition, so the refusal path cannot be reached honestly.
-    sed 's#^    for _vc_bash in .*#    for _vc_bash in /nonexistent/bash; do#' \
+    sed 's#^[[:space:]]*for _vc_bash in .*#    for _vc_bash in /nonexistent/bash; do#' \
         "$VC_LIB" > "$stub"
     grep -q '/nonexistent/bash' "$stub" || fail "stub rewrite did not apply"
 
-    run sh "$stub"
+    run env VC_REQUIRE_BASH4=1 sh "$stub"
     [[ $status -eq 78 ]]
     [[ "$output" == *"requires bash 4.0+"* ]]
     [[ "$output" == *"brew install bash"* ]]
+}
+
+@test "guard: a caller that does not opt in is never blocked by the version check" {
+    local stub="$TEST_TMPDIR/vc-no-candidates-unflagged.sh"
+    sed 's#^[[:space:]]*for _vc_bash in .*#    for _vc_bash in /nonexistent/bash; do#' \
+        "$VC_LIB" > "$stub"
+    grep -q '/nonexistent/bash' "$stub" || fail "stub rewrite did not apply"
+
+    # Same old shell, same unreachable candidates, but no VC_REQUIRE_BASH4. The
+    # bash-3-clean callers must sail straight past. 78 here would mean stock macOS
+    # loses install-language-servers.sh and nine others to a guard they never needed.
+    run sh "$stub"
+    [[ $status -ne 78 ]]
+    [[ "$output" != *"requires bash 4.0+"* ]]
 }
 
 #===============================================================================
