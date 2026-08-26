@@ -80,6 +80,11 @@ fi
 LOG_DIR="${HOME}/.ralph/logs"
 mkdir -p "$LOG_DIR"
 
+# T80: shared helpers — main-repo identity (worktree-safe) and UTC day stamp.
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || true
+facts_today() { date -u +%Y%m%d; }
+
 # Semantic memory is now in Obsidian Vault — no separate semantic.json needed
 
 # Get content based on tool type
@@ -116,11 +121,21 @@ fi
         # Strip absolute user paths
         file=$(echo "$file" | sed "s|${HOME}/||g; s|/Users/[^/]*/||g")
 
-        # Write to vault facts directory
-        VAULT_FACTS_DIR="${HOME}/Documents/Obsidian/MiVault/projects/$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo 'unknown')")/facts"
+        # Write to vault facts directory.
+        # T80(a): project identity is the MAIN REPO root (worktree-safe) so
+        # facts from workers land in the root project the wing compiler reads;
+        # T80(b): UTC day so extractor and compiler never split across midnight.
+        local vault_dir="${RALPH_VAULT_DIR:-${HOME}/Documents/Obsidian/MiVault}"
+        local main_repo
+        main_repo="$(get_main_repo 2>/dev/null || git rev-parse --show-toplevel 2>/dev/null || echo '')"
+        local project_name
+        project_name="$(basename "${main_repo:-unknown}")"
+        [[ "$project_name" == "." || -z "$project_name" ]] && project_name="unknown"
+        VAULT_FACTS_DIR="$vault_dir/projects/$project_name/facts"
         mkdir -p "$VAULT_FACTS_DIR" 2>/dev/null || return 0
 
-        local today=$(date +%Y%m%d)
+        local today
+        today=$(facts_today)
         local fact_file="$VAULT_FACTS_DIR/facts-${today}.md"
 
         # Append fact (atomic append, one line per fact)

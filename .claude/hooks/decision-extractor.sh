@@ -90,13 +90,25 @@ if [[ -f "$CONFIG_FILE" ]]; then
 fi
 
 # Paths (MemPalace v3.0: episodes moved to Obsidian Vault, semantic.json removed)
-VAULT_DIR="${HOME}/Documents/Obsidian/MiVault"
-# v3.2 FIX: EPISODES_DIR was undefined — decisions now go to vault
-PROJECT_NAME=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || echo 'unknown')")
+# RALPH_VAULT_DIR exists for tests only; production always uses the real vault.
+VAULT_DIR="${RALPH_VAULT_DIR:-${HOME}/Documents/Obsidian/MiVault}"
+# T80(a): project identity is the MAIN REPO root, not the cwd toplevel — a
+# worker running in a worktree must land its facts under the root project so
+# the wing compiler (which reads the root project) sees them. Same mechanism
+# as get_main_repo everywhere else; no fourth method.
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || true
+_MAIN_REPO="$(get_main_repo 2>/dev/null || git rev-parse --show-toplevel 2>/dev/null || echo '')"
+PROJECT_NAME="$(basename "${_MAIN_REPO:-unknown}")"
+[[ "$PROJECT_NAME" == "." || -z "$PROJECT_NAME" ]] && PROJECT_NAME="unknown"
 EPISODES_DIR="$VAULT_DIR/projects/$PROJECT_NAME/decisions"
 mkdir -p "$EPISODES_DIR" 2>/dev/null || true
 LOG_DIR="${HOME}/.ralph/logs"
 mkdir -p "$LOG_DIR"
+
+# T80(b): facts files are named in UTC so extractor and wing compiler can
+# never disagree across a midnight boundary. Extracted for testability.
+facts_today() { date -u +%Y%m%d; }
 
 # Semantic memory is now in Obsidian Vault — no separate semantic.json needed
 
@@ -257,7 +269,7 @@ trap release_lock EXIT
         DECISIONS_ADDED=0
         VAULT_DECISIONS_FACTS_DIR="$VAULT_DIR/projects/$PROJECT_NAME/facts"
         mkdir -p "$VAULT_DECISIONS_FACTS_DIR" 2>/dev/null || true
-        today=$(date +%Y%m%d)
+        today=$(facts_today)
         decisions_fact_file="$VAULT_DECISIONS_FACTS_DIR/facts-${today}.md"
 
         # Add design patterns to vault facts
