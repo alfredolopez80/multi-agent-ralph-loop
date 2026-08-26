@@ -449,3 +449,28 @@ printf '\033Ptmux;\033\033]777;notify;TITLE;BODY\033\033\\\033\\' > /dev/ttys001
   claim, not a measurement — when a field and the filesystem disagree,
   verify which one lies before building a conclusion on either. And never
   summarize a directory from a truncated view of a sorted listing.
+
+### 36. A consumer without a producer is indistinguishable from an idle one
+- **What happened**: `vault-writeback.sh` ran on every Stop since the Karpathy
+  cycle landed, reading `~/.ralph/.writeback-queue.json` — a file nothing ever
+  wrote. Its log said `INFO no writeback queue, nothing to process` in every
+  session, which reads as a healthy idle consumer. The third link of the
+  INGEST→QUERY→WRITEBACK→LINT cycle was never connected at all.
+- **Evidence** (T84, verified independently of the lead's read): the queue
+  file has never existed on disk; a repo-wide sweep for "writeback" matches
+  only the consumer, two tests and audit docs; `git log -S "writeback-queue"`
+  shows only the creating commit (`249832b`) and a test fix — no producer
+  ever existed or was removed, it was born disconnected. The hook's own
+  header credits `smart-memory-search.sh` as the producer; that file never
+  mentions writeback and lives on a different event. The covering test
+  asserted the *registration* (green while the hook did nothing) and
+  `pytest.skip`'ped without `~/.claude/settings.json`, so CI never ran it:
+  green by absence on one machine, false comfort on the other.
+- **Fix**: hook deregistered (T78); test rewritten to assert what the repo
+  can own (files exist and are executable; and the no-producer state is
+  pinned by an executable assertion that fails if anyone wires a producer,
+  forcing a conscious update alongside this entry). Rules: a quiet queue
+  consumer's "nothing to process" is not health evidence — follow the data
+  to its producer before believing the idle reading. And when a comment
+  names its producer, verify the producer mentions it back; one-sided
+  credit in a header is documentation of intent, not of wiring.
