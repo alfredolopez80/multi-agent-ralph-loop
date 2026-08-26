@@ -400,3 +400,109 @@ def test_recall_low_risk_emits_source(store, tmp_path):
     assert report["analysis"]["risk_level"] == "low"
     item = report["memory_context"][0]
     assert item["source"] == "Migrated from procedural rules.json"
+
+
+# --- budget default (C8, #47): measured, not intuitive -----------------------
+
+def test_default_budget_is_the_measured_plateau():
+    """800, not 1200 (T70+T72 over this project's corpus): the real top-5
+    needs 418 units, 800 is the benefit plateau on both the broad hook query
+    and directed queries, and 1200 bought exactly nothing over it."""
+    import inspect
+
+    assert inspect.signature(recall).parameters["budget_limit"].default == 800
+
+
+def test_cli_default_budget_is_800():
+    """The wake-up hook invokes the CLI without --budget, so the CLI default
+    is the operative number. MEMORY_TRACE reports the limit actually
+    applied."""
+    import json
+    import subprocess
+
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(_MEMORY_DIR / "recall_v2.py"),
+            "--project-root",
+            ".",
+            "--query",
+            "database parameterized queries",
+            "--json",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=True,
+    )
+    trace = json.loads(proc.stdout)["MEMORY_TRACE"]
+    assert trace["token_budget"]["limit"] == 800
+
+
+def test_budget_valley_is_real_and_documented(tmp_path):
+    """A middling budget can select WORSE than a smaller one (T72 finding).
+
+    Geometry measured on the real corpus: one high-ranked rule renders huge
+    (zero-tests-is-never-success: 257 units alone) while its rank neighbors
+    are small. At 400 the greedy admits it and crowds out two smaller rules
+    that together outscore it; at 256 it never fits and the smaller ones
+    fill the limit. This pins the behavior so nobody later "fixes" the
+    default by picking a middling value for safety — that is the worst
+    point of the range. Monotonicity would require ranking by score/units
+    inside the budget, which is an engine decision, not a default change.
+    """
+    from recall_v2 import estimate_units
+
+    home = tmp_path / "ralph_home"
+    s = TreeStore(home)
+    words = "rollback savepoint migration index trigger constraint".split()
+
+    def node(trigger_terms, summary_terms, pad=0):
+        return _payload(
+            "projA",
+            summary=("filler " * pad + " ".join(summary_terms)).strip(),
+            trigger={"text": " ".join(trigger_terms)},
+        )
+
+    # Strict score order (trigger weight 8, summary weight 5):
+    # A 48 > B 40 > C 32 > D 29 > E 26 > F 23, with E+F = 49 > B = 40 —
+    # the valley condition: the big item is worth LESS than the two smalls
+    # it displaces.
+    s.create_node(node(words[0:6], ["rule", "alpha"], pad=25))
+    s.create_node(node(words[1:6], ["rule", "beta"], pad=260))
+    s.create_node(node(words[2:6], ["rule", "gamma"], pad=25))
+    s.create_node(node(words[3:6], [words[0]], pad=25))
+    s.create_node(node(words[4:6], [words[0], words[1]], pad=25))
+    s.create_node(node(words[5:6], [words[0], words[1], words[2]], pad=25))
+
+    ctx = _ctx("projA")
+    query = " ".join(words)
+
+    full = recall(query, ctx, home, limit=10, budget_limit=10**9)["memory_context"]
+    units = [estimate_units(i) for i in full]
+    scores = [i["score"] for i in full]
+    # Preconditions: the fixture reproduces the measured geometry (T72 real
+    # corpus: big rule 257u, smalls 33-48u). If these fail, the padding
+    # drifted — fix the fixture, do not relax the asserts.
+    assert scores == sorted(scores, reverse=True) and len(set(scores)) == 6
+    big, smalls = units[1], units[0:1] + units[2:]
+    assert 265 <= big <= 290, f"big item drifted: {big} units"
+    assert all(30 <= u <= 55 for u in smalls), f"small items drifted: {units}"
+
+    sel_256 = recall(query, ctx, home, limit=5, budget_limit=256)["memory_context"]
+    sel_400 = recall(query, ctx, home, limit=5, budget_limit=400)["memory_context"]
+    sum_256 = sum(i["score"] for i in sel_256)
+    sum_400 = sum(i["score"] for i in sel_400)
+
+    assert len(sel_256) == 5, "256 must fill the limit with small items"
+    assert len(sel_400) < len(sel_256), (
+        "400 must admit the big item and crowd out small ones (exact count "
+        "depends on rendering overhead; 3-4 observed)"
+    )
+    assert units[1] == estimate_units(sel_400[1]), "the big item must be in at 400"
+    assert all(estimate_units(i) != units[1] for i in sel_256), "big item must not fit at 256"
+    assert sum_256 > sum_400, (
+        f"THE VALLEY: 400 selects worse than 256 ({sum_400} vs {sum_256}) — "
+        f"if this ever fails, the engine became monotone and the default "
+        f"comment in recall() is stale"
+    )
