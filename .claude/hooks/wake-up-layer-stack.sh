@@ -28,7 +28,7 @@ umask 077
 # Format reference: tests/HOOK_FORMAT_REFERENCE.md
 # SessionStart hooks use hookSpecificOutput.additionalContext per official docs.
 #
-# VERSION: 1.0.0
+# VERSION: 1.1.0
 # CREATED: 2026-04-07
 
 set -euo pipefail
@@ -45,6 +45,7 @@ VAULT_DIR="${HOME}/Documents/Obsidian/MiVault"
 VAULT_INDEX="${VAULT_DIR}/_vault-index.md"
 L2_DIR="${HOME}/.ralph/layers/L2_wings"
 LINT_REPORT_DIR="${VAULT_DIR}/global/output/reports"
+FEATURES_FILE="${RALPH_FEATURES_FILE:-${HOME}/.ralph/config/features.json}"
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -53,6 +54,20 @@ mkdir -p "${HOME}/.ralph/logs"
 
 log() {
     echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] wake-up-layer-stack: $*" >> "$LOG_FILE" 2>/dev/null || true
+}
+
+# Check feature flags (same pattern as session-start-restore-context.sh)
+check_feature_enabled() {
+    local feature="$1"
+    local default="${2:-true}"
+
+    if [[ -f "$FEATURES_FILE" ]]; then
+        local value
+        value=$(jq -r ".$feature // \"$default\"" "$FEATURES_FILE" 2>/dev/null || echo "$default")
+        [[ "$value" == "true" ]]
+    else
+        [[ "$default" == "true" ]]
+    fi
 }
 
 # ---------------------------------------------------------------------------
@@ -164,6 +179,19 @@ else
     _WUL_PROJECT_ROOT="$(git -C "${REPO_DIR}" rev-parse --show-toplevel 2>/dev/null || echo "${REPO_DIR}")"
 fi
 
+# --- Broad recall at startup: RETIRED by default (T74, #47 C2) ------------
+# A SessionStart has no task to direct a query at — any startup query is
+# broad by definition, which is what #47 C2 prohibits. Measured before
+# removal: the block cost ~160 tokens and ~110ms per session per subagent,
+# and its entire top-10 was already delivered by layers that persist (L1
+# Essential in this same hook, global proven rules, project auto-memory) —
+# 10/10 covered, zero information added. Demand-driven recall remains a
+# documented command (CLAUDE.md § Memory System).
+# RALPH_WAKEUP_BROAD_RECALL=true in features.json restores the legacy
+# block: retire, not prohibit (same policy as RALPH_RESTORE_CROSS_WORKTREE).
+if check_feature_enabled "RALPH_WAKEUP_BROAD_RECALL" "false"; then
+    log "INFO broad recall ENABLED via features.json (legacy block)"
+
 # --- Primary: recall_v2 top-N by score -------------------------------------
 RECALL_PY="${_WUL_HOOK_DIR}/../../scripts/memory/recall_v2.py"
 if [[ -f "$RECALL_PY" ]] && command -v python3 >/dev/null 2>&1; then
@@ -209,6 +237,10 @@ if [[ -z "$TOPN_SUMMARY" && -f "${_WUL_HOOK_DIR}/lib/ctx-query.sh" ]]; then
             fi
         fi
     fi
+fi
+
+else
+    log "INFO broad recall skipped (default; RALPH_WAKEUP_BROAD_RECALL=false)"
 fi
 
 # ---------------------------------------------------------------------------
