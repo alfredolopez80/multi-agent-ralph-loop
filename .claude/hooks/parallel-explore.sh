@@ -2,7 +2,20 @@
 # Parallel Exploration Hook v2.46
 # Hook: PostToolUse (Task - after gap-analyst)
 # Purpose: Launch parallel exploration tasks
-# VERSION: 2.69.0
+# VERSION: 2.69.1
+#
+# v2.69.1 — Isolate the exploration-context output. The previous version
+# hardcoded $PROJECT_DIR/.claude/exploration-context.json, which (a) polluted
+# the real project tree during mocked-stdin testing, and (b) left a generated
+# artifact versioned in git because .gitignore didn't cover it. The new
+# version honors three env vars:
+#   PARALLEL_EXPLORE_PROJECT_DIR  — override pwd() for isolated tests
+#   PARALLEL_EXPLORE_LOG_DIR      — override log directory (default $HOME/.ralph/logs)
+#   PARALLEL_EXPLORE_OUTPUT       — override the JSON output path (default lives
+#                                    beside the log, outside the project). Setting
+#                                    this to a path inside $PROJECT_DIR is the
+#                                    escape hatch — explicitly opt-in, logged as
+#                                    WARN, never the default.
 
 # SEC-111: Read input from stdin with length limit (100KB max)
 # Prevents DoS from malicious input
@@ -31,16 +44,36 @@ if [[ "$TASK_TYPE" != "gap-analyst" ]] && [[ "$TASK_TYPE" != "Explore" ]]; then
 fi
 
 # Setup logging
-LOG_DIR="$HOME/.ralph/logs"
+LOG_DIR="${PARALLEL_EXPLORE_LOG_DIR:-$HOME/.ralph/logs}"
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/parallel-explore-$(date +%Y%m%d-%H%M%S).log"
 
-# Get project directory
-PROJECT_DIR=$(pwd)
-EXPLORATION_OUTPUT="$PROJECT_DIR/.claude/exploration-context.json"
+# Get project directory (overridable for tests in isolated tmpdirs)
+PROJECT_DIR="${PARALLEL_EXPLORE_PROJECT_DIR:-$(pwd)}"
 
-# Create .claude directory if needed
-mkdir -p "$PROJECT_DIR/.claude"
+# Resolve the JSON output path. Default lives beside the log, OUTSIDE the
+# project tree, so a normal invocation never pollutes the repo and a mock
+# test (or any other caller) cannot accidentally overwrite a real artifact.
+# Setting PARALLEL_EXPLORE_OUTPUT is the explicit escape hatch for callers
+# that need the artifact inside the project — used knowingly and logged as
+# WARN. See additionalContext at the bottom for the consumer contract.
+DEFAULT_OUTPUT="$LOG_DIR/exploration-context-$(date +%Y%m%d-%H%M%S)-$SESSION_ID.json"
+EXPLORATION_OUTPUT="${PARALLEL_EXPLORE_OUTPUT:-$DEFAULT_OUTPUT}"
+
+# Escape hatch notice: warn when the effective output lands inside the project,
+# but DO NOT abort — the override is documented and opt-in. A green test over
+# an un-noticed override is exactly the failure mode this WARN exists to break.
+if [[ "$EXPLORATION_OUTPUT" == "$PROJECT_DIR"* ]]; then
+    echo "[$(date -Iseconds)] WARN parallel-explore: writing inside project tree at $EXPLORATION_OUTPUT (PARALLEL_EXPLORE_OUTPUT override active)" >> "$LOG_FILE" || true
+fi
+
+# Create parent directory for the output (independent of project layout)
+mkdir -p "$(dirname "$EXPLORATION_OUTPUT")"
+
+# Create .claude directory only if needed for reading orchestrator-analysis.md
+if [[ -n "$PROJECT_DIR" ]] && [[ ! -d "$PROJECT_DIR/.claude" ]]; then
+    mkdir -p "$PROJECT_DIR/.claude"
+fi
 
 # Extract keywords from orchestrator analysis if exists
 KEYWORDS=""
@@ -197,7 +230,10 @@ jq -n \
 echo "[$(date -Iseconds)] Exploration results written to: $EXPLORATION_OUTPUT" >> "$LOG_FILE"
 
 # Return with context (PostToolUse schema: "continue" not "decision")
+# The path in additionalContext is the EFFECTIVE $EXPLORATION_OUTPUT, not a
+# hardcoded guess — consumers and callers must read this value to know where
+# the artifact actually is. Default lives outside the project (see block above).
 echo "{
     \"continue\": true,
-    \"additionalContext\": \"PARALLEL_EXPLORE_COMPLETE: Exploration results available at .claude/exploration-context.json. Use these results to inform planning and classification.\"
+    \"additionalContext\": \"PARALLEL_EXPLORE_COMPLETE: Exploration results written to $EXPLORATION_OUTPUT. Use these results to inform planning and classification.\"
 }"
