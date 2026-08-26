@@ -6,6 +6,17 @@ umask 077
 # VERSION: 2.85.0
 set -euo pipefail
 
+# T81 — Daily gate. Sync only when either (a) the project has no
+# orchestrator command yet (first-time), or (b) we have not synced today.
+# The bg fork is wasted work otherwise: a project's commands/agents/hooks
+# only grow by adding files, and any new global file is picked up on the
+# next calendar day even if the gate triggers.
+source "$(dirname "${BASH_SOURCE[0]}")/lib/daily-gate.sh"
+if ! daily_gate_check "auto-sync-global"; then
+    printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"auto-sync-global: skipped (already ran today)"}}'
+    exit 0
+fi
+
 # PERF v3.1.1: SessionStart symlink sync — run detached so startup never blocks.
 # Cost was ~600ms synchronously; now returns in ~5ms and the sync runs in the
 # background. A project that needs first-time sync self-heals within this session.

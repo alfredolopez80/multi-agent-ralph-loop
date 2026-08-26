@@ -24,6 +24,16 @@
 set -euo pipefail
 umask 077
 
+# T81 — Daily gate. Promotion from project wikis to the global vault, plus
+# diary scanning, runs on the same slow cadence as graduation. Idempotent
+# (copy-if-missing + grep-guarded specialization append); a daily dedup is
+# safe and removes the bg fork from the hot path on subsequent sessions.
+source "$(dirname "${BASH_SOURCE[0]}")/lib/daily-gate.sh"
+if ! daily_gate_check "vault-promotion"; then
+    printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"vault-promotion: skipped (already ran today)"}}'
+    exit 0
+fi
+
 # PERF v3.1.1: SessionStart maintenance (wiki promotion + diary scan) — run detached
 # so startup never blocks. Cost was ~700ms synchronously; now returns in ~5ms and the
 # promotion work runs in the background. Status JSON is dropped in background mode.
