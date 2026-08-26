@@ -10,6 +10,15 @@
 set -euo pipefail
 umask 077
 
+# T81 — Daily gate (ralph periodic maintenance). If the graduation scan
+# already ran today, exit early with a breadcrumb instead of forking a
+# background scan that would just confirm what we already know.
+source "$(dirname "${BASH_SOURCE[0]}")/lib/daily-gate.sh"
+if ! daily_gate_check "vault-graduation"; then
+    printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"vault-graduation: skipped (already ran today)"}}'
+    exit 0
+fi
+
 # PERF v3.1.1: SessionStart maintenance — run detached so startup never blocks.
 # The full-vault scan cost ~2s synchronously; now the hook returns in ~5ms and the
 # scan/graduation runs in the background. Status JSON is dropped in background mode.

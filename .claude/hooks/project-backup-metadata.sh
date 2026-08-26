@@ -254,6 +254,17 @@ HOOK_TYPE="${1:-SessionStart}"
 
 case "$HOOK_TYPE" in
     SessionStart)
+        # T81 — Daily gate. The SessionStart branch detects project + writes
+        # current-project.json. That write races across concurrent sessions
+        # (Q-team panels writing to the same path). One UTC-day execution
+        # removes the race; subsequent sessions today see no-op and emit a
+        # breadcrumb. Stop branch below is intentionally NOT gated: it must
+        # run on every session end so plan-state / session-history are saved.
+        source "$(dirname "${BASH_SOURCE[0]}")/lib/daily-gate.sh"
+        if ! daily_gate_check "project-backup-metadata"; then
+            printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"project-backup: skipped (already ran today, see ~/.ralph/logs/project-backup-metadata.log)"}}'
+            exit 0
+        fi
         log "=== SessionStart: Saving current project ==="
 
         CWD=$(pwd)
