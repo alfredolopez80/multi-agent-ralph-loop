@@ -189,6 +189,16 @@ def main() -> int:
         for plane, total in sorted(grand.items(), key=lambda kv: -kv[1]):
             print(f"  {plane:20s} {'':16s} {'':>5} {total:>8.1f}")
 
+    # Per-hook detail for the dominant plane (T85): what the aggregate is
+    # made of, most expensive first. Every row is a REGISTRATION; whether it
+    # fires for a given tool is its matcher (shown).
+    print("\n== orchestration+state, hook by hook (live profile) ==")
+    rows = [r for r in report["profiles"]["live_full"]
+            if r["plane"] == DEFAULT_PLANE and r["median_ms"] is not None]
+    for row in sorted(rows, key=lambda r: -r["median_ms"]):
+        print(f"  {row['median_ms']:>7.1f}ms  {row['event']:16s} "
+              f"{row['matcher']:14s} {row['command']}")
+
     out = REPO / "results" / "t82-hook-planes.json"
     out.write_text(json.dumps(report, indent=2) + "\n")
     print(f"\nJSON: {out}")
