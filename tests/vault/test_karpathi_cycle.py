@@ -430,44 +430,75 @@ class TestVaultLogWriter:
 # ---------------------------------------------------------------------------
 
 class TestHookRegistration:
-    """Verify all 5 new hooks are registered in settings.json."""
+    """Repo-owned assertions about the Karpathy hook set.
 
-    EXPECTED_HOOKS = {
-        "vault-promotion.sh": "SessionStart",
-        "vault-writeback.sh": "Stop",
-        "vault-wing-compiler.sh": "SessionEnd",
-        "vault-log-writer.sh": "SessionEnd",
-        "agent-diary-writer.sh": "TeammateIdle",
-    }
+    T84 removed the registration tests, for two independent reasons:
 
-    @pytest.fixture
-    def settings(self):
-        settings_path = os.path.expanduser("~/.claude/settings.json")
-        if not os.path.exists(settings_path):
-            pytest.skip("settings.json not found")
-        with open(settings_path, encoding="utf-8") as f:
-            return json.load(f)
+    1. A registration is not a function. ``vault-writeback.sh`` was
+       registered on Stop for its whole life while reading a queue file
+       (``~/.ralph/.writeback-queue.json``) that nothing in this repo ever
+       wrote — the file has never existed on disk. A registered no-op
+       satisfied the old assertion and delivered nothing. See
+       docs/qteam/QTEAM_FAILURE_MODES.md #36.
 
-    @pytest.mark.parametrize("hook_name,event", list(EXPECTED_HOOKS.items()))
-    def test_hook_registered(self, settings, hook_name, event):
-        """Each new hook must be registered in the correct event."""
-        hooks = settings.get("hooks", {})
-        assert event in hooks, f"Event {event} not in settings.json"
+    2. The old fixture read ``~/.claude/settings.json`` and pytest.skip'ped
+       when absent, so on CI it never executed: green by absence, not by
+       verification — and where it did run, it asserted one person's
+       personal configuration, not the repository's contract. The only
+       versioned settings artifact (``.claude/settings.json.example``)
+       registers none of these hooks, so there is no repo-side source of
+       truth for registrations to assert against.
+    """
 
-        found = False
-        for matcher in hooks[event]:
-            for hook in matcher.get("hooks", []):
-                if hook_name in hook.get("command", ""):
-                    found = True
-                    break
-        assert found, f"{hook_name} not registered in {event}"
+    HOOK_FILES = [
+        "vault-promotion.sh",
+        "vault-writeback.sh",
+        "vault-wing-compiler.sh",
+        "vault-log-writer.sh",
+        "agent-diary-writer.sh",
+    ]
 
     def test_all_hooks_are_executable(self):
-        """All new hook scripts must have execute permission."""
-        for hook_name in self.EXPECTED_HOOKS:
+        """All Karpathy hook scripts exist in the repo and are executable."""
+        for hook_name in self.HOOK_FILES:
             path = os.path.join(HOOKS_DIR, hook_name)
             assert os.path.exists(path), f"{hook_name} does not exist"
             assert os.access(path, os.X_OK), f"{hook_name} is not executable"
+
+    def test_writeback_queue_has_no_producer_in_repo(self):
+        """The WRITEBACK link is disconnected BY DESIGN until wired on purpose.
+
+        vault-writeback.sh consumes ~/.ralph/.writeback-queue.json; its header
+        credits smart-memory-search.sh as the producer, but no file in
+        .claude/hooks/ or scripts/ writes that queue (verified T84: repo-wide
+        sweep, git log -S shows no producer ever existed or was removed). If
+        this assertion starts failing, someone wired a producer — update this
+        test AND the catalog entry #36 together, on purpose.
+        """
+        repo_root = os.path.abspath(os.path.join(HOOKS_DIR, "..", ".."))
+        writers = []
+        for base in (".claude/hooks", "scripts", ".claude/scripts"):
+            scan = os.path.join(repo_root, base)
+            if not os.path.isdir(scan):
+                continue
+            for root, _dirs, files in os.walk(scan):
+                for name in files:
+                    if not name.endswith((".sh", ".py")):
+                        continue
+                    path = os.path.join(root, name)
+                    if path.endswith("vault-writeback.sh"):
+                        continue  # the consumer itself
+                    try:
+                        with open(path, encoding="utf-8", errors="replace") as f:
+                            if "writeback-queue" in f.read():
+                                writers.append(path)
+                    except OSError:
+                        continue
+        assert writers == [], (
+            "writeback-queue gained a producer — reconnecting WRITEBACK "
+            "requires updating this test and catalog entry #36 together; "
+            f"producers found: {writers}"
+        )
 
 
 # ---------------------------------------------------------------------------
