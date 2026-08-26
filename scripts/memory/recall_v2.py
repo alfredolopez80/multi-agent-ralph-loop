@@ -495,7 +495,17 @@ def recall(
     context: Context,
     ralph_home: Path,
     limit: int = 5,
-    budget_limit: int = 1200,
+    # Default 800 is MEASURED, not intuitive (#47 C8, T70+T72 over this
+    # project's corpus): the real top-5 needs 418 units, 800 is the benefit
+    # plateau on both the broad hook query and directed queries, and 1200
+    # bought exactly nothing over it (2.9x oversized). WARNING for the
+    # future reader: budgets are NOT monotone in utility — at 400 the greedy
+    # admits the 257-unit zero-tests rule and crowds out two smaller rules
+    # that together score higher (measured: score_sum 79.5 at 400 vs 87.5 at
+    # 256, one item fewer). "A middling value, to be safe" lands on the
+    # worst point of the range. Raise the default only with a fresh
+    # measurement that shows the plateau moved.
+    budget_limit: int = 800,
     include_deprecated: bool = False,
     include_mechanical: bool = False,
 ) -> dict[str, Any]:
@@ -607,7 +617,7 @@ def main() -> int:
     parser.add_argument("--branch", default="")
     parser.add_argument("--workspace-instance-id", default="")
     parser.add_argument("--limit", type=int, default=5)
-    parser.add_argument("--budget", type=int, default=1200)
+    parser.add_argument("--budget", type=int, default=800)
     parser.add_argument("--include-deprecated", action="store_true")
     parser.add_argument(
         "--include-mechanical",
