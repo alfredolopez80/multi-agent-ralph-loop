@@ -180,7 +180,8 @@ if [[ -f "$RECALL_PY" ]] && command -v python3 >/dev/null 2>&1; then
         TOPN_LINES=$(echo "$RECALL_JSON" | jq -r '
             (.memory_context // [])
             | map("- (score \(.score)) "
-                  + ((.summary // "") | if length > 90 then .[:90] + "..." else . end))
+                  + ((.summary // "") | if length > 90 then .[:90] + "..." else . end)
+                  + (if .source then " — src: " + (.source | if length > 60 then .[:60] + "..." else . end) else "" end))
             | join("\n")
         ' 2>/dev/null || echo "")
         if [[ -n "$TOPN_LINES" && "$TOPN_LINES" != "null" ]]; then

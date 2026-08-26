@@ -439,6 +439,22 @@ def raw_read_command(node_id: str) -> str:
     )
 
 
+def attribution(node: dict[str, Any]) -> str:
+    """Compact provenance for the emitted context (#47 C4): first source
+    path if present, else the source description, bounded so attribution
+    cannot double the block. Migrated nodes carry empty source_paths and a
+    populated source_description; without this the common low-risk branch
+    shipped zero attribution."""
+    paths = node.get("source_paths")
+    if isinstance(paths, list) and paths:
+        first = str(paths[0])
+        return first if len(first) <= 80 else first[:77] + "..."
+    description = str(node.get("source_description") or "")
+    if description:
+        return description if len(description) <= 80 else description[:77] + "..."
+    return ""
+
+
 def render_context(node: dict[str, Any], risk: str, score: float) -> dict[str, Any]:
     quality = _as_dict(node.get("quality"))
     base: dict[str, Any] = {
@@ -447,6 +463,9 @@ def render_context(node: dict[str, Any], risk: str, score: float) -> dict[str, A
         "confidence": quality.get("confidence"),
         "summary": node.get("summary", ""),
     }
+    source = attribution(node)
+    if source:
+        base["source"] = source
     if risk == "low":
         base["topic_tags"] = node.get("topic_tags", [])
     elif risk == "medium":

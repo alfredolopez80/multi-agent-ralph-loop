@@ -18,6 +18,7 @@ sys.path.insert(0, str(_MEMORY_DIR))
 from recall_v2 import (  # noqa: E402
     Context,
     analyze_query,
+    attribution,
     hard_reject_reason,
     recall,
     score_node,
@@ -348,3 +349,54 @@ def test_recall_keeps_distinct_summaries_separate(store, tmp_path):
     report = recall("parameterized queries", _ctx("projA"), home, limit=5)
     selected = report["MEMORY_TRACE"]["selected_memory_ids"]
     assert set(selected) == {a["node_id"], b["node_id"]}
+
+
+# --- T73: source attribution in the emitted context (#47 C4) ---------------
+
+def test_attribution_prefers_first_path_bounded():
+    node = {
+        "source_paths": [
+            "/very/long/path/that/goes/on/and/on/and/on/and/on/and/on/and/on/x.md",
+            "/second/path.md",
+        ],
+        "source_description": "fallback description",
+    }
+    src = attribution(node)
+    assert src.startswith("/very/long/path")
+    assert "/second/path" not in src
+    assert len(src) <= 80
+
+
+def test_attribution_falls_back_to_description():
+    node = {
+        "source_paths": [],
+        "source_description": "Migrated from procedural rules.json (user-global-rules)",
+    }
+    assert attribution(node) == "Migrated from procedural rules.json (user-global-rules)"
+    long = "x" * 200
+    assert attribution({"source_paths": [], "source_description": long}) == "x" * 77 + "..."
+
+
+def test_attribution_empty_when_no_provenance():
+    # unreachable via recall() (missing_provenance rejects it first), but the
+    # helper must not invent attribution
+    assert attribution({"source_paths": [], "source_description": ""}) == ""
+
+
+def test_recall_low_risk_emits_source(store, tmp_path):
+    # the C4 gap: low-risk render shipped no attribution at all; migrated
+    # nodes carry empty source_paths and a populated source_description
+    home = tmp_path / "ralph_home"
+    s = TreeStore(home)
+    s.create_node(
+        _payload(
+            "projA",
+            summary="database parameterized queries rule",
+            source_paths=[],
+            source_description="Migrated from procedural rules.json",
+        )
+    )
+    report = recall("database parameterized queries", _ctx("projA"), home, limit=5)
+    assert report["analysis"]["risk_level"] == "low"
+    item = report["memory_context"][0]
+    assert item["source"] == "Migrated from procedural rules.json"
