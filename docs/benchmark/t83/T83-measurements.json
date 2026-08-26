@@ -1,0 +1,146 @@
+{
+  "__control__": {
+    "max_ms": 11.07,
+    "mean_ms": 10.09,
+    "median_ms": 10.04,
+    "min_ms": 9.43,
+    "n": 10,
+    "sd_ms": 0.43
+  },
+  "auto-sync-global.sh": {
+    "con_gate_open": {
+      "max_ms": 657.74,
+      "mean_ms": 376.84,
+      "median_ms": 347.62,
+      "min_ms": 193.47,
+      "n": 10,
+      "sd_ms": 150.88
+    },
+    "con_gate_skip": {
+      "max_ms": 294.45,
+      "mean_ms": 207.36,
+      "median_ms": 186.52,
+      "min_ms": 146.65,
+      "n": 10,
+      "sd_ms": 46.29
+    },
+    "gate_only": {
+      "max_ms": 351.14,
+      "mean_ms": 227.04,
+      "median_ms": 239.02,
+      "min_ms": 79.09,
+      "n": 10,
+      "sd_ms": 79.45
+    },
+    "sin_gate": {
+      "max_ms": 289.91,
+      "mean_ms": 115.53,
+      "median_ms": 87.57,
+      "min_ms": 48.64,
+      "n": 10,
+      "sd_ms": 71.76
+    }
+  },
+  "project-backup-metadata.sh": {
+    "con_gate_open": {
+      "max_ms": 1404.85,
+      "mean_ms": 511.99,
+      "median_ms": 343.08,
+      "min_ms": 171.94,
+      "n": 10,
+      "sd_ms": 416.61
+    },
+    "con_gate_skip": {
+      "max_ms": 40.38,
+      "mean_ms": 36.76,
+      "median_ms": 36.3,
+      "min_ms": 34.39,
+      "n": 10,
+      "sd_ms": 1.72
+    },
+    "gate_only": {
+      "max_ms": 35.83,
+      "mean_ms": 25.42,
+      "median_ms": 19.67,
+      "min_ms": 17.89,
+      "n": 10,
+      "sd_ms": 7.96
+    },
+    "sin_gate": {
+      "max_ms": 2050.73,
+      "mean_ms": 1327.78,
+      "median_ms": 1281.64,
+      "min_ms": 787.28,
+      "n": 10,
+      "sd_ms": 405.67
+    }
+  },
+  "vault-graduation.sh": {
+    "con_gate_open": {
+      "max_ms": 180.92,
+      "mean_ms": 121.9,
+      "median_ms": 129.47,
+      "min_ms": 75.44,
+      "n": 10,
+      "sd_ms": 37.03
+    },
+    "con_gate_skip": {
+      "max_ms": 237.59,
+      "mean_ms": 159.22,
+      "median_ms": 146.9,
+      "min_ms": 126.25,
+      "n": 10,
+      "sd_ms": 33.43
+    },
+    "gate_only": {
+      "max_ms": 347.35,
+      "mean_ms": 159.11,
+      "median_ms": 135.68,
+      "min_ms": 86.29,
+      "n": 10,
+      "sd_ms": 70.5
+    },
+    "sin_gate": {
+      "max_ms": 47.17,
+      "mean_ms": 28.04,
+      "median_ms": 23.07,
+      "min_ms": 19.94,
+      "n": 10,
+      "sd_ms": 9.83
+    }
+  },
+  "vault-promotion.sh": {
+    "con_gate_open": {
+      "max_ms": 600.83,
+      "mean_ms": 313.22,
+      "median_ms": 286.17,
+      "min_ms": 137.76,
+      "n": 10,
+      "sd_ms": 146.55
+    },
+    "con_gate_skip": {
+      "max_ms": 859.8,
+      "mean_ms": 349.86,
+      "median_ms": 290.57,
+      "min_ms": 137.2,
+      "n": 10,
+      "sd_ms": 211.57
+    },
+    "gate_only": {
+      "max_ms": 341.84,
+      "mean_ms": 202.72,
+      "median_ms": 189.08,
+      "min_ms": 75.86,
+      "n": 10,
+      "sd_ms": 75.59
+    },
+    "sin_gate": {
+      "max_ms": 140.52,
+      "mean_ms": 95.8,
+      "median_ms": 93.51,
+      "min_ms": 44.68,
+      "n": 10,
+      "sd_ms": 37.96
+    }
+  }
+}
