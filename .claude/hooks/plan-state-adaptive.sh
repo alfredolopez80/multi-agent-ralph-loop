@@ -45,7 +45,15 @@ umask 077
 # CONFIGURATION
 # =============================================================================
 
-PLAN_STATE=".claude/plan-state.json"
+# T86: plan-state resolves from the working tree root, not the cwd — a
+# session whose cwd has moved into a subdirectory must not write (or create)
+# a plan-state.json out of place.
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+}
+PLAN_STATE="$(get_project_root 2>/dev/null || pwd)/.claude/plan-state.json"
 LOG_FILE="${HOME}/.ralph/logs/plan-state-adaptive.log"
 PLAN_STALENESS_MINUTES=30  # Consider plan stale after 30 minutes
 

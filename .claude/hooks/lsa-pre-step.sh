@@ -35,7 +35,15 @@ emit_json() {
 trap 'emit_json' ERR EXIT
 
 # Configuration
-PLAN_STATE=".claude/plan-state.json"
+# T86: plan-state resolves from the working tree root, not the cwd —
+# plan_state_update refuses to write a path it cannot find, so a moved cwd
+# silently dropped this hook's updates.
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+}
+PLAN_STATE="$(get_project_root 2>/dev/null || pwd)/.claude/plan-state.json"
 LOG_FILE="${HOME}/.ralph/logs/lsa-pre-step.log"
 
 # Ensure log directory exists

@@ -29,7 +29,15 @@ output_json() {
 }
 trap 'output_json' ERR EXIT
 
-PLAN_STATE=".claude/plan-state.json"
+# T86: plan-state resolves from the working tree root, not the cwd — the
+# statusline (the always-on consumer) reads it from the root, and a session
+# whose cwd has moved into a subdirectory must not silently stop updating.
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+}
+PLAN_STATE="$(get_project_root 2>/dev/null || pwd)/.claude/plan-state.json"
 COUNTER_FILE="${HOME}/.ralph/cache/status-check-counter"
 LOG_FILE="${HOME}/.ralph/logs/status-auto-check.log"
 OPERATIONS_THRESHOLD=5
