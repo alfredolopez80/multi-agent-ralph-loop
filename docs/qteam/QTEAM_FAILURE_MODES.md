@@ -428,3 +428,24 @@ printf '\033Ptmux;\033\033]777;notify;TITLE;BODY\033\033\\\033\\' > /dev/ttys001
   catches ALL of them is the count-the-objects invariant, which is why it must
   exist for every JSON-emitting hook, not just the ones that already burned
   us.
+
+### 35. A self-described field that lies (stale `Compiled:` on a live artifact)
+- **What happened**: the L2 wing artifact carried `**Compiled**: 2026-04-09`
+  for months while being recompiled daily. Two independent readers concluded
+  the wing was a dead fossil within one hour of each other; one of them
+  relayed the conclusion to the user ("T54 cleaned dead content"), which had
+  to be retracted.
+- **Evidence**: `vault-wing-compiler.sh` built the header only when no
+  previous wing existed; every later run reused `${EXISTING}` verbatim and
+  appended facts, so the stamp recorded CREATION, not compilation. Filesystem
+  mtime showed a write the same day (`Aug 25 19:26`) while the field said
+  April. Two false conclusions followed a measurement made one hour apart
+  (T78-v1, 2026-08-26); the companion error in the same report was inferring
+  directory contents from `ls | head` over an alphabetically sorted list (the
+  two OLDEST facts files read as the ONLY ones).
+- **Fix** (T80): the header is regenerated on every write, with two fields
+  that say what they mean — `Created` (stable, migrated from the stale
+  `Compiled`) and `Compiled` (per-write). Rule: a self-described field is a
+  claim, not a measurement — when a field and the filesystem disagree,
+  verify which one lies before building a conclusion on either. And never
+  summarize a directory from a truncated view of a sorted listing.

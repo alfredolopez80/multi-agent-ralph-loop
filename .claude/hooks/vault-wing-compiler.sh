@@ -45,9 +45,10 @@ umask 077
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-VAULT_DIR="${HOME}/Documents/Obsidian/MiVault"
-L2_DIR="${HOME}/.ralph/layers/L2_wings"
-LOG_FILE="${HOME}/.ralph/logs/vault-wing-compiler.log"
+# RALPH_* overrides exist for tests only; production always uses the real paths.
+VAULT_DIR="${RALPH_VAULT_DIR:-${HOME}/Documents/Obsidian/MiVault}"
+L2_DIR="${RALPH_L2_DIR:-${HOME}/.ralph/layers/L2_wings}"
+LOG_FILE="${RALPH_LOG_FILE:-${HOME}/.ralph/logs/vault-wing-compiler.log}"
 MAX_WING_ENTRIES=50
 VALID_CATEGORIES="code_structure dependencies design_patterns api_patterns"
 
@@ -67,15 +68,39 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"' 2>/dev/null | tr -
 # ---------------------------------------------------------------------------
 # Detect project name
 # ---------------------------------------------------------------------------
-PROJECT="unknown"
-if command -v git &>/dev/null; then
-    REPO_ROOT="${HOME}/Documents/GitHub/multi-agent-ralph-loop"
-    PROJECT=$(basename "$(git -C "$REPO_ROOT" rev-parse --show-toplevel 2>/dev/null || echo "")" 2>/dev/null || echo "unknown")
+# T80(a): the repo root used to be HARDCODED to one absolute path — a fourth
+# divergent infrastructure declaration, and it broke under any HOME that is
+# not the owner's (sandboxes, CI). Derive it with get_main_repo like the
+# extractors: one mechanism, worktree-safe. Strong source pattern (same shape
+# as repo-boundary-guard.sh:77-83): a missing lib must not silently degrade
+# PROJECT to "unknown" — that reintroduces exactly the orphaned
+# projects/unknown/ corpus this task removes (T80 RETURN).
+_WC_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_WC_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() {
+    local common_dir
+    common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+    if [[ -n "$common_dir" ]]; then
+      dirname "$common_dir"
+    else
+      get_project_root
+    fi
+  }
+}
+_WC_MAIN_REPO="$(get_main_repo 2>/dev/null || echo '')"
+if [[ -z "$_WC_MAIN_REPO" || "$_WC_MAIN_REPO" == "." ]]; then
+    # Fail closed and LOUD: compiling into projects/unknown/ writes orphaned
+    # facts nobody reads — worse than skipping one compilation. A missing
+    # identity is an ERROR, not "nobody edited today" (which stays INFO).
+    log "ERROR cannot derive project identity (get_main_repo empty); refusing to compile into projects/unknown/"
+    : # allow: this hook signals allow with a silent exit 0 (no stdout)
+    exit 0
 fi
-# T54: the "unknown" fallback above was dead — basename of an empty string
-# succeeds with rc 0, so a failed rev-parse produced PROJECT="" and the wing
-# silently compiled into projects//facts/. Restore the fallback explicitly.
-[[ -z "$PROJECT" ]] && PROJECT="unknown"
+PROJECT=$(basename "$_WC_MAIN_REPO")
+# T80 RETURN: the T54-era "unknown" fallback is GONE — an un-derivable
+# identity exits loudly above instead of compiling orphaned facts into
+# projects/unknown/ that nobody reads.
 : # allow: this hook signals allow with a silent exit 0 (no stdout)
 
 SAFE_PROJECT=$(echo "$PROJECT" | tr -cd 'a-zA-Z0-9_-' | head -c 64)
@@ -83,7 +108,9 @@ SAFE_PROJECT=$(echo "$PROJECT" | tr -cd 'a-zA-Z0-9_-' | head -c 64)
 # ---------------------------------------------------------------------------
 # Check for today's facts file
 # ---------------------------------------------------------------------------
-TODAY=$(date +"%Y%m%d")
+# T80(b): UTC day, matching the extractors — both sides must stamp the same
+# day or a session crossing midnight never finds the other's file.
+TODAY=$(date -u +"%Y%m%d")
 FACTS_FILE="${VAULT_DIR}/projects/${PROJECT}/facts/facts-${TODAY}.md"
 
 if [[ ! -f "$FACTS_FILE" ]]; then
@@ -185,10 +212,37 @@ fi
 # ---------------------------------------------------------------------------
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-if [[ -z "$EXISTING" ]]; then
+# T80(c): the header is REGENERATED on every write. The previous append-only
+# body kept the first-ever "Compiled" line frozen (2026-04-09 for months),
+# which read as a stale artifact and produced two false "fossil" conclusions
+# in one hour. Two fields, two meanings: Created never changes once set;
+# Compiled says when the content was last written.
+CREATED="$NOW"
+if [[ -n "$EXISTING" ]]; then
+    # grep exits 1 on no-match, which set -e would treat as fatal — the
+    # pre-T80 header has no Created line at all, that is the migration case.
+    _old_created=$(printf '%s\n' "$EXISTING" | grep -m1 '^\*\*Created\*\*:' | sed 's/^\*\*Created\*\*: //' || true)
+    if [[ -z "$_old_created" ]]; then
+        # pre-T80 wings: the stale Compiled line actually recorded creation
+        _old_created=$(printf '%s\n' "$EXISTING" | grep -m1 '^\*\*Compiled\*\*:' | sed 's/^\*\*Compiled\*\*: //' || true)
+    fi
+    if [[ -n "$_old_created" ]]; then CREATED="$_old_created"; fi
+    # drop the old header (everything up to and including the Source line)
+    _old_body=$(awk 'f; /^\*\*Source\*\*:/{f=1}' <<< "$EXISTING")
     WING_CONTENT="# Wing: ${PROJECT}
 
 **Project**: ${PROJECT}
+**Created**: ${CREATED}
+**Compiled**: ${NOW}
+**Source**: vault-wing-compiler.sh (auto-generated)
+
+${_old_body}
+${DEDUPED_FACTS}"
+else
+    WING_CONTENT="# Wing: ${PROJECT}
+
+**Project**: ${PROJECT}
+**Created**: ${CREATED}
 **Compiled**: ${NOW}
 **Source**: vault-wing-compiler.sh (auto-generated)
 
@@ -196,10 +250,6 @@ if [[ -z "$EXISTING" ]]; then
 
 ${DEDUPED_FACTS}
 "
-else
-    WING_CONTENT="${EXISTING}
-
-${DEDUPED_FACTS}"
 fi
 
 # ---------------------------------------------------------------------------
@@ -207,7 +257,8 @@ fi
 # ---------------------------------------------------------------------------
 TOTAL_LINES=$(echo "$WING_CONTENT" | wc -l | tr -d ' ')
 if [[ $TOTAL_LINES -gt $((MAX_WING_ENTRIES + 10)) ]]; then
-    HEADER=$(echo "$WING_CONTENT" | head -6)
+    # T80(c): header is 7 lines now (Created + Compiled are distinct fields)
+    HEADER=$(echo "$WING_CONTENT" | head -7)
     BODY=$(echo "$WING_CONTENT" | tail -n "$MAX_WING_ENTRIES")
     WING_CONTENT="${HEADER}
 
