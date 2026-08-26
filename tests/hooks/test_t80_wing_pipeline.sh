@@ -170,10 +170,54 @@ EOF
     fi
 }
 
+# ---------------------------------------------------------------------------
+# (RETURN) Missing lib must fail LOUD and write NOTHING — not degrade to
+# projects/unknown/. The earlier tests sandbox HOME but never the hook dir,
+# so worktree-utils.sh always existed and this hole was invisible (lead's
+# repro on 5cbf7be: INFO "no facts file" under projects/unknown/, exit 0).
+# ---------------------------------------------------------------------------
+test_missing_lib_fails_loud_no_orphans() {
+    local SB="$TMP/sandbox"
+    mkdir -p "$SB/.claude"
+    # Copy the WORKING TREE hooks (git archive HEAD would test the last
+    # commit, which is exactly the version this RETURN fixes).
+    cp -R .claude/hooks "$SB/.claude/hooks"
+    mv "$SB/.claude/hooks/lib/worktree-utils.sh" \
+       "$SB/.claude/hooks/lib/worktree-utils.sh.hidden"
+    # Without the lib AND outside any git repo, identity is truly impossible:
+    # the inline fallback has nothing to derive from. This is the case that
+    # must fail loud, not compile orphans.
+    mkdir -p "$TMP/nogit"
+    ( cd "$TMP/nogit" && env -u CLAUDE_PROJECT_DIR \
+        RALPH_VAULT_DIR="$TMP/vault" RALPH_L2_DIR="$TMP/l2-nolib" \
+        RALPH_LOG_FILE="$TMP/wc-nolib.log" \
+        bash "$SB/.claude/hooks/vault-wing-compiler.sh" >/dev/null 2>&1 )
+    if [[ -e "$TMP/vault/projects/unknown" ]]; then
+        fail "(RETURN) missing lib compiled into projects/unknown/" "orphaned project dir was created"
+    else
+        pass "(RETURN) missing lib writes no projects/unknown/"
+    fi
+    if grep -q "cannot derive project identity" "$TMP/wc-nolib.log" 2>/dev/null; then
+        pass "(RETURN) missing lib logs an explicit identity ERROR"
+    else
+        fail "(RETURN) identity loss is silent in the log" "log lacks the identity ERROR line"
+    fi
+    # Extractor side: a fact must be SKIPPED, not orphaned, without the lib.
+    echo "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$SB/x.sh\",\"content\":\"#!/bin/bash\\nfn_nolib() { echo x; }\\n\"}}" \
+        | bash "$SB/.claude/hooks/semantic-realtime-extractor.sh" >/dev/null 2>&1
+    sleep 1
+    if [[ -e "$TMP/vault/projects/unknown" ]]; then
+        fail "(RETURN) extractor wrote orphaned fact without lib" "projects/unknown/ exists"
+    else
+        pass "(RETURN) extractor skips facts without identity (no orphans)"
+    fi
+}
+
 test_fact_from_worktree_lands_in_root_project
 test_facts_today_is_tz_invariant
 test_two_compilations_two_stamps
 test_pret80_wing_migrates_created
+test_missing_lib_fails_loud_no_orphans
 
 echo
 printf 'passed: %d  failed: %d\n' "$PASS" "$FAIL"

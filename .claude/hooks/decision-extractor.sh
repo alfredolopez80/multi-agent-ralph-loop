@@ -97,10 +97,26 @@ VAULT_DIR="${RALPH_VAULT_DIR:-${HOME}/Documents/Obsidian/MiVault}"
 # the wing compiler (which reads the root project) sees them. Same mechanism
 # as get_main_repo everywhere else; no fourth method.
 _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || true
-_MAIN_REPO="$(get_main_repo 2>/dev/null || git rev-parse --show-toplevel 2>/dev/null || echo '')"
-PROJECT_NAME="$(basename "${_MAIN_REPO:-unknown}")"
-[[ "$PROJECT_NAME" == "." || -z "$PROJECT_NAME" ]] && PROJECT_NAME="unknown"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  # Strong fallback (repo-boundary-guard.sh:77-83 shape) — T80 RETURN: a
+  # missing lib must not degrade identity to "unknown" in silence.
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() {
+    local common_dir
+    common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+    if [[ -n "$common_dir" ]]; then
+      dirname "$common_dir"
+    else
+      get_project_root
+    fi
+  }
+}
+_MAIN_REPO="$(get_main_repo 2>/dev/null || echo '')"
+if [[ -z "$_MAIN_REPO" || "$_MAIN_REPO" == "." ]]; then
+    echo "[$(date -Iseconds)] ERROR decision-extractor: cannot derive project identity; refusing to write orphaned facts under projects/unknown/" >> "${LOG_DIR}/decision-extract-$(date -u +%Y%m%d).log" 2>/dev/null
+    exit 0
+fi
+PROJECT_NAME="$(basename "$_MAIN_REPO")"
 EPISODES_DIR="$VAULT_DIR/projects/$PROJECT_NAME/decisions"
 mkdir -p "$EPISODES_DIR" 2>/dev/null || true
 LOG_DIR="${HOME}/.ralph/logs"

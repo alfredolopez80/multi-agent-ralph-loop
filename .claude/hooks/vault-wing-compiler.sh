@@ -68,21 +68,39 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"' 2>/dev/null | tr -
 # ---------------------------------------------------------------------------
 # Detect project name
 # ---------------------------------------------------------------------------
-PROJECT="unknown"
 # T80(a): the repo root used to be HARDCODED to one absolute path — a fourth
 # divergent infrastructure declaration, and it broke under any HOME that is
 # not the owner's (sandboxes, CI). Derive it with get_main_repo like the
-# extractors: one mechanism, worktree-safe.
+# extractors: one mechanism, worktree-safe. Strong source pattern (same shape
+# as repo-boundary-guard.sh:77-83): a missing lib must not silently degrade
+# PROJECT to "unknown" — that reintroduces exactly the orphaned
+# projects/unknown/ corpus this task removes (T80 RETURN).
 _WC_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${_WC_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || true
+source "${_WC_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() {
+    local common_dir
+    common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+    if [[ -n "$common_dir" ]]; then
+      dirname "$common_dir"
+    else
+      get_project_root
+    fi
+  }
+}
 _WC_MAIN_REPO="$(get_main_repo 2>/dev/null || echo '')"
-if [[ -n "$_WC_MAIN_REPO" && "$_WC_MAIN_REPO" != "." ]]; then
-    PROJECT=$(basename "$_WC_MAIN_REPO")
+if [[ -z "$_WC_MAIN_REPO" || "$_WC_MAIN_REPO" == "." ]]; then
+    # Fail closed and LOUD: compiling into projects/unknown/ writes orphaned
+    # facts nobody reads — worse than skipping one compilation. A missing
+    # identity is an ERROR, not "nobody edited today" (which stays INFO).
+    log "ERROR cannot derive project identity (get_main_repo empty); refusing to compile into projects/unknown/"
+    : # allow: this hook signals allow with a silent exit 0 (no stdout)
+    exit 0
 fi
-# T54: the "unknown" fallback above was dead — basename of an empty string
-# succeeds with rc 0, so a failed rev-parse produced PROJECT="" and the wing
-# silently compiled into projects//facts/. Restore the fallback explicitly.
-[[ -z "$PROJECT" ]] && PROJECT="unknown"
+PROJECT=$(basename "$_WC_MAIN_REPO")
+# T80 RETURN: the T54-era "unknown" fallback is GONE — an un-derivable
+# identity exits loudly above instead of compiling orphaned facts into
+# projects/unknown/ that nobody reads.
 : # allow: this hook signals allow with a silent exit 0 (no stdout)
 
 SAFE_PROJECT=$(echo "$PROJECT" | tr -cd 'a-zA-Z0-9_-' | head -c 64)
