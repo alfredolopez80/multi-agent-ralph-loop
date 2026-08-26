@@ -308,6 +308,10 @@ def hard_reject_reason(
         return "red"
     if str(node.get("visibility") or "branch_local") == "conflict":
         return "conflict"
+    # #47 C6: the issue's quality-state vocabulary. "conflicting" must not
+    # be silently promoted into context — reject it like a visibility conflict.
+    if str(_as_dict(node.get("quality")).get("status", "")).lower() == "conflicting":
+        return "conflict"
     if deprecated(node) and not include_deprecated:
         return "deprecated"
     if mechanical(node) and not include_mechanical:
@@ -399,7 +403,11 @@ def score_node(
     )
 
     quality = _as_dict(node.get("quality"))
-    stale_penalty = 12.0 if quality.get("stale") is True else 0.0
+    # #47 C6: "stale-risk" carries the same penalty as the binary stale flag.
+    stale_penalty = 12.0 if (
+        quality.get("stale") is True
+        or str(quality.get("status", "")).lower() == "stale-risk"
+    ) else 0.0
     deprecated_penalty = 25.0 if deprecated(node) else 0.0
     merge_penalty = 8.0 if node.get("visibility") == "merge_candidate" else 0.0
 
@@ -476,6 +484,18 @@ def render_context(node: dict[str, Any], risk: str, score: float) -> dict[str, A
         base["source_paths"] = node.get("source_paths", [])
         base["RAW_RECOMMENDED"] = bool(node.get("raw_ref"))
         base["suggested_read_command"] = raw_read_command(str(node["node_id"]))
+    # #47 C6: quality states are VISIBLE, never silent. "stale-risk" and the
+    # binary stale flag mark the item (penalized in score_node); "verified" /
+    # "unverified" ride along as a field so the model sees the distinction
+    # without a penalty. The cheap Git check for stale-risk is deliberately
+    # NOT here: the recall engine is store-only; freshness checks belong to
+    # a caller that has a workspace.
+    status = str(quality.get("status", "")).lower()
+    if status in ("verified", "unverified"):
+        base["verification"] = status
+    if status == "stale-risk" or quality.get("stale") is True:
+        base["NEGATIVE_MEMORY"] = True
+        base["warning_reason"] = quality.get("reason", "") or "stale"
     if node.get("memory_type") == "negative_rule":
         base["NEGATIVE_MEMORY"] = True
         base["warning_reason"] = quality.get("reason", "")

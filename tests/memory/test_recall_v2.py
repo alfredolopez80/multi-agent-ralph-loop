@@ -506,3 +506,72 @@ def test_budget_valley_is_real_and_documented(tmp_path):
         f"if this ever fails, the engine became monotone and the default "
         f"comment in recall() is stale"
     )
+
+
+# --- quality states (#47 C6): never silently trusted -------------------------
+
+def test_reject_conflicting_status(store):
+    """"conflicting" must not be silently promoted into context."""
+    written = store.create_node(
+        _payload("projA", quality={"confidence": 0.9, "status": "conflicting"})
+    )
+    node = store.load_node("projA", written["node_id"])
+    assert node is not None
+    assert hard_reject_reason(node, _ctx("projA"), False) == "conflict"
+
+
+def test_stale_risk_status_penalized_like_the_stale_flag():
+    analysis = analyze_query("rollback savepoint")
+    clean = _payload("projA", trigger={"text": "rollback savepoint"})
+    risky = _payload(
+        "projA",
+        trigger={"text": "rollback savepoint"},
+        quality={"confidence": 0.9, "status": "stale-risk"},
+    )
+    s_clean, _ = score_node(clean, analysis)
+    s_risky, _ = score_node(risky, analysis)
+    assert s_clean - s_risky == 12.0
+
+
+def test_stale_items_are_marked_not_just_penalized(store):
+    """The binary stale flag used to only lower the score — the item still
+    entered context with no visible warning (semi-silent trust). Now both
+    the flag and the stale-risk status mark NEGATIVE_MEMORY."""
+    from recall_v2 import render_context
+
+    items = []
+    for marker, quality in (("flag", {"confidence": 0.9, "stale": True}),
+                            ("risk", {"confidence": 0.9, "status": "stale-risk"})):
+        written = store.create_node(
+            _payload("projA", summary=f"stale marker {marker}", quality=quality)
+        )
+        node = store.load_node("projA", written["node_id"])
+        assert node is not None
+        items.append(render_context(node, "low", 10.0))
+    for item in items:
+        assert item["NEGATIVE_MEMORY"] is True
+        assert item["warning_reason"], "the warning must say why, not just flag"
+
+    written = store.create_node(_payload("projA"))
+    clean = store.load_node("projA", written["node_id"])
+    assert clean is not None
+    assert "NEGATIVE_MEMORY" not in render_context(clean, "low", 10.0)
+
+
+def test_verified_unverified_carried_visibly(store):
+    """"verified"/"unverified" ride along as a field: visible, unpenalized."""
+    from recall_v2 import render_context
+
+    rendered = {}
+    for status in ("verified", "unverified"):
+        written = store.create_node(
+            _payload("projA", summary=f"marker {status}",
+                     quality={"confidence": 0.9, "status": status})
+        )
+        node = store.load_node("projA", written["node_id"])
+        assert node is not None
+        rendered[status] = render_context(node, "low", 10.0)
+    assert rendered["verified"]["verification"] == "verified"
+    assert rendered["unverified"]["verification"] == "unverified"
+    for item in rendered.values():
+        assert "NEGATIVE_MEMORY" not in item, "unverified is not negative"
