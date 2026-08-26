@@ -432,6 +432,30 @@ printf '\033Ptmux;\033\033]777;notify;TITLE;BODY\033\033\\\033\\' > "$(tmux disp
    Ask only what you cannot measure: if git, the tests or the code answer it,
    answering it yourself is the job. The universal half of this rule lives in
    `~/.claude/CLAUDE.md`; what is Q-team-specific is the notification.
+9. **Lead polls; it never waits for a DONE.** A worker that finished, went idle
+   without reporting, or is blocked all look identical from the lead's seat:
+   silence. The measured cost of waiting is a whole pane idle for as long as it
+   takes the lead to think of checking — it happened four times in two days, and
+   the user had to point it out every time. So the lead checks state on its own
+   schedule, at minimum whenever it is about to answer the user, and treats
+   these as the signals:
+
+   | Signal | Command | Means |
+   |---|---|---|
+   | Work ready to integrate | `git rev-list --count main..worktree-<w>` | > 0 → review and merge now |
+   | Unfinished or abandoned | `git -C .claude/worktrees/<w> status --porcelain` | non-empty → contract breach, chase it |
+   | Delivered without reporting | `ls -t .claude/worktrees/<w>/results/` | new file → read it, do not wait |
+   | Idle with nothing pending | all three above empty | → **assign, do not leave parked** |
+
+   The last row is the one that keeps being missed. A worker whose branch is
+   clean and integrated is not "done for the day": it is unassigned, and that is
+   the lead's debt, not the worker's. An event-driven Monitor helps but only
+   fires on edges (a new commit, a new file); it never says "this is still
+   pending", so it cannot replace the poll.
+
+   And the lead never parks a worker to wait for another. Two tasks that only
+   meet at the end are not coupled while they run — coupling them idles a pane
+   for the duration and the lead is the one who created the hole.
 
 ### Required settings
 
