@@ -223,6 +223,19 @@ never model choice.
 **~1950-2000 tokens** (tiktoken cl100k_base, 2026-08-23): ~818 are L0+L1; the rest is
 recall_v2 top rules, Vault Stats and the project Wing (L2) — count ALL of it, not just L0+L1.
 
+**Recall on demand** — when a task would benefit from what this project already learned,
+ask for it instead of waiting for the startup block:
+
+```bash
+python3 scripts/memory/recall_v2.py --query "<terms from the task at hand>" --limit 3
+```
+
+Measured: ~83 tokens rendered, ~25 ms, and **zero when not invoked**. Use specific terms —
+a broad query returns generic matches, a directed one lifts the relevant rule from score
+30 to 64 (T70). This is deliberately a command and not a hook: deciding "this task would
+benefit from history" is a semantic judgement only the model with the task in front of it
+can make, and any automatic trigger pays on every prompt of every session (T73).
+
 ### Learned Rules Taxonomy
 
 Rules organized in 3 dimensions for flexible retrieval:
