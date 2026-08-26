@@ -264,6 +264,22 @@ def deprecated(node: dict[str, Any]) -> bool:
     )
 
 
+# Mechanical auto-extractions from the retired curator-learn.sh regex era
+# (last node 2026-04-07) amassed 1,992 near-identical nodes — 53 distinct
+# summaries, 98.2% of rules.json — that dominated every broad query with
+# "Uses async/await" filler. layers.py:_MECHANICAL_ID_PREFIXES excludes the
+# same prefixes from L1 selection ("zero actionable leverage at wake-up");
+# T69 applies the same semantics here so the two outputs of the wake-up hook
+# stop disagreeing. The prefix IS the producer's mark: it identifies the
+# class by construction, not by content heuristics that could fuse
+# legitimately distinct rules.
+MECHANICAL_NODE_ID_PREFIXES = ("rule_ep-auto-", "rule_ep-rule-")
+
+
+def mechanical(node: dict[str, Any]) -> bool:
+    return str(node.get("node_id", "")).startswith(MECHANICAL_NODE_ID_PREFIXES)
+
+
 def provenance_complete(node: dict[str, Any]) -> bool:
     return bool(node.get("source_paths") or node.get("source_description")) and bool(
         node.get("session_id") or node.get("commit")
@@ -279,7 +295,10 @@ def safe_fields(node: dict[str, Any]) -> dict[str, Any]:
 
 
 def hard_reject_reason(
-    node: object, context: Context, include_deprecated: bool
+    node: object,
+    context: Context,
+    include_deprecated: bool,
+    include_mechanical: bool = False,
 ) -> str:
     if not isinstance(node, dict):
         return "invalid_node"
@@ -291,6 +310,8 @@ def hard_reject_reason(
         return "conflict"
     if deprecated(node) and not include_deprecated:
         return "deprecated"
+    if mechanical(node) and not include_mechanical:
+        return "mechanical"
     if not provenance_complete(node):
         return "missing_provenance"
     if node.get("authority") != "non_authoritative":
@@ -457,6 +478,7 @@ def recall(
     limit: int = 5,
     budget_limit: int = 1200,
     include_deprecated: bool = False,
+    include_mechanical: bool = False,
 ) -> dict[str, Any]:
     started = time.perf_counter()
     store = TreeStore(ralph_home)
@@ -467,7 +489,7 @@ def recall(
 
     for path, payload in candidate_payloads(store, context.project_id, analysis):
         node_id = node_id_for(payload, path)
-        reason = hard_reject_reason(payload, context, include_deprecated)
+        reason = hard_reject_reason(payload, context, include_deprecated, include_mechanical)
         if reason:
             rejected.append({"node_id": node_id, "reason": reason})
             continue
@@ -480,11 +502,27 @@ def recall(
 
     scored.sort(key=lambda item: (-item[0], str(item[1].get("node_id", ""))))
 
+    # Emission-level dedup (T69): collapses identical CONTENT, never nodes.
+    # The key is the normalized summary (lowercase, whitespace-collapsed —
+    # same normalization the C7 budget experiment measured as "byte-identical").
+    # Two nodes whose summaries differ in one word stay two entries: the key
+    # is never coarser than the injected content, so legitimately distinct
+    # knowledge cannot be fused (the mmx-1 failure mode).
+    seen_summaries: set[str] = set()
+
+    def dedup_key(node: dict[str, Any]) -> str:
+        return " ".join(str(node.get("summary", "")).split()).lower()
+
     selected: list[dict[str, Any]] = []
     used = 0
     for score, node, _parts in scored:
         if len(selected) >= limit:
             break
+        key = dedup_key(node)
+        if key in seen_summaries:
+            rejected.append({"node_id": str(node["node_id"]), "reason": "duplicate_summary"})
+            continue
+        seen_summaries.add(key)
         item = render_context(node, risk, score)
         needed = estimate_units(item)
         if used + needed > budget_limit:
@@ -552,6 +590,12 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=5)
     parser.add_argument("--budget", type=int, default=1200)
     parser.add_argument("--include-deprecated", action="store_true")
+    parser.add_argument(
+        "--include-mechanical",
+        action="store_true",
+        help="admit rule_ep-auto-/rule_ep-rule- mechanical extractions "
+        "(excluded by default, same semantics as L1 selection)",
+    )
     parser.add_argument("--read-raw", action="store_true")
     parser.add_argument("--node-id", default="")
     args = parser.parse_args()
@@ -588,6 +632,7 @@ def main() -> int:
         max(0, args.limit),
         max(0, args.budget),
         args.include_deprecated,
+        args.include_mechanical,
     )
     if args.json:
         print(json.dumps(report, ensure_ascii=True, indent=2, sort_keys=True))

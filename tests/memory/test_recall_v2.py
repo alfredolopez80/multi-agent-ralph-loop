@@ -260,3 +260,91 @@ def test_recall_high_risk_adds_raw_recommendation(store, tmp_path):
     assert ctx
     assert ctx[0]["RAW_RECOMMENDED"] is True
     assert ctx[0]["suggested_read_command"]
+
+
+# --- T69: mechanical exclusion + emission-level dedup ----------------------
+
+def test_reject_mechanical_prefix(store):
+    node = _payload("projA", node_id="rule_ep-auto-1772663931-20800")
+    assert hard_reject_reason(node, _ctx("projA"), False) == "mechanical"
+    # escape hatch: explicitly admitted
+    assert hard_reject_reason(node, _ctx("projA"), False, include_mechanical=True) == ""
+
+
+def test_reject_mechanical_ep_rule_variant(store):
+    node = _payload("projA", node_id="rule_ep-rule-42-1")
+    assert hard_reject_reason(node, _ctx("projA"), False) == "mechanical"
+
+
+def test_recall_broad_query_spends_no_slot_on_mechanical(store, tmp_path):
+    home = tmp_path / "ralph_home"
+    s = TreeStore(home)
+    real = s.create_node(
+        _payload("projA", summary="database parameterized queries rule")
+    )
+    # the two dominant mechanical fillers of the retired curator era
+    s.create_node(
+        _payload("projA", node_id="rule_ep-auto-1772663931-20800",
+                 summary="Uses async/await for asynchronous operations")
+    )
+    s.create_node(
+        _payload("projA", node_id="rule_ep-auto-1772664000-99999",
+                 summary="Implements caching strategy")
+    )
+    report = recall("database queries rule caching", _ctx("projA"), home, limit=5)
+    selected = report["MEMORY_TRACE"]["selected_memory_ids"]
+    assert selected == [real["node_id"]]
+    reasons = {r["reason"] for r in report["MEMORY_TRACE"]["rejected"]}
+    assert "mechanical" in reasons
+
+
+def test_recall_include_mechanical_escape_hatch(store, tmp_path):
+    home = tmp_path / "ralph_home"
+    s = TreeStore(home)
+    s.create_node(_payload("projA", summary="database parameterized queries rule"))
+    mech = s.create_node(
+        _payload("projA", node_id="rule_ep-auto-1772663931-20800",
+                 summary="Uses caching strategy database queries")
+    )
+    report = recall(
+        "database queries caching", _ctx("projA"), home, limit=5,
+        include_mechanical=True,
+    )
+    assert mech["node_id"] in report["MEMORY_TRACE"]["selected_memory_ids"]
+
+
+def test_recall_dedup_collapses_identical_summary(store, tmp_path):
+    home = tmp_path / "ralph_home"
+    s = TreeStore(home)
+    s.create_node(
+        _payload("projA", node_id="rule_real-1",
+                 summary="always use parameterized SQL   queries")
+    )
+    # same content, different casing/whitespace and node_id (non-mechanical:
+    # duplicates can also come from hand-written rules)
+    s.create_node(
+        _payload("projA", node_id="rule_real-2",
+                 summary="Always use parameterized SQL queries")
+    )
+    report = recall("parameterized SQL queries", _ctx("projA"), home, limit=5)
+    selected = report["MEMORY_TRACE"]["selected_memory_ids"]
+    assert len(selected) == 1
+    reasons = [r["reason"] for r in report["MEMORY_TRACE"]["rejected"]]
+    assert "duplicate_summary" in reasons
+
+
+def test_recall_keeps_distinct_summaries_separate(store, tmp_path):
+    home = tmp_path / "ralph_home"
+    s = TreeStore(home)
+    a = s.create_node(
+        _payload("projA", node_id="rule_real-1",
+                 summary="always use parameterized SQL queries")
+    )
+    # one word different: legitimately distinct knowledge, must NOT be fused
+    b = s.create_node(
+        _payload("projA", node_id="rule_real-2",
+                 summary="always use parameterized NoSQL queries")
+    )
+    report = recall("parameterized queries", _ctx("projA"), home, limit=5)
+    selected = report["MEMORY_TRACE"]["selected_memory_ids"]
+    assert set(selected) == {a["node_id"], b["node_id"]}
