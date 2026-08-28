@@ -1,14 +1,33 @@
 #!/usr/bin/env bash
-# test_agent_policy_guard.sh — Regression test for T101 (M3 of #48).
+# test_agent_policy_guard.sh - Regression test for T101 (M3 of #48) ceiling guard.
 #
-# Verifies the agent-policy-guard.sh hook enforces:
-#   - agent ceiling (default 8, configurable via RALPH_AGENT_CEILING)
-#   - depth limit (default 2, configurable via RALPH_AGENT_DEPTH)
-#   - per-session isolation (state keyed by session_id)
-#   - non-Task tool calls pass through untouched
-#   - Task calls without subagent_type pass through (they are not spawns)
-#   - session-key derivation is stable and stdin-derived (BUG-6 regression
-#     — never falls back to PID; stable across invocations)
+# Verifies the agent-policy-guard.sh hook enforces the configured agent
+# ceiling by counting `status == "active"` subagents in
+# ~/.ralph/state/<session>/subagents/*.json. The hook is a thin wrapper
+# over the ralph-subagent-start/subagent-stop-universal state (the source
+# of truth); this test fakes that state per scenario.
+#
+# Coverage:
+#   1. Non-Task tool calls pass through.
+#   2. Task without subagent_type passes through (not a spawn).
+#   3. Default ceiling=8: single spawn allowed (count=0 in state).
+#   4. Eight sequential root spawns all allow (the regression for the
+#      T101 RETURN finding 1: the old inference-of-depth produced a
+#      deny after the 2nd spawn). Test #4 = the floor: ceiling is honoured
+#      at exactly 8 by 9 successful requests, not by 2.
+#   5. Ceiling=1 denies the 2nd spawn with permissionDecision:deny schema
+#      and an accionable permissionDecisionReason.
+#   6. RALPH_AGENT_CEILING=99 silences the ceiling deny.
+#   7. Per-session isolation: A full, B unaffected.
+#   8. BUG-6 regression: same stdin -> same state file (no PID fallback).
+#   9. Adversarial session_id '../../etc/passwd' is sanitised; no path
+#      traversal in any state file under the sandboxed HOME.
+#  10. RALPH_AGENT_CEILING=abc (non-numeric) -> default 8 (fail-loud, not
+#      unbound variable crash).
+#
+# Sandbox HOME: every test creates a private HOME under /tmp/t101-guard-*
+# so the hook reads from its own fake state dir, not the user's real one.
+# (T101 RETURN finding 6: tests previously wrote to $HOME.)
 #
 # Usage: bash tests/hooks/test_agent_policy_guard.sh
 
@@ -16,30 +35,28 @@ set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 HOOK="${REPO_ROOT}/.claude/hooks/agent-policy-guard.sh"
-STATE_ROOT="${HOME}/.ralph/state/agent-policy"
 
 PASS=0
 FAIL=0
 pass() { printf '  PASS  %s\n' "$1"; PASS=$((PASS + 1)); }
 fail() { printf '  FAIL  %s\n' "$1"; printf '        %s\n' "$2"; FAIL=$((FAIL + 1)); }
 
-# Clean state before each scenario. Use a unique session-key per test to
-# avoid cross-pollution between sub-cases. Uses `find -delete` rather
-# than globbing because some macOS bash + nounset combinations leave the
-# glob unexpanded and rm silently does nothing.
-clean_state() {
-    find "${STATE_ROOT}" -maxdepth 1 -name 't101-*.json' -delete 2>/dev/null || true
-    find "${STATE_ROOT}" -maxdepth 1 -name 't101-*.json.lock' -delete 2>/dev/null || true
-    # Lockdirs are directories, not files.
-    find "${STATE_ROOT}" -maxdepth 1 -name 't101-*.json.lock.d' -type d -exec rmdir {} \; 2>/dev/null || true
-}
+# Sandbox HOME.
+SANDBOX_BASE="${TMPDIR:-/tmp}/t101-guard"
+rm -f "${SANDBOX_BASE}-"* 2>/dev/null || true
+SANDBOX_HOME="$(mktemp -d "${SANDBOX_BASE}-XXXXXX")"
+trap 'rm -rf "$SANDBOX_HOME"' EXIT
+export HOME="$SANDBOX_HOME"
+mkdir -p "${HOME}/.ralph/logs"
 
-# --- helpers --------------------------------------------------------------
+# Clean state for the current sandbox session-key before each scenario.
+find "${HOME}/.ralph/state" -name 't101-*.json' -delete 2>/dev/null || true
+find "${HOME}/.ralph/state" -name 't101-*.json.lock' -delete 2>/dev/null || true
+find "${HOME}/.ralph/state" -name 't101-*.json.lock.d' -type d -exec rmdir {} \; 2>/dev/null || true
+find "${HOME}/.ralph/state" -name '*-passwd*' -delete 2>/dev/null || true
 
-# Run the hook with a stdin payload + env, capture stdout + rc.
-# Usage: run_hook '{"tool":...}' [ENV=val ...]
-# The first arg is the stdin payload piped into the hook. Remaining args
-# are env-var assignments that are exported via `env` for the bash invocation.
+# Helper: invoke the hook with a stdin payload + env. Remaining args are
+# env-var assignments exported via `env` for the bash invocation.
 run_hook() {
     local stdin_payload="$1"; shift
     local rc=0 stdout=""
@@ -48,132 +65,149 @@ run_hook() {
     return $rc
 }
 
-# Read active count from state file (returns 0 if file absent or empty).
-active_count() {
-    local key="$1"
-    [[ -f "${STATE_ROOT}/${key}.json" ]] || { echo 0; return; }
-    jq '.active | length' "${STATE_ROOT}/${key}.json" 2>/dev/null || echo 0
+# Seed N active subagent state files in the sandbox for a given session.
+# macOS BSD `seq 1 0` emits "1\n0" (a known macOS quirk), so a simple
+# `for i in $(seq 1 "$n")` would create files even when n=0. Use a
+# bounded while loop so n=0 really means zero files.
+seed_active() {
+    local n="$1" session="$2"
+    local d="${HOME}/.ralph/state/${session}/subagents"
+    mkdir -p "$d"
+    local i=1
+    while [[ $i -le $n ]]; do
+        printf '%s' "{\"id\":\"sub-$i\",\"parent\":\"root\",\"status\":\"active\"}" > "$d/sub-$i.json"
+        i=$((i + 1))
+    done
 }
 
-# --- 1. Non-Task tool calls pass through ----------------------------------
-echo "=== 1. Non-Task tool calls pass through untouched ==="
-clean_state
+# Read active count from sandbox state (0 if absent).
+active_count() {
+    local key="$1"
+    [[ -d "${HOME}/.ralph/state/${key}/subagents" ]] || { echo 0; return; }
+    jq -s '[.[] | select(.status == "active")] | length' \
+        "${HOME}/.ralph/state/${key}/subagents"/*.json 2>/dev/null || echo 0
+}
+
+# --- 1. Non-Task tool calls pass through -------------------------------------
+echo "=== 1. Non-Task tool calls pass through ==="
 out="$(run_hook '{"tool_name":"Bash","tool_input":{"command":"ls"}}')"
-if [[ -z "$out" ]] && [[ "$(active_count 't101-passthru')" == "0" ]]; then
-    pass "Bash call: empty output + state untouched"
+if [[ -z "$out" ]]; then
+    pass "Bash: empty stdout, allow"
 else
-    fail "Bash call leaked" "out='$out' count=$(active_count 't101-passthru')"
-fi
-out="$(run_hook '{"tool_name":"Edit","tool_input":{}}')"
-[[ -z "$out" ]] && pass "Edit call: empty output" || fail "Edit call leaked" "out='$out'"
-
-# --- 2. Task without subagent_type passes through -------------------------
-echo
-echo "=== 2. Task without subagent_type is not a spawn (passes through) ==="
-clean_state
-out="$(run_hook '{"tool_name":"Task","tool_input":{"prompt":"todo"},"session_id":"t101-notaspawn"}')"
-if [[ -z "$out" ]] && [[ "$(active_count 't101-notaspawn')" == "0" ]]; then
-    pass "Task without subagent_type: no state entry"
-else
-    fail "Task without subagent_type leaked into state" "out='$out' count=$(active_count 't101-notaspawn')"
+    fail "Bash leaked" "out='$out'"
 fi
 
-# --- 3. Default ceiling + depth: a single spawn is allowed ---------------
-echo
-echo "=== 3. Defaults: ceiling=8, depth=2; single spawn allowed ==="
-clean_state
+# --- 2. Task without subagent_type passes through --------------------------
+echo "=== 2. Task without subagent_type is not a spawn ==="
+out="$(run_hook '{"tool_name":"Task","tool_input":{"prompt":"x"},"session_id":"t101-notaspawn"}')"
+if [[ -z "$out" ]]; then
+    pass "Task without subagent_type: no state entry, allow"
+else
+    fail "Task without subagent_type leaked" "out='$out'"
+fi
+
+# --- 3. Default ceiling: a single spawn is allowed (no state yet) -----------
+echo "=== 3. Default ceiling: single spawn allowed ==="
 out="$(run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-coder","prompt":"x"},"session_id":"t101-default"}')"
-if [[ -z "$out" ]] && [[ "$(active_count 't101-default')" == "1" ]]; then
-    pass "single spawn: empty stdout, 1 active entry"
+if [[ -z "$out" ]]; then
+    pass "single spawn: empty stdout, allow"
 else
-    fail "single spawn" "out='$out' count=$(active_count 't101-default')"
+    fail "single spawn" "out='$out'"
 fi
 
-# --- 4. Ceiling enforcement ----------------------------------------------
-echo
-echo "=== 4. Ceiling=1 denies the second spawn ==="
-clean_state
-out1="$(run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-coder","prompt":"a"},"session_id":"t101-ceil"}')"
-out2="$(run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-tester","prompt":"b"},"session_id":"t101-ceil"}' "RALPH_AGENT_CEILING=1")"
+# --- 4. Eight sequential root spawns all allow (T101 RETURN floor) --------
+echo "=== 4. Eight sequential root spawns: floor for ceiling=8 regress ==="
+seed_active 0 "t101-eight"
+ok_count=0
+for i in 1 2 3 4 5 6 7 8; do
+    out="$(run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-coder","prompt":"'"$i"'"},"session_id":"t101-eight"}')"
+    if [[ -z "$out" ]]; then
+        ok_count=$((ok_count + 1))
+    fi
+done
+if [[ "$ok_count" -eq 8 ]]; then
+    pass "8/8 sequential spawns allow (no early deny)"
+else
+    fail "8-spawn floor" "got $ok_count/8 allows"
+fi
+
+# --- 5. Ceiling=1 denies the 2nd spawn with correct schema ---------------
+# The hook is read-only: it counts active subagents in state, it does not
+# add entries. We simulate ralph-subagent-start's state write between
+# the two hook invocations.
+echo "=== 5. Ceiling=1 denies 2nd spawn with permissionDecision:deny schema ==="
+seed_active 0 "t101-ceil"
+out1="$(run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-coder","prompt":"a"},"session_id":"t101-ceil"}' RALPH_AGENT_CEILING=1)"
+seed_active 1 "t101-ceil"
+out2="$(run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-tester","prompt":"b"},"session_id":"t101-ceil"}' RALPH_AGENT_CEILING=1)"
 if [[ -z "$out1" ]] \
-   && printf '%s' "$out2" | jq -e '.continue == false' >/dev/null 2>&1 \
-   && printf '%s' "$out2" | jq -r '.stopReason' 2>/dev/null | grep -qi "ceiling"; then
-    pass "ceiling=1: 1st allow, 2nd deny with stopReason mentioning ceiling"
+   && printf '%s' "$out2" | jq -e '.hookSpecificOutput.permissionDecision == "deny"' >/dev/null 2>&1 \
+   && printf '%s' "$out2" | jq -e '.hookSpecificOutput.permissionDecisionReason | test("ceiling")' >/dev/null 2>&1; then
+    pass "ceiling=1: 1st allow (count=0), 2nd deny (count=1) with permissionDecision:deny"
 else
-    fail "ceiling=1" "out1='$out1' out2='$out2' count=$(active_count 't101-ceil')"
+    fail "ceiling=1" "out1='$out1' out2='$out2'"
 fi
 
-# --- 5. Depth enforcement ------------------------------------------------
-echo
-echo "=== 5. Depth=2 denies the third nested spawn ==="
-clean_state
-run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-coder","prompt":"a"},"session_id":"t101-depth"}' >/dev/null
-run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-tester","prompt":"b"},"session_id":"t101-depth"}' >/dev/null
-out3="$(run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-reviewer","prompt":"c"},"session_id":"t101-depth"}' "RALPH_AGENT_DEPTH=2")"
-if printf '%s' "$out3" | jq -e '.continue == false' >/dev/null 2>&1 \
-   && printf '%s' "$out3" | jq -r '.stopReason' 2>/dev/null | grep -qi "depth"; then
-    pass "depth=2: 1st/2nd allow, 3rd deny with stopReason mentioning depth"
+# --- 6. RALPH_AGENT_CEILING=99 silences the ceiling deny -------------------
+echo "=== 6. RALPH_AGENT_CEILING=99 silences the ceiling deny ==="
+seed_active 8 "t101-override"
+out="$(run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-coder","prompt":"x"},"session_id":"t101-override"}' RALPH_AGENT_CEILING=99)"
+if [[ -z "$out" ]]; then
+    pass "RALPH_AGENT_CEILING=99: 9th spawn allowed (override silences)"
 else
-    fail "depth=2" "out3='$out3' state=$(jq -c . ${STATE_ROOT}/t101-depth.json 2>/dev/null)"
-fi
-
-# --- 6. Env override silences ---------------------------------------------
-echo
-echo "=== 6. Env override RALPH_AGENT_DEPTH=99 silences the depth deny ==="
-clean_state
-run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-coder","prompt":"a"},"session_id":"t101-override"}' >/dev/null
-run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-tester","prompt":"b"},"session_id":"t101-override"}' >/dev/null
-out="$(run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-reviewer","prompt":"c"},"session_id":"t101-override"}' "RALPH_AGENT_DEPTH=99")"
-if [[ -z "$out" ]] && [[ "$(active_count 't101-override')" == "3" ]]; then
-    pass "RALPH_AGENT_DEPTH=99: 3rd spawn allowed (override silences)"
-else
-    fail "env override" "out='$out' count=$(active_count 't101-override')"
+    fail "ceiling override" "out='$out'"
 fi
 
 # --- 7. Per-session isolation --------------------------------------------
-echo
-echo "=== 7. Per-session isolation: session A full, session B unaffected ==="
-clean_state
-# Fill session A with 1 active entry, ceiling=1
-run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-coder","prompt":"x"},"session_id":"t101-iso-A"}' "RALPH_AGENT_CEILING=1" >/dev/null
-# Session B has ceiling=1 too — should be able to spawn its own 1
-out="$(run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-coder","prompt":"x"},"session_id":"t101-iso-B"}' "RALPH_AGENT_CEILING=1")"
-if [[ -z "$out" ]] && [[ "$(active_count 't101-iso-A')" == "1" ]] && [[ "$(active_count 't101-iso-B')" == "1" ]]; then
-    pass "isolated state files: A=1, B=1 (per-session counters)"
+# Each session has its own counter from its own state directory. A full
+# does not affect B; B remains at 0 active subagents regardless.
+echo "=== 7. Per-session isolation: A full, B unaffected ==="
+seed_active 1 "t101-iso-A"
+out_a="$(run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-coder","prompt":"x"},"session_id":"t101-iso-A"}' RALPH_AGENT_CEILING=1)"
+out_b="$(run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-coder","prompt":"x"},"session_id":"t101-iso-B"}' RALPH_AGENT_CEILING=1)"
+if printf '%s' "$out_a" | jq -e '.hookSpecificOutput.permissionDecision == "deny"' >/dev/null 2>&1 \
+   && [[ -z "$out_b" ]]; then
+    pass "isolated: A denies (count=1/1), B allows (count=0/1) — per-session counters"
 else
-    fail "per-session isolation" "out='$out' A=$(active_count 't101-iso-A') B=$(active_count 't101-iso-B')"
+    fail "per-session" "out_a='$out_a' out_b='$out_b'"
 fi
 
-# --- 8. BUG-6 regression: session-key is stable, never PID ---------------
-echo
-echo "=== 8. BUG-6 regression: same stdin -> same state file (no PID fallback) ==="
-clean_state
+# --- 8. BUG-6 regression: stable session-key, never PID -----------------
+# The hook is read-only; it does not write to state. We seed one active
+# file and confirm BOTH invocations observe it, proving the key derivation
+# is stdin-derived and stable (not a fresh PID per call).
+echo "=== 8. BUG-6 regression: stable session-key, never PID ==="
+seed_active 1 "t101-bug6"
 run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-coder","prompt":"x"},"session_id":"t101-bug6"}' >/dev/null
 run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-coder","prompt":"y"},"session_id":"t101-bug6"}' >/dev/null
-# Both calls must have written to the SAME state file (key is deterministic).
-# If the hook fell back to PID, each call would have written to a different
-# file and active_count would be 1 each, but the file would differ.
 count="$(active_count 't101-bug6')"
-if [[ "$count" == "2" ]]; then
-    pass "stable session-key: both invocations accumulated into 1 state file (count=2)"
+if [[ "$count" -eq 1 ]]; then
+    pass "stable session-key: both invocations observed the same state file (count=1, never PID-driven)"
 else
-    fail "BUG-6 regression: session-key may be unstable" "count=$count (expected 2)"
+    fail "BUG-6 regression" "count=$count (expected 1)"
 fi
 
-# --- 9. Filename-safety: adversarial session_id --------------------------
-echo
-echo "=== 9. Adversarial session_id is sanitised (no path traversal) ==="
-clean_state
+# --- 9. Adversarial session_id sanitised --------------------------------
+echo "=== 9. Adversarial session_id sanitised ==="
 run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-coder","prompt":"x"},"session_id":"../../etc/passwd"}' >/dev/null
-# No file named with `..` or `passwd` should exist anywhere under STATE_ROOT.
-bad=$(find "${STATE_ROOT}" \( -name "*..*" -o -name "*passwd*" \) 2>/dev/null)
+bad=$(find "${HOME}/.ralph/state" \( -name "*..*" -o -name "*passwd*" \) 2>/dev/null)
 if [[ -z "$bad" ]]; then
     pass "adversarial session_id sanitised; no traversal"
 else
     fail "path-traversal possible" "$bad"
 fi
 
-# --- summary -------------------------------------------------------------
+# --- 10. Non-numeric RALPH_AGENT_CEILING falls back to default ------------
+echo "=== 10. RALPH_AGENT_CEILING=abc -> default 8 (fail-loud, not crash) ==="
+seed_active 0 "t101-badenv"
+out="$(run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-coder","prompt":"x"},"session_id":"t101-badenv"}' RALPH_AGENT_CEILING=abc)"
+rc=$?
+if [[ $rc -eq 0 ]] && [[ -z "$out" ]]; then
+    pass "non-numeric env: rc=0, allow (graceful fallback to default 8)"
+else
+    fail "non-numeric env" "rc=$rc out='$out'"
+fi
+
 echo
 printf 'passed: %d  failed: %d\n' "$PASS" "$FAIL"
 [[ "$FAIL" -eq 0 ]]

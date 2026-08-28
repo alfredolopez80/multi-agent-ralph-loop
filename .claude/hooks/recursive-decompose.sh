@@ -97,7 +97,7 @@ LOG_FILE="$LOG_DIR/recursive-decompose-$(date +%Y%m%d).log"
         INFO_DENSITY=$(jq -r '.classification.information_density // "LINEAR"' "$PLAN_STATE_FILE")
         CONTEXT_REQ=$(jq -r '.classification.context_requirement // "FITS"' "$PLAN_STATE_FILE")
         CURRENT_DEPTH=$(jq -r '.recursion.depth // 0' "$PLAN_STATE_FILE")
-        MAX_DEPTH=$(jq -r '.recursion.max_depth // 3' "$PLAN_STATE_FILE")
+        MAX_DEPTH=$(jq -r '.recursion.max_depth // 2' "$PLAN_STATE_FILE")
         MAX_CHILDREN=${MAX_CHILDREN:-5}  # Default: max 5 sub-orchestrators per level
         release_plan_state_lock
 
@@ -111,7 +111,7 @@ LOG_FILE="$LOG_DIR/recursive-decompose-$(date +%Y%m%d).log"
         echo "  No plan-state.json found"
         WORKFLOW_ROUTE="STANDARD"
         CURRENT_DEPTH=0
-        MAX_DEPTH=3
+        MAX_DEPTH=2
         MAX_CHILDREN=5
     fi
 

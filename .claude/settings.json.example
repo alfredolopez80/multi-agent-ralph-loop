@@ -169,6 +169,17 @@
         ]
       }
     ],
+    "SubagentStart": [
+      {
+        "matcher": "ralph-*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/agent-depth-soft-enforce.sh"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "matcher": "*",
