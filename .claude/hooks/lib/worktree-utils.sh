@@ -51,27 +51,62 @@ get_project_root() {
   local cwd="${1:-${PWD:-.}}"
   local canon
   canon="$(cd "$cwd" 2>/dev/null && pwd -P || echo "$cwd")"
+  # (a) stdout only, rc kept: healthy git hands us the declared toplevel.
   local rc=0 root=""
   root="$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null)" || rc=$?
-  if [[ "$rc" -ne 0 ]]; then
-    root=""
-  fi
-  local dir="$canon" next
+  [[ "$rc" -ne 0 ]] && root=""
+  # (c) broken-vs-absent git, decided by FILESYSTEM presence of a .git on the
+  #     walk up (the error text cannot distinguish them). With one present,
+  #     the content-marker walk runs with THAT directory as its ceiling — so
+  #     a nested project's plan survives an ANCESTOR repo's broken git.
+  #     With NO .git on the walk at all, there is no declared container:
+  #     per the v2.0.1 invariant the scope is cwd itself — a marker-less walk
+  #     up an unbounded tree would adopt strangers (e.g. a shared temp dir
+  #     that accumulated a .claude/ from an earlier fixture).
+  local dir="$canon" git_ceiling="" next
   while [[ -n "$dir" && "$dir" != "/" ]]; do
-    if _is_project_dir_marker "$dir"; then
-      echo "$dir"
-      return 0
-    fi
-    if [[ -n "$root" && "$dir" == "$root" ]]; then
-      break   # repo root with no earlier mark: the toplevel IS the project
-    fi
+    if [[ -e "$dir/.git" ]]; then git_ceiling="$dir"; break; fi
     next="${dir%/*}"
     [[ "$next" == "$dir" ]] && break
     dir="$next"
   done
-  if [[ -n "$root" ]]; then
+  if [[ "$rc" -eq 0 ]]; then
+    # (b) healthy git: content-marker walk, ceiling = git toplevel.
+    dir="$canon"
+    while [[ -n "$dir" && "$dir" != "/" && "$dir" != "$root" ]]; do
+      if _is_project_dir_marker "$dir"; then
+        echo "$dir"
+        return 0
+      fi
+      next="${dir%/*}"
+      [[ "$next" == "$dir" ]] && break
+      dir="$next"
+    done
     echo "$root"
     return 0
+  fi
+  if [[ -n "$git_ceiling" ]]; then
+    dir="$canon"
+    while [[ -n "$dir" && "$dir" != "/" && "$dir" != "$git_ceiling" ]]; do
+      if _is_project_dir_marker "$dir"; then
+        echo "$dir"
+        return 0
+      fi
+      next="${dir%/*}"
+      [[ "$next" == "$dir" ]] && break
+      dir="$next"
+    done
+  fi
+  # (4) No git context at all: the frozen session variable is the project
+  # identity when the process cwd cannot declare one (v2.96 contract).
+  # ALWAYS canonized: identity comparisons (ledger identity, validate_file_path)
+  # are meaningless across logical/physical forms — a session entering via
+  # /var and a writer resolving via realpath must agree on ONE identity.
+  # Consumers that need the raw form must say so explicitly.
+  if [[ -n "${CLAUDE_PROJECT_DIR:-}" && -d "${CLAUDE_PROJECT_DIR}" ]]; then
+    local fallback
+    fallback="$(cd "${CLAUDE_PROJECT_DIR}" 2>/dev/null && pwd -P || true)"
+    [[ -n "$fallback" ]] && { echo "$fallback"; return 0; }
   fi
   echo "$canon"
 }

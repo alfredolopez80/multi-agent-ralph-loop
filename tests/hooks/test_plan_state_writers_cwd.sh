@@ -403,14 +403,35 @@ NG_OUT=$(cd "$NG_DIR" && printf '{"tool_input": {"file_path": "%s"}}' "$NG_DIR/s
 RC_W8=$?
 NG_WROTE=$(jq -r '.steps[] | select(.id == "n1") | .actual.updated_at // ""' "$NG_DIR/.claude/plan-state.json" 2>/dev/null)
 if [[ "$RC_W8" -eq 0 && -n "$NG_WROTE" ]]; then
-  ok "non-git project edit accepted (logical root canonized before comparison)"
+  ok "non-git project edit accepted (absolute CLAUDE_PROJECT_DIR)"
 else
-  bad "non-git project edit REJECTED as traversal (rc=$RC_W8) — logical-vs-physical mismatch back"
+  bad "non-git project edit REJECTED as traversal (rc=$RC_W8) — root resolution regressed"
+  echo "       NG_DIR=$NG_DIR"
+  echo "       NG_PHYS=$NG_PHYS"
+  echo "       -- plan-sync log --"
+  cat "$SYNC_LOG_W8" 2>/dev/null | sed 's/^/       /'
 fi
 if ! grep -q "Path traversal attempt blocked" "$SYNC_LOG_W8" 2>/dev/null; then
   ok "no false security alarm for the accepted edit"
 else
   bad "false 'Path traversal' alarm logged for an in-project edit"
+fi
+
+# RETURN r4 finding 5: CLAUDE_PROJECT_DIR="." (the relative fallback) must be
+# canonized centrally in the lib — one consumer accepting it and another
+# refusing it was the divergence. Same project, relative root: accepted too.
+# The step's actual is RESET first so the second mutation is unambiguous
+# even when both runs land in the same second (updated_at has 1s resolution).
+jq '.steps[0].actual = {}' "$NG_DIR/.claude/plan-state.json" \
+  > "$NG_DIR/.claude/plan-state.json.tmp" && mv "$NG_DIR/.claude/plan-state.json.tmp" "$NG_DIR/.claude/plan-state.json"
+NG_OUT2=$(cd "$NG_DIR" && printf '{"tool_input": {"file_path": "%s"}}' "$NG_DIR/src/plain.md" | \
+  HOME="$ISO_HOME_W8" CLAUDE_PROJECT_DIR="." /bin/bash "$HOOKS_SRC/plan-sync-post-step.sh" >/dev/null 2>&1)
+RC_W8B=$?
+NG_WROTE2=$(jq -r '.steps[] | select(.id == "n1") | .actual.updated_at // ""' "$NG_DIR/.claude/plan-state.json" 2>/dev/null)
+if [[ "$RC_W8B" -eq 0 && -n "$NG_WROTE2" ]]; then
+  ok "relative CLAUDE_PROJECT_DIR ('.') canonized centrally — edit accepted"
+else
+  bad "relative CLAUDE_PROJECT_DIR diverged (rc=$RC_W8B) — '.' handling differs per consumer"
 fi
 cleanup "$NG_DIR" "$ISO_HOME_W8"
 
