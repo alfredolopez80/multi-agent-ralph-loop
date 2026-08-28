@@ -40,6 +40,10 @@ notes: <context, constraints, links>
 
 Then:
 
+The scripts referenced below live at `.claude/skills/wt-worker/scripts/` in this
+repo — `start-task.sh` and `finish.sh` — not at `scripts/` from the repo root
+(same convention as wt-lead §3).
+
 1. Run `scripts/start-task.sh`. It verifies your worktree, rebases your branch
    on `main` and reports the result.
    - If the rebase conflicts inside your allowed paths, resolve it, then
