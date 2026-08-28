@@ -287,13 +287,25 @@ chmod +x "$FAKE_STAT"
 ISO_HOME_W5=$(mktemp -d)
 LIFE_LOG="$ISO_HOME_W5/.ralph/logs/plan-state-lifecycle.log"
 OUT_W5=$(cd "$WT_DIR" && printf '{"userPromptContent": "%s"}' "continue with the current step please" | \
-  HOME="$ISO_HOME_W5" STAT_PROBE="$FAKE_STAT" /bin/bash "$WT_DIR/.claude/hooks/plan-state-lifecycle.sh" 2>/dev/null)
+  HOME="$ISO_HOME_W5" RALPH_TEST_STAT_PROBE="$FAKE_STAT" /bin/bash "$WT_DIR/.claude/hooks/plan-state-lifecycle.sh" 2>/dev/null)
 RC_W5=$?
 if [[ "$RC_W5" -eq 0 && "$OUT_W5" == *'{"continue": true}'* && -f "$PLAN" ]] \
    && grep -q "skipping staleness" "$LIFE_LOG" 2>/dev/null; then
   ok "contaminated stat output: hook skipped staleness cleanly (no archive, logged reason)"
 else
   bad "contaminated stat output broke the hook: rc=$RC_W5 plan_archived=$( [[ -f "$PLAN" ]] && echo no || echo yes )"
+fi
+
+# T99 r3 finding 4: the probe name is TEST-NAMESPACED. The OLD generic name
+# must be IGNORED by production: set it with the same contaminating script
+# and the hook must behave exactly as if nothing was exported.
+rm -f "$LIFE_LOG"
+OUT_W5B=$(cd "$WT_DIR" && printf '{"userPromptContent": "%s"}' "continue with the current step please" | \
+  HOME="$ISO_HOME_W5" STAT_PROBE="$FAKE_STAT" /bin/bash "$WT_DIR/.claude/hooks/plan-state-lifecycle.sh" 2>/dev/null)
+if ! grep -q "skipping staleness" "$LIFE_LOG" 2>/dev/null; then
+  ok "old un-namespaced STAT_PROBE is ignored (production stat not hijacked)"
+else
+  bad "un-namespaced STAT_PROBE still hijacks production stat — namespace fix missing"
 fi
 cleanup "$MAIN_DIR" "$WT_DIR" "$ISO_HOME_W5"
 
@@ -391,6 +403,30 @@ else
   bad "false 'Path traversal' alarm logged for an in-project edit"
 fi
 cleanup "$NG_DIR" "$ISO_HOME_W8"
+
+echo "=== T99-W9: a bare tests/.claude/ directory is NOT a project root marker (RETURN r3 finding 1) ==="
+# THIS repo carries tests/.claude/ (a bare directory). With the previous
+# marker (any .claude dir), a session running under tests/ adopted tests/
+# as PROJECT_ROOT: plan invisible, Modo A and B silently OFF — the exact
+# T87/T99 class, a regression vs v2.0.1. Only real .claude CONTENT (a plan,
+# settings, hooks/) marks a project.
+CONTAINER_W9=$(mktemp -d)
+git -C "$CONTAINER_W9" init -q
+git -C "$CONTAINER_W9" config user.email t99@test
+git -C "$CONTAINER_W9" config user.name t99
+mkdir -p "$CONTAINER_W9/.claude/hooks" "$CONTAINER_W9/tests/.claude" "$CONTAINER_W9/tests/sub"
+cp "$HOOKS_SRC/anti-rationalization-gate.sh" "$CONTAINER_W9/.claude/hooks/"
+NOW_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+printf '{"last_updated":"%s","task":"w9","steps":[{"name":"step","status":"in_progress"}]}' "$NOW_ISO" \
+  > "$CONTAINER_W9/.claude/plan-state.json"
+OUT_W9=$(cd "$CONTAINER_W9" && printf '{"stop_hook_active": false, "cwd": "%s/tests/sub", "transcript": "Should I continue?"}' "$CONTAINER_W9" | \
+  /bin/bash "$CONTAINER_W9/.claude/hooks/anti-rationalization-gate.sh" 2>/dev/null || true)
+if [[ "$OUT_W9" == *"Plan-immutability gate"* ]]; then
+  ok "cwd under tests/ still sees the ROOT plan (bare tests/.claude ignored)"
+else
+  bad "bare tests/.claude/ adopted as root — Modo B silently OFF under tests/"
+fi
+rm -rf "$CONTAINER_W9"
 
 echo
 echo "=========================================="

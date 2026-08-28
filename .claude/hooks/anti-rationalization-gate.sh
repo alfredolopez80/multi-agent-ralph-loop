@@ -45,6 +45,14 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 0
 fi
 
+# --- Shared library: the ONLY stat dialect strategy (T99 r3 finding 2) ---
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  # No library -> no reliable mtime: the freshness mtime-fallback degrades
+  # to "unknown" instead of guessing (stat_mtime failing => epoch stays 0).
+  stat_mtime() { return 1; }
+}
+
 # --- Infinite-loop guard: honor stop_hook_active ---
 STOP_HOOK_ACTIVE=$(echo "$INPUT" | jq -r '.stop_hook_active // false' 2>/dev/null || echo false)
 if [ "$STOP_HOOK_ACTIVE" = "true" ]; then
@@ -75,11 +83,14 @@ CWD=$(echo "$INPUT" | jq -r '.cwd // "."' 2>/dev/null)
 # scope, but only the broken case needs the operator to know.
 PROJECT_ROOT="$CWD"
 if command -v git >/dev/null 2>&1; then
-  # stdout+stderr captured together in a variable (success writes no stderr,
-  # so rc decides which half of $_T87_OUT is which — no temp file needed).
-  _T87_OUT="$(git -C "$CWD" rev-parse --show-toplevel 2>&1)" && _T87_RC=0 || _T87_RC=$?
+  # stdout only (T99 r3 finding 3): a warning on stderr with success must not
+  # contaminate the root (it feeds STATE_DIR/PATTERNS_FILE/plan-state paths
+  # and the walk's stop-condition). The broken case needs rc + location, not
+  # the error text — every failure mode prints the same "not a git repo".
+  _T87_RC=0
+  _T87_ROOT="$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null)" || _T87_RC=$?
   if [[ "$_T87_RC" -eq 0 ]]; then
-    _T87_ROOT="$_T87_OUT"
+    _T87_ROOT="$_T87_ROOT"
     # git reports the PHYSICAL root (/private/var on macOS); the payload cwd
     # arrives in LOGICAL form (/var) — the same symlink pair T87's fixture
     # documents. Compare the walk against the canonical CWD or the loop
@@ -88,7 +99,12 @@ if command -v git >/dev/null 2>&1; then
     _T99_BOUNDARY=""
     _T99_DIR="$_T99_CANON_CWD"
     while [[ -n "$_T99_DIR" && "$_T99_DIR" != "/" && "$_T99_DIR" != "$_T87_ROOT" ]]; do
-      if [[ -e "$_T99_DIR/.git" || -d "$_T99_DIR/.claude" ]]; then
+      # T99 r3 finding 1: a bare `.claude/` directory is NOT a project mark —
+      # THIS repo carries tests/.claude/, which used to adopt tests/ as the
+      # root and silently switched Modo A and B off under it. The mark is
+      # real .claude CONTENT: a plan, settings, or the hooks themselves.
+      if [[ -e "$_T99_DIR/.git" || -e "$_T99_DIR/.claude/plan-state.json" \
+            || -e "$_T99_DIR/.claude/settings.json" || -d "$_T99_DIR/.claude/hooks" ]]; then
         _T99_BOUNDARY="$_T99_DIR"
         break
       fi
@@ -116,9 +132,18 @@ if command -v git >/dev/null 2>&1; then
       _T99_DIR="$_next"
     done
     if [[ -n "$_T99_HAS_GIT" ]]; then
-      mkdir -p "${HOME}/.ralph/logs" 2>/dev/null || true
-      echo "[$(date '+%Y-%m-%d %H:%M:%S')] git present but broken under $CWD ($_T99_HAS_GIT/.git); treating as no-git: $(head -c 200 "$_T87_OUT" | tr '\n' ' ')" \
-        >> "${HOME}/.ralph/logs/anti-rationalization-gate.log" 2>/dev/null || true
+      # T99 r3 finding 5: a corrupt repo fails EVERY Stop — dedup by
+      # (location, day) so the operator log stays readable.
+      _T99_DEDUP_DIR="$CWD/.claude/state"
+      mkdir -p "$_T99_DEDUP_DIR" 2>/dev/null || true
+      _T99_DEDUP_KEY="$(date +%F) $_T99_HAS_GIT"
+      if [[ ! -f "$_T99_DEDUP_DIR/.anti-rat-git-broken.last" ]] \
+         || [[ "$(cat "$_T99_DEDUP_DIR/.anti-rat-git-broken.last" 2>/dev/null)" != "$_T99_DEDUP_KEY" ]]; then
+        mkdir -p "${HOME}/.ralph/logs" 2>/dev/null || true
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] git present but broken under $CWD ($_T99_HAS_GIT/.git, rc=$_T87_RC); treating as no-git" \
+          >> "${HOME}/.ralph/logs/anti-rationalization-gate.log" 2>/dev/null || true
+        printf '%s\n' "$_T99_DEDUP_KEY" > "$_T99_DEDUP_DIR/.anti-rat-git-broken.last" 2>/dev/null || true
+      fi
     fi
   fi
 fi
@@ -162,10 +187,13 @@ if [[ -f "$PROJECT_PLAN_STATE" ]]; then
   # Defensive fallback: several updater hooks (plan-sync-post-step, auto-plan-state,
   # plan-state-adaptive, ...) mutate .steps[] without rewriting .last_updated.
   # When that happens, file mtime is the best proxy for freshness.
+  # T99 r3 finding 2: the hand-rolled `stat -f %m || stat -c %Y || echo 0`
+  # here carried the GNU trap — on Linux `-f` SUCCEEDS with non-numeric
+  # filesystem info, the fallback was unreachable, and the arithmetic broke
+  # Modo B in CI. stat_mtime (shared lib) probes the dialect and gates the
+  # value; "unknown" stays 0 (conservative: no plan = no block).
   if [[ "$UPDATED_EPOCH" -eq 0 ]]; then
-    UPDATED_EPOCH=$(stat -f %m "$PROJECT_PLAN_STATE" 2>/dev/null \
-      || stat -c %Y "$PROJECT_PLAN_STATE" 2>/dev/null \
-      || echo 0)
+    UPDATED_EPOCH="$(stat_mtime "$PROJECT_PLAN_STATE" 2>/dev/null || echo 0)"
   fi
   NOW_EPOCH=$(date "+%s")
   AGE_SEC=$((NOW_EPOCH - UPDATED_EPOCH))

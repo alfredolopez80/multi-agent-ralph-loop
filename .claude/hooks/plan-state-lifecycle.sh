@@ -156,28 +156,22 @@ if [[ ! -f "$PLAN_STATE" ]]; then
     exit 0
 fi
 
-# Numeric mtime of a file, or failure. Capability probe FIRST (same pattern
-# as worktree-utils.sh), then a NUMERIC gate on the captured value:
-# T99 RETURN dominant finding 1: `stat -f %m file` does NOT fail on
-# GNU/Linux — `-f` there means filesystem mode and the substitution captured
-# multi-line, non-numeric fs info, so the age arithmetic aborted under
-# `set -e` (W2 red on ubuntu CI) and the empty-string skip was unreachable.
-# STAT_PROBE (a command emitting the "stat output") exists for tests: it
-# lets a fixture replay the contaminated GNU output deterministically.
+# Numeric mtime of the plan, or failure. The DIALECT choice lives in the
+# shared helper (lib/worktree-utils.sh:stat_mtime — T99 r3: one strategy,
+# not three). RALPH_TEST_STAT_PROBE is the TEST SEAM: it must be explicitly
+# exported to have any effect (T99 r3 finding 4: the un-namespaced
+# STAT_PROBE could hijack production stat from any caller's environment),
+# and its output goes through the same numeric gate.
 _stat_mtime() {
-    local f="$1" out=""
-    if [[ -n "${STAT_PROBE:-}" ]]; then
-        out="$("$STAT_PROBE" "$f" 2>/dev/null || true)"
-    elif stat -c '%Y' / >/dev/null 2>&1; then
-        out="$(stat -c '%Y' "$f" 2>/dev/null || true)"
-    else
-        out="$(stat -f '%m' "$f" 2>/dev/null || true)"
-    fi
-    if [[ "$out" =~ ^[0-9]+$ ]]; then
+    local f="$1"
+    if [[ -n "${RALPH_TEST_STAT_PROBE:-}" ]]; then
+        local out
+        out="$("$RALPH_TEST_STAT_PROBE" "$f" 2>/dev/null || true)"
+        [[ "$out" =~ ^[0-9]+$ ]] || return 1
         echo "$out"
         return 0
     fi
-    return 1
+    stat_mtime "$f"
 }
 
 PLAN_MTIME="$(_stat_mtime "$PLAN_STATE" || true)"
