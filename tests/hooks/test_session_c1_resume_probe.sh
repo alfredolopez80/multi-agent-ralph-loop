@@ -56,6 +56,7 @@ write_plan_state() {
     "summary": "Probe plan for C1 verification: ${task_id}",
     "current_step": "${step_in_progress}"
   },
+  "current_step": "${step_in_progress}",
   "steps": [
     {"id": "s1", "task_id": "${task_id}", "status": "completed", "title": "step one done"},
     {"id": "${step_in_progress}", "task_id": "${task_id}", "status": "in_progress", "title": "step in progress"}
@@ -117,7 +118,7 @@ fi
 if printf '%s' "$ctx" | grep -q "Current Step"; then
     pass "fresh plan: 'Current Step' label present"
 else
-    fail "fresh plan current step" "ctx missing 'Current Step' label"
+    fail "fresh plan current step" "ctx missing 'Current Step' label (ctx preview: ${ctx:0:500})"
 fi
 if printf '%s' "$ctx" | grep -q "1/2 steps completed"; then
     pass "fresh plan: progress '1/2 steps completed (50%)' present"

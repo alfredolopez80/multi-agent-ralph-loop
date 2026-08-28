@@ -55,7 +55,11 @@ source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
 }
 PLAN_STATE="$(get_project_root 2>/dev/null || pwd)/.claude/plan-state.json"
 LOG_FILE="${HOME}/.ralph/logs/plan-state-adaptive.log"
-PLAN_STALENESS_MINUTES=30  # Consider plan stale after 30 minutes
+# Freshness constant imported from the shared lib (T110-f2): single
+# source of truth for both this hook (writer-side check) and
+# session-start-restore-context.sh (reader-side check).
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/plan-state-freshness.sh" 2>/dev/null || \
+    PLAN_STALENESS_MINUTES=30  # Fallback if lib not present (e.g. before install)
 
 # Ensure log directory exists
 mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
