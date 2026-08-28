@@ -64,10 +64,24 @@ source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
 # T87: get_project_root (THIS working tree) — get_main_repo made the ager
 # look up the plan in the MAIN checkout from a linked worktree, where that
 # file has ZERO readers; stale plans in the worktree were never archived.
-_PROJECT_ROOT="$(get_project_root 2>/dev/null || pwd)"
-PLAN_STATE="${_PROJECT_ROOT}/.claude/plan-state.json"
+#
+# T99: the `|| pwd` was dead code (get_project_root's fallback echoes
+# CLAUDE_PROJECT_DIR or "."), and the "." fallback made PLAN_STATE relative
+# to the process CWD — a silently different plan. Fail loud instead.
+_PROJECT_ROOT="$(get_project_root 2>/dev/null || true)"
 LOG_FILE="${HOME}/.ralph/logs/plan-state-lifecycle.log"
 ARCHIVE_DIR="${HOME}/.ralph/archive/plans"
+mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
+}
+if [[ -z "$_PROJECT_ROOT" || "$_PROJECT_ROOT" != /* ]]; then
+    log "ERROR: project root not absolute (got '${_PROJECT_ROOT:-<empty>}'); refusing relative plan-state lookup"
+    trap - ERR EXIT  # CRIT-008: Clear trap before explicit output
+    emit_json '{"continue": true}'
+    exit 0
+fi
+PLAN_STATE="${_PROJECT_ROOT}/.claude/plan-state.json"
 AUTO_ARCHIVE="${PLAN_STATE_AUTO_ARCHIVE:-true}"  # Enable auto-archive by default
 
 # v2.57.0: Get staleness threshold for adaptive mode (bash 3 compatible)
@@ -84,12 +98,7 @@ get_staleness_threshold() {
     esac
 }
 
-mkdir -p "$(dirname "$LOG_FILE")"
 mkdir -p "$ARCHIVE_DIR"
-
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
-}
 
 # Archive a stale plan
 archive_plan() {
@@ -147,17 +156,36 @@ if [[ ! -f "$PLAN_STATE" ]]; then
     exit 0
 fi
 
-# Get plan-state age in minutes
-if [[ -f "$PLAN_STATE" ]]; then
-    # macOS stat syntax
-    PLAN_AGE_SECONDS=$(($(date +%s) - $(stat -f %m "$PLAN_STATE" 2>/dev/null || echo "0")))
-    PLAN_AGE_MINUTES=$((PLAN_AGE_SECONDS / 60))
-    PLAN_AGE_HOURS=$((PLAN_AGE_SECONDS / 3600))
-else
+# Numeric mtime of the plan, or failure. The DIALECT choice lives in the
+# shared helper (lib/worktree-utils.sh:stat_mtime — T99 r3: one strategy,
+# not three). RALPH_TEST_STAT_PROBE is the TEST SEAM: it must be explicitly
+# exported to have any effect (T99 r3 finding 4: the un-namespaced
+# STAT_PROBE could hijack production stat from any caller's environment),
+# and its output goes through the same numeric gate.
+_stat_mtime() {
+    local f="$1"
+    if [[ -n "${RALPH_TEST_STAT_PROBE:-}" ]]; then
+        local out
+        out="$("$RALPH_TEST_STAT_PROBE" "$f" 2>/dev/null || true)"
+        [[ "$out" =~ ^[0-9]+$ ]] || return 1
+        echo "$out"
+        return 0
+    fi
+    stat_mtime "$f"
+}
+
+PLAN_MTIME="$(_stat_mtime "$PLAN_STATE" || true)"
+if [[ -z "$PLAN_MTIME" ]]; then
+    # No numeric mtime available: SKIP the staleness decision — guessing
+    # "ancient" archives fresh plans, guessing "fresh" defeats the hook.
+    log "ERROR: cannot determine a numeric mtime for $PLAN_STATE (no working stat dialect); skipping staleness check rather than guessing an age"
     trap - ERR EXIT  # CRIT-008: Clear trap before explicit output
     emit_json '{"continue": true}'
     exit 0
 fi
+PLAN_AGE_SECONDS=$(($(date +%s) - PLAN_MTIME))
+PLAN_AGE_MINUTES=$((PLAN_AGE_SECONDS / 60))
+PLAN_AGE_HOURS=$((PLAN_AGE_SECONDS / 3600))
 
 # Get current plan task
 CURRENT_TASK=$(jq -r '.task // "Unknown"' "$PLAN_STATE" 2>/dev/null | head -c 100)

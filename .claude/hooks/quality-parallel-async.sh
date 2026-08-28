@@ -51,8 +51,8 @@ log() {
     # LOW-001 FIX: Automatic log rotation to prevent unbounded growth
     if [[ -f "${QUALITY_LOG}" ]]; then
         local log_size
-        # Portable stat for log size
-        log_size=$(stat -f%z "${QUALITY_LOG}" 2>/dev/null || stat -c%s "${QUALITY_LOG}" 2>/dev/null || echo 0)
+        # T99 r4: shared stat dialect (worktree-utils:stat_size)
+        log_size=$(stat_size "${QUALITY_LOG}" 2>/dev/null || echo 0)
 
         if [[ $log_size -gt $MAX_LOG_SIZE_BYTES ]]; then
             # Rotate log files (delete oldest, shift others, create new)

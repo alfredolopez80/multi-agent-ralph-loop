@@ -45,6 +45,22 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 0
 fi
 
+# --- Shared library: the ONLY stat dialect strategy (T99 r3 finding 2) ---
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  # No library -> degraded but working: git-root-or-cwd resolution without
+  # the content-marker walk, and no reliable mtime (stat_mtime failing =>
+  # epoch stays 0 => "unknown", never guessed).
+  get_project_root() {
+    local cwd="${1:-${PWD:-.}}" canon r
+    canon="$(cd "$cwd" 2>/dev/null && pwd -P || echo "$cwd")"
+    r="$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || true)"
+    [[ -n "$r" ]] && { echo "$r"; return; }
+    echo "$canon"
+  }
+  stat_mtime() { return 1; }
+}
+
 # --- Infinite-loop guard: honor stop_hook_active ---
 STOP_HOOK_ACTIVE=$(echo "$INPUT" | jq -r '.stop_hook_active // false' 2>/dev/null || echo false)
 if [ "$STOP_HOOK_ACTIVE" = "true" ]; then
@@ -61,9 +77,52 @@ CWD=$(echo "$INPUT" | jq -r '.cwd // "."' 2>/dev/null)
 # at the working-tree ROOT. Resolve the root CONTAINING CWD; the root is
 # always an ancestor of CWD, so per-project isolation is unchanged and no
 # cross-project fallback is added. Non-git projects keep CWD as the scope.
-PROJECT_ROOT="$CWD"
-_T87_ROOT="$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null || true)"
-[[ -n "$_T87_ROOT" ]] && PROJECT_ROOT="$_T87_ROOT"
+#
+# v2.0.2 (T99, retro-audit of T87): "non-git projects keep CWD" was not
+# honored — `git rev-parse --show-toplevel` climbs past nested boundaries,
+# so a non-git project living inside a CONTAINER repo (e.g. a dotfiles repo
+# spanning $HOME) adopted the ancestor's root and read the ANCESTOR's
+# patterns/state: cross-project contamination the header forbids. The
+# ancestor-repo case is now materialized as: adopt the repo root only when
+# NO directory between the root and CWD (inclusive) marks itself a separate
+# project (own .git — which rev-parse would have stopped at — or .claude/).
+# A broken git (present but failing on a corrupt repo / dubious ownership)
+# is distinguished from "not a git repository" and logged; both keep CWD
+# scope, but only the broken case needs the operator to know.
+# T99 r4: ONE project-resolution definition (lib/worktree-utils.sh:
+# get_project_root — content-marker walk, broken-git tolerant, always
+# absolute). The gate and every writer now share it by construction; the
+# split-brain measured in review (gate seeing the nested plan while a
+# writer mutated the container's) is structurally dead.
+PROJECT_ROOT="$(get_project_root "$CWD")"
+# Operator signal for BROKEN git (corrupt HEAD, unreadable .git): the
+# resolution above is filesystem-only and unaffected, but the operator
+# still wants to know the repo is unhealthy. Dedup by (location, day) —
+# a corrupt repo fails every Stop, and the log must stay readable.
+_T99_BROKEN_RC=0
+git -C "$CWD" rev-parse --show-toplevel >/dev/null 2>&1 || _T99_BROKEN_RC=$?
+if [[ "$_T99_BROKEN_RC" -ne 0 ]]; then
+  _T99_HAS_GIT=""
+  _T99_DIR="$(cd "$CWD" 2>/dev/null && pwd -P || echo "$CWD")"
+  while [[ -n "$_T99_DIR" && "$_T99_DIR" != "/" ]]; do
+    if [[ -e "$_T99_DIR/.git" ]]; then _T99_HAS_GIT="$_T99_DIR"; break; fi
+    _next="${_T99_DIR%/*}"
+    [[ "$_next" == "$_T99_DIR" ]] && break
+    _T99_DIR="$_next"
+  done
+  if [[ -n "$_T99_HAS_GIT" ]]; then
+    _T99_DEDUP_DIR="$CWD/.claude/state"
+    mkdir -p "$_T99_DEDUP_DIR" 2>/dev/null || true
+    _T99_DEDUP_KEY="$(date +%F) $_T99_HAS_GIT"
+    if [[ ! -f "$_T99_DEDUP_DIR/.anti-rat-git-broken.last" ]] \
+       || [[ "$(cat "$_T99_DEDUP_DIR/.anti-rat-git-broken.last" 2>/dev/null)" != "$_T99_DEDUP_KEY" ]]; then
+      mkdir -p "${HOME}/.ralph/logs" 2>/dev/null || true
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] git present but broken under $CWD ($_T99_HAS_GIT/.git, rc=$_T99_BROKEN_RC); treating as no-git" \
+        >> "${HOME}/.ralph/logs/anti-rationalization-gate.log" 2>/dev/null || true
+      printf '%s\n' "$_T99_DEDUP_KEY" > "$_T99_DEDUP_DIR/.anti-rat-git-broken.last" 2>/dev/null || true
+    fi
+  fi
+fi
 
 # State and patterns are PER-PROJECT. No cross-project contamination.
 STATE_DIR="$PROJECT_ROOT/.claude/state"
@@ -104,10 +163,13 @@ if [[ -f "$PROJECT_PLAN_STATE" ]]; then
   # Defensive fallback: several updater hooks (plan-sync-post-step, auto-plan-state,
   # plan-state-adaptive, ...) mutate .steps[] without rewriting .last_updated.
   # When that happens, file mtime is the best proxy for freshness.
+  # T99 r3 finding 2: the hand-rolled `stat -f %m || stat -c %Y || echo 0`
+  # here carried the GNU trap — on Linux `-f` SUCCEEDS with non-numeric
+  # filesystem info, the fallback was unreachable, and the arithmetic broke
+  # Modo B in CI. stat_mtime (shared lib) probes the dialect and gates the
+  # value; "unknown" stays 0 (conservative: no plan = no block).
   if [[ "$UPDATED_EPOCH" -eq 0 ]]; then
-    UPDATED_EPOCH=$(stat -f %m "$PROJECT_PLAN_STATE" 2>/dev/null \
-      || stat -c %Y "$PROJECT_PLAN_STATE" 2>/dev/null \
-      || echo 0)
+    UPDATED_EPOCH="$(stat_mtime "$PROJECT_PLAN_STATE" 2>/dev/null || echo 0)"
   fi
   NOW_EPOCH=$(date "+%s")
   AGE_SEC=$((NOW_EPOCH - UPDATED_EPOCH))

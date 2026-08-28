@@ -24,6 +24,12 @@ INPUT=$(head -c 100000)
 set -euo pipefail
 umask 077
 
+# T99 r4: shared stat dialect (stat_mtime) — no hand-rolled stat anywhere.
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  stat_mtime() { return 1; }
+}
+
 readonly VERSION="2.68.0"
 readonly HOOK_NAME="ai-code-audit"
 
@@ -72,12 +78,8 @@ is_within_cooldown() {
     
     if [[ -f "$marker" ]]; then
         local marker_age marker_time
-        # MED-008 FIX: Portable stat for macOS and Linux
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            marker_time=$(stat -f %m "$marker" 2>/dev/null || echo 0)
-        else
-            marker_time=$(stat -c %Y "$marker" 2>/dev/null || echo 0)
-        fi
+        # MED-008 FIX, T99 r4: shared stat dialect (worktree-utils:stat_mtime)
+        marker_time=$(stat_mtime "$marker" 2>/dev/null || echo 0)
         marker_age=$(( $(date +%s) - marker_time ))
         (( marker_age < COOLDOWN_MINUTES * 60 ))
     else

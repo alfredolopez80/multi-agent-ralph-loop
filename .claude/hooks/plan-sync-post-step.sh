@@ -28,18 +28,28 @@ source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
 # Configuration — T87: get_project_root (THIS working tree), matching every
 # other plan-state consumer. get_main_repo pointed this writer at the MAIN
 # checkout from a linked worktree, where that file has ZERO readers.
-_PROJECT_ROOT="$(get_project_root 2>/dev/null || pwd)"
-PLAN_STATE="${_PROJECT_ROOT}/.claude/plan-state.json"
+#
+# T99: the `|| pwd` here was dead code (get_project_root cannot fail — its
+# fallback echoes "."), and the "." fallback made PLAN_STATE relative to the
+# process CWD: the hook then silently operated on a plan-state that does not
+# exist. Fail loud instead: log it and leave without a relative lookup.
+# T99 r4: get_project_root (lib) is the single resolution — content-marker
+# walk, broken-git tolerant, and ALWAYS absolute (it canonizes internally),
+# so the "reject '.'" case below is now pure defense.
+_PROJECT_ROOT="$(get_project_root 2>/dev/null || true)"
 LOG_FILE="${HOME}/.ralph/logs/plan-sync.log"
 SYNC_LOG="${HOME}/.ralph/logs/drift-history.jsonl"
-
-# Ensure directories exist
-mkdir -p "$(dirname "$LOG_FILE")"
-mkdir -p "$(dirname "$SYNC_LOG")"
-
+mkdir -p "$(dirname "$LOG_FILE")" "$(dirname "$SYNC_LOG")"
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
 }
+if [[ -z "$_PROJECT_ROOT" || "$_PROJECT_ROOT" != /* ]]; then
+    log "ERROR: project root not resolvable to an absolute path (got '${_PROJECT_ROOT:-<empty>}'); refusing relative plan-state lookup"
+    trap - ERR EXIT
+    echo '{"continue": true}'
+    exit 0
+fi
+PLAN_STATE="${_PROJECT_ROOT}/.claude/plan-state.json"
 
 # SECURITY: Validate path to prevent traversal attacks (v2.45.1)
 validate_file_path() {
@@ -58,18 +68,22 @@ validate_file_path() {
     # validate_file_path rejected all paths, silently turning this whole hook
     # into a no-op for its primary function. A NUL cannot reach a bash string
     # argument in the first place; the `..` traversal guard does the real work.
-    if [[ "$path" == *".."* ]]; then
+    #
+    # T99: match `..` as a PATH COMPONENT, not a substring — "report.v1..v2.ts"
+    # is a legitimate filename and was rejected by the substring form.
+    if [[ "$path" =~ (^|/)\.\.(/|$) ]]; then
         log "SECURITY: Rejected suspicious path: $path"
         return 1
     fi
 
     # Resolve to absolute path and verify it's under project root.
     # T87: same root as PLAN_STATE — the modified file lives in THIS tree.
+    # T99: reuse the root resolved once at the top (was re-derived per call),
+    #   and compare with a BOUNDARY, not a raw prefix — "$project_root"* also
+    #   admitted a sibling like "$project_root-2/evil.ts".
     resolved=$(realpath "$path" 2>/dev/null || echo "")
-    local project_root
-    project_root="$(get_project_root 2>/dev/null || pwd)"
 
-    if [[ ! "$resolved" == "$project_root"* ]]; then
+    if [[ "$resolved" != "$_PROJECT_ROOT" && "$resolved" != "$_PROJECT_ROOT"/* ]]; then
         log "SECURITY: Path traversal attempt blocked: $path"
         return 1
     fi
@@ -82,8 +96,12 @@ if [ ! -f "$PLAN_STATE" ]; then
     exit 0
 fi
 
-# Get the file that was just modified (from hook context)
-RAW_FILE="${CLAUDE_TOOL_ARG_file_path:-}"
+# Get the file that was just modified (from hook context).
+# T99: Claude Code delivers the edited path in the PostToolUse STDIN payload
+# as .tool_input.file_path. The previous source, ${CLAUDE_TOOL_ARG_file_path},
+# is an environment variable NOBODY sets — every production invocation hit
+# the "No modified file detected" branch, turning this hook into a no-op.
+RAW_FILE="$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null || true)"
 
 if [ -z "$RAW_FILE" ]; then
     log "No modified file detected, skipping plan-sync"

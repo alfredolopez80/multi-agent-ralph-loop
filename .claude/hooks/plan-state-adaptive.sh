@@ -312,13 +312,9 @@ main() {
 
     # Check if plan-state exists and is recent
     if [[ -f "$PLAN_STATE" ]]; then
-        # Get file age in minutes
+        # Get file age in minutes (T99 r4: shared stat dialect — worktree-utils)
         local file_age_seconds
-        if [[ "$(uname)" == "Darwin" ]]; then
-            file_age_seconds=$(( $(date +%s) - $(stat -f %m "$PLAN_STATE" 2>/dev/null || echo 0) ))
-        else
-            file_age_seconds=$(( $(date +%s) - $(stat -c %Y "$PLAN_STATE" 2>/dev/null || echo 0) ))
-        fi
+        file_age_seconds=$(( $(date +%s) - $(stat_mtime "$PLAN_STATE" 2>/dev/null || echo 0) ))
         local file_age_minutes=$(( file_age_seconds / 60 ))
 
         # Check plan status

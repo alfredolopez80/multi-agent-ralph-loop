@@ -31,17 +31,106 @@
 # the CWD changes, and falls back to the frozen variable only when there is no git context
 # at all (deleted CWD, or not a repository).
 
+# — Project resolution (T99 r4 consolidation) ---------------------------------
+# THE single definition of "which project owns this session". Both gates and
+# all writers consume this; a reader/writer split-brain (gate seeing the
+# nested plan while a writer mutates the container's) is impossible by
+# construction. Resolution, walking UP from the session cwd:
+#   1. a real project mark wins: .git itself, or real .claude content
+#      (plan-state.json, settings.json, settings.local.json, hooks/, rules/,
+#      CLAUDE.md). A BARE .claude/ directory is NOT a mark — this repo
+#      carries tests/.claude/, which used to adopt tests/ as root and
+#      silently switch the anti-rationalization gate off under it;
+#   2. the git toplevel (when git is healthy) is the fallback root;
+#   3. broken git (rc != 0 with a .git present on the walk) does NOT skip
+#      the walk: the walk is filesystem-only, so a nested project's plan
+#      stays visible regardless of the ANCESTOR repo's health;
+#   4. no mark and no healthy git anywhere -> canonical cwd. The value is
+#      ALWAYS absolute (canonized here), so consumers never see ".".
 get_project_root() {
-  # The CURRENT working tree: the worktree when in one, the main repo otherwise.
-  if [[ -d "${PWD:-}" ]]; then
-    local toplevel
-    toplevel="$(git rev-parse --show-toplevel 2>/dev/null || true)"
-    if [[ -n "$toplevel" ]]; then echo "$toplevel"; return; fi
+  local cwd="${1:-${PWD:-.}}"
+  local canon
+  canon="$(cd "$cwd" 2>/dev/null && pwd -P || echo "$cwd")"
+  # (a) stdout only, rc kept: healthy git hands us the declared toplevel.
+  local rc=0 root=""
+  root="$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null)" || rc=$?
+  [[ "$rc" -ne 0 ]] && root=""
+  # (c) broken-vs-absent git, decided by FILESYSTEM presence of a .git on the
+  #     walk up (the error text cannot distinguish them). With one present,
+  #     the content-marker walk runs with THAT directory as its ceiling — so
+  #     a nested project's plan survives an ANCESTOR repo's broken git.
+  #     With NO .git on the walk at all, there is no declared container:
+  #     per the v2.0.1 invariant the scope is cwd itself — a marker-less walk
+  #     up an unbounded tree would adopt strangers (e.g. a shared temp dir
+  #     that accumulated a .claude/ from an earlier fixture).
+  local dir="$canon" git_ceiling="" next
+  while [[ -n "$dir" && "$dir" != "/" ]]; do
+    if [[ -e "$dir/.git" ]]; then git_ceiling="$dir"; break; fi
+    next="${dir%/*}"
+    [[ "$next" == "$dir" ]] && break
+    dir="$next"
+  done
+  if [[ "$rc" -eq 0 ]]; then
+    # (b) healthy git: content-marker walk, ceiling = git toplevel.
+    dir="$canon"
+    while [[ -n "$dir" && "$dir" != "/" && "$dir" != "$root" ]]; do
+      if _is_project_dir_marker "$dir"; then
+        echo "$dir"
+        return 0
+      fi
+      next="${dir%/*}"
+      [[ "$next" == "$dir" ]] && break
+      dir="$next"
+    done
+    echo "$root"
+    return 0
   fi
+  if [[ -n "$git_ceiling" ]]; then
+    dir="$canon"
+    while [[ -n "$dir" && "$dir" != "/" && "$dir" != "$git_ceiling" ]]; do
+      if _is_project_dir_marker "$dir"; then
+        echo "$dir"
+        return 0
+      fi
+      next="${dir%/*}"
+      [[ "$next" == "$dir" ]] && break
+      dir="$next"
+    done
+  fi
+  # (4) No git context at all: the frozen session variable is the project
+  # identity when the process cwd cannot declare one (v2.96 contract).
+  # ALWAYS canonized: identity comparisons (ledger identity, validate_file_path)
+  # are meaningless across logical/physical forms — a session entering via
+  # /var and a writer resolving via realpath must agree on ONE identity.
+  # Consumers that need the raw form must say so explicitly.
   if [[ -n "${CLAUDE_PROJECT_DIR:-}" && -d "${CLAUDE_PROJECT_DIR}" ]]; then
-    echo "$CLAUDE_PROJECT_DIR"; return
+    local fallback
+    fallback="$(cd "${CLAUDE_PROJECT_DIR}" 2>/dev/null && pwd -P || true)"
+    [[ -n "$fallback" ]] && { echo "$fallback"; return 0; }
   fi
-  echo "."
+  echo "$canon"
+}
+
+_is_project_dir_marker() {
+  local d="$1"
+  [[ -e "$d/.git" \
+     || -e "$d/.claude/plan-state.json" || -e "$d/.claude/settings.json" \
+     || -e "$d/.claude/settings.local.json" || -d "$d/.claude/hooks" \
+     || -d "$d/.claude/rules" || -e "$d/.claude/CLAUDE.md" ]]
+}
+
+# Single stat dialect per process (T99 r3 finding 6): the GNU/BSD probe used
+# to fork `stat` once per call; cache the answer instead.
+_STAT_DIALECT_GNU=""
+_stat_dialect_is_gnu() {
+  if [[ -z "$_STAT_DIALECT_GNU" ]]; then
+    if stat -c '%Y' / >/dev/null 2>&1; then
+      _STAT_DIALECT_GNU=yes
+    else
+      _STAT_DIALECT_GNU=no
+    fi
+  fi
+  [[ "$_STAT_DIALECT_GNU" == "yes" ]]
 }
 
 get_main_repo() {
@@ -229,6 +318,51 @@ setupWorktreeEnv() {
   return 0
 }
 
+# stat_mtime <path> — numeric mtime on stdout, rc 1 if not determinable.
+# stat_birthtime <path> — numeric birth time, same contract (0 means the fs
+#   does not report birth time; callers must treat 0 as "unknown").
+#
+# T99 r3 (review finding 2): this library is the ONLY place a stat dialect is
+# chosen. Both hooks and checkWorktreeTTL consume these helpers; three
+# hand-rolled dialect strategies had already diverged and broken twice (the
+# GNU `-f` trap: `stat -f %m file` SUCCEEDS on Linux, printing multi-line
+# non-numeric filesystem info — so any `|| fallback` after it is unreachable
+# and the garbage reaches arithmetic). The numeric gate here is load-bearing.
+stat_mtime() {
+  local f="$1" out=""
+  if _stat_dialect_is_gnu; then
+    out="$(stat -c '%Y' "$f" 2>/dev/null || true)"
+  else
+    out="$(stat -f '%m' "$f" 2>/dev/null || true)"
+  fi
+  [[ "$out" =~ ^[0-9]+$ ]] || return 1
+  echo "$out"
+}
+
+stat_birthtime() {
+  local f="$1" out=""
+  if _stat_dialect_is_gnu; then
+    out="$(stat -c '%W' "$f" 2>/dev/null || true)"
+  else
+    out="$(stat -f '%B' "$f" 2>/dev/null || true)"
+  fi
+  [[ "$out" =~ ^[0-9]+$ ]] || return 1
+  echo "$out"
+}
+
+# stat_size <path> — numeric byte size, same contract (T99 r4: migrate the
+# last hand-rolled `stat -f%z || stat -c%s` to the shared strategy).
+stat_size() {
+  local f="$1" out=""
+  if _stat_dialect_is_gnu; then
+    out="$(stat -c '%s' "$f" 2>/dev/null || true)"
+  else
+    out="$(stat -f '%z' "$f" 2>/dev/null || true)"
+  fi
+  [[ "$out" =~ ^[0-9]+$ ]] || return 1
+  echo "$out"
+}
+
 # checkWorktreeTTL <slug> [ttl_minutes] — Check if worktree exceeded TTL.
 #
 # Default TTL: 30 minutes.
@@ -248,33 +382,16 @@ checkWorktreeTTL() {
 
   # Get creation time from worktree directory metadata.
   #
-  # Cross-platform AND CI-safe:
-  #   * macOS/BSD stat uses `-f <fmt>`: %B = birth (create) time, %m = mtime.
-  #   * GNU/Linux stat uses `-c <fmt>`: %W = birth time, %Y = mtime.
-  #
-  # Two failures this guards against (both seen on Ubuntu CI, never on macOS):
-  #   1. The old `stat -f "%B"` was tried FIRST on Linux, where `-f` means
-  #      "filesystem mode" — GNU stat then printed multi-line, NON-NUMERIC
-  #      filesystem info into created_epoch, and `$(( now - created_epoch ))`
-  #      aborted the function under `set -uo pipefail` -> EMPTY stdout ->
-  #      JSONDecodeError in the tests.
-  #   2. Many Linux filesystems (ext4/overlayfs on CI) report birth time as 0
-  #      (`%W` == 0). created_epoch=0 made a FRESH worktree look ~29M minutes
-  #      old -> expired:true. We fall back to mtime when birth time is 0/empty.
+  # T99 r3: dialect choice + numeric gate live in stat_birthtime/stat_mtime
+  # (top of this library) — the GNU `-f` trap aborted this function under
+  # `set -uo pipefail` when hand-rolled here (multi-line fs info from
+  # `stat -f` on Linux), and birth time 0 on ext4/overlayfs made fresh
+  # worktrees look ~29M minutes old. Same semantics: birth time when the fs
+  # reports it, mtime otherwise.
   local created_epoch=""
-  if stat -c '%W' / >/dev/null 2>&1; then
-    # GNU/Linux stat
-    created_epoch=$(stat -c '%W' "$wt_dir" 2>/dev/null || echo "")
-    if [[ -z "$created_epoch" || ! "$created_epoch" =~ ^[0-9]+$ || "$created_epoch" -eq 0 ]]; then
-      # Birth time unavailable on this fs -> use mtime (always populated).
-      created_epoch=$(stat -c '%Y' "$wt_dir" 2>/dev/null || echo "")
-    fi
-  else
-    # macOS/BSD stat
-    created_epoch=$(stat -f '%B' "$wt_dir" 2>/dev/null || echo "")
-    if [[ -z "$created_epoch" || ! "$created_epoch" =~ ^[0-9]+$ || "$created_epoch" -eq 0 ]]; then
-      created_epoch=$(stat -f '%m' "$wt_dir" 2>/dev/null || echo "")
-    fi
+  created_epoch=$(stat_birthtime "$wt_dir" 2>/dev/null || true)
+  if [[ -z "$created_epoch" || "$created_epoch" -eq 0 ]]; then
+    created_epoch=$(stat_mtime "$wt_dir" 2>/dev/null || true)
   fi
   # Final guard: never let a non-numeric value reach the arithmetic below
   # (a non-numeric $(( )) aborts the function under set -e and yields empty stdout).

@@ -95,20 +95,26 @@ cat > "$PLAN" <<EOF
 {"version":"1.0","task":"t87","steps":[{"id":"s1","name":"write foo","status":"in_progress","spec":{"file":"$WT_DIR/src/foo.ts","exports":["foo"]},"actual":{}}]}
 EOF
 BEFORE_MAIN=$( [[ -f "$MAIN_DIR/.claude/plan-state.json" ]] && echo yes || echo no )
-(cd "$WT_DIR" && CLAUDE_TOOL_ARG_file_path="$WT_DIR/src/foo.ts" \
-  /bin/bash "$WT_DIR/.claude/hooks/plan-sync-post-step.sh" </dev/null >/dev/null 2>&1)
+# T99: the hook learns the edited file from its STDIN PAYLOAD
+# (.tool_input.file_path — the real PostToolUse envelope), not from a
+# CLAUDE_TOOL_ARG_* environment variable nobody produces. The suite feeds the
+# real payload and isolates HOME like W2/W3 do (the hook writes its log under
+# $HOME/.ralph — without isolation it litters the runner's home).
+ISO_HOME_W1=$(mktemp -d)
+(cd "$WT_DIR" && printf '{"tool_input": {"file_path": "%s"}}' "$WT_DIR/src/foo.ts" | \
+  HOME="$ISO_HOME_W1" /bin/bash "$WT_DIR/.claude/hooks/plan-sync-post-step.sh" >/dev/null 2>&1)
 UPDATED_AT=$(jq -r '.steps[0].actual.updated_at // ""' "$PLAN" 2>/dev/null)
 if [[ -n "$UPDATED_AT" ]]; then
   ok "worktree plan-state was mutated in place (actual.updated_at written)"
 else
-  bad "worktree plan-state was NOT mutated (writer went elsewhere or bailed)"
+  bad "worktree plan-state was NOT mutated (payload .tool_input.file_path not honored)"
 fi
 if [[ "$BEFORE_MAIN" == "no" && ! -f "$MAIN_DIR/.claude/plan-state.json" ]]; then
   ok "main checkout plan-state untouched (never created there)"
 else
   bad "main checkout plan-state appeared/changed — writer leaked to main repo"
 fi
-cleanup "$MAIN_DIR" "$WT_DIR"
+cleanup "$MAIN_DIR" "$WT_DIR" "$ISO_HOME_W1"
 
 echo "=== T87-W2: plan-state-lifecycle from worktree archives the WORKTREE plan ==="
 FIX=$(make_worktree_fixtures)
@@ -164,6 +170,362 @@ else
   bad "Ralph project NOT detected from subdirectory (relative read missed the root)"
 fi
 cleanup "$R2" "$ISO_HOME"
+
+echo "=== T99-W4: plan-sync validate_file_path — component traversal rejected, dotted names accepted, root boundary enforced ==="
+# Guard direction tests (T99 review rule 3): each assert must be able to go
+# RED when its specific check is removed —
+#   a) 'src/../src/foo.ts' resolves INSIDE the root: only the '../component'
+#      check can reject it (the prefix check passes — realpath is in-root).
+#   b) 'src/foo.ts' must be ACCEPTED: the guard rejects paths, not work.
+#   c) '<worktree>-2/evil.ts' STARTS WITH the root prefix: only the
+#      boundary-aware comparison ('root' vs 'root-2') can reject it. The
+#      plan carries a step spec'ing evil.ts so the "not mutated" assert
+#      DISCRIMINATES (T99 RETURN 6: with no matching step it passed either
+#      way — zero-scope green).
+#   d) 'report.v1..v2.ts' carries '..' INSIDE a filename: the old substring
+#      check rejected it; only the component regex accepts it (RETURN 5).
+FIX=$(make_worktree_fixtures)
+MAIN_DIR=$(printf '%s\n' "$FIX" | sed -n 1p)
+WT_DIR=$(printf '%s\n' "$FIX" | sed -n 2p)
+require_fixtures
+PLAN="$WT_DIR/.claude/plan-state.json"
+mkdir -p "$WT_DIR/src"
+cat > "$WT_DIR/src/foo.ts" <<'EOF'
+export const foo = 1;
+EOF
+cat > "$WT_DIR/src/report.v1..v2.ts" <<'EOF'
+export const dotted = 2;
+EOF
+cat > "$PLAN" <<EOF
+{"version":"1.0","task":"t99","steps":[
+ {"id":"s1","name":"write foo","status":"in_progress","spec":{"file":"$WT_DIR/src/foo.ts","exports":["foo"]},"actual":{}},
+ {"id":"s2","name":"write dotted","status":"in_progress","spec":{"file":"$WT_DIR/src/report.v1..v2.ts","exports":["dotted"]},"actual":{}},
+ {"id":"s3","name":"write evil","status":"in_progress","spec":{"file":"${WT_DIR}-2/evil.ts","exports":["evil"]},"actual":{}}]}
+EOF
+# A sibling directory whose path is a strict PREFIX EXTENSION of the worktree
+# root: "<WT_DIR>-2" begins with "<WT_DIR>" — the naive prefix check admits it.
+mkdir -p "${WT_DIR}-2"
+echo "evil" > "${WT_DIR}-2/evil.ts"
+ISO_HOME_W4=$(mktemp -d)
+SYNC_LOG="$ISO_HOME_W4/.ralph/logs/plan-sync.log"
+
+run_sync() {
+  (cd "$WT_DIR" && printf '{"tool_input": {"file_path": "%s"}}' "$1" | \
+    HOME="$ISO_HOME_W4" /bin/bash "$WT_DIR/.claude/hooks/plan-sync-post-step.sh" >/dev/null 2>&1)
+}
+
+# (a) traversal-as-component: realpath is INSIDE the root; only '..' sees it.
+run_sync "$WT_DIR/src/../src/foo.ts"
+A_KEPT=$(jq -r '.steps[] | select(.id == "s1") | .actual.updated_at // ""' "$PLAN" 2>/dev/null)
+if [[ -z "$A_KEPT" ]] && grep -q "Rejected suspicious path" "$SYNC_LOG" 2>/dev/null; then
+  ok "component traversal (src/../src/foo.ts) rejected by the '..' check"
+else
+  bad "component traversal NOT rejected (check missing or wrong shape): plan mutated='${A_KEPT:+yes}'"
+fi
+
+# (b) a legitimate dotted filename must sail through and reach the plan.
+run_sync "$WT_DIR/src/foo.ts"
+B_WROTE=$(jq -r '.steps[] | select(.id == "s1") | .actual.updated_at // ""' "$PLAN" 2>/dev/null)
+if [[ -n "$B_WROTE" ]]; then
+  ok "legitimate path accepted (plan mutated in place)"
+else
+  bad "legitimate path REJECTED — guard over-blocks real work"
+fi
+
+# (d) '..' inside a FILENAME is legal: only the component regex accepts it.
+run_sync "$WT_DIR/src/report.v1..v2.ts"
+D_WROTE=$(jq -r '.steps[] | select(.id == "s2") | .actual.updated_at // ""' "$PLAN" 2>/dev/null)
+if [[ -n "$D_WROTE" ]]; then
+  ok "dotted filename (report.v1..v2.ts) accepted — '..' matched as component only"
+else
+  bad "dotted filename REJECTED — substring '..' check is back"
+fi
+
+# (c) prefix-boundary sibling: '<root>-2' must NOT count as '<root>'.
+run_sync "${WT_DIR}-2/evil.ts"
+C_BLOCKED=$(grep -c "Path traversal attempt blocked" "$SYNC_LOG" 2>/dev/null)
+C_BLOCKED=${C_BLOCKED:-0}
+C_UNCHANGED=$(jq -r '.steps[] | select(.id == "s3") | .actual.updated_at // ""' "$PLAN" 2>/dev/null)
+if [[ "${C_BLOCKED:-0}" -ge 1 ]]; then
+  ok "root-boundary sibling (<root>-2) rejected by the boundary check"
+else
+  bad "prefix sibling admitted ('<root>-2' matched '<root>*') — traversal guard bypassed"
+fi
+if [[ -z "$C_UNCHANGED" ]]; then
+  ok "out-of-root file never mutated its OWN step (s3 discriminates: it is spec'd in the plan)"
+else
+  bad "out-of-root file mutated the plan — the boundary let evil.ts reach step s3"
+fi
+cleanup "$MAIN_DIR" "$WT_DIR" "${WT_DIR}-2" "$ISO_HOME_W4"
+
+echo "=== T99-W5: lifecycle survives CONTAMINATED stat output (GNU -f trap, RETURN dominant 1) ==="
+# `stat -f %m file` on GNU/Linux does not fail: it prints multi-line,
+# non-numeric filesystem info. STAT_PROBE replays that output
+# deterministically; the hook must SKIP the staleness decision with a
+# logged reason instead of feeding garbage into $(( )).
+FIX=$(make_worktree_fixtures)
+MAIN_DIR=$(printf '%s\n' "$FIX" | sed -n 1p)
+WT_DIR=$(printf '%s\n' "$FIX" | sed -n 2p)
+require_fixtures
+PLAN="$WT_DIR/.claude/plan-state.json"
+mkdir -p "$WT_DIR/.claude"
+NOW_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+cat > "$PLAN" <<EOF
+{"version":"1.0","task":"t99 fresh plan","last_updated":"$NOW_ISO","steps":[{"id":"s1","name":"step","status":"pending"}]}
+EOF
+FAKE_STAT="$WT_DIR/fake-stat.sh"
+cat > "$FAKE_STAT" <<'EOF'
+#!/bin/bash
+# Emulates GNU `stat -f %m <file>` on Linux: fs listing + trailing number.
+echo '  File: "%m"'
+echo '  ID: 6e30d1c2 Namelen: 255 Type: ext2/ext3'
+echo 'Block size: 4096 Fundamental block size: 4096'
+echo 'Inodes: total 1234 free 567'
+echo '1748312000'
+EOF
+chmod +x "$FAKE_STAT"
+ISO_HOME_W5=$(mktemp -d)
+LIFE_LOG="$ISO_HOME_W5/.ralph/logs/plan-state-lifecycle.log"
+OUT_W5=$(cd "$WT_DIR" && printf '{"userPromptContent": "%s"}' "continue with the current step please" | \
+  HOME="$ISO_HOME_W5" RALPH_TEST_STAT_PROBE="$FAKE_STAT" /bin/bash "$WT_DIR/.claude/hooks/plan-state-lifecycle.sh" 2>/dev/null)
+RC_W5=$?
+if [[ "$RC_W5" -eq 0 && "$OUT_W5" == *'{"continue": true}'* && -f "$PLAN" ]] \
+   && grep -q "skipping staleness" "$LIFE_LOG" 2>/dev/null; then
+  ok "contaminated stat output: hook skipped staleness cleanly (no archive, logged reason)"
+else
+  bad "contaminated stat output broke the hook: rc=$RC_W5 plan_archived=$( [[ -f "$PLAN" ]] && echo no || echo yes )"
+fi
+
+# T99 r3 finding 4: the probe name is TEST-NAMESPACED. The OLD generic name
+# must be IGNORED by production: set it with the same contaminating script
+# and the hook must behave exactly as if nothing was exported.
+rm -f "$LIFE_LOG"
+rm -f "$LIFE_LOG"
+OUT_W5B=$(cd "$WT_DIR" && printf '{"userPromptContent": "%s"}' "continue with the current step please" | \
+  HOME="$ISO_HOME_W5" STAT_PROBE="$FAKE_STAT" /bin/bash "$WT_DIR/.claude/hooks/plan-state-lifecycle.sh" 2>/dev/null)
+RC_W5B=$?
+if ! grep -q "skipping staleness" "$LIFE_LOG" 2>/dev/null; then
+  ok "old un-namespaced STAT_PROBE is ignored (production stat not hijacked)"
+else
+  bad "un-namespaced STAT_PROBE still hijacks production stat — namespace fix missing"
+fi
+# Hallazgo 8: the positive trace — with the poisoned name ignored, the same
+# run still produces a VALID verdict on the fresh plan (rc 0, plan intact).
+if [[ "$RC_W5B" -eq 0 && -f "$PLAN" ]]; then
+  ok "positive trace: real stat path still renders a verdict (plan intact)"
+else
+  bad "positive trace broken: rc=$RC_W5B plan=$( [[ -f "$PLAN" ]] && echo intact || echo gone )"
+fi
+cleanup "$MAIN_DIR" "$WT_DIR" "$ISO_HOME_W5"
+
+echo "=== T99-W6: anti-rat adopts the NESTED project root (cwd below a marked dir) ==="
+# dotfiles-style container repo > nested non-git project (has .claude/) >
+# session subdirectory. The plan lives in the NESTED project; Modo B must
+# fire. Pre-fix, PROJECT_ROOT stayed on raw CWD and the plan was invisible
+# (RETURN 3: the T87 symptom one level deeper).
+CONTAINER=$(mktemp -d)
+git -C "$CONTAINER" init -q
+git -C "$CONTAINER" config user.email t99@test
+git -C "$CONTAINER" config user.name t99
+mkdir -p "$CONTAINER/.claude/hooks/lib"
+cp "$HOOKS_SRC/anti-rationalization-gate.sh" "$CONTAINER/.claude/hooks/"
+cp "$HOOKS_SRC/lib/worktree-utils.sh" "$CONTAINER/.claude/hooks/lib/"
+NESTED="$CONTAINER/projects/toolbox"
+mkdir -p "$NESTED/.claude/state" "$NESTED/sub"
+NOW_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+printf '{"last_updated":"%s","task":"nested","steps":[{"name":"step","status":"in_progress"}]}' "$NOW_ISO" \
+  > "$NESTED/.claude/plan-state.json"
+OUT_W6=$(cd "$CONTAINER" && printf '{"stop_hook_active": false, "cwd": "%s/sub", "transcript": "Should I continue?"}' "$NESTED" | \
+  /bin/bash "$CONTAINER/.claude/hooks/anti-rationalization-gate.sh" 2>/dev/null || true)
+if [[ "$OUT_W6" == *"Plan-immutability gate"* ]]; then
+  ok "nested project plan detected from its subdirectory (Modo B fires)"
+else
+  bad "nested project plan INVISIBLE from subdirectory — boundary not adopted as root"
+fi
+rm -rf "$CONTAINER"
+
+echo "=== T99-W7: anti-rat logs BROKEN git, stays silent on true no-git (RETURN 4) ==="
+# Both cases fail rev-parse with the same "not a git repository" text; only
+# the presence of a .git on the walk up distinguishes them.
+BROKEN=$(mktemp -d)
+git -C "$BROKEN" init -q
+mkdir -p "$BROKEN/.claude/hooks"
+cp "$HOOKS_SRC/anti-rationalization-gate.sh" "$BROKEN/.claude/hooks/"
+echo "garbage" > "$BROKEN/.git/HEAD"   # corrupt HEAD: rev-parse fails
+ISO_HOME_W7=$(mktemp -d)
+RC_W7=0
+(cd "$BROKEN" && printf '{"stop_hook_active": false, "cwd": "%s", "transcript": "hello"}' "$BROKEN" | \
+  HOME="$ISO_HOME_W7" /bin/bash "$BROKEN/.claude/hooks/anti-rationalization-gate.sh" >/dev/null 2>&1) || RC_W7=$?
+if [[ "$RC_W7" -eq 0 ]] && grep -q "git present but broken" "$ISO_HOME_W7/.ralph/logs/anti-rationalization-gate.log" 2>/dev/null; then
+  ok "broken git (corrupt HEAD): allowed AND logged for the operator"
+else
+  bad "broken git NOT logged (rc=$RC_W7) — silent Modo B off, promise unmet"
+fi
+rm -rf "$BROKEN" "$ISO_HOME_W7"
+
+# Control leg: a TRUE no-git dir emits the same rev-parse failure but must
+# stay SILENT (no log noise for a normal condition).
+TRUE_NOGIT=$(mktemp -d)
+mkdir -p "$TRUE_NOGIT/plain" "$TRUE_NOGIT/.claude/hooks"
+cp "$HOOKS_SRC/anti-rationalization-gate.sh" "$TRUE_NOGIT/.claude/hooks/"
+ISO_HOME_W7B=$(mktemp -d)
+(cd "$TRUE_NOGIT/plain" && printf '{"stop_hook_active": false, "cwd": "%s", "transcript": "hello"}' "$TRUE_NOGIT/plain" | \
+  HOME="$ISO_HOME_W7B" /bin/bash "$TRUE_NOGIT/.claude/hooks/anti-rationalization-gate.sh" >/dev/null 2>&1) || true
+if [[ ! -f "$ISO_HOME_W7B/.ralph/logs/anti-rationalization-gate.log" ]]; then
+  ok "true no-git directory stays silent (no false alarm)"
+else
+  bad "true no-git directory was LOGGED as broken — noisy false positive"
+fi
+rm -rf "$TRUE_NOGIT" "$ISO_HOME_W7B"
+
+echo "=== T99-W8: plan-sync in a NON-GIT project — logical CLAUDE_PROJECT_DIR vs physical realpath (RETURN dominant 2) ==="
+# mktemp on macOS returns the LOGICAL path (/var/...) while realpath resolves
+# the PHYSICAL one (/private/var/...). A non-git project has no git to
+# canonize the root, so pre-fix the boundary compared logical vs physical and
+# rejected EVERY edit as "Path traversal" — the hook became a no-op with
+# false security alarms.
+NG_DIR=$(mktemp -d)   # logical form; intentionally NOT git-initialized
+mkdir -p "$NG_DIR/.claude" "$NG_DIR/src"
+cat > "$NG_DIR/src/plain.md" <<'EOF'
+# plain project file
+EOF
+# The PLAN is written by whoever resolved paths with realpath — PHYSICAL
+# form; CLAUDE_PROJECT_DIR arrives from the caller in LOGICAL form. That
+# asymmetry is exactly what the pre-fix hook compared and rejected.
+NG_PHYS=$(cd "$NG_DIR" && pwd -P)
+cat > "$NG_DIR/.claude/plan-state.json" <<EOF
+{"version":"1.0","task":"t99 nongit","steps":[{"id":"n1","name":"write plain","status":"in_progress","spec":{"file":"$NG_PHYS/src/plain.md","exports":[]},"actual":{}}]}
+EOF
+ISO_HOME_W8=$(mktemp -d)
+SYNC_LOG_W8="$ISO_HOME_W8/.ralph/logs/plan-sync.log"
+NG_OUT=$(cd "$NG_DIR" && printf '{"tool_input": {"file_path": "%s"}}' "$NG_DIR/src/plain.md" | \
+  HOME="$ISO_HOME_W8" CLAUDE_PROJECT_DIR="$NG_DIR" /bin/bash "$HOOKS_SRC/plan-sync-post-step.sh" 2>/dev/null)
+RC_W8=$?
+NG_WROTE=$(jq -r '.steps[] | select(.id == "n1") | .actual.updated_at // ""' "$NG_DIR/.claude/plan-state.json" 2>/dev/null)
+if [[ "$RC_W8" -eq 0 && -n "$NG_WROTE" ]]; then
+  ok "non-git project edit accepted (absolute CLAUDE_PROJECT_DIR)"
+else
+  bad "non-git project edit REJECTED as traversal (rc=$RC_W8) — root resolution regressed"
+  echo "       NG_DIR=$NG_DIR"
+  echo "       NG_PHYS=$NG_PHYS"
+  echo "       -- plan-sync log --"
+  cat "$SYNC_LOG_W8" 2>/dev/null | sed 's/^/       /'
+fi
+if ! grep -q "Path traversal attempt blocked" "$SYNC_LOG_W8" 2>/dev/null; then
+  ok "no false security alarm for the accepted edit"
+else
+  bad "false 'Path traversal' alarm logged for an in-project edit"
+fi
+
+# RETURN r4 finding 5: CLAUDE_PROJECT_DIR="." (the relative fallback) must be
+# canonized centrally in the lib — one consumer accepting it and another
+# refusing it was the divergence. Same project, relative root: accepted too.
+# The step's actual is RESET first so the second mutation is unambiguous
+# even when both runs land in the same second (updated_at has 1s resolution).
+jq '.steps[0].actual = {}' "$NG_DIR/.claude/plan-state.json" \
+  > "$NG_DIR/.claude/plan-state.json.tmp" && mv "$NG_DIR/.claude/plan-state.json.tmp" "$NG_DIR/.claude/plan-state.json"
+NG_OUT2=$(cd "$NG_DIR" && printf '{"tool_input": {"file_path": "%s"}}' "$NG_DIR/src/plain.md" | \
+  HOME="$ISO_HOME_W8" CLAUDE_PROJECT_DIR="." /bin/bash "$HOOKS_SRC/plan-sync-post-step.sh" >/dev/null 2>&1)
+RC_W8B=$?
+NG_WROTE2=$(jq -r '.steps[] | select(.id == "n1") | .actual.updated_at // ""' "$NG_DIR/.claude/plan-state.json" 2>/dev/null)
+if [[ "$RC_W8B" -eq 0 && -n "$NG_WROTE2" ]]; then
+  ok "relative CLAUDE_PROJECT_DIR ('.') canonized centrally — edit accepted"
+else
+  bad "relative CLAUDE_PROJECT_DIR diverged (rc=$RC_W8B) — '.' handling differs per consumer"
+fi
+cleanup "$NG_DIR" "$ISO_HOME_W8"
+
+echo "=== T99-W9: a bare tests/.claude/ directory is NOT a project root marker (RETURN r3 finding 1) ==="
+# THIS repo carries tests/.claude/ (a bare directory). With the previous
+# marker (any .claude dir), a session running under tests/ adopted tests/
+# as PROJECT_ROOT: plan invisible, Modo A and B silently OFF — the exact
+# T87/T99 class, a regression vs v2.0.1. Only real .claude CONTENT (a plan,
+# settings, hooks/) marks a project.
+CONTAINER_W9=$(mktemp -d)
+git -C "$CONTAINER_W9" init -q
+git -C "$CONTAINER_W9" config user.email t99@test
+git -C "$CONTAINER_W9" config user.name t99
+mkdir -p "$CONTAINER_W9/.claude/hooks/lib" "$CONTAINER_W9/tests/.claude" "$CONTAINER_W9/tests/sub"
+cp "$HOOKS_SRC/anti-rationalization-gate.sh" "$CONTAINER_W9/.claude/hooks/"
+cp "$HOOKS_SRC/lib/worktree-utils.sh" "$CONTAINER_W9/.claude/hooks/lib/"
+NOW_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+printf '{"last_updated":"%s","task":"w9","steps":[{"name":"step","status":"in_progress"}]}' "$NOW_ISO" \
+  > "$CONTAINER_W9/.claude/plan-state.json"
+OUT_W9=$(cd "$CONTAINER_W9" && printf '{"stop_hook_active": false, "cwd": "%s/tests/sub", "transcript": "Should I continue?"}' "$CONTAINER_W9" | \
+  /bin/bash "$CONTAINER_W9/.claude/hooks/anti-rationalization-gate.sh" 2>/dev/null || true)
+if [[ "$OUT_W9" == *"Plan-immutability gate"* ]]; then
+  ok "cwd under tests/ still sees the ROOT plan (bare tests/.claude ignored)"
+else
+  bad "bare tests/.claude/ adopted as root — Modo B silently OFF under tests/"
+fi
+rm -rf "$CONTAINER_W9"
+
+echo "=== T99-W10: NO split-brain — nested project plan is what BOTH gate and writer see ==="
+# The r4 consolidation's headline case: a nested non-git project inside a
+# healthy container repo. Pre-consolidation the WRITER resolved the project
+# via plain rev-parse (container) while the GATE walked the content markers
+# (nested) — the gate could block on a plan the writer never touched.
+# After get_project_root() became the single definition, both see NESTED.
+CONTAINER_W10=$(mktemp -d)
+git -C "$CONTAINER_W10" init -q
+git -C "$CONTAINER_W10" config user.email t99@test
+git -C "$CONTAINER_W10" config user.name t99
+mkdir -p "$CONTAINER_W10/.claude/hooks" "$CONTAINER_W10/.claude"
+cp -R "$HOOKS_SRC/." "$CONTAINER_W10/.claude/hooks/"   # full tree: the writer needs lib/plan-state-writer.sh too
+# Container plan: the one the OLD writer resolution (plain rev-parse) mutated.
+printf '{"version":"1.0","task":"container","steps":[{"id":"c1","name":"c","status":"in_progress","spec":{"file":"/dev/null","exports":[]},"actual":{}}]}' \
+  > "$CONTAINER_W10/.claude/plan-state.json"
+# Nested non-git project with its OWN plan and its own source file.
+NESTED_W10="$CONTAINER_W10/projects/toolbox"
+mkdir -p "$NESTED_W10/.claude" "$NESTED_W10/src" "$NESTED_W10/sub"
+NESTED_W10=$(cd "$NESTED_W10" && pwd -P)   # born canonical BEFORE writing specs (T87 fixture note)
+printf '{"version":"1.0","task":"nested","steps":[{"id":"n1","name":"n","status":"in_progress","spec":{"file":"%s/src/util.ts","exports":["util"]},"actual":{}}]}' "$NESTED_W10" \
+  > "$NESTED_W10/.claude/plan-state.json"
+printf 'export const util = 1;\n' > "$NESTED_W10/src/util.ts"
+ISO_HOME_W10=$(mktemp -d)
+# The SESSION lives in the nested project: the hook's process cwd is a
+# subdirectory of NESTED, and the hook it loads is the container checkout's
+# copy (as real life wires it: the configured hook path belongs to the
+# outer checkout). Pre-consolidation this exact geometry produced the
+# split-brain: writer resolved via plain rev-parse -> CONTAINER.
+OUT_W10=$(cd "$NESTED_W10/sub" && printf '{"tool_input": {"file_path": "%s/src/util.ts"}}' "$NESTED_W10" | \
+  HOME="$ISO_HOME_W10" /bin/bash "$CONTAINER_W10/.claude/hooks/plan-sync-post-step.sh" >/dev/null 2>&1)
+NESTED_WRITTEN=$(jq -r '.steps[] | select(.id == "n1") | .actual.updated_at // ""' "$NESTED_W10/.claude/plan-state.json" 2>/dev/null)
+CONTAINER_WRITTEN=$(jq -r '.steps[] | select(.id == "c1") | .actual.updated_at // ""' "$CONTAINER_W10/.claude/plan-state.json" 2>/dev/null)
+if [[ -n "$NESTED_WRITTEN" ]]; then
+  ok "writer mutates the NESTED project plan (content-marker walk, not rev-parse)"
+else
+  bad "split-brain: writer mutated the CONTAINER plan while its gate sees NESTED"
+fi
+if [[ -z "$CONTAINER_WRITTEN" ]]; then
+  ok "container plan untouched by a nested-project edit"
+else
+  bad "container plan mutated — resolution still container-bound"
+fi
+cleanup "$CONTAINER_W10" "$ISO_HOME_W10"
+
+echo "=== T99-W11: BROKEN ancestor git does not hide a nested project's plan (RETURN r4 finding 3) ==="
+# Same geometry as W10 but the CONTAINER's git is corrupt. The resolution
+# walk is filesystem-only: the nested plan must still gate Modo B.
+BROKEN_W10=$(mktemp -d)
+git -C "$BROKEN_W10" init -q
+mkdir -p "$BROKEN_W10/.claude/hooks/lib" "$BROKEN_W10/.claude/state"
+cp "$HOOKS_SRC/anti-rationalization-gate.sh" "$BROKEN_W10/.claude/hooks/"
+cp "$HOOKS_SRC/lib/worktree-utils.sh" "$BROKEN_W10/.claude/hooks/lib/"
+echo "garbage" > "$BROKEN_W10/.git/HEAD"
+NESTED_W11="$BROKEN_W10/projects/toolbox"
+mkdir -p "$NESTED_W11/.claude/state" "$NESTED_W11/sub"
+NOW_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+printf '{"last_updated":"%s","task":"nested-broken","steps":[{"name":"step","status":"in_progress"}]}' "$NOW_ISO" \
+  > "$NESTED_W11/.claude/plan-state.json"
+OUT_W11=$(cd "$BROKEN_W10" && printf '{"stop_hook_active": false, "cwd": "%s/sub", "transcript": "Should I continue?"}' "$NESTED_W11" | \
+  HOME=$(mktemp -d) /bin/bash "$BROKEN_W10/.claude/hooks/anti-rationalization-gate.sh" 2>/dev/null || true)
+if [[ "$OUT_W11" == *"Plan-immutability gate"* ]]; then
+  ok "nested plan gates Modo B even with a BROKEN ancestor git"
+else
+  bad "broken ancestor git hid the nested plan — walk skipped on unhealthy git"
+fi
+rm -rf "$BROKEN_W10"
 
 echo
 echo "=========================================="

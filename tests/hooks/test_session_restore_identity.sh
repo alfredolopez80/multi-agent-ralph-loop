@@ -43,7 +43,11 @@ trap 'rm -rf "$TMP"' EXIT
 make_ledger() {
     # Emits the real writer format: context-extractor.py puts the session's
     # cwd toplevel as "Project: <path>" inside ## Environment.
+    # T99 r4 (lead-authorized): get_project_root now returns the CANONICAL
+    # root, so the fixture identity must be born canonical too — otherwise
+    # a /tmp vs /private/tmp symlink pair makes writer and reader disagree.
     local file="$1" project_path="$2" goal="$3"
+    project_path="$(cd "$project_path" && pwd -P)"
     cat > "$file" <<EOF
 # CONTINUITY_RALPH: fixture
 
@@ -60,7 +64,9 @@ EOF
 
 run_hook() {
     # $1 = worktree toplevel to run as (CLAUDE_PROJECT_DIR, no git in cwd)
-    local identity="$1"
+    # T99 r4: canonized, matching get_project_root's canonical output.
+    local identity
+    identity="$(cd "$1" && pwd -P)"
     (
         cd "$TMP" || exit 1
         CLAUDE_PROJECT_DIR="$identity" \
