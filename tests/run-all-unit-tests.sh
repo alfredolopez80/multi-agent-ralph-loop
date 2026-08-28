@@ -105,6 +105,7 @@ echo ""
 TEST_SUITES=(
     "hook-integration/test-hook-integration-v2.88.sh:Hooks: integration end-to-end (5 findings)"
     "hooks/test_anti_rationalization_gate.sh:Hooks: anti-rationalization gate"
+    "hooks/test_plan_state_writers_cwd.sh:Hooks: plan-state writers root-resolution (T87)"
     "hooks/test_no_hook_hangs_or_blocks.sh:Hooks: no hangs or blocks"
     "hooks/test_plan_state_writer.sh:Hooks: plan-state writer"
     "hooks/test_quality_check_registry.sh:Hooks: quality check registry"
