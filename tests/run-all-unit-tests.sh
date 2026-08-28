@@ -113,6 +113,7 @@ TEST_SUITES=(
     "hooks/test_react_doctor_runner_failures.sh:Hooks: react-doctor runner failures"
     "hooks/test_session_dedup_key.sh:Hooks: session dedup key"
     "hooks/test_session_restore_identity.sh:Hooks: session restore worktree identity"
+    "hooks/test_session_c1_resume_probe.sh:Hooks: C1 active-task resume probe (T110, #47 C1)"
     "hooks/test_agent_policy_guard.sh:Hooks: agent policy guard (T101, #48 ceiling)"
     "hooks/test_agent_depth_soft_enforce.sh:Hooks: agent depth soft-enforce (T101, #48 depth chain-walk)"
     "hooks/test_wakeup_broad_recall_retired.sh:Hooks: wake-up broad recall retired"

@@ -29,6 +29,12 @@ source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
   get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
   get_main_repo() { get_project_root; }
 }
+# T110-f2: shared freshness constant for the READ side. The WRITER side
+# (plan-state-adaptive.sh) imports the same lib; both agree on the threshold.
+# When T99-r4 lands and provides a `stat_mtime` helper in lib/, this can be
+# replaced by it; the gate logic stays.
+source "${_HOOK_DIR}/lib/plan-state-freshness.sh" 2>/dev/null || \
+    PLAN_STALENESS_MINUTES=30  # Fallback if lib not present (e.g. before install)
 
 # Configuration
 # RALPH_* overrides exist for tests only; production always uses ~/.ralph.
@@ -201,30 +207,45 @@ if [[ -f "${PROJECT_DIR}/${PLAN_STATE_FILE}" ]]; then
     PLAN_STATUS=$(jq -r '.plan.status // "unknown"' "${PROJECT_DIR}/${PLAN_STATE_FILE}" 2>/dev/null || echo "unknown")
 
     if [[ "$PLAN_STATUS" == "in_progress" ]]; then
-        CONTEXT+="### Active Plan\n\n"
-        CONTEXT+="There is an **active plan** in progress for this project.\n\n"
+        # T110-f2: freshness gate on the READ side. A plan that has been
+        # status=in_progress for longer than PLAN_STALENESS_MINUTES minutes
+        # is NOT resumed — the resume surface treats it as a stale entry
+        # from a previous session, not as the active session's own work.
+        # Threshold matches the writer side (plan-state-adaptive.sh).
+        _now=$(date +%s)
+        _mtime=$(stat -f %m "${PROJECT_DIR}/${PLAN_STATE_FILE}" 2>/dev/null || stat -c %Y "${PROJECT_DIR}/${PLAN_STATE_FILE}" 2>/dev/null || echo "$_now")
+        _age_min=$(( ( _now - _mtime ) / 60 ))
+        if [[ "$_age_min" -gt "$PLAN_STALENESS_MINUTES" ]]; then
+            log "INFO" "stale plan not resumed (mtime ${_age_min}m > ${PLAN_STALENESS_MINUTES}m): ${PROJECT_DIR}/${PLAN_STATE_FILE}"
+            # Do NOT inject plan context; mark this as found so the
+            # downstream sections (ledger / handoff / vault) still run.
+            FOUND_CONTEXT=false
+        else
+            CONTEXT+="### Active Plan\n\n"
+            CONTEXT+="There is an **active plan** in progress for this project.\n\n"
 
-        # Extract plan summary
-        PLAN_SUMMARY=$(jq -r '.plan.summary // "No summary available"' "${PROJECT_DIR}/${PLAN_STATE_FILE}" 2>/dev/null || echo "No summary")
-        CONTEXT+="**Summary**: ${PLAN_SUMMARY}\n\n"
+            # Extract plan summary
+            PLAN_SUMMARY=$(jq -r '.plan.summary // "No summary available"' "${PROJECT_DIR}/${PLAN_STATE_FILE}" 2>/dev/null || echo "No summary")
+            CONTEXT+="**Summary**: ${PLAN_SUMMARY}\n\n"
 
-        # Extract current step
-        CURRENT_STEP=$(jq -r '.current_step // "unknown"' "${PROJECT_DIR}/${PLAN_STATE_FILE}" 2>/dev/null || echo "unknown")
-        if [[ "$CURRENT_STEP" != "unknown" && "$CURRENT_STEP" != "null" ]]; then
-            CONTEXT+="**Current Step**: ${CURRENT_STEP}\n\n"
+            # Extract current step
+            CURRENT_STEP=$(jq -r '.current_step // "unknown"' "${PROJECT_DIR}/${PLAN_STATE_FILE}" 2>/dev/null || echo "unknown")
+            if [[ "$CURRENT_STEP" != "unknown" && "$CURRENT_STEP" != "null" ]]; then
+                CONTEXT+="**Current Step**: ${CURRENT_STEP}\n\n"
+            fi
+
+            # Extract progress
+            TOTAL_STEPS=$(jq -r '.steps | length' "${PROJECT_DIR}/${PLAN_STATE_FILE}" 2>/dev/null || echo "0")
+            COMPLETED_STEPS=$(jq -r '[.steps[] | select(.status == "completed")] | length' "${PROJECT_DIR}/${PLAN_STATE_FILE}" 2>/dev/null || echo "0")
+
+            if [[ "$TOTAL_STEPS" -gt 0 ]]; then
+                PROGRESS=$((COMPLETED_STEPS * 100 / TOTAL_STEPS))
+                CONTEXT+="**Progress**: ${COMPLETED_STEPS}/${TOTAL_STEPS} steps completed (${PROGRESS}%)\n\n"
+            fi
+
+            FOUND_CONTEXT=true
+            log "INFO" "Plan context added - status: $PLAN_STATUS, step: $CURRENT_STEP"
         fi
-
-        # Extract progress
-        TOTAL_STEPS=$(jq -r '.steps | length' "${PROJECT_DIR}/${PLAN_STATE_FILE}" 2>/dev/null || echo "0")
-        COMPLETED_STEPS=$(jq -r '[.steps[] | select(.status == "completed")] | length' "${PROJECT_DIR}/${PLAN_STATE_FILE}" 2>/dev/null || echo "0")
-
-        if [[ "$TOTAL_STEPS" -gt 0 ]]; then
-            PROGRESS=$((COMPLETED_STEPS * 100 / TOTAL_STEPS))
-            CONTEXT+="**Progress**: ${COMPLETED_STEPS}/${TOTAL_STEPS} steps completed (${PROGRESS}%)\n\n"
-        fi
-
-        FOUND_CONTEXT=true
-        log "INFO" "Plan context added - status: $PLAN_STATUS, step: $CURRENT_STEP"
     fi
 fi
 
