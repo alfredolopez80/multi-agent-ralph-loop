@@ -84,6 +84,7 @@ subagents_dir="${RALPH_STATE_DIR}/state/${session_id}/subagents"
 chain_log=""
 depth=0
 current="$parent_id"
+last_current=""
 
 if [[ "$parent_id" == "root" || -z "$parent_id" ]]; then
     depth=1
@@ -98,7 +99,18 @@ else
             chain_log="${chain_log}missing -> "
             break
         fi
-        current="$(jq -r '.parent // "root"' "$state_file" 2>/dev/null || echo "root")"
+        current="$(jq -r '.parent // empty' "$state_file" 2>/dev/null)" \
+            || { log "WARN: agent-depth-soft-enforce state file $state_file is unreadable; truncating chain walk at $current"; echo "root"; }
+        # If the parent field is empty/missing (but jq succeeded), treat as root.
+        [[ -z "$current" ]] && current="root"
+        # A cycle guard: if we land on the current node again, the chain
+        # has a loop. Bail out to "root" with a warning instead of looping
+        # forever and inflating depth.
+        if [[ "$current" == "$last_current" ]]; then
+            log "WARN: agent-depth-soft-enforce detected cycle in chain at $current; truncating walk"
+            current="root"
+        fi
+        last_current="$current"
         current="$(printf '%s' "$current" | tr -cd '[:alnum:]-_' | head -c 128)"
         safety=$((safety - 1))
     done

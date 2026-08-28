@@ -115,20 +115,24 @@ else
     fail "single spawn" "out='$out'"
 fi
 
-# --- 4. Eight sequential root spawns all allow (T101 RETURN floor) --------
-echo "=== 4. Eight sequential root spawns: floor for ceiling=8 regress ==="
-seed_active 0 "t101-eight"
-ok_count=0
-for i in 1 2 3 4 5 6 7 8; do
-    out="$(run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-coder","prompt":"'"$i"'"},"session_id":"t101-eight"}')"
-    if [[ -z "$out" ]]; then
-        ok_count=$((ok_count + 1))
-    fi
-done
-if [[ "$ok_count" -eq 8 ]]; then
-    pass "8/8 sequential spawns allow (no early deny)"
+# --- 4. Ceiling=8 gradient: seed 7 allow, seed 8 deny (T101-r2 finding 6) ----
+# The hook is read-only: it counts active subagents in state. The T101-r2
+# reviewer pointed out the prior test (seed 0 + 8 reads of empty) didn't
+# cover the gradient at the boundary. We simulate ralph-subagent-start's
+# state writes by seeding between hook invocations.
+echo "=== 4. Ceiling=8 gradient: seed 7 allow, seed 8 deny ==="
+seed_active 7 "t101-grad"
+out7="$(run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-coder","prompt":"x"},"session_id":"t101-grad"}')"
+seed_active 8 "t101-grad"
+out8="$(run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-tester","prompt":"y"},"session_id":"t101-grad"}')"
+seed_active 9 "t101-grad"
+out9="$(run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-reviewer","prompt":"z"},"session_id":"t101-grad"}')"
+if [[ -z "$out7" ]] \
+   && printf '%s' "$out8" | jq -e '.hookSpecificOutput.permissionDecision == "deny"' >/dev/null 2>&1 \
+   && printf '%s' "$out9" | jq -e '.hookSpecificOutput.permissionDecision == "deny"' >/dev/null 2>&1; then
+    pass "gradient: count=7 allow, count=8 deny, count=9 deny (ceiling=8 enforced at boundary)"
 else
-    fail "8-spawn floor" "got $ok_count/8 allows"
+    fail "ceiling gradient" "out7='$out7' out8='$out8' out9='$out9'"
 fi
 
 # --- 5. Ceiling=1 denies the 2nd spawn with correct schema ---------------
@@ -207,6 +211,31 @@ if [[ $rc -eq 0 ]] && [[ -z "$out" ]]; then
 else
     fail "non-numeric env" "rc=$rc out='$out'"
 fi
+
+# --- 11. Corrupt state -> FAIL-LOUD with rc=2 (T101-r2 finding 1) ----------
+# The pre-fix bug had `exit 2` INSIDE `$(...)`, which only killed the subshell:
+# the script fell through with active_count="" → 0 < ceiling → ALLOW. This
+# test seeds a valid JSON file with a syntactically invalid sibling so that
+# the jq pass fails; with the fix, the hook exits 2 (or whatever nonzero the
+# fail-loud path emits) and we never allow a Task on a corrupt state.
+echo "=== 11. Corrupt state -> FAIL-LOUD with non-zero rc (not silent ALLOW) ==="
+mkdir -p "${HOME}/.ralph/state/t101-corrupt/subagents"
+# Write a valid file alongside one that jq can't parse, then point the
+# hook at the dir. The valid file alone would make the count 1; the corrupt
+# sibling makes the jq pass fail.
+printf '%s' '{"id":"good","parent":"root","status":"active"}' > "${HOME}/.ralph/state/t101-corrupt/subagents/good.json"
+printf '%s' '{ this is not valid json' > "${HOME}/.ralph/state/t101-corrupt/subagents/bad.json"
+out="$(run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-coder","prompt":"x"},"session_id":"t101-corrupt"}' 2>&1)"
+rc=$?
+# Either: the hook denies with permissionDecision OR exits non-zero. We
+# check both — the contract is "do not silently allow". Empty stdout +
+# rc=0 would be the regression.
+if [[ $rc -ne 0 ]] || printf '%s' "$out" | jq -e '.hookSpecificOutput.permissionDecision == "deny"' >/dev/null 2>&1; then
+    pass "corrupt state: rc=$rc non-zero (fail-loud) or deny JSON — not silent allow"
+else
+    fail "corrupt state" "rc=$rc out='$out' (regression of T101-r2 finding 1)"
+fi
+rm -rf "${HOME}/.ralph/state/t101-corrupt"
 
 echo
 printf 'passed: %d  failed: %d\n' "$PASS" "$FAIL"

@@ -115,11 +115,15 @@ subagents_dir="${RALPH_STATE_DIR}/state/${session_id}/subagents"
 # treat empty as zero (no active subagents yet).
 active_count=0
 if [[ -d "$subagents_dir" ]] && compgen -G "${subagents_dir}/*.json" > /dev/null; then
-    active_count="$(jq -s '[.[] | select(.status == "active")] | length' \
-        "${subagents_dir}"/*.json 2>/dev/null || {
-        log "FAIL-LOUD: state under $subagents_dir is corrupt or unreadable; refusing to allow this spawn (better safe than fail-open). Inspect and either repair or delete the offending .json files."
-        exit 2
-    })"
+    # Read the count into a separate variable. The `|| { log; exit 2; }` is
+    # at script level (NOT inside $()), so a jq parse error actually
+    # terminates the hook with rc=2 — not silently leaves active_count=""
+    # and falls through to ALLOW. The T101-r2 finding 1 was that the prior
+    # version had the exit inside $(), which only killed the subshell.
+    _active_count_raw="$(jq -s '[.[] | select(.status == "active")] | length' \
+        "${subagents_dir}"/*.json 2>/dev/null)" \
+        || { log "FAIL-LOUD: state under $subagents_dir is corrupt or unreadable; refusing to allow this spawn (better safe than fail-open). Inspect and either repair or delete the offending .json files."; exit 2; }
+    active_count="$_active_count_raw"
 fi
 
 # --- Decision ---------------------------------------------------------------

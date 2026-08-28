@@ -111,8 +111,14 @@ fi
 # --- 6. Missing parent in state -> partial walk, allow ------------------------
 # (T91: ancestor not registered yet — the walk stops; we still allow with
 # a partial-depth hint, since the chain isn't definitively over the limit.)
+# Bug-fix: ensure the fixture directory exists before writing; missing the
+# mkdir made the fixture write silently fail and the test pass for the wrong
+# reason (T101-r2 finding 9).
+mkdir -p "${HOME}/.ralph/state/partial/subagents"
 printf '%s' '{"id":"ROOT_ONLY","parent":"root","status":"active"}' \
     > "${HOME}/.ralph/state/partial/subagents/ROOT_ONLY.json"
+[[ -f "${HOME}/.ralph/state/partial/subagents/ROOT_ONLY.json" ]] || {
+    fail "fixture setup" "ROOT_ONLY.json not written — mkdir + write failed"; }
 echo "=== 6. parent with missing state file -> partial walk ==="
 out="$(run_hook '{"agent_id":"ORPHAN","parent_id":"NO_STATE","sessionId":"partial","agent_type":"ralph-coder"}')"
 if printf '%s' "$out" | jq -e '.continue == true' >/dev/null 2>&1; then
@@ -129,6 +135,21 @@ if printf '%s' "$out" | jq -e '.continue == true' >/dev/null 2>&1; then
 else
     fail "empty stdin" "out='$out'"
 fi
+
+# --- 8. Cycle detection: parent points to itself, walk bails out (T101-r2 #5) --
+# Without cycle protection the depth walk would inflate forever.
+echo "=== 8. Cycle detection: self-referential parent bails out (no infinite walk) ==="
+cycle_dir="${HOME}/.ralph/state/cycle-session/subagents"
+mkdir -p "$cycle_dir"
+printf '%s' '{"id":"CYC","parent":"CYC","status":"active"}' > "$cycle_dir/CYC.json"
+[[ -f "$cycle_dir/CYC.json" ]] || { fail "cycle fixture setup" "CYC.json not written"; }
+out="$(run_hook '{"agent_id":"CYCBABY","parent_id":"CYC","sessionId":"cycle-session","agent_type":"ralph-coder"}')"
+if printf '%s' "$out" | jq -e '.continue == true' >/dev/null 2>&1; then
+    pass "cycle: walk bails out, depth stays bounded (allow)"
+else
+    fail "cycle" "out='$out'"
+fi
+rm -rf "$cycle_dir"
 
 echo
 printf 'passed: %d  failed: %d\n' "$PASS" "$FAIL"

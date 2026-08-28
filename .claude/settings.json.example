@@ -171,11 +171,26 @@
     ],
     "SubagentStart": [
       {
-        "matcher": "ralph-*",
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/ralph-subagent-start.sh"
+          },
+          {
+            "type": "command",
             "command": "$HOME/.ralph/.claude/hooks/agent-depth-soft-enforce.sh"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/subagent-stop-universal.sh"
           }
         ]
       }
