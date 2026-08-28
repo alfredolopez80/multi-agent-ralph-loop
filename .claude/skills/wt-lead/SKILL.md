@@ -111,7 +111,11 @@ over the branch BEFORE integrating:
    simplification, altitude findings.
 
 `review.sh` checks scope only and the test runner checks behavior — neither
-reads the code. Findings:
+reads the code. In Q-teams without a Claude seat for the lead (qteam-zc),
+run every review layer INLINE from the lead's own context — never spawn
+Claude subagents: they bill a seat the team exists to conserve, and without
+valid credentials they die with `API Error: 401` (observed 2026-08-28: four
+`simplify` subagents spawned straight from the skill text, all 401). Findings:
 - Behavioral defect → RETURN with `file:line` and the failure scenario.
 - Reuse/simplification findings → include in the same RETURN as
   recommendations; the worker applies them (the lead never edits worker code
