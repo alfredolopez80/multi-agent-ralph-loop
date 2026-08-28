@@ -1,10 +1,36 @@
 """Shared recall fixtures (#47 T92, review item 3).
 
 One definition of payload builder, context builder and the C3 efficacy
-corpus, consumed by BOTH test modules and results/t92_c3_probe.py. The
-probe's pinned numbers (42.0 / 24.0 / 0.0) describe THIS corpus: change a
-scoring-relevant field here and every consumer moves together, instead of
-three divergent copies silently drifting apart.
+corpus, consumed by BOTH recall-style test modules and
+results/t92_c3_probe.py. The probe's pinned numbers (42.0 / 24.0 / 0.0)
+describe THIS corpus: change a scoring-relevant field here and every
+consumer moves together, instead of three divergent copies silently
+drifting apart.
+
+Scope note (T103 mmx-3 #2): tests/memory/test_tree_store.py deliberately
+keeps its OWN _payload() helper and does NOT import make_payload from
+this module. The two helpers look superficially similar but serve
+different test contracts:
+
+  * recall tests parameterise the field under test per case (summary,
+    trigger, quality, etc.) and benefit from generic defaults that
+    force each test to set what matters.
+
+  * tree_store tests assert on derived fields that depend on the payload
+    content (e.g. `domain` derived from summary/trigger/topic_tags, the
+    layout under nodes_dir, RED-on-raw re-checks). Those tests need a
+    concrete payload — `summary="Use parameterized queries..."`,
+    `trigger={"text":"writing SQL"}`, `topic_tags=["database","sql"]` —
+    so that the derived fields are stable and the assertions make
+    sense. Importing the generic helper would either lose the concrete
+    assertions or push 20+ kwargs into every tree_store test call.
+
+A parameterised helper that serves BOTH contracts was considered
+(make_payload(project_id, summary=DEFAULT, trigger=None, ...)) and
+rejected: every recall test would need to opt OUT of the rich defaults
+to keep its "generic defaults force explicit intent" property, and
+every tree_store test would need to opt IN with a long kwargs list.
+The current split keeps each test family's contract local and explicit.
 """
 
 from __future__ import annotations

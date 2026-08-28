@@ -465,6 +465,21 @@ def attribution(node: dict[str, Any]) -> str:
     return ""
 
 
+# Single source of truth for the per-risk set of fields that BOTH
+# render_context (which builds the emitted item) and _emitted_text
+# (which tokenises the same surface for active-context suppression) read.
+# T103 #1: extracting this table eliminated a potential drift between the
+# two functions; medium and high currently emit the same fields, but if a
+# future change adds a field to one branch it must update THIS table, not
+# a divergent copy. `summary` is always emitted and is added by render_context
+# directly so it does not appear here.
+RISK_EMITTED_FIELDS: dict[str, list[str]] = {
+    "low":    ["topic_tags"],
+    "medium": ["detailed_summary", "source_paths"],
+    "high":   ["detailed_summary", "source_paths"],
+}
+
+
 def render_context(node: dict[str, Any], risk: str, score: float) -> dict[str, Any]:
     quality = _as_dict(node.get("quality"))
     base: dict[str, Any] = {
@@ -476,14 +491,18 @@ def render_context(node: dict[str, Any], risk: str, score: float) -> dict[str, A
     source = attribution(node)
     if source:
         base["source"] = source
-    if risk == "low":
-        base["topic_tags"] = node.get("topic_tags", [])
-    elif risk == "medium":
-        base["detailed_summary"] = node.get("detailed_summary", "")
-        base["source_paths"] = node.get("source_paths", [])
-    else:  # high
-        base["detailed_summary"] = node.get("detailed_summary", "")
-        base["source_paths"] = node.get("source_paths", [])
+    # Per-risk emitted fields from the single source of truth.
+    for field in RISK_EMITTED_FIELDS.get(risk, []):
+        if field == "topic_tags":
+            base["topic_tags"] = node.get("topic_tags", [])
+        elif field == "detailed_summary":
+            base["detailed_summary"] = node.get("detailed_summary", "")
+        elif field == "source_paths":
+            base["source_paths"] = node.get("source_paths", [])
+    # High-only orthogonal fields (RAW payload recommendation). Not in
+    # RISK_EMITTED_FIELDS because suppression works on rendered text and
+    # should ignore these machine-actionable hints.
+    if risk == "high":
         base["RAW_RECOMMENDED"] = bool(node.get("raw_ref"))
         base["suggested_read_command"] = raw_read_command(str(node["node_id"]))
     # #47 C6: quality states are VISIBLE, never silent. "stale-risk" and the
@@ -531,12 +550,10 @@ MIN_COVERED_TOKENS = 6
 def _emitted_text(node: dict[str, Any], risk: str) -> str:
     """The content render_context actually puts in front of the model at this
     query's risk level (T92 review item 1). Suppressing over non-emitted
-    fields would withhold new summaries the caller never received."""
-    fields = ["summary"]
-    if risk == "low":
-        fields.append("topic_tags")
-    else:  # medium/high emit the detailed summary and source paths
-        fields.extend(["detailed_summary", "source_paths"])
+    fields would withhold new summaries the caller never received. Reads
+    from RISK_EMITTED_FIELDS so this function cannot drift from
+    render_context (T103 #1)."""
+    fields = ["summary", *RISK_EMITTED_FIELDS.get(risk, [])]
     return " ".join(str(node.get(field, "") or "") for field in fields)
 
 
