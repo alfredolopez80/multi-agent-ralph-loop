@@ -13,10 +13,12 @@ from pathlib import Path
 import pytest
 
 _MEMORY_DIR = Path(__file__).resolve().parents[2] / "scripts" / "memory"
-sys.path.insert(0, str(_MEMORY_DIR))
+_TESTS_DIR = Path(__file__).resolve().parent
+for _p in (_MEMORY_DIR, _TESTS_DIR):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
 
 from recall_v2 import (  # noqa: E402
-    Context,
     analyze_query,
     attribution,
     hard_reject_reason,
@@ -24,39 +26,12 @@ from recall_v2 import (  # noqa: E402
     score_node,
 )
 from tree_store import TreeStore  # noqa: E402
-
-
-def _payload(project_id: str, **overrides):
-    payload = {
-        "project_id": project_id,
-        "workspace_instance_id": "ws1",
-        "repo_remote_hash": "abc123",
-        "branch": "main",
-        "commit": "deadbeef",
-        "session_id": "sess-1",
-        "memory_type": "procedural_rule",
-        "sensitivity": "GREEN",
-        "authority": "non_authoritative",
-        "summary": "A rule summary.",
-        "source_description": "migrated from rules.json",
-        "quality": {"confidence": 0.9},
-    }
-    payload.update(overrides)
-    return payload
+from _recall_fixtures import make_context, make_payload  # noqa: E402
 
 
 @pytest.fixture()
 def store(tmp_path) -> TreeStore:
     return TreeStore(tmp_path / "ralph_home")
-
-
-def _ctx(project_id: str) -> Context:
-    return Context(
-        project_root=Path("."),
-        project_id=project_id,
-        workspace_instance_id="ws1",
-        branch="main",
-    )
 
 
 # --- query analysis ---------------------------------------------------------
@@ -88,31 +63,31 @@ def test_analyze_query_temporal():
 # --- hard reject reasons ----------------------------------------------------
 
 def test_reject_invalid_node():
-    assert hard_reject_reason("not a dict", _ctx("projA"), False) == "invalid_node"
+    assert hard_reject_reason("not a dict", make_context("projA"), False) == "invalid_node"
 
 
 def test_reject_wrong_project(store):
-    written = store.create_node(_payload("projA", summary="database indexes matter"))
+    written = store.create_node(make_payload("projA", summary="database indexes matter"))
     node = store.load_node("projA", written["node_id"])
     assert node is not None
-    assert hard_reject_reason(node, _ctx("projB"), False) == "wrong_project"
+    assert hard_reject_reason(node, make_context("projB"), False) == "wrong_project"
 
 
 def test_reject_red():
-    node = _payload("projA")
+    node = make_payload("projA")
     node["sensitivity"] = "RED"
-    assert hard_reject_reason(node, _ctx("projA"), False) == "red"
+    assert hard_reject_reason(node, make_context("projA"), False) == "red"
 
 
 def test_reject_deprecated(store):
     written = store.create_node(
-        _payload("projA", quality={"confidence": 0.9, "deprecated": True})
+        make_payload("projA", quality={"confidence": 0.9, "deprecated": True})
     )
     node = store.load_node("projA", written["node_id"])
     assert node is not None
-    assert hard_reject_reason(node, _ctx("projA"), False) == "deprecated"
+    assert hard_reject_reason(node, make_context("projA"), False) == "deprecated"
     # included when requested
-    assert hard_reject_reason(node, _ctx("projA"), True) == ""
+    assert hard_reject_reason(node, make_context("projA"), True) == ""
 
 
 def test_reject_missing_provenance():
@@ -123,34 +98,34 @@ def test_reject_missing_provenance():
         "sensitivity": "GREEN",
         "summary": "x",
     }
-    assert hard_reject_reason(node, _ctx("projA"), False) == "missing_provenance"
+    assert hard_reject_reason(node, make_context("projA"), False) == "missing_provenance"
 
 
 def test_reject_authority(store):
-    written = store.create_node(_payload("projA"))
+    written = store.create_node(make_payload("projA"))
     node = store.load_node("projA", written["node_id"])
     assert node is not None
     node["authority"] = "authoritative"
-    assert hard_reject_reason(node, _ctx("projA"), False) == "authority"
+    assert hard_reject_reason(node, make_context("projA"), False) == "authority"
 
 
 def test_reject_conflict(store):
-    written = store.create_node(_payload("projA", visibility="conflict"))
+    written = store.create_node(make_payload("projA", visibility="conflict"))
     node = store.load_node("projA", written["node_id"])
     assert node is not None
-    assert hard_reject_reason(node, _ctx("projA"), False) == "conflict"
+    assert hard_reject_reason(node, make_context("projA"), False) == "conflict"
 
 
 # --- scoring order ----------------------------------------------------------
 
 def test_trigger_match_outranks_summary_only():
     analysis = analyze_query("savepoint rollback")
-    summary_only = _payload(
+    summary_only = make_payload(
         "projA",
         summary="a rule that mentions savepoint and rollback in the summary",
         trigger={},
     )
-    trigger_match = _payload(
+    trigger_match = make_payload(
         "projA",
         summary="unrelated wording",
         trigger={"text": "savepoint rollback when transactions fail"},
@@ -165,7 +140,7 @@ def test_negative_bonus_applies():
     # "avoid" is a semantic term that triggers the negative bonus; "shortcuts"
     # is a non-risk search term so the node also clears the base-match guard.
     analysis = analyze_query("avoid dangerous database shortcuts")
-    node = _payload(
+    node = make_payload(
         "projA",
         memory_type="negative_rule",
         summary="never take dangerous database shortcuts",
@@ -182,7 +157,7 @@ def test_negative_bonus_applies():
 
 def test_deprecated_penalty_in_parts(store):
     analysis = analyze_query("database indexes")
-    node = _payload(
+    node = make_payload(
         "projA",
         summary="database indexes speed queries",
         quality={"confidence": 0.9, "deprecated": True},
@@ -197,22 +172,22 @@ def test_recall_ranks_and_emits_trace(store, tmp_path):
     home = tmp_path / "ralph_home"
     s = TreeStore(home)
     summary_node = s.create_node(
-        _payload(
+        make_payload(
             "projA",
             summary="rollback savepoint mentioned in summary only",
             trigger={},
         )
     )
     trigger_node = s.create_node(
-        _payload(
+        make_payload(
             "projA",
             summary="unrelated",
             trigger={"text": "rollback savepoint in transaction handling"},
         )
     )
-    s.create_node(_payload("projA", summary="completely irrelevant frontend css rule"))
+    s.create_node(make_payload("projA", summary="completely irrelevant frontend css rule"))
 
-    report = recall("rollback savepoint", _ctx("projA"), home, limit=5)
+    report = recall("rollback savepoint", make_context("projA"), home, limit=5)
     selected = report["MEMORY_TRACE"]["selected_memory_ids"]
     assert selected, "expected at least one selected node"
     # trigger-match must rank above summary-only-match
@@ -232,9 +207,9 @@ def test_recall_ranks_and_emits_trace(store, tmp_path):
 def test_recall_project_isolation(store, tmp_path):
     home = tmp_path / "ralph_home"
     s = TreeStore(home)
-    s.create_node(_payload("projA", summary="database parameterized queries rule"))
-    s.create_node(_payload("projB", summary="database parameterized queries rule"))
-    report = recall("database parameterized queries", _ctx("projA"), home)
+    s.create_node(make_payload("projA", summary="database parameterized queries rule"))
+    s.create_node(make_payload("projB", summary="database parameterized queries rule"))
+    report = recall("database parameterized queries", make_context("projA"), home)
     # only projA nodes are eligible; projB nodes never enter the candidate set
     assert report["MEMORY_TRACE"]["selected_memory_ids"]
     for entry in report["MEMORY_TRACE"]["rejected"]:
@@ -246,7 +221,7 @@ def test_recall_high_risk_adds_raw_recommendation(store, tmp_path):
     s = TreeStore(home)
     ref = s.save_raw("projA", "safe raw body", "GREEN")
     s.create_node(
-        _payload(
+        make_payload(
             "projA",
             summary="the deployment rollback procedure",
             trigger={"text": "deployment rollback steps"},
@@ -255,7 +230,7 @@ def test_recall_high_risk_adds_raw_recommendation(store, tmp_path):
     )
     # "exact" makes this high-risk; "deployment"/"rollback" are content terms
     # that survive into search_terms so the node still matches.
-    report = recall("exact deployment rollback steps", _ctx("projA"), home)
+    report = recall("exact deployment rollback steps", make_context("projA"), home)
     assert report["analysis"]["risk_level"] == "high"
     ctx = report["memory_context"]
     assert ctx
@@ -266,33 +241,33 @@ def test_recall_high_risk_adds_raw_recommendation(store, tmp_path):
 # --- T69: mechanical exclusion + emission-level dedup ----------------------
 
 def test_reject_mechanical_prefix(store):
-    node = _payload("projA", node_id="rule_ep-auto-1772663931-20800")
-    assert hard_reject_reason(node, _ctx("projA"), False) == "mechanical"
+    node = make_payload("projA", node_id="rule_ep-auto-1772663931-20800")
+    assert hard_reject_reason(node, make_context("projA"), False) == "mechanical"
     # escape hatch: explicitly admitted
-    assert hard_reject_reason(node, _ctx("projA"), False, include_mechanical=True) == ""
+    assert hard_reject_reason(node, make_context("projA"), False, include_mechanical=True) == ""
 
 
 def test_reject_mechanical_ep_rule_variant(store):
-    node = _payload("projA", node_id="rule_ep-rule-42-1")
-    assert hard_reject_reason(node, _ctx("projA"), False) == "mechanical"
+    node = make_payload("projA", node_id="rule_ep-rule-42-1")
+    assert hard_reject_reason(node, make_context("projA"), False) == "mechanical"
 
 
 def test_recall_broad_query_spends_no_slot_on_mechanical(store, tmp_path):
     home = tmp_path / "ralph_home"
     s = TreeStore(home)
     real = s.create_node(
-        _payload("projA", summary="database parameterized queries rule")
+        make_payload("projA", summary="database parameterized queries rule")
     )
     # the two dominant mechanical fillers of the retired curator era
     s.create_node(
-        _payload("projA", node_id="rule_ep-auto-1772663931-20800",
+        make_payload("projA", node_id="rule_ep-auto-1772663931-20800",
                  summary="Uses async/await for asynchronous operations")
     )
     s.create_node(
-        _payload("projA", node_id="rule_ep-auto-1772664000-99999",
+        make_payload("projA", node_id="rule_ep-auto-1772664000-99999",
                  summary="Implements caching strategy")
     )
-    report = recall("database queries rule caching", _ctx("projA"), home, limit=5)
+    report = recall("database queries rule caching", make_context("projA"), home, limit=5)
     selected = report["MEMORY_TRACE"]["selected_memory_ids"]
     assert selected == [real["node_id"]]
     reasons = {r["reason"] for r in report["MEMORY_TRACE"]["rejected"]}
@@ -302,13 +277,13 @@ def test_recall_broad_query_spends_no_slot_on_mechanical(store, tmp_path):
 def test_recall_include_mechanical_escape_hatch(store, tmp_path):
     home = tmp_path / "ralph_home"
     s = TreeStore(home)
-    s.create_node(_payload("projA", summary="database parameterized queries rule"))
+    s.create_node(make_payload("projA", summary="database parameterized queries rule"))
     mech = s.create_node(
-        _payload("projA", node_id="rule_ep-auto-1772663931-20800",
+        make_payload("projA", node_id="rule_ep-auto-1772663931-20800",
                  summary="Uses caching strategy database queries")
     )
     report = recall(
-        "database queries caching", _ctx("projA"), home, limit=5,
+        "database queries caching", make_context("projA"), home, limit=5,
         include_mechanical=True,
     )
     assert mech["node_id"] in report["MEMORY_TRACE"]["selected_memory_ids"]
@@ -318,16 +293,16 @@ def test_recall_dedup_collapses_identical_summary(store, tmp_path):
     home = tmp_path / "ralph_home"
     s = TreeStore(home)
     s.create_node(
-        _payload("projA", node_id="rule_real-1",
+        make_payload("projA", node_id="rule_real-1",
                  summary="always use parameterized SQL   queries")
     )
     # same content, different casing/whitespace and node_id (non-mechanical:
     # duplicates can also come from hand-written rules)
     s.create_node(
-        _payload("projA", node_id="rule_real-2",
+        make_payload("projA", node_id="rule_real-2",
                  summary="Always use parameterized SQL queries")
     )
-    report = recall("parameterized SQL queries", _ctx("projA"), home, limit=5)
+    report = recall("parameterized SQL queries", make_context("projA"), home, limit=5)
     selected = report["MEMORY_TRACE"]["selected_memory_ids"]
     assert len(selected) == 1
     reasons = [r["reason"] for r in report["MEMORY_TRACE"]["rejected"]]
@@ -338,15 +313,15 @@ def test_recall_keeps_distinct_summaries_separate(store, tmp_path):
     home = tmp_path / "ralph_home"
     s = TreeStore(home)
     a = s.create_node(
-        _payload("projA", node_id="rule_real-1",
+        make_payload("projA", node_id="rule_real-1",
                  summary="always use parameterized SQL queries")
     )
     # one word different: legitimately distinct knowledge, must NOT be fused
     b = s.create_node(
-        _payload("projA", node_id="rule_real-2",
+        make_payload("projA", node_id="rule_real-2",
                  summary="always use parameterized NoSQL queries")
     )
-    report = recall("parameterized queries", _ctx("projA"), home, limit=5)
+    report = recall("parameterized queries", make_context("projA"), home, limit=5)
     selected = report["MEMORY_TRACE"]["selected_memory_ids"]
     assert set(selected) == {a["node_id"], b["node_id"]}
 
@@ -389,14 +364,14 @@ def test_recall_low_risk_emits_source(store, tmp_path):
     home = tmp_path / "ralph_home"
     s = TreeStore(home)
     s.create_node(
-        _payload(
+        make_payload(
             "projA",
             summary="database parameterized queries rule",
             source_paths=[],
             source_description="Migrated from procedural rules.json",
         )
     )
-    report = recall("database parameterized queries", _ctx("projA"), home, limit=5)
+    report = recall("database parameterized queries", make_context("projA"), home, limit=5)
     assert report["analysis"]["risk_level"] == "low"
     item = report["memory_context"][0]
     assert item["source"] == "Migrated from procedural rules.json"
@@ -458,7 +433,7 @@ def test_budget_valley_is_real_and_documented(tmp_path):
     words = "rollback savepoint migration index trigger constraint".split()
 
     def node(trigger_terms, summary_terms, pad=0):
-        return _payload(
+        return make_payload(
             "projA",
             summary=("filler " * pad + " ".join(summary_terms)).strip(),
             trigger={"text": " ".join(trigger_terms)},
@@ -475,7 +450,7 @@ def test_budget_valley_is_real_and_documented(tmp_path):
     s.create_node(node(words[4:6], [words[0], words[1]], pad=25))
     s.create_node(node(words[5:6], [words[0], words[1], words[2]], pad=25))
 
-    ctx = _ctx("projA")
+    ctx = make_context("projA")
     query = " ".join(words)
 
     full = recall(query, ctx, home, limit=10, budget_limit=10**9)["memory_context"]
@@ -535,17 +510,17 @@ def test_budget_valley_is_real_and_documented(tmp_path):
 def test_reject_conflicting_status(store):
     """"conflicting" must not be silently promoted into context."""
     written = store.create_node(
-        _payload("projA", quality={"confidence": 0.9, "status": "conflicting"})
+        make_payload("projA", quality={"confidence": 0.9, "status": "conflicting"})
     )
     node = store.load_node("projA", written["node_id"])
     assert node is not None
-    assert hard_reject_reason(node, _ctx("projA"), False) == "conflict"
+    assert hard_reject_reason(node, make_context("projA"), False) == "conflict"
 
 
 def test_stale_risk_status_penalized_like_the_stale_flag():
     analysis = analyze_query("rollback savepoint")
-    clean = _payload("projA", trigger={"text": "rollback savepoint"})
-    risky = _payload(
+    clean = make_payload("projA", trigger={"text": "rollback savepoint"})
+    risky = make_payload(
         "projA",
         trigger={"text": "rollback savepoint"},
         quality={"confidence": 0.9, "status": "stale-risk"},
@@ -565,7 +540,7 @@ def test_stale_items_are_marked_not_just_penalized(store):
     for marker, quality in (("flag", {"confidence": 0.9, "stale": True}),
                             ("risk", {"confidence": 0.9, "status": "stale-risk"})):
         written = store.create_node(
-            _payload("projA", summary=f"stale marker {marker}", quality=quality)
+            make_payload("projA", summary=f"stale marker {marker}", quality=quality)
         )
         node = store.load_node("projA", written["node_id"])
         assert node is not None
@@ -574,7 +549,7 @@ def test_stale_items_are_marked_not_just_penalized(store):
         assert item["NEGATIVE_MEMORY"] is True
         assert item["warning_reason"], "the warning must say why, not just flag"
 
-    written = store.create_node(_payload("projA"))
+    written = store.create_node(make_payload("projA"))
     clean = store.load_node("projA", written["node_id"])
     assert clean is not None
     assert "NEGATIVE_MEMORY" not in render_context(clean, "low", 10.0)
@@ -587,7 +562,7 @@ def test_verified_unverified_carried_visibly(store):
     rendered = {}
     for status in ("verified", "unverified"):
         written = store.create_node(
-            _payload("projA", summary=f"marker {status}",
+            make_payload("projA", summary=f"marker {status}",
                      quality={"confidence": 0.9, "status": status})
         )
         node = store.load_node("projA", written["node_id"])
