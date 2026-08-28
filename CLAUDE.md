@@ -308,7 +308,8 @@ Test layout, docs map, version history, and external doc links live in the lazy-
 ### Activation — this whole section applies ONLY to an active Q-team
 
 Everything below takes effect **only inside a Q-team launched by the `qteam`
-tmux function** (sourced from `~/.zshrc`, not part of this repo). Outside that,
+or `qteam-zc` tmux functions** (sourced from `~/.zshrc`, not part of this
+repo). Outside that,
 behaviour is normal: no lead/worker split, no model contract, no ASSIGN/DONE
 protocol, no delegation. A session that is not a Q-team pane ignores this
 section entirely — including this repo's own Parallel-First rule, which is
@@ -324,6 +325,20 @@ prompt naming its role:
 | zc-1 | `zc --worktree zc-1 --name zc-1` | `.claude/worktrees/zc-1` |
 | zc-2 | `zc --worktree zc-2 --name zc-2` | `.claude/worktrees/zc-2` |
 | mmx | `mmx --worktree mmx --name mmx` | `.claude/worktrees/mmx` |
+
+**`qteam-zc` (added 2026-08-28)** launches the alternative composition, with
+**every pane on Z.ai/MiniMax plans — no Claude Max seat**:
+
+| Pane | Launched as | Worktree |
+|---|---|---|
+| lead | `zc-lead --name lead` | main checkout |
+| zc-3 | `zc --worktree zc-3 --name zc-3` | `.claude/worktrees/zc-3` |
+| zc-4 | `zc --worktree zc-4 --name zc-4` | `.claude/worktrees/zc-4` |
+| mmx-2 | `mmx --worktree mmx-2 --name mmx-2` | `.claude/worktrees/mmx-2` |
+| mmx-3 | `mmx --worktree mmx-3 --name mmx-3` | `.claude/worktrees/mmx-3` |
+
+Everything else in this section (role detection, contract rules, invariants,
+`QTEAM_TEST_CMD`) applies identically to both teams.
 
 You are in a Q-team only if you were launched that way. The working directory
 is the authority (see *Role detection*); the appended system prompt must agree
@@ -368,6 +383,14 @@ pointed the same way: on the day the catalogue grew from 26 to 34 failure
 modes, the work that found root causes was overwhelmingly `zc`'s, while the
 `mmx` panes did well on bounded mechanical tasks and needed a RETURN whenever
 a task carried real ambiguity.
+
+**In `qteam-zc` the contract differs only where the composition forces it.**
+The lead is `zc-lead` (GLM-5.3[1m]), not Opus — the "lead is Opus" row above
+describes `qteam` only. The "research goes to a worker" rule still holds, but
+by focus, not billing: a subagent spawned by the lead consumes Z.ai, not a
+Claude subscription. Routing balances TWO deep panes against TWO mechanical
+ones — keep both `zc-*` reasoning lanes busy while batching shallow sweeps
+for the `mmx-*` pair.
 
 Lead is expected to route deliberately, not round-robin:
 
