@@ -507,6 +507,28 @@ def test_budget_valley_is_real_and_documented(tmp_path):
         f"comment in recall() is stale"
     )
 
+    # --- T91: budget 128 closes the #47 acceptance row -----------------
+    # 128 is the point T76 (commit ba3b31a) did not measure (#47 bullet:
+    # "128/256/400/800 budget comparison is recorded"). On this fixture the
+    # big item (277u, scored second) cannot fit; the greedy admits the
+    # top-3 smalls in score order before saturating at ~125u. Pinned here
+    # so future readers see the geometry, not just trust the doc.
+    sel_128 = recall(query, ctx, home, limit=5, budget_limit=128)["memory_context"]
+    sum_128 = sum(i["score"] for i in sel_128)
+    assert len(sel_128) == 3, (
+        f"128 must admit top-3 smalls; got {len(sel_128)} items "
+        f"(scores={[round(i['score'], 2) for i in sel_128]})"
+    )
+    assert all(
+        estimate_units(i) != estimate_units(sel_400[1]) for i in sel_128
+    ), "big item must not fit at 128"
+    assert sum_128 == 101.0, (
+        f"score_sum at 128 drifted from T91 pin ({sum_128} vs 101.0). "
+        f"If the scoring engine changed in a way that affects ranking at "
+        f"low budgets, re-measure with results/measure_budget_128.py and "
+        f"update this pin AND docs/benchmark/T91_BUDGET_128.md together."
+    )
+
 
 # --- quality states (#47 C6): never silently trusted -------------------------
 
