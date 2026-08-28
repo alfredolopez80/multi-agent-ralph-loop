@@ -67,6 +67,15 @@ echo "  Passed: $PASSED"
 echo "  Failed: $FAILED"
 echo ""
 
+
+# T94: zero-tests guard — fail loud when no assertion ran. Without
+# this check, a broken collection that increments zero counters would
+# print 'All tests passed!' and exit 0. Mirrors the canonic pattern in
+# tests/unit/test_validation_common.sh (lines 56-58).
+if [[ $TOTAL -eq 0 ]]; then
+    echo "FATAL: zero tests executed — cannot declare success" >&2
+    exit 1
+fi
 if [ $FAILED -eq 0 ]; then
     echo "✅ ALL INTEGRATION TESTS PASSED"
     echo ""
