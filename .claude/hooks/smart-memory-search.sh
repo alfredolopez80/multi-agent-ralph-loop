@@ -150,7 +150,7 @@ MEMORY_CONTEXT="$PROJECT_DIR/.claude/memory-context.json"
 CACHE_DURATION=1800  # 30 minutes
 
 if [[ -f "$MEMORY_CONTEXT" ]]; then
-    CACHE_AGE=$(($(date +%s) - $(stat -c %Y "$MEMORY_CONTEXT" 2>/dev/null || stat -f %m "$MEMORY_CONTEXT" 2>/dev/null || echo 0)))
+    CACHE_AGE=$(($(date +%s) - $(stat_mtime "$MEMORY_CONTEXT" 2>/dev/null || echo 0)))
     if [[ $CACHE_AGE -lt $CACHE_DURATION ]]; then
         # v2.70.0: Using new hookSpecificOutput format with hookEventName
         jq -n --arg age "$CACHE_AGE" '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow", "additionalContext": ("SMART_MEMORY: Using cached results from .claude/memory-context.json (\($age)s old)")}}'

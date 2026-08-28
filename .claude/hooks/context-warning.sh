@@ -41,6 +41,13 @@ INPUT=$(head -c 100000)
 #        Fixed message_count path to STATE_DIR
 set -uo pipefail
 
+# T99 r4: shared stat dialect (stat_mtime/stat_size) — no hand-rolled stat.
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  stat_mtime() { return 1; }
+  stat_size() { return 1; }
+}
+
 # v3.1.0: Source model-aware context window configuration
 _CONTEXT_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" 2>/dev/null && pwd)/context-windows.sh"
 if [[ -f "$_CONTEXT_LIB" ]]; then
@@ -93,8 +100,8 @@ _transcript_fingerprint() {
     fi
     if [[ -n "$path" ]] && [[ -f "$path" ]]; then
         local mtime size
-        mtime=$(stat -c %Y "$path" 2>/dev/null || stat -f %m "$path" 2>/dev/null || echo 0)
-        size=$(stat -c %s "$path" 2>/dev/null || stat -f %z "$path" 2>/dev/null || echo 0)
+        mtime=$(stat_mtime "$path" 2>/dev/null || echo 0)
+        size=$(stat_size "$path" 2>/dev/null || echo 0)
         echo "${mtime}:${size}"
     else
         echo ""

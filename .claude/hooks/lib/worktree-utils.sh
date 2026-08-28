@@ -31,17 +31,71 @@
 # the CWD changes, and falls back to the frozen variable only when there is no git context
 # at all (deleted CWD, or not a repository).
 
+# — Project resolution (T99 r4 consolidation) ---------------------------------
+# THE single definition of "which project owns this session". Both gates and
+# all writers consume this; a reader/writer split-brain (gate seeing the
+# nested plan while a writer mutates the container's) is impossible by
+# construction. Resolution, walking UP from the session cwd:
+#   1. a real project mark wins: .git itself, or real .claude content
+#      (plan-state.json, settings.json, settings.local.json, hooks/, rules/,
+#      CLAUDE.md). A BARE .claude/ directory is NOT a mark — this repo
+#      carries tests/.claude/, which used to adopt tests/ as root and
+#      silently switch the anti-rationalization gate off under it;
+#   2. the git toplevel (when git is healthy) is the fallback root;
+#   3. broken git (rc != 0 with a .git present on the walk) does NOT skip
+#      the walk: the walk is filesystem-only, so a nested project's plan
+#      stays visible regardless of the ANCESTOR repo's health;
+#   4. no mark and no healthy git anywhere -> canonical cwd. The value is
+#      ALWAYS absolute (canonized here), so consumers never see ".".
 get_project_root() {
-  # The CURRENT working tree: the worktree when in one, the main repo otherwise.
-  if [[ -d "${PWD:-}" ]]; then
-    local toplevel
-    toplevel="$(git rev-parse --show-toplevel 2>/dev/null || true)"
-    if [[ -n "$toplevel" ]]; then echo "$toplevel"; return; fi
+  local cwd="${1:-${PWD:-.}}"
+  local canon
+  canon="$(cd "$cwd" 2>/dev/null && pwd -P || echo "$cwd")"
+  local rc=0 root=""
+  root="$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null)" || rc=$?
+  if [[ "$rc" -ne 0 ]]; then
+    root=""
   fi
-  if [[ -n "${CLAUDE_PROJECT_DIR:-}" && -d "${CLAUDE_PROJECT_DIR}" ]]; then
-    echo "$CLAUDE_PROJECT_DIR"; return
+  local dir="$canon" next
+  while [[ -n "$dir" && "$dir" != "/" ]]; do
+    if _is_project_dir_marker "$dir"; then
+      echo "$dir"
+      return 0
+    fi
+    if [[ -n "$root" && "$dir" == "$root" ]]; then
+      break   # repo root with no earlier mark: the toplevel IS the project
+    fi
+    next="${dir%/*}"
+    [[ "$next" == "$dir" ]] && break
+    dir="$next"
+  done
+  if [[ -n "$root" ]]; then
+    echo "$root"
+    return 0
   fi
-  echo "."
+  echo "$canon"
+}
+
+_is_project_dir_marker() {
+  local d="$1"
+  [[ -e "$d/.git" \
+     || -e "$d/.claude/plan-state.json" || -e "$d/.claude/settings.json" \
+     || -e "$d/.claude/settings.local.json" || -d "$d/.claude/hooks" \
+     || -d "$d/.claude/rules" || -e "$d/.claude/CLAUDE.md" ]]
+}
+
+# Single stat dialect per process (T99 r3 finding 6): the GNU/BSD probe used
+# to fork `stat` once per call; cache the answer instead.
+_STAT_DIALECT_GNU=""
+_stat_dialect_is_gnu() {
+  if [[ -z "$_STAT_DIALECT_GNU" ]]; then
+    if stat -c '%Y' / >/dev/null 2>&1; then
+      _STAT_DIALECT_GNU=yes
+    else
+      _STAT_DIALECT_GNU=no
+    fi
+  fi
+  [[ "$_STAT_DIALECT_GNU" == "yes" ]]
 }
 
 get_main_repo() {
@@ -233,7 +287,7 @@ setupWorktreeEnv() {
 # and the garbage reaches arithmetic). The numeric gate here is load-bearing.
 stat_mtime() {
   local f="$1" out=""
-  if stat -c '%Y' / >/dev/null 2>&1; then
+  if _stat_dialect_is_gnu; then
     out="$(stat -c '%Y' "$f" 2>/dev/null || true)"
   else
     out="$(stat -f '%m' "$f" 2>/dev/null || true)"
@@ -244,10 +298,23 @@ stat_mtime() {
 
 stat_birthtime() {
   local f="$1" out=""
-  if stat -c '%Y' / >/dev/null 2>&1; then
+  if _stat_dialect_is_gnu; then
     out="$(stat -c '%W' "$f" 2>/dev/null || true)"
   else
     out="$(stat -f '%B' "$f" 2>/dev/null || true)"
+  fi
+  [[ "$out" =~ ^[0-9]+$ ]] || return 1
+  echo "$out"
+}
+
+# stat_size <path> — numeric byte size, same contract (T99 r4: migrate the
+# last hand-rolled `stat -f%z || stat -c%s` to the shared strategy).
+stat_size() {
+  local f="$1" out=""
+  if _stat_dialect_is_gnu; then
+    out="$(stat -c '%s' "$f" 2>/dev/null || true)"
+  else
+    out="$(stat -f '%z' "$f" 2>/dev/null || true)"
   fi
   [[ "$out" =~ ^[0-9]+$ ]] || return 1
   echo "$out"

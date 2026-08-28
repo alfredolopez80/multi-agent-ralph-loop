@@ -33,13 +33,10 @@ source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
 # fallback echoes "."), and the "." fallback made PLAN_STATE relative to the
 # process CWD: the hook then silently operated on a plan-state that does not
 # exist. Fail loud instead: log it and leave without a relative lookup.
+# T99 r4: get_project_root (lib) is the single resolution — content-marker
+# walk, broken-git tolerant, and ALWAYS absolute (it canonizes internally),
+# so the "reject '.'" case below is now pure defense.
 _PROJECT_ROOT="$(get_project_root 2>/dev/null || true)"
-# T99 RETURN dominant 2: canonize BEFORE validating. The non-git fallbacks
-# (CLAUDE_PROJECT_DIR, ".") arrive in logical/relative form while the edited
-# path is resolved by realpath to its PHYSICAL form — comparing them rejected
-# every edit from a non-git project as "Path traversal" (hook no-op + false
-# security alarms). Same cd+pwd -P the anti-rat gate uses.
-_PROJECT_ROOT="$(cd "$_PROJECT_ROOT" 2>/dev/null && pwd -P || true)"
 LOG_FILE="${HOME}/.ralph/logs/plan-sync.log"
 SYNC_LOG="${HOME}/.ralph/logs/drift-history.jsonl"
 mkdir -p "$(dirname "$LOG_FILE")" "$(dirname "$SYNC_LOG")"

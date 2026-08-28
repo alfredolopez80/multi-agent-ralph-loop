@@ -300,12 +300,21 @@ fi
 # must be IGNORED by production: set it with the same contaminating script
 # and the hook must behave exactly as if nothing was exported.
 rm -f "$LIFE_LOG"
+rm -f "$LIFE_LOG"
 OUT_W5B=$(cd "$WT_DIR" && printf '{"userPromptContent": "%s"}' "continue with the current step please" | \
   HOME="$ISO_HOME_W5" STAT_PROBE="$FAKE_STAT" /bin/bash "$WT_DIR/.claude/hooks/plan-state-lifecycle.sh" 2>/dev/null)
+RC_W5B=$?
 if ! grep -q "skipping staleness" "$LIFE_LOG" 2>/dev/null; then
   ok "old un-namespaced STAT_PROBE is ignored (production stat not hijacked)"
 else
   bad "un-namespaced STAT_PROBE still hijacks production stat — namespace fix missing"
+fi
+# Hallazgo 8: the positive trace — with the poisoned name ignored, the same
+# run still produces a VALID verdict on the fresh plan (rc 0, plan intact).
+if [[ "$RC_W5B" -eq 0 && -f "$PLAN" ]]; then
+  ok "positive trace: real stat path still renders a verdict (plan intact)"
+else
+  bad "positive trace broken: rc=$RC_W5B plan=$( [[ -f "$PLAN" ]] && echo intact || echo gone )"
 fi
 cleanup "$MAIN_DIR" "$WT_DIR" "$ISO_HOME_W5"
 
@@ -318,8 +327,9 @@ CONTAINER=$(mktemp -d)
 git -C "$CONTAINER" init -q
 git -C "$CONTAINER" config user.email t99@test
 git -C "$CONTAINER" config user.name t99
-mkdir -p "$CONTAINER/.claude/hooks"
+mkdir -p "$CONTAINER/.claude/hooks/lib"
 cp "$HOOKS_SRC/anti-rationalization-gate.sh" "$CONTAINER/.claude/hooks/"
+cp "$HOOKS_SRC/lib/worktree-utils.sh" "$CONTAINER/.claude/hooks/lib/"
 NESTED="$CONTAINER/projects/toolbox"
 mkdir -p "$NESTED/.claude/state" "$NESTED/sub"
 NOW_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -414,8 +424,9 @@ CONTAINER_W9=$(mktemp -d)
 git -C "$CONTAINER_W9" init -q
 git -C "$CONTAINER_W9" config user.email t99@test
 git -C "$CONTAINER_W9" config user.name t99
-mkdir -p "$CONTAINER_W9/.claude/hooks" "$CONTAINER_W9/tests/.claude" "$CONTAINER_W9/tests/sub"
+mkdir -p "$CONTAINER_W9/.claude/hooks/lib" "$CONTAINER_W9/tests/.claude" "$CONTAINER_W9/tests/sub"
 cp "$HOOKS_SRC/anti-rationalization-gate.sh" "$CONTAINER_W9/.claude/hooks/"
+cp "$HOOKS_SRC/lib/worktree-utils.sh" "$CONTAINER_W9/.claude/hooks/lib/"
 NOW_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 printf '{"last_updated":"%s","task":"w9","steps":[{"name":"step","status":"in_progress"}]}' "$NOW_ISO" \
   > "$CONTAINER_W9/.claude/plan-state.json"
@@ -427,6 +438,73 @@ else
   bad "bare tests/.claude/ adopted as root — Modo B silently OFF under tests/"
 fi
 rm -rf "$CONTAINER_W9"
+
+echo "=== T99-W10: NO split-brain — nested project plan is what BOTH gate and writer see ==="
+# The r4 consolidation's headline case: a nested non-git project inside a
+# healthy container repo. Pre-consolidation the WRITER resolved the project
+# via plain rev-parse (container) while the GATE walked the content markers
+# (nested) — the gate could block on a plan the writer never touched.
+# After get_project_root() became the single definition, both see NESTED.
+CONTAINER_W10=$(mktemp -d)
+git -C "$CONTAINER_W10" init -q
+git -C "$CONTAINER_W10" config user.email t99@test
+git -C "$CONTAINER_W10" config user.name t99
+mkdir -p "$CONTAINER_W10/.claude/hooks" "$CONTAINER_W10/.claude"
+cp -R "$HOOKS_SRC/." "$CONTAINER_W10/.claude/hooks/"   # full tree: the writer needs lib/plan-state-writer.sh too
+# Container plan: the one the OLD writer resolution (plain rev-parse) mutated.
+printf '{"version":"1.0","task":"container","steps":[{"id":"c1","name":"c","status":"in_progress","spec":{"file":"/dev/null","exports":[]},"actual":{}}]}' \
+  > "$CONTAINER_W10/.claude/plan-state.json"
+# Nested non-git project with its OWN plan and its own source file.
+NESTED_W10="$CONTAINER_W10/projects/toolbox"
+mkdir -p "$NESTED_W10/.claude" "$NESTED_W10/src" "$NESTED_W10/sub"
+NESTED_W10=$(cd "$NESTED_W10" && pwd -P)   # born canonical BEFORE writing specs (T87 fixture note)
+printf '{"version":"1.0","task":"nested","steps":[{"id":"n1","name":"n","status":"in_progress","spec":{"file":"%s/src/util.ts","exports":["util"]},"actual":{}}]}' "$NESTED_W10" \
+  > "$NESTED_W10/.claude/plan-state.json"
+printf 'export const util = 1;\n' > "$NESTED_W10/src/util.ts"
+ISO_HOME_W10=$(mktemp -d)
+# The SESSION lives in the nested project: the hook's process cwd is a
+# subdirectory of NESTED, and the hook it loads is the container checkout's
+# copy (as real life wires it: the configured hook path belongs to the
+# outer checkout). Pre-consolidation this exact geometry produced the
+# split-brain: writer resolved via plain rev-parse -> CONTAINER.
+OUT_W10=$(cd "$NESTED_W10/sub" && printf '{"tool_input": {"file_path": "%s/src/util.ts"}}' "$NESTED_W10" | \
+  HOME="$ISO_HOME_W10" /bin/bash "$CONTAINER_W10/.claude/hooks/plan-sync-post-step.sh" >/dev/null 2>&1)
+NESTED_WRITTEN=$(jq -r '.steps[] | select(.id == "n1") | .actual.updated_at // ""' "$NESTED_W10/.claude/plan-state.json" 2>/dev/null)
+CONTAINER_WRITTEN=$(jq -r '.steps[] | select(.id == "c1") | .actual.updated_at // ""' "$CONTAINER_W10/.claude/plan-state.json" 2>/dev/null)
+if [[ -n "$NESTED_WRITTEN" ]]; then
+  ok "writer mutates the NESTED project plan (content-marker walk, not rev-parse)"
+else
+  bad "split-brain: writer mutated the CONTAINER plan while its gate sees NESTED"
+fi
+if [[ -z "$CONTAINER_WRITTEN" ]]; then
+  ok "container plan untouched by a nested-project edit"
+else
+  bad "container plan mutated — resolution still container-bound"
+fi
+cleanup "$CONTAINER_W10" "$ISO_HOME_W10"
+
+echo "=== T99-W11: BROKEN ancestor git does not hide a nested project's plan (RETURN r4 finding 3) ==="
+# Same geometry as W10 but the CONTAINER's git is corrupt. The resolution
+# walk is filesystem-only: the nested plan must still gate Modo B.
+BROKEN_W10=$(mktemp -d)
+git -C "$BROKEN_W10" init -q
+mkdir -p "$BROKEN_W10/.claude/hooks/lib" "$BROKEN_W10/.claude/state"
+cp "$HOOKS_SRC/anti-rationalization-gate.sh" "$BROKEN_W10/.claude/hooks/"
+cp "$HOOKS_SRC/lib/worktree-utils.sh" "$BROKEN_W10/.claude/hooks/lib/"
+echo "garbage" > "$BROKEN_W10/.git/HEAD"
+NESTED_W11="$BROKEN_W10/projects/toolbox"
+mkdir -p "$NESTED_W11/.claude/state" "$NESTED_W11/sub"
+NOW_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+printf '{"last_updated":"%s","task":"nested-broken","steps":[{"name":"step","status":"in_progress"}]}' "$NOW_ISO" \
+  > "$NESTED_W11/.claude/plan-state.json"
+OUT_W11=$(cd "$BROKEN_W10" && printf '{"stop_hook_active": false, "cwd": "%s/sub", "transcript": "Should I continue?"}' "$NESTED_W11" | \
+  HOME=$(mktemp -d) /bin/bash "$BROKEN_W10/.claude/hooks/anti-rationalization-gate.sh" 2>/dev/null || true)
+if [[ "$OUT_W11" == *"Plan-immutability gate"* ]]; then
+  ok "nested plan gates Modo B even with a BROKEN ancestor git"
+else
+  bad "broken ancestor git hid the nested plan — walk skipped on unhealthy git"
+fi
+rm -rf "$BROKEN_W10"
 
 echo
 echo "=========================================="

@@ -48,8 +48,16 @@ fi
 # --- Shared library: the ONLY stat dialect strategy (T99 r3 finding 2) ---
 _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
-  # No library -> no reliable mtime: the freshness mtime-fallback degrades
-  # to "unknown" instead of guessing (stat_mtime failing => epoch stays 0).
+  # No library -> degraded but working: git-root-or-cwd resolution without
+  # the content-marker walk, and no reliable mtime (stat_mtime failing =>
+  # epoch stays 0 => "unknown", never guessed).
+  get_project_root() {
+    local cwd="${1:-${PWD:-.}}" canon r
+    canon="$(cd "$cwd" 2>/dev/null && pwd -P || echo "$cwd")"
+    r="$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || true)"
+    [[ -n "$r" ]] && { echo "$r"; return; }
+    echo "$canon"
+  }
   stat_mtime() { return 1; }
 }
 
@@ -81,69 +89,37 @@ CWD=$(echo "$INPUT" | jq -r '.cwd // "."' 2>/dev/null)
 # A broken git (present but failing on a corrupt repo / dubious ownership)
 # is distinguished from "not a git repository" and logged; both keep CWD
 # scope, but only the broken case needs the operator to know.
-PROJECT_ROOT="$CWD"
-if command -v git >/dev/null 2>&1; then
-  # stdout only (T99 r3 finding 3): a warning on stderr with success must not
-  # contaminate the root (it feeds STATE_DIR/PATTERNS_FILE/plan-state paths
-  # and the walk's stop-condition). The broken case needs rc + location, not
-  # the error text — every failure mode prints the same "not a git repo".
-  _T87_RC=0
-  _T87_ROOT="$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null)" || _T87_RC=$?
-  if [[ "$_T87_RC" -eq 0 ]]; then
-    _T87_ROOT="$_T87_ROOT"
-    # git reports the PHYSICAL root (/private/var on macOS); the payload cwd
-    # arrives in LOGICAL form (/var) — the same symlink pair T87's fixture
-    # documents. Compare the walk against the canonical CWD or the loop
-    # walks straight past the real root and stops at a phantom boundary.
-    _T99_CANON_CWD="$(cd "$CWD" 2>/dev/null && pwd -P || echo "$CWD")"
-    _T99_BOUNDARY=""
-    _T99_DIR="$_T99_CANON_CWD"
-    while [[ -n "$_T99_DIR" && "$_T99_DIR" != "/" && "$_T99_DIR" != "$_T87_ROOT" ]]; do
-      # T99 r3 finding 1: a bare `.claude/` directory is NOT a project mark —
-      # THIS repo carries tests/.claude/, which used to adopt tests/ as the
-      # root and silently switched Modo A and B off under it. The mark is
-      # real .claude CONTENT: a plan, settings, or the hooks themselves.
-      if [[ -e "$_T99_DIR/.git" || -e "$_T99_DIR/.claude/plan-state.json" \
-            || -e "$_T99_DIR/.claude/settings.json" || -d "$_T99_DIR/.claude/hooks" ]]; then
-        _T99_BOUNDARY="$_T99_DIR"
-        break
-      fi
-      _T99_DIR="${_T99_DIR%/*}"   # parameter expansion: no fork per level
-    done
-    if [[ -n "$_T99_BOUNDARY" ]]; then
-      # T99 RETURN 3: the marked directory IS the nested project's root —
-      # staying on raw CWD lost its plan-state when the session sat below
-      # the marked dir (the T87 symptom, resurrected one level deeper).
-      PROJECT_ROOT="$_T99_BOUNDARY"
-    else
-      PROJECT_ROOT="$_T87_ROOT"
-    fi
-  else
-    # T99 RETURN 4: broken git (corrupt HEAD, unreadable .git) fails with
-    # the SAME "not a git repository" text a true no-git dir emits — the
-    # message cannot distinguish them; the presence of a .git on the walk
-    # up can. Broken => log it; true no-git => stay silent (normal).
-    _T99_HAS_GIT=""
-    _T99_DIR="$(cd "$CWD" 2>/dev/null && pwd -P || echo "$CWD")"
-    while [[ -n "$_T99_DIR" && "$_T99_DIR" != "/" ]]; do
-      if [[ -e "$_T99_DIR/.git" ]]; then _T99_HAS_GIT="$_T99_DIR"; break; fi
-      _next="${_T99_DIR%/*}"
-      [[ "$_next" == "$_T99_DIR" ]] && break
-      _T99_DIR="$_next"
-    done
-    if [[ -n "$_T99_HAS_GIT" ]]; then
-      # T99 r3 finding 5: a corrupt repo fails EVERY Stop — dedup by
-      # (location, day) so the operator log stays readable.
-      _T99_DEDUP_DIR="$CWD/.claude/state"
-      mkdir -p "$_T99_DEDUP_DIR" 2>/dev/null || true
-      _T99_DEDUP_KEY="$(date +%F) $_T99_HAS_GIT"
-      if [[ ! -f "$_T99_DEDUP_DIR/.anti-rat-git-broken.last" ]] \
-         || [[ "$(cat "$_T99_DEDUP_DIR/.anti-rat-git-broken.last" 2>/dev/null)" != "$_T99_DEDUP_KEY" ]]; then
-        mkdir -p "${HOME}/.ralph/logs" 2>/dev/null || true
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] git present but broken under $CWD ($_T99_HAS_GIT/.git, rc=$_T87_RC); treating as no-git" \
-          >> "${HOME}/.ralph/logs/anti-rationalization-gate.log" 2>/dev/null || true
-        printf '%s\n' "$_T99_DEDUP_KEY" > "$_T99_DEDUP_DIR/.anti-rat-git-broken.last" 2>/dev/null || true
-      fi
+# T99 r4: ONE project-resolution definition (lib/worktree-utils.sh:
+# get_project_root — content-marker walk, broken-git tolerant, always
+# absolute). The gate and every writer now share it by construction; the
+# split-brain measured in review (gate seeing the nested plan while a
+# writer mutated the container's) is structurally dead.
+PROJECT_ROOT="$(get_project_root "$CWD")"
+# Operator signal for BROKEN git (corrupt HEAD, unreadable .git): the
+# resolution above is filesystem-only and unaffected, but the operator
+# still wants to know the repo is unhealthy. Dedup by (location, day) —
+# a corrupt repo fails every Stop, and the log must stay readable.
+_T99_BROKEN_RC=0
+git -C "$CWD" rev-parse --show-toplevel >/dev/null 2>&1 || _T99_BROKEN_RC=$?
+if [[ "$_T99_BROKEN_RC" -ne 0 ]]; then
+  _T99_HAS_GIT=""
+  _T99_DIR="$(cd "$CWD" 2>/dev/null && pwd -P || echo "$CWD")"
+  while [[ -n "$_T99_DIR" && "$_T99_DIR" != "/" ]]; do
+    if [[ -e "$_T99_DIR/.git" ]]; then _T99_HAS_GIT="$_T99_DIR"; break; fi
+    _next="${_T99_DIR%/*}"
+    [[ "$_next" == "$_T99_DIR" ]] && break
+    _T99_DIR="$_next"
+  done
+  if [[ -n "$_T99_HAS_GIT" ]]; then
+    _T99_DEDUP_DIR="$CWD/.claude/state"
+    mkdir -p "$_T99_DEDUP_DIR" 2>/dev/null || true
+    _T99_DEDUP_KEY="$(date +%F) $_T99_HAS_GIT"
+    if [[ ! -f "$_T99_DEDUP_DIR/.anti-rat-git-broken.last" ]] \
+       || [[ "$(cat "$_T99_DEDUP_DIR/.anti-rat-git-broken.last" 2>/dev/null)" != "$_T99_DEDUP_KEY" ]]; then
+      mkdir -p "${HOME}/.ralph/logs" 2>/dev/null || true
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] git present but broken under $CWD ($_T99_HAS_GIT/.git, rc=$_T99_BROKEN_RC); treating as no-git" \
+        >> "${HOME}/.ralph/logs/anti-rationalization-gate.log" 2>/dev/null || true
+      printf '%s\n' "$_T99_DEDUP_KEY" > "$_T99_DEDUP_DIR/.anti-rat-git-broken.last" 2>/dev/null || true
     fi
   fi
 fi
