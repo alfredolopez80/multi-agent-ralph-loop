@@ -86,10 +86,10 @@ else
 fi
 
 FACTS_FILE=$(find "$RALPH_VAULT_DIR/projects" -name 'facts-*.md' 2>/dev/null | head -1)
-if [[ -n "$FACTS_FILE" ]] && grep -q "\[code_structure\]" "$FACTS_FILE"; then
-  ok "order_service.ts: SEM-exclusive marker [code_structure] present in facts"
+if [[ -n "$FACTS_FILE" ]] && grep -q "\[code_structure\].*order_service" "$FACTS_FILE"; then
+  ok "order_service.ts: SEM-exclusive marker [code_structure] TIED to the file (not a loose match)"
 else
-  bad "no [code_structure] fact for order_service.ts (semantic verdict unproven)" \
+  bad "no [code_structure] fact tied to order_service.ts (semantic verdict unproven)" \
     "${FACTS_FILE:+$(head -3 "$FACTS_FILE")}"
 fi
 if [[ -n "$FACTS_FILE" ]] && grep -q "bigExportedFunction" "$FACTS_FILE"; then
@@ -103,6 +103,21 @@ if [[ "${EP_N:-0}" -ge 1 ]]; then
   ok "decision-extractor produced episode(s) for the committed file(s) ($EP_N)"
 else
   bad "no decisions from the cold path"
+fi
+
+# Detector calibration (finding 8): prove the hash detector against a
+# POSITIVE — the state file must contain order_service's hash computed
+# exactly the way this test computes it. Without this, the "never hashed"
+# assertions are placebo detectors that can never fire.
+OSIZE=$(wc -c < "$R/src/order_service.ts" 2>/dev/null | tr -d ' ')
+OCONTENT=$(head -c 30000 "$R/src/order_service.ts" 2>/dev/null)
+OHASH=$(printf '%s:%s' "$OSIZE" "$OCONTENT" | (shasum -a 256 2>/dev/null || sha256sum 2>/dev/null) | awk '{print $1}')
+STATE_T1=$(find "$ISO_HOME/.ralph/state/session-end-extractors" -name '*.hashes' 2>/dev/null | head -1)
+if [[ -n "$STATE_T1" ]] && grep -qxF "$OHASH" "$STATE_T1" 2>/dev/null; then
+  ok "detector calibrated: state contains order_service hash computed test-side"
+else
+  bad "detector placebo: order_service hash NOT in state (detector could never fire)" \
+    "state=$STATE_T1"
 fi
 
 # Dedupe on CONTENT: rerun the same transcript; facts-*.md bytes and episode
@@ -123,7 +138,7 @@ EP_N_AFTER=$(find "$RALPH_VAULT_DIR/projects" -name 'ep-*.json' 2>/dev/null | wc
 if [[ "$FACTS_MD5_BEFORE" == "$FACTS_MD5_AFTER" && "$FACTS_LINES_BEFORE" == "$FACTS_LINES_AFTER" && "${EP_N_AFTER:-0}" -eq "${EP_N:-0}" ]]; then
   ok "content dedupe: facts-*.md unchanged ($FACTS_LINES_BEFORE lines) and episodes stable ($EP_N) on rerun"
 else
-  bad "rerun mutated the vault: facts $FACTS_LINES_BEFORE→$FACTS_LINES_AFTER lines, episodes $EP_N→$EP_N_AFTER"
+  bad "rerun mutated the vault: facts $FACTS_LINES_BEFORE → $FACTS_LINES_AFTER lines, episodes $EP_N → $EP_N_AFTER"
 fi
 unset RALPH_VAULT_DIR
 rm -rf "$WORK"
@@ -262,10 +277,10 @@ else
   bad "verdict theft under concurrency: $CONTAMINATED/4 rounds contaminated NOTES.md" \
     "reviewer finding — private verdict channel not in effect"
 fi
-if [[ "$REAL_OK" -ge 1 ]]; then
-  ok "real file extracted in $REAL_OK/4 concurrent rounds"
+if [[ "$REAL_OK" -eq 4 ]]; then
+  ok "real file extracted in 4/4 concurrent rounds (extraction never degraded by the guard)"
 else
-  bad "real file never extracted under concurrency"
+  bad "real file extracted in only $REAL_OK/4 concurrent rounds (lax threshold is a placebo)"
 fi
 rm -rf "$W3"
 

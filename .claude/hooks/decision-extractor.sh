@@ -34,6 +34,25 @@ output_json() {
 }
 trap 'output_json' ERR EXIT
 
+# Lib FIRST (T95-v5): verdict() — the private verdict channel — and the
+# identity helpers must exist before the EARLIEST exit paths that use them
+# (tool rejection and missing-path skips emit verdict lines).
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  # Strong fallback (repo-boundary-guard.sh:77-83 shape) — T80 RETURN: a
+  # missing lib must not degrade identity to "unknown" in silence.
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() {
+    local common_dir
+    common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+    if [[ -n "$common_dir" ]]; then
+      dirname "$common_dir"
+    else
+      get_project_root
+    fi
+  }
+}
+
 # Parse input
 # CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
@@ -42,6 +61,7 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
 if [[ "$TOOL_NAME" != "Edit" ]] && [[ "$TOOL_NAME" != "Write" ]]; then
     trap - ERR EXIT  # v2.69.1: SEC-112 FIX
     echo '{"continue": true}'
+    verdict "DEC SKIP tool=$TOOL_NAME"
     exit 0
 fi
 
@@ -52,6 +72,7 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null |
 if [[ -z "$FILE_PATH" ]]; then
     trap - ERR EXIT  # v2.69.1: SEC-112 FIX
     echo '{"continue": true}'
+    verdict "DEC SKIP missing-file-path"
     exit 0
 fi
 
@@ -96,32 +117,11 @@ VAULT_DIR="${RALPH_VAULT_DIR:-${HOME}/Documents/Obsidian/MiVault}"
 # worker running in a worktree must land its facts under the root project so
 # the wing compiler (which reads the root project) sees them. Same mechanism
 # as get_main_repo everywhere else; no fourth method.
-_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
-  # Strong fallback (repo-boundary-guard.sh:77-83 shape) — T80 RETURN: a
-  # missing lib must not degrade identity to "unknown" in silence.
-  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
-  get_main_repo() {
-    local common_dir
-    common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
-    if [[ -n "$common_dir" ]]; then
-      dirname "$common_dir"
-    else
-      get_project_root
-    fi
-  }
-}
 # LOG_DIR must exist before its first use below (98108572 introduced an
 # unbound ${LOG_DIR} reference that aborted under set -u BEFORE this hook
 # could log its own error — the opposite of the "fails loud" it claimed).
 LOG_DIR="${HOME}/.ralph/logs"
 mkdir -p "$LOG_DIR"
-
-# T95-v4: private verdict channel. When a caller (session-end-extractors)
-# injects RALPH_VERDICT_FILE, append the verdict there so concurrent
-# SessionEnds never cross-read each other's lines from this SHARED daily log.
-# Absent (ordinary hot path) => unchanged behaviour.
-verdict() { [[ -n "${RALPH_VERDICT_FILE:-}" ]] && printf '%s\n' "$*" >> "$RALPH_VERDICT_FILE" 2>/dev/null || true; }
 
 _MAIN_REPO="$(get_main_repo 2>/dev/null || echo '')"
 if [[ -z "$_MAIN_REPO" || "$_MAIN_REPO" == "." ]]; then
@@ -136,10 +136,6 @@ mkdir -p "$EPISODES_DIR" 2>/dev/null || true
 # T80(b): facts files are named in UTC so extractor and wing compiler can
 # never disagree across a midnight boundary. Extracted for testability.
 facts_today() { date -u +%Y%m%d; }
-
-# Semantic memory is now in Obsidian Vault — no separate semantic.json needed
-
-# Get the content that was written/edited
 CONTENT=""
 if [[ "$TOOL_NAME" == "Write" ]]; then
     CONTENT=$(echo "$INPUT" | jq -r '.tool_input.content // ""' 2>/dev/null || echo "")
