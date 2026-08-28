@@ -21,18 +21,6 @@
           {
             "type": "command",
             "command": "$HOME/.ralph/.claude/hooks/context-warning.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/memory-write-trigger.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/prompt-analyzer.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/statusline-health-monitor.sh"
           }
         ]
       }
@@ -53,14 +41,6 @@
           {
             "type": "command",
             "command": "$HOME/.ralph/.claude/hooks/smart-memory-search.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/agent-memory-auto-init.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/procedural-inject.sh"
           },
           {
             "type": "command",
@@ -86,19 +66,6 @@
           {
             "type": "command",
             "command": "$HOME/.ralph/.claude/hooks/inject-session-context.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/ralph-context-injector.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/pre-commit-command-validation.sh"
           }
         ]
       }
@@ -113,31 +80,11 @@
           },
           {
             "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/decision-extractor.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/semantic-realtime-extractor.sh"
-          },
-          {
-            "type": "command",
             "command": "$HOME/.ralph/.claude/hooks/status-auto-check.sh"
           },
           {
             "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/sec-context-validate.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/quality-gates-v2.sh"
-          },
-          {
-            "type": "command",
             "command": "$HOME/.ralph/.claude/hooks/checkpoint-auto-save.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/ralph-quality-gates.sh"
           }
         ]
       },
@@ -155,15 +102,6 @@
           {
             "type": "command",
             "command": "$HOME/.ralph/.claude/hooks/plan-analysis-cleanup.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/post-commit-command-verify.sh"
           }
         ]
       },
@@ -194,27 +132,22 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/session-start-ledger.sh"
-          },
-          {
-            "type": "command",
             "command": "$HOME/.ralph/.claude/hooks/session-start-restore-context.sh"
           },
           {
             "type": "command",
             "command": "$HOME/.ralph/.claude/hooks/auto-migrate-plan-state.sh"
-          },
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "*",
+        "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/session-start-welcome.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/session-start-tldr.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/skill-pre-warm.sh"
+            "command": "$HOME/.ralph/.claude/hooks/session-end-extractors.sh"
           }
         ]
       }
@@ -229,23 +162,7 @@
           },
           {
             "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/reflection-engine.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/semantic-auto-extractor.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/episodic-auto-convert.sh"
-          },
-          {
-            "type": "command",
             "command": "$HOME/.ralph/.claude/hooks/orchestrator-report.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/stop-verification.sh"
           }
         ]
       }
