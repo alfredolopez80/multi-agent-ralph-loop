@@ -226,6 +226,15 @@ print_summary() {
     echo "  Backup: $BACKUP_SKILLS ($(ls $BACKUP_SKILLS 2>/dev/null | wc -l | tr -d ' ') items)"
     echo "  Agents: $AGENTS_SKILLS ($(ls $AGENTS_SKILLS 2>/dev/null | wc -l | tr -d ' ') items)"
 
+
+# T94: zero-tests guard — fail loud when no assertion ran. Without
+# this check, a broken collection that increments zero counters would
+# print 'All tests passed!' and exit 0. Mirrors the canonic pattern in
+# tests/unit/test_validation_common.sh (lines 56-58).
+if [[ $TESTS_PASSED -eq 0 && $TESTS_FAILED -eq 0 ]]; then
+    echo "FATAL: zero tests executed — cannot declare success" >&2
+    exit 1
+fi
     if [[ $TESTS_FAILED -eq 0 ]]; then
         echo -e "\n${GREEN}${BOLD}✓ ALL TESTS PASSED${NC}"
         return 0
