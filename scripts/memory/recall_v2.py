@@ -15,6 +15,8 @@ Adaptation notes vs. the codex original:
 Public API:
     analyze_query(query) -> dict      query classification + risk level
     recall(query, ctx, home, ...) -> dict   {analysis, memory_context, MEMORY_TRACE}
+        recall(..., active_context="...") additionally suppresses nodes whose
+        content is already covered by the caller's live context (#47 C5).
 
 Scoring (per spec):
     summary x5, trigger x8, entity/path/tags/links x6,
@@ -507,6 +509,37 @@ def estimate_units(item: dict[str, Any]) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Active-context suppression (#47 C5).
+# ---------------------------------------------------------------------------
+
+# A node counts as "already in context" when this fraction of its emitted
+# vocabulary (summary + detailed_summary, the fields render_context puts in
+# front of the model) is present in the caller's active context. 0.8 keeps
+# suppression on the honest side of "duplicate": a node whose half of the
+# vocabulary is NOT already in context still carries information. Containment
+# (node -> context), not Jaccard: the active context is typically far longer
+# than the node, so symmetric overlap would suppress by context size, not by
+# duplication. Suppression is opt-in (empty active_context changes nothing)
+# and always leaves a trace reason, so a caller can audit what was withheld.
+CONTEXT_CONTAINMENT_THRESHOLD = 0.8
+
+
+def already_in_context(
+    node: dict[str, Any], context_tokens: frozenset[str]
+) -> bool:
+    if not context_tokens:
+        return False
+    emitted = " ".join(
+        str(node.get(field, "") or "") for field in ("summary", "detailed_summary")
+    )
+    node_tokens = set(terms(emitted))
+    if not node_tokens:
+        return False
+    covered = len(node_tokens & context_tokens) / len(node_tokens)
+    return covered >= CONTEXT_CONTAINMENT_THRESHOLD
+
+
+# ---------------------------------------------------------------------------
 # Recall.
 # ---------------------------------------------------------------------------
 
@@ -528,6 +561,7 @@ def recall(
     budget_limit: int = 800,
     include_deprecated: bool = False,
     include_mechanical: bool = False,
+    active_context: str = "",
 ) -> dict[str, Any]:
     started = time.perf_counter()
     store = TreeStore(ralph_home)
@@ -558,6 +592,7 @@ def recall(
     # is never coarser than the injected content, so legitimately distinct
     # knowledge cannot be fused (the mmx-1 failure mode).
     seen_summaries: set[str] = set()
+    context_tokens = frozenset(terms(active_context))
 
     def dedup_key(node: dict[str, Any]) -> str:
         return " ".join(str(node.get("summary", "")).split()).lower()
@@ -572,6 +607,12 @@ def recall(
             rejected.append({"node_id": str(node["node_id"]), "reason": "duplicate_summary"})
             continue
         seen_summaries.add(key)
+        # #47 C5: content the caller already holds is not re-injected. Checked
+        # after the T69 dedup (identical summaries) and before the budget, so
+        # a suppressed node never spends a slot or units.
+        if already_in_context(node, context_tokens):
+            rejected.append({"node_id": str(node["node_id"]), "reason": "already_in_context"})
+            continue
         item = render_context(node, risk, score)
         needed = estimate_units(item)
         if used + needed > budget_limit:
@@ -645,6 +686,14 @@ def main() -> int:
         help="admit rule_ep-auto-/rule_ep-rule- mechanical extractions "
         "(excluded by default, same semantics as L1 selection)",
     )
+    parser.add_argument(
+        "--active-context-file",
+        default="",
+        help="text file holding the caller's live context (#47 C5): nodes "
+        "whose emitted vocabulary is already covered by it (containment >= "
+        f"{CONTEXT_CONTAINMENT_THRESHOLD}) are suppressed with trace reason "
+        "already_in_context",
+    )
     parser.add_argument("--read-raw", action="store_true")
     parser.add_argument("--node-id", default="")
     args = parser.parse_args()
@@ -674,6 +723,10 @@ def main() -> int:
         print(content, end="")
         return 0
 
+    active_context = ""
+    if args.active_context_file:
+        active_context = Path(args.active_context_file).read_text(encoding="utf-8")
+
     report = recall(
         args.query,
         context,
@@ -682,6 +735,7 @@ def main() -> int:
         max(0, args.budget),
         args.include_deprecated,
         args.include_mechanical,
+        active_context,
     )
     if args.json:
         print(json.dumps(report, ensure_ascii=True, indent=2, sort_keys=True))
