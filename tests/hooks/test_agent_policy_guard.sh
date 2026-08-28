@@ -11,10 +11,9 @@
 #   1. Non-Task tool calls pass through.
 #   2. Task without subagent_type passes through (not a spawn).
 #   3. Default ceiling=8: single spawn allowed (count=0 in state).
-#   4. Eight sequential root spawns all allow (the regression for the
-#      T101 RETURN finding 1: the old inference-of-depth produced a
-#      deny after the 2nd spawn). Test #4 = the floor: ceiling is honoured
-#      at exactly 8 by 9 successful requests, not by 2.
+#   4. Ceiling=8 gradient at the boundary: count=7 allows, count=8 denies,
+#      count=9 denies (T101-r2 finding 6; the T101-r1 floor test was 8
+#      empty-dir reads which did not exercise the boundary).
 #   5. Ceiling=1 denies the 2nd spawn with permissionDecision:deny schema
 #      and an accionable permissionDecisionReason.
 #   6. RALPH_AGENT_CEILING=99 silences the ceiling deny.
@@ -236,6 +235,48 @@ else
     fail "corrupt state" "rc=$rc out='$out' (regression of T101-r2 finding 1)"
 fi
 rm -rf "${HOME}/.ralph/state/t101-corrupt"
+
+# --- 12. Orphan GC (T101-r3 bug 3): stale state file excluded from count ---
+# A subagent that died without emitting SubagentStop leaves a "status":"active"
+# file. Without GC the ceiling wedge is permanent. With GC, files older than
+# the threshold (here 0 hours for the test) are excluded from the count and
+# logged as reclaimed.
+echo "=== 12. Orphan GC: stale 'active' file excluded from ceiling count ==="
+orphan_dir="${HOME}/.ralph/state/t101-orphan/subagents"
+mkdir -p "$orphan_dir"
+# Seed one ACTIVE file with mtime > threshold so it's an orphan.
+printf '%s' '{"id":"STALE","parent":"root","status":"active"}' > "$orphan_dir/STALE.json"
+touch -t 202001010000 "$orphan_dir/STALE.json"  # 2020-01-01 (way > 24h)
+# Run with GC threshold = 0 hours so EVERY active file is orphan.
+# Without GC, count would be 1, ceiling 1 → deny. With GC, count is 0 → allow.
+out="$(run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-coder","prompt":"x"},"session_id":"t101-orphan"}' RALPH_AGENT_CEILING=1 RALPH_AGENT_GC_HOURS=0)"
+if [[ -z "$out" ]]; then
+    pass "orphan GC: stale file excluded from count (ceiling=1, count=0 → allow)"
+else
+    fail "orphan GC" "out='$out' (regression of T101-r3 bug 3)"
+fi
+rm -rf "$orphan_dir"
+
+# --- 13. Orphan GC with FRESH active file still counts (regression guard) -----
+# Without RALPH_AGENT_GC_HOURS=0 the default 24h threshold means a freshly-
+# written active file DOES count. This guards against over-eager GC.
+echo "=== 13. Orphan GC default threshold keeps fresh active files alive ==="
+fresh_dir="${HOME}/.ralph/state/t101-fresh/subagents"
+mkdir -p "$fresh_dir"
+printf '%s' '{"id":"FRESH","parent":"root","status":"active"}' > "$fresh_dir/FRESH.json"
+# Default RALPH_AGENT_GC_HOURS=24; file just written → mtime < 24h.
+out="$(run_hook '{"tool_name":"Task","tool_input":{"subagent_type":"ralph-coder","prompt":"x"},"session_id":"t101-fresh"}' RALPH_AGENT_CEILING=1)"
+if printf '%s' "$out" | jq -e '.hookSpecificOutput.permissionDecision == "deny"' >/dev/null 2>&1; then
+    # Confirm the deny reason mentions the orphan count if any were reclaimed.
+    if printf '%s' "$out" | jq -r '.hookSpecificOutput.permissionDecisionReason' 2>/dev/null | grep -q "1/1 concurrent"; then
+        pass "orphan GC default: fresh active counts toward ceiling (deny 1/1)"
+    else
+        pass "orphan GC default: fresh active counts toward ceiling (deny reason present)"
+    fi
+else
+    fail "fresh orphan" "out='$out' (regression of orphan GC over-eager)"
+fi
+rm -rf "$fresh_dir"
 
 echo
 printf 'passed: %d  failed: %d\n' "$PASS" "$FAIL"

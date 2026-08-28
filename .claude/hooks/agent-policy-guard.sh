@@ -114,15 +114,31 @@ subagents_dir="${RALPH_STATE_DIR}/state/${session_id}/subagents"
 # jq on an empty stream fails. compgen -G detects empty globs cleanly, so
 # treat empty as zero (no active subagents yet).
 active_count=0
+orphan_count=0
+# T101-r3 bug 3: GC stale state files. A subagent that died without emitting
+# SubagentStop (OOM, kill -9, harness crash) leaves an "active" file that
+# the ceiling would count forever. Files older than ORPHAN_THRESHOLD_HOURS
+# are excluded from the count and logged as reclaimed. Override the
+# threshold via RALPH_AGENT_GC_HOURS for testing or tuning.
+ORPHAN_THRESHOLD_HOURS="${RALPH_AGENT_GC_HOURS:-24}"
 if [[ -d "$subagents_dir" ]] && compgen -G "${subagents_dir}/*.json" > /dev/null; then
-    # Read the count into a separate variable. The `|| { log; exit 2; }` is
-    # at script level (NOT inside $()), so a jq parse error actually
+    # Two passes: orphans first (logged separately, excluded from count),
+    # then active count over fresh files only. The `|| { log; exit 2; }`
+    # is at script level (NOT inside $()), so a jq parse error actually
     # terminates the hook with rc=2 — not silently leaves active_count=""
     # and falls through to ALLOW. The T101-r2 finding 1 was that the prior
     # version had the exit inside $(), which only killed the subshell.
-    _active_count_raw="$(jq -s '[.[] | select(.status == "active")] | length' \
-        "${subagents_dir}"/*.json 2>/dev/null)" \
-        || { log "FAIL-LOUD: state under $subagents_dir is corrupt or unreadable; refusing to allow this spawn (better safe than fail-open). Inspect and either repair or delete the offending .json files."; exit 2; }
+    while IFS= read -r -d '' f; do
+        if [[ -n "$(find "$f" -mmin +$((ORPHAN_THRESHOLD_HOURS * 60)) -print 2>/dev/null)" ]]; then
+            log "ORPHAN reclaimed: $f (mtime > ${ORPHAN_THRESHOLD_HOURS}h, excluded from ceiling count)"
+            orphan_count=$((orphan_count + 1))
+        fi
+    done < <(find "${subagents_dir}" -maxdepth 1 -name '*.json' -print0 2>/dev/null)
+    _active_count_raw="$(find "${subagents_dir}" -maxdepth 1 -name '*.json' -mmin -$((ORPHAN_THRESHOLD_HOURS * 60)) -print0 2>/dev/null \
+        | xargs -0 jq -s '[.[] | select(.status == "active")] | length' 2>/dev/null)" \
+        || { log "FAIL-LOUD: state under $subagents_dir is corrupt or unreadable; refusing to allow this spawn (better safe than fail-open). Inspect and either repair or delete the offending .json files."; echo "agent-policy-guard: FAIL-LOUD state corrupt; refusing this spawn (see ~/.ralph/logs/agent-policy.log)" >&2; exit 2; }
+    # xargs returns 123 if no files were passed; treat that as zero (no fresh files).
+    [[ $? -eq 123 && -z "$_active_count_raw" ]] && _active_count_raw=0
     active_count="$_active_count_raw"
 fi
 
@@ -138,7 +154,11 @@ deny() {
 }
 
 if [[ "$active_count" -ge "$ceiling" ]]; then
-    deny "agent ceiling reached: $active_count/$ceiling concurrent subagents in this session. To raise the limit for this machine, set RALPH_AGENT_CEILING in the env block of ~/.claude/settings.json (the documented escape hatch); restarting Claude Code is required for the change to take effect."
+    if [[ "$orphan_count" -gt 0 ]]; then
+        deny "agent ceiling reached: $active_count/$ceiling concurrent subagents in this session. Note: $orphan_count stale state file(s) were reclaimed by the orphan GC (mtime > ${ORPHAN_THRESHOLD_HOURS}h); the actual concurrent count is $active_count. To raise the limit for this machine, set RALPH_AGENT_CEILING in the env block of ~/.claude/settings.json (the documented escape hatch); restarting Claude Code is required for the change to take effect."
+    else
+        deny "agent ceiling reached: $active_count/$ceiling concurrent subagents in this session. To raise the limit for this machine, set RALPH_AGENT_CEILING in the env block of ~/.claude/settings.json (the documented escape hatch); restarting Claude Code is required for the change to take effect."
+    fi
 fi
 
 # Allow: clean exit, no stdout.

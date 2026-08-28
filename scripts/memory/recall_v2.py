@@ -482,28 +482,31 @@ RISK_EMITTED_FIELDS: dict[str, list[str]] = {
 
 # Module-load validation: every field in the table must have an emitter
 # branch in render_context below. Catches drift between the table and the
-# emitter (the exact bug the T101-r2 reviewer flagged) at import time,
-# not at runtime when a future caller hits an unmapped field.
+# emitter (the exact bug the T101-r2 reviewer flagged) at the first use of
+# render_context — NOT at import. An import-time SystemExit would kill
+# pytest collection when ANY test imports this module and the table is
+# mid-edit (T101-r3 polish #6); validation is lazy instead.
 def _validate_risk_table() -> None:
-    import sys as _sys
     emitter_fields = {"topic_tags", "detailed_summary", "source_paths"}
     table_fields: set[str] = set()
     for fields in RISK_EMITTED_FIELDS.values():
         table_fields.update(fields)
     unknown = table_fields - emitter_fields
     if unknown:
-        _sys.stderr.write(
-            f"FATAL: RISK_EMITTED_FIELDS contains field(s) {sorted(unknown)} "
-            f"with no emitter branch in render_context. "
-            f"Add an `elif field == \"<name>\"` branch or rename the table entry.\n"
+        # Lazy validation runs from render_context's first call; raising
+        # ValueError (not SystemExit) preserves pytest's collection contract.
+        raise ValueError(
+            f"RISK_EMITTED_FIELDS contains field(s) {sorted(unknown)} with no "
+            f"emitter branch in render_context. Add an `elif field == \"<name>\"` "
+            f"branch or rename the table entry."
         )
-        raise SystemExit(1)
-
-
-_validate_risk_table()
 
 
 def render_context(node: dict[str, Any], risk: str, score: float) -> dict[str, Any]:
+    # Lazy table validation: runs once on the first call to render_context
+    # (was at import-time but that killed pytest collection when tests
+    # imported this module during mid-edit).
+    _validate_risk_table()
     quality = _as_dict(node.get("quality"))
     base: dict[str, Any] = {
         "node_id": node["node_id"],
@@ -589,8 +592,14 @@ def _emitted_text(node: dict[str, Any], risk: str) -> str:
     query's risk level (T92 review item 1). Suppressing over non-emitted
     fields would withhold new summaries the caller never received. Reads
     from RISK_EMITTED_FIELDS so this function cannot drift from
-    render_context (T103 #1)."""
-    fields = ["summary", *RISK_EMITTED_FIELDS.get(risk, [])]
+    render_context (T103 #1).
+
+    A risk value outside the canonical set falls back to "high" — same as
+    render_context's catch-all (T101-r3 bug 2). The previous default-empty
+    meant a non-canonical risk only emitted "summary" while render emitted
+    all of high's fields, silently diverging."""
+    risk_table_key = risk if risk in RISK_EMITTED_FIELDS else "high"
+    fields = ["summary", *RISK_EMITTED_FIELDS[risk_table_key]]
     return " ".join(str(node.get(field, "") or "") for field in fields)
 
 

@@ -84,13 +84,17 @@ subagents_dir="${RALPH_STATE_DIR}/state/${session_id}/subagents"
 chain_log=""
 depth=0
 current="$parent_id"
-last_current=""
 
 if [[ "$parent_id" == "root" || -z "$parent_id" ]]; then
     depth=1
     chain_log="root -> ${agent_id}"
 else
     safety=20
+    # Cycle detection via seen-set (not just a last_current pointer): if
+    # the same node appears twice we have a cycle; the seen-set catches
+    # loops deeper than 2 nodes (e.g. A→B→C→A) that last_current misses.
+    declare -A seen=()
+    seen["$parent_id"]=1
     while [[ -n "$current" && "$current" != "root" && $safety -gt 0 ]]; do
         depth=$((depth + 1))
         chain_log="${chain_log}${current} -> "
@@ -100,17 +104,17 @@ else
             break
         fi
         current="$(jq -r '.parent // empty' "$state_file" 2>/dev/null)" \
-            || { log "WARN: agent-depth-soft-enforce state file $state_file is unreadable; truncating chain walk at $current"; echo "root"; }
+            || { log "WARN: agent-depth-soft-enforce state file $state_file is unreadable; refusing to continue chain walk"; exit 2; }
         # If the parent field is empty/missing (but jq succeeded), treat as root.
         [[ -z "$current" ]] && current="root"
-        # A cycle guard: if we land on the current node again, the chain
-        # has a loop. Bail out to "root" with a warning instead of looping
-        # forever and inflating depth.
-        if [[ "$current" == "$last_current" ]]; then
-            log "WARN: agent-depth-soft-enforce detected cycle in chain at $current; truncating walk"
+        # Cycle detection: if we've seen this node before in this walk,
+        # the chain has a loop. Bail out to "root" with a warning.
+        if [[ -n "${seen[$current]:-}" ]]; then
+            log "WARN: agent-depth-soft-enforce detected cycle in chain at $current (seen ${seen[$current]} times); truncating walk"
             current="root"
+        else
+            seen["$current"]=1
         fi
-        last_current="$current"
         current="$(printf '%s' "$current" | tr -cd '[:alnum:]-_' | head -c 128)"
         safety=$((safety - 1))
     done
@@ -125,9 +129,10 @@ fi
 if [[ "$depth" -gt "$depth_limit" ]]; then
     log "ERROR: agent-policy depth exceeded for ${agent_id} chain=${chain_log} threshold=${depth_limit} soft-enforce=directive"
     directive_msg="DEPTH_EXCEEDED: You are at depth ${depth} in the parent chain (chain: ${chain_log}). Policy RALPH_AGENT_DEPTH=${depth_limit} forbids this nesting. Terminate IMMEDIATELY in this turn: report depth-exceeded to your caller and exit. Do not perform any task work."
-    directive_str=$(printf '%s' "$directive_msg" | jq -Rs '.')
-    extra_ctx=$(jq -nc --arg ctx "$directive_str" '$ctx | fromjson')
-    jq -nc --arg ctx "$extra_ctx" '{continue: true, hookSpecificOutput: {hookEventName: "SubagentStart", additionalContext: $ctx}}'
+    # 1-step emit (same shape as the allow path below) instead of the
+    # prior 3-step encode -> decode -> encode round-trip that left
+    # literal escape characters in additionalContext (T101-r3 polish #8).
+    jq -nc --arg ctx "$directive_msg" '{continue: true, hookSpecificOutput: {hookEventName: "SubagentStart", additionalContext: $ctx}}'
     exit 0
 fi
 

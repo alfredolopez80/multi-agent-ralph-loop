@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # test_agent_depth_soft_enforce.sh - Regression test for T101 depth-check hook.
 #
+# The hook fires on the SubagentStart event. Per .claude/settings.json.example
+# (as of T101-r2), the matcher is "*" — covers ralph-* and orchestrator
+# (recursive-decompose generates subagent_type=orchestrator which is the
+# exact flow #48 wants to gate).
+#
 # Walks a real parent-chain fixture (3 levels) and asserts:
 #  - depth 1 (parent=root) -> additionalContext says chain=root->X, depth=1
 #  - depth 2 (parent=A1 active in state) -> depth=2, allow
@@ -150,6 +155,30 @@ else
     fail "cycle" "out='$out'"
 fi
 rm -rf "$cycle_dir"
+
+# --- 9. Unreadable ancestor state -> FAIL-LOUD with rc=2 (T101-r3 bug 1) --
+# The T101-r1 version had `|| { log; echo "root" }` inside command
+# substitution, which contaminated STDOUT (the harness would see garbage
+# JSON or empty body) and silently truncated the chain. The r3 fix
+# uses `exit 2` at script level, which kills the hook before any
+# JSON emission.
+echo "=== 9. Unreadable ancestor state -> FAIL-LOUD rc=2, no STDOUT pollution ==="
+corrupt_dir="${HOME}/.ralph/state/corrupt-session/subagents"
+mkdir -p "$corrupt_dir"
+printf '%s' '{"id":"A1","parent":"root","status":"active"}' > "${corrupt_dir}/A1.json"
+chmod 000 "${corrupt_dir}/A1.json"
+out="$(run_hook '{"agent_id":"CORRUPT","parent_id":"A1","sessionId":"corrupt-session","agent_type":"ralph-coder"}' 2>&1)"
+rc=$?
+chmod 644 "${corrupt_dir}/A1.json"
+rm -rf "$corrupt_dir"
+# Pass criteria: rc != 0 (fail-loud) AND stdout must NOT contain a JSON
+# envelope with continue:true (which would be the silent-allow failure
+# mode that the r3 fix targets).
+if [[ $rc -ne 0 ]] && ! printf '%s' "$out" | jq -e '.continue == true' >/dev/null 2>&1; then
+    pass "corrupt ancestor: rc=$rc non-zero, no silent allow (fail-loud at script level)"
+else
+    fail "corrupt ancestor" "rc=$rc out='$out' (regression of T101-r3 bug 1)"
+fi
 
 echo
 printf 'passed: %d  failed: %d\n' "$PASS" "$FAIL"
