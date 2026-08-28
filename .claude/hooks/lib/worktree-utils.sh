@@ -93,6 +93,14 @@ is_worktree() {
   [[ -f "$toplevel/.git" ]]
 }
 
+# verdict <line> — T95-v5: private verdict channel for cold-path callers.
+# A caller (session-end-extractors.sh) that forks these hooks injects
+# RALPH_VERDICT_FILE; the hook appends its verdict line ("DEC …"/"SEM …"/
+# "… ERROR <reason>"/"… SKIP <reason>") there so concurrent SessionEnds
+# never cross-read each other's lines from the SHARED daily logs. Absent
+# (ordinary hot path) => no-op, behaviour unchanged.
+verdict() { [[ -n "${RALPH_VERDICT_FILE:-}" ]] && printf '%s\n' "$*" >> "$RALPH_VERDICT_FILE" 2>/dev/null || true; }
+
 resolve_claude_path() {
   echo "$(get_claude_dir)/$1"
 }

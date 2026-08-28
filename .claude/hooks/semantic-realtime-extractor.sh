@@ -28,6 +28,23 @@ output_json() {
 }
 trap 'output_json' ERR EXIT
 
+# Lib FIRST (T95-v5): verdict() — the private verdict channel — and the
+# identity helpers must exist before the EARLIEST exit paths that use them
+# (extension rejection and missing-path skips emit verdict lines).
+_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
+  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
+  get_main_repo() {
+    local common_dir
+    common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+    if [[ -n "$common_dir" ]]; then
+      dirname "$common_dir"
+    else
+      get_project_root
+    fi
+  }
+}
+
 # Parse input
 # CRIT-001 FIX: Removed duplicate stdin read - SEC-111 already reads at top
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
@@ -46,6 +63,7 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null |
 if [[ -z "$FILE_PATH" ]]; then
     trap - ERR EXIT  # v2.69.1: SEC-112 FIX - Clear trap before output
     echo '{"continue": true}'
+    verdict "SEM SKIP missing-file-path"
     exit 0
 fi
 
@@ -60,6 +78,7 @@ case "$FILE_EXT" in
     *)
         trap - ERR EXIT  # v2.69.1: SEC-112 FIX - Clear trap before output
         echo '{"continue": true}'
+        verdict "SEM SKIP ext=$FILE_EXT"
         exit 0
         ;;
 esac
@@ -81,21 +100,6 @@ LOG_DIR="${HOME}/.ralph/logs"
 mkdir -p "$LOG_DIR"
 
 # T80: shared helpers — main-repo identity (worktree-safe) and UTC day stamp.
-# Strong fallback (repo-boundary-guard.sh:77-83 shape) — T80 RETURN: without
-# it a missing lib silently degrades the project key to "unknown".
-_HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
-  get_project_root() { git rev-parse --show-toplevel 2>/dev/null || echo "${CLAUDE_PROJECT_DIR:-.}"; }
-  get_main_repo() {
-    local common_dir
-    common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
-    if [[ -n "$common_dir" ]]; then
-      dirname "$common_dir"
-    else
-      get_project_root
-    fi
-  }
-}
 facts_today() { date -u +%Y%m%d; }
 
 # Semantic memory is now in Obsidian Vault — no separate semantic.json needed
@@ -113,6 +117,7 @@ fi
 if [[ -z "$CONTENT" ]] || [[ ${#CONTENT} -lt 30 ]]; then
     trap - ERR EXIT  # v2.69.1: SEC-112 FIX - Clear trap before output
     echo '{"continue": true}'
+    verdict "SEM SKIP contenido-corto"
     exit 0
 fi
 
@@ -145,6 +150,7 @@ fi
             # T80 RETURN: refuse to write orphaned facts under projects/unknown/
             echo "[$(date -Iseconds)] ERROR semantic-realtime: cannot derive project identity; skipping fact (refusing projects/unknown/)" \
                 >> "${LOG_DIR}/semantic-realtime-$(facts_today).log" 2>/dev/null
+            verdict "SEM ERROR project-identity"
             return 0
         fi
         project_name="$(basename "$main_repo")"
@@ -310,6 +316,7 @@ fi
     esac
 
     echo "[$(date -Iseconds)] Realtime extraction complete: $FACTS_ADDED facts added"
+    verdict "SEM complete facts=$FACTS_ADDED"
 
 } >> "${LOG_DIR}/semantic-realtime-$(date +%Y%m%d).log" 2>&1 &
 
