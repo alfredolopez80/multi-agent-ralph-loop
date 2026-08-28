@@ -156,29 +156,42 @@ if [[ ! -f "$PLAN_STATE" ]]; then
     exit 0
 fi
 
-# Get plan-state age in minutes
-if [[ -f "$PLAN_STATE" ]]; then
-    # T99: the previous form, `stat -f %m ... || echo "0"`, is BSD-only — on
-    # GNU/Linux the stat call always failed, the age became "now - 0" (the
-    # whole epoch), and EVERY plan looked stale: a new-task prompt silently
-    # auto-archived fresh plans. Portable form, and no lying fallback: if
-    # neither stat dialect works, SKIP the staleness decision — guessing
-    # "ancient" archives fresh plans, guessing "fresh" defeats the hook.
-    PLAN_MTIME="$(stat -f %m "$PLAN_STATE" 2>/dev/null || stat -c %Y "$PLAN_STATE" 2>/dev/null || true)"
-    if [[ -z "$PLAN_MTIME" ]]; then
-        log "ERROR: cannot determine mtime of $PLAN_STATE (neither BSD 'stat -f %m' nor GNU 'stat -c %Y'); skipping staleness check rather than guessing an age"
-        trap - ERR EXIT  # CRIT-008: Clear trap before explicit output
-        emit_json '{"continue": true}'
-        exit 0
+# Numeric mtime of a file, or failure. Capability probe FIRST (same pattern
+# as worktree-utils.sh), then a NUMERIC gate on the captured value:
+# T99 RETURN dominant finding 1: `stat -f %m file` does NOT fail on
+# GNU/Linux — `-f` there means filesystem mode and the substitution captured
+# multi-line, non-numeric fs info, so the age arithmetic aborted under
+# `set -e` (W2 red on ubuntu CI) and the empty-string skip was unreachable.
+# STAT_PROBE (a command emitting the "stat output") exists for tests: it
+# lets a fixture replay the contaminated GNU output deterministically.
+_stat_mtime() {
+    local f="$1" out=""
+    if [[ -n "${STAT_PROBE:-}" ]]; then
+        out="$("$STAT_PROBE" "$f" 2>/dev/null || true)"
+    elif stat -c '%Y' / >/dev/null 2>&1; then
+        out="$(stat -c '%Y' "$f" 2>/dev/null || true)"
+    else
+        out="$(stat -f '%m' "$f" 2>/dev/null || true)"
     fi
-    PLAN_AGE_SECONDS=$(($(date +%s) - PLAN_MTIME))
-    PLAN_AGE_MINUTES=$((PLAN_AGE_SECONDS / 60))
-    PLAN_AGE_HOURS=$((PLAN_AGE_SECONDS / 3600))
-else
+    if [[ "$out" =~ ^[0-9]+$ ]]; then
+        echo "$out"
+        return 0
+    fi
+    return 1
+}
+
+PLAN_MTIME="$(_stat_mtime "$PLAN_STATE" || true)"
+if [[ -z "$PLAN_MTIME" ]]; then
+    # No numeric mtime available: SKIP the staleness decision — guessing
+    # "ancient" archives fresh plans, guessing "fresh" defeats the hook.
+    log "ERROR: cannot determine a numeric mtime for $PLAN_STATE (no working stat dialect); skipping staleness check rather than guessing an age"
     trap - ERR EXIT  # CRIT-008: Clear trap before explicit output
     emit_json '{"continue": true}'
     exit 0
 fi
+PLAN_AGE_SECONDS=$(($(date +%s) - PLAN_MTIME))
+PLAN_AGE_MINUTES=$((PLAN_AGE_SECONDS / 60))
+PLAN_AGE_HOURS=$((PLAN_AGE_SECONDS / 3600))
 
 # Get current plan task
 CURRENT_TASK=$(jq -r '.task // "Unknown"' "$PLAN_STATE" 2>/dev/null | head -c 100)

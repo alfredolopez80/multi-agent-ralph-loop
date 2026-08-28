@@ -75,9 +75,11 @@ CWD=$(echo "$INPUT" | jq -r '.cwd // "."' 2>/dev/null)
 # scope, but only the broken case needs the operator to know.
 PROJECT_ROOT="$CWD"
 if command -v git >/dev/null 2>&1; then
-  _T99_ERR="$(mktemp)"
-  _T87_ROOT="$(git -C "$CWD" rev-parse --show-toplevel 2>"$_T99_ERR" || true)"
-  if [[ -n "$_T87_ROOT" ]]; then
+  # stdout+stderr captured together in a variable (success writes no stderr,
+  # so rc decides which half of $_T87_OUT is which — no temp file needed).
+  _T87_OUT="$(git -C "$CWD" rev-parse --show-toplevel 2>&1)" && _T87_RC=0 || _T87_RC=$?
+  if [[ "$_T87_RC" -eq 0 ]]; then
+    _T87_ROOT="$_T87_OUT"
     # git reports the PHYSICAL root (/private/var on macOS); the payload cwd
     # arrives in LOGICAL form (/var) — the same symlink pair T87's fixture
     # documents. Compare the walk against the canonical CWD or the loop
@@ -90,15 +92,35 @@ if command -v git >/dev/null 2>&1; then
         _T99_BOUNDARY="$_T99_DIR"
         break
       fi
-      _T99_DIR="$(dirname "$_T99_DIR")"
+      _T99_DIR="${_T99_DIR%/*}"   # parameter expansion: no fork per level
     done
-    [[ -z "$_T99_BOUNDARY" ]] && PROJECT_ROOT="$_T87_ROOT"
-  elif [[ -s "$_T99_ERR" ]] && ! grep -q "not a git repository" "$_T99_ERR"; then
-    mkdir -p "${HOME}/.ralph/logs" 2>/dev/null || true
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] git rev-parse failed under $CWD (treating as no-git): $(head -c 200 "$_T99_ERR" | tr '\n' ' ')" \
-      >> "${HOME}/.ralph/logs/anti-rationalization-gate.log" 2>/dev/null || true
+    if [[ -n "$_T99_BOUNDARY" ]]; then
+      # T99 RETURN 3: the marked directory IS the nested project's root —
+      # staying on raw CWD lost its plan-state when the session sat below
+      # the marked dir (the T87 symptom, resurrected one level deeper).
+      PROJECT_ROOT="$_T99_BOUNDARY"
+    else
+      PROJECT_ROOT="$_T87_ROOT"
+    fi
+  else
+    # T99 RETURN 4: broken git (corrupt HEAD, unreadable .git) fails with
+    # the SAME "not a git repository" text a true no-git dir emits — the
+    # message cannot distinguish them; the presence of a .git on the walk
+    # up can. Broken => log it; true no-git => stay silent (normal).
+    _T99_HAS_GIT=""
+    _T99_DIR="$(cd "$CWD" 2>/dev/null && pwd -P || echo "$CWD")"
+    while [[ -n "$_T99_DIR" && "$_T99_DIR" != "/" ]]; do
+      if [[ -e "$_T99_DIR/.git" ]]; then _T99_HAS_GIT="$_T99_DIR"; break; fi
+      _next="${_T99_DIR%/*}"
+      [[ "$_next" == "$_T99_DIR" ]] && break
+      _T99_DIR="$_next"
+    done
+    if [[ -n "$_T99_HAS_GIT" ]]; then
+      mkdir -p "${HOME}/.ralph/logs" 2>/dev/null || true
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] git present but broken under $CWD ($_T99_HAS_GIT/.git); treating as no-git: $(head -c 200 "$_T87_OUT" | tr '\n' ' ')" \
+        >> "${HOME}/.ralph/logs/anti-rationalization-gate.log" 2>/dev/null || true
+    fi
   fi
-  rm -f "$_T99_ERR"
 fi
 
 # State and patterns are PER-PROJECT. No cross-project contamination.
