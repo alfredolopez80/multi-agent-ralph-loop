@@ -68,6 +68,19 @@
             "command": "$HOME/.ralph/.claude/hooks/inject-session-context.sh"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/git-safety-guard.py"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.ralph/.claude/hooks/repo-boundary-guard.sh"
+          }
+        ]
       }
     ],
     "PostToolUse": [
