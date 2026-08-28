@@ -512,31 +512,46 @@ def estimate_units(item: dict[str, Any]) -> int:
 # Active-context suppression (#47 C5).
 # ---------------------------------------------------------------------------
 
-# A node counts as "already in context" when this fraction of its emitted
-# vocabulary (summary + detailed_summary, the fields render_context puts in
-# front of the model) is present in the caller's active context. 0.8 keeps
-# suppression on the honest side of "duplicate": a node whose half of the
-# vocabulary is NOT already in context still carries information. Containment
-# (node -> context), not Jaccard: the active context is typically far longer
-# than the node, so symmetric overlap would suppress by context size, not by
-# duplication. Suppression is opt-in (empty active_context changes nothing)
-# and always leaves a trace reason, so a caller can audit what was withheld.
+# A node counts as "already in context" when BOTH hold: (a) this fraction of
+# its emitted vocabulary is present in the caller's active context, and (b)
+# at least MIN_COVERED_TOKENS tokens are covered. (a) alone is not honest:
+# a 5-token generic summary ("never bypass the security hooks guard") is 1.0
+# contained in almost any long operational context, and suppression would
+# follow context size, not duplication. The absolute floor keeps suppression
+# on the side of REAL quotes; the asymmetry justifies the conservative side
+# -- a missed suppression costs one duplicated item, a wrong one silently
+# withholds new knowledge. Containment (node -> context), not Jaccard: the
+# active context is typically far longer than the node. Suppression is
+# opt-in (empty active_context changes nothing) and always leaves a trace
+# reason, so a caller can audit what was withheld.
 CONTEXT_CONTAINMENT_THRESHOLD = 0.8
+MIN_COVERED_TOKENS = 6
+
+
+def _emitted_text(node: dict[str, Any], risk: str) -> str:
+    """The content render_context actually puts in front of the model at this
+    query's risk level (T92 review item 1). Suppressing over non-emitted
+    fields would withhold new summaries the caller never received."""
+    fields = ["summary"]
+    if risk == "low":
+        fields.append("topic_tags")
+    else:  # medium/high emit the detailed summary and source paths
+        fields.extend(["detailed_summary", "source_paths"])
+    return " ".join(str(node.get(field, "") or "") for field in fields)
 
 
 def already_in_context(
-    node: dict[str, Any], context_tokens: frozenset[str]
+    node: dict[str, Any], context_tokens: frozenset[str], risk: str = "low"
 ) -> bool:
     if not context_tokens:
         return False
-    emitted = " ".join(
-        str(node.get(field, "") or "") for field in ("summary", "detailed_summary")
-    )
-    node_tokens = set(terms(emitted))
+    node_tokens = set(terms(_emitted_text(node, risk)))
     if not node_tokens:
         return False
-    covered = len(node_tokens & context_tokens) / len(node_tokens)
-    return covered >= CONTEXT_CONTAINMENT_THRESHOLD
+    covered = node_tokens & context_tokens
+    return len(covered) >= MIN_COVERED_TOKENS and (
+        len(covered) / len(node_tokens) >= CONTEXT_CONTAINMENT_THRESHOLD
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -609,8 +624,9 @@ def recall(
         seen_summaries.add(key)
         # #47 C5: content the caller already holds is not re-injected. Checked
         # after the T69 dedup (identical summaries) and before the budget, so
-        # a suppressed node never spends a slot or units.
-        if already_in_context(node, context_tokens):
+        # a suppressed node never spends a slot or units. `risk` selects the
+        # emitted fields the containment is computed over.
+        if already_in_context(node, context_tokens, risk):
             rejected.append({"node_id": str(node["node_id"]), "reason": "already_in_context"})
             continue
         item = render_context(node, risk, score)
@@ -725,7 +741,14 @@ def main() -> int:
 
     active_context = ""
     if args.active_context_file:
-        active_context = Path(args.active_context_file).read_text(encoding="utf-8")
+        context_path = Path(args.active_context_file).expanduser()
+        if not context_path.is_file():
+            print(
+                f"error: --active-context-file not found: {context_path}",
+                file=sys.stderr,
+            )
+            return 2
+        active_context = context_path.read_text(encoding="utf-8")
 
     report = recall(
         args.query,
