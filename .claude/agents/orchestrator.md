@@ -100,7 +100,7 @@ Based on @PerceptualPeak Smart Forking concept: "Why not utilize the knowledge g
 - **3-Dimension Classification**: Complexity + Information Density + Context Requirement
 - **FAST_PATH**: Trivial tasks (complexity 1-3) → 3 steps instead of 12
 - **PARALLEL_CHUNKS**: Linear density tasks → concurrent exploration
-- **RECURSIVE_DECOMPOSE**: Quadratic density → sub-orchestrators (max depth 3)
+- **RECURSIVE_DECOMPOSE**: Quadratic density → sub-orchestrators (max depth 2)
 - **QUALITY OVER CONSISTENCY**: Style issues advisory, quality blocking
 
 ## v2.45 Changes (Plan-Sync & LSA Integration)

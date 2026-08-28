@@ -83,8 +83,8 @@
         },
         "max_depth": {
           "type": "integer",
-          "default": 3,
-          "description": "Maximum allowed recursion depth"
+          "default": 2,
+          "description": "Maximum allowed recursion depth (aligned with #48 acceptance bullet: depth <=2)"
         },
         "parent_id": {
           "type": ["string", "null"],
