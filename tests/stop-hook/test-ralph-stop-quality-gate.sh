@@ -30,10 +30,15 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Test counters
+# Test counters.
+# TESTS_TOTAL counts the number of verdicts (each pass/fail is one verdict),
+# not the number of test sections: TESTS_TOTAL is recomputed in the summary
+# as TESTS_PASSED + TESTS_FAILED so the three counters can never drift apart.
+# TEST_NUM is a separate header index used only for the "Test N: name" label.
 TESTS_PASSED=0
 TESTS_FAILED=0
 TESTS_TOTAL=0
+TEST_NUM=0
 
 # Cleanup function
 cleanup() {
@@ -62,9 +67,9 @@ fail() {
 
 run_test() {
     local test_name="$1"
-    TESTS_TOTAL=$((TESTS_TOTAL + 1))
+    TEST_NUM=$((TEST_NUM + 1))
     echo ""
-    echo -e "${YELLOW}Test $TESTS_TOTAL: $test_name${NC}"
+    echo -e "${YELLOW}Test $TEST_NUM: $test_name${NC}"
     echo "----------------------------------------"
 }
 
@@ -417,6 +422,9 @@ echo ""
 echo "========================================"
 echo "  Test Summary"
 echo "========================================"
+# Total is recomputed from the verdict counters so the invariant
+# Total == Passed + Failed always holds.
+TESTS_TOTAL=$((TESTS_PASSED + TESTS_FAILED))
 echo -e "Total:  ${TESTS_TOTAL}"
 echo -e "Passed: ${GREEN}${TESTS_PASSED}${NC}"
 echo -e "Failed: ${RED}${TESTS_FAILED}${NC}"
