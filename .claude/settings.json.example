@@ -1,5 +1,5 @@
 {
-  "version": "2.82.0",
+  "version": "3.0.0",
   "permissions": {
     "defaultMode": "delegate",
     "allow": {
@@ -10,49 +10,13 @@
     }
   },
   "hooks": {
-    "UserPromptSubmit": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/command-router.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/context-warning.sh"
-          }
-        ]
-      }
-    ],
     "PreToolUse": [
       {
-        "matcher": "Skill",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/skill-validator.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "Task",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/smart-memory-search.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/orchestrator-auto-learn.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/fast-path-check.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/agent-policy-guard.sh"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/permission-guard.sh"
           }
         ]
       },
@@ -61,15 +25,16 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/lsa-pre-step.sh"
-          },
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/permission-guard.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Agent|Task",
+        "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/checkpoint-smart-save.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/inject-session-context.sh"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/permission-guard.sh"
           }
         ]
       },
@@ -78,30 +43,52 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/git-safety-guard.py"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/repo-boundary-guard.sh"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/git-safety-guard.py"
           }
         ]
-      }
-    ],
-    "PostToolUse": [
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/repo-boundary-guard.sh"
+          }
+        ]
+      },
       {
         "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/plan-sync-post-step.sh"
-          },
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/repo-boundary-guard.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Agent|Task",
+        "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/status-auto-check.sh"
-          },
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/repo-boundary-guard.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/checkpoint-auto-save.sh"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/k8s-context-guard-v2.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/skill-validator.sh"
           }
         ]
       },
@@ -110,50 +97,47 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/parallel-explore.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/recursive-decompose.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/plan-analysis-cleanup.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "TodoWrite",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/todo-plan-sync.sh"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/agent-policy-guard.sh"
           }
         ]
       }
     ],
-    "PreCompact": [
+    "PostToolUse": [
       {
         "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/pre-compact-handoff.sh"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/audit-secrets.js"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/plan-sync-post-step.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Agent|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/lsa-pre-step.sh"
           }
         ]
       }
     ],
     "SessionStart": [
       {
-        "matcher": "*",
+        "matcher": "compact",
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/session-start-restore-context.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/auto-migrate-plan-state.sh"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/post-compact-restore.sh"
           }
         ]
       }
@@ -164,7 +148,23 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/session-end-extractors.sh"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-end-handoff.sh"
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-end-extractors.sh"
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/memory-projection.sh"
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/vault-index-updater.sh"
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/vault-log-writer.sh"
           }
         ]
       }
@@ -175,11 +175,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/ralph-subagent-start.sh"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/ralph-subagent-start.sh"
           },
           {
             "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/agent-depth-soft-enforce.sh"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/agent-depth-soft-enforce.sh"
           }
         ]
       }
@@ -190,22 +190,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/subagent-stop-universal.sh"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/sentry-report.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.ralph/.claude/hooks/orchestrator-report.sh"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/subagent-stop-universal.sh"
           }
         ]
       }
@@ -216,10 +201,8 @@
     "CLAUDE_CODE_AGENT_NAME": "RalphWiggum",
     "CLAUDE_CODE_TEAM_NAME": "multi-agent-ralph",
     "CLAUDE_CODE_PLAN_MODE_REQUIRED": "false",
-    "CLAUDE_CODE_MAX_AGENT_ITERATIONS": "50",
-    "RALPH_AGENT_CEILING": "8",
-    "RALPH_AGENT_DEPTH": "2",
-    "RALPH_VERSION": "2.82.0",
+    "CLAUDE_CODE_MAX_AGENT_TITERATIONS": "50",
+    "RALPH_VERSION": "3.0.0",
     "RALPH_MODEL_PRIMARY": "glm-4.7",
     "RALPH_MODEL_FALLBACK": "claude-sonnet"
   },
