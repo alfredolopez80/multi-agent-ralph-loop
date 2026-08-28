@@ -109,10 +109,15 @@ else
     CONTENT=$(echo "$INPUT" | jq -r '.tool_input.new_string // ""' 2>/dev/null || echo "")
 fi
 
+# T95-v4: private verdict channel (see decision-extractor.sh verdict()).
+# Absent (ordinary hot path) => unchanged behaviour.
+verdict() { [[ -n "${RALPH_VERDICT_FILE:-}" ]] && printf '%s\n' "$*" >> "$RALPH_VERDICT_FILE" 2>/dev/null || true; }
+
 # Skip if no meaningful content
 if [[ -z "$CONTENT" ]] || [[ ${#CONTENT} -lt 30 ]]; then
     trap - ERR EXIT  # v2.69.1: SEC-112 FIX - Clear trap before output
     echo '{"continue": true}'
+    verdict "SEM skipped trivial-content"
     exit 0
 fi
 
@@ -145,6 +150,7 @@ fi
             # T80 RETURN: refuse to write orphaned facts under projects/unknown/
             echo "[$(date -Iseconds)] ERROR semantic-realtime: cannot derive project identity; skipping fact (refusing projects/unknown/)" \
                 >> "${LOG_DIR}/semantic-realtime-$(facts_today).log" 2>/dev/null
+            verdict "SEM ERROR project-identity"
             return 0
         fi
         project_name="$(basename "$main_repo")"
@@ -310,6 +316,7 @@ fi
     esac
 
     echo "[$(date -Iseconds)] Realtime extraction complete: $FACTS_ADDED facts added"
+    verdict "SEM complete facts=$FACTS_ADDED"
 
 } >> "${LOG_DIR}/semantic-realtime-$(date +%Y%m%d).log" 2>&1 &
 

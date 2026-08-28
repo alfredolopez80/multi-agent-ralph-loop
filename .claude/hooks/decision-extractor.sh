@@ -111,16 +111,27 @@ source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
     fi
   }
 }
+# LOG_DIR must exist before its first use below (98108572 introduced an
+# unbound ${LOG_DIR} reference that aborted under set -u BEFORE this hook
+# could log its own error — the opposite of the "fails loud" it claimed).
+LOG_DIR="${HOME}/.ralph/logs"
+mkdir -p "$LOG_DIR"
+
+# T95-v4: private verdict channel. When a caller (session-end-extractors)
+# injects RALPH_VERDICT_FILE, append the verdict there so concurrent
+# SessionEnds never cross-read each other's lines from this SHARED daily log.
+# Absent (ordinary hot path) => unchanged behaviour.
+verdict() { [[ -n "${RALPH_VERDICT_FILE:-}" ]] && printf '%s\n' "$*" >> "$RALPH_VERDICT_FILE" 2>/dev/null || true; }
+
 _MAIN_REPO="$(get_main_repo 2>/dev/null || echo '')"
 if [[ -z "$_MAIN_REPO" || "$_MAIN_REPO" == "." ]]; then
     echo "[$(date -Iseconds)] ERROR decision-extractor: cannot derive project identity; refusing to write orphaned facts under projects/unknown/" >> "${LOG_DIR}/decision-extract-$(date -u +%Y%m%d).log" 2>/dev/null
+    verdict "DEC ERROR project-identity"
     exit 0
 fi
 PROJECT_NAME="$(basename "$_MAIN_REPO")"
 EPISODES_DIR="$VAULT_DIR/projects/$PROJECT_NAME/decisions"
 mkdir -p "$EPISODES_DIR" 2>/dev/null || true
-LOG_DIR="${HOME}/.ralph/logs"
-mkdir -p "$LOG_DIR"
 
 # T80(b): facts files are named in UTC so extractor and wing compiler can
 # never disagree across a midnight boundary. Extracted for testability.
@@ -264,6 +275,7 @@ trap release_lock EXIT
             LOCK_ATTEMPTS=$((LOCK_ATTEMPTS + 1))
             if [[ $LOCK_ATTEMPTS -gt 50 ]]; then
                 echo "[$(date -Iseconds)] ERROR: Could not acquire index lock after 5s" >> "${LOG_DIR}/decision-extract-$(date +%Y%m%d).log"
+                verdict "DEC ERROR index-lock"
                 break
             fi
             sleep 0.1
@@ -305,6 +317,7 @@ trap release_lock EXIT
         done
 
         echo "[$(date -Iseconds)] Also added $DECISIONS_ADDED facts to vault"
+        verdict "DEC created episode=$EPISODE_ID decisions=$TOTAL_DECISIONS facts=$DECISIONS_ADDED"
 
         # W3.3: Global decisions filter — only infrastructure files with CRITICAL/MUST/NEVER keywords
         IS_INFRASTRUCTURE=false
@@ -329,6 +342,7 @@ trap release_lock EXIT
         fi
     else
         echo "[$(date -Iseconds)] No architectural decisions detected"
+        verdict "DEC none"
     fi
 
 } >> "${LOG_DIR}/decision-extract-$(date +%Y%m%d).log" 2>&1 &

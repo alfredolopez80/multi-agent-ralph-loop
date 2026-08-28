@@ -1,25 +1,21 @@
 #!/usr/bin/env bash
-# test_session_end_extractors.sh — T95/C9 (#47) v2, after lead RETURN:
-# discovery is transcript-based, not dirty-state based.
+# test_session_end_extractors.sh — T95/C9 v4 (RETURN 3): verdict channel is
+# a PRIVATE per-invocation file, not the machine-shared module logs.
 #
-# T1 COLD FUNCTIONALITY against THIS repo's standard workflow: a file that was
-#    edited AND COMMITTED during the session (workers never end dirty — clean
-#    tree at SessionEnd is the contract) must still be extracted. Discovery
-#    reads transcript_path, so the committed file is visible. The pre-fix
-#    wrapper (git-status discovery) fails this test RED: with a clean tree it
-#    extracts nothing while certifying "no eligible dirty files".
-#    - asserts decisions (decision-extractor) AND facts (semantic-realtime)
-#    - a >60KB file must not break the extractor payload (safe truncation)
-#    - a second run over the same transcript must NOT add vault entries
-#      (content-hash dedupe: hot path extracted per edit; batch must not
-#      rescan identical content session after session)
-# T2 REGISTRY GUARD —
-#    (a) every referenced hook exists AND is executable (-x guards the known
-#        "Editor MCP strips +x" failure mode); parser covers .sh and .py
-#    (b) no memory-maintenance hook on SessionStart/Stop/UserPromptSubmit/
-#        PostToolUse/PreToolUse/PreCompact
-#    (c) cold path registered on SessionEnd
-#    (d) PreToolUse(Bash) carries the safety guards CLAUDE.md requires
+# T1 COLD FUNCTIONALITY — committed files are extracted via transcript, with
+#    PER-FILE assertions (order_service AND big.ts each proven) and the
+#    SEM-exclusive marker "[code_structure]" (decision-extractor also writes
+#    facts-*.md, so counting entries is not attribution). Dedupe is asserted
+#    on the CONTENT of facts-*.md (md5 + line count) — never on file counts.
+# T2 REGISTRY GUARD — as v2 (existence + executability, hot events incl.
+#    PreToolUse/PreCompact, cold path registered, safety guards present).
+# T3 CONCURRENCY (the reviewer's repro) — two wrappers at once, shared HOME
+#    (shared module logs), one extractable file + one file the modules
+#    reject by extension. Pre-fix (v3) the wrappers steal verdict lines from
+#    the shared log and record a hash for the rejected file with ZERO
+#    extraction of it (permanent false dedupe). v4 waits on its private
+#    RALPH_VERDICT_FILE, so the rejected file must produce NO state hash and
+#    the real file must still extract.
 
 set -uo pipefail
 
@@ -33,17 +29,14 @@ ok()  { echo "  OK   $1"; PASS=$((PASS + 1)); }
 bad() { echo "  FAIL $1"; [[ -n "${2:-}" ]] && echo "       $2"; FAIL=$((FAIL + 1)); }
 
 # ---------------------------------------------------------------------------
-echo "=== T1: cold extraction of a COMMITTED file, via session transcript ==="
+echo "=== T1: per-file cold extraction + content dedupe ==="
 WORK=$(mktemp -d)
 R="$WORK/repo"
 mkdir -p "$R/src"
-R="$(cd "$R" && pwd -P)"   # canonical: git reports /private/var... on macOS
 git -C "$R" init -q
 git -C "$R" config user.email t95@test
 git -C "$R" config user.name t95
 
-# Patterns that fire BOTH extractors: decisions (export class/interface) and
-# facts (export function — semantic-realtime's ts heuristics).
 cat > "$R/src/order_service.ts" <<'EOF'
 export class OrderService {
   private repo: OrderRepository;
@@ -54,91 +47,83 @@ export function placeOrder(svc: OrderService, order: Order): Promise<Id> {
   return svc.place(order);
 }
 EOF
-# A genuinely large file: its content must be truncated to a payload the
-# extractors can still parse (<100KB), with the header pattern surviving.
 {
   echo "export function bigExportedFunction(): void {}"
   head -c 200000 /dev/zero | tr '\0' 'x'
 } > "$R/src/big.ts"
 
-# THE STANDARD WORKFLOW: everything committed — clean tree at session end.
+# Standard workflow: committed — clean tree at session end.
 git -C "$R" add -A
-git -C "$R" commit -q -m "session work (committed, as the worker contract demands)"
+git -C "$R" commit -q -m "session work"
 
-# Synthetic session transcript: two Edit tool_uses on the committed file
-# (deduplicated by the wrapper), one Bash tool_use (ignored), one Write on the
-# big file. JSONL, same shape Claude Code writes.
 TL="$WORK/transcript.jsonl"
-jq -cn --arg fp "$R/src/order_service.ts" \
-  '{type:"assistant",cwd:$R2,message:{content:[{type:"tool_use",name:"Edit",input:{file_path:$fp,old_string:"",new_string:"content"}}]}}' \
-  --arg R2 "$R" >> "$TL"
-jq -cn --arg fp "$R/src/order_service.ts" \
-  '{type:"assistant",cwd:$R2,message:{content:[{type:"tool_use",name:"Edit",input:{file_path:$fp,old_string:"",new_string:"content"}}]}}' \
-  --arg R2 "$R" >> "$TL"
-jq -cn --arg R2 "$R" \
-  '{type:"assistant",cwd:$R2,message:{content:[{type:"tool_use",name:"Bash",input:{command:"ls"}}]}}' >> "$TL"
-jq -cn --arg fp "$R/src/big.ts" \
-  '{type:"assistant",cwd:$R2,message:{content:[{type:"tool_use",name:"Write",input:{file_path:$fp,content:"x"}}]}}' \
-  --arg R2 "$R" >> "$TL"
+jq -cn --arg fp "$R/src/order_service.ts" --arg r "$R" \
+  '{type:"assistant",cwd:$r,message:{content:[{type:"tool_use",name:"Edit",input:{file_path:$fp,old_string:"",new_string:"c"}}]}}' >> "$TL"
+jq -cn --arg fp "$R/src/big.ts" --arg r "$R" \
+  '{type:"assistant",cwd:$r,message:{content:[{type:"tool_use",name:"Write",input:{file_path:$fp,content:"x"}}]}}' >> "$TL"
 
 ISO_HOME="$WORK/home"; mkdir -p "$ISO_HOME"
 export RALPH_VAULT_DIR="$WORK/vault"; mkdir -p "$RALPH_VAULT_DIR"
 
-if [[ -f "$WRAPPER" ]]; then
-  printf '{"session_id":"t95","reason":"clear","cwd":"%s","transcript_path":"%s"}' "$R" "$TL" \
-    | HOME="$ISO_HOME" /bin/bash "$WRAPPER" >/dev/null 2>&1
+printf '{"session_id":"t95","reason":"clear","cwd":"%s","transcript_path":"%s"}' "$R" "$TL" \
+  | HOME="$ISO_HOME" /bin/bash "$WRAPPER" >/dev/null 2>&1
 
-  # Poll up to 15 s for the background job (wrapper fork + extractor forks).
-  DECISIONS=0; FACTS=0
-  for _ in $(seq 1 30); do
-    sleep 0.5
-    DECISIONS=$(find "$RALPH_VAULT_DIR/projects" -path '*decisions*' -name 'ep-*.json' 2>/dev/null | wc -l | tr -d ' ')
-    FACTS=$(find "$RALPH_VAULT_DIR/projects" -path '*facts*' -name 'facts-*.md' 2>/dev/null | wc -l | tr -d ' ')
-    if [[ "${DECISIONS:-0}" -ge 1 && "${FACTS:-0}" -ge 1 ]]; then break; fi
-  done
-  if [[ "${DECISIONS:-0}" -ge 1 ]]; then
-    ok "decision-extractor produced decisions for the COMMITTED file (transcript discovery)"
-  else
-    bad "no decisions from the cold path in 15 s — committed work is invisible (finding 1 regression?)" \
-      "$(find "$RALPH_VAULT_DIR" -type f 2>/dev/null | head -3 | tr '\n' ' ')"
+# The wrapper logs "job finished" when its background job drained — wait for
+# THAT signal instead of blind sampling (RETURN 3: drain_stable out).
+FINISHED=0
+for _ in $(seq 1 60); do
+  sleep 0.5
+  if grep -q "job finished" "$ISO_HOME/.ralph/logs/session-end-extractors.log" 2>/dev/null; then
+    FINISHED=1
+    break
   fi
-  if [[ "${FACTS:-0}" -ge 1 ]]; then
-    ok "semantic-realtime produced facts for the COMMITTED file"
-  else
-    bad "no facts from the cold path in 15 s (semantic module never asserted before — finding 10)"
-  fi
-
-  # Dedupe: second run over the SAME transcript adds nothing to the vault.
-  # Drain detection, not fixed sleeps: the first pass may still be writing
-  # (extractors fork internally), and counting before it settled produced a
-  # false "second run added entries". Count is stable when three consecutive
-  # 0.5 s samples agree.
-  drain_stable() {
-    local prev=-1 cur=0 stable=0 i
-    for i in $(seq 1 40); do
-      sleep 0.5
-      cur=$(find "$RALPH_VAULT_DIR/projects" -type f 2>/dev/null | wc -l | tr -d ' ')
-      if [[ "$cur" == "$prev" ]]; then
-        stable=$((stable + 1))
-      else
-        stable=0
-        prev=$cur
-      fi
-      if (( stable >= 3 )); then printf '%s' "$cur"; return 0; fi
-    done
-    printf '%s' "$cur"
-  }
-  BEFORE=$(drain_stable)
-  printf '{"session_id":"t95b","reason":"clear","cwd":"%s","transcript_path":"%s"}' "$R" "$TL" \
-    | HOME="$ISO_HOME" /bin/bash "$WRAPPER" >/dev/null 2>&1
-  AFTER=$(drain_stable)
-  if [[ "${BEFORE:-0}" -eq "${AFTER:-0}" ]]; then
-    ok "no duplicate extraction on identical content (content-hash dedupe)"
-  else
-    bad "second run added vault entries ($BEFORE → $AFTER) — rescan duplicates facts (finding 8)"
-  fi
+done
+if [[ "$FINISHED" -eq 1 ]]; then
+  ok "background job reports finished (drain by signal, not by sampling)"
 else
-  bad "wrapper missing: $WRAPPER" "cold path not implemented"
+  bad "no 'job finished' in wrapper log within 30 s" \
+    "$(tail -3 "$ISO_HOME/.ralph/logs/session-end-extractors.log" 2>/dev/null | tr '\n' ' ')"
+fi
+
+FACTS_FILE=$(find "$RALPH_VAULT_DIR/projects" -name 'facts-*.md' 2>/dev/null | head -1)
+if [[ -n "$FACTS_FILE" ]] && grep -q "\[code_structure\]" "$FACTS_FILE"; then
+  ok "order_service.ts: SEM-exclusive marker [code_structure] present in facts"
+else
+  bad "no [code_structure] fact for order_service.ts (semantic verdict unproven)" \
+    "${FACTS_FILE:+$(head -3 "$FACTS_FILE")}"
+fi
+if [[ -n "$FACTS_FILE" ]] && grep -q "bigExportedFunction" "$FACTS_FILE"; then
+  ok "big.ts: header pattern survived the content cap (per-file assertion)"
+else
+  bad "big.ts fact missing — 60KB+ file lost in the payload path" \
+    "${FACTS_FILE:+$(head -3 "$FACTS_FILE")}"
+fi
+EP_N=$(find "$RALPH_VAULT_DIR/projects" -name 'ep-*.json' 2>/dev/null | wc -l | tr -d ' ')
+if [[ "${EP_N:-0}" -ge 1 ]]; then
+  ok "decision-extractor produced episode(s) for the committed file(s) ($EP_N)"
+else
+  bad "no decisions from the cold path"
+fi
+
+# Dedupe on CONTENT: rerun the same transcript; facts-*.md bytes and episode
+# count must not change (RETURN 3: never assert on file counts).
+FACTS_MD5_BEFORE=$(md5 -q "$FACTS_FILE" 2>/dev/null || md5sum "$FACTS_FILE" 2>/dev/null | awk '{print $1}')
+FACTS_LINES_BEFORE=$(wc -l < "$FACTS_FILE" 2>/dev/null | tr -d ' ')
+printf '{"session_id":"t95b","reason":"clear","cwd":"%s","transcript_path":"%s"}' "$R" "$TL" \
+  | HOME="$ISO_HOME" /bin/bash "$WRAPPER" >/dev/null 2>&1
+FINISHED=0
+for _ in $(seq 1 60); do
+  sleep 0.5
+  FINISHED_LINES=$(grep -c "job finished" "$ISO_HOME/.ralph/logs/session-end-extractors.log" 2>/dev/null)
+  [[ "${FINISHED_LINES:-0}" -ge 2 ]] && { FINISHED=1; break; }
+done
+FACTS_MD5_AFTER=$(md5 -q "$FACTS_FILE" 2>/dev/null || md5sum "$FACTS_FILE" 2>/dev/null | awk '{print $1}')
+FACTS_LINES_AFTER=$(wc -l < "$FACTS_FILE" 2>/dev/null | tr -d ' ')
+EP_N_AFTER=$(find "$RALPH_VAULT_DIR/projects" -name 'ep-*.json' 2>/dev/null | wc -l | tr -d ' ')
+if [[ "$FACTS_MD5_BEFORE" == "$FACTS_MD5_AFTER" && "$FACTS_LINES_BEFORE" == "$FACTS_LINES_AFTER" && "${EP_N_AFTER:-0}" -eq "${EP_N:-0}" ]]; then
+  ok "content dedupe: facts-*.md unchanged ($FACTS_LINES_BEFORE lines) and episodes stable ($EP_N) on rerun"
+else
+  bad "rerun mutated the vault: facts $FACTS_LINES_BEFORE→$FACTS_LINES_AFTER lines, episodes $EP_N→$EP_N_AFTER"
 fi
 unset RALPH_VAULT_DIR
 rm -rf "$WORK"
@@ -153,7 +138,6 @@ fi
 
 MAP=$(jq -r '.hooks | to_entries[] | .key as $ev | .value[] | .matcher as $m | .hooks[]? | "\($ev)\t\($m)\t\(.command)"' "$EXAMPLE" 2>/dev/null)
 
-# (a) every referenced hook exists AND is executable (.sh and .py)
 GHOSTS=$(printf '%s\n' "$MAP" | while IFS=$'\t' read -r ev mt cmd; do
   [[ -z "$ev" ]] && continue
   base=$(printf '%s' "$cmd" | grep -oE '[A-Za-z0-9._-]+\.(sh|py)' | head -1)
@@ -165,12 +149,11 @@ GHOSTS=$(printf '%s\n' "$MAP" | while IFS=$'\t' read -r ev mt cmd; do
   fi
 done | sort -u)
 if [[ -z "$GHOSTS" ]]; then
-  ok "every referenced hook exists and is executable (no dead registrations, no lost +x)"
+  ok "every referenced hook exists and is executable"
 else
   bad "dead or non-executable registrations" "$GHOSTS"
 fi
 
-# (b) no memory-maintenance hook on ANY ordinary hot-path event
 MAINT="decision-extractor.sh semantic-realtime-extractor.sh semantic-auto-extractor.sh episodic-auto-convert.sh reflection-engine.sh memory-write-trigger.sh vault-fact-extractor.sh vault-graduation.sh vault-promotion.sh dream-consolidate.sh vault-writeback.sh memory-projection.sh vault-index-updater.sh vault-log-writer.sh vault-weekly-compile.sh session-end-extractors.sh"
 HOT_VIOLATIONS=$(printf '%s\n' "$MAP" | while IFS=$'\t' read -r ev mt cmd; do
   case "$ev" in
@@ -185,19 +168,17 @@ HOT_VIOLATIONS=$(printf '%s\n' "$MAP" | while IFS=$'\t' read -r ev mt cmd; do
   done
 done | sort -u)
 if [[ -z "$HOT_VIOLATIONS" ]]; then
-  ok "no memory-maintenance hook on SessionStart/Stop/UserPromptSubmit/PostToolUse/PreToolUse/PreCompact"
+  ok "no memory-maintenance hook on the ordinary hot-path events"
 else
   bad "memory maintenance still registered on the ordinary hot path" "$HOT_VIOLATIONS"
 fi
 
-# (c) the cold path is registered where it belongs
 if printf '%s\n' "$MAP" | awk -F'\t' '$1=="SessionEnd"' | grep -q "session-end-extractors.sh"; then
-  ok "cold extraction registered on SessionEnd (session-end-extractors.sh)"
+  ok "cold extraction registered on SessionEnd"
 else
   bad "session-end-extractors.sh is NOT registered on SessionEnd"
 fi
 
-# (d) safety guards required by CLAUDE.md are registered on PreToolUse(Bash)
 BASH_HOOKS=$(printf '%s\n' "$MAP" | awk -F'\t' '$1=="PreToolUse" && $2=="Bash"' | grep -oE '[A-Za-z0-9._-]+\.(sh|py)' | sort -u)
 MISSING_GUARDS=""
 for g in git-safety-guard.py repo-boundary-guard.sh; do
@@ -208,6 +189,85 @@ if [[ -z "$MISSING_GUARDS" ]]; then
 else
   bad "safety guards missing from PreToolUse(Bash):$MISSING_GUARDS"
 fi
+
+# ---------------------------------------------------------------------------
+echo "=== T3: concurrency — simultaneous SessionEnds, shared HOME (reviewer repro) ==="
+# A steals-verdict race is timing-dependent on a single shot: the test runs
+# FOUR concurrent A(NOTES)+B(real) rounds and fails if ANY round records a
+# hash for the rejected file or logs it as "extracted".
+W3=$(mktemp -d)
+R3="$W3/repo"
+mkdir -p "$R3/src"
+git -C "$R3" init -q
+git -C "$R3" config user.email t95@test
+git -C "$R3" config user.name t95
+cat > "$R3/src/real_service.ts" <<'EOF'
+export class RealService { }
+export interface RealRepo { save(o: R): Promise<Id>; }
+export function realFunction(s: RealService): void {}
+EOF
+# NOTES.md is the rejected-by-extension file AND its content is engineered to
+# break the pre-fix payload: 55KB of quote characters expand past the 100KB
+# stdin guard once jq escapes them (measured >1.66x), so the modules parse a
+# CUT-OFF JSON and emit NO verdict of their own. The pre-fix verdict wait
+# then stays open for its whole timeout on the SHARED module log — the window
+# in which the OTHER wrapper's "Created episode" line gets stolen and
+# recorded as NOTES.md (zero extraction of NOTES.md itself).
+{
+  echo "# notes: markdown the modules reject by extension"
+  python3 -c "print('\"' * 55000)"
+} > "$R3/src/NOTES.md"
+git -C "$R3" add -A
+git -C "$R3" commit -q -m w
+R3=$(cd "$R3" && pwd -P)
+TL3A="$W3/transcript-notes.jsonl"    # wrapper A: ONLY the rejected file
+TL3B="$W3/transcript-real.jsonl"     # wrapper B: ONLY the real file
+jq -cn --arg fp "$R3/src/NOTES.md" --arg r "$R3" \
+  '{type:"assistant",cwd:$r,message:{content:[{type:"tool_use",name:"Edit",input:{file_path:$fp,old_string:"",new_string:"c"}}]}}' >> "$TL3A"
+jq -cn --arg fp "$R3/src/real_service.ts" --arg r "$R3" \
+  '{type:"assistant",cwd:$r,message:{content:[{type:"tool_use",name:"Edit",input:{file_path:$fp,old_string:"",new_string:"c"}}]}}' >> "$TL3B"
+
+CONTAMINATED=0
+REAL_OK=0
+for attempt in 1 2 3 4; do
+  H3="$W3/home-$attempt"; mkdir -p "$H3"   # shared per-round: module logs are per-machine
+  VD3="$W3/vault-$attempt"; mkdir -p "$VD3"
+  printf '{"session_id":"cA-%s","reason":"clear","cwd":"%s","transcript_path":"%s"}' "$attempt" "$R3" "$TL3A" \
+    | HOME="$H3" RALPH_VAULT_DIR="$VD3" /bin/bash "$WRAPPER" >/dev/null 2>&1 &
+  printf '{"session_id":"cB-%s","reason":"clear","cwd":"%s","transcript_path":"%s"}' "$attempt" "$R3" "$TL3B" \
+    | HOME="$H3" RALPH_VAULT_DIR="$VD3" /bin/bash "$WRAPPER" >/dev/null 2>&1 &
+  wait $! 2>/dev/null
+  # Drain by signal: both background jobs report finished (timeout 30 s).
+  for _ in $(seq 1 60); do
+    sleep 0.5
+    [[ "$(grep -c "job finished" "$H3/.ralph/logs/session-end-extractors.log" 2>/dev/null)" -ge 2 ]] && break
+  done
+  sleep 1
+  STATE_FILE=$(find "$H3/.ralph/state/session-end-extractors" -name '*.hashes' 2>/dev/null | head -1)
+  NSIZE=$(wc -c < "$R3/src/NOTES.md" 2>/dev/null | tr -d ' ')
+  NCONTENT=$(head -c 30000 "$R3/src/NOTES.md" 2>/dev/null)
+  NHASH=$(printf '%s:%s' "$NSIZE" "$NCONTENT" | (shasum -a 256 2>/dev/null || sha256sum 2>/dev/null) | awk '{print $1}')
+  if [[ -n "$STATE_FILE" ]] && grep -qxF "$NHASH" "$STATE_FILE" 2>/dev/null; then
+    CONTAMINATED=$((CONTAMINATED + 1))
+  fi
+  grep -q "extracted.*NOTES.md" "$H3/.ralph/logs/session-end-extractors.log" 2>/dev/null \
+    && CONTAMINATED=$((CONTAMINATED + 1))
+  find "$VD3/projects" -name 'ep-*.json' 2>/dev/null | grep -q . && REAL_OK=$((REAL_OK + 1))
+  rm -rf "$H3" "$VD3"
+done
+
+if [[ "$CONTAMINATED" -eq 0 ]]; then
+  ok "4 concurrent rounds: rejected-by-extension file never hashed nor logged as extracted"
+else
+  bad "verdict theft under concurrency: $CONTAMINATED/4 rounds contaminated NOTES.md" \
+    "reviewer finding — private verdict channel not in effect"
+fi
+if [[ "$REAL_OK" -ge 1 ]]; then
+  ok "real file extracted in $REAL_OK/4 concurrent rounds"
+else
+  bad "real file never extracted under concurrency"
+fi
+rm -rf "$W3"
 
 echo
 echo "=========================================="
