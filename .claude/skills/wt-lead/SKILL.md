@@ -57,6 +57,12 @@ Rules:
 - `allowed paths` is mandatory. A task without it is not sent.
 - `done when` names a concrete command the worker can run.
 - One task per worker at a time. Do not queue.
+- **Plan before execution**: every ASSIGN states, in one line inside `notes`,
+  the plan behind it — which issue criterion it serves, why this worker, and
+  which gate the result must pass. No assignment without a stated plan.
+  The multi-task plan of record lives in the epic issue (a comment on the
+  parent issue), not in the lead's context — context is lost to compaction,
+  the issue comment is not.
 
 If you want a notice when the worker goes idle, attach `notify_when_idle`
 to the ASSIGN send.
@@ -79,6 +85,9 @@ paths if you pass them:
 scripts/review.sh worktree-zc "strategies/vol_filter.py,tests/test_vol_filter.py"
 ```
 
+(The scripts live at `.claude/skills/wt-lead/scripts/` in this repo —
+`review.sh` and `integrate.sh` — not at `scripts/` from the repo root.)
+
 Read the full diff (`git diff main...worktree-<name>`) and decide:
 
 | Situation | Action |
@@ -89,6 +98,30 @@ Read the full diff (`git diff main...worktree-<name>`) and decide:
 | Merge conflict on integrate | REBASE (section 5) |
 | Design or quality problem | RETURN with a precise fix |
 | Good | integrate (section 4) |
+
+**Mandatory strict review before every merge — automatic, not on request.**
+After the scope check and reading the full diff, run the full review stack
+over the branch BEFORE integrating:
+1. `code-reviewer` skill (repo wrapper, 4-agent: CLAUDE.md compliance ×2,
+   bug detection, git blame/history) — primary engine, high effort.
+2. `code-review` native skill (official plugin, high effort) — second
+   correctness pass when the primary leaves doubt or the diff touches
+   production hooks.
+3. `simplify` skill in REPORT mode (no `--post` pre-merge) — reuse,
+   simplification, altitude findings.
+
+`review.sh` checks scope only and the test runner checks behavior — neither
+reads the code. Findings:
+- Behavioral defect → RETURN with `file:line` and the failure scenario.
+- Reuse/simplification findings → include in the same RETURN as
+  recommendations; the worker applies them (the lead never edits worker code
+  directly).
+- Clean verdict on all layers → integrate (section 4).
+
+A merge to `main` that skipped this step is a protocol breach even if the
+runner is green — the runner cannot see what the reviewer sees (T92: runner
+green, strict review found 2 behavioral defects; T95: runner green, review
+found the extraction wrapper to be a structural no-op).
 
 A branch behind `main` is the **normal** state after every integration, not a
 condition to correct: you merged the previous one and `main` moved. Sending
