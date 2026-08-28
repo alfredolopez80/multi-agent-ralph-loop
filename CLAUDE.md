@@ -493,6 +493,17 @@ printf '\033Ptmux;\033\033]777;notify;TITLE;BODY\033\033\\\033\\' > "$(tmux disp
    meet at the end are not coupled while they run — coupling them idles a pane
    for the duration and the lead is the one who created the hole.
 
+10. **Delivery is proven by content-ACK, never by the send receipt.** A pane
+   relaunch re-registers its session under a suffixed name (`zc-3-ff` beside
+   `zc-3`) and a message addressed by bare name can resolve to the stale twin
+   and vanish — observed 2026-08-28 (one ASSIGN lost ×3, one worker query
+   never delivered; orphan sockets under `/tmp/cc-socks/` diagnose it).
+   Workers therefore identify themselves (`name · task-id`) on every message,
+   ACK critical receives by restating the task-id and done-when, re-send their
+   full message every 10 minutes of lead silence, and message the lead on any
+   doubt or delay instead of waiting quietly. The lead re-sends full ASSIGNs
+   inline on any doubt and demands content-ACKs. Skill detail: `wt-worker` §7.
+
 ### Required settings
 
 Cross-session messaging and worktree creation need two keys in

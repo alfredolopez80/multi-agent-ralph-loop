@@ -128,3 +128,27 @@ Send lead a short message (prefix `BLOCKED <task-id>`) when:
 
 Never ask lead to approve a permission prompt for you. The human handles those
 in your own terminal.
+
+## 7. Channel integrity — you are ALWAYS in communication with the lead
+
+Messages between sessions can be LOST: `SendMessage` returning `success: true`
+is the sender's receipt only, never proof of delivery. On 2026-08-28 a full
+ASSIGN vanished three times (pane relaunches had re-registered the session
+under a suffixed name, and the lead's messages resolved to the stale twin).
+
+Rules, mandatory from 2026-08-28:
+
+1. **Identify yourself**: every message to lead starts with
+   `<your-name> · <task-id>` on the first line.
+2. **Content-ACK critical receives**: when an ASSIGN, RETURN or REBASE
+   arrives, confirm it with a one-line ACK naming the task-id and its
+   done-when. "Received" is assumed only when the ACK round-trips.
+3. **Never wait in silence**: if the lead does not answer within 10 minutes,
+   RE-SEND your full message. Re-ping every 10 minutes until answered.
+   "Operational silence" is forbidden — an unanswered question must keep
+   pinging, not wait.
+4. **Ask on any doubt or delay**: anything ambiguous in a task, any wait
+   longer than expected, any expected message that never arrived — message
+   the lead immediately. Never improvise around a communication gap.
+5. If an expected ASSIGN never arrives, SAY SO explicitly — the lead re-sends
+   the full content inline. Do not start work without your task contract.
