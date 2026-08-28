@@ -1,64 +1,85 @@
 #!/usr/bin/env bash
-# agent-policy-guard.sh — PreToolUse:Task guard enforcing #48 agent policy
-# VERSION: 1.0.0 (T101)
+umask 077
+# agent-policy-guard.sh — PreToolUse:Task guard enforcing #48 agent ceiling.
+# VERSION: 2.0.0 (T101 RETURN)
 #
-# Triggered by: PreToolUse:Task hook event
+# Triggered by: PreToolUse:Task hook event (matcher: Task)
 # Purpose: deny Task tool invocations that would exceed the configured
-#          agent ceiling or depth limit, per the M3 acceptance bullet of
-#          issue #48:
+#          agent ceiling. Source of truth is the per-subagent state files
+#          that ralph-subagent-start.sh writes and subagent-stop-universal.sh
+#          marks `completed` — this hook does NOT maintain a parallel
+#          registry. A Task is approved when the number of currently-active
+#          subagents in the session is below RALPH_AGENT_CEILING.
 #
-#            "Configurable agent ceiling starts at 8; depth <=2 is tested
-#             and easy to configure."
+# Depth limit (RALPH_AGENT_DEPTH) is enforced by a SEPARATE hook,
+# agent-depth-soft-enforce.sh, in SubagentStart. The reason is structural:
+# PreToolUse:Task's stdin does not carry the caller's agent_id, so a chain
+# walk of parentIds is impossible here without inventing a heuristic that
+# would also be wrong (e.g. "caller = most recent active" failed for three
+# sequential root-spawned tasks, which the T101 RETURN reviewer caught).
+# The depth criterion is satisfied there with exact chain truth instead.
 #
 # Configuration (env vars, with defaults set by #48):
 #   RALPH_AGENT_CEILING   default 8   (max concurrent subagents per session)
-#   RALPH_AGENT_DEPTH     default 2   (max nesting depth, root counted as 0)
 #
-# State file (per-session, atomic write, mkdir-based mutex):
-#   ~/.ralph/state/agent-policy/<session-key>.json
+# State read from:
+#   ${RALPH_STATE_DIR:-${HOME}/.ralph}/state/<session-id>/subagents/*.json
+#   Each file is a subagent; relevant field for ceiling: `status` (active | completed).
 #
-#   {
-#     "active": [
-#       {"id":"sub-XXX","depth":1,"parent_id":"root","subagent_type":"ralph-coder","started_at":"..."},
-#       {"id":"sub-YYY","depth":2,"parent_id":"sub-XXX","subagent_type":"ralph-tester","started_at":"..."}
-#     ],
-#     "last_updated": "2026-08-28T15:00:00Z"
-#   }
-#
-# session-key: derived from stdin .session_id, sanitised to filename-safe
-#              characters. Falls back to a stable digest of cwd + YYYYMMDD
-#              when .session_id is absent. NEVER uses PID (BUG-6 regression —
-#              see tests/hooks/test_session_dedup_key.sh).
-#
-# Outputs:
-#   allow  -> clean exit 0 (no stdout; the harness reads rc 0 as allow)
-#   deny   -> {"continue":false,"stopReason":"agent ceiling N reached: ..."}
-#
-# Notes:
-#   - This guard does NOT decrement active[] on SubagentStop. The
-#     session-key scope means a fresh session starts at zero; this is
-#     acceptable for the #48 wording ("max concurrent spawned agents")
-#     because the counter resets per session. A SubagentStop-side
-#     decrementer is intentionally left for a separate task (so this hook
-#     stays single-responsibility).
-#   - Depth inference: the caller of the new Task is treated as the most
-#     recently spawned active subagent. proposed_depth = caller_depth + 1
-#     (or 1 when active[] is empty, i.e. the caller is the root session).
-#   - Lock: mkdir-based mutex (POSIX, no flock dependency). The lock
-#     directory is removed on EXIT via trap.
+# Output (allow): clean exit 0 (no stdout; PreToolUse allow is signaled by exit 0).
+# Output (deny):  {"hookSpecificOutput":{"hookEventName":"PreToolUse",
+#                                         "permissionDecision":"deny",
+#                                         "permissionDecisionReason":"..."}}.
+#                The continue:false shape was the original implementation but
+#                cuts the WHOLE TURN, not just the tool call. permissionDecision
+#                is the only correct deny vocabulary for PreToolUse — see
+#                tests/HOOK_FORMAT_REFERENCE.md:34.
 
 set -uo pipefail
 
 _HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${_HOOK_DIR}/lib/plan-state-writer.sh" 2>/dev/null || true
+LOG_FILE="${HOME}/.ralph/logs/agent-policy.log"
+
+# Internal logger: writes to LOG_FILE if its directory exists, otherwise to
+# stderr. Avoids the macOS system `log(1)` command which would clobber our
+# output with usage text.
+log() {
+    local msg="$1"
+    local ts
+    ts="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo "unknown")"
+    if [[ -d "$(dirname "$LOG_FILE")" ]]; then
+        printf '[%s] agent-policy-guard: %s\n' "$ts" "$msg" >> "$LOG_FILE" 2>/dev/null || true
+    else
+        printf '[%s] agent-policy-guard: %s\n' "$ts" "$msg" >&2 || true
+    fi
+}
 
 # --- Configuration ----------------------------------------------------------
 
-CEILING="${RALPH_AGENT_CEILING:-8}"
-DEPTH_LIMIT="${RALPH_AGENT_DEPTH:-2}"
+DEFAULT_CEILING=8
 
-STATE_ROOT="${HOME}/.ralph/state/agent-policy"
-mkdir -p "$STATE_ROOT" 2>/dev/null || true
+# --- Numeric validation -----------------------------------------------------
+# An unparseable RALPH_AGENT_CEILING (e.g. `abc`) must NOT crash with
+# `unbound variable` and silently disable the policy. The env override is
+# the configured escape hatch; the hook still applies the default when the
+# override is invalid, with a one-line log so the operator can spot the typo.
+
+validate_int() {
+    local var_name="$1" default="$2"
+    local raw="${!var_name:-}"
+    if [[ -z "$raw" ]]; then
+        printf '%s' "$default"
+        return 0
+    fi
+    if [[ ! "$raw" =~ ^[0-9]+$ ]]; then
+        log "WARN: $var_name='$raw' is not a non-negative integer; using default $default"
+        printf '%s' "$default"
+        return 0
+    fi
+    printf '%s' "$raw"
+}
+
+ceiling="$(validate_int RALPH_AGENT_CEILING "$DEFAULT_CEILING")"
 
 # --- Input parsing ----------------------------------------------------------
 
@@ -71,123 +92,74 @@ fi
 
 subagent_type="$(printf '%s' "$INPUT" | jq -r '.tool_input.subagent_type // empty' 2>/dev/null || true)"
 if [[ -z "$subagent_type" || "$subagent_type" == "null" ]]; then
-    # Task tool without subagent_type is not a subagent spawn (could be a
-    # generic Task). Out of scope for the agent-policy guard.
     exit 0
 fi
 
-# --- Session-key derivation (BUG-6 regression) -------------------------------
-
-session_key="$(printf '%s' "$INPUT" | jq -r '.session_id // empty' 2>/dev/null || true)"
-if [[ -z "$session_key" || "$session_key" == "null" ]]; then
-    # Stable fallback: cwd digest + YYYYMMDD. NEVEN PID.
-    cwd_digest="$(pwd | tr -cd '[:alnum:]._-' | head -c 32)"
-    session_key="cwd-${cwd_digest}-$(date +%Y%m%d)"
-fi
-# Sanitise to filename-safe characters (no /, no whitespace). Then collapse
-# any run of two-or-more dots to a single underscore so a payload like
-# "../../etc/passwd" cannot produce a "...." segment that some downstream
-# tool might resolve as path traversal. Single dots (legitimate in UUIDs
-# and dotted session-ids) are preserved.
-session_key="$(printf '%s' "$session_key" | tr -cd '[:alnum:]._-' | sed 's/\.\.\+/_/g' | head -c 128)"
-if [[ -z "$session_key" || "$session_key" == *".."* || "$session_key" == *"/"* ]]; then
+session_id="$(printf '%s' "$INPUT" | jq -r '.session_id // empty' 2>/dev/null || true)"
+if [[ -z "$session_id" || "$session_id" == "null" ]]; then
     cwd_digest="$(pwd | tr -cd '[:alnum:]-_' | head -c 32)"
-    session_key="cwd-${cwd_digest}-$(date +%Y%m%d)"
+    session_id="cwd-${cwd_digest}-$(date +%Y%m%d)"
 fi
+# Portable sanitisation (no sed; BSD/GNU both have tr and awk).
+session_id="$(printf '%s' "$session_id" | tr -cd '[:alnum:]-_' | head -c 128)"
+[[ -z "$session_id" ]] && session_id="unknown-session"
 
-state_file="${STATE_ROOT}/${session_key}.json"
+# --- Source of truth: subagents/<id>.json ----------------------------------
 
-# --- Mutex (mkdir-based, portable) ------------------------------------------
+RALPH_STATE_DIR="${RALPH_STATE_DIR:-${HOME}/.ralph}"
+subagents_dir="${RALPH_STATE_DIR}/state/${session_id}/subagents"
 
-lockdir="${state_file}.lock"
-acquired=0
-for _ in 1 2 3 4 5 6 7 8 9 10; do
-    if mkdir "$lockdir" 2>/dev/null; then
-        acquired=1
-        break
-    fi
-    sleep 0.05 2>/dev/null || sleep 1
-done
-if [[ "$acquired" -ne 1 ]]; then
-    # Could not acquire lock after 10 attempts. Fail OPEN for the spawn
-    # to avoid a deadlock from a stuck lock — but log so the operator sees.
-    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] agent-policy-guard: WARN lock not acquired for ${state_file}" \
-        >> "${HOME}/.ralph/logs/agent-policy.log" 2>/dev/null || true
-    exit 0
+# Count files whose status field equals "active" — single jq pass. A new
+# session has no subagent state files yet; the glob expands to nothing and
+# jq on an empty stream fails. compgen -G detects empty globs cleanly, so
+# treat empty as zero (no active subagents yet).
+active_count=0
+orphan_count=0
+# T101-r3 bug 3: GC stale state files. A subagent that died without emitting
+# SubagentStop (OOM, kill -9, harness crash) leaves an "active" file that
+# the ceiling would count forever. Files older than ORPHAN_THRESHOLD_HOURS
+# are excluded from the count and logged as reclaimed. Override the
+# threshold via RALPH_AGENT_GC_HOURS for testing or tuning.
+ORPHAN_THRESHOLD_HOURS="${RALPH_AGENT_GC_HOURS:-24}"
+if [[ -d "$subagents_dir" ]] && compgen -G "${subagents_dir}/*.json" > /dev/null; then
+    # Two passes: orphans first (logged separately, excluded from count),
+    # then active count over fresh files only. The `|| { log; exit 2; }`
+    # is at script level (NOT inside $()), so a jq parse error actually
+    # terminates the hook with rc=2 — not silently leaves active_count=""
+    # and falls through to ALLOW. The T101-r2 finding 1 was that the prior
+    # version had the exit inside $(), which only killed the subshell.
+    while IFS= read -r -d '' f; do
+        if [[ -n "$(find "$f" -mmin +$((ORPHAN_THRESHOLD_HOURS * 60)) -print 2>/dev/null)" ]]; then
+            log "ORPHAN reclaimed: $f (mtime > ${ORPHAN_THRESHOLD_HOURS}h, excluded from ceiling count)"
+            orphan_count=$((orphan_count + 1))
+        fi
+    done < <(find "${subagents_dir}" -maxdepth 1 -name '*.json' -print0 2>/dev/null)
+    _active_count_raw="$(find "${subagents_dir}" -maxdepth 1 -name '*.json' -mmin -$((ORPHAN_THRESHOLD_HOURS * 60)) -print0 2>/dev/null \
+        | xargs -0 jq -s '[.[] | select(.status == "active")] | length' 2>/dev/null)" \
+        || { log "FAIL-LOUD: state under $subagents_dir is corrupt or unreadable; refusing to allow this spawn (better safe than fail-open). Inspect and either repair or delete the offending .json files."; echo "agent-policy-guard: FAIL-LOUD state corrupt; refusing this spawn (see ~/.ralph/logs/agent-policy.log)" >&2; exit 2; }
+    # xargs returns 123 if no files were passed; treat that as zero (no fresh files).
+    [[ $? -eq 123 && -z "$_active_count_raw" ]] && _active_count_raw=0
+    active_count="$_active_count_raw"
 fi
-trap 'rmdir "$lockdir" 2>/dev/null || true' EXIT
-
-# --- Read state (initialise if missing) -------------------------------------
-
-if [[ ! -f "$state_file" ]]; then
-    mkdir -p "$(dirname "$state_file")" 2>/dev/null || true
-    jq -n --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-        '{active: [], last_updated: $now}' > "$state_file" || {
-        rmdir "$lockdir" 2>/dev/null || true
-        exit 0  # fail-open on I/O error to avoid blocking legitimate work
-    }
-fi
-
-active_json="$(jq -c '.active' "$state_file" 2>/dev/null || echo '[]')"
-active_count="$(printf '%s' "$active_json" | jq 'length' 2>/dev/null || echo 0)"
-
-# --- Inference: caller depth and proposed depth -----------------------------
-
-# The "caller" of the new Task is treated as the most recently spawned
-# active subagent. If active[] is empty, the caller is the root session
-# (depth = 0). This is a conservative inference: when the model spawns
-# from the root, depth = 1; when a depth-1 subagent spawns, depth = 2.
-caller_id="root"
-caller_depth=0
-if [[ "$active_count" -gt 0 ]]; then
-    last="$(printf '%s' "$active_json" | jq -c '. | sort_by(.started_at) | last' 2>/dev/null || echo '{}')"
-    caller_id="$(printf '%s' "$last" | jq -r '.id // "root"' 2>/dev/null)"
-    caller_depth="$(printf '%s' "$last" | jq -r '.depth // 0' 2>/dev/null)"
-fi
-
-proposed_depth=$((caller_depth + 1))
 
 # --- Decision ---------------------------------------------------------------
 
 deny() {
     local reason="$1"
-    jq -n --arg reason "$reason" \
-        '{continue: false, stopReason: $reason}'
-    exit 0  # hooks exit 0 even on deny; the JSON signals the decision
-}
-
-if [[ "$active_count" -ge "$CEILING" ]]; then
-    deny "agent ceiling reached: ${active_count}/${CEILING} concurrent subagents in this session. Wait for one to finish or raise RALPH_AGENT_CEILING."
-fi
-
-if [[ "$proposed_depth" -gt "$DEPTH_LIMIT" ]]; then
-    deny "agent depth limit reached: caller at depth ${caller_depth}, proposed ${proposed_depth} > limit ${DEPTH_LIMIT}. Spawn from a shallower agent or raise RALPH_AGENT_DEPTH."
-fi
-
-# --- Approve: append new active subagent ------------------------------------
-
-new_id="sub-$(date +%s%N | tail -c 8)"
-new_entry="$(jq -c -n \
-    --arg id "$new_id" \
-    --argjson depth "$proposed_depth" \
-    --arg parent "$caller_id" \
-    --arg type "$subagent_type" \
-    --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    '{id: $id, depth: $depth, parent_id: $parent, subagent_type: $type, started_at: $now}')"
-
-tmp="$(mktemp "${state_file}.XXXXXX")" || {
-    rmdir "$lockdir" 2>/dev/null || true
+    jq -nc \
+        --arg reason "$reason" \
+        --arg event "PreToolUse" \
+        '{hookSpecificOutput: {hookEventName: $event, permissionDecision: "deny", permissionDecisionReason: $reason}}'
     exit 0
 }
-chmod 600 "$tmp"
-jq --argjson entry "$new_entry" --arg now "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    '.active += [$entry] | .last_updated = $now' \
-    "$state_file" > "$tmp" || {
-    rm -f "$tmp"
-    rmdir "$lockdir" 2>/dev/null || true
-    exit 0
-}
-mv "$tmp" "$state_file"
+
+if [[ "$active_count" -ge "$ceiling" ]]; then
+    if [[ "$orphan_count" -gt 0 ]]; then
+        deny "agent ceiling reached: $active_count/$ceiling concurrent subagents in this session. Note: $orphan_count stale state file(s) were reclaimed by the orphan GC (mtime > ${ORPHAN_THRESHOLD_HOURS}h); the actual concurrent count is $active_count. To raise the limit for this machine, set RALPH_AGENT_CEILING in the env block of ~/.claude/settings.json (the documented escape hatch); restarting Claude Code is required for the change to take effect."
+    else
+        deny "agent ceiling reached: $active_count/$ceiling concurrent subagents in this session. To raise the limit for this machine, set RALPH_AGENT_CEILING in the env block of ~/.claude/settings.json (the documented escape hatch); restarting Claude Code is required for the change to take effect."
+    fi
+fi
 
 # Allow: clean exit, no stdout.
 exit 0

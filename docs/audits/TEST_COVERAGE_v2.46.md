@@ -214,9 +214,9 @@ def test_parallel_explore_without_tldr():
    - RECURSIVE context requirement
 2. 🔴 **Depth limiting**:
    - depth = 0 → Should allow decomposition
-   - depth = 2 → Should allow (max 3)
-   - depth = 3 → Should block (max reached)
-   - depth > 3 → Should reject
+   - depth = 1 → Should allow (max 2)
+   - depth = 2 → Should block (max reached) — also soft-enforced by agent-depth-soft-enforce.sh (T101)
+   - depth > 2 → Should reject
 3. 🔴 **Plan-state.json update**:
    - recursion.needs_decomposition set to true
    - recursion.decomposition_triggered timestamp

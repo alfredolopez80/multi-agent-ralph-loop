@@ -572,3 +572,59 @@ def test_verified_unverified_carried_visibly(store):
     assert rendered["unverified"]["verification"] == "unverified"
     for item in rendered.values():
         assert "NEGATIVE_MEMORY" not in item, "unverified is not negative"
+
+
+def test_noncanonical_risk_falls_back_to_high(tmp_path):
+    """T101-r3 bug 2: both render_context and _emitted_text must fall back to
+    the high branch on a non-canonical risk value. The previous version of
+    _emitted_text used `RISK_EMITTED_FIELDS.get(risk, [])` which returned
+    only `summary` while render_context emitted all of high's fields,
+    silently diverging the suppression surface from the rendered surface.
+    Active-context suppression over an unrendered field would withhold
+    a memory the caller never saw, which is the failure mode T92 caught."""
+    from recall_v2 import _emitted_text, render_context
+
+    s = TreeStore(tmp_path / "ralph_home")
+    written = s.create_node(
+        make_payload(
+            "projA",
+            summary="summary field",
+            detailed_summary="detailed field",
+            trigger={"text": "trigger field"},
+            topic_tags=["tag1"],
+        )
+    )
+    node = s.load_node("projA", written["node_id"])
+    assert node is not None
+
+    # render_context with non-canonical risk should emit the same fields
+    # as high (T101-r2 catch-all + T101-r3 explicit regression coverage).
+    rendered = render_context(node, "extreme", 1.0)
+    assert "summary" in rendered
+    assert "detailed_summary" in rendered
+    assert "source_paths" in rendered
+
+    # _emitted_text with non-canonical risk must include the same fields
+    # that high emits (i.e., the catch-all is consistent across both
+    # paths so suppression cannot drift from what the model saw).
+    text = _emitted_text(node, "extreme")
+    assert "summary field" in text
+    assert "detailed field" in text
+    # topic_tags is low-only; high does NOT emit topic_tags (T103 table).
+    assert "tag1" not in text
+
+
+def test_render_context_table_validation_runs_lazily(tmp_path):
+    """T101-r3 polish #6: the RISK_EMITTED_FIELDS table validation must run
+    on the FIRST call to render_context, not at module import. An import-
+    time SystemExit killed pytest collection when ANY test imported this
+    module during mid-edit of the table."""
+    # Importing recall_v2 must succeed without raising.
+    import recall_v2  # noqa: F401
+    # And render_context with a valid table must still work.
+    s = TreeStore(tmp_path / "ralph_home")
+    written = s.create_node(make_payload("projA"))
+    node = s.load_node("projA", written["node_id"])
+    assert node is not None
+    rendered = recall_v2.render_context(node, "low", 1.0)
+    assert rendered["summary"]
