@@ -95,20 +95,26 @@ cat > "$PLAN" <<EOF
 {"version":"1.0","task":"t87","steps":[{"id":"s1","name":"write foo","status":"in_progress","spec":{"file":"$WT_DIR/src/foo.ts","exports":["foo"]},"actual":{}}]}
 EOF
 BEFORE_MAIN=$( [[ -f "$MAIN_DIR/.claude/plan-state.json" ]] && echo yes || echo no )
-(cd "$WT_DIR" && CLAUDE_TOOL_ARG_file_path="$WT_DIR/src/foo.ts" \
-  /bin/bash "$WT_DIR/.claude/hooks/plan-sync-post-step.sh" </dev/null >/dev/null 2>&1)
+# T99: the hook learns the edited file from its STDIN PAYLOAD
+# (.tool_input.file_path — the real PostToolUse envelope), not from a
+# CLAUDE_TOOL_ARG_* environment variable nobody produces. The suite feeds the
+# real payload and isolates HOME like W2/W3 do (the hook writes its log under
+# $HOME/.ralph — without isolation it litters the runner's home).
+ISO_HOME_W1=$(mktemp -d)
+(cd "$WT_DIR" && printf '{"tool_input": {"file_path": "%s"}}' "$WT_DIR/src/foo.ts" | \
+  HOME="$ISO_HOME_W1" /bin/bash "$WT_DIR/.claude/hooks/plan-sync-post-step.sh" >/dev/null 2>&1)
 UPDATED_AT=$(jq -r '.steps[0].actual.updated_at // ""' "$PLAN" 2>/dev/null)
 if [[ -n "$UPDATED_AT" ]]; then
   ok "worktree plan-state was mutated in place (actual.updated_at written)"
 else
-  bad "worktree plan-state was NOT mutated (writer went elsewhere or bailed)"
+  bad "worktree plan-state was NOT mutated (payload .tool_input.file_path not honored)"
 fi
 if [[ "$BEFORE_MAIN" == "no" && ! -f "$MAIN_DIR/.claude/plan-state.json" ]]; then
   ok "main checkout plan-state untouched (never created there)"
 else
   bad "main checkout plan-state appeared/changed — writer leaked to main repo"
 fi
-cleanup "$MAIN_DIR" "$WT_DIR"
+cleanup "$MAIN_DIR" "$WT_DIR" "$ISO_HOME_W1"
 
 echo "=== T87-W2: plan-state-lifecycle from worktree archives the WORKTREE plan ==="
 FIX=$(make_worktree_fixtures)
@@ -164,6 +170,73 @@ else
   bad "Ralph project NOT detected from subdirectory (relative read missed the root)"
 fi
 cleanup "$R2" "$ISO_HOME"
+
+echo "=== T99-W4: plan-sync validate_file_path — component traversal rejected, dotted names accepted, root boundary enforced ==="
+# Guard direction tests (T99 review rule 3): each assert must be able to go
+# RED when its specific check is removed —
+#   a) 'src/../src/foo.ts' resolves INSIDE the root: only the '../component'
+#      check can reject it (the prefix check passes — realpath is in-root).
+#   b) 'src/foo.ts' must be ACCEPTED: the guard rejects paths, not work.
+#   c) '<worktree>-2/evil.ts' STARTS WITH the root prefix: only the
+#      boundary-aware comparison ('root' vs 'root-2') can reject it.
+FIX=$(make_worktree_fixtures)
+MAIN_DIR=$(printf '%s\n' "$FIX" | sed -n 1p)
+WT_DIR=$(printf '%s\n' "$FIX" | sed -n 2p)
+require_fixtures
+PLAN="$WT_DIR/.claude/plan-state.json"
+mkdir -p "$WT_DIR/src"
+cat > "$WT_DIR/src/foo.ts" <<'EOF'
+export const foo = 1;
+EOF
+cat > "$PLAN" <<EOF
+{"version":"1.0","task":"t99","steps":[{"id":"s1","name":"write foo","status":"in_progress","spec":{"file":"$WT_DIR/src/foo.ts","exports":["foo"]},"actual":{}}]}
+EOF
+# A sibling directory whose path is a strict PREFIX EXTENSION of the worktree
+# root: "<WT_DIR>-2" begins with "<WT_DIR>" — the naive prefix check admits it.
+mkdir -p "${WT_DIR}-2"
+echo "evil" > "${WT_DIR}-2/evil.ts"
+ISO_HOME_W4=$(mktemp -d)
+SYNC_LOG="$ISO_HOME_W4/.ralph/logs/plan-sync.log"
+
+run_sync() {
+  (cd "$WT_DIR" && printf '{"tool_input": {"file_path": "%s"}}' "$1" | \
+    HOME="$ISO_HOME_W4" /bin/bash "$WT_DIR/.claude/hooks/plan-sync-post-step.sh" >/dev/null 2>&1)
+}
+
+# (a) traversal-as-component: realpath is INSIDE the root; only '..' sees it.
+run_sync "$WT_DIR/src/../src/foo.ts"
+A_KEPT=$(jq -r '.steps[0].actual.updated_at // ""' "$PLAN" 2>/dev/null)
+if [[ -z "$A_KEPT" ]] && grep -q "Rejected suspicious path" "$SYNC_LOG" 2>/dev/null; then
+  ok "component traversal (src/../src/foo.ts) rejected by the '..' check"
+else
+  bad "component traversal NOT rejected (check missing or wrong shape): plan mutated='${A_KEPT:+yes}'"
+fi
+
+# (b) a legitimate dotted filename must sail through and reach the plan.
+run_sync "$WT_DIR/src/foo.ts"
+B_WROTE=$(jq -r '.steps[0].actual.updated_at // ""' "$PLAN" 2>/dev/null)
+if [[ -n "$B_WROTE" ]]; then
+  ok "legitimate path accepted (plan mutated in place)"
+else
+  bad "legitimate path REJECTED — guard over-blocks real work"
+fi
+
+# (c) prefix-boundary sibling: '<root>-2' must NOT count as '<root>'.
+run_sync "${WT_DIR}-2/evil.ts"
+C_BLOCKED=$(grep -c "Path traversal attempt blocked" "$SYNC_LOG" 2>/dev/null)
+C_BLOCKED=${C_BLOCKED:-0}
+C_UNCHANGED=$(jq -r '.steps[0].actual.updated_at // ""' "$PLAN" 2>/dev/null)
+if [[ "${C_BLOCKED:-0}" -ge 1 ]]; then
+  ok "root-boundary sibling (<root>-2) rejected by the boundary check"
+else
+  bad "prefix sibling admitted ('<root>-2' matched '<root>*') — traversal guard bypassed"
+fi
+if [[ "$C_UNCHANGED" == "$B_WROTE" ]]; then
+  ok "out-of-root file never mutated the plan"
+else
+  bad "out-of-root file mutated the plan"
+fi
+cleanup "$MAIN_DIR" "$WT_DIR" "${WT_DIR}-2" "$ISO_HOME_W4"
 
 echo
 echo "=========================================="

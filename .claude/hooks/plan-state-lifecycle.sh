@@ -64,10 +64,24 @@ source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
 # T87: get_project_root (THIS working tree) — get_main_repo made the ager
 # look up the plan in the MAIN checkout from a linked worktree, where that
 # file has ZERO readers; stale plans in the worktree were never archived.
-_PROJECT_ROOT="$(get_project_root 2>/dev/null || pwd)"
-PLAN_STATE="${_PROJECT_ROOT}/.claude/plan-state.json"
+#
+# T99: the `|| pwd` was dead code (get_project_root's fallback echoes
+# CLAUDE_PROJECT_DIR or "."), and the "." fallback made PLAN_STATE relative
+# to the process CWD — a silently different plan. Fail loud instead.
+_PROJECT_ROOT="$(get_project_root 2>/dev/null || true)"
 LOG_FILE="${HOME}/.ralph/logs/plan-state-lifecycle.log"
 ARCHIVE_DIR="${HOME}/.ralph/archive/plans"
+mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
+}
+if [[ -z "$_PROJECT_ROOT" || "$_PROJECT_ROOT" != /* ]]; then
+    log "ERROR: project root not absolute (got '${_PROJECT_ROOT:-<empty>}'); refusing relative plan-state lookup"
+    trap - ERR EXIT  # CRIT-008: Clear trap before explicit output
+    emit_json '{"continue": true}'
+    exit 0
+fi
+PLAN_STATE="${_PROJECT_ROOT}/.claude/plan-state.json"
 AUTO_ARCHIVE="${PLAN_STATE_AUTO_ARCHIVE:-true}"  # Enable auto-archive by default
 
 # v2.57.0: Get staleness threshold for adaptive mode (bash 3 compatible)
@@ -84,12 +98,7 @@ get_staleness_threshold() {
     esac
 }
 
-mkdir -p "$(dirname "$LOG_FILE")"
 mkdir -p "$ARCHIVE_DIR"
-
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
-}
 
 # Archive a stale plan
 archive_plan() {
@@ -149,8 +158,20 @@ fi
 
 # Get plan-state age in minutes
 if [[ -f "$PLAN_STATE" ]]; then
-    # macOS stat syntax
-    PLAN_AGE_SECONDS=$(($(date +%s) - $(stat -f %m "$PLAN_STATE" 2>/dev/null || echo "0")))
+    # T99: the previous form, `stat -f %m ... || echo "0"`, is BSD-only — on
+    # GNU/Linux the stat call always failed, the age became "now - 0" (the
+    # whole epoch), and EVERY plan looked stale: a new-task prompt silently
+    # auto-archived fresh plans. Portable form, and no lying fallback: if
+    # neither stat dialect works, SKIP the staleness decision — guessing
+    # "ancient" archives fresh plans, guessing "fresh" defeats the hook.
+    PLAN_MTIME="$(stat -f %m "$PLAN_STATE" 2>/dev/null || stat -c %Y "$PLAN_STATE" 2>/dev/null || true)"
+    if [[ -z "$PLAN_MTIME" ]]; then
+        log "ERROR: cannot determine mtime of $PLAN_STATE (neither BSD 'stat -f %m' nor GNU 'stat -c %Y'); skipping staleness check rather than guessing an age"
+        trap - ERR EXIT  # CRIT-008: Clear trap before explicit output
+        emit_json '{"continue": true}'
+        exit 0
+    fi
+    PLAN_AGE_SECONDS=$(($(date +%s) - PLAN_MTIME))
     PLAN_AGE_MINUTES=$((PLAN_AGE_SECONDS / 60))
     PLAN_AGE_HOURS=$((PLAN_AGE_SECONDS / 3600))
 else

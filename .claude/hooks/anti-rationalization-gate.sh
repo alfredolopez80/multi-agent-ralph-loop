@@ -61,9 +61,45 @@ CWD=$(echo "$INPUT" | jq -r '.cwd // "."' 2>/dev/null)
 # at the working-tree ROOT. Resolve the root CONTAINING CWD; the root is
 # always an ancestor of CWD, so per-project isolation is unchanged and no
 # cross-project fallback is added. Non-git projects keep CWD as the scope.
+#
+# v2.0.2 (T99, retro-audit of T87): "non-git projects keep CWD" was not
+# honored — `git rev-parse --show-toplevel` climbs past nested boundaries,
+# so a non-git project living inside a CONTAINER repo (e.g. a dotfiles repo
+# spanning $HOME) adopted the ancestor's root and read the ANCESTOR's
+# patterns/state: cross-project contamination the header forbids. The
+# ancestor-repo case is now materialized as: adopt the repo root only when
+# NO directory between the root and CWD (inclusive) marks itself a separate
+# project (own .git — which rev-parse would have stopped at — or .claude/).
+# A broken git (present but failing on a corrupt repo / dubious ownership)
+# is distinguished from "not a git repository" and logged; both keep CWD
+# scope, but only the broken case needs the operator to know.
 PROJECT_ROOT="$CWD"
-_T87_ROOT="$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null || true)"
-[[ -n "$_T87_ROOT" ]] && PROJECT_ROOT="$_T87_ROOT"
+if command -v git >/dev/null 2>&1; then
+  _T99_ERR="$(mktemp)"
+  _T87_ROOT="$(git -C "$CWD" rev-parse --show-toplevel 2>"$_T99_ERR" || true)"
+  if [[ -n "$_T87_ROOT" ]]; then
+    # git reports the PHYSICAL root (/private/var on macOS); the payload cwd
+    # arrives in LOGICAL form (/var) — the same symlink pair T87's fixture
+    # documents. Compare the walk against the canonical CWD or the loop
+    # walks straight past the real root and stops at a phantom boundary.
+    _T99_CANON_CWD="$(cd "$CWD" 2>/dev/null && pwd -P || echo "$CWD")"
+    _T99_BOUNDARY=""
+    _T99_DIR="$_T99_CANON_CWD"
+    while [[ -n "$_T99_DIR" && "$_T99_DIR" != "/" && "$_T99_DIR" != "$_T87_ROOT" ]]; do
+      if [[ -e "$_T99_DIR/.git" || -d "$_T99_DIR/.claude" ]]; then
+        _T99_BOUNDARY="$_T99_DIR"
+        break
+      fi
+      _T99_DIR="$(dirname "$_T99_DIR")"
+    done
+    [[ -z "$_T99_BOUNDARY" ]] && PROJECT_ROOT="$_T87_ROOT"
+  elif [[ -s "$_T99_ERR" ]] && ! grep -q "not a git repository" "$_T99_ERR"; then
+    mkdir -p "${HOME}/.ralph/logs" 2>/dev/null || true
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] git rev-parse failed under $CWD (treating as no-git): $(head -c 200 "$_T99_ERR" | tr '\n' ' ')" \
+      >> "${HOME}/.ralph/logs/anti-rationalization-gate.log" 2>/dev/null || true
+  fi
+  rm -f "$_T99_ERR"
+fi
 
 # State and patterns are PER-PROJECT. No cross-project contamination.
 STATE_DIR="$PROJECT_ROOT/.claude/state"
