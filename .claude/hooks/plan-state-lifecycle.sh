@@ -61,7 +61,10 @@ source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
   get_main_repo() { get_project_root; }
 }
 
-_PROJECT_ROOT="$(get_main_repo 2>/dev/null || pwd)"
+# T87: get_project_root (THIS working tree) — get_main_repo made the ager
+# look up the plan in the MAIN checkout from a linked worktree, where that
+# file has ZERO readers; stale plans in the worktree were never archived.
+_PROJECT_ROOT="$(get_project_root 2>/dev/null || pwd)"
 PLAN_STATE="${_PROJECT_ROOT}/.claude/plan-state.json"
 LOG_FILE="${HOME}/.ralph/logs/plan-state-lifecycle.log"
 ARCHIVE_DIR="${HOME}/.ralph/archive/plans"

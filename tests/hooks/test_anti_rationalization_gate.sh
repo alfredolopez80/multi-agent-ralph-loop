@@ -150,6 +150,43 @@ OUT=$(run_hook "$P" "{\"stop_hook_active\": false, \"cwd\": \"$P\", \"transcript
 assert_output "fallback to mtime when last_updated is null" 'Plan-immutability gate' "$OUT"
 rm -rf "$P"
 
+echo "=== Test 9: cwd=subdirectory — root-resolved plan detection (T87 delta) ==="
+# The behavioural delta of the T87 fix, measured by this scenario:
+#   pre-fix  → the gate reads $cwd/.claude/plan-state.json; from a moved cwd
+#              the active plan at the root is invisible → Modo B silently OFF
+#              → confirmation escape is ALLOWED (this assertion failed RED).
+#   post-fix → the gate resolves the working-tree root CONTAINING cwd, sees
+#              the active plan → Modo B turns ON → BLOCK.
+P=$(new_project)
+git -C "$P" init -q >/dev/null 2>&1
+git -C "$P" config user.email t87@test
+git -C "$P" config user.name t87
+mkdir -p "$P/src"
+fresh_plan "$P"
+OUT=$(run_hook "$P" "{\"stop_hook_active\": false, \"cwd\": \"$P/src\", \"transcript\": \"Should I continue?\"}")
+assert_output "Modo B fires from moved cwd (plan seen at root)" 'Plan-immutability gate' "$OUT"
+rm -rf "$P"
+
+echo "=== Test 10: escape hatch — MAX_BLOCKS also caps Modo B from moved cwd ==="
+# The gate has NO env-var bypass by design (an agent must not be able to
+# switch off its own anti-rationalization gate with RALPH_SKIP=1). The two
+# legitimate escapes are structural: stop_hook_active (Test 1) and this
+# MAX_BLOCKS=3 auto-reset. This scenario proves the cap covers Modo B — the
+# mode the T87 root-resolution fix newly activates from a moved cwd.
+P=$(new_project)
+git -C "$P" init -q >/dev/null 2>&1
+git -C "$P" config user.email t87@test
+git -C "$P" config user.name t87
+mkdir -p "$P/src"
+fresh_plan "$P"
+echo '{"blocks": 3}' > "$P/.claude/state/anti-rat-blocks.json"
+RC=0
+OUT=$(run_hook "$P" "{\"stop_hook_active\": false, \"cwd\": \"$P/src\", \"transcript\": \"Should I continue?\"}") || RC=$?
+assert_allow "allow after MAX_BLOCKS even with active plan from moved cwd" "$OUT" "$RC"
+COUNTER=$(cat "$P/.claude/state/anti-rat-blocks.json")
+assert_output "counter auto-resets to 0" '"blocks": 0' "$COUNTER"
+rm -rf "$P"
+
 echo "=== Test 7: project isolation — global ~/.ralph/active-plan is IGNORED ==="
 P=$(new_project)
 # Simulate a polluted HOME with an active plan that the hook must IGNORE.
