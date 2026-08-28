@@ -25,8 +25,10 @@ source "${_HOOK_DIR}/lib/worktree-utils.sh" 2>/dev/null || {
   get_main_repo() { get_project_root; }
 }
 
-# Configuration — absolute path via get_main_repo (worktree-safe)
-_PROJECT_ROOT="$(get_main_repo 2>/dev/null || pwd)"
+# Configuration — T87: get_project_root (THIS working tree), matching every
+# other plan-state consumer. get_main_repo pointed this writer at the MAIN
+# checkout from a linked worktree, where that file has ZERO readers.
+_PROJECT_ROOT="$(get_project_root 2>/dev/null || pwd)"
 PLAN_STATE="${_PROJECT_ROOT}/.claude/plan-state.json"
 LOG_FILE="${HOME}/.ralph/logs/plan-sync.log"
 SYNC_LOG="${HOME}/.ralph/logs/drift-history.jsonl"
@@ -49,16 +51,23 @@ validate_file_path() {
         return 1
     fi
 
-    # Reject paths with null bytes or special sequences
-    if [[ "$path" == *$'\0'* ]] || [[ "$path" == *".."* ]]; then
+    # Reject paths with traversal sequences.
+    # T87 fix: the null-byte half of this check (`*$'\0'*`) collapsed to `**`
+    # — bash strings cannot contain NUL, so the pattern token lost its middle
+    # and matched EVERY non-empty path. Since v2.45.1 (770de221, 2026-01-17)
+    # validate_file_path rejected all paths, silently turning this whole hook
+    # into a no-op for its primary function. A NUL cannot reach a bash string
+    # argument in the first place; the `..` traversal guard does the real work.
+    if [[ "$path" == *".."* ]]; then
         log "SECURITY: Rejected suspicious path: $path"
         return 1
     fi
 
-    # Resolve to absolute path and verify it's under project root
+    # Resolve to absolute path and verify it's under project root.
+    # T87: same root as PLAN_STATE — the modified file lives in THIS tree.
     resolved=$(realpath "$path" 2>/dev/null || echo "")
     local project_root
-    project_root="$(get_main_repo 2>/dev/null || pwd)"
+    project_root="$(get_project_root 2>/dev/null || pwd)"
 
     if [[ ! "$resolved" == "$project_root"* ]]; then
         log "SECURITY: Path traversal attempt blocked: $path"

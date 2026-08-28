@@ -69,7 +69,10 @@ mkdir -p "$LOG_DIR" "$STATE_DIR"
 # everywhere. Since the branch could never succeed before, deleting it preserves the
 # previous behaviour exactly rather than changing it.
 is_ralph_project() {
-    [[ -f ".claude/plan-state.json" ]]
+    # T87: root-resolved — the relative path returned false whenever this
+    # hook process ran from a subdirectory, silently dropping Ralph context
+    # injection for sessions working below the repo root.
+    [[ -f "$REPO_ROOT/.claude/plan-state.json" ]]
 }
 
 # Get Ralph active context

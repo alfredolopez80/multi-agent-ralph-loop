@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # anti-rationalization-gate.sh — Stop hook: blocks excuses AND mid-plan confirmations
-# VERSION: 2.0.0
+# VERSION: 2.0.1
+# v2.0.1 (2026-08-28, T87): project paths resolve from the working-tree ROOT
+#   containing $cwd (not from $cwd itself) — a session that cd'd into a
+#   subdirectory kept the active plan invisible and left Modo B silently OFF.
 # Event: Stop
 # Format: allow == clean `exit 0` with NO stdout; block == {"decision": "block",
 #   "reason": "..."}. `{"decision": "approve"}` is NOT a valid Claude Code value
@@ -23,7 +26,7 @@
 #      violate .claude/rules/plan-immutability.md.
 #
 # Active-plan detection (PROJECT-ISOLATED, freshness filter: last_updated < 30 min):
-#   - Reads ONLY $CWD/.claude/plan-state.json (current project scope)
+#   - Reads ONLY $PROJECT_ROOT/.claude/plan-state.json (working-tree root of $cwd)
 #   - NO global/cross-project fallback — plans are per-repo by design to prevent
 #     cross-project contamination (a plan in project A must NEVER block Stop
 #     hooks in project B)
@@ -53,10 +56,19 @@ fi
 CWD=$(echo "$INPUT" | jq -r '.cwd // "."' 2>/dev/null)
 [[ -z "$CWD" || "$CWD" == "null" ]] && CWD="$(pwd)"
 
+# v2.0.1 (T87): a session that cd'd into a subdirectory still belongs to this
+# project — its plan-state, per-project state dir and patterns file all live
+# at the working-tree ROOT. Resolve the root CONTAINING CWD; the root is
+# always an ancestor of CWD, so per-project isolation is unchanged and no
+# cross-project fallback is added. Non-git projects keep CWD as the scope.
+PROJECT_ROOT="$CWD"
+_T87_ROOT="$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null || true)"
+[[ -n "$_T87_ROOT" ]] && PROJECT_ROOT="$_T87_ROOT"
+
 # State and patterns are PER-PROJECT. No cross-project contamination.
-STATE_DIR="$CWD/.claude/state"
+STATE_DIR="$PROJECT_ROOT/.claude/state"
 STATE_FILE="$STATE_DIR/anti-rat-blocks.json"
-PATTERNS_FILE="$CWD/docs/reference/anti-rationalization.md"
+PATTERNS_FILE="$PROJECT_ROOT/docs/reference/anti-rationalization.md"
 mkdir -p "$STATE_DIR" 2>/dev/null || true
 
 # --- Max blocks guard ---
@@ -78,7 +90,7 @@ ACTIVE_PLAN_DETAIL=""
 FRESH_WINDOW=1800  # 30 minutes
 
 # 1) Project-level plan-state.json
-PROJECT_PLAN_STATE="$CWD/.claude/plan-state.json"
+PROJECT_PLAN_STATE="$PROJECT_ROOT/.claude/plan-state.json"
 if [[ -f "$PROJECT_PLAN_STATE" ]]; then
   UPDATED_EPOCH=0
   LAST_UPDATED=$(jq -r '.last_updated // ""' "$PROJECT_PLAN_STATE" 2>/dev/null)
