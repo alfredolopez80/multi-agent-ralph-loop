@@ -135,32 +135,29 @@ Complexity 3+:  Agent Teams with parallel teammates (MANDATORY)
 
 See: `.claude/rules/parallel-first.md`
 
-## Architecture
+## Architecture (post-M2)
 
-```
-User Request --> Claude Code
-                    |
-            Aristotle Analysis (5 phases)
-                    |
-            Task Classification (1-10)
-                    |
-        +-----------+-----------+
-        |                       |
-    Agent Teams            Quality Gates
-    (parallel)             (blocking)
-        |                       |
-    ralph-coder ---+     CORRECTNESS ok
-    ralph-tester --+     QUALITY ok
-    ralph-reviewer-+     SECURITY ok
-    ralph-security-+     CONSISTENCY ok
-        |                       |
-        +-----------+-----------+
-                    |
-              VERIFIED_DONE
-                    |
-            MemPalace Learning
-            (session -> vault -> global)
-```
+The repo has 84 hooks in `.claude/hooks/`. After the M2 retirement (T106),
+they fall into four categories by **default registration**, not by file
+existence: always-on security, active canonical #47, retired-to-opt-in
+hooks, and cold-path session/scheduler hooks.
+
+![Architecture diagram — post-M2 four categories](docs/assets/mmx-post-m2-architecture.svg)
+
+Source of truth: [`results/T107-inventario.md`](results/T107-inventario.md). Every row in the inventory traces to a real file in the repo; if a source link breaks, delete the row.
+
+### Categories at a glance
+
+| Category | Default registration | Shape | Why it survives (or gets retired) |
+|---|---|---|---|
+| **SECURITY** (always on) | 6 hooks on `PreToolUse` + 1 sourced lib | permission-pipeline, git-safety, repo-boundary, k8s-context, skill-security, worktree-utils | Survives M2 unconditionally. The failure open / fail-closed contract is verified end-to-end in `tests/security/SECURITY_BASELINE.json` and reproduced by the regression fixtures. |
+| **CANÓNICO #47** (active) | Plan-state writer + readers, recall on-demand, task-state, T101 guards, subagent state writers | The answer to "what useful verified thing did we learn, where is it, and how do I get it without paying the cost on every prompt". Bounded retrieval, atomic writes, exact chain walk for depth. | Survives active because the canonical answer to #47 is "demand-driven recall on a bounded corpus", not "load the whole vault every turn". |
+| **OPT-IN** (retired from default) | 17 hooks survive only as `/skillname` opt-in (aristotle, learning, lifecycle, status, quality-parallel, progress, display, extract-moved) | Removed from `~/.claude/settings.json` default chain by M2. User invokes via `/aristotle`, `/format`, `/audit`, etc. | Retired because the per-prompt overhead was never paired with evidence of material benefit for the default case. The hook survives on disk for explicit invocation. |
+| **COLD-PATH** (session/scheduler) | extractors, dream, consolidation, vault migration, checkpoint | Runs on `SessionStart` (one-shot) / `SessionEnd` / `PostToolUse` (debounced) — never on per-prompt events. | Stays because compaction, consolidation, and state migration are inherently async work; the cost should never appear on the per-prompt hot path. |
+
+### Why this matters
+
+The pre-M2 default SessionStart/PreToolUse wake-up chain registered ~50 hooks; after M2 it registers ~12 (the 6 SECURITY + ~5 CANÓNICO + the session lifecycle minimum). The remaining ~70 hooks become opt-in (user-invoked) or cold-path (session-end). The per-prompt cost drops from "every hook fires" to "the 12 that matter fire". The architectural lesson is the one T107 leaves in the commit history: **the correct architecture usually removes things rather than adds them**.
 
 ## Security
 

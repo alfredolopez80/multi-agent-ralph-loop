@@ -1,0 +1,214 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" font-family="ui-monospace, Menlo, Consolas, monospace">
+  <rect width="1200" height="900" fill="#0f0f1a"/>
+  <defs>
+    <marker id="arrow-primary" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#60a5fa"/>
+    </marker>
+    <marker id="arrow-dashed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#fb923c"/>
+    </marker>
+    <marker id="arrow-cold" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#a78bfa"/>
+    </marker>
+  </defs>
+  <style>
+    .title { font-size: 22px; font-weight: 700; fill: #f8fafc; }
+    .subtitle { font-size: 12px; fill: #94a3b8; }
+    .zone-label { font-size: 14px; font-weight: 700; fill: #f8fafc; letter-spacing: 1px; }
+    .node-title { font-size: 11px; font-weight: 600; fill: #e2e8f0; }
+    .node-sub { font-size: 9px; fill: #94a3b8; }
+    .arrow-label { font-size: 9px; fill: #cbd5e1; }
+    .legend-text { font-size: 10px; fill: #cbd5e1; }
+  </style>
+  <text x="40" y="36" class="title">multi-agent-ralph-loop — post-M2 architecture</text>
+  <text x="40" y="56" class="subtitle">T107 inventory · source: results/T107-inventario.md · 84 hooks mapped to 4 categories · M2 pending</text>
+  <rect x="40" y="80" width="1120" height="180" rx="10" fill="#1f1d2e" stroke="#f87171" stroke-width="1.5"/>
+  <text x="56" y="104" class="zone-label" fill="#f87171">A · SECURITY — always on (6 hooks)</text>
+  <text x="56" y="120" class="subtitle">Survives M2 unconditionally. PreToolUse gates for Bash/Edit|Write/Agent|Task/Skill + one sourced lib.</text>
+  <rect x="80" y="140" width="160" height="90" rx="6" fill="#2a1f2a" stroke="#f87171" stroke-width="1"/>
+    <text x="160" y="164" text-anchor="middle" class="node-title">permission-pipeline</text>
+    <text x="160" y="184" text-anchor="middle" class="node-sub">permission-guard.sh</text>
+    <text x="160" y="204" text-anchor="middle" class="node-sub">PreToolUse:Bash|Edit|Write|Agent|Task</text>
+  <rect x="260" y="140" width="160" height="90" rx="6" fill="#2a1f2a" stroke="#f87171" stroke-width="1"/>
+    <text x="340" y="164" text-anchor="middle" class="node-title">git-safety</text>
+    <text x="340" y="184" text-anchor="middle" class="node-sub">git-safety-guard.py</text>
+    <text x="340" y="204" text-anchor="middle" class="node-sub">PreToolUse:Bash</text>
+  <rect x="440" y="140" width="160" height="90" rx="6" fill="#2a1f2a" stroke="#f87171" stroke-width="1"/>
+    <text x="520" y="164" text-anchor="middle" class="node-title">repo-boundary</text>
+    <text x="520" y="184" text-anchor="middle" class="node-sub">repo-boundary-guard.sh</text>
+    <text x="520" y="204" text-anchor="middle" class="node-sub">PreToolUse:Bash|Edit|Write|Agent|Task</text>
+  <rect x="620" y="140" width="160" height="90" rx="6" fill="#2a1f2a" stroke="#f87171" stroke-width="1"/>
+    <text x="700" y="164" text-anchor="middle" class="node-title">k8s-context</text>
+    <text x="700" y="184" text-anchor="middle" class="node-sub">k8s-context-guard-v2.py</text>
+    <text x="700" y="204" text-anchor="middle" class="node-sub">PreToolUse:Bash</text>
+  <rect x="800" y="140" width="160" height="90" rx="6" fill="#2a1f2a" stroke="#f87171" stroke-width="1"/>
+    <text x="880" y="164" text-anchor="middle" class="node-title">skill-security</text>
+    <text x="880" y="184" text-anchor="middle" class="node-sub">skill-validator.sh</text>
+    <text x="880" y="204" text-anchor="middle" class="node-sub">PreToolUse:Skill</text>
+  <rect x="980" y="140" width="160" height="90" rx="6" fill="#2a1f2a" stroke="#f87171" stroke-width="1"/>
+    <text x="1060" y="164" text-anchor="middle" class="node-title">worktree-utils (lib)</text>
+    <text x="1060" y="184" text-anchor="middle" class="node-sub">lib/worktree-utils.sh</text>
+    <text x="1060" y="204" text-anchor="middle" class="node-sub">sourced</text>
+  <rect x="40" y="280" width="1120" height="220" rx="10" fill="#1d2a23" stroke="#4ade80" stroke-width="1.5"/>
+  <text x="56" y="304" class="zone-label" fill="#4ade80">B · CANÓNICO #47 — survives active (plan-state + recall + T101 guards)</text>
+  <text x="56" y="320" class="subtitle">Active per-prompt. The answer to "what useful verified thing applies now" without paying the cost on every prompt.</text>
+  <rect x="80" y="340" width="160" height="70" rx="6" fill="#1a2e23" stroke="#4ade80" stroke-width="1"/>
+    <text x="160" y="362" text-anchor="middle" class="node-title">plan-state writer</text>
+    <text x="160" y="380" text-anchor="middle" class="node-sub">lib/plan-state-writer.sh</text>
+    <text x="160" y="398" text-anchor="middle" class="node-sub">atomic + dual timestamps</text>
+  <rect x="80" y="420" width="160" height="70" rx="6" fill="#1a2e23" stroke="#4ade80" stroke-width="1"/>
+    <text x="160" y="442" text-anchor="middle" class="node-title">plan-state readers</text>
+    <text x="160" y="460" text-anchor="middle" class="node-sub">anti-rationalization-gate / lifecycle</text>
+    <text x="160" y="478" text-anchor="middle" class="node-sub">gate consumers</text>
+  <rect x="260" y="340" width="160" height="70" rx="6" fill="#1a2e23" stroke="#4ade80" stroke-width="1"/>
+    <text x="340" y="362" text-anchor="middle" class="node-title">task-state writer</text>
+    <text x="340" y="380" text-anchor="middle" class="node-sub">lib/plan-state-writer.sh</text>
+    <text x="340" y="398" text-anchor="middle" class="node-sub">shares writer invariant</text>
+  <rect x="260" y="420" width="160" height="70" rx="6" fill="#1a2e23" stroke="#4ade80" stroke-width="1"/>
+    <text x="340" y="442" text-anchor="middle" class="node-title">recall on-demand</text>
+    <text x="340" y="460" text-anchor="middle" class="node-sub">scripts/memory/recall_v2.py</text>
+    <text x="340" y="478" text-anchor="middle" class="node-sub">bounded two-stage</text>
+  <rect x="440" y="340" width="160" height="70" rx="6" fill="#1a2e23" stroke="#4ade80" stroke-width="1"/>
+    <text x="520" y="362" text-anchor="middle" class="node-title">recall state store</text>
+    <text x="520" y="380" text-anchor="middle" class="node-sub">scripts/memory/tree_store.py</text>
+    <text x="520" y="398" text-anchor="middle" class="node-sub">JSON index</text>
+  <rect x="440" y="420" width="160" height="70" rx="6" fill="#1a2e23" stroke="#4ade80" stroke-width="1"/>
+    <text x="520" y="442" text-anchor="middle" class="node-title">RISK_EMITTED_FIELDS</text>
+    <text x="520" y="460" text-anchor="middle" class="node-sub">recall_v2.py:476 (T103)</text>
+    <text x="520" y="478" text-anchor="middle" class="node-sub">single source of truth</text>
+  <rect x="620" y="340" width="160" height="70" rx="6" fill="#1a2e23" stroke="#4ade80" stroke-width="1"/>
+    <text x="700" y="362" text-anchor="middle" class="node-title">agent-policy-guard</text>
+    <text x="700" y="380" text-anchor="middle" class="node-sub">agent-policy-guard.sh (T101)</text>
+    <text x="700" y="398" text-anchor="middle" class="node-sub">ceiling 8, read-only</text>
+  <rect x="620" y="420" width="160" height="70" rx="6" fill="#1a2e23" stroke="#4ade80" stroke-width="1"/>
+    <text x="700" y="442" text-anchor="middle" class="node-title">agent-depth-soft-enforce</text>
+    <text x="700" y="460" text-anchor="middle" class="node-sub">agent-depth-soft-enforce.sh</text>
+    <text x="700" y="478" text-anchor="middle" class="node-sub">chain walk exact, soft</text>
+  <rect x="800" y="340" width="160" height="70" rx="6" fill="#1a2e23" stroke="#4ade80" stroke-width="1"/>
+    <text x="880" y="362" text-anchor="middle" class="node-title">subagent-start writer</text>
+    <text x="880" y="380" text-anchor="middle" class="node-sub">ralph-subagent-start.sh:380</text>
+    <text x="880" y="398" text-anchor="middle" class="node-sub">creates state</text>
+  <rect x="800" y="420" width="160" height="70" rx="6" fill="#1a2e23" stroke="#4ade80" stroke-width="1"/>
+    <text x="880" y="442" text-anchor="middle" class="node-title">subagent-stop writer</text>
+    <text x="880" y="460" text-anchor="middle" class="node-sub">subagent-stop-universal.sh:97</text>
+    <text x="880" y="478" text-anchor="middle" class="node-sub">marks completed</text>
+  <rect x="980" y="340" width="160" height="70" rx="6" fill="#1a2e23" stroke="#4ade80" stroke-width="1"/>
+    <text x="1060" y="362" text-anchor="middle" class="node-title">session-start ledger</text>
+    <text x="1060" y="380" text-anchor="middle" class="node-sub">session-start-ledger.sh</text>
+    <text x="1060" y="398" text-anchor="middle" class="node-sub">where are we now</text>
+  <rect x="980" y="420" width="160" height="70" rx="6" fill="#1a2e23" stroke="#4ade80" stroke-width="1"/>
+    <text x="1060" y="442" text-anchor="middle" class="node-title">audit-secrets.js</text>
+    <text x="1060" y="460" text-anchor="middle" class="node-sub">PostToolUse (NOT hot)</text>
+    <text x="1060" y="478" text-anchor="middle" class="node-sub">log-only detection</text>
+  <line x1="160" y1="375" x2="160" y2="420" stroke="#4ade80" stroke-width="1.5" marker-end="url(#arrow-primary)"/>
+  <rect x="40" y="520" width="700" height="320" rx="10" fill="#2a2418" stroke="#fbbf24" stroke-width="1.5"/>
+  <text x="56" y="544" class="zone-label" fill="#fbbf24">C · OPT-IN — retired from default (17 hooks survive as /skillname)</text>
+  <text x="56" y="560" class="subtitle">Survives only as opt-in skill invocation. No longer on the wake-up chain after M2 lands.</text>
+  <text x="56" y="580" font-size="10" font-weight="600" fill="#fbbf24">Aristotle</text>
+  <rect x="56" y="594" width="210" height="36" rx="4" fill="#33291a" stroke="#a16207" stroke-width="0.7"/>
+    <text x="66" y="608" class="node-title">aristotle-analysis-display</text>
+    <text x="261" y="608" text-anchor="end" class="node-sub">display</text>
+  <rect x="276" y="594" width="210" height="36" rx="4" fill="#33291a" stroke="#a16207" stroke-width="0.7"/>
+    <text x="286" y="608" class="node-title">universal-aristotle-gate</text>
+    <text x="481" y="608" text-anchor="end" class="node-sub">enforce</text>
+  <rect x="496" y="594" width="210" height="36" rx="4" fill="#33291a" stroke="#a16207" stroke-width="0.7"/>
+    <text x="506" y="608" class="node-title">universal-prompt-classifier</text>
+    <text x="701" y="608" text-anchor="end" class="node-sub">classify</text>
+  <text x="56" y="640" font-size="10" font-weight="600" fill="#fbbf24">Learning</text>
+  <rect x="56" y="654" width="210" height="36" rx="4" fill="#33291a" stroke="#a16207" stroke-width="0.7"/>
+    <text x="66" y="668" class="node-title">continuous-learning</text>
+    <text x="261" y="668" text-anchor="end" class="node-sub">session bdy</text>
+  <rect x="276" y="654" width="210" height="36" rx="4" fill="#33291a" stroke="#a16207" stroke-width="0.7"/>
+    <text x="286" y="668" class="node-title">orchestrator-auto-learn</text>
+    <text x="481" y="668" text-anchor="end" class="node-sub">auto-capture</text>
+  <text x="56" y="700" font-size="10" font-weight="600" fill="#fbbf24">Lifecycle</text>
+  <rect x="56" y="714" width="210" height="36" rx="4" fill="#33291a" stroke="#a16207" stroke-width="0.7"/>
+    <text x="66" y="728" class="node-title">plan-state-lifecycle</text>
+    <text x="261" y="728" text-anchor="end" class="node-sub">archive stale</text>
+  <rect x="276" y="714" width="210" height="36" rx="4" fill="#33291a" stroke="#a16207" stroke-width="0.7"/>
+    <text x="286" y="728" class="node-title">plan-analysis-cleanup</text>
+    <text x="481" y="728" text-anchor="end" class="node-sub">cleanup</text>
+  <text x="56" y="760" font-size="10" font-weight="600" fill="#fbbf24">Status/Quality/Progress</text>
+  <rect x="56" y="774" width="210" height="36" rx="4" fill="#33291a" stroke="#a16207" stroke-width="0.7"/>
+    <text x="66" y="788" class="node-title">status-auto-check</text>
+    <text x="261" y="788" text-anchor="end" class="node-sub">status</text>
+  <rect x="276" y="774" width="210" height="36" rx="4" fill="#33291a" stroke="#a16207" stroke-width="0.7"/>
+    <text x="286" y="788" class="node-title">quality-parallel-async</text>
+    <text x="481" y="788" text-anchor="end" class="node-sub">parallel gate</text>
+  <rect x="496" y="774" width="210" height="36" rx="4" fill="#33291a" stroke="#a16207" stroke-width="0.7"/>
+    <text x="506" y="788" class="node-title">batch-progress-tracker</text>
+    <text x="701" y="788" text-anchor="end" class="node-sub">progress</text>
+  <rect x="56" y="814" width="210" height="36" rx="4" fill="#33291a" stroke="#a16207" stroke-width="0.7"/>
+    <text x="66" y="828" class="node-title">progress-tracker</text>
+    <text x="261" y="828" text-anchor="end" class="node-sub">legacy</text>
+  <text x="56" y="860" font-size="10" font-weight="600" fill="#fbbf24">Display hooks</text>
+  <rect x="56" y="874" width="210" height="36" rx="4" fill="#33291a" stroke="#a16207" stroke-width="0.7"/>
+    <text x="66" y="888" class="node-title">auto-format-prettier</text>
+    <text x="261" y="888" text-anchor="end" class="node-sub">format</text>
+  <rect x="276" y="874" width="210" height="36" rx="4" fill="#33291a" stroke="#a16207" stroke-width="0.7"/>
+    <text x="286" y="888" class="node-title">ai-code-audit</text>
+    <text x="481" y="888" text-anchor="end" class="node-sub">audit</text>
+  <rect x="496" y="874" width="210" height="36" rx="4" fill="#33291a" stroke="#a16207" stroke-width="0.7"/>
+    <text x="506" y="888" class="node-title">code-review-auto</text>
+    <text x="701" y="888" text-anchor="end" class="node-sub">review</text>
+  <rect x="56" y="914" width="210" height="36" rx="4" fill="#33291a" stroke="#a16207" stroke-width="0.7"/>
+    <text x="66" y="928" class="node-title">anti-rationalization-gate</text>
+    <text x="261" y="928" text-anchor="end" class="node-sub">adv</text>
+  <rect x="276" y="914" width="210" height="36" rx="4" fill="#33291a" stroke="#a16207" stroke-width="0.7"/>
+    <text x="286" y="928" class="node-title">console-log-detector</text>
+    <text x="481" y="928" text-anchor="end" class="node-sub">console</text>
+  <rect x="496" y="914" width="210" height="36" rx="4" fill="#33291a" stroke="#a16207" stroke-width="0.7"/>
+    <text x="506" y="928" class="node-title">task-orchestration-optimizer</text>
+    <text x="701" y="928" text-anchor="end" class="node-sub">optimize</text>
+  <rect x="760" y="520" width="400" height="320" rx="10" fill="#1f1d2e" stroke="#a78bfa" stroke-width="1.5"/>
+  <text x="776" y="544" class="zone-label" fill="#a78bfa">D · COLD-PATH — SessionEnd / scheduler</text>
+  <text x="776" y="560" class="subtitle">Never on hot path. Runs on session boundary or scheduler.</text>
+  <rect x="780" y="580" width="170" height="34" rx="4" fill="#231d3a" stroke="#7c3aed" stroke-width="0.7"/>
+    <text x="790" y="594" class="node-title">decision-extractor</text>
+    <text x="790" y="608" class="node-sub">PostToolUse, low-prio</text>
+  <rect x="780" y="622" width="170" height="34" rx="4" fill="#231d3a" stroke="#7c3aed" stroke-width="0.7"/>
+    <text x="790" y="636" class="node-title">semantic-realtime-extractor</text>
+    <text x="790" y="650" class="node-sub">PostToolUse</text>
+  <rect x="780" y="664" width="170" height="34" rx="4" fill="#231d3a" stroke="#7c3aed" stroke-width="0.7"/>
+    <text x="790" y="678" class="node-title">vault-fact-extractor</text>
+    <text x="790" y="692" class="node-sub">SessionEnd / scheduler</text>
+  <rect x="780" y="706" width="170" height="34" rx="4" fill="#231d3a" stroke="#7c3aed" stroke-width="0.7"/>
+    <text x="790" y="720" class="node-title">dream-consolidate</text>
+    <text x="790" y="734" class="node-sub">SessionEnd / scheduler</text>
+  <rect x="780" y="748" width="170" height="34" rx="4" fill="#231d3a" stroke="#7c3aed" stroke-width="0.7"/>
+    <text x="790" y="762" class="node-title">periodic-reminder</text>
+    <text x="790" y="776" class="node-sub">SessionEnd</text>
+  <rect x="980" y="580" width="170" height="34" rx="4" fill="#231d3a" stroke="#7c3aed" stroke-width="0.7"/>
+    <text x="990" y="594" class="node-title">memory-projection</text>
+    <text x="990" y="608" class="node-sub">SessionEnd</text>
+  <rect x="980" y="622" width="170" height="34" rx="4" fill="#231d3a" stroke="#7c3aed" stroke-width="0.7"/>
+    <text x="990" y="636" class="node-title">vault-promotion</text>
+    <text x="990" y="650" class="node-sub">SessionStart (one-shot)</text>
+  <rect x="980" y="664" width="170" height="34" rx="4" fill="#231d3a" stroke="#7c3aed" stroke-width="0.7"/>
+    <text x="990" y="678" class="node-title">vault-graduation</text>
+    <text x="990" y="692" class="node-sub">SessionStart</text>
+  <rect x="980" y="706" width="170" height="34" rx="4" fill="#231d3a" stroke="#7c3aed" stroke-width="0.7"/>
+    <text x="990" y="720" class="node-title">checkpoint-auto-save</text>
+    <text x="990" y="734" class="node-sub">PostToolUse (debounced)</text>
+  <rect x="980" y="748" width="170" height="34" rx="4" fill="#231d3a" stroke="#7c3aed" stroke-width="0.7"/>
+    <text x="990" y="762" class="node-title">auto-migrate-plan-state</text>
+    <text x="990" y="776" class="node-sub">SessionStart</text>
+  <path d="M 740 700 C 760 720, 770 730, 780 720" stroke="#fb923c" stroke-width="1.5" stroke-dasharray="5,3" fill="none" marker-end="url(#arrow-dashed)"/>
+  <text x="700" y="690" class="arrow-label" fill="#fb923c">retired</text>
+  <text x="688" y="704" class="arrow-label" fill="#fb923c">from hot path</text>
+  <path d="M 740 760 C 760 770, 770 770, 780 760" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="4,2" fill="none" marker-end="url(#arrow-cold)"/>
+  <text x="700" y="786" class="arrow-label" fill="#a78bfa">moved</text>
+  <text x="676" y="800" class="arrow-label" fill="#a78bfa">to cold path</text>
+  <path d="M 380 840 C 420 870, 480 870, 520 840" stroke="#fb923c" stroke-width="1.5" stroke-dasharray="5,3" fill="none" marker-end="url(#arrow-dashed)"/>
+  <text x="430" y="868" text-anchor="middle" class="arrow-label" fill="#fb923c">/skillname (user-invoked)</text>
+  <text x="540" y="848" font-size="11" font-weight="600" fill="#fb923c">user</text>
+  <rect x="40" y="858" width="1120" height="34" rx="6" fill="#1a1a26" stroke="#334155" stroke-width="0.7"/>
+  <text x="56" y="880" class="legend-text">Legend:</text>
+    <line x1="105" y1="876" x2="140" y2="876" stroke="#60a5fa" stroke-width="2" marker-end="url(#arrow-primary)"/>
+    <text x="148" y="880" class="legend-text">data/control</text>
+    <line x1="220" y1="876" x2="255" y2="876" stroke="#fb923c" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrow-dashed)"/>
+    <text x="262" y="880" class="legend-text">retired from hot path</text>
+    <line x1="410" y1="876" x2="445" y2="876" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#arrow-cold)"/>
+    <text x="452" y="880" class="legend-text">moved to cold path</text>
+    <text x="610" y="880" class="legend-text">84 hooks total · SECURITY 6 · CANÓNICO 11 · OPT-IN 17 · COLD-PATH 10 · others 40 (lib / archived / not yet classified)</text>
+</svg>
