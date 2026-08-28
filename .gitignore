@@ -199,6 +199,9 @@ results/
 # covers the PEP-668 venv that the probe bootstraps for tiktoken.
 scripts/benchmark/.probe-home/
 
+# Trivial-task probe (T96): same isolation, separate directory.
+scripts/benchmark/.probe-home-trivial/
+
 # Claude Code per-user local settings (convention: *.local.json is user-scoped)
 # Contains user-specific permissions allowlist — regenerated per user by Claude Code
 .claude/settings.local.json
