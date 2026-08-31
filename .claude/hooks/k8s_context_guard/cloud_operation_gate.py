@@ -9,7 +9,12 @@ from typing import Literal
 
 from .context_classification import classify
 from .minikube_context import ContextVerification, verify_minikube_context
-from .script_operation_inspector import script_cloud_commands, script_path, wrapper_script_path
+from .script_operation_inspector import (  # noqa: E402
+    script_cloud_commands,
+    script_path,
+    unresolved_script_uncertainty,
+    wrapper_script_path,
+)
 
 # NOTE: restricted from codex's {aws, gcloud, helm, kubectl, minikube, terraform}.
 # This guard owns only the kube-context domain; aws/gcloud/terraform stay with
@@ -487,6 +492,26 @@ def assess_command(
             )
         else:
             script = script_path(parts, active_cwd)
+            # Issue #68 fail-open fix: an unresolvable script path used to fall
+            # through to a silent allow. A path the guard cannot resolve to an
+            # inspectable regular file (dynamic variable, symlink) is evaluation
+            # uncertainty -> explicit block. "block" (not approval/ask) because an
+            # ask is auto-approved under bypassPermissions and would not enforce.
+            if script is None and unresolved_script_uncertainty(parts, active_cwd):
+                assessments.append(
+                    CommandAssessment(
+                        action="block",
+                        reason_code="unresolved_script_path",
+                        reason=(
+                            "The script path cannot be statically resolved to an inspectable "
+                            "regular file (dynamic variable or symlink); silently allowing it "
+                            "would be fail-open. Re-run with a literal regular-file path so its "
+                            "cloud operations can be inspected."
+                        ),
+                        tool="local-script",
+                    )
+                )
+                return
 
         if script:
             inspected_scripts.append(script)
