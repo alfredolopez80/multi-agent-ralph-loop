@@ -49,7 +49,6 @@ if [ ! -d "$REPO/.claude/rules-src" ]; then
 fi
 
 RULE_FILES=(
-  "aristotle-methodology.md"
   "ast-grep-usage.md"
   "browser-automation.md"
   "native-tools-first.md"

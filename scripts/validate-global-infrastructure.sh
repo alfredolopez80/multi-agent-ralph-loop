@@ -44,7 +44,7 @@ echo "=========================================="
 # === 1. RULES (standalone copies — W5.1 copy strategy) ===
 echo ""
 echo "=== Rules (standalone copies with checksum validation) ==="
-RULES=(aristotle-methodology.md ast-grep-usage.md browser-automation.md native-tools-first.md plan-immutability.md zai-mcp-usage.md)
+RULES=(ast-grep-usage.md browser-automation.md native-tools-first.md plan-immutability.md zai-mcp-usage.md)
 for rule in "${RULES[@]}"; do
   GLOBAL_FILE=~/.claude/rules/"$rule"
   # T40: source moved to .claude/rules-src/ (no longer auto-loaded by Claude
@@ -362,9 +362,10 @@ echo "=== Global CLAUDE.md ==="
 GLOBAL_MD=~/.claude/CLAUDE.md
 if [[ -f "$GLOBAL_MD" ]]; then
   grep -q "Plan Mode" "$GLOBAL_MD" && pass "Plan Mode instructions in CLAUDE.md" || fail "Plan Mode instructions missing from CLAUDE.md"
-  grep -q "Aristotle" "$GLOBAL_MD" && pass "Aristotle methodology referenced" || fail "Aristotle methodology missing from CLAUDE.md"
-  # PR 5 Slice A: Parallel-First was retired — its CLAUDE.md check removed
-  # (the absence is now enforced by tests/test_parallel_first_absence.py).
+  # PR 5 Slice A + Slice B: Parallel-First and the unconditional Aristotle
+  # methodology were retired — their CLAUDE.md checks are gone (the absence is
+  # enforced by tests/test_parallel_first_absence.py and
+  # tests/test_aristotle_optin_absence.py).
   grep -q "plan-immutability" "$GLOBAL_MD" && pass "Plan immutability referenced" || fail "Plan immutability missing from CLAUDE.md"
 else
   fail "~/.claude/CLAUDE.md not found"
