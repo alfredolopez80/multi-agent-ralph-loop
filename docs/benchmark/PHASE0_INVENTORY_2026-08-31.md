@@ -1,6 +1,6 @@
 # Phase 0 — Executable Inventory of the Real Runtime (issue #69)
 
-Generated: 2026-08-31T11:29:40Z · Instrument: `scripts/benchmark/phase0_inventory.sh` (+ `phase0_inventory.py`)
+Generated: 2026-08-31T12:08:16Z · Instrument: `scripts/benchmark/phase0_inventory.sh` (+ `phase0_inventory.py`)
 
 ## Acceptance (issue #69 Phase 0)
 
@@ -14,7 +14,7 @@ Generated: 2026-08-31T11:29:40Z · Instrument: `scripts/benchmark/phase0_invento
 | field | value |
 |---|---|
 | `main` SHA at run | `7f8a962a91d19546cc0503e2f11d9deff7254076` |
-| this branch / HEAD | `worktree-zc-3` @ `7f8a962a91d19546cc0503e2f11d9deff7254076` |
+| this branch / HEAD | `worktree-zc-3` @ `a14be0c3101beb99b135935cb514f157a2e99781` |
 | ACTIVE settings | `/Users/alfredolopez/.claude/settings.json` |
 | ACTIVE settings sha256 | `46efd9e6e67c3d4f3eae28baffe528c71d2116dea108ac0091fbcdff569d6b73` |
 | ACTIVE settings snapshot | `results/phase0/settings-active.snapshot.json` (copied at run time) |
