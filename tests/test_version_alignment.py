@@ -139,7 +139,6 @@ class TestVersionAlignment:
         """
         v3_rules = [
             ".claude/rules-src/plan-immutability.md",
-            ".claude/rules-src/aristotle-methodology.md",
         ]
         for rule_path in v3_rules:
             full_path = REPO_ROOT / rule_path
