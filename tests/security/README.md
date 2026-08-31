@@ -50,6 +50,16 @@ marker gets removed.
 
 **Run**: `bash tests/security/test-k8s-guard-action-position.sh`
 
+### test-k8s-unresolved-script-path.sh
+Fail-closed regression for k8s-context-guard-v2 script resolution (issue #68):
+literal resolvable cloud scripts stay inspected; dynamic-variable and symlink
+paths get an explicit `deny` (never a silent allow, and `deny` — not `ask` —
+because an ask is auto-approved under bypassPermissions); ordinary non-cloud
+scripts that resolve via `$HOME`/`$PWD` stay usable; static protections
+(`bash -c`, bare PATH commands) intact.
+
+**Run**: `bash tests/security/test-k8s-unresolved-script-path.sh`
+
 ### test-environment-validation.sh
 Tests API key and environment variable validation.
 

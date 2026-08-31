@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 from pathlib import Path
 
@@ -62,12 +63,31 @@ def _regular_script(candidate: Path) -> Path | None:
     return resolved if resolved.is_file() else None
 
 
-def script_path(parts: list[str], cwd: Path) -> Path | None:
+# ONLY $HOME/$PWD are expanded, and they are process facts, not a shell engine:
+# $PWD is the EFFECTIVE cwd the guard already tracks across `cd` segments and
+# $HOME never changes mid-command. Any other $VAR stays literal, which marks the
+# token as still-dynamic (see unresolved_script_uncertainty) instead of guessing.
+_DYNAMIC_ENV_RE = re.compile(r"\$\{(HOME|PWD)\}|\$(HOME|PWD)\b")
+
+
+def _expand_static_env(token: str, cwd: Path) -> str:
+    def _sub(match: re.Match[str]) -> str:
+        name = match.group(1) or match.group(2)
+        if name == "PWD":
+            return str(cwd)
+        return os.environ.get("HOME") or match.group(0)
+
+    return _DYNAMIC_ENV_RE.sub(_sub, token)
+
+
+def _script_candidate_token(parts: list[str]) -> str | None:
+    """First positional candidate token of a script invocation, or None when the
+    command has no script-path shape: inline `-c`/`-m` code, option-only
+    invocations, or a bare PATH lookup (`make`, `ls`) that never names a file."""
     if not parts:
         return None
     tool = Path(parts[0]).name.lower()
-    is_interpreter = _is_script_interpreter(tool)
-    if is_interpreter:
+    if _is_script_interpreter(tool):
         index = 1
         while index < len(parts):
             part = parts[index]
@@ -84,14 +104,20 @@ def script_path(parts: list[str], cwd: Path) -> Path | None:
                 index += 1
                 continue
             break
-        candidates = parts[index : index + 1]
-    else:
-        if "/" not in parts[0] and not Path(parts[0]).is_absolute():
+        if index >= len(parts):
             return None
-        candidates = parts[:1]
-    if not candidates:
+        return parts[index]
+    if "/" not in parts[0] and not Path(parts[0]).is_absolute():
         return None
-    candidate = Path(candidates[0])
+    return parts[0]
+
+
+def script_path(parts: list[str], cwd: Path) -> Path | None:
+    token = _script_candidate_token(parts)
+    if token is None:
+        return None
+    is_interpreter = _is_script_interpreter(Path(parts[0]).name.lower())
+    candidate = Path(_expand_static_env(token, cwd))
     candidate = candidate if candidate.is_absolute() else cwd / candidate
     script = _regular_script(candidate)
     if not script:
@@ -99,6 +125,36 @@ def script_path(parts: list[str], cwd: Path) -> Path | None:
     if is_interpreter or script.suffix.lower() in SCRIPT_SUFFIXES or script.stat().st_mode & 0o111:
         return script
     return None
+
+
+def unresolved_script_uncertainty(parts: list[str], cwd: Path) -> bool:
+    """True when the invocation has script shape but its path cannot be safely
+    resolved to an inspectable regular file: a still-dynamic token (any $VAR
+    beyond $HOME/$PWD, or backticks) or an existing non-regular target (a
+    symlink — rejected by _regular_script — is mutable between inspection and
+    execution). That is evaluation uncertainty, not evidence of safety
+    (issue #68): the caller must produce an explicit non-allow verdict, never a
+    silent allow.
+
+    NOT uncertainty: a literal nonexistent path (nothing expands at runtime —
+    the shell itself fails) and bare PATH lookups, which have no script shape
+    and stay outside this gate so ordinary non-cloud scripts remain usable.
+    """
+    token = _script_candidate_token(parts)
+    if token is None:
+        return False
+    expanded = _expand_static_env(token, cwd)
+    if "$" in expanded or "`" in token:
+        return True
+    candidate = Path(expanded)
+    candidate = candidate if candidate.is_absolute() else cwd / candidate
+    if candidate.is_symlink():
+        return True
+    try:
+        resolved = candidate.resolve(strict=True)
+    except OSError:
+        return False
+    return not resolved.is_file()
 
 
 def wrapper_script_path(parts: list[str], cwd: Path) -> Path | None:
