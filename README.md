@@ -156,7 +156,6 @@ The framework includes multiple layers of security enforcement:
 | `git-safety-guard.py` | PreToolUse (Bash) | Blocks destructive git operations and command chaining |
 | `repo-boundary-guard.sh` | PreToolUse (Bash) | Prevents operations outside current repo |
 | `audit-secrets.js` | PostToolUse | Audit logging for 20+ secret patterns |
-| `teammate-idle-quality-gate.sh` | TeammateIdle | Quality gates before teammate goes idle |
 | `task-completed-quality-gate.sh` | TaskCompleted | Multi-gate validation before task completion |
 | `task-plan-sync.sh` | TaskCreated | Syncs task creation to plan-state.json |
 

@@ -115,8 +115,7 @@ def get_hook_type(hook_name: str, settings_json: dict = None) -> str:
     # {"continue": true} format (PostToolUse-style quality check). Exclude it here.
     if any(x in hook_name for x in ['sentry-report', 'reflection-engine',
                                       'continuous-learning',
-                                      'orchestrator-report', 'project-backup-metadata',
-                                      'ralph-stop-quality-gate']):
+                                      'orchestrator-report', 'project-backup-metadata']):
         return 'Stop'
 
     # UserPromptSubmit hooks (use {} or {"additionalContext": ...})
@@ -433,7 +432,6 @@ class TestRuntimeFormatValidation:
         )
 
     @pytest.mark.parametrize("hook_name", [
-        "ralph-stop-quality-gate.sh",
         "sentry-report.sh",
     ])
     def test_stop_hooks_output_decision_format(self, hook_name, test_input_stop):

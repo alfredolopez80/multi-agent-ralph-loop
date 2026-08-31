@@ -3,8 +3,8 @@
 # VERSION: 2.87.0
 # REPO: multi-agent-ralph-loop
 #
-# This script manages state files that the ralph-stop-quality-gate.sh hook reads
-# to determine if Claude should be blocked from stopping.
+# This script manages state files that the ralph-stop-quality-gate.sh hook USED
+# to read (hook removed by #69 Phase 3 Slice C); candidate for PR11 residue sweep.
 #
 # Usage:
 #   ralph-state.sh init <session_id> <type> [task_description]

@@ -3,7 +3,7 @@
 #
 # The freshness invariant: after ANY successful plan_state_update call, both
 # `.last_updated` AND `.updated_at` MUST equal "now" (within 5s tolerance).
-# This is the guarantee that prevents the anti-rationalization-gate from
+# This guarantee (the gate that used it, anti-rationalization-gate, was
 # falsely treating an active plan as stale.
 
 set -euo pipefail

@@ -70,7 +70,7 @@ echo ""
 
 # Check Agent Teams hooks exist and are executable
 echo "## Agent Teams Hooks Check"
-for hook in teammate-idle-quality-gate.sh task-completed-quality-gate.sh ralph-subagent-start.sh ralph-subagent-stop.sh; do
+for hook in task-completed-quality-gate.sh ralph-subagent-start.sh; do
     hook_path="$PROJECT_ROOT/.claude/hooks/${hook}"
     if [[ -f "$hook_path" ]]; then
         if [[ -x "$hook_path" ]]; then

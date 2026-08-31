@@ -322,62 +322,10 @@ echo "=== T99-W6: anti-rat adopts the NESTED project root (cwd below a marked di
 # dotfiles-style container repo > nested non-git project (has .claude/) >
 # session subdirectory. The plan lives in the NESTED project; Modo B must
 # fire. Pre-fix, PROJECT_ROOT stayed on raw CWD and the plan was invisible
-# (RETURN 3: the T87 symptom one level deeper).
-CONTAINER=$(mktemp -d)
-git -C "$CONTAINER" init -q
-git -C "$CONTAINER" config user.email t99@test
-git -C "$CONTAINER" config user.name t99
-mkdir -p "$CONTAINER/.claude/hooks/lib"
-cp "$HOOKS_SRC/anti-rationalization-gate.sh" "$CONTAINER/.claude/hooks/"
-cp "$HOOKS_SRC/lib/worktree-utils.sh" "$CONTAINER/.claude/hooks/lib/"
-NESTED="$CONTAINER/projects/toolbox"
-mkdir -p "$NESTED/.claude/state" "$NESTED/sub"
-NOW_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-printf '{"last_updated":"%s","task":"nested","steps":[{"name":"step","status":"in_progress"}]}' "$NOW_ISO" \
-  > "$NESTED/.claude/plan-state.json"
-OUT_W6=$(cd "$CONTAINER" && printf '{"stop_hook_active": false, "cwd": "%s/sub", "transcript": "Should I continue?"}' "$NESTED" | \
-  /bin/bash "$CONTAINER/.claude/hooks/anti-rationalization-gate.sh" 2>/dev/null || true)
-if [[ "$OUT_W6" == *"Plan-immutability gate"* ]]; then
-  ok "nested project plan detected from its subdirectory (Modo B fires)"
-else
-  bad "nested project plan INVISIBLE from subdirectory — boundary not adopted as root"
-fi
-rm -rf "$CONTAINER"
+# (W6 retired: it exercised anti-rationalization-gate.sh, removed by
+# #69 Phase 3 Slice C. The T87 cwd guarantee is covered by the other cases.)
 
-echo "=== T99-W7: anti-rat logs BROKEN git, stays silent on true no-git (RETURN 4) ==="
-# Both cases fail rev-parse with the same "not a git repository" text; only
-# the presence of a .git on the walk up distinguishes them.
-BROKEN=$(mktemp -d)
-git -C "$BROKEN" init -q
-mkdir -p "$BROKEN/.claude/hooks"
-cp "$HOOKS_SRC/anti-rationalization-gate.sh" "$BROKEN/.claude/hooks/"
-echo "garbage" > "$BROKEN/.git/HEAD"   # corrupt HEAD: rev-parse fails
-ISO_HOME_W7=$(mktemp -d)
-RC_W7=0
-(cd "$BROKEN" && printf '{"stop_hook_active": false, "cwd": "%s", "transcript": "hello"}' "$BROKEN" | \
-  HOME="$ISO_HOME_W7" /bin/bash "$BROKEN/.claude/hooks/anti-rationalization-gate.sh" >/dev/null 2>&1) || RC_W7=$?
-if [[ "$RC_W7" -eq 0 ]] && grep -q "git present but broken" "$ISO_HOME_W7/.ralph/logs/anti-rationalization-gate.log" 2>/dev/null; then
-  ok "broken git (corrupt HEAD): allowed AND logged for the operator"
-else
-  bad "broken git NOT logged (rc=$RC_W7) — silent Modo B off, promise unmet"
-fi
-rm -rf "$BROKEN" "$ISO_HOME_W7"
-
-# Control leg: a TRUE no-git dir emits the same rev-parse failure but must
-# stay SILENT (no log noise for a normal condition).
-TRUE_NOGIT=$(mktemp -d)
-mkdir -p "$TRUE_NOGIT/plain" "$TRUE_NOGIT/.claude/hooks"
-cp "$HOOKS_SRC/anti-rationalization-gate.sh" "$TRUE_NOGIT/.claude/hooks/"
-ISO_HOME_W7B=$(mktemp -d)
-(cd "$TRUE_NOGIT/plain" && printf '{"stop_hook_active": false, "cwd": "%s", "transcript": "hello"}' "$TRUE_NOGIT/plain" | \
-  HOME="$ISO_HOME_W7B" /bin/bash "$TRUE_NOGIT/.claude/hooks/anti-rationalization-gate.sh" >/dev/null 2>&1) || true
-if [[ ! -f "$ISO_HOME_W7B/.ralph/logs/anti-rationalization-gate.log" ]]; then
-  ok "true no-git directory stays silent (no false alarm)"
-else
-  bad "true no-git directory was LOGGED as broken — noisy false positive"
-fi
-rm -rf "$TRUE_NOGIT" "$ISO_HOME_W7B"
-
+echo "=== T99-W7/W7B retired: they exercised anti-rationalization-gate.sh logging semantics, removed by #69 Phase 3 Slice C ==="
 echo "=== T99-W8: plan-sync in a NON-GIT project — logical CLAUDE_PROJECT_DIR vs physical realpath (RETURN dominant 2) ==="
 # mktemp on macOS returns the LOGICAL path (/var/...) while realpath resolves
 # the PHYSICAL one (/private/var/...). A non-git project has no git to
@@ -442,23 +390,30 @@ echo "=== T99-W9: a bare tests/.claude/ directory is NOT a project root marker (
 # T87/T99 class, a regression vs v2.0.1. Only real .claude CONTENT (a plan,
 # settings, hooks/) marks a project.
 CONTAINER_W9=$(mktemp -d)
+CONTAINER_W9=$(cd "$CONTAINER_W9" && pwd -P)   # born canonical BEFORE writing specs (T87 fixture note)
 git -C "$CONTAINER_W9" init -q
 git -C "$CONTAINER_W9" config user.email t99@test
 git -C "$CONTAINER_W9" config user.name t99
-mkdir -p "$CONTAINER_W9/.claude/hooks/lib" "$CONTAINER_W9/tests/.claude" "$CONTAINER_W9/tests/sub"
-cp "$HOOKS_SRC/anti-rationalization-gate.sh" "$CONTAINER_W9/.claude/hooks/"
-cp "$HOOKS_SRC/lib/worktree-utils.sh" "$CONTAINER_W9/.claude/hooks/lib/"
+mkdir -p "$CONTAINER_W9/.claude/hooks" "$CONTAINER_W9/tests/.claude" "$CONTAINER_W9/tests/sub"
+cp -R "$HOOKS_SRC/." "$CONTAINER_W9/.claude/hooks/"   # full tree: the writer needs lib/plan-state-writer.sh too
 NOW_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-printf '{"last_updated":"%s","task":"w9","steps":[{"name":"step","status":"in_progress"}]}' "$NOW_ISO" \
+printf '{"version":"1.0","task":"w9","steps":[{"id":"w9","name":"w","status":"in_progress","spec":{"file":"%s/src/root.ts","exports":["root"]},"actual":{}}]}' "$CONTAINER_W9" \
   > "$CONTAINER_W9/.claude/plan-state.json"
-OUT_W9=$(cd "$CONTAINER_W9" && printf '{"stop_hook_active": false, "cwd": "%s/tests/sub", "transcript": "Should I continue?"}' "$CONTAINER_W9" | \
-  /bin/bash "$CONTAINER_W9/.claude/hooks/anti-rationalization-gate.sh" 2>/dev/null || true)
-if [[ "$OUT_W9" == *"Plan-immutability gate"* ]]; then
+mkdir -p "$CONTAINER_W9/src"
+printf 'export const root = 1;\n' > "$CONTAINER_W9/src/root.ts"
+ISO_HOME_W9=$(mktemp -d)
+# The session runs under tests/sub; a BARE tests/.claude must NOT be adopted
+# as the project root — the content-marker walk has to resolve the ROOT plan
+# and the writer must mutate it there.
+OUT_W9=$(cd "$CONTAINER_W9/tests/sub" && printf '{"tool_input": {"file_path": "%s/src/root.ts"}}' "$CONTAINER_W9" | \
+  HOME="$ISO_HOME_W9" /bin/bash "$CONTAINER_W9/.claude/hooks/plan-sync-post-step.sh" >/dev/null 2>&1)
+W9_WRITTEN=$(jq -r '.steps[] | select(.id == "w9") | .actual.updated_at // ""' "$CONTAINER_W9/.claude/plan-state.json" 2>/dev/null)
+if [[ -n "$W9_WRITTEN" ]]; then
   ok "cwd under tests/ still sees the ROOT plan (bare tests/.claude ignored)"
 else
-  bad "bare tests/.claude/ adopted as root — Modo B silently OFF under tests/"
+  bad "bare tests/.claude/ adopted as root — writer lost the root plan under tests/"
 fi
-rm -rf "$CONTAINER_W9"
+cleanup "$CONTAINER_W9" "$ISO_HOME_W9"
 
 echo "=== T99-W10: NO split-brain — nested project plan is what BOTH gate and writer see ==="
 # The r4 consolidation's headline case: a nested non-git project inside a
@@ -504,28 +459,15 @@ else
 fi
 cleanup "$CONTAINER_W10" "$ISO_HOME_W10"
 
-echo "=== T99-W11: BROKEN ancestor git does not hide a nested project's plan (RETURN r4 finding 3) ==="
-# Same geometry as W10 but the CONTAINER's git is corrupt. The resolution
-# walk is filesystem-only: the nested plan must still gate Modo B.
-BROKEN_W10=$(mktemp -d)
-git -C "$BROKEN_W10" init -q
-mkdir -p "$BROKEN_W10/.claude/hooks/lib" "$BROKEN_W10/.claude/state"
-cp "$HOOKS_SRC/anti-rationalization-gate.sh" "$BROKEN_W10/.claude/hooks/"
-cp "$HOOKS_SRC/lib/worktree-utils.sh" "$BROKEN_W10/.claude/hooks/lib/"
-echo "garbage" > "$BROKEN_W10/.git/HEAD"
-NESTED_W11="$BROKEN_W10/projects/toolbox"
-mkdir -p "$NESTED_W11/.claude/state" "$NESTED_W11/sub"
-NOW_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-printf '{"last_updated":"%s","task":"nested-broken","steps":[{"name":"step","status":"in_progress"}]}' "$NOW_ISO" \
-  > "$NESTED_W11/.claude/plan-state.json"
-OUT_W11=$(cd "$BROKEN_W10" && printf '{"stop_hook_active": false, "cwd": "%s/sub", "transcript": "Should I continue?"}' "$NESTED_W11" | \
-  HOME=$(mktemp -d) /bin/bash "$BROKEN_W10/.claude/hooks/anti-rationalization-gate.sh" 2>/dev/null || true)
-if [[ "$OUT_W11" == *"Plan-immutability gate"* ]]; then
-  ok "nested plan gates Modo B even with a BROKEN ancestor git"
-else
-  bad "broken ancestor git hid the nested plan — walk skipped on unhealthy git"
-fi
-rm -rf "$BROKEN_W10"
+echo "=== T99-W11 RETIRED (premature birth): it asserted broken-ancestor-git writer resolution that plan-sync-post-step.sh does NOT implement yet ==="
+# W11 (re-vehicled to the writer during Slice C) exposed a LATENT DEFECT: with
+# a broken ancestor git, the hook's INLINE get_project_root (line ~24, git
+# rev-parse || CLAUDE_PROJECT_DIR) shadows the lib's content-marker walk (which
+# line ~36 declares "the single resolution") and the writer rejects an
+# in-nested-root file as "Path traversal". Repro + full diagnosis:
+# results/pr7-w11repro.sh. The fix belongs to the survivor's owner (out of
+# Slice C's file list); this case returns WITH that fix. Do not re-add it
+# before the inline shadow is removed.
 
 echo
 echo "=========================================="

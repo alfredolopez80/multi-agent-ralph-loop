@@ -343,45 +343,6 @@ class TestDecisionFilter:
 # W4: Agent Diary Writer
 # ---------------------------------------------------------------------------
 
-class TestAgentDiaryWriter:
-    """W4.1: Diary writer at teammate idle."""
-
-    def test_diary_writer_exists(self):
-        assert os.path.exists(os.path.join(HOOKS_DIR, "agent-diary-writer.sh"))
-
-    def test_diary_writer_exit_zero(self):
-        """TeammateIdle hooks use exit 0 (not JSON)."""
-        stdin_data = json.dumps({
-            "agent_id": "ralph-coder",
-            "session_id": "test-diary-123",
-        })
-        stdout, rc = run_hook("agent-diary-writer.sh", stdin_data=stdin_data)
-        assert rc == 0
-
-    def test_diary_writer_only_known_agents(self):
-        """Unknown agents should be skipped."""
-        stdin_data = json.dumps({
-            "agent_id": "unknown-agent",
-            "session_id": "test-diary-123",
-        })
-        stdout, rc = run_hook("agent-diary-writer.sh", stdin_data=stdin_data)
-        assert rc == 0
-
-    def test_diary_writer_syntax(self):
-        result = subprocess.run(
-            ["bash", "-n", os.path.join(HOOKS_DIR, "agent-diary-writer.sh")],
-            capture_output=True, text=True,
-        )
-        assert result.returncode == 0, f"Syntax error: {result.stderr}"
-
-
-# ---------------------------------------------------------------------------
-# W5: Vault Lint + Log Writer
-# ---------------------------------------------------------------------------
-
-# vault-lint.sh deleted in H1 consolidation — all lint tests removed
-
-
 class TestVaultLogWriter:
     """W5.2: Chronological log writer at session end."""
 
@@ -455,7 +416,6 @@ class TestHookRegistration:
         "vault-writeback.sh",
         "vault-wing-compiler.sh",
         "vault-log-writer.sh",
-        "agent-diary-writer.sh",
     ]
 
     def test_all_hooks_are_executable(self):
@@ -536,8 +496,7 @@ class TestKarpathyCycle:
             "vault-writeback.sh",
             "vault-wing-compiler.sh",
             "vault-log-writer.sh",
-            "agent-diary-writer.sh",
-        ]
+            ]
         for script in scripts:
             result = subprocess.run(
                 ["bash", "-n", os.path.join(HOOKS_DIR, script)],

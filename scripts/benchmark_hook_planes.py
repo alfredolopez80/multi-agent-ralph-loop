@@ -65,7 +65,6 @@ PLANES = {
     "session-accumulator.sh": "memory",
     "smart-memory-search.sh": "memory",
     "orchestrator-auto-learn.sh": "memory",
-    "agent-diary-writer.sh": "memory",
     "memory-projection.sh": "memory",
     "vault-index-updater.sh": "memory",
     "vault-wing-compiler.sh": "memory",

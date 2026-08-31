@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+### Removed - Slice C (#69 Phase 3 PR 7): quality enforcement consolidado en task-completed-quality-gate.sh (TaskCompleted)
+
+- Removidos 7 hooks duplicados: `teammate-idle-quality-gate`, `agent-diary-writer`,
+  `subagent-stop-universal`, `ralph-subagent-stop`, `ralph-stop-quality-gate`,
+  `anti-rationalization-gate`, `quality-parallel-async`. El quality enforcement
+  canónico vive en `task-completed-quality-gate.sh` (TaskCompleted); el workflow
+  completo (correctness/quality/consistency) queda vía `/ship` explícito. La
+  metodología anti-rationalization sobrevive (tests + invocación vía /ship);
+  worker-blocked-safe (git-safety, repo-boundary, permission, k8s-context,
+  skill-validator) y el manifest SECURITY intactos.
+
 ### Added - lead/worker worktree coordination skills
 
 - **`.claude/skills/wt-lead/` and `.claude/skills/wt-worker/`** — a two-role protocol for

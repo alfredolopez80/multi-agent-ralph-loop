@@ -39,10 +39,8 @@ TASKS_DIR = Path.home() / ".claude" / "tasks"
 
 CUSTOM_SUBAGENTS = ["ralph-coder", "ralph-reviewer", "ralph-tester", "ralph-researcher"]
 AGENT_TEAMS_HOOKS = [
-    "teammate-idle-quality-gate.sh",
     "task-completed-quality-gate.sh",
     "ralph-subagent-start.sh",
-    "ralph-subagent-stop.sh",
 ]
 
 SKILLS_THAT_SHOULD_USE_AGENT_TEAMS = [
@@ -213,18 +211,6 @@ class TestAgentTeamsHooks:
 
         assert os.access(hook_path, os.X_OK), f"Hook {hook_name} is not executable"
 
-    def test_teammate_idle_hook_format(self):
-        """Verify TeammateIdle hook produces valid JSON output."""
-        hook_path = HOOKS_DIR / "teammate-idle-quality-gate.sh"
-        if not hook_path.exists():
-            pytest.skip("Hook file missing")
-
-        content = hook_path.read_text()
-        # Check for JSON output format
-        assert "continue" in content or "decision" in content, (
-            "TeammateIdle hook missing JSON output format"
-        )
-
     def test_task_completed_hook_format(self):
         """Verify TaskCompleted hook produces valid JSON output."""
         hook_path = HOOKS_DIR / "task-completed-quality-gate.sh"
@@ -246,18 +232,6 @@ class TestAgentTeamsHooks:
         # Should register state for VERIFIED_DONE pattern
         assert "state" in content.lower() or "register" in content.lower(), (
             "SubagentStart hook missing state registration"
-        )
-
-    def test_subagent_stop_hook_quality_gate(self):
-        """Verify SubagentStop hook has quality gate logic."""
-        hook_path = HOOKS_DIR / "ralph-subagent-stop.sh"
-        if not hook_path.exists():
-            pytest.skip("Hook file missing")
-
-        content = hook_path.read_text()
-        # Should have quality validation
-        assert "quality" in content.lower() or "exit" in content.lower(), (
-            "SubagentStop hook missing quality gate logic"
         )
 
 
