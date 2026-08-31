@@ -1,5 +1,5 @@
 {
-  "version": "1.4.0",
+  "version": "1.5.0",
   "date": "2026-08-31",
   "issue": 46,
   "phase": "STEP B (manifest + regression tests). STEP A (diagnostic shutdown) deliberately NOT done: ruled unsafe as drafted; B goes first.",
@@ -134,8 +134,26 @@
     {
       "id": "secrets-ordinary-work",
       "from_issue": 45,
-      "status": "no-hook",
-      "description": "#45 demands preventing secrets from entering ordinary (non-audit) work. audit-secrets.js only LOGS 20+ secret patterns post-execution (PostToolUse detection); nothing blocks or warns at write time. Detection-after-the-fact is not the demanded control."
+      "status": "control-declarado",
+      "description": "#45 demands preventing secrets from entering ordinary (non-audit) work. RESOLVED at the mechanism level (PR3-C1, 2026-08-31): a deterministic write-time gate now exists — .claude/hooks/secrets-write-guard.py (PreToolUse over Write/Edit/MultiEdit) denies 6 closed secret patterns (PEM headers, sk- keys, GitHub tokens, AKIA ids, URL-embedded credentials, credential assignment literals) with an actionable message and a versioned path allowlist; fail-closed on unparseable input per the security-plane invariant. 18-assertion matrix in tests/security/test-secrets-write-guard.sh (registered in the unit gate); three-result proof recorded (pattern-poisoning fails the suite). ACTIVATION IS USER-SIDE: registering it in ~/.claude/settings.json (matcher Edit|Write) is lead+user, as with every settings change. The old audit-secrets.js PostToolUse audit remains deregistered (see 'deregistered') as /ship evidence only.",
+      "control": {
+        "kind": "hook",
+        "hook": ".claude/hooks/secrets-write-guard.py",
+        "event": "PreToolUse",
+        "matchers": ["Edit|Write|MultiEdit"],
+        "fixtures": {
+          "positive": "printf '%s' '{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/tmp/a.py\",\"content\":\"aws_id = \\\"AKIAABCDEFGHIJKLMNOP\\\"\"}}' | python3 .claude/hooks/secrets-write-guard.py  -> deny, exit 1",
+          "negative": "Write of normal code (type hints, env lookups) -> allow, exit 0",
+          "allowlist": "same PEM content written to a path matching **/fixtures/** -> allow with allowlist reason"
+        },
+        "properties": [
+          "stdlib-only, closed patterns with fixed anchors/charsets/minimum lengths — no vague regexes",
+          "fail-closed on every unexpected input shape (unparseable stdin, missing file_path/content)",
+          "never echoes the matched secret — reason names the pattern and location only",
+          "latency measured with the hotpath-probe method (N=200, median/p90/max in results/pr3-c1-latency.txt)"
+        ],
+        "suite": "tests/security/test-secrets-write-guard.sh (gate-registered)"
+      }
     },
     {
       "id": "red-toxic",
