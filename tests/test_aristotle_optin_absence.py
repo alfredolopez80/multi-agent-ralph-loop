@@ -48,6 +48,16 @@ def test_example_profile_registers_no_aristotle_pipeline():
         assert name not in text, f"{name} re-registered in the install profile"
 
 
+def test_validator_has_no_retired_hook_lists():
+    """PR6-HOTFIX2 seal: validate-global-infrastructure.sh must not keep ANY
+    list expecting the retired hooks (its UNIVERSAL_HOOKS array survived the
+    slice and failed on main 3rd-instance of the same pattern). A future list
+    re-adding them breaks this test before it can fail the validator."""
+    text = (REPO / "scripts/validate-global-infrastructure.sh").read_text(encoding="utf-8")
+    for name in RETIRED_HOOKS:
+        assert name not in text, f"{name} still listed in the validator"
+
+
 def test_claude_md_has_no_aristotle_threshold():
     """CLAUDE.md no longer carries the Aristotle process threshold (plan C1)."""
     text = (REPO / "CLAUDE.md").read_text(encoding="utf-8")
