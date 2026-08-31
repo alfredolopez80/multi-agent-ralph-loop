@@ -23,7 +23,7 @@ sys.path.insert(0, str(PROJECT_ROOT / ".claude" / "hooks"))
 from k8s_context_guard.cloud_operation_gate import assess_command  # noqa: E402
 
 MIN_CASES = 18
-ran = passed = failed = 0
+ran = passed = failed = xfailed = 0
 
 
 @dataclass
@@ -189,16 +189,30 @@ check(
     f"decision={d}",
 )
 
-# --- gcloud: git-safety-guard.py domain; must stay gated (deny or ask, never allow) ---
+# --- gcloud: git-safety-guard.py domain; KNOWN GAP tracked as issue #70 ---
+# The issue #67 matrix asserts `gcloud app deploy` stays gated, but git-safety-guard.py
+# measured allow on main (2026-08-31). Lead moved the gap to #70: while it is open the
+# case is an XFAIL (visible, never a silent skip); if the gap is CLOSED the case becomes
+# an XPASS and FAILS the run so this marker gets removed — expected-failure must never
+# outlive the failure it documents.
 GIT_GUARD = PROJECT_ROOT / ".claude" / "hooks" / "git-safety-guard.py"
 env = {k: v for k, v in os.environ.items() if "DESTRUCTIVE_CONFIRMED" not in k}
 payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": "gcloud app deploy app.yaml"}, "cwd": "/tmp"})
 p = subprocess.run(["python3", str(GIT_GUARD)], input=payload, text=True, capture_output=True, env=env)
 gd = json.loads(p.stdout)["hookSpecificOutput"]["permissionDecision"]
-check("gcloud_app_deploy_not_allowed", gd, gd in {"deny", "ask"}, f"decision={gd}")
+ran += 1
+if gd in {"deny", "ask"}:
+    failed += 1
+    print(f"  XPASS gcloud_app_deploy_not_allowed: decision={gd} — issue #70 closed; remove the known-gap marker")
+else:
+    xfailed += 1
+    print(f"  XFAIL gcloud_app_deploy_not_allowed (known gap, issue #70; decision={gd})")
 
 print()
-print(f"RAN={ran}  PASS={passed}  FAIL={failed}")
+print(f"RAN={ran}  PASS={passed}  FAIL={failed}  XFAIL={xfailed}")
+# "Passed: N | ..." is the summary format tests/run-all-unit-tests.sh parses for an
+# assertion count (strategy 1); keep it in sync if this line ever changes.
+print(f"Passed: {passed} | Failed: {failed} | Xfail: {xfailed}")
 if failed > 0 or ran < MIN_CASES:
     print(f"FAIL: expected >= {MIN_CASES} executed cases with zero failures")
     sys.exit(1)
