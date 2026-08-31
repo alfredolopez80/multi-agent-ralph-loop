@@ -30,9 +30,9 @@ READ_ACTIONS = {
 DESTRUCTIVE_ACTIONS = {"delete", "destroy", "drain", "drop", "purge", "remove", "rm", "terminate", "uninstall", "wipe"}
 MUTATING_ACTIONS = {
     "add", "annotate", "apply", "attach", "autoscale", "cordon", "cp", "create", "deploy", "detach",
-    "edit", "expose", "import", "install", "label", "move", "mv", "patch", "put", "replace", "restart",
-    "restore", "resume", "rollback", "rollout", "scale", "set", "start", "stop", "submit", "suspend",
-    "taint", "uncordon", "update", "upgrade", "use-context",
+    "edit", "expose", "import", "install", "label", "move", "mv", "patch", "port-forward", "put",
+    "replace", "restart", "restore", "resume", "rollback", "rollout", "scale", "set", "start", "stop",
+    "submit", "suspend", "taint", "uncordon", "update", "upgrade", "use-context",
 }
 COMPLETE_KUBERNETES_RESOURCES = {
     "cluster", "clusters", "crd", "customresourcedefinition", "customresourcedefinitions", "namespace",
@@ -337,7 +337,12 @@ def _assess_cloud_parts(
             context=context,
         )
     complete = _kubectl_complete_deletion(parts)
-    if verification.is_minikube and not complete:
+    # port-forward is a network tunnel: even on a verified minikube cluster, the
+    # user must explicitly confirm which local port is exposed to the cluster
+    # side (a port-forward can leak the local machine's services to the network).
+    # Bypass the minikube-allow shortcut for this action; treat as approval -> ask.
+    is_port_forward = operation == "port-forward"
+    if verification.is_minikube and not complete and not is_port_forward:
         warning = "" if risk == "read" else f"verified minikube {context}: {operation} local resources"
         return CommandAssessment(
             action="allow",

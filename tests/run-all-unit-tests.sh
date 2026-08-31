@@ -132,6 +132,7 @@ TEST_SUITES=(
     "security/test-k8s-guard-action-position.sh:Security: k8s action position (issue #67)"
     "security/test-k8s-unresolved-script-path.sh:Security: k8s unresolved script path (issue #68)"
     "security/test-logging-standards.sh:Security: logging standards"
+    "security/test-k8s-port-forward-tier.sh:Security: k8s port-forward tier (PF-TIER, #45 gap)"
     "security/test-package-manager-verbs.sh:Security: package-manager verbs (PR3-C4)"
     "security/test-pr3-c7-no-undeclared-security.sh:Security: no undeclared security registrations (PR3-C7, #69 1B)"
     "security/test-secrets-write-guard.sh:Security: secrets write gate matrix (PR3-C1, #69 1B)"
