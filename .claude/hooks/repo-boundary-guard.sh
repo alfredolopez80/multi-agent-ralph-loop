@@ -250,6 +250,9 @@ is_allowed_path() {
 
     # SEC-051: Canonicalize path using realpath (handles ~, .., symlinks).
     # current_repo arrives pre-canonicalized from main().
+    # issue #45 (PR3-C5): the SUPERFICIAL location also matters — see the
+    # symlink-escape check right below the sentinel.
+    local raw_path="$path"
     path="$(canonicalize "$path")"
 
     # v2.99.0 (#61): the sentinel is now CONSULTED. Before, it was emitted
@@ -258,6 +261,35 @@ is_allowed_path() {
     # cannot resolve cannot be trusted — block it.
     if [[ "$path" == "__CANONICALIZE_FAILED__" ]]; then
         return 1  # BLOCKED — unresolvable path
+    fi
+
+    # symlink-escape (issue #45, PR3-C5): if the path SUPERFICIALLY pointed
+    # inside a trusted boundary (current repo, working tree, GitHub dir) but
+    # canonicalization moves it OUTSIDE, that difference IS a symlink — and
+    # canonicalization may not silently turn an in-boundary reference into an
+    # out-of-boundary ALLOW. Before this check, realpath resolved the symlink
+    # first and the resolved path then fell through "Allow other paths": a
+    # fixture-measured fail-open. Deny the escape; paths that never claimed
+    # the boundary keep flowing through the checks below unchanged. No
+    # exceptions (not even /tmp): a symlink is never the direct route to an
+    # allowed place — claim the real path directly instead.
+    local in_boundary=0
+    if [[ "$raw_path" == "$current_repo" || "$raw_path" == "$current_repo"/* ]] \
+       || [[ -n "$PROJECT_ROOT" && ( "$raw_path" == "$PROJECT_ROOT" || "$raw_path" == "$PROJECT_ROOT"/* ) ]] \
+       || [[ "$raw_path" == "$GITHUB_DIR"/* ]]; then
+        in_boundary=1
+    fi
+    if [[ $in_boundary -eq 1 ]]; then
+        local still_in=0
+        if [[ "$path" == "$current_repo" || "$path" == "$current_repo"/* ]] \
+           || [[ -n "$PROJECT_ROOT" && ( "$path" == "$PROJECT_ROOT" || "$path" == "$PROJECT_ROOT"/* ) ]] \
+           || [[ "$path" == "$GITHUB_DIR"/* ]]; then
+            still_in=1
+        fi
+        if [[ $still_in -eq 0 ]]; then
+            log "BLOCKED: symlink-escape: $raw_path resolves outside the boundary ($path)"
+            return 1  # BLOCKED — in-boundary reference escaping through a symlink
+        fi
     fi
 
     # Allow global config directories (boundary-safe: .claude but not .claude-evil)

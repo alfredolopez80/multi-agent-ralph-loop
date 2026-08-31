@@ -183,8 +183,10 @@
     {
       "id": "symlink-escape",
       "from_issue": 45,
-      "status": "partial",
-      "description": "repo-boundary-guard.sh checks paths, but symlink-following escapes (an in-repo symlink pointing outside) are only partially covered. Declared partial until a fixture proves symlink resolution is boundary-checked."
+      "status": "resolved",
+      "description": "repo-boundary-guard.sh checks paths, but symlink-following escapes (an in-repo symlink pointing outside) are only partially covered. Declared partial until a fixture proves symlink resolution is boundary-checked.",
+      "resolution": "PR3-C5 fixture-first: the fixture measured 4/4 escapes silently ALLOWED (bash mention, Write file_path, depth-2 symlink chain, symlink->/tmp) because canonicalization resolved the symlink BEFORE the boundary comparisons, so the resolved path fell through 'Allow other paths'. Fixed in is_allowed_path: a path whose SUPERFICIAL token claims a trusted boundary (current repo, working tree, GITHUB_DIR) but whose canonical location does not is denied — no exceptions, not even /tmp. Never-claimed paths, same-repo symlinks and pure readonly commands remain usable; a redirect makes the whole command a write-scan, so a read through an escaping symlink in a redirecting command is also denied (pinned as designed). Evidence: tests/security/fixtures/symlink_escape_runner.py (pre-fix 4 FAIL, post-fix 9/9 PASS), registered as gate suite 47.",
+      "resolved_by": "worktree-zc-4 PR3-C5"
     }
   ],
   "deregistered": [
