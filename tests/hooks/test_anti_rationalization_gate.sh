@@ -105,8 +105,14 @@ rm -rf "$P"
 
 echo "=== Test 2: excuse pattern → block ==="
 P=$(new_project)
-OUT=$(run_hook "$P" "{\"stop_hook_active\": false, \"cwd\": \"$P\", \"transcript\": \"Sequential is simpler to implement\"}")
-assert_output "block on excuse 'Sequential is simpler'" '"decision": "block"' "$OUT"
+echo "=== Test 2: excuse pattern → block ==="
+# The gate greps the RAW stdin for the DOC-QUOTED excuse ("excuse" with its
+# table quotes), so the transcript is passed as free text carrying the quoted
+# excuse literally — a JSON-escaped closing quote would never match (the same
+# reason json.dumps payloads do not match). The gate does not parse this
+# input; it only greps it.
+OUT=$(run_hook "$P" '{"stop_hook_active": false, "cwd": "'"$P"'", "transcript_text": user said "I'"'"'ll fix it in the next iteration", stopping here.}')
+assert_output "block on excuse 'I'll fix it in the next iteration'" '"decision": "block"' "$OUT"
 rm -rf "$P"
 
 echo "=== Test 3: active plan + confirmation → block ==="

@@ -213,26 +213,6 @@ if [[ -f "$PATTERNS_FILE" ]]; then
   done <<< "$EXCUSES"
 fi
 
-# Hardcoded parallel-first fallback
-if [[ -z "$MATCHED_EXCUSE" ]]; then
-  PARALLEL_EXCUSES="Sequential is simpler
-hidden dependencies
-parallelize in the next
-coordination overhead
-faster to do it myself
-too small for parallelism
-already started sequentially
-Only one file needs changing"
-  while IFS= read -r excuse; do
-    [[ -z "$excuse" ]] && continue
-    if echo "$INPUT" | grep -qiF -- "$excuse"; then
-      MATCHED_EXCUSE="$excuse"
-      MATCHED_REBUTTAL="See .claude/rules/parallel-first.md for the rebuttal."
-      break
-    fi
-  done <<< "$PARALLEL_EXCUSES"
-fi
-
 # --- Decision: Excuse match wins immediately ---
 if [[ -n "$MATCHED_EXCUSE" ]]; then
   NEW_COUNT=$((BLOCK_COUNT + 1))
