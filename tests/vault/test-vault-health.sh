@@ -6,7 +6,7 @@
 # 1. Vault directory structure exists
 # 2. vault-graduation.sh executes without errors and counter works
 # 3. vault-index-updater.sh regenerates indices correctly
-# 4. session-accumulator.sh writes to correct project buffer
+# 4. (session-accumulator.sh removed by #69 Slice D)
 # 5. Hooks are registered globally in all settings.json
 # 6. Wikilinks in articles resolve to existing files
 # 7. Frontmatter YAML is well-formed in wiki articles
@@ -121,37 +121,8 @@ fi
 echo ""
 
 # ─────────────────────────────────────────────
-echo "▸ 4. session-accumulator.sh — multi-project capture"
+echo "▸ 4. session-accumulator.sh — removed by #69 Slice D (automatic writers gone)"
 # ─────────────────────────────────────────────
-ACC_HOOK="$HOOKS_DIR/session-accumulator.sh"
-if [[ -f "$ACC_HOOK" ]]; then
-    pass "session-accumulator.sh exists"
-
-    # Check it detects project name dynamically
-    if grep -q 'git rev-parse --show-toplevel' "$ACC_HOOK"; then
-        pass "Uses git root for project detection (works for any repo)"
-    else
-        fail "Hardcoded project name (won't work globally)"
-    fi
-
-    # Check it handles non-git directories
-    if grep -q "|| echo" "$ACC_HOOK"; then
-        pass "Handles non-git directories gracefully"
-    else
-        warn "May fail in non-git directories"
-    fi
-
-    # Count projects with lesson data
-    project_count=$(find "$VAULT_DIR/projects" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
-    if [[ "$project_count" -gt 1 ]]; then
-        pass "Capturing data from $project_count projects (multi-repo working)"
-    else
-        warn "Only $project_count project(s) detected"
-    fi
-else
-    fail "session-accumulator.sh not found"
-fi
-echo ""
 
 # ─────────────────────────────────────────────
 echo "▸ 5. Global hook registration"
@@ -168,7 +139,7 @@ for sf in "${SETTINGS_FILES[@]}"; do
     fi
 
     # Check each critical hook
-    for hook in "vault-graduation.sh" "session-accumulator.sh" "vault-index-updater.sh"; do
+    for hook in "vault-graduation.sh" "vault-index-updater.sh"; do
         if grep -q "$hook" "$sf" 2>/dev/null; then
             pass "$hook registered in $sf_name"
         else

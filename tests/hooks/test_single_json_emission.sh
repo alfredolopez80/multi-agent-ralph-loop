@@ -123,9 +123,6 @@ test_single_emission_on_forced_failure "inject-session-context.sh"  "$TASK_INPUT
 test_single_emission_on_forced_failure "plan-state-adaptive.sh"     "$PROMPT_INPUT"
 test_single_emission_on_forced_failure "plan-state-lifecycle.sh"    "$PROMPT_INPUT"
 test_single_emission_on_forced_failure "skill-validator.sh"         "$EDIT_INPUT"
-test_single_emission_on_forced_failure "continuous-learning.sh"     "$STOP_INPUT"
-test_single_emission_on_forced_failure "dream-consolidate.sh"       "$STOP_INPUT"
-test_single_emission_on_forced_failure "memory-projection.sh"       "$STOP_INPUT"
 test_single_emission_on_forced_failure "progress-tracker.sh"        "$EDIT_INPUT"
 
 echo
