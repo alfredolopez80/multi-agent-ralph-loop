@@ -1,5 +1,5 @@
 {
-  "version": "1.3.0",
+  "version": "1.4.0",
   "date": "2026-08-31",
   "issue": 46,
   "phase": "STEP B (manifest + regression tests). STEP A (diagnostic shutdown) deliberately NOT done: ruled unsafe as drafted; B goes first.",
@@ -146,8 +146,15 @@
     {
       "id": "mcp-egress",
       "from_issue": 45,
-      "status": "no-hook",
-      "description": "No control governs MCP egress (which servers may be called with what payload). MCP tool calls bypass the Bash/Edit permission surface entirely."
+      "status": "control-declarado",
+      "description": "MCP tool calls bypass the Bash/Edit permission surface. RESOLVED via native surface (PR3-C3a, 2026-08-31): the active harness (Claude Code 2.1.251) exposes MCP calls to PreToolUse with the full mcp__<server>__<tool> name and tool_input arguments, and permissions rules support the mcp__<server>__<tool> syntax (live in the user's active settings deny list). No guard code was needed — the mechanism already existed; what was missing was the proof.",
+      "control": {
+        "kind": "native-permission-surface",
+        "mechanism": "permissions deny/ask rules with mcp__<server>__<tool> syntax, plus PreToolUse hooks matching mcp__.* (both proven by experiment PR3-C3a)",
+        "proven_by": "scripts/experiments/mcp-surface/ (runner + README; full report in docs/security/MCP_SURFACE_EXPERIMENT_PR3-C3a.md)",
+        "reproduce": "bash scripts/experiments/mcp-surface/run-experiment.sh A (Bash control AND the MCP call must both appear in the hook log) && bash scripts/experiments/mcp-surface/run-experiment.sh B (matcher mcp__.*: ONLY the MCP call appears)",
+        "policy_note": "The list of denied servers/tools is POLICY, delegated to the user's active settings (permissions.deny) — this manifest declares the mechanism, not the server list."
+      }
     },
     {
       "id": "package-manager",
