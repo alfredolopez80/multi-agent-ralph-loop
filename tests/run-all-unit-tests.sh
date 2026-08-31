@@ -132,6 +132,7 @@ TEST_SUITES=(
     "security/test-shell-syntax-validation.sh:Security: shell syntax validation"
     "security/test-sql-injection-blocking.sh:Security: SQL injection blocking"
     "security/test-k8s-guard-action-position.sh:Security: k8s action position (issue #67)"
+    "security/test-pr3-c7-no-undeclared-security.sh:Security: no undeclared security registrations (PR3-C7, #69 1B)"
     "skills/test-autoresearch-smart-setup.sh:Skills: autoresearch smart setup"
     "stop-hook/test-ralph-stop-quality-gate.sh:Stop hook: quality gate"
     "stop-hook/test-ralph-subagent-stop.sh:Stop hook: subagent stop"
