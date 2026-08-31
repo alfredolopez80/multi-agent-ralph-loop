@@ -155,11 +155,9 @@ EnterPlanMode: {}  # Claude Code reads orchestrator-analysis.md
 
 Exit with `ExitPlanMode` when approved.
 
-## Step 5: DELEGATE (Parallel-First with Swarm)
+## Step 5: DELEGATE (Swarm, optional)
 
-**REQUIRED: Parallel execution for ALL independent tasks. Sequential only with documented dependency.**
-
-See rule: `.claude/rules/parallel-first.md`
+**Parallel execution for independent tasks when it benefits the work; sequential with a documented reason is acceptable.**
 
 ```yaml
 # With swarm mode (v2.81+)
@@ -263,7 +261,7 @@ ralph retrospective
 7. QUALITY passed (blocking)
 8. Adversarial passed (if complexity >= 7)
 9. Retrospective done + learnings saved to memory
-10. **Parallel-first validated**: Agent Teams used for complexity >= 3, independent tasks parallelized
+10. **Delegation reviewed**: tasks that benefit from it were parallelized; sequential choices carry a documented reason
 11. **Teammates spawned**: At least 2 ralph-* teammates for non-trivial tasks
 
 ## CLI Commands

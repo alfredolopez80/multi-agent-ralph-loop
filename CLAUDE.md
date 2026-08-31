@@ -2,29 +2,6 @@
 
 Orchestration system with memory-driven planning, multi-agent coordination, automatic learning, and quality validation.
 
-## Parallel-First Execution (MANDATORY)
-
-**All independent tasks MUST be executed in parallel using Agent Teams.** This is the #1 operational priority.
-
-| Complexity | Execution Mode | Agent Teams |
-|---|---|---|
-| 1-2 | Direct execution (no team) | Optional |
-| 3+ | **Parallel with Agent Teams** | **REQUIRED** |
-
-**6 Ralph Teammates available for parallel spawning:**
-
-| Teammate | Role | Spawn When |
-|---|---|---|
-| `ralph-coder` | Implementation | Code changes needed |
-| `ralph-reviewer` | Code review | Post-implementation |
-| `ralph-tester` | Testing & QA | Tests needed (always with coder) |
-| `ralph-researcher` | Research | Unknown patterns |
-| `ralph-frontend` | Frontend (WCAG 2.1 AA) | UI/component changes |
-| `ralph-security` | Security (6 pillars) | Auth, crypto, user input |
-
-**Rule**: `.claude/rules/parallel-first.md`
-**Anti-rationalization**: entries #38-#46 in `docs/reference/anti-rationalization.md`
-
 ## Analysis Methodology
 
 **Aristotle First Principles** is the foundational methodology. Every task passes through these phases before execution:
@@ -205,7 +182,7 @@ Validation: `./scripts/validate-hooks-registration.sh`
 No complexity-based model routing exists. The authoritative policy is
 `~/.claude/CLAUDE.md` -> "Model Routing": the task is handled by the active
 session model (Opus by default; the user decides with `/model`). Complexity
-thresholds trigger PROCESS (Plan Mode >= 4, Parallel-First >= 3, Aristotle >= 4),
+thresholds trigger PROCESS (Plan Mode >= 4, Aristotle >= 4),
 never model choice.
 
 ## Memory System (MemPalace v3.0)
@@ -312,8 +289,9 @@ or `qteam-zc` tmux functions** (sourced from `~/.zshrc`, not part of this
 repo). Outside that,
 behaviour is normal: no lead/worker split, no model contract, no ASSIGN/DONE
 protocol, no delegation. A session that is not a Q-team pane ignores this
-section entirely — including this repo's own Parallel-First rule, which is
-about Agent Teams and is unaffected.
+section entirely — including this repo's own former mandatory-parallelism
+rule (retired by #69 Phase 3, Slice A), which is about Agent Teams and is
+unaffected.
 
 `qteam` opens one tmux session (default name `quant`, `QTEAM_SESSION` overrides)
 with four panes, and gives each Claude both a `--name` and an appended system

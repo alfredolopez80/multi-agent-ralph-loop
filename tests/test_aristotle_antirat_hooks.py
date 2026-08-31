@@ -327,7 +327,7 @@ class TestAntiRationalizationGate:
     def test_doc_excuse_blocks(self):
         """Excuses from anti-rationalization.md should be blocked."""
         self._reset_state()
-        excuse = '"It\'s faster to do it myself sequentially"'
+        excuse = '"I\'ll fix it in the next iteration"'
         r = run_gate(f"I think {excuse}, let me stop here.")
         log_result("antirat_doc_block", "anti-rationalization-gate.sh", r,
                    f"excuse: {excuse}")
@@ -338,19 +338,25 @@ class TestAntiRationalizationGate:
                "Excuse" in r["output"]["reason"], \
                f"Reason should mention excuse: {r['output']['reason']}"
 
-    def test_parallel_excuse_blocks(self):
-        """Parallel-first excuses should be blocked."""
+    def test_parallel_excuse_not_gated(self):
+        """Parallel-first excuses are RETIRED (PR 5, #69 Phase 3 Slice A, lead
+        design decision): the gate neither blocks them nor references the
+        removed rule file. Lead's semantics: an input carrying a parallel
+        excuse must resolve to APPROVE. Per tests/HOOK_FORMAT_REFERENCE.md a
+        Stop-hook approve IS silence (empty stdout, exit 0) — emitting
+        {"decision": "approve"} would fail the runtime allow contract the
+        suite shell already asserts. If this fails, the mandatory
+        parallel-first policy was re-introduced."""
         self._reset_state()
         r = run_gate(
             "Sequential is simpler to implement, I'll just do it one "
             "at a time.")
-        log_result("antirat_parallel_block", "anti-rationalization-gate.sh", r,
+        log_result("antirat_parallel_retired", "anti-rationalization-gate.sh", r,
                    "Sequential is simpler")
-        assert r["is_valid_json"]
-        assert r["output"]["decision"] == "block"
-        assert "parallel-first" in r["output"]["reason"].lower() or \
-               "parallel" in r["output"]["reason"].lower(), \
-               f"Should reference parallel-first: {r['output']['reason']}"
+        assert r["stdout"].strip() == "", \
+            f"Retired excuse must approve silently (no verdict emitted): {r['stdout']!r}"
+        assert "parallel-first" not in r["stdout"].lower(), \
+            f"Gate must not reference the removed rule: {r['stdout']!r}"
 
     def test_max_blocks_circuit_breaker(self):
         """After 3 blocks, hook must auto-approve (circuit breaker)."""
@@ -366,7 +372,7 @@ class TestAntiRationalizationGate:
     def test_state_increments(self):
         """State file must increment on each block."""
         self._reset_state()
-        run_gate("coordination overhead is too high")
+        run_gate('"I\'ll fix it in the next iteration" is my plan')
         state = json.loads(antirat_state().read_text())
         log_result("antirat_state_increment", "anti-rationalization-gate.sh",
                    {"returncode": 0, "stdout": json.dumps(state),
@@ -386,22 +392,22 @@ class TestAntiRationalizationGate:
     def test_block_includes_rebuttal(self):
         """Block reason must include the rebuttal from the doc."""
         self._reset_state()
-        r = run_gate("It's faster to do it myself sequentially")
+        r = run_gate('I think "I\'ll fix it in the next iteration", let me stop here.')
         log_result("antirat_rebuttal", "anti-rationalization-gate.sh", r,
-                   "faster to do it myself")
+                   "fix it in the next iteration")
         assert r["is_valid_json"]
         assert r["output"]["decision"] == "block"
         reason = r["output"]["reason"]
         # Rebuttal should contain actionable advice
         assert any(word in reason.lower() for word in
-                   ["parallel", "wall-clock", "faster for you"]), \
+                   ["fix it now", "next iteration"]), \
                f"Rebuttal missing actionable advice: {reason}"
 
     def test_multiple_excuses_first_match_wins(self):
         """Only the first matching excuse should trigger a block."""
         self._reset_state()
         r = run_gate("I already know the answer and "
-                     "It's faster to do it myself sequentially")
+                     '"I\'ll fix it in the next iteration"')
         log_result("antirat_first_match", "anti-rationalization-gate.sh", r,
                    "two excuses, first match wins")
         assert r["is_valid_json"]
@@ -495,7 +501,7 @@ class TestEndToEndChain:
         # Step 3: Anti-rationalization blocks excuse
         if ANTIRAT_HOOK.exists():
             antirat_state().write_text('{"blocks": 0}')
-            excuse = "It's faster to do it myself sequentially"
+            excuse = '"I\'ll fix it in the next iteration"'
             r3 = run_gate(f"I think {excuse}, stopping here.")
             log_result("chain_step3_antirat_block",
                        "anti-rationalization-gate.sh", r3, excuse)

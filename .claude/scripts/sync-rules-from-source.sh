@@ -53,7 +53,6 @@ RULE_FILES=(
   "ast-grep-usage.md"
   "browser-automation.md"
   "native-tools-first.md"
-  "parallel-first.md"
   "plan-immutability.md"
   "zai-mcp-usage.md"
 )
