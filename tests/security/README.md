@@ -49,6 +49,17 @@ trade-off).
 
 **Run**: `bash tests/security/test-gcloud-deploy-verbs.sh`
 
+### test-repo-boundary-symlink-escape.sh
+Fail-closed regression for repo-boundary-guard.sh symlink resolution (issue
+#45, PR3-C5): an in-boundary path that resolves through a symlink to OUTSIDE
+the boundary is denied (canonicalization must not turn an in-boundary
+reference into an out-of-boundary allow); same-repo symlinks, pure readonly
+commands and never-claimed paths stay usable. A redirect makes the whole
+command a write-scan, so even a read through an escaping symlink is denied —
+pinned as designed. Builds a real fixture repo under the checkout.
+
+**Run**: `bash tests/security/test-repo-boundary-symlink-escape.sh`
+
 ### test-k8s-guard-action-position.sh
 Two-sided regression matrix for k8s-context-guard-v2 action-position
 classification (issue #67): `kubectl get/describe/logs deploy` are READ,
