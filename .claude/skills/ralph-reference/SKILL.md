@@ -6,7 +6,7 @@ description: Version history and reference tables for Multi-Agent Ralph (batch e
 # Ralph Reference (lazy-loaded)
 
 Reference material moved out of the always-loaded `CLAUDE.md` to save resident context.
-The operational rules (parallel-first, Aristotle, config location, security hooks, agent teams,
+The operational rules (Aristotle, config location, security hooks, agent teams,
 quality gates, repository isolation, model routing, memory system) remain in `CLAUDE.md`.
 
 ## Batch Task Execution (v2.88.0)

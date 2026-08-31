@@ -1,15 +1,14 @@
 # Multi-Agent Ralph Loop
 
-Autonomous orchestration framework for Claude Code with MemPalace-inspired memory, parallel-first Agent Teams, Aristotle First Principles methodology, and quality gates.
+Autonomous orchestration framework for Claude Code with MemPalace-inspired memory, Agent Teams, Aristotle First Principles methodology, and quality gates.
 
 ## What It Does
 
-Ralph extends Claude Code into a multi-agent development framework with a structured memory system inspired by the [Memory Palace technique](https://en.wikipedia.org/wiki/Method_of_loci). Every task is analyzed from first principles, decomposed into parallel subtasks, assigned to specialized teammates, and validated through quality gates before completion.
+Ralph extends Claude Code into a multi-agent development framework with a structured memory system inspired by the [Memory Palace technique](https://en.wikipedia.org/wiki/Method_of_loci). Every task is analyzed from first principles, decomposed into focused subtasks, assigned to specialized teammates, and validated through quality gates before completion.
 
 | Capability | Description |
 |---|---|
 | **MemPalace Memory** | 4-layer memory stack (L0-L3) with Obsidian vault knowledge graph and learned rules taxonomy |
-| **Parallel-First** | All independent tasks execute in parallel via Agent Teams (mandatory for complexity >= 3) |
 | **6 Teammates** | ralph-coder, ralph-reviewer, ralph-tester, ralph-researcher, ralph-frontend, ralph-security |
 | **Hook System** | Lifecycle hooks for validation, quality gates, security guards, and automatic learning |
 | **Aristotle Analysis** | 5-phase first principles deconstruction before every non-trivial task |
@@ -95,7 +94,7 @@ python3 -m pytest tests/ -q
 | `ralph-frontend` | Frontend (WCAG 2.1 AA) | LSP, Read, Edit, Write, Bash |
 | `ralph-security` | Security (6 pillars) | LSP, Read, Grep, Glob, Bash |
 
-Agent Teams is enabled via `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json. Teammates are spawned in parallel by the orchestrator, iterate, parallel, security, and task-batch skills.
+Agent Teams is enabled via `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json. Teammates can be spawned by the orchestrator, iterate, parallel, security, and task-batch skills when a task benefits from it.
 
 ## Core Skills
 
@@ -123,17 +122,6 @@ Agent Teams is enabled via `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.
 4. **CONSISTENCY** -- Linting and style (advisory)
 
 Hook enforcement via `TeammateIdle` and `TaskCompleted` events ensures no agent completes without passing gates.
-
-## Parallel-First Rule
-
-All independent tasks MUST execute in parallel. Sequential execution requires documented dependency.
-
-```
-Complexity 1-2: Direct execution (no team required)
-Complexity 3+:  Agent Teams with parallel teammates (MANDATORY)
-```
-
-See: `.claude/rules/parallel-first.md`
 
 ## Architecture (post-M2)
 
@@ -224,7 +212,7 @@ Skills are symlinked to multiple platform directories. Source of truth: `.claude
 
 ## Global Infrastructure
 
-All Ralph advantages (Plan Mode, Aristotle, Parallel-First, Agent Teams) work in **any project** -- rules, skills, and agents are symlinked globally.
+All Ralph advantages (Plan Mode, Aristotle, Agent Teams) work in **any project** -- rules, skills, and agents are symlinked globally.
 
 ```bash
 # Validate global infrastructure
