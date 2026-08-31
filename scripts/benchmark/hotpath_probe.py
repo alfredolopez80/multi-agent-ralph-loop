@@ -139,14 +139,12 @@ TARGETS = [
     ("PreToolUse",         "orchestrator-auto-learn.sh",    "orchestrator-auto-learn",    "memory",       "PreToolUse:A|T only; 0ms in plain Bash/Edit"),
     # --- hot-path PostToolUse chain -----------------------------------------
     ("PostToolUse",        "audit-secrets.js",              "audit-secrets",              "security-adjacent", "PostToolUse:*"),
-    ("PostToolUse",        "vault-fact-extractor.sh",       "vault-fact-extractor",       "memory",       "PostToolUse:E|W|B"),
     ("PostToolUse",        "plan-sync-post-step.sh",        "plan-sync-post-step",        "orchestration","PostToolUse:E|W|B"),
     ("PostToolUse",        "progress-tracker.sh",           "progress-tracker",           "orchestration","PostToolUse:E|W|B"),
     ("PostToolUse",        "status-auto-check.sh",          "status-auto-check",          "orchestration","PostToolUse:E|W|B"),
     ("PostToolUse",        "console-log-detector.sh",       "console-log-detector",       "orchestration","PostToolUse:E|W|B"),
     ("PostToolUse",        "ai-code-audit.sh",              "ai-code-audit",              "orchestration","PostToolUse:E|W|B"),
     ("PostToolUse",        "auto-format-prettier.sh",       "auto-format-prettier",       "orchestration","PostToolUse:E|W|B"),
-    ("PostToolUse",        "session-accumulator.sh",        "session-accumulator",        "memory",       "PostToolUse:E|W|B"),
     # --- hot-path PreToolUse chain ------------------------------------------
     ("PreToolUse",         "universal-aristotle-gate.sh",   "universal-aristotle-gate",   "aristotle",    "PreToolUse:*"),
     ("PreToolUse",         "git-safety-guard.py",           "git-safety-guard",           "security",     "PreToolUse:Bash"),
