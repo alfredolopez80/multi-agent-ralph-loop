@@ -127,6 +127,7 @@ TEST_SUITES=(
     "promptify-integration/test-security-functions.sh:Promptify: security functions"
     "security/test-command-injection-prevention.sh:Security: command injection prevention"
     "security/test-environment-validation.sh:Security: environment validation"
+    "security/test-gcloud-deploy-verbs.sh:Security: gcloud deploy verbs (issue #70)"
     "security/test-json-error-handling.sh:Security: JSON error handling"
     "security/test-k8s-guard-action-position.sh:Security: k8s action position (issue #67)"
     "security/test-k8s-unresolved-script-path.sh:Security: k8s unresolved script path (issue #68)"
