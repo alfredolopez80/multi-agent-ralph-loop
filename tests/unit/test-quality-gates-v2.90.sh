@@ -50,11 +50,6 @@ if [[ ! -f "$TASK_HOOK" ]]; then
     exit 1
 fi
 
-if [[ ! -f "$TEAMMATE_HOOK" ]]; then
-    echo -e "${RED}✗ Hook file not found: $TEAMMATE_HOOK${RESET}"
-    exit 1
-fi
-
 echo -e "${YELLOW}Testing task-completed-quality-gate.sh...${RESET}"
 
 # Test 1: files_modified extraction present
