@@ -1,6 +1,6 @@
 {
-  "version": "1.2.0",
-  "date": "2026-08-25",
+  "version": "1.3.0",
+  "date": "2026-08-31",
   "issue": 46,
   "phase": "STEP B (manifest + regression tests). STEP A (diagnostic shutdown) deliberately NOT done: ruled unsafe as drafted; B goes first.",
   "description": "Declarative inventory of the security plane. Every control names its hook, its registration (event + matchers), the files it sources, the properties that make it trustworthy, and a fixture that demonstrates it firing. A control absent from this manifest is not protected by the regression tests; a control present here cannot be unregistered or deleted silently. The gaps array names what #45 demands and does not exist yet — a manifest that lists only what exists would fake coverage.",
@@ -15,11 +15,7 @@
       "kind": "hook",
       "hook": ".claude/hooks/permission-guard.sh",
       "event": "PreToolUse",
-      "matchers": [
-        "Bash",
-        "Edit|Write",
-        "Agent|Task"
-      ],
+      "matchers": ["Bash", "Edit|Write", "Agent|Task"],
       "sources": [
         ".claude/hooks/git-safety-guard.py",
         ".claude/hooks/repo-boundary-guard.sh"
@@ -40,9 +36,7 @@
       "kind": "hook",
       "hook": ".claude/hooks/git-safety-guard.py",
       "event": "PreToolUse",
-      "matchers": [
-        "Bash"
-      ],
+      "matchers": ["Bash"],
       "sources": [],
       "properties": [
         "Blocks destructive git (reset --hard, push --force), destructive fs (rm -rf /, clean -f) and command chaining (;, &&, eval, xargs rm)",
@@ -60,14 +54,8 @@
       "kind": "hook",
       "hook": ".claude/hooks/repo-boundary-guard.sh",
       "event": "PreToolUse",
-      "matchers": [
-        "Bash",
-        "Edit|Write",
-        "Agent|Task"
-      ],
-      "sources": [
-        ".claude/hooks/lib/worktree-utils.sh"
-      ],
+      "matchers": ["Bash", "Edit|Write", "Agent|Task"],
+      "sources": [".claude/hooks/lib/worktree-utils.sh"],
       "properties": [
         "Registered DIRECTLY on Edit|Write and Agent|Task (inserted before the permission pipeline) in addition to Bash — the boundary survives a broken wrapper",
         "Own fail-closed trap _emit_deny_on_crash on ERR/EXIT (lines 15-18): a crash denies, logged to ~/.ralph/logs/repo-boundary.log",
@@ -86,9 +74,7 @@
       "kind": "hook",
       "hook": ".claude/hooks/k8s-context-guard-v2.py",
       "event": "PreToolUse",
-      "matchers": [
-        "Bash"
-      ],
+      "matchers": ["Bash"],
       "sources": [
         ".claude/hooks/k8s_context_guard/cloud_operation_gate.py",
         ".claude/hooks/k8s_context_guard/context_classification.py",
@@ -113,9 +99,7 @@
       "event": null,
       "matchers": [],
       "sources": [],
-      "sourced_by": [
-        ".claude/hooks/repo-boundary-guard.sh"
-      ],
+      "sourced_by": [".claude/hooks/repo-boundary-guard.sh"],
       "properties": [
         "Provides get_project_root / get_main_repo (worktree-aware, via --git-common-dir) to the boundary guard and the worktree guards",
         "Not registered itself: consumed via source. repo-boundary-guard.sh carries inline fallbacks if this lib is unreachable (see repo-boundary properties)"
@@ -131,12 +115,8 @@
       "kind": "hook",
       "hook": ".claude/hooks/skill-validator.sh",
       "event": "PreToolUse",
-      "matchers": [
-        "Skill"
-      ],
-      "sources": [
-        ".claude/hooks/skill-validator.allowlist"
-      ],
+      "matchers": ["Skill"],
+      "sources": [".claude/hooks/skill-validator.allowlist"],
       "properties": [
         "T48 (#68): six deterministic patterns over the ONE SKILL.md about to load (invisible unicode, base64+exec, exfil IOCs, pipe-to-shell, secret literals, quote-aware override); context-awareness is a REQUIREMENT - the macos-cleaner extracts (real third-party file matching attack patterns while teaching the defense) are the regression fixture",
         "Auditable allowlist: an entry without a written reason is invalid (ignored, skill stays blocked - fail-closed); an exempted pattern matching nothing is reported STALE so the list cannot rot",
@@ -180,6 +160,26 @@
       "from_issue": 45,
       "status": "partial",
       "description": "repo-boundary-guard.sh checks paths, but symlink-following escapes (an in-repo symlink pointing outside) are only partially covered. Declared partial until a fixture proves symlink resolution is boundary-checked."
+    }
+  ],
+  "deregistered": [
+    {
+      "id": "audit-secrets-hotpath",
+      "hook": ".claude/hooks/audit-secrets.js",
+      "was_registered": "PostToolUse(*) in settings.json.example and the ACTIVE user settings",
+      "destination": "retained in the repo as explicit /ship audit evidence; registered nowhere",
+      "reason": "#69 §1B: PostToolUse is audit-only (its own header: cannot block/redact/modify); detection-after-the-fact is not the demanded control, so it is not an enforcing security survivor. Removed from settings.json.example by PR3-C7 (PR 3 slice 1, order 7->6->5->4->1->3->2). Removal from the ACTIVE user settings is lead+user side. Companion gap secrets-ordinary-work stays OPEN until a deterministic PreToolUse write gate exists.",
+      "date": "2026-08-31",
+      "refs": ["#69", "#45"]
+    },
+    {
+      "id": "promptify-security-registration",
+      "hook": ".claude/hooks/promptify-security.sh",
+      "was_registered": "PreToolUse(Agent|Task) in the ACTIVE user settings only (never in settings.json.example nor the security-only profile)",
+      "destination": "retained as an unregistered library; exercised by tests/promptify-integration; no runtime consumer in the repo",
+      "reason": "As a hook it read no stdin and had no top-level dispatch, so it emitted no permissionDecision (implicit allow): the appearance of a security control with zero enforcement. PR3-C7 removes nothing here (there was nothing repo-side to remove) and names it so it cannot return silently; if adopted, register explicitly AND move it out of this array in the same PR. Removal from the ACTIVE user settings is lead+user side.",
+      "date": "2026-08-31",
+      "refs": ["#69", "#45"]
     }
   ]
 }

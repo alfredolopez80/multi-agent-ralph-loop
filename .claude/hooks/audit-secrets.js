@@ -2,6 +2,10 @@
 /**
  * Secret Audit Hook (PostToolUse) — AUDIT ONLY, NOT REDACTION
  *
+ * STATUS (PR3-C7, 2026-08-31): NOT registered in any settings file. Retained in
+ * the repo as explicit /ship audit evidence per #69 §1B. Provenance:
+ * .claude/security/SECURITY_BASELINE.json -> "deregistered".
+ *
  * IMPORTANT: This hook DETECTS secrets but DOES NOT and CANNOT redact them.
  * PostToolUse hooks can only output {"continue": true/false}. Tool output
  * passes through to Claude's context UNMODIFIED regardless of detection results.
@@ -22,7 +26,7 @@
  * - Web3 provider keys, Base64 secrets
  */
 
-const fs = require('fs');
+const fs = require("fs");
 
 // SEC-F-SS-04: Set restrictive umask (like bash hooks set umask 077)
 process.umask(0o077);
@@ -31,168 +35,175 @@ const SECRET_PATTERNS = [
   // GitHub Personal Access Tokens
   {
     pattern: /ghp_[a-zA-Z0-9]{36,}/g,
-    replacement: '[REDACTED:GITHUB_PAT]',
-    name: 'GitHub PAT'
+    replacement: "[REDACTED:GITHUB_PAT]",
+    name: "GitHub PAT",
   },
   {
     pattern: /github_pat_[a-zA-Z0-9_]{22,}/g,
-    replacement: '[REDACTED:GITHUB_PAT_FINE]',
-    name: 'GitHub Fine-grained PAT'
+    replacement: "[REDACTED:GITHUB_PAT_FINE]",
+    name: "GitHub Fine-grained PAT",
   },
 
   // BUG-008 FIX: Most specific patterns FIRST to avoid wrong classification
   // OpenAI Project Keys (must match before generic sk- pattern)
   {
     pattern: /sk-proj-[a-zA-Z0-9\-_]{40,}/g,
-    replacement: '[REDACTED:OPENAI_PROJECT_KEY]',
-    name: 'OpenAI Project Key'
+    replacement: "[REDACTED:OPENAI_PROJECT_KEY]",
+    name: "OpenAI Project Key",
   },
   // OpenAI API Keys (generic, after project-specific)
   {
     pattern: /sk-[a-zA-Z0-9]{32,}/g,
-    replacement: '[REDACTED:OPENAI_KEY]',
-    name: 'OpenAI API Key'
+    replacement: "[REDACTED:OPENAI_KEY]",
+    name: "OpenAI API Key",
   },
 
   // AWS Credentials
   {
     pattern: /AKIA[0-9A-Z]{16}/g,
-    replacement: '[REDACTED:AWS_ACCESS_KEY]',
-    name: 'AWS Access Key'
+    replacement: "[REDACTED:AWS_ACCESS_KEY]",
+    name: "AWS Access Key",
   },
   {
     pattern: /aws_secret_access_key\s*[=:]\s*["']?[A-Za-z0-9/+=]{40}["']?/gi,
-    replacement: 'aws_secret_access_key=[REDACTED:AWS_SECRET]',
-    name: 'AWS Secret Key'
+    replacement: "aws_secret_access_key=[REDACTED:AWS_SECRET]",
+    name: "AWS Secret Key",
   },
 
   // Ethereum/Crypto Private Keys (64 hex chars after 0x)
   {
-    pattern: /(?:private[_-]?key|priv[_-]?key|secret[_-]?key)\s*[=:]\s*["']?0x[a-fA-F0-9]{64}["']?/gi,
-    replacement: '[REDACTED:ETH_PRIVATE_KEY]',
-    name: 'Ethereum Private Key (labeled)'
+    pattern:
+      /(?:private[_-]?key|priv[_-]?key|secret[_-]?key)\s*[=:]\s*["']?0x[a-fA-F0-9]{64}["']?/gi,
+    replacement: "[REDACTED:ETH_PRIVATE_KEY]",
+    name: "Ethereum Private Key (labeled)",
   },
   {
     pattern: /["']0x[a-fA-F0-9]{64}["']/g,
     replacement: '"[REDACTED:POSSIBLE_PRIVATE_KEY]"',
-    name: 'Possible Private Key (quoted)'
+    name: "Possible Private Key (quoted)",
   },
 
   // Mnemonic/Seed Phrases (12 or 24 words)
   {
     pattern: /(?:mnemonic|seed|recovery)\s*[=:]\s*["'][a-z\s]{20,}["']/gi,
-    replacement: '[REDACTED:SEED_PHRASE]',
-    name: 'Seed Phrase'
+    replacement: "[REDACTED:SEED_PHRASE]",
+    name: "Seed Phrase",
   },
 
   // Anthropic API Keys
   {
     pattern: /sk-ant-[a-zA-Z0-9\-]{40,}/g,
-    replacement: '[REDACTED:ANTHROPIC_KEY]',
-    name: 'Anthropic API Key'
+    replacement: "[REDACTED:ANTHROPIC_KEY]",
+    name: "Anthropic API Key",
   },
 
   // Generic API Keys and Tokens
   {
-    pattern: /(?:api[_-]?key|apikey|api[_-]?token|auth[_-]?token|access[_-]?token|bearer)\s*[=:]\s*["']?[a-zA-Z0-9\-_\.]{20,}["']?/gi,
-    replacement: '[REDACTED:API_KEY]',
-    name: 'Generic API Key'
+    pattern:
+      /(?:api[_-]?key|apikey|api[_-]?token|auth[_-]?token|access[_-]?token|bearer)\s*[=:]\s*["']?[a-zA-Z0-9\-_\.]{20,}["']?/gi,
+    replacement: "[REDACTED:API_KEY]",
+    name: "Generic API Key",
   },
 
   // JWT Tokens
   {
-    pattern: /eyJ[a-zA-Z0-9\-_]{1,512}\.eyJ[a-zA-Z0-9\-_]{1,512}\.[a-zA-Z0-9\-_]{1,512}/g,
-    replacement: '[REDACTED:JWT_TOKEN]',
-    name: 'JWT Token'
+    pattern:
+      /eyJ[a-zA-Z0-9\-_]{1,512}\.eyJ[a-zA-Z0-9\-_]{1,512}\.[a-zA-Z0-9\-_]{1,512}/g,
+    replacement: "[REDACTED:JWT_TOKEN]",
+    name: "JWT Token",
   },
 
   // Password patterns in config
   {
     pattern: /(?:password|passwd|pwd|secret)\s*[=:]\s*["'][^"'\n]{8,128}["']/gi,
-    replacement: '[REDACTED:PASSWORD]',
-    name: 'Password'
+    replacement: "[REDACTED:PASSWORD]",
+    name: "Password",
   },
 
   // Database connection strings with credentials
   {
-    pattern: /(?:mongodb|postgres|mysql|redis):\/\/[^:]{1,64}:[^@]{1,128}@[^\s"']{1,256}/gi,
-    replacement: '[REDACTED:DB_CONNECTION_STRING]',
-    name: 'Database Connection String'
+    pattern:
+      /(?:mongodb|postgres|mysql|redis):\/\/[^:]{1,64}:[^@]{1,128}@[^\s"']{1,256}/gi,
+    replacement: "[REDACTED:DB_CONNECTION_STRING]",
+    name: "Database Connection String",
   },
 
   // Slack tokens
   {
     pattern: /xox[baprs]-[a-zA-Z0-9\-]{10,}/g,
-    replacement: '[REDACTED:SLACK_TOKEN]',
-    name: 'Slack Token'
+    replacement: "[REDACTED:SLACK_TOKEN]",
+    name: "Slack Token",
   },
 
   // Discord tokens
   {
     pattern: /[MN][A-Za-z\d]{23,}\.[\w-]{6}\.[\w-]{27}/g,
-    replacement: '[REDACTED:DISCORD_TOKEN]',
-    name: 'Discord Token'
+    replacement: "[REDACTED:DISCORD_TOKEN]",
+    name: "Discord Token",
   },
 
   // Stripe keys
   {
     pattern: /sk_(?:live|test)_[a-zA-Z0-9]{24,}/g,
-    replacement: '[REDACTED:STRIPE_KEY]',
-    name: 'Stripe Secret Key'
+    replacement: "[REDACTED:STRIPE_KEY]",
+    name: "Stripe Secret Key",
   },
   {
     pattern: /pk_(?:live|test)_[a-zA-Z0-9]{24,}/g,
-    replacement: '[REDACTED:STRIPE_PUBLISHABLE]',
-    name: 'Stripe Publishable Key'
+    replacement: "[REDACTED:STRIPE_PUBLISHABLE]",
+    name: "Stripe Publishable Key",
   },
 
   // Twilio
   {
     pattern: /SK[a-f0-9]{32}/g,
-    replacement: '[REDACTED:TWILIO_KEY]',
-    name: 'Twilio API Key'
+    replacement: "[REDACTED:TWILIO_KEY]",
+    name: "Twilio API Key",
   },
 
   // SendGrid
   {
     pattern: /SG\.[a-zA-Z0-9\-_]{22,}\.[a-zA-Z0-9\-_]{22,}/g,
-    replacement: '[REDACTED:SENDGRID_KEY]',
-    name: 'SendGrid API Key'
+    replacement: "[REDACTED:SENDGRID_KEY]",
+    name: "SendGrid API Key",
   },
 
   // Infura/Alchemy API Keys
   {
-    pattern: /(?:infura|alchemy)[_-]?(?:api[_-]?)?key\s*[=:]\s*["']?[a-zA-Z0-9]{20,}["']?/gi,
-    replacement: '[REDACTED:WEB3_PROVIDER_KEY]',
-    name: 'Web3 Provider Key'
+    pattern:
+      /(?:infura|alchemy)[_-]?(?:api[_-]?)?key\s*[=:]\s*["']?[a-zA-Z0-9]{20,}["']?/gi,
+    replacement: "[REDACTED:WEB3_PROVIDER_KEY]",
+    name: "Web3 Provider Key",
   },
 
   // SSH Private Keys
   {
-    pattern: /-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----[\s\S]{0,16384}?-----END (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/g,
-    replacement: '[REDACTED:SSH_PRIVATE_KEY]',
-    name: 'SSH Private Key'
+    pattern:
+      /-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----[\s\S]{0,16384}?-----END (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/g,
+    replacement: "[REDACTED:SSH_PRIVATE_KEY]",
+    name: "SSH Private Key",
   },
 
   // Base64 encoded secrets (likely tokens) longer than 40 chars
   {
-    pattern: /(?:token|secret|key|credential)\s*[=:]\s*["']?[A-Za-z0-9+/=]{40,}["']?/gi,
-    replacement: '[REDACTED:BASE64_SECRET]',
-    name: 'Base64 Encoded Secret'
-  }
+    pattern:
+      /(?:token|secret|key|credential)\s*[=:]\s*["']?[A-Za-z0-9+/=]{40,}["']?/gi,
+    replacement: "[REDACTED:BASE64_SECRET]",
+    name: "Base64 Encoded Secret",
+  },
 ];
 
 // Statistics for logging
 let stats = {
   totalRedactions: 0,
-  byType: {}
+  byType: {},
 };
 
 /**
  * Sanitize text by replacing all detected secrets
  */
 function sanitizeText(text) {
-  if (!text || typeof text !== 'string') return text;
+  if (!text || typeof text !== "string") return text;
 
   let sanitized = text;
 
@@ -218,19 +229,20 @@ function sanitizeText(text) {
 function sanitizeObject(obj) {
   if (obj === null || obj === undefined) return obj;
 
-  if (typeof obj === 'string') {
+  if (typeof obj === "string") {
     return sanitizeText(obj);
   }
 
   if (Array.isArray(obj)) {
-    return obj.map(item => sanitizeObject(item));
+    return obj.map((item) => sanitizeObject(item));
   }
 
-  if (typeof obj === 'object') {
+  if (typeof obj === "object") {
     const sanitized = {};
     for (const [key, value] of Object.entries(obj)) {
       // SEC-F-SS-05: Only sanitize values, not keys (avoids false positives on property names)
-      sanitized[key] = typeof value === 'string' ? sanitizeText(value) : sanitizeObject(value);
+      sanitized[key] =
+        typeof value === "string" ? sanitizeText(value) : sanitizeObject(value);
     }
     return sanitized;
   }
@@ -248,19 +260,21 @@ const PROCESSING_TIMEOUT_MS = 5_000;
  * Main hook handler with timeout and size guards
  */
 async function main() {
-  let input = '';
+  let input = "";
   let totalSize = 0;
   let timedOut = false;
 
   // Set timeout guard — destroy stdin to force loop exit
   const timeoutGuard = setTimeout(() => {
     timedOut = true;
-    console.error('[audit-secrets] WARN: Processing timeout (5s) - scanning partial input');
+    console.error(
+      "[audit-secrets] WARN: Processing timeout (5s) - scanning partial input",
+    );
     process.stdin.destroy();
   }, PROCESSING_TIMEOUT_MS);
 
   // Read from stdin with size guard
-  process.stdin.setEncoding('utf8');
+  process.stdin.setEncoding("utf8");
 
   for await (const chunk of process.stdin) {
     input += chunk;
@@ -268,7 +282,9 @@ async function main() {
     if (totalSize > MAX_INPUT_SIZE) {
       // Truncate input at 1MB (include current chunk before truncating)
       input = input.substring(0, MAX_INPUT_SIZE);
-      console.error(`[audit-secrets] WARN: Input truncated at ${MAX_INPUT_SIZE} bytes`);
+      console.error(
+        `[audit-secrets] WARN: Input truncated at ${MAX_INPUT_SIZE} bytes`,
+      );
       break;
     }
     if (timedOut) break; // Stop reading if timeout occurred
@@ -290,7 +306,9 @@ async function main() {
 
     // Log redactions if any occurred
     if (stats.totalRedactions > 0) {
-      console.error(`[audit-secrets] Redacted ${stats.totalRedactions} secret(s):`);
+      console.error(
+        `[audit-secrets] Redacted ${stats.totalRedactions} secret(s):`,
+      );
       for (const [type, count] of Object.entries(stats.byType)) {
         console.error(`  - ${type}: ${count}`);
       }
@@ -299,16 +317,22 @@ async function main() {
     // CRITICAL: PostToolUse hooks MUST output {"continue": true/false}
     // The sanitized data is passed via Claude's internal mechanism
     console.log(JSON.stringify({ continue: true }));
-
   } catch (error) {
     // SEC: Log parse failure for anomaly detection, then fail-open with text sanitization
     const logDir = `${process.env.XDG_RUNTIME_DIR || process.env.HOME}/.ralph/logs`;
-    try { fs.mkdirSync(logDir, { recursive: true, mode: 0o700 }); } catch (_) {}
+    try {
+      fs.mkdirSync(logDir, { recursive: true, mode: 0o700 });
+    } catch (_) {}
     const logPath = `${logDir}/sanitize-secrets.log`;
     // Rotate log if >5MB to prevent unbounded growth
-    try { const st = fs.statSync(logPath); if (st.size > 5 * 1024 * 1024) fs.unlinkSync(logPath); } catch (_) {}
-    fs.appendFileSync(logPath,
-      `[${new Date().toISOString()}] WARN: JSON parse failed, falling back to text sanitization: ${error.message}\n`);
+    try {
+      const st = fs.statSync(logPath);
+      if (st.size > 5 * 1024 * 1024) fs.unlinkSync(logPath);
+    } catch (_) {}
+    fs.appendFileSync(
+      logPath,
+      `[${new Date().toISOString()}] WARN: JSON parse failed, falling back to text sanitization: ${error.message}\n`,
+    );
 
     // Always scan for secrets, even on parse error (updates stats)
     sanitizeText(input);
@@ -318,8 +342,8 @@ async function main() {
   }
 }
 
-main().catch(err => {
-  console.error('[audit-secrets] Error:', err.message);
+main().catch((err) => {
+  console.error("[audit-secrets] Error:", err.message);
   // Exit 0 with partial sanitization instead of exit 1
   // This prevents blocking the workflow while still sanitizing what we could
   console.log(JSON.stringify({ continue: true }));

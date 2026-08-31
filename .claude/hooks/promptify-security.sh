@@ -3,6 +3,11 @@ umask 077
 # promptify-security.sh - Security hardening functions for Promptify integration
 # VERSION: 1.0.0
 # Purpose: Credential redaction, clipboard consent, agent timeout, audit logging
+# STATUS (PR3-C7, 2026-08-31): LIBRARY ONLY — not registered in any settings file.
+#   Its PreToolUse registration lived only in the ACTIVE user settings (removal
+#   there is lead+user side). No runtime consumer in this repo; tests/promptify-
+#   integration exercise it as a library. If adopted: register explicitly AND
+#   move it out of SECURITY_BASELINE.json "deregistered" in the same PR.
 
 set -euo pipefail
 
