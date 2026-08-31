@@ -42,11 +42,9 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PERF_FIXED_HOOKS = [
     "context-warning.sh",
     "project-state.sh",
-    "vault-graduation.sh",
-    "vault-promotion.sh",
     "auto-sync-global.sh",
 ]
-FORK_HOOKS = ["vault-graduation.sh", "vault-promotion.sh", "auto-sync-global.sh"]
+FORK_HOOKS = ["auto-sync-global.sh"]
 
 # Event → expected timeout (seconds), mirrors optimize-settings.py TIMEOUT_POLICY.
 TIMEOUT_POLICY = {

@@ -1,10 +1,11 @@
 """
-Tests for the 3 v3.0 hooks:
-  1. session-accumulator.sh  (PostToolUse Edit|Write)
-  2. vault-graduation.sh     (SessionStart)
-  3. project-state.sh        (SessionStart)
+Tests for the surviving v3.0 hook:
+  1. project-state.sh        (SessionStart)
 
-~30 tests covering structure, safety properties, and functional behavior.
+session-accumulator.sh and vault-graduation.sh were removed by #69 Slice D
+(automatic memory writers); their test classes died with them.
+
+Tests cover structure, safety properties, and functional behavior.
 """
 
 import json
@@ -22,12 +23,10 @@ HOOKS_DIR = REPO_ROOT / ".claude" / "hooks"
 # ---------------------------------------------------------------------------
 # Hook paths
 # ---------------------------------------------------------------------------
-SESSION_ACCUMULATOR = HOOKS_DIR / "session-accumulator.sh"
-VAULT_GRADUATION = HOOKS_DIR / "vault-graduation.sh"
 PROJECT_STATE = HOOKS_DIR / "project-state.sh"
 
-ALL_HOOKS = [SESSION_ACCUMULATOR, VAULT_GRADUATION, PROJECT_STATE]
-HOOK_IDS = ["session-accumulator", "vault-graduation", "project-state"]
+ALL_HOOKS = [PROJECT_STATE]
+HOOK_IDS = ["project-state"]
 
 
 # ---------------------------------------------------------------------------
@@ -139,201 +138,7 @@ class TestAllHooksErrTrap:
         if not has_trap:
             pytest.xfail(f"{hook.name} does not yet have ERR trap (recommended hardening)")
 
-    @pytest.mark.parametrize(
-        "hook,expected_key",
-        [
-            (SESSION_ACCUMULATOR, "continue"),
-            (VAULT_GRADUATION, "hookSpecificOutput"),
-        ],
-        ids=["session-accumulator", "vault-graduation"],
-    )
-    def test_trap_produces_valid_json(self, hook, expected_key):
-        """The hook's ERR/INT/TERM trap must honor the allow-contract for its event.
 
-        Two valid trap shapes per tests/HOOK_FORMAT_REFERENCE.md:
-
-          (a) JSON-emitting trap — ``trap 'echo "{...}"' ERR ...`` — whose payload parses
-              to JSON containing the event's required key. This is what vault-graduation
-              (SessionStart) does: it MUST emit ``hookSpecificOutput`` even on error so the
-              session still gets context.
-
-          (b) Clean-exit trap — ``trap 'exit 0' ERR ...`` — a valid "allow" for
-              PostToolUse (an empty/clean exit is allowed; see the reference's validation
-              matrix). session-accumulator v3.1.0 is fire-and-forget: the PARENT emits
-              ``{"continue": true}`` BEFORE forking, then the detached WORKER carries
-              ``trap 'exit 0'`` because nothing reads the worker's output. Forcing the
-              worker trap to echo JSON would be wrong for that design.
-
-        Assert the trap matches one of these two valid contracts — never weaker.
-        """
-        text = _read_hook(hook)
-        for line in text.splitlines():
-            stripped = line.strip()
-            if not (stripped.startswith("trap ") and "ERR" in stripped):
-                continue
-            # Pull the single-quoted payload: trap '...' ERR INT TERM [EXIT]
-            start = stripped.index("'") + 1
-            end = stripped.index("'", start)
-            trap_payload = stripped[start:end].strip()
-
-            # (b) Clean-exit allow-contract: valid for PostToolUse (e.g. the detached
-            # session-accumulator worker). The parent already emitted the JSON allow.
-            if trap_payload in ("exit 0", "true", ":"):
-                if expected_key == "continue":
-                    # Confirm the parent path really does emit the {"continue": ...} JSON
-                    # this contract relies on — so the clean-exit worker is genuinely safe.
-                    assert '{"continue": true}' in text or "'continue'" in text or \
-                           '"continue"' in text, (
-                        f"{hook.name} worker uses a clean-exit trap but no parent "
-                        "'continue' JSON allow was found"
-                    )
-                    return
-                # A SessionStart hook must still surface context on error, not exit silently.
-                pytest.fail(
-                    f"{hook.name} uses a clean-exit trap but its event requires "
-                    f"'{expected_key}' in the error output"
-                )
-
-            # (a) JSON-emitting trap: strip the 'echo ' prefix + outer quotes, unescape.
-            if trap_payload.startswith("echo "):
-                trap_payload = trap_payload[len("echo "):]
-            trap_payload = trap_payload.strip().strip('"')
-            trap_json_str = trap_payload.replace('\\"', '"')
-            parsed = json.loads(trap_json_str)
-            assert expected_key in parsed, (
-                f"Trap JSON missing '{expected_key}': {parsed}"
-            )
-            return
-        pytest.fail(f"Could not extract trap string from {hook.name}")
-
-
-# ===========================================================================
-# session-accumulator.sh  (PostToolUse)
-# ===========================================================================
-
-class TestSessionAccumulator:
-    """Functional tests for session-accumulator.sh."""
-
-    def test_valid_edit_input_returns_continue(self):
-        """Feed valid PostToolUse JSON for an Edit tool call."""
-        payload = json.dumps({
-            "tool_name": "Edit",
-            "tool_input": {"file_path": "src/main.ts"},
-        })
-        result = _run_hook(SESSION_ACCUMULATOR, stdin_data=payload)
-        assert result.returncode == 0
-        output = _parse_json_output(result)
-        assert output.get("continue") is True
-
-    def test_valid_write_input_returns_continue(self):
-        """Feed valid PostToolUse JSON for a Write tool call."""
-        payload = json.dumps({
-            "tool_name": "Write",
-            "tool_input": {"file_path": "scripts/deploy.sh"},
-        })
-        result = _run_hook(SESSION_ACCUMULATOR, stdin_data=payload)
-        assert result.returncode == 0
-        output = _parse_json_output(result)
-        assert output.get("continue") is True
-
-    def test_empty_input_returns_continue(self):
-        """Empty stdin must not crash; should return continue."""
-        result = _run_hook(SESSION_ACCUMULATOR, stdin_data="")
-        # Even if jq fails on empty, the trap should emit valid JSON
-        output = _parse_json_output(result)
-        assert output.get("continue") is True
-
-    def test_missing_file_path_returns_continue(self):
-        """If file_path is absent, the hook should exit early with continue."""
-        payload = json.dumps({"tool_name": "Edit", "tool_input": {}})
-        result = _run_hook(SESSION_ACCUMULATOR, stdin_data=payload)
-        output = _parse_json_output(result)
-        assert output.get("continue") is True
-
-    def test_categorizes_ts_as_typescript(self):
-        """A .ts file should be categorized as 'typescript'."""
-        text = _read_hook(SESSION_ACCUMULATOR)
-        # Verify the case statement maps ts -> typescript
-        assert 'ts|tsx|js|jsx) CATEGORY="typescript"' in text
-
-    def test_categorizes_py_as_python(self):
-        """A .py file should be categorized as 'python'."""
-        text = _read_hook(SESSION_ACCUMULATOR)
-        assert 'py) CATEGORY="python"' in text
-
-    def test_categorizes_sh_as_hooks(self):
-        """A .sh file should be categorized as 'hooks'."""
-        text = _read_hook(SESSION_ACCUMULATOR)
-        assert 'sh|bash) CATEGORY="hooks"' in text
-
-    def test_categorizes_md_as_documentation(self):
-        """A .md file should be categorized as 'documentation'."""
-        text = _read_hook(SESSION_ACCUMULATOR)
-        assert 'md) CATEGORY="documentation"' in text
-
-    def test_categorizes_json_as_configuration(self):
-        """A .json file should be categorized as 'configuration'."""
-        text = _read_hook(SESSION_ACCUMULATOR)
-        assert 'json) CATEGORY="configuration"' in text
-
-    def test_output_is_valid_json(self):
-        """Any invocation should produce parseable JSON on stdout."""
-        payload = json.dumps({
-            "tool_name": "Edit",
-            "tool_input": {"file_path": "lib/utils.py"},
-        })
-        result = _run_hook(SESSION_ACCUMULATOR, stdin_data=payload)
-        output = _parse_json_output(result)
-        assert isinstance(output, dict)
-
-
-# ===========================================================================
-# vault-graduation.sh  (SessionStart)
-# ===========================================================================
-
-class TestVaultGraduation:
-    """Functional tests for vault-graduation.sh."""
-
-    def test_session_start_returns_valid_json(self):
-        """Feed SessionStart JSON and verify output is valid JSON."""
-        payload = json.dumps({"hookEventName": "SessionStart"})
-        result = _run_hook(VAULT_GRADUATION, stdin_data=payload)
-        assert result.returncode == 0
-        output = _parse_json_output(result)
-        assert isinstance(output, dict)
-
-    def test_output_has_hook_specific_output(self):
-        """Output must contain hookSpecificOutput for SessionStart."""
-        payload = json.dumps({"hookEventName": "SessionStart"})
-        result = _run_hook(VAULT_GRADUATION, stdin_data=payload)
-        output = _parse_json_output(result)
-        assert "hookSpecificOutput" in output, f"Missing hookSpecificOutput: {output}"
-
-    def test_output_mentions_vault_graduation(self):
-        """The additionalContext should reference vault-graduation."""
-        payload = json.dumps({"hookEventName": "SessionStart"})
-        result = _run_hook(VAULT_GRADUATION, stdin_data=payload)
-        output = _parse_json_output(result)
-        additional = output.get("hookSpecificOutput", {}).get("additionalContext", "")
-        assert "vault-graduation" in additional, (
-            f"additionalContext does not mention vault-graduation: '{additional}'"
-        )
-
-    def test_no_vault_skips_gracefully(self):
-        """When VAULT_DIR points to non-existent dir, hook skips without error."""
-        env = {"VAULT_DIR": "/tmp/nonexistent_vault_dir_test"}
-        payload = json.dumps({"hookEventName": "SessionStart"})
-        result = _run_hook(VAULT_GRADUATION, stdin_data=payload, env_override=env)
-        assert result.returncode == 0
-        output = _parse_json_output(result)
-        additional = output.get("hookSpecificOutput", {}).get("additionalContext", "")
-        assert "no vault found" in additional or "vault-graduation" in additional
-
-    def test_empty_input_returns_json(self):
-        """Empty stdin should not crash the hook."""
-        result = _run_hook(VAULT_GRADUATION, stdin_data="")
-        output = _parse_json_output(result)
-        assert isinstance(output, dict)
 
 
 # ===========================================================================

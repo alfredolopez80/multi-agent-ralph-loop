@@ -90,11 +90,12 @@ Revert a graduated rule back to vault if incorrect:
 
 | Component | Integration |
 |---|---|
-| `session-accumulator.sh` | PostToolUse hook captures learnings during session |
-| `vault-graduation.sh` | SessionStart hook promotes high-confidence learnings to rules |
 | `/exit-review` | End-of-session GREEN/YELLOW/RED classification |
 | `smart-memory-search.sh` | Adds vault as 5th search source (parallel) |
 | `pre-compact-handoff.sh` | Saves vault context before compaction |
+
+*(session-accumulator.sh and vault-graduation.sh were removed by #69 Slice D —
+learning writes are explicit, via this skill and /exit-review.)*
 
 ## Project Isolation
 

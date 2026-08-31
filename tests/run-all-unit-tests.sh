@@ -115,7 +115,6 @@ TEST_SUITES=(
     "hooks/test_agent_policy_guard.sh:Hooks: agent policy guard (T101, #48 ceiling)"
     "hooks/test_agent_depth_soft_enforce.sh:Hooks: agent depth soft-enforce (T101, #48 depth chain-walk)"
     "hooks/test_wakeup_broad_recall_retired.sh:Hooks: wake-up broad recall retired"
-    "hooks/test_t80_wing_pipeline.sh:Hooks: wing pipeline root identity + UTC + header"
     "hooks/test_single_json_emission.sh:Hooks: single JSON emission"
     "hooks/test_task_list_projection.sh:Hooks: task list projection"
     "memory/test-seed-dev-prohibitions.sh:Memory: seed dev prohibitions"

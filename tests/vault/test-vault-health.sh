@@ -4,10 +4,8 @@
 #
 # Tests:
 # 1. Vault directory structure exists
-# 2. vault-graduation.sh executes without errors and counter works
-# 3. vault-index-updater.sh regenerates indices correctly
-# 4. (session-accumulator.sh removed by #69 Slice D)
-# 5. Hooks are registered globally in all settings.json
+# 2-5. (graduation / index-updater / accumulator / registration checks
+#       removed by #69 Slice D along with the hooks they asserted on)
 # 6. Wikilinks in articles resolve to existing files
 # 7. Frontmatter YAML is well-formed in wiki articles
 
@@ -40,113 +38,8 @@ echo "▸ 1. Vault directory structure"
 echo ""
 
 # ─────────────────────────────────────────────
-echo "▸ 2. vault-graduation.sh — subshell fix validation"
+echo "▸ 2-5. removed by #69 Slice D — graduation / index-updater / accumulator / registration"
 # ─────────────────────────────────────────────
-GRAD_HOOK="$HOOKS_DIR/vault-graduation.sh"
-if [[ -f "$GRAD_HOOK" ]]; then
-    pass "vault-graduation.sh exists"
-
-    # Check it uses process substitution, not pipe
-    if grep -q 'done < <(find' "$GRAD_HOOK"; then
-        pass "Uses process substitution (no subshell bug)"
-    else
-        fail "Still uses pipe pattern (subshell bug present)"
-    fi
-
-    # Check umask
-    if grep -q 'umask 077' "$GRAD_HOOK"; then
-        pass "Has umask 077"
-    else
-        fail "Missing umask 077"
-    fi
-
-    # Check input sanitization
-    if grep -q "tr -cd" "$GRAD_HOOK"; then
-        pass "Has input sanitization (tr -cd)"
-    else
-        warn "Missing input sanitization"
-    fi
-
-    # Execute and check output
-    output=$(cd "$REPO_ROOT" && bash "$GRAD_HOOK" 2>&1)
-    if echo "$output" | grep -q '"hookEventName"'; then
-        pass "Executes and returns valid JSON"
-    else
-        fail "Execution failed or invalid JSON: $output"
-    fi
-else
-    fail "vault-graduation.sh not found"
-fi
-echo ""
-
-# ─────────────────────────────────────────────
-echo "▸ 3. vault-index-updater.sh — index freshness"
-# ─────────────────────────────────────────────
-IDX_HOOK="$HOOKS_DIR/vault-index-updater.sh"
-if [[ -f "$IDX_HOOK" ]]; then
-    pass "vault-index-updater.sh exists"
-
-    # Execute
-    output=$(bash "$IDX_HOOK" 2>&1)
-    if echo "$output" | grep -q '"decision"'; then
-        pass "Executes and returns valid JSON"
-    else
-        fail "Execution failed: $output"
-    fi
-
-    # Verify indices were updated (check timestamp contains today's date)
-    TODAY=$(date +"%Y-%m-%d")
-    if grep -q "$TODAY" "$VAULT_DIR/_vault-index.md" 2>/dev/null; then
-        pass "Root index updated today ($TODAY)"
-    else
-        fail "Root index is stale"
-    fi
-
-    if grep -q "$TODAY" "$VAULT_DIR/global/wiki/_index.md" 2>/dev/null; then
-        pass "Global wiki index updated today"
-    else
-        fail "Global wiki index is stale"
-    fi
-
-    # Verify counts are non-zero
-    total_articles=$(grep "Global wiki articles:" "$VAULT_DIR/_vault-index.md" | grep -oE '[0-9]+')
-    if [[ -n "$total_articles" && "$total_articles" -gt 0 ]]; then
-        pass "Global wiki articles count: $total_articles"
-    else
-        fail "Global wiki articles count is 0 or missing"
-    fi
-else
-    fail "vault-index-updater.sh not found"
-fi
-echo ""
-
-# ─────────────────────────────────────────────
-echo "▸ 4. session-accumulator.sh — removed by #69 Slice D (automatic writers gone)"
-# ─────────────────────────────────────────────
-
-# ─────────────────────────────────────────────
-echo "▸ 5. Global hook registration"
-# ─────────────────────────────────────────────
-SETTINGS_FILES=(
-    "$HOME/.claude/settings.json"
-)
-
-for sf in "${SETTINGS_FILES[@]}"; do
-    sf_name=$(basename "$(dirname "$(dirname "$sf")")")/$(basename "$sf")
-    if [[ ! -f "$sf" ]]; then
-        fail "$sf_name not found"
-        continue
-    fi
-
-    # Check each critical hook
-    for hook in "vault-graduation.sh" "vault-index-updater.sh"; do
-        if grep -q "$hook" "$sf" 2>/dev/null; then
-            pass "$hook registered in $sf_name"
-        else
-            fail "$hook NOT registered in $sf_name"
-        fi
-    done
-done
 echo ""
 
 # ─────────────────────────────────────────────
