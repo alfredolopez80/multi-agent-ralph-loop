@@ -1,5 +1,5 @@
 {
-  "version": "1.5.0",
+  "version": "1.6.0",
   "date": "2026-08-31",
   "issue": 46,
   "phase": "STEP B (manifest + regression tests). STEP A (diagnostic shutdown) deliberately NOT done: ruled unsafe as drafted; B goes first.",
@@ -158,8 +158,29 @@
     {
       "id": "red-toxic",
       "from_issue": 45,
-      "status": "no-hook",
-      "description": "No control screens for RED/toxic content in what the agent produces or relays. Nothing exists to register."
+      "status": "control-declarado",
+      "description": "RESOLVED per OWNER DECISIONS (2026-08-31) after a formal threat-model proposal (C2-PREP): three RED classes are mechanically enforced as extensions of secrets-write-guard.py (no new hook); two classes are documented out of mechanical scope. R1 DENY: BIP-39 mnemonic SEQUENCES — a contiguous window of N in {12,15,18,21,24} wordlist words on one line (owner design: sequence pattern, not exact-line nor single words); checksum SHA-256 BIP-39 is verified and reported but does NOT gate the deny (a typo'd seed is still the target); wordlist vendored verbatim from bitcoin/bips bip-0039/english.txt and integrity-asserted by the suite (2048/sorted/unique/lowercase). R2 ASK: 0x-prefixed 64-hex outside test paths (EVM key vs hash is shape-indistinguishable; owner explicitly accepts the web3 ask friction); inside test paths allows. R3 ASK: PII DENSITY — >= PII_DENSITY_THRESHOLD (constant, default 10) email/E.164 matches in one payload is a dump; isolated matches in ordinary code allow. R4 (unstructured business secrets) and R5 (illegal-content semantics) are OUT of mechanical scope by design: their detection would require exactly the vague content classifier #69 1B prohibits; their real controls are organizational (repo access-control, data classification) and platform policy respectively.",
+      "control": {
+        "kind": "hook",
+        "hook": ".claude/hooks/secrets-write-guard.py",
+        "event": "PreToolUse",
+        "matchers": ["Edit|Write|MultiEdit"],
+        "fixtures": {
+          "R1_positive": "Write of a valid BIP-39 12-word mnemonic (generated with checksum at test time) -> deny, exit 1; all-list words with broken checksum also deny",
+          "R1_negative": "prose containing scattered wordlist words -> allow",
+          "R2_positive": "0x+64hex written outside tests -> ask, exit 0",
+          "R2_negative": "same hex inside a tests/ path -> allow",
+          "R3_positive": "payload with 12 synthetic emails -> ask, exit 0",
+          "R3_negative": "two isolated emails in config code -> allow"
+        },
+        "properties": [
+          "extends the C1 gate in the same process — zero new hooks, zero new registrations",
+          "three-result proof PER CLASS: R1 (empty length set), R2 (disabled ask), R3 (unreachable threshold) each fail the 31-assertion suite; restore verified",
+          "mnemonic window scan: any non-list word breaks the window, so ordinary prose never reaches candidate status; labeled lines ('backup: <seed>') are caught",
+          "wordlist integrity asserted by the suite; unreadable wordlist fails closed (deny)"
+        ],
+        "suite": "tests/security/test-secrets-write-guard.sh (gate-registered)"
+      }
     },
     {
       "id": "mcp-egress",
