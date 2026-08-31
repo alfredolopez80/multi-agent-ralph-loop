@@ -4,26 +4,7 @@ Orchestration system with memory-driven planning, multi-agent coordination, auto
 
 ## Analysis Methodology
 
-**Aristotle First Principles** is the foundational methodology. Every task passes through these phases before execution:
-
-| Complexity | Phases | Duration |
-|---|---|---|
-| 1-3 | Phase 1 (Assumption Autopsy) + Phase 5 (Aristotelian Move) | 30s |
-| 4+ | All 5 phases (Autopsy, Truths, Reconstruction, Map, Move) | 2-10 min |
-
-**"Task" means a change of direction, not the arrival of text.** The analysis runs when
-the user opens or redirects work, and when another agent's report can invalidate the
-plan's premise. It does NOT run on a worker's routine `DONE`/`ACK`/`PONG`/`MERGED`, nor
-on the lead's own reasoning inside a task that is already framed. The test is whether
-the input can change what you do — a status message confirming the expected reframes
-nothing. This bounds the trigger; when it fires, it fires in full. Measured cost is
-~0 tokens per prompt and 36 ms per tool-call, so the scoping buys latency and
-signal-to-noise, never token savings. Full table in `~/.claude/CLAUDE.md`.
-
-Reference: `docs/reference/aristotle-first-principles.md`
-Rule: `.claude/rules-src/aristotle-methodology.md` (source; the copy that
-applies is `~/.claude/rules/aristotle-methodology.md`, written by
-`.claude/scripts/sync-rules-from-source.sh`)
+First-principles analysis is available as an explicitly-invoked skill: `/aristotle` (`.claude/skills/aristotle/`) for genuinely ambiguous or high-impact decisions. Invoking it never selects or changes provider/model (#45 invariant). Reference reading: `docs/reference/aristotle-first-principles.md` (retired from the mandatory chain by #69 Phase 3, Slice B).
 
 ## Configuration Location
 
@@ -182,7 +163,7 @@ Validation: `./scripts/validate-hooks-registration.sh`
 No complexity-based model routing exists. The authoritative policy is
 `~/.claude/CLAUDE.md` -> "Model Routing": the task is handled by the active
 session model (Opus by default; the user decides with `/model`). Complexity
-thresholds trigger PROCESS (Plan Mode >= 4, Aristotle >= 4),
+thresholds trigger PROCESS (Plan Mode >= 4),
 never model choice.
 
 ## Memory System (MemPalace v3.0)
