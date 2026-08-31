@@ -142,7 +142,6 @@ TARGETS = [
     ("PostToolUse",        "vault-fact-extractor.sh",       "vault-fact-extractor",       "memory",       "PostToolUse:E|W|B"),
     ("PostToolUse",        "plan-sync-post-step.sh",        "plan-sync-post-step",        "orchestration","PostToolUse:E|W|B"),
     ("PostToolUse",        "progress-tracker.sh",           "progress-tracker",           "orchestration","PostToolUse:E|W|B"),
-    ("PostToolUse",        "quality-parallel-async.sh",     "quality-parallel-async",     "orchestration","PostToolUse:E|W|B"),
     ("PostToolUse",        "status-auto-check.sh",          "status-auto-check",          "orchestration","PostToolUse:E|W|B"),
     ("PostToolUse",        "console-log-detector.sh",       "console-log-detector",       "orchestration","PostToolUse:E|W|B"),
     ("PostToolUse",        "ai-code-audit.sh",              "ai-code-audit",              "orchestration","PostToolUse:E|W|B"),

@@ -182,7 +182,7 @@ _STOP_HOOKS = _event_hook_paths("Stop")
 # UserPromptSubmit / Stop hooks shipped IN this repo (used to seed a CI-safe
 # settings.json so the hardening tests have real, versioned hook paths to assert on).
 _REPO_UPS_HOOK_NAMES = ("context-warning.sh", "periodic-reminder.sh")
-_REPO_STOP_HOOK_NAMES = ("vault-writeback.sh", "anti-rationalization-gate.sh")
+_REPO_STOP_HOOK_NAMES = ("vault-writeback.sh",)
 
 
 def _repo_event_hooks(names: tuple[str, ...]) -> list[str]:

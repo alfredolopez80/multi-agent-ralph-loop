@@ -1,7 +1,10 @@
 #!/bin/bash
 #
 # Hook Integration End-to-End Test Suite v2.88.0
-# Validates all 5 findings from adversarial analysis are fixed
+# (reduced by #69 Phase 3 Slice C: findings #1/#2/#3/#5 exercised hooks
+#  removed by that slice — ralph-subagent-stop, ralph-stop-quality-gate,
+#  teammate-idle machinery. Finding #4 survives; it exercises the retained
+#  ralph-subagent-start.sh state registration.)
 #
 # Usage: ./tests/hook-integration/test-hook-integration-v2.88.sh [-v]
 #
@@ -21,13 +24,8 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo ".")"
 
 # T39: hermetic HOME. Standalone (pre-commit Phase 8) this suite used to run
 # against the REAL home: fixtures under ~/.ralph/state and ~/.claude/teams
-# raced with live sessions — including another instance of THIS suite in a
-# concurrent pane sharing the fixed names test-team/test-session (cleanup in
-# one run deletes the other's fixture mid-test) — and cleanup_test_state
-# rm -rf'd paths on the live tree. Same pattern run-all-unit-tests.sh uses
-# (its lines ~71-78): mktemp home, trap, export. RALPH_TEST_KEEP_HOME=1 opts
-# out for debugging against a provisioned home; under run-all this creates a
-# nested sandbox, which is redundant but harmless.
+# raced with live sessions. Same pattern run-all-unit-tests.sh uses:
+# mktemp home, trap, export. RALPH_TEST_KEEP_HOME=1 opts out for debugging.
 if [[ "${RALPH_TEST_KEEP_HOME:-0}" != "1" ]]; then
     _SANDBOX_HOME="$(mktemp -d -t hookint-XXXXXX)"
     trap 'rm -rf "$_SANDBOX_HOME"' EXIT
@@ -64,180 +62,6 @@ cleanup_test_state() {
     rm -rf "$STATE_DIR/test-session" 2>/dev/null || true
     rm -rf "$TEAMS_DIR/test-team" 2>/dev/null || true
     rm -rf "$HOME/.claude/tasks/test-team" 2>/dev/null || true
-}
-
-#######################################
-# Test 1: ralph-subagent-stop.sh (Finding #1 - CRITICAL)
-#######################################
-test_ralph_subagent_stop() {
-    print_header "Test 1: ralph-subagent-stop.sh (Finding #1)"
-
-    cleanup_test_state
-
-    # Test 1.1: Hook file exists and is executable
-    print_test "ralph-subagent-stop.sh exists and is executable"
-    if [[ -x "$REPO_ROOT/.claude/hooks/ralph-subagent-stop.sh" ]]; then
-        pass
-    else
-        fail
-        echo -e "  ${RED}✗ ralph-subagent-stop.sh not found or not executable${NC}"
-    fi
-
-    # Test 1.2: Subagent with an incomplete assigned task should block.
-    #
-    # This used to fabricate {"status": "working"}, a value no producer in this
-    # repo ever writes: ralph-subagent-start.sh writes "active". That made the
-    # test certify a status branch that could not occur in production; the branch
-    # has since been removed. Drive the real guard — the assigned task status.
-    print_test "Blocks stop when subagent has incomplete assigned task"
-    mkdir -p "$STATE_DIR/test-session/subagents"
-    echo '{"status": "active", "task": "implement-auth"}' > "$STATE_DIR/test-session/subagents/test-subagent.json"
-    mkdir -p "$TEAMS_DIR/test-team" "$HOME/.claude/tasks/test-team"
-    echo '{"name": "test-team"}' > "$TEAMS_DIR/test-team/config.json"
-    echo '{"status": "in_progress"}' > "$HOME/.claude/tasks/test-team/implement-auth.json"
-
-    RESULT=$(echo '{"agent_id": "test-subagent", "agent_type": "ralph-coder", "sessionId": "test-session", "taskId": "implement-auth"}' | \
-        "$REPO_ROOT/.claude/hooks/ralph-subagent-stop.sh" 2>/dev/null || true)
-
-    if echo "$RESULT" | grep -q '"decision": "block"'; then
-        pass
-    else
-        fail
-        echo -e "  ${RED}✗ Should block while the assigned task is in_progress${NC}"
-    fi
-
-    # Test 1.2b: "active" must never be treated as "still working".
-    # Regression pin against reintroducing a status-based block: nothing
-    # transitions the subagent status before SubagentStop, so blocking on the
-    # status that SubagentStart writes would block every stop forever.
-    print_test "Allows stop when subagent status is 'active' with no incomplete task"
-    echo '{"status": "active", "task": "implement-auth"}' > "$STATE_DIR/test-session/subagents/test-subagent.json"
-    rm -f "$HOME/.claude/tasks/test-team/implement-auth.json"
-
-    RESULT=$(echo '{"agent_id": "test-subagent", "agent_type": "ralph-coder", "sessionId": "test-session", "taskId": "implement-auth"}' | \
-        "$REPO_ROOT/.claude/hooks/ralph-subagent-stop.sh" 2>/dev/null || true)
-
-    if echo "$RESULT" | grep -q '"decision": "block"'; then
-        fail
-        echo -e "  ${RED}✗ 'active' blocked the stop — deadlock regression${NC}"
-    else
-        pass
-    fi
-
-    # Test 1.3: Subagent with completed task should allow stop
-    print_test "Allows stop when subagent task completed"
-    echo '{"status": "completed", "task": "implement-auth"}' > "$STATE_DIR/test-session/subagents/test-subagent.json"
-
-    RESULT=$(echo '{"subagentId": "test-subagent", "subagentType": "ralph-coder", "sessionId": "test-session"}' | \
-        "$REPO_ROOT/.claude/hooks/ralph-subagent-stop.sh" 2>/dev/null); RC=$?
-
-    # v3.1.1: completed subagent is ALLOWED via clean exit (RC 0) + no block JSON.
-    # {"decision":"approve"} is not a valid format. RC check (no `|| true`) catches a crash.
-    if [[ $RC -eq 0 ]] && ! echo "$RESULT" | grep -q '"decision":[[:space:]]*"block"'; then
-        pass
-    else
-        fail
-        echo -e "  ${RED}✗ Should allow (clean exit) when subagent completed${NC}"
-    fi
-
-    cleanup_test_state
-}
-
-#######################################
-# Test 2: Teammate State Check (Finding #2 - HIGH)
-#######################################
-test_teammate_state_check() {
-    print_header "Test 2: Teammate State Check (Finding #2)"
-
-    cleanup_test_state
-
-    # Test 2.1: Stop hook checks teammate status
-    print_test "Stop hook blocks when teammate still working"
-    mkdir -p "$TEAMS_DIR/test-team/members"
-    mkdir -p "$STATE_DIR/test-session"
-    echo '{"age_seconds": 100}' > "$STATE_DIR/test-session/session.json"
-    echo '{"status": "working"}' > "$TEAMS_DIR/test-team/members/coder.json"
-    echo '{"team_name": "test-team", "members": ["coder"]}' > "$TEAMS_DIR/test-team/config.json"
-
-    RESULT=$(echo '{"session_id": "test-session", "cwd": "/tmp", "stop_hook_active": false}' | \
-        "$REPO_ROOT/.claude/hooks/ralph-stop-quality-gate.sh" 2>/dev/null || true)
-
-    if echo "$RESULT" | grep -q "Teammate.*still working"; then
-        pass
-    else
-        fail
-        echo -e "  ${RED}✗ Should detect teammate still working${NC}"
-    fi
-
-    # Test 2.2: Stop hook detects teammate errors
-    print_test "Stop hook detects teammate errors"
-    echo '{"status": "idle", "last_error": "Build failed"}' > "$TEAMS_DIR/test-team/members/coder.json"
-
-    RESULT=$(echo '{"session_id": "test-session", "cwd": "/tmp", "stop_hook_active": false}' | \
-        "$REPO_ROOT/.claude/hooks/ralph-stop-quality-gate.sh" 2>/dev/null || true)
-
-    if echo "$RESULT" | grep -q "Teammate.*error"; then
-        pass
-    else
-        fail
-        echo -e "  ${RED}✗ Should detect teammate errors${NC}"
-    fi
-
-    cleanup_test_state
-}
-
-#######################################
-# Test 3: Block State Tracking (Finding #3 - HIGH)
-#######################################
-test_block_state_tracking() {
-    print_header "Test 3: Block State Tracking (Finding #3)"
-
-    cleanup_test_state
-
-    # Test 3.1: Block state file is created
-    print_test "Block state file created on block"
-    mkdir -p "$STATE_DIR/test-session"
-    mkdir -p "$TEAMS_DIR/test-team/members"
-    echo '{"age_seconds": 100}' > "$STATE_DIR/test-session/session.json"
-    echo '{"status": "working"}' > "$TEAMS_DIR/test-team/members/coder.json"
-    echo '{"team_name": "test-team"}' > "$TEAMS_DIR/test-team/config.json"
-
-    echo '{"session_id": "test-session", "cwd": "/tmp", "stop_hook_active": false}' | \
-        "$REPO_ROOT/.claude/hooks/ralph-stop-quality-gate.sh" >/dev/null 2>&1 || true
-
-    if [[ -f "$STATE_DIR/test-session/blocks.json" ]]; then
-        pass
-    else
-        fail
-        echo -e "  ${RED}✗ Block state file not created${NC}"
-    fi
-
-    # Test 3.2: Block count increments
-    print_test "Block count increments correctly"
-    BLOCK_COUNT=$(jq -r '.block_count // 0' "$STATE_DIR/test-session/blocks.json" 2>/dev/null || echo "0")
-    if [[ "$BLOCK_COUNT" -ge 1 ]]; then
-        pass
-    else
-        fail
-        echo -e "  ${RED}✗ Block count not incremented${NC}"
-    fi
-
-    # Test 3.3: Escalation after max blocks
-    print_test "Escalation triggers after max blocks"
-    # Create multiple blocks
-    for i in {1..5}; do
-        echo '{"session_id": "test-session", "cwd": "/tmp", "stop_hook_active": false}' | \
-            "$REPO_ROOT/.claude/hooks/ralph-stop-quality-gate.sh" >/dev/null 2>&1 || true
-    done
-
-    if jq -e '.escalate == true' "$STATE_DIR/test-session/blocks.json" >/dev/null 2>&1; then
-        pass
-    else
-        fail
-        echo -e "  ${RED}✗ Escalation not triggered${NC}"
-    fi
-
-    cleanup_test_state
 }
 
 #######################################
@@ -289,104 +113,6 @@ test_subagent_start_state() {
 }
 
 #######################################
-# Test 5: Session Isolation (Finding #5 - MEDIUM)
-#######################################
-test_session_isolation() {
-    print_header "Test 5: Session Isolation (Finding #5)"
-
-    cleanup_test_state
-
-    # Test 5.1: No session file allows stop
-    print_test "No session file allows stop"
-    rm -rf "$STATE_DIR/test-session" 2>/dev/null || true
-
-    RESULT=$(echo '{"session_id": "test-session", "cwd": "/tmp", "stop_hook_active": false}' | \
-        "$REPO_ROOT/.claude/hooks/ralph-stop-quality-gate.sh" 2>/dev/null); RC=$?
-
-    # v3.1.1: no session => allow via clean exit (RC 0) + no block decision emitted.
-    if [[ $RC -eq 0 ]] && ! echo "$RESULT" | grep -q '"decision":[[:space:]]*"block"'; then
-        pass
-    else
-        fail
-        echo -e "  ${RED}✗ Should allow stop without session${NC}"
-    fi
-
-    # Test 5.2: Stale session is cleaned up
-    print_test "Stale session (24h+) is cleaned up"
-    mkdir -p "$STATE_DIR/test-session"
-    echo '{"age_seconds": 100000}' > "$STATE_DIR/test-session/session.json"
-
-    RESULT=$(echo '{"session_id": "test-session", "cwd": "/tmp", "stop_hook_active": false}' | \
-        "$REPO_ROOT/.claude/hooks/ralph-stop-quality-gate.sh" 2>/dev/null || true)
-
-    # v3.1.1: stale session is cleaned up silently (dir removed) + clean exit. Verify the
-    # cleanup itself, not the removed "Stale session" message.
-    if [[ ! -d "$STATE_DIR/test-session" ]]; then
-        pass
-    else
-        fail
-        echo -e "  ${RED}✗ Stale session not cleaned up${NC}"
-    fi
-
-    # Test 5.3: Fresh session is not cleaned
-    print_test "Fresh session is preserved"
-    mkdir -p "$STATE_DIR/test-session"
-    echo '{"age_seconds": 100}' > "$STATE_DIR/test-session/session.json"
-
-    RESULT=$(echo '{"session_id": "test-session", "cwd": "/tmp", "stop_hook_active": false}' | \
-        "$REPO_ROOT/.claude/hooks/ralph-stop-quality-gate.sh" 2>/dev/null || true)
-
-    # Should not say "stale" and session dir should still exist
-    if [[ -d "$STATE_DIR/test-session" ]] && ! echo "$RESULT" | grep -q "Stale"; then
-        pass
-    else
-        fail
-        echo -e "  ${RED}✗ Fresh session incorrectly handled${NC}"
-    fi
-
-    cleanup_test_state
-}
-
-#######################################
-# Test 6: Integration Flow
-#######################################
-test_integration_flow() {
-    print_header "Test 6: Full Integration Flow"
-
-    cleanup_test_state
-
-    # Test 6.1: SubagentStart -> SubagentStop flow
-    print_test "SubagentStart -> SubagentStop flow works"
-    mkdir -p "$STATE_DIR/test-session"
-
-    # Start subagent
-    echo '{"subagentId": "flow-test", "subagentType": "ralph-coder", "sessionId": "test-session"}' | \
-        "$REPO_ROOT/.claude/hooks/ralph-subagent-start.sh" >/dev/null 2>&1
-
-    # Verify state exists
-    if [[ ! -f "$STATE_DIR/test-session/subagents/flow-test.json" ]]; then
-        fail
-        echo -e "  ${RED}✗ SubagentStart did not create state${NC}"
-    else
-        # Mark as completed
-        jq '.status = "completed"' "$STATE_DIR/test-session/subagents/flow-test.json" > tmp.json && mv tmp.json "$STATE_DIR/test-session/subagents/flow-test.json"
-
-        # Stop subagent
-        RESULT=$(echo '{"subagentId": "flow-test", "subagentType": "ralph-coder", "sessionId": "test-session"}' | \
-            "$REPO_ROOT/.claude/hooks/ralph-subagent-stop.sh" 2>/dev/null); RC=$?
-
-        if [[ $RC -eq 0 ]] && ! echo "$RESULT" | grep -q '"decision":[[:space:]]*"block"'; then
-            pass
-        else
-            fail
-            echo -e "  ${RED}✗ SubagentStop should allow (clean exit) completed subagent${NC}"
-        fi
-    fi
-
-    cleanup_test_state
-}
-
-#######################################
 # Summary
 #######################################
 print_summary() {
@@ -407,11 +133,8 @@ print_summary() {
 
     echo ""
     echo -e "${BOLD}Findings Validated:${NC}"
-    echo "  #1 (CRITICAL): ralph-subagent-stop.sh created"
-    echo "  #2 (HIGH): Teammate state check added"
-    echo "  #3 (HIGH): Block state tracking with escalation"
     echo "  #4 (MEDIUM): SubagentStart registers state"
-    echo "  #5 (MEDIUM): Session isolation and cleanup"
+    echo "  (#1/#2/#3/#5 retired with their hooks in #69 Phase 3 Slice C)"
 
     if [[ $total -eq 0 ]]; then
         # T39: zero-tests is never success (same family as T33). A run that
@@ -420,14 +143,6 @@ print_summary() {
         return 1
     fi
 
-# T94: zero-tests guard — fail loud when no assertion ran. Without
-# this check, a broken collection that increments zero counters would
-# print 'All tests passed!' and exit 0. Mirrors the canonic pattern in
-# tests/unit/test_validation_common.sh (lines 56-58).
-if [[ $TESTS_PASSED -eq 0 && $TESTS_FAILED -eq 0 ]]; then
-    echo "FATAL: zero tests executed — cannot declare success" >&2
-    exit 1
-fi
     if [[ $TESTS_FAILED -eq 0 ]]; then
         echo -e "\n${GREEN}${BOLD}✓ ALL HOOK INTEGRATION TESTS PASSED${NC}"
         return 0
@@ -445,12 +160,7 @@ main() {
     echo -e "${BLUE}${BOLD}║     Hook Integration E2E Test Suite v2.88.0                ║${NC}"
     echo -e "${BLUE}${BOLD}╚═══════════════════════════════════════════════════════════════╝${NC}"
 
-    test_ralph_subagent_stop
-    test_teammate_state_check
-    test_block_state_tracking
     test_subagent_start_state
-    test_session_isolation
-    test_integration_flow
 
     print_summary
 }

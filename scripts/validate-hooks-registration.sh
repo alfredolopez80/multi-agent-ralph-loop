@@ -114,7 +114,6 @@ HOOK_DEFINITIONS=(
     "SessionStart:*||wake-up-layer-stack.sh||Loads L0+L1 memory layers"
 
     # Quality gates
-    "TeammateIdle:*||teammate-idle-quality-gate.sh||Quality gate before idle"
     "TaskCompleted:*||task-completed-quality-gate.sh||Quality gate before completion"
 
     # Task and state tracking

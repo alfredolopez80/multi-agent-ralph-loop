@@ -20,13 +20,8 @@ LIB_DIR="$REPO_ROOT/.claude/lib"
 # BUG-001: SEC-111 stdin limit enforcement (5 hooks)
 # ============================================================================
 
-@test "BUG-001a: ralph-subagent-stop.sh uses head -c 100000" {
-  grep -q 'head -c 100000' "$HOOKS_DIR/ralph-subagent-stop.sh"
-}
-
-@test "BUG-001b: ralph-stop-quality-gate.sh uses head -c 100000" {
-  grep -q 'head -c 100000' "$HOOKS_DIR/ralph-stop-quality-gate.sh"
-}
+# BUG-001a/b (ralph-subagent-stop, ralph-stop-quality-gate) retired: hooks
+# removed by #69 Phase 3 Slice C. See docs/testing/ORPHAN_TEST_AUDIT.md.
 
 # BUG-001c (promptify-auto-detect.sh) retired: the hook was deleted in 498556f
 # (Unified Herding Blanket v3.0); its live successor is run_promptify_auto_detect()
@@ -41,77 +36,9 @@ LIB_DIR="$REPO_ROOT/.claude/lib"
 }
 
 @test "BUG-001f: no remaining INPUT=\$(cat) in fixed hooks" {
-  for hook in ralph-subagent-stop.sh ralph-stop-quality-gate.sh session-start-restore-context.sh todo-plan-sync.sh; do
+  for hook in session-start-restore-context.sh todo-plan-sync.sh; do
     ! grep -q 'INPUT=$(cat)' "$HOOKS_DIR/$hook"
   done
-}
-
-# ============================================================================
-# BUG-002: SESSION_ID sanitization in ralph-stop-quality-gate.sh
-# ============================================================================
-
-@test "BUG-002a: ralph-stop-quality-gate.sh sanitizes SESSION_ID" {
-  grep -q "tr -cd 'a-zA-Z0-9_-'" "$HOOKS_DIR/ralph-stop-quality-gate.sh"
-}
-
-@test "BUG-002b: ralph-stop-quality-gate.sh limits SESSION_ID length" {
-  grep -q 'head -c 64' "$HOOKS_DIR/ralph-stop-quality-gate.sh"
-}
-
-@test "BUG-002c: ralph-stop-quality-gate.sh defaults empty SESSION_ID" {
-  grep -q 'SESSION_ID="unknown"' "$HOOKS_DIR/ralph-stop-quality-gate.sh"
-}
-
-# ============================================================================
-# BUG-003: No hardcoded REPO_ROOT in ralph-stop-quality-gate.sh
-# ============================================================================
-
-@test "BUG-003a: ralph-stop-quality-gate.sh uses dynamic REPO_ROOT" {
-  grep -q 'git rev-parse --show-toplevel' "$HOOKS_DIR/ralph-stop-quality-gate.sh"
-}
-
-@test "BUG-003b: ralph-stop-quality-gate.sh has no hardcoded user path for REPO_ROOT" {
-  ! grep -q 'REPO_ROOT="/Users/' "$HOOKS_DIR/ralph-stop-quality-gate.sh"
-}
-
-# ============================================================================
-# BUG-004: Removed duplicate division-by-zero guard in post-compact-restore.sh
-# ============================================================================
-
-@test "BUG-004: post-compact-restore.sh has no nested duplicate TOTAL_STEPS check" {
-  # Count occurrences of the TOTAL_STEPS check pattern in the progress section
-  # There should be exactly ONE check, not a nested duplicate
-  count=$(grep -c 'if \[\[ "$TOTAL_STEPS" -gt 0 \]\]' "$HOOKS_DIR/post-compact-restore.sh")
-  [ "$count" -eq 1 ]
-}
-
-# ============================================================================
-# BUG-005: PLAN_STATUS initialized before conditional
-# ============================================================================
-
-@test "BUG-005: post-compact-restore.sh initializes PLAN_STATUS before use" {
-  # PLAN_STATUS should be set to "unknown" before the conditional that may set it
-  line_init=$(grep -n 'PLAN_STATUS="unknown"' "$HOOKS_DIR/post-compact-restore.sh" | head -1 | cut -d: -f1)
-  line_use=$(grep -n 'PLAN_STATUS=.*jq' "$HOOKS_DIR/post-compact-restore.sh" | head -1 | cut -d: -f1)
-  [ -n "$line_init" ]
-  [ "$line_init" -lt "$line_use" ]
-}
-
-# ============================================================================
-# BUG-006: pre-compact-handoff.sh ERR-only trap (no double JSON)
-# ============================================================================
-
-@test "BUG-006a: pre-compact-handoff.sh does not use ERR EXIT trap" {
-  ! grep -q "trap.*ERR EXIT" "$HOOKS_DIR/pre-compact-handoff.sh"
-}
-
-@test "BUG-006b: pre-compact-handoff.sh uses ERR-only trap" {
-  grep -q "trap.*ERR$" "$HOOKS_DIR/pre-compact-handoff.sh" || \
-  grep -q "trap.*' ERR$" "$HOOKS_DIR/pre-compact-handoff.sh"
-}
-
-@test "BUG-006c: pre-compact-handoff.sh clears trap with ERR only" {
-  grep -q 'trap - ERR$' "$HOOKS_DIR/pre-compact-handoff.sh"
 }
 
 # ============================================================================
@@ -228,9 +155,8 @@ LIB_DIR="$REPO_ROOT/.claude/lib"
 # ============================================================================
 
 @test "STRUCT: all fixed bash hooks pass syntax check" {
-  for hook in ralph-subagent-stop.sh ralph-stop-quality-gate.sh \
-              session-start-restore-context.sh todo-plan-sync.sh post-compact-restore.sh \
-              pre-compact-handoff.sh repo-boundary-guard.sh; do
+  for hook in session-start-restore-context.sh todo-plan-sync.sh \
+              repo-boundary-guard.sh; do
     bash -n "$HOOKS_DIR/$hook"
   done
   # handoff-integrity.sh moved to lib/; sourced (and thus parsed) by BUG-009c
@@ -246,9 +172,8 @@ LIB_DIR="$REPO_ROOT/.claude/lib"
 }
 
 @test "STRUCT: all fixed hooks are executable" {
-  for hook in ralph-subagent-stop.sh ralph-stop-quality-gate.sh \
-              session-start-restore-context.sh todo-plan-sync.sh post-compact-restore.sh \
-              pre-compact-handoff.sh repo-boundary-guard.sh \
+  for hook in session-start-restore-context.sh todo-plan-sync.sh \
+              repo-boundary-guard.sh \
               audit-secrets.js git-safety-guard.py; do
     [ -x "$HOOKS_DIR/$hook" ]
   done

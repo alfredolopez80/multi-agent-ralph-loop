@@ -66,18 +66,6 @@ fi
 section "TEST 2: TeammateIdle Hook"
 
 # Check hook file exists
-if [ -f "$HOOKS_DIR/teammate-idle-quality-gate.sh" ]; then
-    pass "teammate-idle-quality-gate.sh exists"
-else
-    fail "teammate-idle-quality-gate.sh missing"
-fi
-
-# Check hook is executable
-if [ -x "$HOOKS_DIR/teammate-idle-quality-gate.sh" ]; then
-    pass "teammate-idle-quality-gate.sh is executable"
-else
-    fail "teammate-idle-quality-gate.sh not executable"
-fi
 
 # Check hook is registered
 if jq -e '.hooks.TeammateIdle' "$SETTINGS_FILE" > /dev/null 2>&1; then
@@ -151,7 +139,8 @@ else
 fi
 
 # El matcher glm5-* y glm5-subagent-stop.sh se retiraron en Wave H1 (d066c63):
-# su cometido lo cubre subagent-stop-universal.sh con el matcher "*".
+# los hooks de SubagentStop se retiraron en #69 Slice C (la certificacion
+# del output del subagente vive en TaskCompleted del parent).
 if jq -e '.hooks.SubagentStop[] | select(.matcher == "*")' "$SETTINGS_FILE" > /dev/null 2>&1; then
     pass "SubagentStop with universal (*) matcher registered"
 else
@@ -306,10 +295,10 @@ section "TEST 11: Quality Gates Integration"
 
 # quality-gates-v2.sh se retiro en Wave H1 (d066c63): los quality gates viven hoy
 # en los hooks de evento TaskCompleted / TeammateIdle.
-if [ -f "$HOOKS_DIR/task-completed-quality-gate.sh" ] && [ -f "$HOOKS_DIR/teammate-idle-quality-gate.sh" ]; then
-    pass "quality gates presentes (task-completed + teammate-idle)"
+if [ -f "$HOOKS_DIR/task-completed-quality-gate.sh" ]; then
+    pass "quality gate presente (task-completed)"
 else
-    fail "faltan los hooks de quality gate (task-completed / teammate-idle)"
+    fail "falta el hook de quality gate (task-completed)"
 fi
 
 # Check teammate-idle-quality-gate.sh references quality standards

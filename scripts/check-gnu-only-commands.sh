@@ -263,9 +263,6 @@ __GNU_ONLY_ALLOWLIST_START__
 .claude/backup/hooks/unified-context-tracker.sh|timeout
 .claude/hooks/ai-code-audit.sh|stat-bsd
 .claude/hooks/ai-code-audit.sh|stat-c
-.claude/hooks/anti-rationalization-gate.sh|date-d
-.claude/hooks/anti-rationalization-gate.sh|stat-bsd
-.claude/hooks/anti-rationalization-gate.sh|stat-c
 .claude/hooks/context-warning.sh|stat-bsd
 .claude/hooks/context-warning.sh|stat-c
 .claude/hooks/lib/ctx-query.sh|stat-bsd
@@ -278,8 +275,6 @@ __GNU_ONLY_ALLOWLIST_START__
 .claude/hooks/plan-state-adaptive.sh|stat-c
 .claude/hooks/plan-state-lifecycle.sh|stat-bsd
 .claude/hooks/project-backup-metadata.sh|date-d
-.claude/hooks/quality-parallel-async.sh|stat-bsd
-.claude/hooks/quality-parallel-async.sh|stat-c
 .claude/hooks/session-end-handoff.sh|date-d
 .claude/hooks/session-end-handoff.sh|find-printf
 .claude/hooks/smart-memory-search.sh|stat-bsd

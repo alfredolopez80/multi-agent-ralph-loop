@@ -39,15 +39,6 @@ def test_validator_forgot_the_rule():
     assert "parallel-first" not in text
 
 
-def test_gate_has_no_parallel_fallback():
-    """anti-rationalization-gate.sh carries no hardcoded parallel fallback
-    (plan C2): neither the PARALLEL_EXCUSES block nor a pointer to the
-    removed rule file."""
-    text = (REPO / ".claude/hooks/anti-rationalization-gate.sh").read_text(encoding="utf-8")
-    assert "PARALLEL_EXCUSES" not in text
-    assert "parallel-first.md" not in text
-
-
 def test_normative_docs_are_clean():
     """None of the normative surfaces mandates the retired policy (plan C1)."""
     for rel in NORMATIVE_DOCS:
