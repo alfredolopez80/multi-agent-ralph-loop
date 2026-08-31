@@ -575,13 +575,7 @@ test_rule_backfill_consolidation() {
 test_experience_capture_pipeline() {
     log_test "Category 7: Experience Capture Pipeline"
 
-    # Test 7.1: continuous-learning.sh hook exists
-    local continuous_hook="${PROJECT_ROOT}/.claude/hooks/continuous-learning.sh"
-    if assert_file_exists "$continuous_hook"; then
-        log_pass "continuous-learning.sh hook exists"
-    else
-        log_fail "continuous-learning.sh hook missing"
-    fi
+# Test 7.1 retired: continuous-learning.sh removed by #69 Slice D.
 
     # Test 7.2: orchestrator-auto-learn.sh hook exists
     local auto_learn_hook="${PROJECT_ROOT}/.claude/hooks/orchestrator-auto-learn.sh"

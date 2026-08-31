@@ -108,7 +108,6 @@ declare -a HOOKS_WITH_EMPTY_INPUT=(
     "adversarial-auto-trigger.sh"
     "status-auto-check.sh"
     "progress-tracker.sh"
-    "decision-extractor.sh"
 )
 
 #===============================================================================
@@ -314,8 +313,7 @@ get_hooks_to_test() {
         "adversarial-auto-trigger.sh"
         "status-auto-check.sh"
         "progress-tracker.sh"
-        "decision-extractor.sh"
-        "auto-background-swarm.sh"
+            "auto-background-swarm.sh"
         "parallel-explore.sh"
         "recursive-decompose.sh"
         "code-review-auto.sh"

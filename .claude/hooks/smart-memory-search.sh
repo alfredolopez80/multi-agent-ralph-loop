@@ -15,7 +15,7 @@
 #   The worker writes results to .claude/memory-context.json (the SAME 30-min
 #   cache the orchestrator already reads) — context is consumed from that cache
 #   on the NEXT tool, never recomputed per tool. Pattern mirrors
-#   vault-fact-extractor.sh + auto-sync-global.sh.
+#   auto-sync-global.sh (vault-fact-extractor.sh removed by #69 Slice D).
 #
 # Based on @PerceptualPeak Smart Forking concept:
 # "Why not utilize the knowledge gained from your hundreds/thousands
@@ -418,12 +418,8 @@ fi
         if [[ -n "$L3_RESULTS" && "$L3_RESULTS" != "[]" && "$L3_RESULTS" != "null" ]]; then
             L3_JSON=$(echo "$L3_RESULTS" | jq '[.[] | {source_type: "l3_query", path: .path, title: .title, confidence: .confidence}]' 2>/dev/null || echo "[]")
             VAULT_RESULTS=$(echo "$VAULT_RESULTS" "$L3_JSON" | jq -s '.[0] + .[1]' 2>/dev/null || echo "$VAULT_RESULTS")
-
-            # Record query hits for vault-promotion.sh (sessions_confirmed increment)
-            HIT_SLUGS=$(echo "$L3_RESULTS" | jq -r '.[].slug // empty' 2>/dev/null | head -10 || echo "")
-            if [[ -n "$HIT_SLUGS" ]]; then
-                echo "$HIT_SLUGS" > "${HOME}/.ralph/.last-query-hits"
-            fi
+            # (.last-query-hits write removed by #69 Slice D — its only consumer,
+            #  vault-promotion.sh, was deleted; ghost queue)
         fi
     fi
 

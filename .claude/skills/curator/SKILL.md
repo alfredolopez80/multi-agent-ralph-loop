@@ -238,8 +238,8 @@ Rules now automatically categorized:
 |------|---------|---------|
 | `orchestrator-auto-learn.sh` | PreToolUse (Task) | Detect learning gaps |
 | *(removed in v3.0)* | UserPromptSubmit | *(curator-suggestion.sh deleted)* |
-| `continuous-learning.sh` | Stop | Extract from session → vault |
-| `vault-index-updater.sh` | SessionEnd | Update vault indices |
+| *(removed by #69 Slice D)* | Stop | *(continuous-learning.sh deleted — extraction is explicit)* |
+| *(removed by #69 Slice D)* | SessionEnd | *(vault-index-updater.sh deleted)* |
 
 
 ## Action Reporting (v2.93.0)

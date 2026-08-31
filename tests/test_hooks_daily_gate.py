@@ -14,11 +14,10 @@ Plus a T75 alignment check: markers live under $HOME/.ralph/markers/ (or the
 override), NEVER inside the project tree. The lib takes RALPH_DAILY_GATE_DIR
 as the override hook so a test can isolate without polluting the real home.
 
-A single integration test confirms the wiring: vault-graduation.sh sources
-the library and the gate actually short-circuits the body on a second call.
-The other three hooks (vault-promotion, auto-sync-global,
-project-backup-metadata) use the same source line, so this integration is the
-proof for the pattern.
+vault-graduation.sh (which sourced this library and served as the wiring
+proof) was removed by #69 Slice D along with vault-promotion; auto-sync-global
+and project-backup-metadata still source it. The integration test died with
+its subject — the lib-level tests below are the remaining coverage.
 """
 
 import json
@@ -31,7 +30,6 @@ LIB_PATH = (
     Path(__file__).resolve().parent.parent / ".claude" / "hooks" / "lib" / "daily-gate.sh"
 )
 HOOKS_DIR = Path(__file__).resolve().parent.parent / ".claude" / "hooks"
-VAULT_GRADUATION_HOOK = HOOKS_DIR / "vault-graduation.sh"
 
 
 def source_lib_in_subprocess(env_overrides, hook_name="t81-test-hook"):
@@ -209,54 +207,3 @@ def test_marker_path_is_outside_project(isolated_home, tmp_path):
     assert expected_dir.is_dir(), (
         f"RALPH_DAILY_GATE_DIR was not created/used; expected {expected_dir}"
     )
-
-
-# ---------------------------------------------------------------------------
-# Integration: vault-graduation.sh sources the library and the gate takes effect.
-# ---------------------------------------------------------------------------
-def test_vault_graduation_hook_skips_with_marker_present(isolated_home, tmp_path):
-    """End-to-end: invoke the real hook with a marker already written for
-    today. Expect (a) exit 0, (b) the breadcrumb mentions 'skipped', and
-    (c) no background fork was launched (no bg log file appears)."""
-    env_dir = tmp_path / "markers"
-    env_dir.mkdir()
-    touch_marker(env_dir, "vault-graduation")
-
-    bg_log = Path(os.path.expanduser("~")) / ".ralph" / "logs" / "vault-graduation.bg.log"
-    bg_size_before = bg_log.stat().st_size if bg_log.exists() else 0
-
-    env = os.environ.copy()
-    env["RALPH_DAILY_GATE_DIR"] = str(env_dir)
-    env["RALPH_FORCE_DAILY_GATE"] = ""
-
-    result = subprocess.run(
-        [str(VAULT_GRADUATION_HOOK)],
-        input="",
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
-    assert result.returncode == 0, f"hook exited non-zero: {result.stderr}"
-
-    # Condition (a): no error on stderr.
-    assert "error" not in result.stderr.lower(), (
-        f"unexpected stderr: {result.stderr!r}"
-    )
-
-    # Condition (b): the breadcrumb mentions the skipped state.
-    out = result.stdout.strip()
-    assert "skipped" in out.lower(), (
-        f"breadcrumb does not say 'skipped'; got {out!r}. Either the gate "
-        f"fired and we forgot to update the breadcrumb text, or the body "
-        f"still ran because the source / check call is not wired."
-    )
-
-    # Condition (c): no new bytes in the background log (no fork happened).
-    if bg_log.exists():
-        bg_size_after = bg_log.stat().st_size
-        assert bg_size_after == bg_size_before, (
-            f"background log grew from {bg_size_before} to {bg_size_after} "
-            f"despite the gate firing; the gate did not short-circuit the "
-            f"bg dispatch and we are paying the full cost every SessionStart."
-        )

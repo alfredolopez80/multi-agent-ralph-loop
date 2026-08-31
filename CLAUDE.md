@@ -200,7 +200,7 @@ Rules organized in 3 dimensions for flexible retrieval:
 |-----------|-----------|--------------|
 | **Halls** (by type) | `.claude/rules/learned/halls/` | decisions, patterns, anti-patterns, fixes |
 | **Rooms** (by topic) | `.claude/rules/learned/rooms/` | hooks, memory, agents, security, testing |
-| **Wings** (by scope) | no directory — compiled at session start | Wing (L2) content is generated from the Obsidian vault by the wake-up hook (`vault-wing-compiler.sh`); `.claude/rules/learned/wings/` does not exist |
+| **Wings** (by scope) | no directory | The wing compiler (`vault-wing-compiler.sh`) was removed by #69 Phase 3 Slice D; `.claude/rules/learned/wings/` does not exist |
 
 **L1 Filter**: Mechanical noise excluded (`ep-auto-*`, `ep-rule-*`), substantive filter (behavior >= 20 chars), criticality bonus (1.5x for CRITICAL/MUST/NEVER).
 

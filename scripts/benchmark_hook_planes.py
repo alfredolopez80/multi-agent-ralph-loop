@@ -61,18 +61,8 @@ PLANES = {
     "audit-secrets.js": "security-adjacent",
     "promptify-security.sh": "security-adjacent",
     # memory plane (vault / learning / recall / projection / diaries)
-    "vault-fact-extractor.sh": "memory",
-    "session-accumulator.sh": "memory",
     "smart-memory-search.sh": "memory",
     "orchestrator-auto-learn.sh": "memory",
-    "memory-projection.sh": "memory",
-    "vault-index-updater.sh": "memory",
-    "vault-wing-compiler.sh": "memory",
-    "vault-log-writer.sh": "memory",
-    "vault-weekly-compile.sh": "memory",
-    "vault-graduation.sh": "memory",
-    "vault-promotion.sh": "memory",
-    "vault-writeback.sh": "memory",
     # user-mandated methodology (neither security nor memory)
     "universal-aristotle-gate.sh": "aristotle",
     "aristotle-analysis-display.sh": "aristotle",

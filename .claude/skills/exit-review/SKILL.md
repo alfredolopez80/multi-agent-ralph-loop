@@ -56,6 +56,5 @@ Particularly useful for external API responses where the shape is not guaranteed
 
 ## Integration
 
-- `session-accumulator.sh` collects learnings during session
-- This skill classifies them at session end
-- `vault-graduation.sh` promotes high-confidence ones to rules at next SessionStart
+- This skill classifies learnings at session end (explicit writes; the
+  automatic collector/promotion hooks were removed by #69 Slice D)

@@ -55,10 +55,10 @@ Full analysis: [AAAK_LIMITATIONS_ADR](docs/architecture/AAAK_LIMITATIONS_ADR_202
 ```
 SESSION (any repo)
   |
-  +-- Stop      --> continuous-learning.sh --> vault + procedural memory
+  +-- Stop      --> (automatic learning removed by #69 Slice D; writes are explicit)
   +-- PostToolUse --> semantic extractors  --> vault facts & decisions
-  +-- SessionStart --> vault-graduation.sh --> promote to local rules
-  +-- SessionEnd   --> vault-index-updater  --> update indices
+  +-- SessionStart --> (automatic graduation removed by #69 Slice D)
+  +-- SessionEnd   --> (automatic indexing removed by #69 Slice D)
 ```
 
 All learning flows project -> global -> vault. Only universal patterns graduate to global scope.

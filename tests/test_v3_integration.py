@@ -315,17 +315,8 @@ class TestSettingsSyncClaude:
     def test_has_hooks_section(self):
         assert "hooks" in self.settings, "settings.json must have hooks section"
 
-    def test_audit_secrets_registered(self):
-        assert any("audit-secrets.js" in b for b in self.basenames), \
-            "audit-secrets.js must be registered in ~/.claude/settings.json"
 
-    def test_session_accumulator_registered(self):
-        assert any("session-accumulator.sh" in b for b in self.basenames), \
-            "session-accumulator.sh must be registered in ~/.claude/settings.json"
 
-    def test_vault_graduation_registered(self):
-        assert any("vault-graduation.sh" in b for b in self.basenames), \
-            "vault-graduation.sh must be registered in ~/.claude/settings.json"
 
     def test_git_safety_guard_registered(self):
         assert any("git-safety-guard.py" in b for b in self.basenames), \

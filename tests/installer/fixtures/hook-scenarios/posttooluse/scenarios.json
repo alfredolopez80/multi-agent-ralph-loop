@@ -9,8 +9,6 @@
         "sec-context-validate.sh",
         "security-full-audit.sh",
         "quality-gates-v2.sh",
-        "decision-extractor.sh",
-        "semantic-realtime-extractor.sh",
         "plan-sync-post-step.sh",
         "glm-context-update.sh",
         "progress-tracker.sh",

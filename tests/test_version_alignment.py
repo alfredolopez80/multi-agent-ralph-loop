@@ -194,10 +194,12 @@ class TestHookConsistency:
 
     CRITICAL_HOOKS = [
         # auto-plan-state.sh archived 2026-07-31 and deliberately deregistered.
+        # audit-secrets.js deregistered by PR3-C7 (#69): enforcement moved to
+        # secrets-write-guard.py (SECURITY_BASELINE control); the entry here went
+        # stale and turned this test red — pruned 2026-09-01 (detection duty).
+        # session-accumulator.sh / vault-graduation.sh deregistered by #69 Slice D
+        # (automatic memory writers removed; C6 drops the ACTIVE registrations).
         "plan-analysis-cleanup.sh",
-        "audit-secrets.js",
-        "session-accumulator.sh",
-        "vault-graduation.sh",
     ]
 
     def _hook_registered(self, settings_path: Path, hook_name: str) -> bool:

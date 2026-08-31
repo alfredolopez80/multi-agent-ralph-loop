@@ -120,7 +120,6 @@ HOOK_DEFINITIONS=(
     "TaskCompleted:*||task-list-projection.sh||Event-sourced task projection"
     "PostToolUse:Task||batch-progress-tracker.sh||Batch progress"
     "PostToolUse:Edit|Write|Bash||status-auto-check.sh||Status updates"
-    "PostToolUse:Edit|Write|Bash||vault-fact-extractor.sh||Vault fact extraction"
 )
 
 #===============================================================================

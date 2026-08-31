@@ -114,7 +114,6 @@ def get_hook_type(hook_name: str, settings_json: dict = None) -> str:
     # NOTE: stop-slop-hook.sh is registered as Stop in settings.json but uses
     # {"continue": true} format (PostToolUse-style quality check). Exclude it here.
     if any(x in hook_name for x in ['sentry-report', 'reflection-engine',
-                                      'continuous-learning',
                                       'orchestrator-report', 'project-backup-metadata']):
         return 'Stop'
 

@@ -232,8 +232,9 @@ def critical_hooks():
 
     v2.69.0: Updated quality-gates.sh -> quality-gates-v2.sh (renamed in v2.46).
     v2.85: Updated session-start-ledger.sh -> session-start-restore-context.sh (archived redundant hook).
-    v3.0: Removed session-start-tldr.sh (deleted). Added session-accumulator.sh, vault-graduation.sh,
-           project-state.sh (new v3.0 hooks).
+    v3.0: Removed session-start-tldr.sh (deleted). Added project-state.sh (new v3.0 hook).
+    #69 Slice D: session-accumulator.sh and vault-graduation.sh removed — automatic
+    memory writers are gone; writes are explicit (vault skill).
     """
     return [
         "session-start-restore-context.sh",  # v2.85: Replaces archived session-start-ledger.sh
@@ -241,8 +242,6 @@ def critical_hooks():
         # quality-gates-v2.sh: deleted in H1 consolidation (split into separate guards)
         "git-safety-guard.py",
         "auto-sync-global.sh",
-        "session-accumulator.sh",  # v3.0: New hook
-        "vault-graduation.sh",  # v3.0: New hook
         "project-state.sh",  # v3.0: Consolidated from skills-sync-validator + unified-context-tracker
     ]
 
