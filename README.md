@@ -1,6 +1,6 @@
 # Multi-Agent Ralph Loop
 
-Autonomous orchestration framework for Claude Code with MemPalace-inspired memory, Agent Teams, Aristotle First Principles methodology, and quality gates.
+Autonomous orchestration framework for Claude Code with MemPalace-inspired memory, Agent Teams, and quality gates.
 
 ## What It Does
 
@@ -11,7 +11,7 @@ Ralph extends Claude Code into a multi-agent development framework with a struct
 | **MemPalace Memory** | 4-layer memory stack (L0-L3) with Obsidian vault knowledge graph and learned rules taxonomy |
 | **6 Teammates** | ralph-coder, ralph-reviewer, ralph-tester, ralph-researcher, ralph-frontend, ralph-security |
 | **Hook System** | Lifecycle hooks for validation, quality gates, security guards, and automatic learning |
-| **Aristotle Analysis** | 5-phase first principles deconstruction before every non-trivial task |
+| **Aristotle (opt-in skill)** | 5-phase deconstruction via /aristotle for ambiguous/high-impact work — retired from the default chain by #69 Phase 3 |
 | **Quality Gates** | 4-stage blocking validation: correctness, quality, security, consistency |
 | **Comprehensive Tests** | Full test suite covering layers, hooks, security, skills, and pipeline |
 
@@ -212,7 +212,7 @@ Skills are symlinked to multiple platform directories. Source of truth: `.claude
 
 ## Global Infrastructure
 
-All Ralph advantages (Plan Mode, Aristotle, Agent Teams) work in **any project** -- rules, skills, and agents are symlinked globally.
+All Ralph advantages (Plan Mode, Agent Teams) work in **any project** -- rules, skills, and agents are symlinked globally.
 
 ```bash
 # Validate global infrastructure

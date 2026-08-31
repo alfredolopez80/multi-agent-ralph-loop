@@ -29,7 +29,7 @@ via the `opus` alias; the user decides with `/model`). Agents inherit it and mus
 NOT pin a model in their frontmatter.
 
 Complexity thresholds drive PROCESS -- Plan Mode >= 4, Parallel-First >= 3,
-Aristotle >= 4 -- never model choice.
+Plan Mode >= 4 -- never model choice.
 
 ## Agent Teams (v2.86)
 

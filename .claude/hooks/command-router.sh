@@ -285,7 +285,7 @@ run_prompt_analyzer() {
         classification="[Prompt Analysis] Tarea compleja (estrategica). Considerar Plan Mode con orquestacion de agentes."
     # ULTRA-COMPLEJA
     elif echo "$PROMPT_LOWER" | grep -qE '(security audit|comprehensive|full analysis|deep dive|critical review|complete overhaul|system-wide)'; then
-        classification="[Prompt Analysis] Tarea ultra-compleja. Plan Mode + Aristotle 5 fases + validacion adversarial."
+        classification="[Prompt Analysis] Tarea ultra-compleja. Plan Mode + validacion adversarial. Skill /aristotle disponible para analisis de primeros principios."
     fi
 
     if [[ -n "$classification" ]]; then
