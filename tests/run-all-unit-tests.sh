@@ -133,6 +133,7 @@ TEST_SUITES=(
     "security/test-k8s-unresolved-script-path.sh:Security: k8s unresolved script path (issue #68)"
     "security/test-logging-standards.sh:Security: logging standards"
     "security/test-pr3-c7-no-undeclared-security.sh:Security: no undeclared security registrations (PR3-C7, #69 1B)"
+    "security/test-secrets-write-guard.sh:Security: secrets write gate matrix (PR3-C1, #69 1B)"
     "security/test-shell-syntax-validation.sh:Security: shell syntax validation"
     "security/test-sql-injection-blocking.sh:Security: SQL injection blocking"
     "skills/test-autoresearch-smart-setup.sh:Skills: autoresearch smart setup"
