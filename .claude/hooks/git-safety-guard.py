@@ -368,6 +368,35 @@ GCLOUD_CONFIRMATION_PATTERNS = [
         GCLOUD + r"artifacts\s+(?:repositories|docker\s+images)\s+delete\b",
         "deletes Artifact Registry repository/images",
     ),
+    # Deploy/mutate verbs (issue #70): releasing code changes the running service,
+    # so they gate like the deletes — but as an EXPLICIT list with no catch-all: a
+    # broad deploy-catch-all would sweep harmless reads that merely embed the token
+    # (the SAFE describe/list allow-lists). A fresh deploy verb not listed here is
+    # the documented trade-off (unclassified, not gated) — add it explicitly.
+    (
+        GCLOUD + r"app\s+deploy(?![-\w])",
+        "deploys an App Engine app/version",
+    ),
+    (
+        GCLOUD + r"run\s+deploy(?![-\w])",
+        "deploys a Cloud Run service",
+    ),
+    (
+        GCLOUD + r"functions\s+deploy(?![-\w])",
+        "deploys a Cloud Function",
+    ),
+    (
+        GCLOUD + r"firebase\s+deploy(?![-\w])",
+        "deploys a Firebase project (hosting/rules/functions)",
+    ),
+    (
+        GCLOUD + r"compute\s+instance-groups\s+managed\s+rolling-action\s+start(?![-\w])",
+        "starts a rolling restart/replace of a managed instance group",
+    ),
+    (
+        GCLOUD + r"app\s+versions\s+(?:start|stop)(?![-\w])",
+        "starts/stops serving an App Engine version (traffic change)",
+    ),
     # Defensive catch-all
     (
         GCLOUD + r"[\w-]+(?:\s+[\w-]+)*\s+(?:delete|destroy)\b",

@@ -189,24 +189,16 @@ check(
     f"decision={d}",
 )
 
-# --- gcloud: git-safety-guard.py domain; KNOWN GAP tracked as issue #70 ---
-# The issue #67 matrix asserts `gcloud app deploy` stays gated, but git-safety-guard.py
-# measured allow on main (2026-08-31). Lead moved the gap to #70: while it is open the
-# case is an XFAIL (visible, never a silent skip); if the gap is CLOSED the case becomes
-# an XPASS and FAILS the run so this marker gets removed — expected-failure must never
-# outlive the failure it documents.
+# --- gcloud: git-safety-guard.py domain; gated since issue #70 closed ---
+# The known-gap XFAIL that covered this case while #70 was open is GONE: #70 is
+# fixed by the explicit deploy-verb ask tier, so this is a normal assertion now
+# (an expected-failure must not outlive the failure it documented).
 GIT_GUARD = PROJECT_ROOT / ".claude" / "hooks" / "git-safety-guard.py"
 env = {k: v for k, v in os.environ.items() if "DESTRUCTIVE_CONFIRMED" not in k}
 payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": "gcloud app deploy app.yaml"}, "cwd": "/tmp"})
 p = subprocess.run(["python3", str(GIT_GUARD)], input=payload, text=True, capture_output=True, env=env)
 gd = json.loads(p.stdout)["hookSpecificOutput"]["permissionDecision"]
-ran += 1
-if gd in {"deny", "ask"}:
-    failed += 1
-    print(f"  XPASS gcloud_app_deploy_not_allowed: decision={gd} — issue #70 closed; remove the known-gap marker")
-else:
-    xfailed += 1
-    print(f"  XFAIL gcloud_app_deploy_not_allowed (known gap, issue #70; decision={gd})")
+check("gcloud_app_deploy_not_allowed", gd, gd in {"deny", "ask"}, f"decision={gd}")
 
 print()
 print(f"RAN={ran}  PASS={passed}  FAIL={failed}  XFAIL={xfailed}")

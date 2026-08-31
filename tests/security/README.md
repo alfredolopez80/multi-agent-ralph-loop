@@ -39,14 +39,23 @@ Validates all JSON operations have try/catch error handling.
 
 **Run**: `./tests/security/test-json-error-handling.sh`
 
+### test-gcloud-deploy-verbs.sh
+Explicit gcloud deploy/mutate verb list gated at the ask tier of
+git-safety-guard.py (issue #70): one fixture per verb, harmless reads stay
+allow-listed, both escape hatches (`GCLOUD_DESTRUCTIVE_CONFIRMED` /
+`CLOUD_DESTRUCTIVE_CONFIRMED`) proven, existing protections unchanged, and the
+no-catch-all design pinned (a fresh unlisted verb is not gated — documented
+trade-off).
+
+**Run**: `bash tests/security/test-gcloud-deploy-verbs.sh`
+
 ### test-k8s-guard-action-position.sh
 Two-sided regression matrix for k8s-context-guard-v2 action-position
 classification (issue #67): `kubectl get/describe/logs deploy` are READ,
 `delete deploy` / `helm deploy` stay gated, unknown-context protection intact.
 Runner: `tests/security/fixtures/k8s_action_position_runner.py`. The gcloud
-case is a known-gap XFAIL (issue #70): while git-safety-guard.py answers
-`allow` it reports XFAIL; once gated it XPASSes and fails the run so the
-marker gets removed.
+case is a normal assertion since issue #70 closed (it was a known-gap XFAIL
+while the gate was missing).
 
 **Run**: `bash tests/security/test-k8s-guard-action-position.sh`
 

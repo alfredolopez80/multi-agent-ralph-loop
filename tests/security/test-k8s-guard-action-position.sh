@@ -3,9 +3,8 @@
 # Runner: tests/security/fixtures/k8s_action_position_runner.py
 # Purpose: two-sided regression matrix — reads allowed by action position,
 #          writes still gated, unknown-context protection intact.
-# Note: the gcloud case is a tracked known-gap (issue #70): XFAIL while
-#       git-safety-guard.py answers allow; an XPASS fails the run loudly so
-#       the marker is removed once the gap is closed.
+# Note: the gcloud case is a normal assertion since issue #70 closed (the
+#       explicit deploy-verb ask tier); it fails if that gate ever regresses.
 
 set -euo pipefail
 
