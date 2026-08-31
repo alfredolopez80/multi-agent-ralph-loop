@@ -62,6 +62,40 @@ expect "pure prose in content allows"       allow 0 '{"tool_name":"Write","tool_
 expect "lead repro: prose in new_string on Write allows" allow 0 '{"tool_name":"Write","tool_input":{"file_path":"/tmp/probe.py","new_string":"The sky is blue today."}}'
 expect "pure prose in Edit allows"          allow 0 '{"tool_name":"Edit","tool_input":{"file_path":"/tmp/probe.py","new_string":"The sky is blue today."}}'
 
+# --- C2 RED classes (owner decisions 2026-08-31) -----------------------------
+# R1: mnemonic SEQUENCE denies (N in {12,15,18,21,24} wordlist words on a line).
+# Checksum is verified and reported but does NOT gate the deny: a typo'd seed is
+# still the target. Scattered list words inside prose must allow.
+SEED12="liquid prosper home oyster dance film shift cradle unlock apart arrest swap"
+SEED24="olive blind worry turn day predict wrap embrace skirt party erode ghost summer wealth liar stand cute climb distance rough episode elbow indoor cradle"
+FIRST12="abandon ability able about above absent absorb abstract absurd abuse access accident"
+BADCHK="abandon ability able about above absent absorb abstract absurd abuse access across"
+expect "R1 valid 12-word mnemonic denies"     deny 1 "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/tmp/svc/wallet.md\",\"content\":\"backup: $SEED12\"}}"
+expect "R1 valid 24-word mnemonic denies"     deny 1 "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/tmp/svc/wallet.md\",\"content\":\"$SEED24\"}}"
+expect "R1 canonical BIP-39 vector denies"    deny 1 "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/tmp/svc/wallet.md\",\"content\":\"$FIRST12\"}}"
+expect "R1 all-list words with broken checksum denies" deny 1 "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"/tmp/svc/wallet.md\",\"content\":\"$BADCHK\"}}"
+expect "R1 scattered list words in prose allow" allow 0 '{"tool_name":"Write","tool_input":{"file_path":"/tmp/probe.py","content":"The abstract about the accident was above suspicion, and the ability to absorb it felt absurd."}}'
+
+# R2: EVM 0x+64hex outside test paths asks (owner accepts web3 friction);
+# inside test paths it allows (hash constants are ordinary test data).
+expect "R2 EVM hex outside tests asks"        ask 0 '{"tool_name":"Write","tool_input":{"file_path":"/tmp/svc/web3.py","content":"pk = \"0x4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318\""}}'
+expect "R2 EVM hex inside test path allows"   allow 0 '{"tool_name":"Write","tool_input":{"file_path":"/tmp/proj/tests/test_web3.py","content":"TX = \"0x4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318\""}}'
+
+# R3: PII DENSITY asks at threshold (default 10); isolated emails allow.
+expect "R3 twelve-email dump asks"            ask 0 '{"tool_name":"Write","tool_input":{"file_path":"/tmp/svc/export.sql","content":"u1@example.com u2@example.com u3@example.com u4@example.com u5@example.com u6@example.com u7@example.com u8@example.com u9@example.com u10@example.com u11@example.com u12@example.com"}}'
+expect "R3 two isolated emails allow"         allow 0 '{"tool_name":"Write","tool_input":{"file_path":"/tmp/svc/config.py","content":"support = \"support@example.com\"\nadmin = \"admin@example.org\"\n"}}'
+
+# R1 instrument integrity: the vendored wordlist must be the real standard list.
+WL="$REPO_ROOT/.claude/hooks/secrets-write-guard.bip39-wordlist"
+wl_n=$(wc -l < "$WL" | tr -d ' ')
+if [[ "$wl_n" == "2048" ]] && LC_ALL=C sort -c "$WL" 2>/dev/null \
+   && [[ "$(LC_ALL=C sort "$WL" | uniq -d | wc -l | tr -d ' ')" == "0" ]] \
+   && [[ "$(grep -cvE '^[a-z]+$' "$WL")" == "0" ]]; then
+  PASS=$((PASS+1))
+else
+  FAIL=$((FAIL+1)); echo "  FAIL: BIP-39 wordlist integrity (2048/sorted/unique/lowercase)"
+fi
+
 # --- allowlist: documented allow ---------------------------------------------
 out="$(printf '%s' '{"tool_name":"Write","tool_input":{"file_path":"/tmp/proj/tests/fixtures/leaked.pem","content":"-----BEGIN PRIVATE KEY-----\nMIIEowIBAAKCAQEA0Z3VS5JJcds3xfn/aGfFz\n-----END PRIVATE KEY-----"}}' | python3 "$HOOK" 2>/dev/null)"
 rc=$?
