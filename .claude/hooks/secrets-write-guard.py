@@ -12,13 +12,14 @@ JSON decision; allow/ask exit 0, deny exits 1. The JSON is authoritative.
   deny   same shape with "deny" + exit 1
 
 Design constraints (#45/#69): stdlib only; closed patterns (no vague regexes);
-fail-closed on unparseable input (security-plane invariant); never echoes the
-matched secret back (only pattern name + location). Scanned targets:
-  Write      -> tool_input.content
-  Edit       -> tool_input.new_string
-  MultiEdit  -> tool_input.edits[*].new_string
-Any other tool_name is allowed (not a write). The ALLOWLIST below is the
-versioned path policy for false positives (fnmatch semantics: '*' crosses '/').
+fail-closed on unparseable input and on payloads with NO known content field
+(security-plane invariant); never echoes the matched secret back (only pattern
+name + location). Scanned targets: every KNOWN content field present in the
+payload — content, new_string, edits[*].new_string — regardless of which write
+tool carries it (field-name strictness must never deny harmless writes; RETURN
+PR3-C1-r2). Any other tool_name is allowed (not a write). The ALLOWLIST below
+is the versioned path policy for false positives (fnmatch semantics: '*'
+crosses '/').
 """
 
 import fnmatch
@@ -56,8 +57,12 @@ PATTERNS = [
                 r"[A-Za-z0-9+/_-]{20,}", re.IGNORECASE)),
 ]
 
-WRITE_TOOLS = {"Write": ("content",), "Edit": ("new_string",),
-               "MultiEdit": ("edits",)}
+WRITE_TOOLS = {"Write", "Edit", "MultiEdit"}
+
+# Content-bearing fields scanned wherever they appear. A write tool carrying
+# text in ANY known field is scanned in all of them: field-name strictness
+# must never turn harmless prose into a deny (RETURN PR3-C1-r2 finding).
+CONTENT_FIELDS = ("content", "new_string")
 
 
 def decide(allowed, reason):
@@ -70,17 +75,16 @@ def decide(allowed, reason):
     return 0 if allowed else 1
 
 
-def scan_targets(tool_name, tool_input):
-    """Return the list of (field, text) strings to scan, or [] if none found."""
+def scan_targets(tool_input):
+    """Return the list of (field, text) strings to scan, or [] if the payload
+    carries no known content field at all."""
     targets = []
-    if tool_name == "Write":
-        if "content" in tool_input:
-            targets.append(("content", str(tool_input["content"])))
-    elif tool_name == "Edit":
-        if "new_string" in tool_input:
-            targets.append(("new_string", str(tool_input["new_string"])))
-    elif tool_name == "MultiEdit":
-        for i, edit in enumerate(tool_input.get("edits", [])):
+    for field in CONTENT_FIELDS:
+        if field in tool_input:
+            targets.append((field, str(tool_input[field])))
+    edits = tool_input.get("edits")
+    if isinstance(edits, list):
+        for i, edit in enumerate(edits):
             if isinstance(edit, dict) and "new_string" in edit:
                 targets.append((f"edits[{i}].new_string",
                                 str(edit["new_string"])))
@@ -113,10 +117,13 @@ def main():
             sys.exit(decide(True, f"secrets-write-guard: '{file_path}' matches "
                                   f"allowlist glob '{glob}' — documented allow"))
 
-    targets = scan_targets(tool_name, tool_input)
+    targets = scan_targets(tool_input)
     if not targets:
-        sys.exit(decide(False, f"secrets-write-guard: {tool_name} payload has no "
-                               f"scannable content — fail-closed"))
+        sys.exit(decide(False, f"secrets-write-guard: {tool_name} payload "
+                               f"carries no known content field "
+                               f"(content/new_string/edits) — fail-closed. "
+                               f"If this is a legitimate new tool shape, add "
+                               f"its field to CONTENT_FIELDS in the guard."))
 
     for field, text in targets:
         for name, pattern in PATTERNS:

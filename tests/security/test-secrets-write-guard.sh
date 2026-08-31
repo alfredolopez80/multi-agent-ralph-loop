@@ -55,6 +55,13 @@ expect "plain URL without credentials"      allow 0 '{"tool_name":"Write","tool_
 expect "non-write tool is not scanned"      allow 0 '{"tool_name":"Bash","tool_input":{"command":"echo ghp_abcdefghijklmnopqrstuvwx0123456789ABCD"}}'
 expect "empty write allows"                 allow 0 '{"tool_name":"Write","tool_input":{"file_path":"/tmp/svc/empty.py","content":""}}'
 
+# --- prose must allow regardless of which content field carries it -----------
+# (RETURN PR3-C1-r2: harmless prose was denied when carried in new_string on a
+#  Write — field-name strictness, now fixed by scanning every known field)
+expect "pure prose in content allows"       allow 0 '{"tool_name":"Write","tool_input":{"file_path":"/tmp/probe.py","content":"The sky is blue today."}}'
+expect "lead repro: prose in new_string on Write allows" allow 0 '{"tool_name":"Write","tool_input":{"file_path":"/tmp/probe.py","new_string":"The sky is blue today."}}'
+expect "pure prose in Edit allows"          allow 0 '{"tool_name":"Edit","tool_input":{"file_path":"/tmp/probe.py","new_string":"The sky is blue today."}}'
+
 # --- allowlist: documented allow ---------------------------------------------
 out="$(printf '%s' '{"tool_name":"Write","tool_input":{"file_path":"/tmp/proj/tests/fixtures/leaked.pem","content":"-----BEGIN PRIVATE KEY-----\nMIIEowIBAAKCAQEA0Z3VS5JJcds3xfn/aGfFz\n-----END PRIVATE KEY-----"}}' | python3 "$HOOK" 2>/dev/null)"
 rc=$?
