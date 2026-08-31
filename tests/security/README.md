@@ -49,6 +49,16 @@ trade-off).
 
 **Run**: `bash tests/security/test-gcloud-deploy-verbs.sh`
 
+### test-package-manager-verbs.sh
+Explicit package-manager mutation list at the ask tier of git-safety-guard.py
+(PR3-C4, manifest gap "package-manager"): brew install/uninstall/upgrade/tap/
+untap, pip with system-python markers (--break-system-packages/--system/sudo),
+npm with standalone -g/--global — all ask; local/venv installs and
+diagnostics stay allow-listed; PACKAGE_DESTRUCTIVE_CONFIRMED=1 skips the
+tier; existing cloud/git protections unchanged.
+
+**Run**: `bash tests/security/test-package-manager-verbs.sh`
+
 ### test-repo-boundary-symlink-escape.sh
 Fail-closed regression for repo-boundary-guard.sh symlink resolution (issue
 #45, PR3-C5): an in-boundary path that resolves through a symlink to OUTSIDE

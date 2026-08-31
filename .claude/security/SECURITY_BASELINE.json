@@ -41,7 +41,8 @@
       "properties": [
         "Blocks destructive git (reset --hard, push --force), destructive fs (rm -rf /, clean -f) and command chaining (;, &&, eval, xargs rm)",
         "Stdlib-only python (json/os/re/shlex/subprocess/sys) — no repo files sourced, no hidden dependencies",
-        "Contract (verified T16): allow/ask print JSON + exit 0, deny prints JSON + exit 1 — JSON on every terminal path (CRIT-002 allow_and_exit)"
+        "Contract (verified T16): allow/ask print JSON + exit 0, deny prints JSON + exit 1 — JSON on every terminal path (CRIT-002 allow_and_exit)",
+        "PR3-C4: package-manager mutations at the ask tier (brew install/uninstall/upgrade/tap/untap; pip with --break-system-packages/--system/sudo; npm standalone -g/--global) — explicit list, no catch-all, escape PACKAGE_DESTRUCTIVE_CONFIRMED=1; local/venv installs and diagnostics allow-listed"
       ],
       "fixture": {
         "run": "printf '{\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git reset --hard HEAD\"}}' | python3 .claude/hooks/git-safety-guard.py",
@@ -177,8 +178,11 @@
     {
       "id": "package-manager",
       "from_issue": 45,
-      "status": "no-hook",
-      "description": "brew/pip/npm installs are governed by a RULE (global CLAUDE.md approval requirement) but by no hook — rules constrain the model, not the tool call. git-safety does not cover package managers."
+      "status": "resolved",
+      "description": "brew/pip/npm installs are governed by a RULE (global CLAUDE.md approval requirement) but by no hook — rules constrain the model, not the tool call. git-safety does not cover package managers.",
+      "resolution": "PR3-C4: explicit package-manager mutation list added to git-safety-guard.py at the CONFIRMATION tier (ask) — brew install/uninstall/upgrade/tap/untap; pip installs carrying a system-python marker (--break-system-packages/--system/sudo); npm with a standalone -g/--global (space-prefixed, so a package named pkg-g does not match). No catch-all: local/venv installs and diagnostics stay allow-listed (pip install -r requirements.txt, pip install <pkg>, npm install <pkg>, brew list, pip show). Escape hatch: PACKAGE_DESTRUCTIVE_CONFIRMED=1. A fresh unlisted mutation is the documented trade-off, pinned by the suite.",
+      "resolved_by": "worktree-zc-4 PR3-C4",
+      "evidence": "tests/security/fixtures/package_manager_verbs_runner.py (21 cases), gate suite test-package-manager-verbs.sh"
     },
     {
       "id": "symlink-escape",
