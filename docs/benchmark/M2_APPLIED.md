@@ -7,7 +7,7 @@
 
 | | Before (current `.claude/settings.json.example`) | After (T106 template, default registration) | Delta |
 |---|---:|---:|---:|
-| Hook entries registered by default | **43** | **21** | **−22 (−51%)** |
+| Hook entries registered by default | **43** | **22** | **−21 (−49%)** |
 | Hot-path PostToolUse entries (Edit\|Write\|Bash) | 9 | 0 (all opt-in) | −9 |
 | PreToolUse:* non-security | 4 (aristotle + task/agent) | 0 (opt-in) | −4 |
 | SessionStart:* lifecycle suite | 6 | 1 (post-compact-restore only) | −5 |
@@ -105,6 +105,12 @@ The reduction is concentrated in the PostToolUse chain (226 ms → 5 ms) because
 - **Runner**: `bash tests/run-all-unit-tests.sh` → verde (the example isn't loaded by tests; sanity check that nothing else broke).
 - **Format check**: `python3 -c "import commentjson; ..." .claude/settings.json.example` would parse the JSON5 if `commentjson` is installed; otherwise the python one-liner in the example's header does the same.
 - **Manifest equivalence**: `pytest tests/test_security_only_profile.py tests/test_hooks_security_baseline.py` → 22/22 green (security plane unchanged).
+- **Reproducible count of active registration** (HEAD or main ref is authoritative, never the working tree):
+  ```bash
+  git show HEAD:.claude/settings.json.example \
+    | python3 -c 'import json,sys; d=json.load(sys.stdin); t=sum(len(a) for a in d.get("hooks",{}).values()); c=sum(len(m.get("hooks",[])) for a in d.get("hooks",{}).values() for m in a); print(t,"tuples /",c,"commands")'
+  ```
+  Output today: `17 tuples / 22 commands`. The headline row above (22) is the **commands** count from this command; the **tuples** count is 17.
 
 ---
 
