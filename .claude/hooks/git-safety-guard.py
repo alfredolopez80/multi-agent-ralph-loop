@@ -238,6 +238,9 @@ GCLOUD = (
 )
 GSUTIL = WRAPPER + r"gsutil\s+(?:-[mqD]\s+)*"
 KUBECTL = WRAPPER + r"kubectl\s+" + _flag_skip(_KUBECTL_VFLAGS, "nsuvp")
+BREW = WRAPPER + r"brew\s+"
+PIP = WRAPPER + r"pip3?\s+"
+NPM = WRAPPER + r"npm\s+"
 
 # Destructive verbs used by the command-substitution / shell -c detectors
 # v2.71.0: `rm` is word-anchored (\brm\s) — unanchored it matched the tail of
@@ -401,6 +404,40 @@ GCLOUD_CONFIRMATION_PATTERNS = [
     (
         GCLOUD + r"[\w-]+(?:\s+[\w-]+)*\s+(?:delete|destroy)\b",
         "unrecognized destructive gcloud operation (catch-all)",
+    ),
+]
+
+# Package-manager mutations (issue #45 gap "package-manager", PR3-C4): the global
+# CLAUDE.md rule demanded user approval for installs but no hook enforced it —
+# rules constrain the model, not the tool call. Explicit verb list, NO catch-all:
+# local/venv installs are the legitimate daily flow (the C1 false-positive lesson),
+# so only clearly-GLOBAL markers gate: brew's own mutating verbs; pip with
+# --break-system-packages/--system or sudo (the deterministic system-python
+# markers); npm with a space-prefixed -g/--global (so a package named `pkg-g`
+# does not match). A fresh unlisted mutation is the documented trade-off —
+# add it explicitly (pinned by tests/security/test-package-manager-verbs.sh).
+PACKAGE_CONFIRMATION_PATTERNS = [
+    (
+        BREW + r"(?:install|uninstall|upgrade|tap|untap)(?![-\w])",
+        "changes installed packages (brew)",
+    ),
+    (
+        PIP + r"install\b(?=[^;|&]*(?:--break-system-packages|--system)\b)",
+        "installs into the SYSTEM python (pip --break-system-packages/--system)",
+    ),
+    (
+        r"\bsudo\s+pip3?\s+install\b",
+        "installs into the SYSTEM python (sudo pip install)",
+    ),
+    (
+        # Space-prefixed flag: `npm install pkg-g` (a package NAME ending in -g)
+        # must not match — only a standalone flag token does.
+        NPM + r"(?:install|i)\b[^;|&]*?\s-{1,2}(?:g\b|global\b)",
+        "installs a package globally (npm install -g/--global)",
+    ),
+    (
+        NPM + r"-g\s+(?:install|i)\b",
+        "installs a package globally (npm -g install)",
     ),
 ]
 
@@ -661,6 +698,9 @@ CONFIRMATION_GROUPS = [
     (GIT_CONFIRMATION_PATTERNS, ("GIT_FORCE_PUSH_CONFIRMED",), "deny"),
     (AWS_CONFIRMATION_PATTERNS, ("AWS_DESTRUCTIVE_CONFIRMED", "CLOUD_DESTRUCTIVE_CONFIRMED"), "ask"),
     (GCLOUD_CONFIRMATION_PATTERNS, ("GCLOUD_DESTRUCTIVE_CONFIRMED", "CLOUD_DESTRUCTIVE_CONFIRMED"), "ask"),
+    # Package managers are not cloud CLIs: their escape hatch is their own var
+    # (CLOUD_DESTRUCTIVE_CONFIRMED intentionally does NOT cover them).
+    (PACKAGE_CONFIRMATION_PATTERNS, ("PACKAGE_DESTRUCTIVE_CONFIRMED",), "ask"),
     # KUBECTL_CONFIRMATION_PATTERNS handed off to k8s-context-guard-v2 (context-aware).
 ]
 
