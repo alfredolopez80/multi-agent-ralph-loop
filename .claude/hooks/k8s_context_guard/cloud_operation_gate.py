@@ -227,14 +227,19 @@ def _classify_words(parts: list[str]) -> tuple[str, str]:
     words = _words(parts)
     if any(words[index : index + 2] == ["rollout", "status"] for index in range(len(words) - 1)):
         return ("read", "")
-    destructive = next((word for word in words if any(word == action or word.startswith(action + "-") for action in DESTRUCTIVE_ACTIONS)), "")
-    if destructive:
-        return ("destructive", destructive)
-    mutating = next((word for word in words if any(word == action or word.startswith(action + "-") for action in MUTATING_ACTIONS)), "")
-    if mutating:
-        return ("mutating", mutating)
-    if any(word in READ_ACTIONS or word.startswith(("describe-", "get-", "list-", "head-")) for word in words):
-        return ("read", "")
+    # Classify by ACTION POSITION, not global token membership (issue #67): these CLIs
+    # place the verb in the first sub-command slot and resource aliases after it, so a
+    # token like `deploy` following a read verb (`kubectl get deploy X`) is a resource
+    # name, not a helm/gcloud write. Scanning left-to-right and stopping at the FIRST
+    # word that matches a known action keeps those reads READ while `helm deploy` and
+    # `kubectl delete deploy X` still gate on their real first-position verb.
+    for word in words:
+        if any(word == action or word.startswith(action + "-") for action in DESTRUCTIVE_ACTIONS):
+            return ("destructive", word)
+        if any(word == action or word.startswith(action + "-") for action in MUTATING_ACTIONS):
+            return ("mutating", word)
+        if word in READ_ACTIONS or word.startswith(("describe-", "get-", "list-", "head-")):
+            return ("read", "")
     return ("mutating", "unclassified")
 
 

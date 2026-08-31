@@ -39,6 +39,16 @@ Validates all JSON operations have try/catch error handling.
 
 **Run**: `./tests/security/test-json-error-handling.sh`
 
+### test-k8s-guard-action-position.sh
+Two-sided regression matrix for k8s-context-guard-v2 action-position
+classification (issue #67): `kubectl get/describe/logs deploy` are READ,
+`delete deploy` / `helm deploy` stay gated, unknown-context protection intact.
+Runner: `tests/security/fixtures/k8s_action_position_runner.py`. The gcloud
+case asserts git-safety-guard.py gates `gcloud app deploy` and fails until
+that guard gates it.
+
+**Run**: `bash tests/security/test-k8s-guard-action-position.sh`
+
 ### test-environment-validation.sh
 Tests API key and environment variable validation.
 
