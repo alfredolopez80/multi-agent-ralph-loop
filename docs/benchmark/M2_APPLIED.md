@@ -14,7 +14,7 @@
 | Stop:* suite | 6 | 0 (all opt-out) | −6 |
 | PreCompact:* | 1 | 0 (opt-in) | −1 |
 | UserPromptSubmit:* | 5 | 0 (opt-in) | −5 |
-| **SECURITY** (mandatory) | n/a | 12 (5 PreToolUse matchers + PostToolUse 3 + SessionStart:compact + SessionEnd) | n/a |
+| **SECURITY** (mandatory) | n/a | 17 matcher tuples / 22 commands — PreToolUse 10/10, PostToolUse 3/3, SessionStart:compact 1/1, SessionEnd 1/5, SubagentStart 1/2, SubagentStop 1/1 | n/a |
 | **ESSENTIAL non-security** (task-state conservation per #47) | n/a | 1 (plan-sync-post-step) | n/a |
 
 ## What stayed in the default registration
