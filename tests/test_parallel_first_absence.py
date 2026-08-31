@@ -60,3 +60,28 @@ def test_install_profile_has_no_parallel_first_registration():
     (guard against re-registration through the install profile)."""
     text = (REPO / ".claude/settings.json.example").read_text(encoding="utf-8")
     assert "parallel-first" not in text.lower()
+
+
+def test_validator_runs_without_parallel_first():
+    """Executing check (PR5-HOTFIX): string-greps cannot see a validator's OWN
+    checklist — validate-global-infrastructure.sh still gated the user's
+    CLAUDE.md on the removed rule after the file greps were pruned. Run the
+    validator and assert NO failing check mentions parallel-first.
+
+    The exit code is NOT asserted as 0 here: other failures (e.g. installed-
+    copy drift repaired by the lead/user via --fix) are deployment state this
+    test does not own. returncode == 2 would mean the validator itself is
+    broken as a script — that still fails this test.
+    """
+    import subprocess
+
+    p = subprocess.run(
+        ["bash", str(REPO / "scripts" / "validate-global-infrastructure.sh")],
+        text=True, capture_output=True, timeout=300,
+    )
+    assert p.returncode != 2, f"Validator script error (rc=2): {(p.stdout + p.stderr)[-400:]}"
+    parallel_fails = [
+        line for line in (p.stdout + p.stderr).splitlines()
+        if "parallel" in line.lower() and ("FAIL" in line or "missing" in line.lower())
+    ]
+    assert not parallel_fails, f"Validator still gates on parallel-first: {parallel_fails}"
