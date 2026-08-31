@@ -180,7 +180,9 @@ _STOP_HOOKS = _event_hook_paths("Stop")
 # UserPromptSubmit / Stop hooks shipped IN this repo (used to seed a CI-safe
 # settings.json so the hardening tests have real, versioned hook paths to assert on).
 _REPO_UPS_HOOK_NAMES = ("context-warning.sh", "periodic-reminder.sh")
-_REPO_STOP_HOOK_NAMES = ("vault-writeback.sh",)
+# vault-writeback.sh removed by #69 Slice D; stop-slop-hook.sh is the
+# surviving canonical Stop hook.
+_REPO_STOP_HOOK_NAMES = ("stop-slop-hook.sh",)
 
 
 def _repo_event_hooks(names: tuple[str, ...]) -> list[str]:

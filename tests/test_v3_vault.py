@@ -1,8 +1,8 @@
 """
 Tests for v3.0 vault system (Phase 6: Vault).
 
-Validates scripts/setup-obsidian-vault.sh, scripts/vault-weekly-compile.sh,
-and the vault directory structure.
+Validates scripts/setup-obsidian-vault.sh and the vault directory structure.
+(vault-weekly-compile.sh was removed by #69 Slice D; its class died with it.)
 """
 
 import os
@@ -87,48 +87,6 @@ class TestSetupObsidianVault:
             if "mkdir" in line and "/Users/" in line:
                 pytest.fail(f"mkdir command hardcodes path: {line.strip()}")
 
-
-# ============================================================
-# vault-weekly-compile.sh tests
-# ============================================================
-
-class TestVaultWeeklyCompile:
-    """Tests for scripts/vault-weekly-compile.sh."""
-
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        self.path = SCRIPTS_DIR / "vault-weekly-compile.sh"
-        self.content = read_file(self.path)
-
-    def test_file_exists(self):
-        assert self.path.exists()
-
-    def test_is_executable(self):
-        mode = self.path.stat().st_mode
-        assert mode & stat.S_IXUSR, "vault-weekly-compile.sh must be executable"
-
-    def test_has_lock_file_mechanism(self):
-        assert "LOCK_FILE" in self.content, "Must have lock file mechanism"
-        assert "lock" in self.content.lower(), "Must reference locking"
-
-    def test_has_week_deduplication(self):
-        assert "LAST_RUN_FILE" in self.content, "Must have LAST_RUN_FILE for deduplication"
-
-    def test_checks_already_compiled_this_week(self):
-        assert "already compiled this week" in self.content.lower() or \
-               "current_week" in self.content, \
-            "Must check if already compiled this week"
-
-    def test_updates_vault_index(self):
-        assert "_vault-index.md" in self.content, "Must update _vault-index.md"
-
-    def test_updates_project_index(self):
-        assert "_project-index.md" in self.content, "Must update _project-index.md"
-
-    def test_has_git_add_commit_push(self):
-        assert "git add" in self.content, "Must have git add"
-        assert "git commit" in self.content, "Must have git commit"
-        assert "git push" in self.content, "Must have git push"
 
 
 # ============================================================
