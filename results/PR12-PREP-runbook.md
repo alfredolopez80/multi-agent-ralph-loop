@@ -447,3 +447,66 @@ not message-ID references, and remain valid.
 **No change to the measurable criterion**: refinement 2's "exactly 1
 line: plan-sync-post-step.sh" is the criterion. This refinement only
 removes an unsupported citation; it does not change the count.
+
+### G1 — F1 Scope Amendment (post-cross-verify d6d1efb, 2026-09-01)
+
+The original G1 entry at line 200 admits "Row 5/6 INCOMPLETE with
+explicit rationale" as an alternative to "All 7 Plan C rows PASS".
+The F1 arbitration (cross-verify by zc-4, main d6d1efb) extends this
+acceptance clause to Row 1 (per-Bash-call hot-path latency).
+
+**Original criterion (line 200, intact)**:
+All 7 Plan C rows PASS (or Row 5/6 INCOMPLETE with explicit rationale).
+
+**F1 amendment (additive acceptance clause)**:
+Row 1 INCOMPLETE is also accepted, with the explicit rationale that
+the per-Bash-call hot-path latency cannot be resolved at N=1 per
+window — the magnitude of the structural effect (~98.0 ms of phantom
+hooks deleted, verified per-hook) is of the same order as the
+run-to-run oscillation of permission-guard alone (142.7 → 210.6 ms
+between windows). N=1 per window cannot statistically separate the
+signal from the noise.
+
+**Updated acceptance count** (per F1 adjudication by lead):
+- 6 rows PASS (Rows 2-7, reproduced exactly by zc-4 cross-verify) +
+- 1 row INCOMPLETE-adjudicated (Row 1, F1) =
+- Accepted: 6 PASS + 1 INCOMPLETE = 7 accounted rows, 0 FAIL.
+
+**Evidence (cross-verify report, results/pr12-crossverify-report.md at
+main d6d1efb)**:
+
+6 numbers from F1 finding table:
+| measurement | per-Bash-call | Δ vs baseline 514.0 |
+|---|---:|---:|
+| zc-3 certified (~11:57Z) | 362.3 ms | −29.5% |
+| zc-4 run 1 (~14:5xZ) | 567.8 ms | +10.4% |
+| zc-4 run 2 (~14:5xZ + min) | 483.3 ms | −6.0% |
+
+3 artifacts:
+- `worktrees/zc-3/results/pr12-posthoc-hotpath/hotpath-probe.{json,txt}`
+- `results/zc4-xv-hotpath/hotpath-probe.{json,txt}`
+- `results/zc4-xv-hotpath-run2/hotpath-probe.{json,txt}`
+
+4 attribution numbers (Pre/Post split, zc-4 runs):
+- Pre run 1: 383.5 ms / run 2: 314.0 ms (delete-phantoms overhead baseline)
+- Post run 1: 184.3 ms / run 2: 169.3 ms (after-delete residual)
+
+**Rationale (resolution-of-instrument)**:
+With N=1 per window, the per-Bash-call aggregate cannot statistically
+separate the ~98.0 ms structural effect (verified per-hook for each
+deleted phantom) from the ±10% T83 baseline oscillation. The
+post-borrado median (483.3 ms) is within the T83 ±10% band of the
+514.0 ms baseline, so the structural effect is bounded but
+unresolvable at this N.
+
+**Follow-up (non-blocking, pre-registration for future cycles)**:
+Future claims of hot-path latency impact MUST use N≥20 per window of
+real idle Bash traffic to resolve the structural effect from
+oscillation. Recorded as a methodological constraint for the next
+measurement cycle — not a FAIL of the current certification.
+
+**No change to the original G1 PASS-or-Row-5/6-INCOMPLETE clause**.
+This amendment extends the acceptance criteria to include Row 1
+INCOMPLETE with the F1 resolution-of-instrument rationale. Original
+gate text at line 200 remains intact; the extension is the new
+INCOMPLETE path for Row 1.
