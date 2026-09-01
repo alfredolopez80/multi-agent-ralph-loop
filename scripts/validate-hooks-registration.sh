@@ -118,8 +118,6 @@ HOOK_DEFINITIONS=(
 
     # Task and state tracking
     "TaskCompleted:*||task-list-projection.sh||Event-sourced task projection"
-    "PostToolUse:Task||batch-progress-tracker.sh||Batch progress"
-    "PostToolUse:Edit|Write|Bash||status-auto-check.sh||Status updates"
 )
 
 #===============================================================================
@@ -239,7 +237,7 @@ validate_hook() {
     # Parse using || delimiter
     # Format: "event:matcher||script||description"
     # Example: "SessionStart:*||auto-migrate-plan-state.sh||Plan state migration"
-    # Example: "PostToolUse:Edit|Write|Bash||status-auto-check.sh||Status check"
+    # Example: "PostToolUse:*||audit-secrets.js||Secret-pattern audit"
 
     local event_matcher="${def%%||*}"
     local rest="${def#*||}"

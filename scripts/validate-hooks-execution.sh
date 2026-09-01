@@ -106,8 +106,6 @@ HOOK_INPUT_MAP["session-start-restore-context.sh"]="session-start.json"
 # Hooks that may not have specific inputs and should use empty input
 declare -a HOOKS_WITH_EMPTY_INPUT=(
     "adversarial-auto-trigger.sh"
-    "status-auto-check.sh"
-    "progress-tracker.sh"
 )
 
 #===============================================================================
@@ -310,8 +308,6 @@ get_hooks_to_test() {
         "auto-migrate-plan-state.sh"
         "session-start-restore-context.sh"
         "adversarial-auto-trigger.sh"
-        "status-auto-check.sh"
-        "progress-tracker.sh"
             "auto-background-swarm.sh"
         "parallel-explore.sh"
         "recursive-decompose.sh"

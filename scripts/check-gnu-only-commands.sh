@@ -261,9 +261,8 @@ __GNU_ONLY_ALLOWLIST_START__
 .claude/backup/hooks/glm-context-tracker.sh|stat-bsd
 .claude/backup/hooks/glm-context-tracker.sh|stat-c
 .claude/backup/hooks/unified-context-tracker.sh|timeout
-.claude/hooks/ai-code-audit.sh|stat-bsd
-.claude/hooks/ai-code-audit.sh|stat-c
 # context-warning.sh rows removed by #69 Slice E (PR9)
+# Audit-hook rows removed by #69 PR11-EXEC (PR11, F5/F6 consolidation to /ship opt-in)
 .claude/hooks/lib/ctx-query.sh|stat-bsd
 .claude/hooks/lib/ctx-query.sh|stat-c
 .claude/hooks/lib/worktree-utils.sh|stat-bsd
