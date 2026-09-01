@@ -35,7 +35,19 @@ REQUIRED_GAP_IDS = {
 }
 HOOK_REQUIRED_KEYS = {"id", "kind", "hook", "event", "matchers", "sources",
                       "fixture"}
-VALID_GAP_STATUS = {"no-hook", "partial"}
+# 2026-09-01 (PR12 fix-row4): the original enum covered the birth manifest,
+# where every #45 gap was declared WITHOUT a control. Plan #69 1B (PR3) then
+# transitioned all five gaps to post-execution states, each in its own named
+# commit — the evolution is registered, only this enum was never updated:
+#   control-declarado <- d19b570 (PR3-C1 secrets write gate),
+#                        198c759 (C2-IMPL red-toxic classes; owner decisions
+#                        R1 deny, R2/R3 ask),
+#                        0f985fe (PR3-C3b mcp-egress via native permissions)
+#   resolved          <- 22f5388 (PR3-C4 package-manager ask tier),
+#                        9aeb739 (PR3-C5 symlink-escape deny)
+# The assertion stays closed: an unknown status is still a hard FAIL. This
+# amendment widens the domain to the legitimate states, it does not loosen it.
+VALID_GAP_STATUS = {"no-hook", "partial", "control-declarado", "resolved"}
 
 
 # ---------------------------------------------------------------- validation
