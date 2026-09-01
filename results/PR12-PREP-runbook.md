@@ -381,3 +381,42 @@ follow-up opcional (no blocker).
 back to "1 line: audit-secrets only" once the consolidation move
 executes. For now, "exactly 2 lines: audit-secrets + plan-sync" is the
 target that matches reality.
+
+### G8 — Refinement 2 (post-merge f8c2e42, 2026-09-01, by lead's L1 adjudicación)
+
+The G8 addendum above documented "exactly 2 lines: audit-secrets +
+plan-sync-post-step" as the recalibrated criterion. That assertion was
+based on the state of `.claude/settings.json.example` at the moment of
+commit eb3fcd9. Between eb3fcd9 and the certification re-run (after
+merge f8c2e42), `audit-secrets.js` was deregistered from the example
+per **PR3-C7** (#69 §1B decision, registered in the plan): PostToolUse
+audit-only is not a survivor; the canonical secrets control is
+PreToolUse `secrets-write-guard.py` (listed in the manifesto
+`deregistered` array). The current measurement is now 1 line, not 2.
+
+**Updated criterion (re-enmendado, by lead's L1 adjudicación opción (a))**:
+`jq '.hooks.PostToolUse[] | select(.matcher=="Edit|Write|Bash") | .hooks[].command' .claude/settings.json.example`
+returns **exactly 1 line**:
+  - `$CLAUDE_PROJECT_DIR/.claude/hooks/plan-sync-post-step.sh`
+
+**Rationale**: PR3-C7 deregistered audit-secrets.js from the example.
+Per #47 C1 (cerrado), plan-sync-post-step.sh is the canonical writer
+for the matcher. The hot-path matcher is now "plan-sync-post-step
+ONLY" (no audit hook). The "Future state" prediction in the previous
+addendum ("1 line: audit-secrets only") turned out to be wrong on
+two counts: (a) audit-secrets was deregistered, not just moved; (b)
+#69 §1B already ruled that PostToolUse audit-only is not a survivor,
+so the "future state" caption never matched the actual direction of
+the plan.
+
+**Option (b) rejected** (per lead's L1 adjudicación): re-registering
+audit-secrets.js to satisfy a "audit-secrets only" wording would
+contradict #69 §1B and PR3-C7. The chosen path aligns the gate TEXT
+with the registered plan DECISION; the measurement (1 line) is
+unchanged — it now passes the gate as written.
+
+**Delta over previous G8 addendum**: the measurable criterion tightens
+from "exactly 2 lines" to "exactly 1 line". This is a refinement, not
+a reversal — the direction of consolidation (#47 C1) is the same;
+only the count is corrected to match the deregistration that PR3-C7
+applied between eb3fcd9 and the re-run.
