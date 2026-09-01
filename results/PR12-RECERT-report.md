@@ -58,3 +58,11 @@ la evolución). Suites Row 4: **22/22**.
 - Author: zc-3 (executor) — verificación previa por gap, enmienda con trazabilidad,
   negative-validation, umbral sin mover
 - Owner: lead (zc) — pendiente: adjudicar L1 (G8) y el cierre de #69/#48/#45
+
+## Addendum final (2026-09-01, post-adjudicación)
+G8 PASS por adjudicación L1(a) del lead — medición 1 línea == criterio vigente 1 línea
+(runbook refinement 2, main 2b98930; PR3-C7 + manifiesto deregistered + #47 C1).
+Recert final: **12/12 PASS**.
+Verified by executor: runbook lines 399-422 carry the refinement citing PR3-C7 and
+#47 C1; the jq over settings.json.example measures exactly 1 line
+(`$CLAUDE_PROJECT_DIR/.claude/hooks/plan-sync-post-step.sh`).
