@@ -135,6 +135,7 @@ TEST_SUITES=(
     "security/test-slice-c-absence.sh:Security: Slice C absence matrix (PR7-EXEC, #69)"
     "security/test-pr8-memory-writers-absence.sh:Security: Slice D memory writers absence (PR8-EXEC, #69)"
     "security/test-pr9-shadowing-absence.sh:Security: Slice E compaction-shadow absence (PR9-EXEC, #69)"
+    "test-pr10-claude-md-scope-absence.sh:CLAUDE.md scope absence/presence (PR10-EXEC, #69)"
     "security/test-repo-boundary-symlink-escape.sh:Security: repo-boundary symlink escape (issue #45)"
     "security/test-shell-syntax-validation.sh:Security: shell syntax validation"
     "security/test-sql-injection-blocking.sh:Security: SQL injection blocking"
