@@ -181,7 +181,9 @@ if [[ -f "${PROJECT_DIR}/${PLAN_STATE_FILE}" ]]; then
         # from a previous session, not as the active session's own work.
         # Threshold matches the writer side (plan-state-adaptive.sh).
         _now=$(date +%s)
-        _mtime=$(stat -f %m "${PROJECT_DIR}/${PLAN_STATE_FILE}" 2>/dev/null || stat -c %Y "${PROJECT_DIR}/${PLAN_STATE_FILE}" 2>/dev/null || echo "$_now")
+        # Portable mtime via python (avoids stat -c / stat -f non-portable
+        # variants; see check-gnu-only-commands.sh and issue #54).
+        _mtime=$(python3 -c "import os,sys; print(int(os.stat(sys.argv[1]).st_mtime))" "${PROJECT_DIR}/${PLAN_STATE_FILE}" 2>/dev/null || echo "$_now")
         _age_min=$(( ( _now - _mtime ) / 60 ))
         if [[ "$_age_min" -gt "$PLAN_STALENESS_MINUTES" ]]; then
             log "INFO" "stale plan not resumed (mtime ${_age_min}m > ${PLAN_STALENESS_MINUTES}m): ${PROJECT_DIR}/${PLAN_STATE_FILE}"

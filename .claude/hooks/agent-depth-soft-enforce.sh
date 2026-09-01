@@ -90,11 +90,12 @@ if [[ "$parent_id" == "root" || -z "$parent_id" ]]; then
     chain_log="root -> ${agent_id}"
 else
     safety=20
-    # Cycle detection via seen-set (not just a last_current pointer): if
-    # the same node appears twice we have a cycle; the seen-set catches
-    # loops deeper than 2 nodes (e.g. A→B→C→A) that last_current misses.
-    declare -A seen=()
-    seen["$parent_id"]=1
+    # Cycle detection via membership string (POSIX-portable; bash 4+
+    # associative arrays are not available in /bin/bash on macOS — see
+    # issue #54 and check-gnu-only-commands.sh). The pipe-delimited
+    # string catches loops deeper than 2 nodes (e.g. A→B→C→A) that
+    # last_current alone misses.
+    _seen="|$parent_id|"
     while [[ -n "$current" && "$current" != "root" && $safety -gt 0 ]]; do
         depth=$((depth + 1))
         chain_log="${chain_log}${current} -> "
@@ -109,11 +110,11 @@ else
         [[ -z "$current" ]] && current="root"
         # Cycle detection: if we've seen this node before in this walk,
         # the chain has a loop. Bail out to "root" with a warning.
-        if [[ -n "${seen[$current]:-}" ]]; then
-            log "WARN: agent-depth-soft-enforce detected cycle in chain at $current (seen ${seen[$current]} times); truncating walk"
+        if [[ "$_seen" == *"|$current|"* ]]; then
+            log "WARN: agent-depth-soft-enforce detected cycle in chain at $current; truncating walk"
             current="root"
         else
-            seen["$current"]=1
+            _seen="${_seen}${current}|"
         fi
         current="$(printf '%s' "$current" | tr -cd '[:alnum:]-_' | head -c 128)"
         safety=$((safety - 1))

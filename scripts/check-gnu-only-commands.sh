@@ -269,16 +269,10 @@ __GNU_ONLY_ALLOWLIST_START__
 .claude/hooks/lib/worktree-utils.sh|stat-c
 .claude/hooks/orchestrator-auto-learn.sh|timeout
 .claude/hooks/parallel-explore.sh|timeout
-.claude/hooks/plan-state-adaptive.sh|stat-bsd
-.claude/hooks/plan-state-adaptive.sh|stat-c
-.claude/hooks/plan-state-lifecycle.sh|stat-bsd
 .claude/hooks/project-backup-metadata.sh|date-d
 .claude/hooks/session-end-handoff.sh|date-d
 .claude/hooks/session-end-handoff.sh|find-printf
-.claude/hooks/smart-memory-search.sh|stat-bsd
-.claude/hooks/smart-memory-search.sh|stat-c
 .claude/hooks/smart-memory-search.sh|timeout
-.claude/hooks/wake-up-layer-stack.sh|date-d
 .claude/lib/detect-environment.sh|stat-bsd
 .claude/lib/detect-environment.sh|stat-c
 .claude/run-tests-simple.sh|timeout
