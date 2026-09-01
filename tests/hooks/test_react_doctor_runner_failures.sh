@@ -39,8 +39,11 @@ run_with_fake_bin() { # $1=stdout $2=stderr $3=exit-code -> prints hook stdout
     proj="$(mktemp -d)"
     bin="$proj/node_modules/.bin/react-doctor"
     mkdir -p "$(dirname "$bin")"
-    # A root package.json is what marks the tree as scannable at all.
+    # A root package.json marks the tree as JS; tsconfig.json narrows the hook's
+    # applicability to TypeScript projects (user decision 2026-09-01, commit
+    # "react-doctor: applicability narrowed to TypeScript projects").
     printf '{"name":"probe","dependencies":{"react":"18.0.0"}}\n' > "$proj/package.json"
+    printf '{"compilerOptions":{}}\n' > "$proj/tsconfig.json"
     {
         printf '#!/bin/sh\n'
         [ -n "$fake_stdout" ] && printf 'printf "%%s\\n" %q\n' "$fake_stdout"
@@ -178,6 +181,19 @@ if [[ -z "${OUT// /}" ]]; then
     pass
 else
     fail "a tree with no package.json produced output" "$(printf '%s' "$OUT" | head -c 300)"
+fi
+
+# 6b. A JS-only project (package.json present, no tsconfig.json and no typescript
+# dependency) is out of scope since the 2026-09-01 TypeScript-only decision: the
+# applicability guard must exit silently without invoking the runner.
+NOTS="$(mktemp -d)"
+printf '{"name":"probe","dependencies":{"react":"18.0.0"}}\n' > "$NOTS/package.json"
+OUT="$(printf '%s' "$EDIT_BATCH" | CLAUDE_PROJECT_DIR="$NOTS" timeout 60 node "$HOOK" 2>/dev/null)"
+rm -rf "$NOTS"
+if [[ -z "${OUT// /}" ]]; then
+    pass
+else
+    fail "a JS-only (non-TS) project produced output" "$(printf '%s' "$OUT" | head -c 300)"
 fi
 
 echo
