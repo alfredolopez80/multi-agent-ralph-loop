@@ -359,10 +359,10 @@ returns 0 lines (assertion: only audit-secrets is in the matcher).
 **Correction**: the matcher currently contains `audit-secrets.js` AND
 `plan-sync-post-step.sh`. The "only audit-secrets" assertion was based on
 the assumption that PR11 F2 (move plan-sync-post-step to TaskCompleted)
-would execute. F2 was NOT executed (option A of the BLOCKED msg
-5156bffd skipped C1 entirely, treating the hot-path cleanup as done by
-slice E). Per #47 C1 (closed), `plan-sync-post-step.sh` is the canonical
-writer for PostToolUse:Edit|Write|Bash; lead's C5 (user-side) aligned
+would execute. F2 was NOT executed (PR11-EXEC skip-to-C2 skipped C1
+entirely, treating the hot-path cleanup as done by slice E). Per #47 C1
+(closed), `plan-sync-post-step.sh` is the canonical writer for
+PostToolUse:Edit|Write|Bash; lead's C5 (user-side) aligned
 `~/.claude/settings.json` with #47 C1.
 
 **Recalibrated criterion**:
@@ -372,12 +372,78 @@ returns **exactly 2 lines**:
   - `.claude/hooks/plan-sync-post-step.sh`
 
 **Rationale**: #47 C1 (cerrado) fija plan-sync-post-step como escritor
-canónico del matcher Edit|Write|Bash. PR11-EXEC opción A (BLOCKED msg
-5156bffd) saltó C1/F2 explícitamente; el C5 user-side del lead alineó
-`~/.claude/settings.json` con #47 C1. Mover plan-sync a TaskCompleted es
-follow-up opcional (no blocker).
+canónico del matcher Edit|Write|Bash. PR11-EXEC skip-to-C2 saltó C1/F2
+explícitamente; el C5 user-side del lead alineó `~/.claude/settings.json`
+con #47 C1. Mover plan-sync a TaskCompleted es follow-up opcional
+(no blocker).
 
 **Future state** (when F2 is revisited): the criterion would tighten
 back to "1 line: audit-secrets only" once the consolidation move
 executes. For now, "exactly 2 lines: audit-secrets + plan-sync" is the
 target that matches reality.
+
+### G8 — Refinement 2 (post-merge f8c2e42, 2026-09-01, by lead's L1 adjudicación)
+
+The G8 addendum above documented "exactly 2 lines: audit-secrets +
+plan-sync-post-step" as the recalibrated criterion. That assertion was
+based on the state of `.claude/settings.json.example` at the moment of
+commit eb3fcd9. Between eb3fcd9 and the certification re-run (after
+merge f8c2e42), `audit-secrets.js` was deregistered from the example
+per **PR3-C7** (#69 §1B decision, registered in the plan): PostToolUse
+audit-only is not a survivor; the canonical secrets control is
+PreToolUse `secrets-write-guard.py` (listed in the manifesto
+`deregistered` array). The current measurement is now 1 line, not 2.
+
+**Updated criterion (re-enmendado, by lead's L1 adjudicación opción (a))**:
+`jq '.hooks.PostToolUse[] | select(.matcher=="Edit|Write|Bash") | .hooks[].command' .claude/settings.json.example`
+returns **exactly 1 line**:
+  - `$CLAUDE_PROJECT_DIR/.claude/hooks/plan-sync-post-step.sh`
+
+**Rationale**: PR3-C7 deregistered audit-secrets.js from the example.
+Per #47 C1 (cerrado), plan-sync-post-step.sh is the canonical writer
+for the matcher. The hot-path matcher is now "plan-sync-post-step
+ONLY" (no audit hook). The "Future state" prediction in the previous
+addendum ("1 line: audit-secrets only") turned out to be wrong on
+two counts: (a) audit-secrets was deregistered, not just moved; (b)
+#69 §1B already ruled that PostToolUse audit-only is not a survivor,
+so the "future state" caption never matched the actual direction of
+the plan.
+
+**Option (b) rejected** (per lead's L1 adjudicación): re-registering
+audit-secrets.js to satisfy a "audit-secrets only" wording would
+contradict #69 §1B and PR3-C7. The chosen path aligns the gate TEXT
+with the registered plan DECISION; the measurement (1 line) is
+unchanged — it now passes the gate as written.
+
+**Delta over previous G8 addendum**: the measurable criterion tightens
+from "exactly 2 lines" to "exactly 1 line". This is a refinement, not
+a reversal — the direction of consolidation (#47 C1) is the same;
+only the count is corrected to match the deregistration that PR3-C7
+applied between eb3fcd9 and the re-run.
+
+### G8 — Refinement 3 (citation correction, 2026-09-01, post-merge)
+
+The previous G8 addendum (commit eb3fcd9) cited "option A of the
+BLOCKED msg [ID redacted — not in lead's record]" twice as justification
+for the skip-to-C2 decision. Per lead's correction: that BLOCKED
+message ID is not in lead's record and must not be used as primary
+justification for plan decisions.
+
+**Removed**: both inline citations of the unsupported BLOCKED message
+ID from the previous addendum's body text (lines that referenced
+"option A of the BLOCKED msg" and "PR11-EXEC opción A (BLOCKED
+msg)").
+
+**Replaced phrasing**: "PR11-EXEC skip-to-C2" states the decision
+without anchoring it to a message ID that doesn't exist in lead's
+record. The decision itself (skip-to-C2 instead of executing C1/F2)
+is still recorded; only the unsupported message-ID citation was
+removed.
+
+**Citations kept**: #47 C1 (cerrado), el C5 user-side del lead,
+"follow-up opcional (no blocker)" — these are plan-level references,
+not message-ID references, and remain valid.
+
+**No change to the measurable criterion**: refinement 2's "exactly 1
+line: plan-sync-post-step.sh" is the criterion. This refinement only
+removes an unsupported citation; it does not change the count.
