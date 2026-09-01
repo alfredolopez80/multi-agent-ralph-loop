@@ -23,6 +23,11 @@ SHIP CHECKLIST
 [ ] 6. Tests           — All tests pass
 [ ] 7. ADR             — Major decisions documented (if complexity >= 7)
 [ ] 8. Spec            — Exit criteria met (if spec exists)
+
+Audit hooks (opt-in, on-demand — invoked by /ship, NOT per-tool; per #69 PR11):
+[ ] 9. console-log-detector.sh   — scan staged + modified files for console.log
+[ ] 10. ai-code-audit.sh          — scan for AI-generated code patterns (CWE/quality)
+[ ] 11. auto-format-prettier.sh   — apply prettier formatting to changed files
 ```
 
 ## Usage

@@ -1,4 +1,8 @@
-# Archive — política de purga
+# Archive — purge policy (política de purga)
+
+> **Policy (English)**: archive files without active callers are **deleted** in
+> the next slice; not kept "por si acaso". This **purge** rule replaces the
+> old "archive but never remove" habit.
 
 ## Propósito
 
