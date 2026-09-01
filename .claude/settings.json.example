@@ -150,6 +150,7 @@
     ]
   },
   "env": {
+    "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1",
     "CLAUDE_CODE_AGENT_ID": "ralph-primary",
     "CLAUDE_CODE_AGENT_NAME": "RalphWiggum",
     "CLAUDE_CODE_TEAM_NAME": "multi-agent-ralph",
@@ -162,5 +163,6 @@
   "crossSessionInbound": "accept",
   "worktree": {
     "baseRef": "head"
-  }
+  },
+  "autoMemoryEnabled": false
 }
