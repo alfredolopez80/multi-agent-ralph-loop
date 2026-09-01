@@ -42,17 +42,13 @@ Rule: `.claude/rules/browser-automation.md`
 | `git-safety-guard.py` | Blocks rm -rf, git reset --hard, command chaining, and destructive aws/gcloud/gsutil/kubectl ops (deny + ask tiers, v2.70.0) | PreToolUse (Bash) |
 | `repo-boundary-guard.sh` | Prevents operations outside current repo | PreToolUse (Bash) |
 | `audit-secrets.js` | Audit logging for 20+ secret patterns | PostToolUse |
-| `task-completed-quality-gate.sh` | 7 quality gates including hardcoded secrets + SQL injection | TaskCompleted |
 
 ## Session Lifecycle Hooks (v2.86)
 
-| Event | Hook | Purpose |
-|-------|------|---------|
-| `PreCompact` | pre-compact-handoff.sh | Save state BEFORE compaction |
-| `SessionStart(compact)` | post-compact-restore.sh | Restore context AFTER compaction |
-| `SessionEnd` | session-end-handoff.sh | Save state when session TERMINATES |
-
-> **Note**: `PostCompact` event does NOT exist in Claude Code. Use `SessionStart(matcher="compact")` instead.
+> Slice E (f30bd02) removed all session-lifecycle hooks (see CHANGELOG.md for
+> the full removal record). They were replaced by opt-in /session skills and
+> /compact handoff via the wt-worker skill. This section is intentionally
+> empty.
 
 ## Agent Teams (v2.86)
 
@@ -143,12 +139,8 @@ These hooks must be registered in settings.json:
 
 | Hook | Event | Purpose |
 |------|-------|---------|
-| `git-safety-guard.py` | PreToolUse (Bash) | Blocks rm -rf, git reset --hard, destructive aws/gcloud/kubectl |
+| `git-safety-guard.py` | PreToolUse (Bash) | Blocks destructive ops (rm -rf, git reset --hard, aws/gcloud/kubectl) |
 | `repo-boundary-guard.sh` | PreToolUse (Bash) | Prevents work outside repo |
-| `learning-gate.sh` | PreToolUse (Task) | Auto-learning trigger |
-| `status-auto-check.sh` | PostToolUse | Status updates |
-| `batch-progress-tracker.sh` | PostToolUse | Batch progress tracking (v2.88) |
-| `task-completed-quality-gate.sh` | TaskCompleted | Validation before completion |
 
 Validation: `./scripts/validate-hooks-registration.sh`
 

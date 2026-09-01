@@ -15,6 +15,65 @@
   worker-blocked-safe (git-safety, repo-boundary, permission, k8s-context,
   skill-validator) y el manifest SECURITY intactos.
 
+### Removed - Slice F (#69 Phase 3 PR 11): barrido final pre-certificación (archive phantoms + huérfanos de inventario + docs reconciliados + absence test)
+
+4 archive phantoms (zero active callers; verified pre-rm via grep across
+`scripts/`, `install*.sh`, `.claude/skills/`, `.claude/settings.json.example`,
+`.claude/hooks/`, excluding archive/audit/benchmark):
+
+- `.claude/archive/pre-migration-v2.70.0-20260127-231849/memory-write-trigger.sh`
+- `.claude/archive/pre-migration-v2.70.0-20260127-231849/semantic-auto-extractor.sh`
+- `.claude/archive/pre-migration-v2.70.0-20260127-231849/episodic-auto-convert.sh`
+- `.claude/archive/pre-migration-v2.70.0-20260127-231849/reflection-engine.sh`
+- `.claude/archive/hooks-audit-20260119/memory-write-trigger.sh` (duplicate copy)
+- `.claude/archive/hooks-audit-20260119/reflection-engine.sh` (duplicate copy)
+
+5 DELETEs from the PHASE0 inventory (F18, F20 tracked git removals; F21, F22
+no-op at git level — directories were already untracked and ignored;
+F23 no-op — `.gitignore` already covered `__pycache__/` at lines 112 and 281):
+
+- `.claude/scripts/validate-all-orchestrator-skills.sh`
+- `.claude/agents/AGENTES_SKILLS_AUDIT_v2.72.2.md.old`
+- `.claude/hooks/__pycache__/` (filesystem cleanup deferred — git-untracked)
+- `.claude/hooks/k8s_context_guard/__pycache__/` (filesystem cleanup deferred — git-untracked)
+
+F19 (user-side rm of `~/.claude/rules.pre-w5-symlink`) deferred to C5
+(post-merge user-side cleanup).
+
+### Added - Slice F absence regression guard
+
+`tests/test_slice_f_absence.py` — 13 tests across 7 groups, locks the
+post-Slice-F state of the repo. A failure here means someone re-introduced
+a deleted artifact, a stale docs reference, a re-registration of an
+unregistered hook, or a regression in the worker-blocked-safe plane or the
+SECURITY manifest.
+
+`.claude/archive/README.md` — explicit purge policy: archive without an
+active caller is removed in the next slice, not kept "por si acaso";
+distributors (`install.sh`, `sync-rules-from-source.sh`, all `validate-*.sh`)
+are audited for residual references before each merge.
+
+### Changed - Slice F docs reconciliation
+
+CLAUDE.md table cleanup: removed stale references to hooks slice E deleted
+and to hooks no longer registered in `settings.json.example`. The
+"Critical Hooks" table now lists only the 2 hooks currently registered
+(`git-safety-guard`, `repo-boundary-guard`). The "Session Lifecycle Hooks"
+section notes the slice E removal with a pointer to CHANGELOG.
+
+### Note - C1 of PR11-PREP-plan.md was SKIPPED
+
+Per lead's decision (option A in BLOCKED msg 5156bffd), C1 was treated as
+done-by-slice-E: the 8 hook registrations the plan intended to reubicate
+were already absent from `PostToolUse:Edit|Write|Bash` after slice E
+(f30bd02), and 2 of the planned files (`vault-fact-extractor.sh`,
+`session-accumulator.sh`) were already deleted. The 8 hooks left as
+orphaned-but-unregistered files (progress-tracker, status-auto-check,
+console-log-detector, ai-code-audit, auto-format-prettier, plus the
+2 deleted ones) were not migrated in this slice — that work belongs to a
+follow-up slice once the consolidation target (SessionStart/End, TaskCompleted,
+or `/ship` opt-in) is decided for each.
+
 ### Added - lead/worker worktree coordination skills
 
 - **`.claude/skills/wt-lead/` and `.claude/skills/wt-worker/`** — a two-role protocol for
