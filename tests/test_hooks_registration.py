@@ -79,24 +79,14 @@ HOOK_REGISTRY = {
     },
 
     # === v2.43 Hooks ===
-    "inject-session-context.sh": {
-        "event": "PreToolUse",
-        "matchers": ["Task"],
-        "version": "2.43",
-        "cli_only": False,
-    },
+    # inject-session-context.sh (v2.43) removed by #69 Slice E (PR9)
     "skill-validator.sh": {
         "event": "PreToolUse",
         "matchers": ["Skill"],
         "version": "2.43",
         "cli_only": False,
     },
-    "context-warning.sh": {
-        "event": "UserPromptSubmit",
-        "matchers": None,
-        "version": "2.43",
-        "cli_only": False,
-    },
+    # context-warning.sh (v2.43) removed by #69 Slice E (PR9)
     "periodic-reminder.sh": {
         "event": "UserPromptSubmit",
         "matchers": None,

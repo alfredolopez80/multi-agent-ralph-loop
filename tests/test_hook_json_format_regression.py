@@ -118,7 +118,7 @@ def get_hook_type(hook_name: str, settings_json: dict = None) -> str:
         return 'Stop'
 
     # UserPromptSubmit hooks (use {} or {"additionalContext": ...})
-    elif any(x in hook_name for x in ['context-warning', 'periodic-reminder', 'command-router',
+    elif any(x in hook_name for x in ['periodic-reminder', 'command-router',
                                        'memory-write-trigger',
                                        'plan-state-lifecycle', 'plan-state-adaptive',
                                        'statusline-health-monitor']):
@@ -138,7 +138,8 @@ def get_hook_type(hook_name: str, settings_json: dict = None) -> str:
     # Note: This list is now a fallback for offline testing when settings.json is unavailable
     elif any(x in hook_name for x in [
         'repo-boundary-guard', 'git-safety-guard', 'skill-validator',
-        'orchestrator-auto-learn', 'fast-path-check', 'inject-session-context',
+        'orchestrator-auto-learn', 'fast-path-check',
+        # inject-session-context.sh: deleted in #69 Slice E (PR9)
         'smart-memory-search',  # procedural-inject.sh, agent-memory-auto-init.sh: deleted in H1
         'lsa-pre-step', 'checkpoint-smart-save', 'checkpoint-auto-save',
         'smart-skill-reminder', 'task-orchestration-optimizer', 'claude-docs-helper',
@@ -352,8 +353,8 @@ class TestRuntimeFormatValidation:
         })
 
     @pytest.mark.parametrize("hook_name", [
-        # NOTE: inject-session-context.sh and procedural-inject.sh are PreToolUse hooks
-        # (registered under PreToolUse:Task) - they correctly use {"permissionDecision": "allow"}
+        # NOTE: PreToolUse hooks (PreToolUse:Task) use {"permissionDecision": "allow"};
+        # inject-session-context.sh was removed by #69 Slice E (PR9).
         # Only test ACTUAL PostToolUse hooks here:
         # quality-gates-v2.sh: deleted in H1 consolidation
         "status-auto-check.sh",

@@ -181,10 +181,7 @@ teardown() {
     echo "$output" | jq -e '.hooks["repo-boundary-guard.sh"]' > /dev/null
 }
 
-@test "context-warning.sh is tested" {
-    run "$VALIDATE_SCRIPT" --format json --timeout 10
-    echo "$output" | jq -e '.hooks["context-warning.sh"]' > /dev/null
-}
+# context-warning.sh removed by #69 Slice E (PR9)
 
 @test "pre-compact-handoff.sh is tested" {
     run "$VALIDATE_SCRIPT" --format json --timeout 10
@@ -331,14 +328,7 @@ teardown() {
     echo "$output" | jq empty
 }
 
-@test "context-warning.sh outputs valid JSON" {
-    [[ ! -f "$HOOKS_DIR/context-warning.sh" ]] && skip "context-warning.sh not found"
-
-    run bash -c "cat '$FIXTURES_DIR/user-prompt-submit.json' | '$HOOKS_DIR/context-warning.sh'"
-
-    # Should output valid JSON
-    echo "$output" | jq empty
-}
+# context-warning.sh outputs-valid-JSON case removed with the hook (#69 Slice E, PR9)
 
 @test "pre-compact-handoff.sh outputs valid JSON" {
     [[ ! -f "$HOOKS_DIR/pre-compact-handoff.sh" ]] && skip "pre-compact-handoff.sh not found"
@@ -367,7 +357,6 @@ teardown() {
     local core_hooks=(
         "git-safety-guard.py"
         "repo-boundary-guard.sh"
-        "context-warning.sh"
     )
 
     for hook in "${core_hooks[@]}"; do
@@ -394,7 +383,7 @@ teardown() {
 
     # Check for any remaining hook processes (should be none)
     local hook_processes
-    hook_processes=$(ps aux | grep -E 'git-safety-guard|repo-boundary-guard|context-warning' | grep -v grep || true)
+    hook_processes=$(ps aux | grep -E 'git-safety-guard|repo-boundary-guard' | grep -v grep || true)
 
     # Should not have any running processes
     [[ -z "$hook_processes" ]]

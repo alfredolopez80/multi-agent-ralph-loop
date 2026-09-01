@@ -98,7 +98,7 @@ done
 declare -A HOOK_INPUT_MAP
 HOOK_INPUT_MAP["git-safety-guard.py"]="pre-tool-use-bash.json"
 HOOK_INPUT_MAP["repo-boundary-guard.sh"]="pre-tool-use-bash.json"
-HOOK_INPUT_MAP["context-warning.sh"]="user-prompt-submit.json"
+# context-warning.sh (UserPromptSubmit) removed by #69 Slice E (PR9)
 HOOK_INPUT_MAP["pre-compact-handoff.sh"]="pre-compact.json"
 HOOK_INPUT_MAP["auto-migrate-plan-state.sh"]="session-start.json"
 HOOK_INPUT_MAP["session-start-restore-context.sh"]="session-start.json"
@@ -302,7 +302,7 @@ get_hooks_to_test() {
     local core_hooks=(
         "git-safety-guard.py"
         "repo-boundary-guard.sh"
-        "context-warning.sh"
+        # context-warning.sh removed by #69 Slice E (PR9)
         "pre-compact-handoff.sh"
     )
 

@@ -38,7 +38,6 @@ from typing import Dict, Any, Optional
 PROJECT_ROOT = Path(__file__).parent.parent
 PROJECT_HOOK = PROJECT_ROOT / ".claude" / "hooks" / "smart-memory-search.sh"
 GLOBAL_HOOK = Path.home() / ".claude" / "hooks" / "smart-memory-search.sh"
-INJECT_CONTEXT_HOOK = Path.home() / ".claude" / "hooks" / "inject-session-context.sh"
 
 # Choose the hook to test (prefer global for production testing)
 HOOK_PATH = GLOBAL_HOOK if GLOBAL_HOOK.exists() else PROJECT_HOOK
@@ -666,63 +665,6 @@ class TestPerformance:
         assert result["execution_time"] < HOOK_TIMEOUT, (
             f"Hook took {result['execution_time']:.2f}s, limit is {HOOK_TIMEOUT}s"
         )
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Category 7: INJECT-SESSION-CONTEXT HOOK TESTS
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class TestInjectSessionContextHook:
-    """Tests for inject-session-context.sh hook."""
-
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        if not INJECT_CONTEXT_HOOK.exists():
-            pytest.skip(f"inject-session-context.sh not found")
-
-    def test_returns_valid_json(self):
-        """Hook should return valid JSON."""
-        input_json = json.dumps({
-            "tool_name": "Task",
-            "session_id": "test-123"
-        })
-        result = run_hook(INJECT_CONTEXT_HOOK, input_json)
-
-        assert result["is_valid_json"], (
-            f"Hook should return valid JSON.\n"
-            f"stdout: {result['stdout']}"
-        )
-
-    def test_uses_decision_field(self):
-        """CORRECTED v2.81.2: PreToolUse hooks must use hookSpecificOutput.permissionDecision.
-
-        Per official Claude Code documentation (v2.81.2+):
-        - PreToolUse: {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}
-        - PostToolUse: {"continue": true/false}
-        - Stop hooks: {"decision": "approve"}
-        """
-        input_json = json.dumps({
-            "tool_name": "Task",
-            "session_id": "test-456"
-        })
-        result = run_hook(INJECT_CONTEXT_HOOK, input_json)
-
-        assert result["is_valid_json"]
-        output = result["output"]
-        # v2.81.2+ format: must have hookSpecificOutput with permissionDecision
-        assert "hookSpecificOutput" in output, (
-            f"PreToolUse hooks must use hookSpecificOutput wrapper, got: {output}"
-        )
-        assert output.get("hookSpecificOutput", {}).get("permissionDecision") in ["allow", "block"], (
-            f"hookSpecificOutput.permissionDecision must be 'allow' or 'block', got: {output}"
-        )
-
-    def test_non_task_returns_quickly(self):
-        """Non-Task tools should return immediately."""
-        input_json = json.dumps({"tool_name": "Read"})
-        result = run_hook(INJECT_CONTEXT_HOOK, input_json)
-
-        assert result["execution_time"] < 0.5
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

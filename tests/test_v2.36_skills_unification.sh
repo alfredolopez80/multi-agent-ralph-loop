@@ -284,71 +284,7 @@ test_agent_hooks() {
     fi
 }
 
-# ============================================================================
-# SECTION 3: CONTEXT THRESHOLDS TESTS
-# ============================================================================
-
-test_context_thresholds() {
-    section "Context Threshold Tests (v2.36 Updates)"
-
-    # Test 3.1: context-warning.sh exists
-    echo "Test 3.1: context-warning.sh hook exists"
-    local CONTEXT_HOOK="$GLOBAL_HOOKS_DIR/context-warning.sh"
-    if [[ -f "$CONTEXT_HOOK" ]]; then
-        test_pass "context-warning.sh exists"
-    else
-        test_fail "context-warning.sh not found at $CONTEXT_HOOK"
-        return
-    fi
-
-    # Test 3.2: Warning threshold is 80%
-    echo "Test 3.2: Warning threshold is 80%"
-    if grep -qE "THRESHOLD=80" "$CONTEXT_HOOK"; then
-        test_pass "Warning threshold is 80%"
-    elif grep -qE "THRESHOLD=" "$CONTEXT_HOOK"; then
-        local ACTUAL
-        ACTUAL=$(grep -oE "THRESHOLD=[0-9]+" "$CONTEXT_HOOK" | head -1)
-        test_fail "Warning threshold is $ACTUAL (expected THRESHOLD=80)"
-    else
-        test_fail "THRESHOLD not found in context-warning.sh"
-    fi
-
-    # Test 3.3: Critical threshold is 85%
-    echo "Test 3.3: Critical threshold is 85%"
-    if grep -qE "CRITICAL_THRESHOLD=85" "$CONTEXT_HOOK"; then
-        test_pass "Critical threshold is 85%"
-    elif grep -qE "CRITICAL_THRESHOLD=" "$CONTEXT_HOOK"; then
-        local ACTUAL
-        ACTUAL=$(grep -oE "CRITICAL_THRESHOLD=[0-9]+" "$CONTEXT_HOOK" | head -1)
-        test_fail "Critical threshold is $ACTUAL (expected CRITICAL_THRESHOLD=85)"
-    else
-        test_fail "CRITICAL_THRESHOLD not found in context-warning.sh"
-    fi
-
-    # Test 3.4: Info threshold >= 70%
-    echo "Test 3.4: Info threshold >= 70%"
-    if grep -qE "context_pct.*-ge.*7[0-9]" "$CONTEXT_HOOK" || grep -qE "70" "$CONTEXT_HOOK"; then
-        test_pass "Info threshold appears to be >= 70%"
-    else
-        test_skip "Info threshold check inconclusive"
-    fi
-
-    # Test 3.5: Hook is executable
-    echo "Test 3.5: context-warning.sh is executable"
-    if [[ -x "$CONTEXT_HOOK" ]]; then
-        test_pass "context-warning.sh is executable"
-    else
-        test_fail "context-warning.sh is not executable"
-    fi
-
-    # Test 3.6: Hook has shebang
-    echo "Test 3.6: context-warning.sh has valid shebang"
-    if head -1 "$CONTEXT_HOOK" | grep -qE "^#!/bin/bash|^#!/usr/bin/env bash"; then
-        test_pass "context-warning.sh has valid bash shebang"
-    else
-        test_fail "context-warning.sh missing or invalid shebang"
-    fi
-}
+# SECTION 3 (context-warning.sh thresholds) removed with the hook: #69 Slice E (PR9)
 
 # ============================================================================
 # SECTION 4: POST-COMPACT RECOVERY TESTS
@@ -603,9 +539,6 @@ main() {
         hooks|agents)
             test_agent_hooks
             ;;
-        context|thresholds)
-            test_context_thresholds
-            ;;
         postcompact|recovery)
             test_postcompact_recovery
             ;;
@@ -618,13 +551,12 @@ main() {
         all|"")
             test_skills_migration
             test_agent_hooks
-            test_context_thresholds
             test_postcompact_recovery
             test_global_config
             test_ralph_cli
             ;;
         *)
-            echo "Usage: $0 [skills|hooks|context|postcompact|global|cli|all]"
+            echo "Usage: $0 [skills|hooks|postcompact|global|cli|all]"
             exit 1
             ;;
     esac

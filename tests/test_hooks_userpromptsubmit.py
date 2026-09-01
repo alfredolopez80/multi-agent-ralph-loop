@@ -3,9 +3,10 @@
 UserPromptSubmit Hook Testing Suite - v2.57.3
 
 Tests for hooks that execute on UserPromptSubmit event:
-1. context-warning.sh - Context usage monitoring
-2. periodic-reminder.sh - Goal reminders
-3. prompt-analyzer.sh - Prompt classification
+1. periodic-reminder.sh - Goal reminders
+2. prompt-analyzer.sh - Prompt classification
+
+(context-warning.sh removed by #69 Slice E, PR9)
 
 All tests validate:
 - JSON output is ALWAYS valid
@@ -40,10 +41,6 @@ PROJECT_HOOKS_DIR = PROJECT_ROOT / ".claude" / "hooks"
 
 # Hooks under test
 HOOKS = {
-    "context-warning": {
-        "global": GLOBAL_HOOKS_DIR / "context-warning.sh",
-        "local": PROJECT_HOOKS_DIR / "context-warning.sh",
-    },
     "periodic-reminder": {
         "global": GLOBAL_HOOKS_DIR / "periodic-reminder.sh",
         "local": PROJECT_HOOKS_DIR / "periodic-reminder.sh",
@@ -135,65 +132,6 @@ def get_hook_path(hook_name: str, prefer_global: bool = True) -> Path:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# CONTEXT-WARNING.SH TESTS (SEC-029)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class TestContextWarningHook:
-    """Tests for context-warning.sh (SEC-029)"""
-
-    def setup_method(self):
-        self.hook_path = get_hook_path("context-warning")
-
-    def test_always_returns_valid_json(self):
-        """SEC-029: Hook MUST always return valid JSON"""
-        result = run_hook(self.hook_path, "test prompt")
-
-        assert result["is_valid_json"], (
-            f"Hook returned invalid JSON:\n"
-            f"stdout: {result['stdout'][:500]}\n"
-            f"stderr: {result['stderr'][:500]}"
-        )
-
-    def test_no_timeout(self):
-        """Hook MUST complete within 5 seconds"""
-        result = run_hook(self.hook_path, "test prompt", timeout=5)
-
-        assert result["returncode"] != -1, "Hook timed out"
-        assert result["execution_time"] < 5, f"Hook took {result['execution_time']:.2f}s"
-
-    def test_returns_json_on_empty_input(self):
-        """Hook handles empty input gracefully"""
-        result = run_hook(self.hook_path, "")
-
-        assert result["is_valid_json"], "Hook did not return valid JSON on empty input"
-
-    def test_returns_json_on_long_input(self):
-        """Hook handles very long input without crashing"""
-        long_input = "x" * 10000
-        result = run_hook(self.hook_path, long_input)
-
-        assert result["is_valid_json"], "Hook did not return valid JSON on long input"
-
-    def test_returns_json_on_special_characters(self):
-        """Hook handles special characters in input"""
-        special_input = 'test "quotes" and `backticks` and $variables'
-        result = run_hook(self.hook_path, special_input)
-
-        assert result["is_valid_json"], "Hook did not return valid JSON with special chars"
-
-    def test_json_has_correct_structure_when_warning(self):
-        """When context is high, JSON has message, context_level, context_percentage"""
-        result = run_hook(self.hook_path, "test")
-
-        if result["is_valid_json"] and result["output"]:
-            # If there's a warning, check structure
-            if "message" in result["output"]:
-                assert "context_level" in result["output"]
-                assert "context_percentage" in result["output"]
-                assert isinstance(result["output"]["context_percentage"], (int, float))
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
 # PERIODIC-REMINDER.SH TESTS (SEC-030)
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -246,7 +184,7 @@ class TestPeriodicReminderHook:
 class TestUserPromptSubmitSecurity:
     """Security tests for all UserPromptSubmit hooks"""
 
-    @pytest.mark.parametrize("hook_name", ["context-warning", "periodic-reminder"])
+    @pytest.mark.parametrize("hook_name", ["periodic-reminder"])
     def test_command_injection_via_prompt(self, hook_name):
         """Hooks should not execute commands from prompt input"""
         hook_path = get_hook_path(hook_name)
@@ -265,7 +203,7 @@ class TestUserPromptSubmitSecurity:
             # Should not have executed the command (no error output)
             assert "rm" not in result["stderr"].lower()
 
-    @pytest.mark.parametrize("hook_name", ["context-warning", "periodic-reminder"])
+    @pytest.mark.parametrize("hook_name", ["periodic-reminder"])
     def test_json_injection_via_prompt(self, hook_name):
         """Hooks should properly escape JSON special characters"""
         hook_path = get_hook_path(hook_name)
@@ -286,14 +224,6 @@ class TestUserPromptSubmitSecurity:
 
 class TestUserPromptSubmitRegressions:
     """Regression tests for previously fixed bugs"""
-
-    def test_context_warning_no_timeout_124(self):
-        """Regression: context-warning.sh used to timeout (exit 124)"""
-        hook_path = get_hook_path("context-warning")
-        result = run_hook(hook_path, "test", timeout=10)
-
-        assert result["returncode"] != 124, "Hook returned timeout exit code 124"
-        assert result["returncode"] != -1, "Hook timed out"
 
     def test_periodic_reminder_not_empty(self):
         """Regression: periodic-reminder.sh used to return empty output"""

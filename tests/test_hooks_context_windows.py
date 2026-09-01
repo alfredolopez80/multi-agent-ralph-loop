@@ -1,17 +1,16 @@
-"""Tests for context-windows.sh v3.3.0 and context-warning.sh v2.91.0 (T7).
+"""Tests for context-windows.sh v3.3.0 (T7).
 
-Covers the T7-ctxwindow acceptance criteria:
+Covers the T7-ctxwindow acceptance criteria that belong to the LIBRARY:
   1. get_context_window returns 1M for every "[1m]" model in use, and the
      correct table window without the suffix.
   2. The "[1m]" suffix is parsed EXPLICITLY: an UNKNOWN model carrying "[1m]"
      still resolves to 1M — this test fails if the parsing is removed and only
      table entries remain.
   3. Current models (glm-5.3, minimax-m3) are in the table; legacy entries kept.
-  4. The retired transcript-size estimator (Method 1.5) cannot come back
-     silently: a huge transcript + no stdin context_window must NOT produce a
-     CRITICAL (regression for the permanent false "CRITICAL 100%").
-  5. UserPromptSubmit JSON contract: {"continue": true} — never "decision".
-  6. Real harness data (Method 1) still fires CRITICAL loudly (fail-loud kept).
+
+The context-warning.sh hook tests (former criteria 4-6: Method 1.5 regression,
+UserPromptSubmit JSON contract, real-data CRITICAL) were removed with the hook
+by #69 Slice E (PR9) — native context management is authoritative.
 """
 import json
 import os
@@ -22,7 +21,6 @@ import pytest
 
 REPO = Path(__file__).resolve().parent.parent
 LIB = REPO / ".claude" / "lib" / "context-windows.sh"
-HOOK = REPO / ".claude" / "hooks" / "context-warning.sh"
 
 # Environment variables that get_raw_model() consults — stripped for
 # deterministic detection, re-added per test when needed.
@@ -130,68 +128,3 @@ class TestDetection:
 
     def test_detection_without_any_signal(self):
         assert get_window() == "128000"  # unknown -> conservative fallback
-
-
-class TestHookBehavior:
-    """context-warning.sh after Method 1.5 retirement."""
-
-    def _run_hook(self, stdin_payload, tmp_path):
-        result = subprocess.run(
-            ["bash", str(HOOK)],
-            input=json.dumps(stdin_payload),
-            capture_output=True,
-            text=True,
-            env={**{k: v for k, v in os.environ.items()
-                    if k not in _MODEL_ENV_KEYS},
-                 "HOME": str(tmp_path)},
-            timeout=30,
-        )
-        assert result.returncode == 0, f"stderr: {result.stderr}"
-        return result.stdout
-
-    def test_no_false_critical_from_startup_payload(self, tmp_path):
-        # Regression for the retired Method 1.5: a transcript far larger than
-        # any window (2 MB ≈ 500K estimated tokens) must NOT produce a
-        # CRITICAL when stdin carries no context_window.
-        transcript = tmp_path / "transcript.jsonl"
-        transcript.write_bytes(b"0" * (2 * 1024 * 1024))
-        stdout = self._run_hook(
-            {
-                "model": {"id": "glm-5.3[1m]"},
-                "session_id": "t7-payload",
-                "transcript_path": str(transcript),
-            },
-            tmp_path,
-        )
-        payload = json.loads(stdout)
-        context = json.dumps(payload)
-        assert "CRITICAL" not in context, (
-            "Method 1.5 regression: startup payload alone triggered CRITICAL"
-        )
-
-    def test_json_format_is_userpromptsubmit_contract(self, tmp_path):
-        # tests/HOOK_FORMAT_REFERENCE.md: UserPromptSubmit uses
-        # {"continue": bool} — "decision" is NEVER valid here.
-        stdout = self._run_hook(
-            {"model": {"id": "glm-5.3[1m]"}, "session_id": "t7-format"},
-            tmp_path,
-        )
-        payload = json.loads(stdout)
-        assert payload["continue"] is True
-        assert "decision" not in payload
-
-    def test_method1_real_data_still_fires_critical(self, tmp_path):
-        # Fail-loud preserved: authoritative stdin numbers still warn loudly.
-        stdout = self._run_hook(
-            {
-                "model": {"id": "claude-opus-5[1m]"},
-                "session_id": "t7-real",
-                "context_window": {"remaining_percentage": 3},
-            },
-            tmp_path,
-        )
-        payload = json.loads(stdout)
-        extra = payload.get("hookSpecificOutput", {}).get("additionalContext", "")
-        assert "CRITICAL" in extra, (
-            f"Real 97% usage must fire CRITICAL, got: {payload}"
-        )

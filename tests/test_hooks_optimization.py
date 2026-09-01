@@ -13,7 +13,6 @@ Covers (per the user's request: "e2e + unit-test completo que validen todas las 
     * Every *.sh hook passes `bash -n`.
 
   E2E / PERFORMANCE (marked slow — threshold = the user's 500ms bar, ~5x headroom):
-    * context-warning (every message) runs < 500ms.
     * Each SessionStart hook runs < 500ms; forked maintenance hooks < 200ms.
     * Full UserPromptSubmit chain runs < 500ms.
     * optimize-settings.py is idempotent (dry-run reports nothing to change).
@@ -40,7 +39,6 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Hooks whose performance/behavior this suite asserts on.
 PERF_FIXED_HOOKS = [
-    "context-warning.sh",
     "project-state.sh",
     "auto-sync-global.sh",
 ]
@@ -179,7 +177,8 @@ _STOP_HOOKS = _event_hook_paths("Stop")
 
 # UserPromptSubmit / Stop hooks shipped IN this repo (used to seed a CI-safe
 # settings.json so the hardening tests have real, versioned hook paths to assert on).
-_REPO_UPS_HOOK_NAMES = ("context-warning.sh", "periodic-reminder.sh")
+# context-warning.sh removed by #69 Slice E (PR9); periodic-reminder survives.
+_REPO_UPS_HOOK_NAMES = ("periodic-reminder.sh",)
 # vault-writeback.sh removed by #69 Slice D; stop-slop-hook.sh is the
 # surviving canonical Stop hook.
 _REPO_STOP_HOOK_NAMES = ("stop-slop-hook.sh",)
@@ -213,7 +212,7 @@ class TestNoRecursiveClaude:
             + "\n".join(violations)
         )
 
-    @pytest.mark.parametrize("hook", ["context-warning.sh", "project-state.sh", "periodic-reminder.sh"])
+    @pytest.mark.parametrize("hook", ["project-state.sh", "periodic-reminder.sh"])
     def test_specific_hooks_clean(self, hooks_dir, hook):
         path = os.path.join(hooks_dir, hook)
         bad = [f"{ln}: {t.strip()}" for ln, t in _code_lines(path) if _CLAUDE_CALL.search(t)]
@@ -382,12 +381,6 @@ class TestPerformance:
             "TestPerformance mide CPU via RUSAGE_CHILDREN y exige ejecucion "
             "secuencial; ejecutalo sin -n/xdist."
         )
-
-    def test_context_warning_under_threshold(self, hooks_dir):
-        path = os.path.join(hooks_dir, "context-warning.sh")
-        ms, wall = _best_ms(path, '{"prompt":"test"}')
-        assert ms < self.THRESHOLD_MS, f"context-warning.sh took {ms:.0f}ms CPU (>= {self.THRESHOLD_MS})"
-        assert wall < self.WALL_CEILING_MS, f"context-warning.sh bloqueo {wall:.0f}ms (>= {self.WALL_CEILING_MS})"
 
     @pytest.mark.parametrize("hook", PERF_FIXED_HOOKS)
     def test_perf_fixed_hooks_under_threshold(self, hooks_dir, hook):
