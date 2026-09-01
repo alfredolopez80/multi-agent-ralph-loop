@@ -20,6 +20,7 @@ ignore-file test deletes itself on teardown.
 """
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -32,13 +33,37 @@ import pytest
 # conftest but doesn't expose it as an importable module).
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = _REPO_ROOT / "scripts" / "validate-global-infrastructure.sh"
-GLOBAL_SKILLS = Path.home() / ".claude" / "skills"
 IGNORE_FILE = _REPO_ROOT / ".claude" / ".skill-drift-ignore"
 
 # A skill that is normally an INDEPENDENT COPY in the global (not a
 # symlink) — drift detection is meaningful only for these. Pick
 # something we know is a copy from the T56b sync.
 A_REAL_COPY_SKILL = "adversarial"
+
+
+def _real_home() -> Path:
+    """The HOME whose install is under test.
+
+    Inside the unit runner, $HOME is a sandbox (run-all-unit-tests.sh) and
+    the sandbox has no skills install; the runner exports the pre-sandbox
+    home as RALPH_TEST_REAL_HOME for exactly these deployment-aware suites
+    (fix-sweep-flaky, 2026-09-01). Standalone, $HOME is already the real
+    home and the variable is unset.
+    """
+    return Path(os.environ.get("RALPH_TEST_REAL_HOME") or Path.home())
+
+
+def _global_skills() -> Path:
+    return _real_home() / ".claude" / "skills"
+
+
+if not (_global_skills() / A_REAL_COPY_SKILL / "SKILL.md").is_file():
+    pytest.skip(
+        "deployment-aware suite: no ~/.claude/skills install under the tested "
+        f"HOME ({_real_home()}) — the drift section validates the user's "
+        "install, not a hermetic fixture",
+        allow_module_level=True,
+    )
 
 
 def _run_validator() -> subprocess.CompletedProcess:
@@ -48,6 +73,10 @@ def _run_validator() -> subprocess.CompletedProcess:
         capture_output=True,
         text=True,
         timeout=180,
+        # The validator reads the install under $HOME — point it at the same
+        # home whose skills the fixtures above mutate, not at whatever sandbox
+        # the invoking runner happens to export.
+        env={**os.environ, "HOME": str(_real_home())},
     )
 
 
@@ -105,7 +134,7 @@ def test_drift_section_passes_on_synced_tree():
 @pytest.fixture
 def restored_skill_after_drift():
     """Introduce drift on one skill, yield, then restore from backup."""
-    target = GLOBAL_SKILLS / A_REAL_COPY_SKILL / "SKILL.md"
+    target = _global_skills() / A_REAL_COPY_SKILL / "SKILL.md"
     assert target.is_file(), (
         f"{A_REAL_COPY_SKILL} not a real copy in global — pick another"
     )

@@ -63,16 +63,29 @@ def test_validator_runs_without_parallel_first():
     copy drift repaired by the lead/user via --fix) are deployment state this
     test does not own. returncode == 2 would mean the validator itself is
     broken as a script — that still fails this test.
-    """
-    import subprocess
 
-    p = subprocess.run(
-        ["bash", str(REPO / "scripts" / "validate-global-infrastructure.sh")],
-        text=True, capture_output=True, timeout=300,
-    )
+    Hermetic since fix-sweep-flaky (2026-09-01): the subprocess runs against
+    its own throwaway HOME, so the assertion does not depend on whether the
+    invoking environment is the real machine or the runner's sandbox — under
+    a bare HOME the validator reports ~64 deployment FAILs, and the skill
+    literally named `parallel` (missing from ~/.claude/skills/) used to trip
+    the old grep. The tripwire matches the RETIRED POLICY's canonical name,
+    parallel-first — the exact string every other test in this file greps
+    for, and the only name a reintroduced gate would carry.
+    """
+    import os
+    import subprocess
+    import tempfile
+
+    with tempfile.TemporaryDirectory(prefix="pr5-validator-home-") as sandbox:
+        p = subprocess.run(
+            ["bash", str(REPO / "scripts" / "validate-global-infrastructure.sh")],
+            text=True, capture_output=True, timeout=300,
+            env={**os.environ, "HOME": sandbox},
+        )
     assert p.returncode != 2, f"Validator script error (rc=2): {(p.stdout + p.stderr)[-400:]}"
     parallel_fails = [
         line for line in (p.stdout + p.stderr).splitlines()
-        if "parallel" in line.lower() and ("FAIL" in line or "missing" in line.lower())
+        if "parallel-first" in line.lower() and ("FAIL" in line or "missing" in line.lower())
     ]
     assert not parallel_fails, f"Validator still gates on parallel-first: {parallel_fails}"
