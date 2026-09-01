@@ -32,10 +32,24 @@ const readFileOrEmpty = (source) => {
 
 // This hook is registered globally, so it fires in repos that have no JavaScript
 // at all. There react-doctor exits non-zero with "No React project found", which
-// the reporting path below would present as a code-quality finding. A missing root
-// package.json is the unambiguous "nothing here to scan" case; a JS monorepo still
-// has one, so this does not skip nested-workspace projects.
-const looksLikeJsProject = () => existsSync('package.json');
+// the reporting path below would present as a code-quality finding.
+//
+// Applicability narrowed to TypeScript projects (user decision 2026-09-01): this
+// hook exists to surface CODE-QUALITY improvements (React correctness errors and
+// security findings — the only categories reported below), not to duplicate what
+// eslint/prettier already cover; styling lint never reaches the report path.
+// A JS-but-not-TS project is out of scope by the same decision.
+const looksLikeTsProject = () => {
+  if (!existsSync('package.json')) return false;
+  if (existsSync('tsconfig.json')) return true;
+  try {
+    const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+    const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+    return Boolean(deps.typescript);
+  } catch {
+    return false;
+  }
+};
 
 const shouldScan = (input) => {
   const eventName = input.hook_event_name || input.eventName || input.event_name;
@@ -126,7 +140,15 @@ const main = () => {
     process.exit(0);
   }
 
-  if (!looksLikeJsProject()) {
+  // REACT_DOCTOR_SELFTEST=1 prints the applicability verdict instead of running
+  // the scan — lets CI and registration checks verify the guard without network,
+  // react-doctor itself, or a React project (the three reasons a real run exits 0).
+  if (process.env.REACT_DOCTOR_SELFTEST) {
+    console.log(`selftest: ts-project=${looksLikeTsProject() ? 'yes' : 'no'} cwd=${process.cwd()}`);
+    process.exit(0);
+  }
+
+  if (!looksLikeTsProject()) {
     process.exit(0);
   }
 
