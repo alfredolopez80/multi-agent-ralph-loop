@@ -18,8 +18,13 @@ umask 077
 # 3. Restoring plan state if exists
 # 4. Injecting context into the new session
 
-# VERSION: 3.3.1
-# UPDATED: 2026-08-26 (T67: ledger selection by worktree identity, fail-closed;
+# VERSION: 3.4.0
+# UPDATED: 2026-09-01 (#69 Slice E / PR9: VAULT_HINTS injection REMOVED — this
+#          hook is now the deterministic bounded exact-task resume: ledger
+#          restore by worktree identity (T67, fail-closed), plan-state restore,
+#          exact per-session handoff. No MiVault reads; the vault is queried
+#          explicitly on demand, never injected at SessionStart.)
+#          2026-08-26 (T67: ledger selection by worktree identity, fail-closed;
 #          RALPH_RESTORE_CROSS_WORKTREE feature restores legacy behaviour)
 set -euo pipefail
 
@@ -80,43 +85,6 @@ truncate_context() {
     else
         echo "$ctx"
     fi
-}
-
-# Get vault hints from Obsidian migrated observations (v3.2.0)
-# Reads from ~/Documents/Obsidian/MiVault/migrated-from-claude-mem/decisions.json
-get_vault_hints() {
-    local project_name="$1"
-    local hints=""
-    local max_hints=5
-    local vault_dir="${HOME}/Documents/Obsidian/MiVault/migrated-from-claude-mem"
-
-    # Try decisions.json first (1283 entries for multi-agent-ralph-loop)
-    if [[ -f "${vault_dir}/decisions.json" ]] && command -v jq &>/dev/null; then
-        hints=$(jq -r --arg proj "$project_name" \
-            '[.[] | select(.project == $proj)] | .[0:'"$max_hints"'][] | "- [decision] \(.title // .subtitle // "(untitled)")"' \
-            "${vault_dir}/decisions.json" 2>/dev/null || echo "")
-
-        # Fallback to refactors if no decisions for this project
-        if [[ -z "$hints" ]] && [[ -f "${vault_dir}/refactors.json" ]]; then
-            hints=$(jq -r --arg proj "$project_name" \
-                '[.[] | select(.project == $proj)] | .[0:'"$max_hints"'][] | "- [refactor] \(.title // .subtitle // "(untitled)")"' \
-                "${vault_dir}/refactors.json" 2>/dev/null || echo "")
-        fi
-    fi
-
-    # If no hints from migrated data, try Obsidian vault wiki directly
-    if [[ -z "$hints" ]] && [[ -d "${HOME}/Documents/Obsidian/MiVault/global/wiki" ]]; then
-        hints=$(find "${HOME}/Documents/Obsidian/MiVault/global/wiki" -name "*.md" -type f -mtime -30 2>/dev/null | \
-            head -$max_hints | xargs -I{} basename {} .md 2>/dev/null | \
-            awk '{print "- [wiki] "$0}' || echo "")
-    fi
-
-    # If still no hints, return a helpful message
-    if [[ -z "$hints" ]]; then
-        hints="No recent observations found. Search ~/Documents/Obsidian/MiVault/ directly."
-    fi
-
-    echo "$hints"
 }
 
 # Get most recent file matching pattern (avoids pipefail issues with head)
@@ -218,7 +186,7 @@ if [[ -f "${PROJECT_DIR}/${PLAN_STATE_FILE}" ]]; then
         if [[ "$_age_min" -gt "$PLAN_STALENESS_MINUTES" ]]; then
             log "INFO" "stale plan not resumed (mtime ${_age_min}m > ${PLAN_STALENESS_MINUTES}m): ${PROJECT_DIR}/${PLAN_STATE_FILE}"
             # Do NOT inject plan context; mark this as found so the
-            # downstream sections (ledger / handoff / vault) still run.
+            # downstream sections (ledger / handoff) still run.
             FOUND_CONTEXT=false
         else
             CONTEXT+="### Active Plan\n\n"
@@ -306,17 +274,9 @@ if [[ -d "$SESSION_HANDOFF_DIR" ]]; then
     fi
 fi
 
-# 4. Get vault hints for this project (v3.2.0: Obsidian-backed)
-VAULT_HINTS=$(get_vault_hints "$PROJECT_NAME")
-if [[ -n "$VAULT_HINTS" ]] && [[ "$VAULT_HINTS" != "No recent observations found. Search ~/Documents/Obsidian/MiVault/ directly." ]]; then
-    CONTEXT+="### Vault Context\n\n"
-    CONTEXT+="Recent observations from Obsidian vault:\n\n"
-    CONTEXT+="${VAULT_HINTS}\n\n"
-    FOUND_CONTEXT=true
-    log "INFO" "Vault hints added"
-fi
-
-# 5. Add continuity guidance if context was found
+# 4. Add continuity guidance if context was found
+#    (#69 Slice E / PR9: the former vault-hints section was removed — no
+#    MiVault reads from lifecycle hooks; query the vault explicitly on demand.)
 if [[ "$FOUND_CONTEXT" == "true" ]]; then
     CONTEXT+="---\n\n"
     CONTEXT+="### Next Steps\n\n"

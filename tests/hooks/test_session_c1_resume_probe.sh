@@ -18,6 +18,11 @@
 #      canonical recall-shaped fields. If recall ran, the context would
 #      include a "tree_store" attribution field or a recall-search log;
 #      absence of either is the trace.
+#   5. Post-compact variant (PR9, #69 Slice E): the SAME exercise with a
+#      "source":"compact" payload — a compact start IS a SessionStart, so
+#      one reduced survivor covers both boundaries. Asserts the same
+#      exact-task markers and the absence of vault-hint text (the
+#      VAULT_HINTS block was stripped from the survivor in C4).
 #
 # Sandbox: HOME under /tmp/t110-c1-* (mktemp). All writes inside sandbox.
 # The fixture repo is /tmp/t110-c1-*/repo (also a tempdir, no .git).
@@ -92,9 +97,14 @@ os.utime(path, (now - ago, now - ago))
 # falls back to `pwd` when there's no .git. We cd into the fixture so pwd
 # resolves to the fixture's repo root, NOT to this test's worktree.
 run_resume() {
-    local session_id="$1" project_dir="$2"
+    local session_id="$1" project_dir="$2" source="${3:-}"
     local payload
-    payload=$(printf '{"session_id":"%s","project_dir":"%s"}' "$session_id" "$project_dir")
+    if [[ -n "$source" ]]; then
+        payload=$(printf '{"session_id":"%s","project_dir":"%s","hook_event_name":"SessionStart","source":"%s"}' \
+            "$session_id" "$project_dir" "$source")
+    else
+        payload=$(printf '{"session_id":"%s","project_dir":"%s"}' "$session_id" "$project_dir")
+    fi
     ( cd "$project_dir" && HOME="$SANDBOX_HOME" PROJECT_DIR="$project_dir" \
         printf '%s' "$payload" | bash "$HOOK" 2>/dev/null )
 }
@@ -211,6 +221,37 @@ MSG
          "live finding -- session-start-restore-context.sh has no mtime check (C1 freshness gap; see stderr)"
 else
     pass "stale plan: NOT resumed (freshness gate honoured)"
+fi
+
+# --- 5. Post-compact variant: same survivor, "source":"compact" payload ------
+# #69 Slice E (PR9): the custom compaction pair (pre-compact-handoff writer /
+# post-compact-restore reader) is gone. A compact start reaches the SAME
+# reduced survivor through the SessionStart:* matcher — same mechanism, same
+# exact-task markers, and none of the removed vault-hint text.
+echo "=== 5. Post-compact (source=compact): exact-task resume via the reduced survivor ==="
+SESSION_ID="t110-compact"
+write_plan_state "task-compact-001" "s2" "now"
+out="$(run_resume "$SESSION_ID" "$FIXTURE_REPO" "compact")"
+ctx="$(extract_context "$out")"
+if printf '%s' "$ctx" | grep -q "task-compact-001"; then
+    pass "post-compact: task_id task-compact-001 present in context"
+else
+    fail "post-compact" "ctx did not contain task_id for source=compact (out=${out:0:200})"
+fi
+if printf '%s' "$ctx" | grep -q "Current Step"; then
+    pass "post-compact: 'Current Step' label present"
+else
+    fail "post-compact current step" "ctx missing 'Current Step' label for source=compact (ctx preview: ${ctx:0:500})"
+fi
+if printf '%s' "$ctx" | grep -q "1/2 steps completed"; then
+    pass "post-compact: progress '1/2 steps completed (50%)' present"
+else
+    fail "post-compact progress" "ctx missing '1/2 steps completed (50%)' for source=compact"
+fi
+if printf '%s' "$ctx" | grep -qiE 'MiVault|migrated-from-claude-mem|Vault Context|\[wiki\]|\[decision\]'; then
+    fail "post-compact reduction" "ctx contains vault-hint text — the Slice E VAULT_HINTS removal regressed"
+else
+    pass "post-compact: no vault-hint text (reduction held)"
 fi
 
 echo
