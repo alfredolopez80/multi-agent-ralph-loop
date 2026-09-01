@@ -181,12 +181,7 @@ teardown() {
     echo "$output" | jq -e '.hooks["repo-boundary-guard.sh"]' > /dev/null
 }
 
-# context-warning.sh removed by #69 Slice E (PR9)
-
-@test "pre-compact-handoff.sh is tested" {
-    run "$VALIDATE_SCRIPT" --format json --timeout 10
-    echo "$output" | jq -e '.hooks["pre-compact-handoff.sh"]' > /dev/null
-}
+# context-warning.sh + pre-compact-handoff.sh removed by #69 Slice E (PR9)
 
 #===============================================================================
 # HOOK RESULT VALIDATION TESTS
@@ -328,16 +323,7 @@ teardown() {
     echo "$output" | jq empty
 }
 
-# context-warning.sh outputs-valid-JSON case removed with the hook (#69 Slice E, PR9)
-
-@test "pre-compact-handoff.sh outputs valid JSON" {
-    [[ ! -f "$HOOKS_DIR/pre-compact-handoff.sh" ]] && skip "pre-compact-handoff.sh not found"
-
-    run bash -c "cat '$FIXTURES_DIR/pre-compact.json' | '$HOOKS_DIR/pre-compact-handoff.sh'"
-
-    # Should output valid JSON
-    echo "$output" | jq empty
-}
+# context-warning.sh + pre-compact-handoff.sh cases removed with the hooks (#69 Slice E, PR9)
 
 #===============================================================================
 # VERBOSE OUTPUT TESTS

@@ -235,10 +235,11 @@ def critical_hooks():
     v3.0: Removed session-start-tldr.sh (deleted). Added project-state.sh (new v3.0 hook).
     #69 Slice D: session-accumulator.sh and vault-graduation.sh removed — automatic
     memory writers are gone; writes are explicit (vault skill).
+    #69 Slice E (PR9): pre-compact-handoff.sh removed — no PreCompact writer;
+    native compaction plus the reduced SessionStart survivor cover the boundary.
     """
     return [
         "session-start-restore-context.sh",  # v2.85: Replaces archived session-start-ledger.sh
-        "pre-compact-handoff.sh",
         # quality-gates-v2.sh: deleted in H1 consolidation (split into separate guards)
         "git-safety-guard.py",
         "auto-sync-global.sh",

@@ -42,12 +42,7 @@ HOOK_REGISTRY = {
         "version": "2.85",
         "cli_only": False,
     },
-    "pre-compact-handoff.sh": {
-        "event": "PreCompact",
-        "matchers": None,  # PreCompact doesn't use matchers
-        "version": "2.35",
-        "cli_only": False,
-    },
+    # pre-compact-handoff.sh removed by #69 Slice E (PR9)
     # quality-gates-v2.sh: deleted in H1 consolidation (split into separate guards)
     "git-safety-guard.py": {
         "event": "PreToolUse",

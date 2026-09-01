@@ -57,7 +57,7 @@ check "Stop hook configured" "grep -q 'Stop' ~/.claude/settings.json"
 echo ""
 echo "Hook Scripts:"
 check "session-start-ledger.sh exists" "[ -f ~/.claude/hooks/session-start-ledger.sh ]"
-check "pre-compact-handoff.sh exists" "[ -f ~/.claude/hooks/pre-compact-handoff.sh ]"
+# pre-compact-handoff.sh check removed by #69 Slice E (PR9)
 check "quality-gates.sh exists" "[ -f ~/.claude/hooks/quality-gates.sh ]"
 check "git-safety-guard.py exists" "[ -f ~/.claude/hooks/git-safety-guard.py ]"
 check "auto-sync-global.sh exists" "[ -f ~/.claude/hooks/auto-sync-global.sh ]"

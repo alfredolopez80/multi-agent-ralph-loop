@@ -322,6 +322,5 @@ class TestSettingsSyncClaude:
         assert any("git-safety-guard.py" in b for b in self.basenames), \
             "git-safety-guard.py must be registered in ~/.claude/settings.json"
 
-    def test_pre_compact_handoff_registered(self):
-        assert any("pre-compact-handoff.sh" in b for b in self.basenames), \
-            "pre-compact-handoff.sh must be registered in ~/.claude/settings.json"
+    # pre-compact-handoff.sh registration test removed: hook deleted by
+    # #69 Slice E (PR9); no PreCompact writer exists anymore.

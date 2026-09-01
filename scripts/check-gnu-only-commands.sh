@@ -263,8 +263,7 @@ __GNU_ONLY_ALLOWLIST_START__
 .claude/backup/hooks/unified-context-tracker.sh|timeout
 .claude/hooks/ai-code-audit.sh|stat-bsd
 .claude/hooks/ai-code-audit.sh|stat-c
-.claude/hooks/context-warning.sh|stat-bsd
-.claude/hooks/context-warning.sh|stat-c
+# context-warning.sh rows removed by #69 Slice E (PR9)
 .claude/hooks/lib/ctx-query.sh|stat-bsd
 .claude/hooks/lib/ctx-query.sh|stat-c
 .claude/hooks/lib/worktree-utils.sh|stat-bsd

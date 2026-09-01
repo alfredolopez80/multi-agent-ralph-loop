@@ -320,14 +320,7 @@ test_postcompact_recovery() {
         test_skip "Hook may not reference claude-mem MCP directly"
     fi
 
-    # Test 4.4: pre-compact-handoff.sh exists
-    echo "Test 4.4: pre-compact-handoff.sh hook exists"
-    local PRECOMPACT_HOOK="$GLOBAL_HOOKS_DIR/pre-compact-handoff.sh"
-    if [[ -f "$PRECOMPACT_HOOK" ]]; then
-        test_pass "pre-compact-handoff.sh exists"
-    else
-        test_fail "pre-compact-handoff.sh not found"
-    fi
+    # Test 4.4 removed: pre-compact-handoff.sh deleted by #69 Slice E (PR9)
 
     # Test 4.5: Ledger directory exists or can be created
     echo "Test 4.5: Ledger directory exists"

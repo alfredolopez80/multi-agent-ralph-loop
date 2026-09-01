@@ -125,7 +125,7 @@ def get_hook_type(hook_name: str, settings_json: dict = None) -> str:
         return 'UserPromptSubmit'
 
     # SessionStart hooks (plain text, no JSON required)
-    elif any(x in hook_name for x in ['session-start', 'auto-sync', 'post-compact-restore',
+    elif any(x in hook_name for x in ['session-start', 'auto-sync',
                                        'inject-context', 'auto-migrate',
                                        'orchestrator-init', 'skill-pre-warm']):
         return 'SessionStart'

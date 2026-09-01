@@ -2,10 +2,10 @@
 # test_session_lifecycle_hooks.sh - Comprehensive tests for session lifecycle
 # VERSION: 2.86.0
 #
-# Tests the complete session lifecycle:
-#   SessionStart(*) → [work] → PreCompact → [compact] → SessionStart(compact) → [continue]
-#                                                       ↓
-#                                                SessionEnd → [terminate]
+# Tests the session lifecycle (#69 Slice E, PR9: the custom compaction shadow
+# pair pre-compact-handoff/post-compact-restore is GONE — native compaction
+# plus the reduced SessionStart survivor cover the boundary):
+#   SessionStart(*) → [work] → SessionEnd → [terminate]
 
 set -euo pipefail
 
@@ -52,8 +52,6 @@ test_hook_files_exist() {
     section "TEST 1: Hook Files Exist"
 
     local hooks=(
-        "pre-compact-handoff.sh"
-        "post-compact-restore.sh"
         "session-end-handoff.sh"
     )
 
@@ -73,8 +71,6 @@ test_hooks_executable() {
     section "TEST 2: Hooks Are Executable"
 
     local hooks=(
-        "pre-compact-handoff.sh"
-        "post-compact-restore.sh"
         "session-end-handoff.sh"
     )
 
@@ -98,18 +94,17 @@ test_hooks_registered() {
         return
     fi
 
-    # Check PreCompact
+    # Slice E (PR9): the compaction shadow pair is gone — assert ABSENCE
     if jq -e '.hooks.PreCompact' "$SETTINGS_FILE" > /dev/null 2>&1; then
-        pass "PreCompact hook registered"
+        fail "PreCompact hook still registered — run PR9 C6 (remove pre-compact-handoff.sh from settings.json)"
     else
-        fail "PreCompact hook NOT registered"
+        pass "PreCompact correctly NOT registered (Slice E removed it)"
     fi
 
-    # Check SessionStart with matcher="compact"
     if jq -e '.hooks.SessionStart[] | select(.matcher == "compact")' "$SETTINGS_FILE" > /dev/null 2>&1; then
-        pass "SessionStart(matcher='compact') registered for post-compact restore"
+        fail "SessionStart(matcher='compact') still registered — run PR9 C6 (remove post-compact-restore.sh from settings.json)"
     else
-        fail "SessionStart(matcher='compact') NOT registered"
+        pass "SessionStart(matcher='compact') correctly NOT registered (Slice E removed it)"
     fi
 
     # Check SessionEnd
@@ -120,28 +115,7 @@ test_hooks_registered() {
     fi
 }
 
-# =============================================================================
-# TEST 4: PreCompact Hook Output Format
-# =============================================================================
-test_precompact_output_format() {
-    section "TEST 4: PreCompact Hook Output Format"
-
-    local hook_file="$HOOKS_DIR/pre-compact-handoff.sh"
-
-    # Check for JSON output format
-    if grep -q '"continue"' "$hook_file"; then
-        pass "PreCompact hook outputs JSON with 'continue' field"
-    else
-        fail "PreCompact hook missing 'continue' in output"
-    fi
-
-    # Check for hookSpecificOutput
-    if grep -q 'hookSpecificOutput' "$hook_file"; then
-        pass "PreCompact hook uses hookSpecificOutput for context injection"
-    else
-        warn "PreCompact hook may not inject context via hookSpecificOutput"
-    fi
-}
+# TEST 4 removed: pre-compact-handoff.sh deleted by #69 Slice E (PR9)
 
 # =============================================================================
 # TEST 5: SessionEnd Hook Matchers
@@ -232,7 +206,7 @@ test_lifecycle_flow() {
     section "TEST 9: Session Lifecycle Flow Simulation"
 
     # Simulate the complete lifecycle
-    echo "Simulating: SessionStart(*) → PreCompact → SessionStart(compact) → SessionEnd"
+    echo "Simulating: SessionStart(*) → SessionEnd"
 
     # Step 1: Check SessionStart exists
     if jq -e '.hooks.SessionStart' "$SETTINGS_FILE" > /dev/null 2>&1; then
@@ -241,19 +215,8 @@ test_lifecycle_flow() {
         fail "Step 1: SessionStart(*) NOT registered"
     fi
 
-    # Step 2: Check PreCompact exists
-    if jq -e '.hooks.PreCompact' "$SETTINGS_FILE" > /dev/null 2>&1; then
-        pass "Step 2: PreCompact registered (saves state before compaction)"
-    else
-        fail "Step 2: PreCompact NOT registered"
-    fi
-
-    # Step 3: Check SessionStart(compact) for restoration
-    if jq -e '.hooks.SessionStart[] | select(.matcher == "compact")' "$SETTINGS_FILE" > /dev/null 2>&1; then
-        pass "Step 3: SessionStart(compact) registered (restores context after compaction)"
-    else
-        fail "Step 3: SessionStart(compact) NOT registered"
-    fi
+    # Steps 2-3 removed (Slice E): no PreCompact writer, no SessionStart(compact)
+    # — the compaction boundary is native + the reduced SessionStart survivor.
 
     # Step 4: Check SessionEnd for termination
     if jq -e '.hooks.SessionEnd' "$SETTINGS_FILE" > /dev/null 2>&1; then
@@ -263,7 +226,7 @@ test_lifecycle_flow() {
     fi
 
     echo ""
-    echo "Lifecycle Flow: SessionStart → [work] → PreCompact → [compact] → SessionStart(compact) → SessionEnd"
+    echo "Lifecycle Flow: SessionStart → [work] → SessionEnd (compaction boundary is native, #69 Slice E)"
 }
 
 # =============================================================================
@@ -280,16 +243,6 @@ test_hook_timeouts() {
         pass "SessionEnd has timeout: ${session_end_timeout}s"
     else
         warn "SessionEnd missing timeout configuration"
-    fi
-
-    # Check SessionStart(compact) has timeout
-    local compact_timeout
-    compact_timeout=$(jq -r '.hooks.SessionStart[] | select(.matcher == "compact") | .hooks[0].timeout // "not set"' "$SETTINGS_FILE" 2>/dev/null)
-
-    if [[ "$compact_timeout" != "not set" && "$compact_timeout" != "null" ]]; then
-        pass "SessionStart(compact) has timeout: ${compact_timeout}s"
-    else
-        warn "SessionStart(compact) missing timeout configuration"
     fi
 }
 
@@ -311,7 +264,6 @@ main() {
     test_hook_files_exist
     test_hooks_executable
     test_hooks_registered
-    test_precompact_output_format
     test_session_end_matchers
     test_postcompact_not_exists
     test_hook_input_format

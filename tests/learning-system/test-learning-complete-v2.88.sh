@@ -733,13 +733,7 @@ test_cross_session_learning() {
     local rules_file="${HOME}/.ralph/procedural/rules.json"
     log_info "Procedural memory location: $rules_file"
 
-    # Test 10.2: Pre-compact hook for state preservation
-    local pre_compact="${PROJECT_ROOT}/.claude/hooks/pre-compact-handoff.sh"
-    if assert_file_exists "$pre_compact"; then
-        log_pass "Pre-compact hook for state preservation"
-    else
-        log_fail "Pre-compact hook missing"
-    fi
+    # Test 10.2 removed: pre-compact-handoff.sh deleted by #69 Slice E (PR9)
 
     # Test 10.3: Session end hook
     local session_end="${PROJECT_ROOT}/.claude/hooks/session-end-handoff.sh"
