@@ -132,11 +132,11 @@ cd "$REPO_ROOT"
 # longer part of the active hook set: glm-visual-validation.sh (.claude/archive/)
 # and plan-state-init.sh, stop-verification.sh, auto-save-context.sh,
 # global-task-sync.sh (.claude/archive/pre-migration-v2.70.0-*/), plus
-# pre-commit-batch-skills-test.sh, which is not present anywhere. Listing them
+# pre-commit-batch-skills-test.sh, which is not present anywhere, and
+# session-start-repo-summary.sh (removed by #69 Slice E, PR9). Listing them
 # only produced permanent failures blamed on a missing `source` line.
 # agent-teams-coordinator.sh lives in .claude/lib/, not .claude/hooks/.
 HOOKS_TO_CHECK=(
-  ".claude/hooks/session-start-repo-summary.sh"
   ".claude/hooks/ralph-subagent-start.sh"
   ".claude/hooks/task-completed-quality-gate.sh"
   ".claude/hooks/repo-boundary-guard.sh"

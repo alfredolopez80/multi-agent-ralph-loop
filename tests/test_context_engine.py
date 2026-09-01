@@ -420,14 +420,6 @@ class TestHooksIntegration:
         mode = hook_path.stat().st_mode
         assert mode & 0o111, "Hook is not executable"
 
-    def test_pre_compact_hook_exists(self, hooks_dir):
-        """Test that pre-compact-handoff.sh exists and is executable."""
-        hook_path = hooks_dir / "pre-compact-handoff.sh"
-        assert hook_path.exists(), f"Hook not found: {hook_path}"
-
-        mode = hook_path.stat().st_mode
-        assert mode & 0o111, "Hook is not executable"
-
     def test_session_start_hook_output_format(self, hooks_dir, isolated_home, requires_tool):
         """Test that SessionStart hook returns valid JSON.
 
@@ -450,26 +442,6 @@ class TestHooksIntegration:
         output = json.loads(result.stdout)
         assert "hookSpecificOutput" in output
         assert "additionalContext" in output["hookSpecificOutput"]
-
-    def test_pre_compact_hook_output_format(self, hooks_dir, isolated_home, requires_tool):
-        """Test that PreCompact hook returns valid JSON."""
-        requires_tool("jq")
-        hook_path = hooks_dir / "pre-compact-handoff.sh"
-
-        result = subprocess.run(
-            ["bash", str(hook_path)],
-            input='{"session_id": "test-compact", "transcript_path": ""}',
-            capture_output=True,
-            text=True,
-            timeout=15
-        )
-
-        assert result.returncode == 0
-
-        # Verify JSON output
-        output = json.loads(result.stdout)
-        assert "continue" in output
-        assert output["continue"] is True
 
 
 class TestFeatureFlags:

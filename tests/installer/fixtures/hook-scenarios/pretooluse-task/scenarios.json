@@ -20,7 +20,6 @@
         "checkpoint-smart-save.sh",
         "orchestrator-auto-learn.sh",
         "promptify-security.sh",
-        "inject-session-context.sh",
         "rules-injector.sh"
       ],
       "expected_decision": "allow"
@@ -35,9 +34,7 @@
           "prompt": "Use /orchestrator to plan the implementation"
         }
       },
-      "expected_hooks": [
-        "skill-validator.sh"
-      ],
+      "expected_hooks": ["skill-validator.sh"],
       "expected_behavior": "Validates skill reference in prompt"
     },
     {
@@ -50,9 +47,7 @@
           "prompt": "Research the authentication module"
         }
       },
-      "expected_hooks": [
-        "smart-memory-search.sh"
-      ],
+      "expected_hooks": ["smart-memory-search.sh"],
       "expected_behavior": "Searches memory for relevant patterns"
     }
   ]

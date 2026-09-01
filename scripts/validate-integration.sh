@@ -169,7 +169,7 @@ check_hooks() {
     # Check critical hooks
     local critical_hooks=(
         "session-start-ledger.sh"
-        "pre-compact-handoff.sh"
+        # pre-compact-handoff.sh removed by #69 Slice E (PR9)
         "quality-gates.sh"
         "git-safety-guard.py"
         "auto-sync-global.sh"

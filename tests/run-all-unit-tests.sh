@@ -138,7 +138,6 @@ TEST_SUITES=(
     "security/test-shell-syntax-validation.sh:Security: shell syntax validation"
     "security/test-sql-injection-blocking.sh:Security: SQL injection blocking"
     "skills/test-autoresearch-smart-setup.sh:Skills: autoresearch smart setup"
-    "unit/test-context-warning-v2.90.sh:Unit: context warning"
     "unit/test-quality-gates-v2.90.sh:Unit: quality gates"
     "unit/test_validation_common.sh:Unit: validation-common library"
     "unit/test-wt-lead-scripts.sh:Unit: wt-lead scope and provenance guards"

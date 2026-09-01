@@ -119,7 +119,6 @@ STOP_INPUT='{"session_id":"bug3-test","reason":"test"}'
 test_single_emission_on_forced_failure "orchestrator-auto-learn.sh" "$TASK_INPUT"
 test_single_emission_on_forced_failure "action-report-tracker.sh"   "$EDIT_INPUT"
 test_single_emission_on_forced_failure "checkpoint-smart-save.sh"   "$EDIT_INPUT"
-test_single_emission_on_forced_failure "inject-session-context.sh"  "$TASK_INPUT"
 test_single_emission_on_forced_failure "plan-state-adaptive.sh"     "$PROMPT_INPUT"
 test_single_emission_on_forced_failure "plan-state-lifecycle.sh"    "$PROMPT_INPUT"
 test_single_emission_on_forced_failure "skill-validator.sh"         "$EDIT_INPUT"

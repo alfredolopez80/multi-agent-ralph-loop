@@ -125,9 +125,8 @@ HOOKS_DIR="$REPO_ROOT/.claude/hooks"
   [ -x "$HOOKS_DIR/handoff-integrity.sh" ]
 }
 
-@test "HIGH-003c: post-compact-restore.sh sources integrity library" {
-  grep -q 'handoff-integrity' "$HOOKS_DIR/post-compact-restore.sh"
-}
+# HIGH-003c removed: post-compact-restore.sh deleted by #69 Slice E (PR9);
+# the surviving integrity consumer is session-end-handoff.sh (HIGH-003d).
 
 @test "HIGH-003d: session-end-handoff.sh creates checksums" {
   grep -q 'checksum\|sha256\|integrity' "$HOOKS_DIR/session-end-handoff.sh"
@@ -219,7 +218,7 @@ HOOKS_DIR="$REPO_ROOT/.claude/hooks"
 }
 
 @test "STRUCT-002: all modified hooks pass syntax check" {
-  for hook in ralph-subagent-start.sh command-router.sh security-full-audit.sh repo-boundary-guard.sh post-compact-restore.sh session-end-handoff.sh auto-sync-global.sh handoff-integrity.sh; do
+  for hook in ralph-subagent-start.sh command-router.sh security-full-audit.sh repo-boundary-guard.sh session-end-handoff.sh auto-sync-global.sh handoff-integrity.sh; do
     [ ! -f "$HOOKS_DIR/$hook" ] || bash -n "$HOOKS_DIR/$hook"
   done
 }
@@ -229,7 +228,7 @@ HOOKS_DIR="$REPO_ROOT/.claude/hooks"
 }
 
 @test "STRUCT-004: all modified hooks are executable" {
-  for hook in ralph-subagent-start.sh command-router.sh security-full-audit.sh repo-boundary-guard.sh post-compact-restore.sh session-end-handoff.sh auto-sync-global.sh handoff-integrity.sh git-safety-guard.py; do
+  for hook in ralph-subagent-start.sh command-router.sh security-full-audit.sh repo-boundary-guard.sh session-end-handoff.sh auto-sync-global.sh handoff-integrity.sh git-safety-guard.py; do
     [ ! -f "$HOOKS_DIR/$hook" ] || [ -x "$HOOKS_DIR/$hook" ]
   done
 }

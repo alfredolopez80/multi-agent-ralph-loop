@@ -11,8 +11,7 @@
         "auto-sync-global.sh",
         "session-start-restore-context.sh",
         "orchestrator-init.sh",
-        "project-backup-metadata.sh",
-        "session-start-repo-summary.sh"
+        "project-backup-metadata.sh"
       ],
       "expected_order": [
         "claude-mem worker start",
@@ -21,8 +20,7 @@
         "auto-sync",
         "restore-context",
         "orchestrator-init",
-        "backup-metadata",
-        "repo-summary"
+        "backup-metadata"
       ]
     },
     {
@@ -41,14 +39,10 @@
     },
     {
       "name": "post_compact_restore",
-      "description": "Session start after context compaction",
-      "expected_behavior": "Restores context from pre-compact handoff",
-      "hooks_to_fire": [
-        "session-start-restore-context.sh"
-      ],
-      "reads_from": [
-        "~/.ralph/handoffs/pre-compact-*.json"
-      ]
+      "description": "Session start after context compaction (#69 Slice E: a compact start is a SessionStart)",
+      "expected_behavior": "Restores canonical task state (ledger + plan-state); no pre-compact shadow files exist",
+      "hooks_to_fire": ["session-start-restore-context.sh"],
+      "reads_from": ["~/.ralph/ledgers/", ".claude/plans/**/plan-state.json"]
     }
   ]
 }

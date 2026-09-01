@@ -174,13 +174,7 @@ setup() {
     [ -f "${PROJECT_ROOT}/.claude/hooks/repo-boundary-guard.sh" ]
 }
 
-@test "INSTALL: pre-compact-handoff.sh hook exists" {
-    [ -f "${PROJECT_ROOT}/.claude/hooks/pre-compact-handoff.sh" ]
-}
-
-@test "INSTALL: post-compact-restore.sh hook exists" {
-    [ -f "${PROJECT_ROOT}/.claude/hooks/post-compact-restore.sh" ]
-}
+# pre-compact-handoff.sh / post-compact-restore.sh removed by #69 Slice E (PR9)
 
 # =============================================================================
 # SECTION 6: LSP Servers Availability

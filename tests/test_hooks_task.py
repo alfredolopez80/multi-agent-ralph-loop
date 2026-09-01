@@ -7,8 +7,7 @@ Tests for hooks that execute on PreToolUse(Task) and PostToolUse(Task) events:
 PreToolUse:Task:
 1. orchestrator-auto-learn.sh - Knowledge gap detection
 2. fast-path-check.sh - Trivial task fast-path
-3. inject-session-context.sh - Context injection
-4. smart-memory-search.sh - Parallel memory search
+3. smart-memory-search.sh - Parallel memory search
 
 PostToolUse:Task:
 1. parallel-explore.sh - Parallel exploration
@@ -17,6 +16,9 @@ PostToolUse:Task:
 Deleted in H1 consolidation:
 - procedural-inject.sh, agent-memory-auto-init.sh (PreToolUse)
 - global-task-sync.sh (PostToolUse)
+
+Deleted in #69 Slice E (PR9):
+- inject-session-context.sh (PreToolUse)
 
 All tests validate:
 - JSON output is ALWAYS valid
@@ -56,7 +58,6 @@ PROJECT_HOOKS_DIR = PROJECT_ROOT / ".claude" / "hooks"
 PRE_TOOLUSE_TASK_HOOKS = [
     "orchestrator-auto-learn.sh",
     "fast-path-check.sh",
-    "inject-session-context.sh",
     "smart-memory-search.sh",
 ]
 

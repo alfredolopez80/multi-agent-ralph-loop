@@ -116,7 +116,7 @@ REQUIRED_HOOKS=(
     "git-safety-guard.py:PreToolUse:Bash"
     "repo-boundary-guard.sh:PreToolUse:Bash"
     "session-end-handoff.sh:SessionEnd"
-    "post-compact-restore.sh:SessionStart"
+    # post-compact-restore.sh removed by #69 Slice E (PR9)
 )
 
 #######################################

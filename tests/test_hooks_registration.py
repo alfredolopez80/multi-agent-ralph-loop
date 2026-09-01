@@ -42,12 +42,7 @@ HOOK_REGISTRY = {
         "version": "2.85",
         "cli_only": False,
     },
-    "pre-compact-handoff.sh": {
-        "event": "PreCompact",
-        "matchers": None,  # PreCompact doesn't use matchers
-        "version": "2.35",
-        "cli_only": False,
-    },
+    # pre-compact-handoff.sh removed by #69 Slice E (PR9)
     # quality-gates-v2.sh: deleted in H1 consolidation (split into separate guards)
     "git-safety-guard.py": {
         "event": "PreToolUse",
@@ -79,24 +74,14 @@ HOOK_REGISTRY = {
     },
 
     # === v2.43 Hooks ===
-    "inject-session-context.sh": {
-        "event": "PreToolUse",
-        "matchers": ["Task"],
-        "version": "2.43",
-        "cli_only": False,
-    },
+    # inject-session-context.sh (v2.43) removed by #69 Slice E (PR9)
     "skill-validator.sh": {
         "event": "PreToolUse",
         "matchers": ["Skill"],
         "version": "2.43",
         "cli_only": False,
     },
-    "context-warning.sh": {
-        "event": "UserPromptSubmit",
-        "matchers": None,
-        "version": "2.43",
-        "cli_only": False,
-    },
+    # context-warning.sh (v2.43) removed by #69 Slice E (PR9)
     "periodic-reminder.sh": {
         "event": "UserPromptSubmit",
         "matchers": None,
