@@ -82,7 +82,7 @@ verificado en `run-all-unit-tests.sh` post-Phase 3).
 **0 hooks residuales borrados tras cert matrix re-run** — cert matrix cerró 12/12 PASS (RECERT addendum `d35f6e2`), ninguna entry quedó por debajo de los thresholds pre-registrados. La delta agregada del cap (43 → 22 → 15 example entries) se realizó en M2 y PR5-PR11; slice 4 cleanup quedó vacío.
 
 Criterio: post-cert, cualquier hook cuyo M2 measurement cayó por debajo del threshold
-pre-registrado (**PLAN_CERT_METRICS.md rows 1 + 2 + 3**: row 1 Bash latency ≤380 ms @ D1=362.3 PASS, row 2 wake-up tokens ≤1200 @ D2=1127/971 PASS, row 3 orchestration share <security AND <30% @ D3=12.8% active-only < 85.2% security PASS). Este slice fue el último del
+pre-registrado (**PLAN_CERT_METRICS.md rows 1 + 2 + 3**: row 1 Bash latency ≤380 ms — **INCOMPLETE per arbitrage lead** (cross-verify F1, zc-4 main `d6d1efb`, instrument resolution más gruesa que la ventana del efecto); row 2 wake-up tokens ≤1200 @ D2=1127/971 PASS (byte-identical entre ventanas, cross-verify 4/5 exacto); row 3 orchestration share <security AND <30% @ D3=12.8% active-only < 85.2% security PASS). Este slice fue el último del
 epic; ocurre tras PR 12 — y el resultado fue "no hay residual".
 
 ### Totales agregados (post-slice-4, post-cert)
@@ -100,7 +100,7 @@ epic; ocurre tras PR 12 — y el resultado fue "no hay residual".
 | SECURITY plane (mandatory) | n/a | 17 | **10 matchers** (PR12-EXEC D3: security domina 85.2%/41.6%/62.2% en las 3 lecturas active-only/con-lifecycle/worst-case; breakdown de 18 matchers: 4 PreToolUse:Bash + 2 PreToolUse:Edit\|Write + 2 PreToolUse:Agent\|Task + 1 PreToolUse:Skill + 1 PostToolUse:* audit-secrets = 10) |
 | ESSENTIAL non-security | n/a | 1 (plan-sync-post-step) | **1** (plan-sync-post-step, #47 C1 canonical) |
 | OPT-IN companion | n/a | 11 matcher tuples / 28 hook commands | **opt-in se mide en active: 28 hook commands / 11 matcher tuples (PHASE2 L84)**; example opt-in = 14 (15 example total - 1 essential) |
-| Bash call latency (median) | 546 ms | 325 ms | **362.3 ms** (-151.7 vs M1 514.0, PR12-EXEC D1; threshold ≤380 ms PASS) |
+| Bash call latency (median) | 546 ms | 325 ms | **INCOMPLETE** (lead arbitrage Row 1, F1 cross-verify — mejora estructural real ~98ms phantom hooks, no resoluble por instrumento N=1/ventana; ver §7.6) |
 | Wake-up tokens at SessionStart | 827 tok | 0 tok (opt-in) | **1127 stdout / 971 ctx** (-665 / -644 vs PHASE2 1792/1615, PR12-EXEC D2; threshold ≤1200 PASS) |
 | Suites verdes (tests/run-all-unit-tests.sh) | [DATO-LEAD: pre-M2 baseline suite count no medido por cert — cert midió post-borrado 47/47 (PR12-EXEC Row 7 / RECERT G7); M1 baseline publicable como "N/A — pre-#69 state" o vía git archaeology] | 43 | **47** (PR12-EXEC Row 7 + RECERT G7, fresh 47/47 PASS) |
 
@@ -378,15 +378,14 @@ verde" (`testing-zero-tests-is-never-success`) refuerza: `failed == 0` AND
 
 5. **`[DATO-LEAD]` decisions explícitas que el lead llena al publicar**:
 
-   - `[DATO-LEAD]`: estado de react-doctor post-#69 — lead confirma entre
-     "completado (tests + auditoría CWE)", "parcial (X de Y componentes)",
-     o "pendiente (arrastrado a epic separado)". react-doctor no fue tocado
-     por slices A-F ni por PR12-EXEC; este cierre no lo cierra.
+   - react-doctor post-#69: **pendiente decisión del usuario al cierre**
+     (lead arbitrado en main `028c135` + `d6d1efb` arbitrage; no tocado por
+     slices A-F ni por PR12-EXEC; este cierre no lo cierra).
 
-   - `[DATO-LEAD]`: fecha de cierre del issue #69 — lead confirma la fecha
-     oficial de merge del comment de cierre (o "pending hasta el merge
-     final"). El SHA de cert ya está registrado como `d35f6e2` 2026-09-01
-     15:05:40; la fecha del cierre editorial puede diferir.
+   - `[DATO-LEAD]`: SHA final de cierre del issue #69 = **[a llenar por
+     lead al publicar el cierre]**. SHA de cert registrado: `d35f6e2`
+     2026-09-01 15:05:40 (addendum final, RECERT 12/12 PASS). El SHA del
+     comment de cierre editorial puede diferir.
 
 ---
 
@@ -496,7 +495,7 @@ es la delta agregada de PR5-PR11 (Phase 3 Slice A/B + Slice C/D/E + Phase 4 + Sl
 
 ### 7.6 Hallazgos de auditoría (delta vs draft)
 
-- **Conteo final de `[DATO*]` en el draft** [medido post-PR12]: grep
+- **Conteo final de `[DATO*]` en el draft** [medido post-PR12 + post-arbitraje F1]: grep
   reporta **20 ocurrencias de `[DATO-PR12]`** (matches con el conteo de lead) +
   **13 `[DATO]` en la tabla de totales** (Post-PR12 col) + **3 prosa** (`[DATO]`
   en L4, L351, L487). Tras el llenado final con cifras certificadas
@@ -506,6 +505,19 @@ es la delta agregada de PR5-PR11 (Phase 3 Slice A/B + Slice C/D/E + Phase 4 + Sl
   PHASE0_INVENTORY anchor L193, auto-memory classification) — cifra final
   exacta de [DATO-LEAD] en el reporte DONE-2. **15 [DATO-PR12] filled** =
   20 originales - 5 prose-only (header L4 + 4 auto-references en §7.6/L389).
+- **Arbitraje F1 (Row 1 hot-path latency, cross-verify zc-4 main `d6d1efb`)**:
+  el Row 1 del cert matrix (PR12-EXEC D1: hotpath −29.5% = 362.3 ms vs baseline
+  514.0 ms) **NO reproduce entre ventanas** (zc-4 obtuvo 483.3 ms en su
+  ventana propia, dentro de la varianza T83 ±10%). Lead arbitra
+  **INCOMPLETE per instrument resolution** (N=1/ventana del instrumento más
+  grueso que la ventana del efecto). El dato final asentado en el draft:
+  "hot-path por-Bash-call: mejora estructural real (~98 ms de hooks fantasma
+  eliminados, costo por-hook verificado) pero NO resoluble por el instrumento
+  con N=1/ventana — mediana post-borrado 483.3 ms (−5.9% vs baseline 514.0,
+  dentro de la varianza T83 ±10%); certificado Row 1 INCOMPLETE por arbitraje
+  lead (cross-verify F1, 6 números, 3 artefactos)". Cifras estrella que SÍ
+  certifican exacto (no tocadas por el arbitrage): wake-up 1792→1127 stdout
+  (byte-identical), hooks 74→44, tokens CLAUDE.md −64%, trivial 0 deny.
 - **Slice 1 (zero-evidence hooks)** `[DATO-PR12]`: el draft pide "número de
   hooks y registros borrados en slice 1" pero los commits en `main` no se
   etiquetan explícitamente como "slice 1 zero evidence"; PR3-C7 (`72caedd`)
