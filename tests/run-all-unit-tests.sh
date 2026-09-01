@@ -69,6 +69,12 @@ done
 if [[ "${RALPH_TEST_KEEP_HOME:-0}" != "1" ]]; then
     _SANDBOX_HOME="$(mktemp -d)"
     trap 'rm -rf "$_SANDBOX_HOME"' EXIT
+    # Preserve the pre-sandbox HOME for the deployment-aware pytest suites
+    # (fix-sweep-flaky, 2026-09-01): the full sweep runs INSIDE this sandbox,
+    # and suites like test_skill_drift_check.py validate the user's REAL
+    # install (~/.claude/skills). They resolve the real home through this
+    # variable and skip with a printed reason when it has no install (CI).
+    export RALPH_TEST_REAL_HOME="${HOME}"
     export HOME="$_SANDBOX_HOME"
     mkdir -p "$HOME/.ralph" "$HOME/.claude" "$HOME/.local/bin"
 fi
