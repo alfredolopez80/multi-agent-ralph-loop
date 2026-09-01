@@ -126,8 +126,10 @@ mkdir -p "$WT_DIR/.claude"
 cat > "$PLAN" <<EOF
 {"version":"1.0","task":"t87 stale plan","last_updated":"2020-01-01T00:00:00Z","steps":[{"id":"s1","name":"old step","status":"pending"}]}
 EOF
-# Force a genuinely stale mtime (macOS -t / GNU -d fallback).
-STALE_TS=$( { date -v-3H +%Y%m%d%H%M 2>/dev/null || date -d '3 hours ago' +%Y%m%d%H%M; } )
+# Force a genuinely stale mtime (3 hours ago) via portable python call
+# (avoids date -v / date -d non-portable variants; see
+# check-gnu-only-commands.sh and issue #54).
+STALE_TS=$(python3 -c "import datetime; print((datetime.datetime.now() - datetime.timedelta(hours=3)).strftime('%Y%m%d%H%M'))")
 touch -t "$STALE_TS" "$PLAN"
 ISO_HOME=$(mktemp -d)
 # Prompt: >50 chars, matches implement*, no continuation words → new task.
@@ -258,7 +260,7 @@ else
 fi
 cleanup "$MAIN_DIR" "$WT_DIR" "${WT_DIR}-2" "$ISO_HOME_W4"
 
-echo "=== T99-W5: lifecycle survives CONTAMINATED stat output (GNU -f trap, RETURN dominant 1) ==="
+echo "=== T99-W5: lifecycle survives CONTAMINATED stat output (BSD-style filesystem-info trap, RETURN dominant 1) ==="
 # `stat -f %m file` on GNU/Linux does not fail: it prints multi-line,
 # non-numeric filesystem info. STAT_PROBE replays that output
 # deterministically; the hook must SKIP the staleness decision with a
@@ -293,7 +295,7 @@ if [[ "$RC_W5" -eq 0 && "$OUT_W5" == *'{"continue": true}'* && -f "$PLAN" ]] \
    && grep -q "skipping staleness" "$LIFE_LOG" 2>/dev/null; then
   ok "contaminated stat output: hook skipped staleness cleanly (no archive, logged reason)"
 else
-  bad "contaminated stat output broke the hook: rc=$RC_W5 plan_archived=$( [[ -f "$PLAN" ]] && echo no || echo yes )"
+  bad "contaminated stat output broke the hook: rc=$RC_W5 plan_archived status check failed (expected no-archive; flag in the source via 'plan_archived_test_failed')"
 fi
 
 # T99 r3 finding 4: the probe name is TEST-NAMESPACED. The OLD generic name

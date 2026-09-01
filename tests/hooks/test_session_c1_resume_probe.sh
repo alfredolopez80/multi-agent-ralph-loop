@@ -183,7 +183,7 @@ SESSION_ID="t110-stale"
 rm -f "$PLAN_STATE"
 write_plan_state "task-stale-001" "s3" "90min"
 # Independently verify mtime of plan-state.json is > 30 min.
-file_age_seconds=$(( $(date +%s) - $(stat -f %m "$PLAN_STATE" 2>/dev/null || stat -c %Y "$PLAN_STATE") ))
+file_age_seconds=$(( $(date +%s) - $(python3 -c "import os,sys; print(int(os.stat(sys.argv[1]).st_mtime))" "$PLAN_STATE" 2>/dev/null) ))
 file_age_minutes=$((file_age_seconds / 60))
 out="$(run_resume "$SESSION_ID" "$FIXTURE_REPO")"
 ctx="$(extract_context "$out")"
