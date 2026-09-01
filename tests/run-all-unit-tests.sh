@@ -415,6 +415,39 @@ fi
 # Summary
 #######################################
 echo ""
+# ── Full pytest sweep (CI parity, 2026-09-01) ──────────────────────────────
+# CI (.github/workflows/ci.yml, job "Run Tests") executes `python -m pytest
+# tests/ -v --tb=short` over the whole tree — ~2500 tests the bash suites
+# above never touch. This gate and CI diverged silently for 30+ runs (green
+# locally, red on GitHub) precisely because neither executed the other's set.
+# Parity means running BOTH: the bash suites for the hook contract, and the
+# full pytest sweep for everything else. pytest exit 5 ("no tests collected")
+# is non-zero and lands in the failure branch — the zero-tests rule holds.
+echo -e "${BOLD}${CYAN}═══════════════════════════════════════════════════════════════${NC}"
+echo -e "${BOLD}${CYAN}  Full pytest sweep (CI parity)${NC}"
+echo -e "${BOLD}${CYAN}═══════════════════════════════════════════════════════════════${NC}"
+TOTAL_SUITES=$((TOTAL_SUITES+1))
+if command -v python3 >/dev/null 2>&1; then
+    PYTEST_LOG="$(mktemp)"
+    if python3 -m pytest tests/ -q --tb=short > "$PYTEST_LOG" 2>&1; then
+        echo -e "  ${GREEN}PASSED${NC}: $(tail -1 "$PYTEST_LOG")"
+        PASSED_SUITES=$((PASSED_SUITES+1))
+    else
+        echo -e "  ${RED}FAILED${NC} — last 25 lines:"
+        tail -25 "$PYTEST_LOG" | sed 's/^/  /'
+        FAILED_SUITES=$((FAILED_SUITES+1))
+        FAILED_TESTS="${FAILED_TESTS} pytest-full-sweep"
+    fi
+    rm -f "$PYTEST_LOG"
+else
+    # Without python3 the sweep cannot run: the gate has no way to claim CI
+    # parity, so missing tooling is a failure, not a skip.
+    echo -e "  ${RED}FAILED${NC}: python3 not found — CI-parity sweep cannot run"
+    FAILED_SUITES=$((FAILED_SUITES+1))
+    FAILED_TESTS="${FAILED_TESTS} pytest-full-sweep(no-python3)"
+fi
+echo ""
+
 echo -e "${BOLD}${CYAN}═══════════════════════════════════════════════════════════════${NC}"
 echo -e "${BOLD}${CYAN}  Test Summary${NC}"
 echo -e "${BOLD}${CYAN}═══════════════════════════════════════════════════════════════${NC}"

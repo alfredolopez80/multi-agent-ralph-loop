@@ -103,6 +103,10 @@ def test_rm_false_positives_allow(tmp_path, text):
 
 def test_rm_rf_absolute_path_still_denies(tmp_path):
     repo = make_repo(tmp_path, "main")
-    target = tmp_path / "versionado"
-    decision = run_guard(repo, f"rm -rf {target}")["permissionDecision"]
+    # The target must be an ABSOLUTE NON-TEMP path on every platform: pytest's
+    # tmp_path is /tmp/pytest-of-*/ on Linux (inside the guard's safe-temp
+    # prefixes, so the guard would correctly ALLOW it) and /private/var/folders/
+    # on macOS (non-temp, deny). A synthetic non-existent path pins the intent
+    # — the guard matches text, not the filesystem — and stays deterministic.
+    decision = run_guard(repo, "rm -rf /home/definitely/not/temp/versionado")["permissionDecision"]
     assert decision == "deny"

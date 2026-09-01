@@ -75,4 +75,4 @@ Invariants: never end a task with uncommitted changes · every task names allowe
 Required settings: `~/.claude/settings.json` needs `{"crossSessionInbound": "accept", "worktree": {"baseRef": "head"}}`. This repo ships no `.claude/settings.json` (`install.sh:114` copies the example verbatim over a MISSING user settings).
 
 Gate (T33): integrate.sh runs `$QTEAM_TEST_CMD` after every merge, refuses when unset. Export:
-`export QTEAM_TEST_CMD="bash tests/run-all-unit-tests.sh"` — runner asserts `failed == 0` AND `total > 0`; same as CI.
+`export QTEAM_TEST_CMD="bash tests/run-all-unit-tests.sh"` — runner asserts `failed == 0` AND `total > 0`, and since 2026-09-01 also runs the full `pytest tests/` sweep, making it a superset of CI's "Run Tests" job (they diverged silently for 30+ runs before that; local green no longer means CI green by accident).
