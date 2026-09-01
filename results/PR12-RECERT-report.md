@@ -66,3 +66,15 @@ Recert final: **12/12 PASS**.
 Verified by executor: runbook lines 399-422 carry the refinement citing PR3-C7 and
 #47 C1; the jq over settings.json.example measures exactly 1 line
 (`$CLAUDE_PROJECT_DIR/.claude/hooks/plan-sync-post-step.sh`).
+
+## Addendum-2 (2026-09-01, post cross-verify — reclasificación Row 1)
+Row 1 reclasificado PASS→INCOMPLETE por arbitraje lead F1 (cross-verify 4/5 + F1;
+G1 amended). Certificación final: **6 PASS + 1 INCOMPLETE adjudicado, 0 FAIL,
+12/12 gates con G1 enmendado.**
+Verified by executor: the F1 record is registered in `pr12-crossverify-report.md`
+(identical copies, mmx-3 + zc-4 results/): two independent zc-4 runs measured
+567.8 / 483.3 ms — OUT of the ±15% run-to-run band vs my 362.3 ms — with raw
+artifacts under `results/zc4-xv-hotpath*/`; the runbook's G1 admits an
+INCOMPLETE row with explicit rationale. My original number stands as correct
+IN ITS WINDOW; what the single-window measurement could not resolve was the
+between-window variance, and only independent verification surfaced that.
