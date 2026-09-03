@@ -1181,56 +1181,106 @@ cmd_security() {
 # MULTI-LEVEL SECURITY LOOP (v2.27)
 # ===============================================================================
 
-# Parse security audit output into structured JSON
-# Returns: JSON with vulnerabilities array and summary
+# Path to the structured-output contract the audit/proposal invocations must satisfy.
+SECURITY_OUTPUT_SCHEMA="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/.claude/schemas/security-output.json"
+
+# Run one security-loop agent invocation.
+# Usage: run_security_agent <outfile> <agent> <permission-mode> <prompt> [extra claude flags...]
+# The CLI exit code is checked explicitly and never swallowed: a crashed or refused
+# invocation must not read as "no findings". stderr goes to a sibling .stderr file so
+# it can never contaminate the JSON payload. The invocation runs with the audited tree
+# as its working directory (the cwd pin the Codex `-C` flag used to provide).
+run_security_agent() {
+    local OUTFILE="$1"
+    local AGENT="$2"
+    local MODE="$3"
+    local PROMPT="$4"
+    shift 4
+
+    local ERRFILE="${OUTFILE%.json}.stderr"
+    local RC=0
+
+    ( cd "$TARGET" && claude --print \
+        --agent "$AGENT" \
+        --permission-mode "$MODE" \
+        --add-dir "$TARGET" \
+        "$@" \
+        -p "$PROMPT" ) > "$OUTFILE" 2> "$ERRFILE" || RC=$?
+
+    if [ "$RC" -ne 0 ]; then
+        log_error "  claude --agent $AGENT exited with status $RC"
+        log_error "  stderr: $ERRFILE"
+        return "$RC"
+    fi
+    return 0
+}
+
+# Parse a security audit envelope into the structured findings payload.
+# Returns 0 and prints the payload on success; returns 1 and logs the reason otherwise.
+# Every failure mode is loud: a missing file, a non-JSON envelope, an agent-reported
+# error, or a summary that disagrees with the vulnerabilities array all fail the round.
 parse_security_findings() {
     local OUTPUT_FILE="$1"
 
     if [ ! -f "$OUTPUT_FILE" ]; then
-        echo '{"vulnerabilities":[],"summary":{"total":0,"critical":0,"high":0,"medium":0,"low":0}}'
-        return 0
+        log_error "  Audit output file is missing: $OUTPUT_FILE"
+        return 1
     fi
 
-    # Extract vulnerability data from the audit output
-    # Look for common patterns in security scan results
-    local CONTENT
-    CONTENT=$(cat "$OUTPUT_FILE" 2>/dev/null || echo "")
+    if ! jq -e . "$OUTPUT_FILE" >/dev/null 2>&1; then
+        log_error "  Audit output is not a JSON envelope: $OUTPUT_FILE"
+        return 1
+    fi
 
-    # Count severity levels using grep patterns
-    # Note: Sanitize to ensure clean integers (grep -c can have edge cases)
-    local CRITICAL HIGH MEDIUM LOW
-    CRITICAL=$(echo "$CONTENT" | grep -ci "critical\|severity.*critical" 2>/dev/null | tr -cd '0-9')
-    HIGH=$(echo "$CONTENT" | grep -ci "high\|severity.*high" 2>/dev/null | tr -cd '0-9')
-    MEDIUM=$(echo "$CONTENT" | grep -ci "medium\|severity.*medium" 2>/dev/null | tr -cd '0-9')
-    LOW=$(echo "$CONTENT" | grep -ci "low\|severity.*low" 2>/dev/null | tr -cd '0-9')
+    if [ "$(jq -r '.is_error // false' "$OUTPUT_FILE")" = "true" ]; then
+        log_error "  Agent reported an error: $(jq -r '.result // "<no result field>"' "$OUTPUT_FILE")"
+        return 1
+    fi
 
-    # Default to 0 if empty
-    CRITICAL=${CRITICAL:-0}
-    HIGH=${HIGH:-0}
-    MEDIUM=${MEDIUM:-0}
-    LOW=${LOW:-0}
+    # Envelope shape of `claude --print --output-format json --json-schema ...`:
+    # `.structured_output` carries the parsed object and `.result` carries the same
+    # document as a JSON string. Prefer the object; fall back to decoding the string.
+    local PAYLOAD
+    if ! PAYLOAD=$(jq -c '
+            if (.structured_output? | type) == "object" then .structured_output
+            elif (.result | type) == "string" then (.result | fromjson)
+            elif (.result | type) == "object" then .result
+            else error("unrecognized claude --print envelope") end' "$OUTPUT_FILE" 2>/dev/null); then
+        log_error "  Could not extract a findings payload from: $OUTPUT_FILE"
+        return 1
+    fi
 
-    # Build JSON using jq for safe construction
-    local TOTAL=$((CRITICAL + HIGH + MEDIUM + LOW))
+    if ! echo "$PAYLOAD" | jq -e '
+            (.summary.total | type) == "number"
+            and (.vulnerabilities | type) == "array"
+            and (.summary.total == (.summary.critical + .summary.high + .summary.medium + .summary.low))
+            and (.summary.total == (.vulnerabilities | length))' >/dev/null 2>&1; then
+        log_error "  Findings failed validation: summary counts must equal"
+        log_error "  critical+high+medium+low and the vulnerabilities array length ($OUTPUT_FILE)"
+        return 1
+    fi
 
-    jq -n \
-        --argjson critical "$CRITICAL" \
-        --argjson high "$HIGH" \
-        --argjson medium "$MEDIUM" \
-        --argjson low "$LOW" \
-        --argjson total "$TOTAL" \
-        --arg raw "$CONTENT" \
-        '{
-            vulnerabilities: [],
-            summary: {
-                total: $total,
-                critical: $critical,
-                high: $high,
-                medium: $medium,
-                low: $low
-            },
-            raw_output: $raw
-        }'
+    echo "$PAYLOAD"
+}
+
+# Terminal banner for an audit that could not be trusted. A failed audit and a clean
+# tree must never print the same thing: "no findings" is a claim, not the absence of one.
+print_security_audit_failed() {
+    local ROUND="$1"
+    local OUTPUT_FILE="$2"
+
+    echo ""
+    echo "╔═══════════════════════════════════════════════════════════════╗"
+    echo "║  SECURITY LOOP: AUDIT FAILED                                  ║"
+    echo "╠═══════════════════════════════════════════════════════════════╣"
+    printf "║  Round:      %s\n" "$ROUND"
+    echo "║                                                               ║"
+    echo "║  The audit did not produce a valid findings document, so the  ║"
+    echo "║  security state of this tree is UNKNOWN. This is NOT a clean  ║"
+    echo "║  result. Inspect:                                             ║"
+    printf "║    %s\n" "$OUTPUT_FILE"
+    printf "║    %s\n" "${OUTPUT_FILE%.json}.stderr"
+    echo "╚═══════════════════════════════════════════════════════════════╝"
 }
 
 # Fix security issues (Hybrid approval mode)
@@ -1239,6 +1289,7 @@ fix_security_issues() {
     local FINDINGS_JSON="$1"
     local TARGET="$2"
     local APPROVAL_MODE="${3:-hybrid}"  # hybrid, yolo, strict
+    local ROUND="${4:-0}"
 
     local TOTAL CRITICAL HIGH MEDIUM LOW
     TOTAL=$(echo "$FINDINGS_JSON" | jq -r '.summary.total // 0')
@@ -1256,6 +1307,11 @@ fix_security_issues() {
     local AUTO_FIX_COUNT=$((MEDIUM + LOW))
     local MANUAL_COUNT=$((CRITICAL + HIGH))
 
+    # Hand the findings to the fixing agent by PATH, never by interpolating the JSON
+    # into the prompt: the payload is unbounded in size and is attacker-influenced text.
+    local FINDINGS_FILE="$RALPH_TMPDIR/security_findings_round_${ROUND}.json"
+    printf '%s\n' "$FINDINGS_JSON" > "$FINDINGS_FILE"
+
     log_info "  Found $TOTAL vulnerabilities:"
     [ "$CRITICAL" -gt 0 ] && log_warn "    CRITICAL: $CRITICAL"
     [ "$HIGH" -gt 0 ] && log_warn "    HIGH: $HIGH"
@@ -1269,12 +1325,23 @@ fix_security_issues() {
         yolo)
             # Auto-fix ALL vulnerabilities
             log_info "  YOLO mode: Auto-fixing all $TOTAL vulnerabilities..."
-            SAFE_TARGET=$(escape_for_shell "$TARGET")
-            claude --print -p "Use the ralph-security agent.
-                 Fix all security vulnerabilities found in ${SAFE_TARGET}.
+            if ! run_security_agent "$RALPH_TMPDIR/security_fixes_yolo.json" \
+                    ralph-coder acceptEdits \
+                    "The security findings for this tree are in the JSON file ${FINDINGS_FILE}.
+                 It validates against .claude/schemas/security-output.json.
+                 Read that file and apply the \`recommendation\` of EVERY finding,
+                 regardless of \`severity\`, editing the files named by \`file\`/\`line\`.
                  Apply secure coding practices: parameterized queries, input validation,
-                 proper authentication, secure crypto. Output: fixed code." \
-                > "$RALPH_TMPDIR/security_fixes_yolo.json" 2>&1 || true
+                 proper authentication, secure crypto.
+                 Report which finding \`id\`s you fixed and which you left, and why." \
+                    --disallowedTools "Bash(git *)" \
+                    --output-format json \
+                    --add-dir "$RALPH_TMPDIR"; then
+                log_error "  YOLO fix invocation failed; no fixes can be assumed applied"
+                echo "0"
+                return 1
+            fi
+            # Attempted, not verified: the round's real delta is measured by the next audit.
             FIXED=$TOTAL
             ;;
         strict)
@@ -1288,13 +1355,23 @@ fix_security_issues() {
             # Auto-fix LOW/MEDIUM, ask for CRITICAL/HIGH
             if [ "$AUTO_FIX_COUNT" -gt 0 ]; then
                 log_info "  Auto-fixing $AUTO_FIX_COUNT MEDIUM/LOW vulnerabilities..."
-                SAFE_TARGET=$(escape_for_shell "$TARGET")
-                claude --print -p "Use the ralph-security agent on ${SAFE_TARGET}.
-                     Fix only MEDIUM and LOW severity security vulnerabilities.
-                     Do NOT fix CRITICAL or HIGH - those require manual approval.
-                     Apply: input validation, minor security improvements.
-                     Output: fixed code with explanation." \
-                    > "$RALPH_TMPDIR/security_fixes_auto.json" 2>&1 || true
+                if ! run_security_agent "$RALPH_TMPDIR/security_fixes_auto.json" \
+                        ralph-coder acceptEdits \
+                        "The security findings for this tree are in the JSON file ${FINDINGS_FILE}.
+                     It validates against .claude/schemas/security-output.json.
+                     Read that file and apply the \`recommendation\` of ONLY the findings
+                     whose \`severity\` is MEDIUM or LOW, editing the files named by
+                     \`file\`/\`line\`. Leave every CRITICAL and HIGH finding untouched:
+                     those require manual approval.
+                     Report which finding \`id\`s you fixed and which you left, and why." \
+                        --disallowedTools "Bash(git *)" \
+                        --output-format json \
+                        --add-dir "$RALPH_TMPDIR"; then
+                    log_error "  Auto-fix invocation failed; no fixes can be assumed applied"
+                    echo "0"
+                    return 1
+                fi
+                # Attempted, not verified: the round's real delta is measured by the next audit.
                 FIXED=$AUTO_FIX_COUNT
             fi
 
@@ -1303,13 +1380,21 @@ fix_security_issues() {
                 # Output info for Claude Code to use with AskUserQuestion
                 echo "MANUAL_APPROVAL_REQUIRED: $CRITICAL critical, $HIGH high severity issues"
 
-                # Generate fix proposals for manual review
-                SAFE_TARGET=$(escape_for_shell "$TARGET")
-                claude --print -p "Use the ralph-security agent on ${SAFE_TARGET}.
-                     Generate fix proposals (DO NOT APPLY) for CRITICAL and HIGH vulnerabilities.
-                     For each: show current code, proposed fix, explanation.
-                     Output as JSON array for human review." \
-                    > "$RALPH_TMPDIR/security_fix_proposals.json" 2>&1 || true
+                # Generate fix proposals for manual review (read-only: proposals, never edits)
+                if ! run_security_agent "$RALPH_TMPDIR/security_fix_proposals.json" \
+                        ralph-security plan \
+                        "The security findings for this tree are in the JSON file ${FINDINGS_FILE}.
+                     Generate fix proposals (DO NOT APPLY) for the CRITICAL and HIGH findings.
+                     For each: the current code, the proposed fix, and the explanation, written
+                     into the \`recommendation\` field.
+                     Return the same schema you were given, containing only those findings." \
+                        --disallowedTools Edit,Write,NotebookEdit \
+                        --output-format json \
+                        --json-schema "$(cat "$SECURITY_OUTPUT_SCHEMA")"; then
+                    log_error "  Fix-proposal invocation failed; no proposals were produced"
+                    echo "$FIXED"
+                    return 1
+                fi
             fi
             ;;
     esac
@@ -1332,14 +1417,14 @@ validate_fixes() {
     # TypeScript/JavaScript check
     if ls "$TARGET"/*.ts "$TARGET"/*.tsx "$TARGET"/*.js "$TARGET"/*.jsx 2>/dev/null | head -1 >/dev/null; then
         if command -v npx &>/dev/null; then
-            npx tsc --noEmit --skipLibCheck 2>/dev/null || ERRORS=$((ERRORS + 1)) || true
+            npx tsc --noEmit --skipLibCheck 2>/dev/null || ERRORS=$((ERRORS + 1))
         fi
     fi
 
     # Python check
     if ls "$TARGET"/*.py 2>/dev/null | head -1 >/dev/null; then
         if command -v pyright &>/dev/null; then
-            pyright "$TARGET" 2>/dev/null || ERRORS=$((ERRORS + 1)) || true
+            pyright "$TARGET" 2>/dev/null || ERRORS=$((ERRORS + 1))
         fi
     fi
 
@@ -1382,7 +1467,21 @@ cmd_security_loop() {
         exit 1
     fi
 
+    # Recursion guard: `permissions.allow` contains `Bash(ralph:*)`, so an agent spawned
+    # by this loop can invoke `ralph security-loop` again. Refuse rather than fork-bomb.
+    if [ "${RALPH_SECURITY_LOOP_ACTIVE:-0}" = "1" ]; then
+        log_error "ralph security-loop is already running in this process tree; refusing to recurse."
+        log_error "An agent invoked by the loop must not start another security loop."
+        return 1
+    fi
+    export RALPH_SECURITY_LOOP_ACTIVE=1
+
     require_tool "claude" "multi-level security loop"
+
+    if [ ! -f "$SECURITY_OUTPUT_SCHEMA" ]; then
+        log_error "Missing structured-output schema: $SECURITY_OUTPUT_SCHEMA"
+        return 1
+    fi
 
     TARGET=$(validate_path "$TARGET")
     local SAFE_TARGET
@@ -1392,6 +1491,7 @@ cmd_security_loop() {
 
     local ROUND=0
     local TOTAL_FIXED=0
+    local PREV_COUNT=-1
     local START_TIME
     START_TIME=$(date +%s)
 
@@ -1413,9 +1513,9 @@ cmd_security_loop() {
 
         # Step 1: Run security audit
         log_info "[1/3] Running security audit..."
-        SAFE_TARGET=$(escape_for_shell "$TARGET")
-        claude --print -p "Use the ralph-security agent on ${SAFE_TARGET}.
-             Perform comprehensive security audit. Check for:
+        if ! run_security_agent "$RALPH_TMPDIR/security_audit_round_${ROUND}.json" \
+                ralph-security plan \
+                "Perform a comprehensive security audit of this tree. Check for:
              - SQL/Command injection (CWE-78, CWE-89)
              - Path traversal (CWE-22)
              - XSS vulnerabilities (CWE-79)
@@ -1435,15 +1535,31 @@ cmd_security_loop() {
                  \"recommendation\": \"...\"
                }],
                \"summary\": {\"total\": N, \"critical\": N, \"high\": N, \"medium\": N, \"low\": N}
-             }" \
-            > "$RALPH_TMPDIR/security_audit_round_${ROUND}.json" 2>&1 || true
+             }
+             The \`summary\` counts must equal the number of entries in \`vulnerabilities\`." \
+                --disallowedTools Edit,Write,NotebookEdit \
+                --output-format json \
+                --json-schema "$(cat "$SECURITY_OUTPUT_SCHEMA")"; then
+            print_security_audit_failed "$ROUND" "$RALPH_TMPDIR/security_audit_round_${ROUND}.json"
+            return 1
+        fi
 
         # Step 2: Parse findings
         log_info "[2/3] Parsing findings..."
         local FINDINGS
-        FINDINGS=$(parse_security_findings "$RALPH_TMPDIR/security_audit_round_${ROUND}.json")
+        if ! FINDINGS=$(parse_security_findings "$RALPH_TMPDIR/security_audit_round_${ROUND}.json"); then
+            print_security_audit_failed "$ROUND" "$RALPH_TMPDIR/security_audit_round_${ROUND}.json"
+            return 1
+        fi
         local COUNT
-        COUNT=$(echo "$FINDINGS" | jq -r '.summary.total // 0')
+        COUNT=$(echo "$FINDINGS" | jq -r '.summary.total')
+
+        # Fixes are counted from the audit delta between rounds, never from what the
+        # fixing agent was asked to do. A round that removed nothing adds nothing.
+        if [ "$PREV_COUNT" -ge 0 ] && [ "$COUNT" -lt "$PREV_COUNT" ]; then
+            TOTAL_FIXED=$((TOTAL_FIXED + PREV_COUNT - COUNT))
+        fi
+        PREV_COUNT="$COUNT"
 
         if [ "$COUNT" -eq 0 ]; then
             local END_TIME
@@ -1467,11 +1583,13 @@ cmd_security_loop() {
 
         # Step 3: Fix vulnerabilities
         log_info "[3/3] Fixing vulnerabilities (mode: $APPROVAL_MODE)..."
-        local FIXED
-        FIXED=$(fix_security_issues "$FINDINGS" "$TARGET" "$APPROVAL_MODE")
-        TOTAL_FIXED=$((TOTAL_FIXED + FIXED))
+        local ATTEMPTED
+        if ! ATTEMPTED=$(fix_security_issues "$FINDINGS" "$TARGET" "$APPROVAL_MODE" "$ROUND"); then
+            log_error "  Fix phase failed in round $ROUND"
+            return 1
+        fi
 
-        log_info "  Fixed $FIXED vulnerabilities this round"
+        log_info "  Attempted $ATTEMPTED fixes this round (verified by the next audit)"
 
         # Validate fixes before next iteration
         if ! validate_fixes "$TARGET"; then

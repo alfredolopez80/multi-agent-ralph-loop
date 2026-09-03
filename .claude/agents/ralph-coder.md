@@ -81,6 +81,13 @@ external behavior and public contracts at every step.
    reduce coupling — and run the tests after each one, not only at the end.
 4. **Explain why the new shape is simpler** in the summary. Remove more than you add.
 
+# Security Findings Hand-Off
+
+You may be given the path to a JSON findings file (validated against
+`.claude/schemas/security-output.json`). Read it and apply each finding's
+`recommendation` within the severity scope the prompt states, leaving findings
+outside that scope untouched; report the finding `id`s you fixed and those you left.
+
 # Worktree Awareness
 
 The orchestrator may pass you `WORKTREE_CONTEXT`, meaning you are working in an
