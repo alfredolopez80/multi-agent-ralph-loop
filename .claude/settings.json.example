@@ -93,6 +93,16 @@
         ]
       },
       {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/read-size-guard.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
         "matcher": "Task",
         "hooks": [
           {

@@ -81,6 +81,15 @@ HOOK_REGISTRY = {
         "version": "2.43",
         "cli_only": False,
     },
+    # === v3.2.0 Hooks ===
+    # Cost guard: unbounded Read of files > 250 lines is denied (49% of
+    # tool-result bytes over 30d came from Read without limit).
+    "read-size-guard.sh": {
+        "event": "PreToolUse",
+        "matchers": ["Read"],
+        "version": "3.2.0",
+        "cli_only": False,
+    },
     # context-warning.sh (v2.43) removed by #69 Slice E (PR9)
     "periodic-reminder.sh": {
         "event": "UserPromptSubmit",

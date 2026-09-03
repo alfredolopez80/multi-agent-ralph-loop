@@ -204,3 +204,27 @@ still to be located and fixed in a separate commit.
 - `scripts/validate-global-infrastructure.sh` (REPO_FILE source path
   changed to `rules-src/`; the validator otherwise unchanged)
 - `docs/architecture/DISTRIBUTION_POLICY.md` (this addendum)
+
+---
+
+**Addendum 2026-09-03 — halls/ and rooms/ retired (cost-optimize, lever 3).**
+
+A 30-day profile of session logs showed the always-loaded rule prefix at
+~15K tokens, with the same rule repeated up to 9 times (`umask 077` ×9,
+hook JSON format ×6, "27 anti-patterns" ×5). Every line of
+`learned-src/learned/{halls,rooms}/` (9 files, 12.5 KB, static since
+MemPalace v3.0 in April) restated a rule already loaded from `proven/`,
+from the flat `learned/*.md` files, from L1 wake-up (`db-00x`), or from
+this repo's CLAUDE.md (AAAK). The only non-duplicate line (tiktoken over
+`wc -w`) moved into `learned/architecture.md`. `security.md` carried each
+of its two entries twice (pre-`a964722` graduation) and was deduplicated.
+
+Also removed: 4 untracked, gitignored files under `.claude/rules/learned/`
+(auto-loaded as project rules, byte-identical to the global copies —
+the T62 "stays empty" invariant had drifted).
+
+The `halls/`/`rooms/` readers in `command-router.sh`, `ralph-subagent-start.sh`,
+`orchestrator-auto-learn.sh` and `orchestrator-report.sh` are all guarded by
+`[[ -d ... ]]` and only count files; they already pointed at the empty
+`.claude/rules/learned/halls` path since T62. `tests/test_learned_src_dedup.py`
+pins both invariants (no taxonomy dirs, no repeated bullets).

@@ -45,7 +45,7 @@ The authoritative registration lists are `.claude/settings.json.example` and `sc
 
 ## Memory System (MemPalace v3.0)
 
-Layers: L0 identity (`~/.ralph/layers/`) · L1 top rules (`L1_essential.md`) · L2 project taxonomy (`.claude/rules/learned/{halls,rooms}/`, on demand) · L3 vault grep (on demand). Wake-up injects ~2000 tokens — count all of it.
+Layers: L0 identity (`~/.ralph/layers/`) · L1 top rules (`L1_essential.md`) · L2 graduated rules (`.claude/learned-src/learned/*.md`, flat; the `halls/`/`rooms/` taxonomy was retired 2026-09-03 as a verbatim duplicate of `proven/` + L1) · L3 vault grep (on demand). Wake-up injects ~2000 tokens — count all of it.
 Recall on demand, never a hook (T73): `python3 scripts/memory/recall_v2.py --query "<terms>" --limit 3`.
 Storage: KG `~/Documents/Obsidian/MiVault/` · `~/.ralph/{layers,ledgers,handoffs}/`.
 Key decisions: AAAK rejected (+19.8% tokens; selection beats encoding — `docs/architecture/AAAK_LIMITATIONS_ADR_2026-04-07.md`) · dedup is by REALPATH: `learned/` ships as COPIES · strategy: `docs/architecture/DISTRIBUTION_POLICY.md`.
