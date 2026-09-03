@@ -178,15 +178,15 @@ get_file_size() {
     [ "$output" = "1" ]
 }
 
-@test "script defaults empty grep counts to zero" {
-    run grep -q 'CRITICAL=\${CRITICAL:-0}' "$RALPH_SCRIPT"
-    [ "$status" -eq 0 ]
-}
-
-@test "script sanitizes grep counts with tr" {
-    run grep -q 'grep -ci .* | tr -cd' "$RALPH_SCRIPT"
-    [ "$status" -eq 0 ]
-}
+# Removed 2026-09-03: "script defaults empty grep counts to zero" and "script
+# sanitizes grep counts with tr" asserted that scripts/ralph still contained
+# `CRITICAL=${CRITICAL:-0}` and `grep -ci ... | tr -cd`. Those lines were the
+# severity counter of the old parse_security_findings(), which counted findings
+# by grepping prose ("allow" and "below" both scored as LOW) and has been
+# replaced by a schema-validated JSON parser. The tests pinned the defect, so
+# they are deleted rather than satisfied by restoring it. The portability
+# property they were guarding (BSD vs GNU `grep -c` output) is still covered by
+# the generic `grep -c` tests above, which do not reference scripts/ralph.
 
 # ============================================================================
 # temp directory creation
