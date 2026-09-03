@@ -1,5 +1,7 @@
 # Rollback v2.79.0 → v2.78.5 - Context Monitoring System
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Date**: 2026-01-28
 **Action**: ROLLBACK
 **Status**: ✅ COMPLETED

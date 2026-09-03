@@ -58,7 +58,7 @@ mkdir -p ~/.claude/skills
 ln -sfn "$REPO/.claude/skills/$SKILL_NAME" ~/.claude/skills/$SKILL_NAME
 ```
 
-Legacy multi-platform distribution (cc-mirror, codex, ralph, agents) was removed in v3.x — the project is single-user, single-target (Claude Code), with model selection via CLI env var injection.
+Distribution is single-user, single-target (Claude Code). The model is whatever the session runs — the user picks it with `/model` or by naming it expressly; subagents inherit it. Nothing here selects or pins one.
 
 ## Security Fixes (v2.89.2)
 
@@ -68,9 +68,7 @@ Legacy multi-platform distribution (cc-mirror, codex, ralph, agents) was removed
 - 37 automated security tests in `tests/security/`
 - Threat model: `docs/security/SECURITY_MODEL_v2.89.md`
 
-## GLM-5 Integration (v2.84.1)
-
-The `--with-glm5` flag and the GLM-5 teammate scripts were removed on 2026-07-31 together with the rest of the GLM/MiniMax surface.
+There are no per-provider teammate scripts or model-selection flags: teammates run on the session's model.
 
 ## LSP Integration (v2.88.1)
 

@@ -51,13 +51,7 @@ You do the refactoring yourself with your own tools — no external CLI is requi
 4. **Verify**: Run the test suite via `Bash` after each meaningful change and
    confirm all tests still pass. Explain why the new shape is simpler.
 
-> Optional second opinion: if the `codex` CLI happens to be installed and responds,
-> you MAY ask it to review your refactor
-> (`codex exec --profile code-review "..."`). Never wait on or depend on it — if
-> `codex` is missing, rate-limited, or unauthenticated, proceed with your own
-> refactoring. Claude is always the default engine.
-
-## Worktree Awareness (v2.20)
+## Worktree Awareness
 
 ### Contexto de Ejecución
 

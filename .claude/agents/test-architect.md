@@ -45,10 +45,6 @@ You write the tests yourself. `Read` the code under test, design the test matrix
 
 Because you author and run the tests directly, results come from the `Bash` runs above — capture the pass/fail summary and coverage numbers, and confirm the suite executed a non-zero number of tests before declaring success.
 
-### Optional accelerator (never the default)
-
-If — and only if — an external CLI such as `codex` or `gemini` is already installed and the orchestrator explicitly asks for it, you may shell out to it via `Bash` as an accelerator for a first draft, then review, run, and finalize the tests yourself. This is strictly optional; the default path above requires no external dependency and is never blocked by a missing CLI.
-
 ## Coverage Requirements
 - Unit: 90%+ line coverage
 - Integration: Critical paths covered

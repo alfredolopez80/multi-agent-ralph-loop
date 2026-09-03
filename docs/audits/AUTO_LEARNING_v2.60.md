@@ -1,5 +1,7 @@
 # Auto-Learning System Audit Report v2.60
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Date**: 2026-01-22
 **Auditors**: Code Reviewer (Opus) + Security Auditor (Opus)
 **Scope**: Multi-Agent Ralph Loop v2.50-v2.58 Auto-Learning System

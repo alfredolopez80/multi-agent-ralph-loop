@@ -3,7 +3,7 @@
 # Propósito: Validar el funcionamiento del workflow /orchestrator
 #          tanto en FAST PATH como en versión completa de 12 pasos
 #
-# Herramientas: /adversarial, /codex-cli, /gemini-cli
+# Herramientas: /adversarial
 #
 # Cobertura:
 #   - FAST PATH (trivial tasks, complejidad 1-3)

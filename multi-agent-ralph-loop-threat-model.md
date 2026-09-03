@@ -90,7 +90,6 @@ Multi-Agent Ralph Loop is a CLI-based multi-agent orchestration framework built 
 - The user prompt references `sk-cp-O39X...` visible in plaintext in settings.json
 - `docs/security/SECURITY_FIX_VALIDATION_v2.91.0.md` confirms `skipDangerousModePermissionPrompt: true` was found in `~/.claude/settings.json:494` (CRIT-001)
 - Settings live only at `~/.claude/settings.json` -- any API keys in `env` blocks are stored in plaintext. (The `~/.cc-mirror/` mirrors were removed on 2026-07-31, eliminating the duplicate plaintext-key surface.)
-- The `scripts/mmc` script reads API key from `MINIMAX_API_KEY` env var or `~/.ralph/config/minimax.json` (per `docs/security/API_KEYS_AUDIT.md`)
 
 **Attack Scenario**:
 1. Settings.json contains API keys in the `env` block
@@ -102,7 +101,6 @@ Multi-Agent Ralph Loop is a CLI-based multi-agent orchestration framework built 
 - `.gitignore` excludes `.env`, `*.env`, `minimax.json`, `api_keys.json`, `secrets.json`
 - Deny list blocks `Write/Edit(**/.claude/settings.json)` in settings.json
 - `sanitize-secrets.js` PostToolUse hook redacts 20+ secret patterns from hook output
-- `scripts/mmc` uses `secure_curl()` to pass keys via file descriptor, not argv
 - `docs/security/API_KEYS_AUDIT.md` confirms no real API keys in the repository itself
 
 **Residual Risk**:

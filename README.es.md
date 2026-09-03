@@ -16,7 +16,7 @@ El sistema aborda el desafío fundamental de la programación asistida por IA: *
 
 ### Lo Que Hace
 
-- **Orquesta Múltiples Modelos de IA**: Coordina Claude (Opus/Sonnet), OpenAI Codex, Google Gemini, y MiniMax en flujos de trabajo paralelos
+- **Orquesta Múltiples Agentes**: Coordina agentes especializados en flujos de trabajo paralelos, todos sobre el modelo que ejecuta la sesión
 - **Refinación Iterativa**: Implementa el patrón "Ralph Loop" - ejecutar, validar, iterar hasta que las puertas de calidad pasen
 - **Aseguramiento de Calidad**: Puertas de calidad en 9 lenguajes (TypeScript, Python, Go, Rust, Solidity, Swift, JSON, YAML, JavaScript)
 - **Refinamiento de Especificación Adversarial**: Debate adversarial para endurecer especificaciones antes de la ejecución
@@ -27,12 +27,12 @@ El sistema aborda el desafío fundamental de la programación asistida por IA: *
 
 | Desafío | Solución Ralph |
 |---------|----------------|
-| Salida de IA varía en calidad | Debate multi-modelo vía adversarial-spec |
+| Salida de IA varía en calidad | Debate adversarial entre pasadas independientes vía adversarial-spec |
 | Un solo paso frecuentemente insuficiente | Ciclos iterativos (15-60 iteraciones) hasta VERIFIED_DONE |
 | Revisión manual es cuello de botella | Puertas de calidad automáticas + humano en decisiones críticas |
-| Límites de contexto | MiniMax (1M tokens) + Context7 MCP para documentación |
+| Límites de contexto | Preservación de contexto + Context7 MCP para documentación |
 | Pérdida de contexto en compactación | Preservación automática ledger/handoff (85-90% reducción tokens) |
-| Costos API altos | Enrutamiento optimizado (WebSearch FREE, MiniMax 8%, Opus estratégico) |
+| Trabajo redundante | Delegación a subagentes por aislamiento y paralelismo, no por coste |
 
 ---
 
@@ -223,7 +223,7 @@ El sistema aborda el desafío fundamental de la programación asistida por IA: *
    7a. CALIDAD-AUDITOR → Auditoría pragmática
    7b. GATES → Puertas de calidad (9 lenguajes)
    7c. ADVERSARIAL-SPEC → Refinamiento especificación
-   7d. ADVERSARIAL-PLAN → Validación cruzada Opus+Codex
+   7d. ADVERSARIAL-PLAN → Validación cruzada (dos pasadas independientes)
 8. RETROSPECT → Auto-mejoramiento
 ```
 
@@ -238,10 +238,10 @@ El sistema aborda el desafío fundamental de la programación asistida por IA: *
 | **14 Agentes Especializados** | 9 núcleo + 5 revisión auxiliary |
 | **Flujo de 12 Pasos** | Evaluar → Clarificar → Planificar → Ejecutar → Validar |
 | **Ejecución Paralela** | Múltiples agentes trabajan simultáneamente |
-| **Enrutamiento de Modelos** | Selección automática: Opus (crítico), Sonnet (estándar), MiniMax (extendido) |
+| **Agnóstico de Modelo** | El modelo es el que ejecuta la sesión; el usuario lo elige con `/model` o nombrándolo expresamente, y los subagentes lo heredan |
 
-**Agentes Núcleo (9)**:
-`orchestrator`, `security-auditor`, `code-reviewer`, `test-architect`, `debugger`, `refactorer`, `docs-writer`, `frontend-reviewer`, `minimax-reviewer`
+**Agentes Núcleo**:
+`orchestrator`, `security-auditor`, `code-reviewer`, `test-architect`, `debugger`, `refactorer`, `docs-writer`, `frontend-reviewer`
 
 ### Memoria Inteligente (v2.49)
 
@@ -373,30 +373,20 @@ ralph compact                   # Guardado manual (extensiones)
 
 ---
 
-## Arquitectura de Modelos
+## Política de Modelo
 
-```
-┌────────────────────────────────────────────────────────────┐
-│  PRIMARIO (Gestionado por Sonnet)  │  SECUNDARIO (8% costo)       │
-├────────────────────────────────────────────────────┼───────────────────────────────┤
-│  Claude Opus/Sonnet                │  MiniMax M2.1                │
-│  Codex GPT-5                       │  (Segunda opinión)           │
-│  Gemini 2.5 Pro                    │  (Validación independiente)  │
-├────────────────────────────────────────────────────┼───────────────────────────────┤
-│  Implementación                    │  Validación                  │
-│  Testing                           │  Detectar problemas perdidos │
-│  Documentación                     │  Calidad Opus al 8% costo    │
-└────────────────────────────────────────────────────┴───────────────────────────────┘
-```
+El sistema es **agnóstico de modelo y de proveedor**. El modelo es el que ejecuta la
+sesión: el usuario lo elige con `/model` o nombrándolo expresamente, y los subagentes lo
+heredan. Nada en el repositorio selecciona, recomienda, enruta ni fija un modelo o
+proveedor por defecto.
 
-### Optimización de Costos
+Los umbrales de complejidad disparan **proceso** (por ejemplo, Plan Mode a partir de
+complejidad 4), nunca un cambio de modelo. La delegación a subagentes se hace por
+aislamiento y paralelismo, no por coste.
 
-| Modelo | Max Iteraciones | Costo vs Claude | Caso de Uso |
-|--------|-----------------|-----------------|-------------|
-| Claude Opus | 25 | 100% | Revisión crítica, arquitectura |
-| Claude Sonnet | 25 | 60% | Implementación estándar |
-| MiniMax M2.1 | 50 | 8% | Loops extendidos, segunda opinión |
-| MiniMax-lightning | 100 | 4% | Tareas muy largas |
+Existen herramientas externas opt-in (skills `codex-cli`, `gemini-cli`, `openai-docs`;
+agente `codex-reviewer`) que se invocan **solo por nombre explícito**; nunca son una ruta
+por defecto ni un fallback automático.
 
 ---
 

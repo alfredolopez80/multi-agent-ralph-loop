@@ -1,10 +1,10 @@
 ---
 # VERSION: 3.0.0
 name: codex-cli
-description: "OpenAI Codex CLI orchestration for AI-assisted development using gpt-5.3-codex model family. Model variants: gpt-5.3-codex (medium), gpt-5.3-codex-high, gpt-5.3-codex-xhigh. Capabilities: code generation, refactoring, automated editing, parallel task execution, session management, code review, architecture analysis, and MCP integration. Actions: analyze, implement, review, fix, refactor with Codex. Keywords: Codex CLI, gpt-5.3-codex, codex exec, code generation, refactoring, parallel execution, session resume, code review, second opinion, independent review, architecture validation, Context7 MCP. Use when: delegating complex code tasks to Codex, running multi-agent workflows, executing automated reviews, implementing features with AI assistance, resuming previous sessions, querying OpenAI documentation. Triggers: 'use codex', 'codex exec', 'run with codex', 'codex resume', 'implement with codex', 'review with codex', 'codex docs'."
+description: "Explicit opt-in tool: drives the OpenAI Codex CLI. Use ONLY when the user asks for Codex by name. Never a default, a fallback, or an automatic second opinion. Triggers: 'use codex', 'codex exec', 'run with codex', 'codex resume', 'implement with codex', 'review with codex', 'codex docs'."
 ---
 
-# Codex CLI Integration Skill (v2.37)
+# Codex CLI Integration Skill
 
 ## v2.89 Key Changes (GPT-5.3-CODEX FAMILY)
 
@@ -41,7 +41,7 @@ Codex orchestration should feel inevitable: minimal risk, maximum clarity.
 - **Iterate Relentlessly**: Re-run with refined prompts.
 - **Simplify Ruthlessly**: Reduce noise and scope.
 
-# Codex CLI Integration Skill (v2.37)
+# Codex CLI Integration Skill
 
 This skill enables Claude to orchestrate OpenAI's Codex CLI (v0.79+) with the **gpt-5.3-codex** model for code generation, review, analysis, and automated editing. Includes Context7 MCP integration for documentation access.
 
@@ -76,7 +76,7 @@ codex  # Interactive login via ChatGPT account
 
 | Model | Reasoning | Use Case |
 |-------|-----------|----------|
-| `gpt-5.3-codex` | medium | Default, fast code tasks (recommended) |
+| `gpt-5.3-codex` | medium | Fast code tasks |
 | `gpt-5.3-codex-high` | high | Complex analysis, security review |
 | `gpt-5.3-codex-xhigh` | xhigh | Architecture design, critical decisions |
 | `o3` | - | Highest reasoning capability |

@@ -1,5 +1,7 @@
 # Claude-Mem Hooks Fix - CLAUDE_PLUGIN_ROOT Path Resolution
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 > **Issue**: Bun cannot resolve `${CLAUDE_PLUGIN_ROOT}` correctly when used as part of a path argument
 > **Affected**: claude-mem plugin v9.0.10 (and likely earlier/later versions)
 > **Fixed**: 2026-01-28

@@ -1,5 +1,7 @@
 # Plan de Correcciones - Validación Codex-CLI
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Fecha**: 2026-01-26
 **Puntuación Inicial**: 5.8/10 (Below target)
 **Objetivo**: 7+/10

@@ -1,5 +1,7 @@
 # CLAUDE.md Drift Report — 2026-04-07
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Wave**: W1.5 — drift-correction (ralph-reviewer-alpha)
 **Branch**: feat/mempalace-adoption
 **Audited**: 2026-04-07

@@ -1,11 +1,11 @@
 #!/bin/bash
-# statusline-ralph.sh - Enhanced StatusLine with Git + Ralph Progress + GLM Usage + Context Info
+# statusline-ralph.sh - Enhanced StatusLine with Git + Ralph Progress + Context Info
 #
 # VERSION: 2.82.0
 #
 # CHANGELOG v2.82.0:
 # - Model-adaptive display: detects active model via stdin JSON (.model.display_name)
-# - Provider badge: ZAI (glm-*), CLD (Claude native)
+# - Model badge: whatever model the session reports
 # - Each provider gets distinct color + icon for instant identification
 # - Claude-hud output adapted per provider (suppressed when unavailable)
 # - Detection: .model.display_name > ANTHROPIC_MODEL env > fallback
@@ -55,7 +55,6 @@
 #
 # Extends statusline-git.sh with orchestration progress tracking.
 # Reads plan-state.json to show current phase and step completion.
-# Shows GLM Coding Plan usage (5-hour + monthly MCP).
 #
 # Format: ⎇ branch* │ [claude-hud 🤖 ████░░░░░ cumulative] │ CtxUse: 0k/200k (0%) │ ⏱️ 1% (~5h) │ 📊 3/7 42%
 #
@@ -92,38 +91,12 @@ DIM=$(ansi_dim)
 RESET=$(ansi_reset)
 
 # ============================================
-# Model / Provider Detection (v2.82.0)
+# Model Display
 # ============================================
-
-# Detect active provider from model display name
-# Returns: provider_id (zai|mmx|cld), provider_label, provider_color
-detect_provider() {
-    local model_name="$1"
-    local provider_id="cld"
-    local provider_label="CLD"
-    local provider_icon="◆"
-    local provider_color="$GREEN"
-
-    if [[ "$model_name" == glm* ]]; then
-        provider_id="zai"
-        provider_label="ZAI"
-        provider_icon="◆"
-        provider_color="$CYAN"
-    elif [[ "$model_name" == claude* ]]; then
-        # Claude native models — always CLD provider
-        provider_id="cld"
-        provider_label="CLD"
-        provider_icon="◆"
-        provider_color="$GREEN"
-    elif [[ -n "${ANTHROPIC_MODEL:-}" ]] && [[ "${ANTHROPIC_MODEL}" == glm* ]]; then
-        provider_id="zai"
-        provider_label="ZAI"
-        provider_icon="◆"
-        provider_color="$CYAN"
-    fi
-
-    printf '%s\t%s\t%s\t%s' "$provider_id" "$provider_label" "$provider_icon" "$provider_color"
-}
+#
+# The statusline REPORTS the model the session is actually running; it never
+# classifies it into a provider brand. The old provider table (zai/mmx/cld)
+# hard-coded a provider taxonomy that no longer exists.
 
 # ============================================
 # Context Display Functions (v2.77.0)
@@ -287,21 +260,6 @@ get_git_info() {
     fi
 
     printf '%b\n' "$git_output"
-}
-
-# ============================================
-# GLM Usage Functions
-# ============================================
-
-get_glm_plan_usage() {
-    local cache_manager="${PROJECT_ROOT:-$(pwd)}/.claude/scripts/glm-usage-cache-manager.sh"
-    if [[ ! -f "$cache_manager" ]]; then
-        cache_manager="${HOME}/.ralph/scripts/glm-usage-cache-manager.sh"
-    fi
-
-    if [[ -f "$cache_manager" ]]; then
-        "$cache_manager" get-statusline 2>/dev/null || echo ""
-    fi
 }
 
 # ============================================
@@ -522,21 +480,14 @@ stdin_data=$(cat)
 cwd=$(echo "$stdin_data" | jq -r '.cwd // "."' 2>/dev/null || echo ".")
 
 # ============================================
-# v2.82.0: Detect active model/provider
+# Report the session's model
 # ============================================
 model_display_name=$(echo "$stdin_data" | jq -r '.model.display_name // ""' 2>/dev/null)
-provider_info=$(detect_provider "$model_display_name")
-provider_id=$(echo "$provider_info" | cut -f1)
-provider_label=$(echo "$provider_info" | cut -f2)
-provider_icon=$(echo "$provider_info" | cut -f3)
-provider_color=$(echo "$provider_info" | cut -f4)
 
-# Build provider badge: ◆ ZAI glm-5.1
+# Build the model badge from whatever model the session reports.
 provider_badge=""
 if [[ -n "$model_display_name" ]]; then
-    provider_badge="${provider_color}${provider_icon} ${provider_label}${RESET} ${DIM}${model_display_name}${RESET}"
-else
-    provider_badge="${provider_color}${provider_icon} ${provider_label}${RESET}"
+    provider_badge="${GREEN}◆${RESET} ${DIM}${model_display_name}${RESET}"
 fi
 
 # ============================================
@@ -633,9 +584,6 @@ fi
 # Get git info
 git_info=$(get_git_info "$cwd")
 
-# Get GLM Coding Plan usage
-glm_plan_usage=$(get_glm_plan_usage)
-
 # Get ralph progress
 ralph_progress=$(get_ralph_progress "$cwd")
 
@@ -696,14 +644,6 @@ if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
         fi
     fi
 
-    if [[ -n "$glm_plan_usage" ]]; then
-        if [[ -n "$combined_segment" ]]; then
-            combined_segment="${combined_segment} │ ${glm_plan_usage}"
-        else
-            combined_segment="${glm_plan_usage}"
-        fi
-    fi
-
     # Note: ralph_progress is intentionally NOT concatenated into combined_segment.
     # It gets its OWN line below to avoid truncation in narrow terminals (~80 cols).
     # The statusline can have 3 lines: combined_segment, ralph_progress, hud_output.
@@ -734,10 +674,10 @@ if [[ -n "$claude_hud_dir" ]] && [[ -f "${claude_hud_dir}dist/index.js" ]]; then
         echo "$hud_output"
     fi
 else
-    # Fallback: show provider badge, git info, context, GLM usage, and progress
-    if [[ -n "$provider_badge" ]] || [[ -n "$git_info" ]] || [[ -n "$context_cumulative_display" ]] || [[ -n "$context_current_display" ]] || [[ -n "$glm_plan_usage" ]] || [[ -n "$ralph_progress" ]]; then
+    # Fallback: show model badge, git info, context, and progress
+    if [[ -n "$provider_badge" ]] || [[ -n "$git_info" ]] || [[ -n "$context_cumulative_display" ]] || [[ -n "$context_current_display" ]] || [[ -n "$ralph_progress" ]]; then
         fallback=""
-        # Provider badge first (v2.82.0)
+        # Model badge first
         [[ -n "$provider_badge" ]] && fallback="$provider_badge"
         if [[ -n "$git_info" ]] && [[ -n "$fallback" ]]; then
             fallback="${fallback} │ ${git_info}"
@@ -753,11 +693,6 @@ else
         if [[ -n "$context_current_display" ]]; then
             [[ -n "$fallback" ]] && fallback="${fallback} │ "
             fallback="${fallback}${context_current_display}"
-        fi
-
-        if [[ -n "$glm_plan_usage" ]]; then
-            [[ -n "$fallback" ]] && fallback="${fallback} │ "
-            fallback="${fallback}${glm_plan_usage}"
         fi
 
         # Plan progress on its OWN line (no concat, avoids 80-col truncation)

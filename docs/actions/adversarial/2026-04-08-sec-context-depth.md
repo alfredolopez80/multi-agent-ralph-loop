@@ -1,5 +1,7 @@
 # Security Context-Depth Analysis
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Date**: 2026-04-08
 **Methodology**: 5-Depth Context-Depth Analysis (Surface, Logic, Context, Supply Chain, Temporal)
 **Auditor**: ralph-adversarial

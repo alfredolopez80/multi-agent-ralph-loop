@@ -1,7 +1,7 @@
 ---
 # VERSION: 3.1.0
 name: codex-reviewer
-description: "Code review specialist that prefers Codex CLI when available and falls back to a Claude-native review when it is not — so the agent always produces a review."
+description: "Explicit opt-in code reviewer that drives the Codex CLI. Use ONLY when the user asks for a Codex review by name — never as a default reviewer, an automatic second opinion, or a fallback. For ordinary reviews use ralph-reviewer or security-auditor."
 tools: Bash, Read
 ---
 

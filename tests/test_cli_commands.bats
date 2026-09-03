@@ -19,9 +19,7 @@ setup() {
     mkdir -p "$TEST_HOME" "$BIN_DIR" "$TARGET_DIR"
     echo "test" > "$TARGET_DIR/file.txt"
 
-    # Minimal MiniMax config to avoid skip paths
     mkdir -p "$TEST_HOME/.ralph/config"
-    echo '{"api_key":"stub"}' > "$TEST_HOME/.ralph/config/minimax.json"
 
     # Minimal quality gates hook
     mkdir -p "$TEST_HOME/.claude/hooks"
@@ -217,9 +215,13 @@ run_cli() {
 @test "cmd_pre_merge function exists" { grep -qE "^cmd_pre_merge\(\)" "$RALPH_SCRIPT"; }
 @test "cmd_integrations function exists" { grep -qE "^cmd_integrations\(\)" "$RALPH_SCRIPT"; }
 @test "cmd_uninstall function exists" { grep -qE "^cmd_uninstall\(\)" "$RALPH_SCRIPT"; }
-@test "cmd_websearch function exists" { grep -qE "^cmd_websearch\(\)" "$RALPH_SCRIPT"; }
-@test "cmd_image function exists" { grep -qE "^cmd_image\(\)" "$RALPH_SCRIPT"; }
-@test "cmd_minimax function exists" { grep -qE "^cmd_minimax\(\)" "$RALPH_SCRIPT"; }
+# cmd_websearch / cmd_image / cmd_minimax were provider commands: they drove a
+# named provider's API or MCP tools. The repo is provider-agnostic, so they are
+# gone. Web research goes through the session's own WebSearch/WebFetch and images
+# through Read.
+@test "no provider-bound commands remain" {
+    ! grep -qE "^cmd_(websearch|image|minimax|glm|mmc)\(\)" "$RALPH_SCRIPT"
+}
 @test "cmd_improvements function exists" { grep -qE "^cmd_improvements\(\)" "$RALPH_SCRIPT"; }
 # cmd_status was removed in #42: it dispatched to ~/.claude/scripts/ralph-status.sh,
 # absent from this repository, so the command could only ever fail. `status` now reaches
@@ -263,9 +265,9 @@ run_cli() {
     [[ "$output" == *"ralph refactor"* ]]
 }
 
-@test "help lists minimax" {
+@test "help names no model or provider" {
     run_cli help
-    [[ "$output" == *"minimax"* ]] || [[ "$output" == *"MiniMax"* ]] || [[ "$output" == *"MINIMAX"* ]]
+    ! grep -qiE 'minimax|glm|z\.ai|zai|opus|sonnet|haiku|gpt-[0-9]' <<< "$output"
 }
 
 @test "help lists library and browse" {
@@ -279,10 +281,12 @@ run_cli() {
     [[ "$output" == *"ralph ast"* ]]
 }
 
-@test "help lists websearch and image" {
+@test "help does not advertise the removed provider commands" {
     run_cli help
-    [[ "$output" == *"ralph websearch"* ]]
-    [[ "$output" == *"ralph image"* ]]
+    [[ "$output" != *"ralph websearch"* ]]
+    [[ "$output" != *"ralph image"* ]]
+    [[ "$output" != *"ralph glm"* ]]
+    [[ "$output" != *"ralph mmc"* ]]
 }
 
 @test "help lists retrospective and improvements" {
@@ -472,11 +476,6 @@ run_cli() {
 @test "cmd_image basic invocation" {
     # image command removed in v2.87+ skills migration
     skip "image command deprecated"
-}
-
-@test "cmd_minimax basic invocation" {
-    run_cli minimax "test query"
-    [ "$status" -eq 0 ]
 }
 
 @test "cmd_improvements basic invocation" {

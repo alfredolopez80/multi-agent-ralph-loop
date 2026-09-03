@@ -1,5 +1,7 @@
 # Comparación de Skills Adversariales
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 ## Resumen Ejecutivo
 
 | Aspecto | `/adversarial` | `/adversarial-code-analyzer` |

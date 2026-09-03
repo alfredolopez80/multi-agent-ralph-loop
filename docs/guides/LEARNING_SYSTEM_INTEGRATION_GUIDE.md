@@ -139,8 +139,8 @@ ls -l ~/.ralph/curator/scripts/
 
 3. **Verify hooks are registered**:
 ```bash
-grep "learning-gate" ~/.claude-sneakpeek/zai/config/settings.json
-grep "rule-verification" ~/.claude-sneakpeek/zai/config/settings.json
+grep "learning-gate" ~/.claude/settings.json
+grep "rule-verification" ~/.claude/settings.json
 ```
 
 4. **Check learning state**:
@@ -460,7 +460,7 @@ gh auth login
 **Solution**:
 ```bash
 # Verify registration
-grep "learning-gate" ~/.claude-sneakpeek/zai/config/settings.json
+grep "learning-gate" ~/.claude/settings.json
 
 # Check file exists
 ls -l ~/.claude/hooks/learning-gate.sh

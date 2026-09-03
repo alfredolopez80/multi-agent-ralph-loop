@@ -1,5 +1,7 @@
 # Resumen: Getting Started with Codex (OpenAI)
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 ## 📋 Información General
 - **Video**: Getting started with Codex - Tutorial oficial de OpenAI
 - **Fecha**: Enero 2025

@@ -170,10 +170,10 @@ $changed_files
 
 **YOU MUST NOW EXECUTE ONE OF:**
 
-Option 1 - Use codex-reviewer agent (RECOMMENDED):
+Option 1 - Use ralph-reviewer agent (RECOMMENDED):
 \`\`\`yaml
 Task:
-  subagent_type: "codex-reviewer"
+  subagent_type: "ralph-reviewer"
   prompt: |
     Review the recent changes for quality issues:
     - Runtime errors (exceptions, null checks)

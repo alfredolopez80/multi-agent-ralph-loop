@@ -83,16 +83,6 @@ check_dependencies() {
         fi
     done
     
-    # Check API keys (if config exists)
-    if [ -f "${RALPH_DIR}/config/glm.json" ]; then
-        if jq -e '.api_key' "${RALPH_DIR}/config/glm.json" &>/dev/null; then
-            log_success "API Key de GLM-4.7 configurada"
-            CHECKS_PASSED=$((CHECKS_PASSED+1))
-        else
-            log_warn "API Key de GLM-4.7 no configurada"
-            WARNINGS=$((WARNINGS+1))
-        fi
-    fi
 }
 
 #==============================================================================

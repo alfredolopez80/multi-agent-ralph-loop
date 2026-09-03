@@ -1,5 +1,7 @@
 # Codex CLI Review Report - Swarm Mode Integration v2.81.1
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Date**: 2026-01-30
 **Version**: v2.81.1
 **Review Type**: Code Quality and Best Practices

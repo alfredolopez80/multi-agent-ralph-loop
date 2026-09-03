@@ -14,10 +14,10 @@ This document defines the distribution strategy for Ralph infrastructure files. 
 |-----------|----------|---------------|
 | Rules (~/.claude/rules/) | **COPY** (top-level + `learned/`); `proven/` is global-only | The 7 top-level rules are header-stamped copies synced from the repo; `learned/` is copied by `rsync -a --delete`; `proven/` (15 files) exists only globally and has no repo source. |
 | Hooks (~/.claude/hooks/) | **SYMLINK** (directory-level) | `~/.claude/hooks` is a symlink to the repo's `.claude/hooks`, and 73 of 79 registrations in settings.json point into the repo by absolute path — hooks therefore REQUIRE the repo checkout (measured 2026-08-25). |
-| Agent Definitions (~/.claude/agents/) | **SYMLINK**, except the Claude-native set → **COPY** | Symlinked by design. EXCEPTION: the Codex→Claude review/bug agents are COPIED (see below) so a stale/moved repo checkout cannot resurrect their old Codex-dependent version. Measured 2026-08-25: 26 symlinks + 10 copies. |
-| Skills (~/.claude/skills/) | **MIXED — mostly COPY** | Key skills are copied by design (task-classifier, curator) and the Codex→Claude `bugs`/`security` skills are COPIED (see below) — but today the majority are copies: of 61 skills in the repo, only 11 are installed as symlinks (measured 2026-08-25). The earlier "others symlinked" description was inverted. |
+| Agent Definitions (~/.claude/agents/) | **SYMLINK**, except the self-contained set → **COPY** | Symlinked by design. EXCEPTION: the review/bug agents that must not depend on any external CLI are COPIED (see below) so a stale/moved repo checkout cannot resurrect a version that did. Measured 2026-08-25: 26 symlinks + 10 copies. |
+| Skills (~/.claude/skills/) | **MIXED — mostly COPY** | Key skills are copied by design (task-classifier, curator) and the self-contained `bugs`/`security` skills are COPIED (see below) — but today the majority are copies: of 61 skills in the repo, only 11 are installed as symlinks (measured 2026-08-25). The earlier "others symlinked" description was inverted. |
 | Layer Files (~/.ralph/layers/) | **COPY** | Must work without repo. Updated by wake-up hook. |
-| Settings.json | **SINGLE** | ~/.claude/settings.json is the ONLY config. All models use this. |
+| Settings.json | **SINGLE** | ~/.claude/settings.json is the ONLY config, whatever model the session runs. |
 
 ## Copy Rules
 
@@ -47,29 +47,29 @@ bash scripts/validate-global-infrastructure.sh --fix
 
 ## Skills Distribution
 
-Skills are distributed to 6 platform directories:
+Skills are distributed to 4 platform directories:
 - ~/.claude/skills/<name>
 - ~/.codex/skills/<name>
 - ~/.ralph/skills/<name>
-- ~/.cc-mirror/zai/config/skills/<name>
-- ~/.cc-mirror/minimax/config/skills/<name>
 - ~/.config/agents/skills/<name>
 
-Key skills (task-classifier, curator, orchestrator) are COPIED to all 6.
+(The two `~/.cc-mirror/` skill directories were removed on 2026-07-31.)
+
+Key skills (task-classifier, curator, orchestrator) are COPIED to all 4.
 Measured in `~/.claude/skills` (2026-08-25): of 61 repo skills, 11 are symlinks
 and the rest are copies — the earlier "other skills are symlinked" description
 was inverted.
 
-## Claude-native Agents/Skills — COPY exception (Codex→Claude set)
+## Self-contained Agents/Skills — COPY exception
 
 **Why:** the agents symlink resolves through the repo checkout. When that checkout is behind
 the merged `main` (or moved), the symlink silently serves STALE content — which for these
-files means the OLD Codex-dependent version could come back to life. These files are
-correctness-critical: they must ALWAYS be the Claude-native version regardless of repo state.
-A COPY guarantees that. To keep copies from drifting SILENTLY (the inverse failure), a parity
-`--check` makes drift loud.
+files means an older version that required an external CLI could come back to life. These
+files are correctness-critical: they must ALWAYS be the self-contained version that runs on
+the session's own model, regardless of repo state. A COPY guarantees that. To keep copies
+from drifting SILENTLY (the inverse failure), a parity `--check` makes drift loud.
 
-**Set** (from PR #31's Codex→Claude conversion):
+**Set** (from PR #31's conversion to self-contained agents):
 - Agents (10): `debugger`, `refactorer`, `docs-writer`, `test-architect`, `frontend-reviewer`,
   `security-auditor`, `ralph-security`, `orchestrator`, `codex-reviewer`, `adversarial-plan-validator`
 - Skills (2): `bugs`, `security`
@@ -86,12 +86,14 @@ bash scripts/install-claude-native-agents.sh --check
 
 `validate-global-infrastructure.sh` excludes this set from the symlink checks and delegates
 their parity to the installer; its `--fix` RE-SYNCS the copies rather than reverting them to
-symlinks. `codex-cli` / `openai-docs` are out of scope (Codex by nature).
+symlinks. The opt-in external-CLI skills (`codex-cli`, `gemini-cli`, `openai-docs`) are out
+of scope: they exist only to drive a named external tool the user invokes explicitly, and
+are never a default or fallback route.
 
 ## Configuration
 
 **PRIMARY SETTINGS**: `~/.claude/settings.json`
-- This is the ONLY settings file for all models (Claude, Zai, Minimax)
+- This is the ONLY settings file, whatever model the session runs
 - All hooks, agents, and configuration are registered here
 
 ---

@@ -373,11 +373,9 @@ def test_auto_007_comprehensive_summary():
     registration_checks = {}
     if auto_mode_setter_exists:
         registration_checks["auto-mode-setter.sh in settings.json"] = (
-            (Path.home() / ".claude-sneakpeek" / "zai" / "config" / "settings.json").exists() and
-            "auto-mode-setter.sh" in (Path.home() / ".claude-sneakpeek" / "zai" / "config" / "settings.json").read_text()
-        ) or (
-            (Path.home() / ".claude" / "settings.json").exists() and
-            "auto-mode-setter.sh" in (Path.home() / ".claude" / "settings.json").read_text()
+            (Path.home() / ".claude" / "settings.json").exists()
+            and "auto-mode-setter.sh"
+            in (Path.home() / ".claude" / "settings.json").read_text()
         )
     # Note: If auto-mode-setter.sh doesn't exist, we skip the check (optional hook)
 

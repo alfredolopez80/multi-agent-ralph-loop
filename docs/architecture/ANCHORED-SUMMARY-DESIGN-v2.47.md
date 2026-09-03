@@ -1,5 +1,7 @@
 # Anchored Summary Design - v2.47
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 ## Concepto
 
 El **Anchored Summary** es un resumen estructurado que "ancla" información crítica para que persista a través de compactaciones de contexto. A diferencia de un resumen genérico, está diseñado específicamente para:

@@ -1,5 +1,7 @@
 # Claude-Sneakpeek StatusLine Integration Guide
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 > **Version**: 2.74.10
 > **Date**: 2026-01-27
 > **Claude-Sneakpeek**: https://github.com/mikekelly/claude-sneakpeek

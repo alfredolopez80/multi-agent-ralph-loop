@@ -1,5 +1,7 @@
 # Hook Consolidation Analysis — W4.2
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Date**: 2026-04-07
 **Wave**: W4.2 — hook-consolidation
 **Branch**: feat/mempalace-adoption

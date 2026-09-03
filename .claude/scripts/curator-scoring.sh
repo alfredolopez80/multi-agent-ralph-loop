@@ -2,7 +2,7 @@
 # Repo Curator Scoring Script v2.84.2
 # Scores candidate repositories based on quality metrics AND context relevance
 #
-# Usage: curator-scoring.sh --input <file> --output <file> [--tier <tier>] [--context <keywords]
+# Usage: curator-scoring.sh --input <file> --output <file> [--context <keywords>]
 #
 # v2.84.2: SECURITY FIX - Sanitize owner/repo names to prevent URL injection
 
@@ -18,7 +18,6 @@ LOGS_DIR="${CURATOR_DIR}/logs"
 # Default values
 INPUT_FILE=""
 OUTPUT_FILE=""
-TIER="economic"
 VERBOSE=false
 CONTEXT_KEYWORDS=""
 
@@ -54,10 +53,6 @@ parse_args() {
                 OUTPUT_FILE="$2"
                 shift 2
                 ;;
-            --tier)
-                TIER="$2"
-                shift 2
-                ;;
             --verbose|-v)
                 VERBOSE=true
                 shift
@@ -87,7 +82,6 @@ Usage: $(basename "$0") [OPTIONS]
 Options:
   --input <file>      Input JSON file with candidates (required)
   --output <file>     Output JSON file for scored repos (required)
-  --tier <tier>       Pricing tier: free, economic, full (default: economic)
   --context <keywords> Comma-separated keywords for relevance scoring (v2.55)
   --verbose, -v       Verbose output
   --help, -h          Show this help
@@ -99,7 +93,6 @@ Context Relevance Scoring (v2.55):
   - -1 point if no description or irrelevant description
 
 Examples:
-  $(basename "$0") --input candidates.json --output scored.json --tier free
   $(basename "$0") --input candidates.json --output scored.json --context "error handling,retry,resilience"
 EOF
 }

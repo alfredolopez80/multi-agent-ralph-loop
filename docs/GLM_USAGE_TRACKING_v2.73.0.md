@@ -1,5 +1,7 @@
 # GLM Usage Tracking v2.73.0 - Implementation Complete
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 ## Overview
 
 Sistema completo de tracking de uso para Z.AI GLM Coding Plan integrado en la statusline de Ralph.

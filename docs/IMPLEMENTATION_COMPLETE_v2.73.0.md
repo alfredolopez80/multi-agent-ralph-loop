@@ -1,5 +1,7 @@
 # ✅ GLM Usage Tracking - Implementación Completada v2.73.0
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Fecha**: 2026-01-27
 **Estado**: ✅ Producción activa en statusline
 

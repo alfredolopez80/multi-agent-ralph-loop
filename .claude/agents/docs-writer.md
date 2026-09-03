@@ -47,11 +47,7 @@ You write the documentation yourself. Read the relevant source with `Read`, cros
 2. Add comprehensive JSDoc/docstring comments to public functions, classes, and modules — describing intent, parameters, return values, and error conditions.
 3. Apply the edits directly with `Write` (or `Edit` for surgical changes), preserving existing behavior — comments only, no logic changes.
 
-### Optional accelerator (never the default)
-
-If — and only if — an external CLI such as `gemini` or `codex` is already installed and the orchestrator explicitly asks for it, you may shell out to it via `Bash` as an accelerator for a first draft, then review and finalize it yourself. This is strictly optional; the default path above requires no external dependency and is never blocked by a missing CLI.
-
-## Worktree Awareness (v2.20)
+## Worktree Awareness
 
 ### Contexto de Ejecución
 

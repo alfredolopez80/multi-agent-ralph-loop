@@ -1,5 +1,7 @@
 # Adversarial Improvement Plan: MARL vs Everything-Claude-Code
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Version**: 1.0.0
 **Date**: 2026-01-23
 **Analysis Source**: https://github.com/affaan-m/everything-claude-code (21k+ stars)

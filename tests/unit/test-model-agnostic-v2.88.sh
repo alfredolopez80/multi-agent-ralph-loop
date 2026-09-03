@@ -78,21 +78,30 @@ test_skills_no_flags() {
         $VERBOSE && grep -r "argument-hint.*--mmc" "$REPO_ROOT/.claude/skills" 2>/dev/null || true
     fi
 
-    # Exception: /glm5 and /glm5-parallel skills are allowed to reference GLM-5
-    print_test "/glm5 skill exists for specific GLM-5 evaluations"
-    if [[ -f "$REPO_ROOT/.claude/skills/glm5/SKILL.md" ]]; then
+    # No skill may be a provider-routing skill. The four provider tools that
+    # remain (codex-cli, gemini-cli, openai-docs, codex-reviewer) are explicit
+    # opt-in and must be invoked by name, never wired into a route.
+    print_test "No provider-routing skills (glm5, glm5-parallel, minimax) exist"
+    local provider_skills=0
+    for sk in glm5 glm5-parallel minimax mmc; do
+        [[ -d "$REPO_ROOT/.claude/skills/$sk" ]] && provider_skills=$((provider_skills + 1))
+    done
+    if [[ "$provider_skills" -eq 0 ]]; then
         pass
     else
-        warn
-        echo -e "  ${YELLOW}⚠ /glm5 skill not found (optional)${NC}"
+        fail
+        echo -e "  ${RED}✗ Found $provider_skills provider-routing skill(s)${NC}"
     fi
 
-    print_test "/glm5-parallel skill exists for specific GLM-5 evaluations"
-    if [[ -f "$REPO_ROOT/.claude/skills/glm5-parallel/SKILL.md" ]]; then
+    print_test "No skill routes to a provider by default"
+    local default_routes=$(grep -rlE 'PRIMARY.*(GLM|MiniMax|Codex|Gemini)|fallback to (MiniMax|GLM|Codex|Gemini)' \
+        "$REPO_ROOT/.claude/skills" 2>/dev/null | wc -l | tr -d ' ')
+    if [[ "$default_routes" -eq 0 ]]; then
         pass
     else
-        warn
-        echo -e "  ${YELLOW}⚠ /glm5-parallel skill not found (optional)${NC}"
+        fail
+        echo -e "  ${RED}✗ Found $default_routes skill(s) routing to a provider by default${NC}"
+        $VERBOSE && grep -rlE 'PRIMARY.*(GLM|MiniMax|Codex|Gemini)|fallback to (MiniMax|GLM|Codex|Gemini)' "$REPO_ROOT/.claude/skills" 2>/dev/null || true
     fi
 }
 
@@ -200,14 +209,14 @@ test_skills_frontmatter() {
         echo -e "  ${RED}✗ orchestrator still has --with-glm5${NC}"
     fi
 
-    # Check loop skill
-    print_test "loop SKILL.md has correct frontmatter"
-    local loop_hint=$(grep "^argument-hint:" "$REPO_ROOT/.claude/skills/loop/SKILL.md" 2>/dev/null || echo "")
+    # Check iterate skill (renamed from loop)
+    print_test "iterate SKILL.md has correct frontmatter"
+    local loop_hint=$(grep "^argument-hint:" "$REPO_ROOT/.claude/skills/iterate/SKILL.md" 2>/dev/null || echo "")
     if echo "$loop_hint" | grep -qv "\-\-with-glm5"; then
         pass
     else
         fail
-        echo -e "  ${RED}✗ loop still has --with-glm5${NC}"
+        echo -e "  ${RED}✗ iterate still has --with-glm5${NC}"
     fi
 
     # Skills should have v2.88 version
@@ -234,13 +243,15 @@ test_skills_frontmatter() {
 test_scripts_model_agnostic() {
     print_header "Test 5: Scripts - Model-Agnostic Validation"
 
-    # glm5-teammate.sh is allowed to be GLM-5 specific
-    print_test "glm5-teammate.sh exists (GLM-5 specific, allowed)"
-    if [[ -f "$REPO_ROOT/.claude/scripts/glm5-teammate.sh" ]]; then
+    # No provider-specific teammate scripts: teammates run on the session model.
+    print_test "No provider-specific teammate scripts exist"
+    local provider_scripts=$(find "$REPO_ROOT/.claude/scripts" -maxdepth 1 \
+        \( -name 'glm*' -o -name 'minimax*' -o -name 'mmc*' \) 2>/dev/null | wc -l | tr -d ' ')
+    if [[ "$provider_scripts" -eq 0 ]]; then
         pass
     else
-        warn
-        echo -e "  ${YELLOW}⚠ glm5-teammate.sh not found${NC}"
+        fail
+        echo -e "  ${RED}✗ Found $provider_scripts provider-specific script(s)${NC}"
     fi
 
     # Check for any remaining --with-glm5 in shell scripts (excluding glm5-specific)
@@ -279,7 +290,7 @@ print_summary() {
     echo "  • Skills: No --with-glm5 or --mmc flags"
     echo "  • Agents: No hardcoded model: field"
     echo "  • Model configured in ~/.claude/settings.json"
-    echo "  • /glm5 and /glm5-parallel allowed for specific evaluations"
+    echo "  • Provider CLIs (codex/gemini) are explicit opt-in only, never a route"
 
 
 # T94: zero-tests guard — fail loud when no assertion ran. Without

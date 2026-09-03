@@ -25,7 +25,7 @@ Execute tasks iteratively with automatic quality validation until VERIFIED_DONE 
 
 - **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
 - **No flags required**: Iterations use the configured default model
-- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Flexible**: Model-agnostic — runs on whatever model the session runs
 - **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
 ## v2.87 Key Changes (UNIFIED SKILLS MODEL)
@@ -78,34 +78,21 @@ Use `/iterate` when:
 
 ## Iteration Limits
 
-| Model | Max Iterations | Cost vs Claude | Quality | Use Case |
-|-------|----------------|----------------|---------|----------|
-| Claude (Sonnet/Opus) | **15** | 100% (baseline) | 85-90% SWE-bench | Complex reasoning, high accuracy |
-| GLM-5 | **30** | ~10% | 80%+ SWE-bench | Standard tasks (2x multiplier) |
-| MiniMax M2.1 | **30** | ~8% | 74% SWE-bench | Standard tasks (2x multiplier) |
+The loop runs **15 iterations** by default. Raise it only when the task genuinely needs
+more passes, and say why in the plan.
 
-## Model Selection
-
-### Default Mode (Claude)
+The loop runs on whatever model the session runs; subagents inherit it. If the user wants
+a different model, they pick it with `/model` or name it in the request.
 
 ```bash
 ralph iterate "implement OAuth2 authentication"
 ```
 
-Uses Claude Sonnet with **15 iteration limit**:
-- Best for: Complex features, security-critical code, architectural changes
-- Cost: Standard Claude pricing
-- Quality: 85%+ SWE-bench accuracy
-
 ## CLI Execution
 
 ```bash
-# Claude mode (15 iterations)
+# Default (15 iterations)
 ralph iterate "implement user authentication with JWT"
-
-# GLM-5 mode (30 iterations)
-
-# MiniMax mode (30 iterations)
 
 # Complex task with specific requirements
 ralph iterate "add rate limiting to API endpoints with Redis"
@@ -118,7 +105,6 @@ ralph iterate "add rate limiting to API endpoints with Redis"
 ```yaml
 Task:
   subagent_type: "general-purpose"
-  model: "sonnet"
   run_in_background: true
   max_iterations: 15
   description: "Loop execution with swarm mode"
@@ -292,7 +278,7 @@ tail -f ~/.ralph/logs/iterate-latest.log
 
 ```bash
 iteration=0
-max_iterations=15  # or 30 for GLM-5/MiniMax
+max_iterations=15
 
 while [[ $iteration -lt $max_iterations ]]; do
     # Step 1: EXECUTE

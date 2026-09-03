@@ -1,5 +1,7 @@
 # Contexto Visible en Zai - Configuración Específica v2.91.1
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 ## Resumen
 
 Se ha implementado una solución diferenciada para **Zai** que utiliza `systemMessage` para hacer visible el contexto en el chat, mientras que **Claude estándar** continúa con su configuración original.

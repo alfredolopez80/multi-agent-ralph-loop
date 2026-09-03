@@ -1,5 +1,7 @@
 # Promptify Integration for Multi-Agent Ralph Loop
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Version**: 1.0.0
 **Status**: READY FOR IMPLEMENTATION
 **Date**: 2026-01-30

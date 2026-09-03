@@ -1,5 +1,7 @@
 # ✅ Validación Completa - Todos los Fixes Implementados
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Fecha**: 2026-01-26
 **Estado Final**: ✅ **ALL FIXES COMPLETE & VALIDATED**
 **Puntuación Estimada**: **8.7/10** (objetivo: 7+/10)

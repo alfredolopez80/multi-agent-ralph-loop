@@ -1,5 +1,7 @@
 # 📊 Resumen Ejecutivo - Progreso del Plan Completo
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Fecha**: 2026-01-29 21:00
 **Versión**: v2.81.1
 

@@ -1,5 +1,7 @@
 # Orphan test audit (issue #42, item 4)
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 ## What was measured
 
 `#42` reported "~45 test files with no runner" and made the key point that absence of

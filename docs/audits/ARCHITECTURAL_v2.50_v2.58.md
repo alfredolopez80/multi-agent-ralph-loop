@@ -1,4 +1,6 @@
 # 🔍 Informe de Auditoría Arquitectónica v2.50 - v2.58
+
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
 ## Multi-Agent Ralph Loop - Análisis Exhaustivo
 
 **Fecha**: 2026-01-22

@@ -115,9 +115,10 @@ EOF
     [ -f "$skill_file" ] || skip "adversarial-spec skill not installed"
 }
 
-@test "v2.61.0: adversarial validation uses multi-model pattern" {
-    # Check for model routing in hooks or skills (v2.87+ uses skills)
-    run grep -rlE 'adversarial|codex|gemini|opus|sonnet' "$HOOKS_DIR/"
+@test "adversarial validation is wired into the hook set" {
+    # The adversarial machinery must exist in the hooks. It is named by its
+    # ROLE, never by a model or provider: the model is whatever the session runs.
+    run grep -rlE 'adversarial' "$HOOKS_DIR/"
     [ $status -eq 0 ]
 }
 
@@ -201,9 +202,10 @@ EOF
     [ $status -eq 0 ] || skip "Agents config not found"
 }
 
-@test "v2.61.0: adversarial council supports multiple validator models" {
-    # Check for multiple model references
-    run grep -rE 'opus|sonnet|minimax|codex|gemini' "$HOOKS_DIR/adversarial-auto-trigger.sh"
-    # At least one model should be referenced
-    [ $status -eq 0 ] || skip "Model routing may be in skill file"
+@test "adversarial trigger names no model or provider" {
+    # The council is two INDEPENDENT PASSES, not two named models. A model or
+    # provider name here would be routing, which the repo forbids.
+    [ -f "$HOOKS_DIR/adversarial-auto-trigger.sh" ] || skip "trigger hook not installed"
+    run grep -rniE 'opus|sonnet|haiku|minimax|glm-|gpt-|gemini' "$HOOKS_DIR/adversarial-auto-trigger.sh"
+    [ $status -ne 0 ]
 }

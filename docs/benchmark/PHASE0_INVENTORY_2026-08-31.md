@@ -1,5 +1,7 @@
 # Phase 0 — Executable Inventory of the Real Runtime (issue #69)
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 Generated: 2026-08-31T12:08:16Z · Instrument: `scripts/benchmark/phase0_inventory.sh` (+ `phase0_inventory.py`)
 
 ## Acceptance (issue #69 Phase 0)

@@ -274,7 +274,6 @@ jq '.steps[INDEX].drift = {detected: true, items: [...]}' .claude/plan-state.jso
 ```yaml
 Task:
   subagent_type: "plan-sync"
-  model: "sonnet"
   prompt: |
     COMPLETED_STEP: [step_id]
     DRIFT_ITEMS: [list of drift items]
@@ -305,7 +304,6 @@ Task:
 # Pre-implementation check
 Task:
   subagent_type: "lead-software-architect"
-  model: "opus"
   prompt: |
     MODE: pre
     STEP_ID: 2
@@ -317,7 +315,6 @@ Task:
 # Post-implementation check
 Task:
   subagent_type: "lead-software-architect"
-  model: "opus"
   prompt: |
     MODE: post
     STEP_ID: 2

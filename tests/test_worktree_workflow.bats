@@ -83,12 +83,19 @@ teardown() {
     grep -A60 'cmd_worktree_pr()' "$RALPH_SCRIPT" | grep -q 'gh pr create --draft'
 }
 
-@test 'cmd_worktree_pr runs Claude Opus review' {
-    grep -A100 'cmd_worktree_pr()' "$RALPH_SCRIPT" | grep -q 'claude --print -m opus'
+@test 'cmd_worktree_pr runs a code review pass' {
+    grep -A100 'cmd_worktree_pr()' "$RALPH_SCRIPT" | grep -q 'claude --print -p'
 }
 
-@test 'cmd_worktree_pr runs Codex GPT-5 review' {
-    grep -A120 'cmd_worktree_pr()' "$RALPH_SCRIPT" | grep -q 'codex exec -m gpt-5'
+@test 'cmd_worktree_pr runs a security review pass' {
+    grep -A120 'cmd_worktree_pr()' "$RALPH_SCRIPT" | grep -qi 'ralph-security'
+}
+
+@test 'cmd_worktree_pr pins no model and no provider' {
+    # Both review passes run on whatever model the session runs. A `-m <model>`
+    # flag or an external provider CLI here would be routing, which is forbidden.
+    run bash -c "grep -A150 'cmd_worktree_pr()' \"$RALPH_SCRIPT\" | grep -nE -- '-m (opus|sonnet|haiku|gpt-[0-9]|glm)|codex exec|gemini '"
+    [ "$status" -ne 0 ]
 }
 
 @test 'cmd_worktree_pr posts reviews as comments' {

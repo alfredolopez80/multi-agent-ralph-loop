@@ -22,15 +22,10 @@ CLI. TLDR context optimization keeps token cost low.
 
 ## Engine
 
-- **Primary engine: Claude subagents.** Bug hunting runs through the Agent/Task tool with a
-  bug-hunter prompt and the evidence-first contract below. This is the default and always
-  works.
-- **Codex is an OPTIONAL accelerator, never required.** If the `codex` CLI is installed AND
-  responsive, you MAY fan a second opinion out to it and merge findings — but you must
-  first confirm it responds (a rate-limited or unauthenticated `codex` is treated as
-  absent). If it is unavailable, proceed with Claude alone and say so; never block on it.
-- **Model selection** for the Claude subagents follows the session's configured model
-  (`~/.claude/settings.json` / env), inherited by the spawned agents.
+- **Engine: subagents.** Bug hunting runs through the Agent/Task tool with a bug-hunter
+  prompt and the evidence-first contract below.
+- **Model**: whatever the session runs. Spawned subagents inherit it. This skill never
+  selects a model and never routes to an external provider.
 
 ## Evidence-First Contract (non-negotiable)
 
@@ -192,13 +187,6 @@ For a large target, fan out several subagents over disjoint file ranges in a sin
 message (they run concurrently), then merge and dedupe their JSON — deduped findings that
 several agents raise independently are the strongest.
 
-### Optional accelerator: Codex second opinion
-
-Codex is **not required**. If — and only if — the `codex` CLI is installed and responds to
-a cheap probe (`codex exec "reply OK"` returns without a rate-limit/auth error), you may run
-a parallel Codex pass and merge its findings with the Claude ones. If the probe fails,
-proceed with Claude alone and state that Codex was unavailable. Never block the skill on it.
-
 ## Output Format
 
 The bug hunting analysis returns structured JSON:
@@ -251,7 +239,6 @@ The `/bugs` command integrates with other Ralph workflows:
 ```yaml
 Task:
   subagent_type: "debugger"
-  model: "opus"  # Opus for deep analysis
   description: "Full debugging workflow"
   prompt: |
     1. Run /bugs on $TARGET
@@ -280,7 +267,6 @@ Generate tests that specifically target discovered bugs:
 ```yaml
 Task:
   subagent_type: "test-architect"
-  model: "sonnet"
   prompt: |
     Read bugs-report.json
     For each HIGH/CRITICAL bug:
@@ -364,21 +350,13 @@ ralph gates
 4. **Add tests**: Every fixed bug needs a regression test
 5. **Track patterns**: If same bug type appears multiple times, refactor pattern
 6. **Combine with /security**: Bug hunting finds logic errors, security finds vulnerabilities
-7. **Use Opus for critical**: Switch to `--model opus` for payment/auth/crypto code
+7. **Scale effort, not models**: for payment/auth/crypto code, fan out more subagents over
+   narrower file ranges and demand stronger evidence — do not switch models.
 
-## Cost / model selection
+## Model
 
-The bug-hunter subagents inherit the session's configured Claude model. Tune per target:
-
-| Model | When to Use |
-|-------|-------------|
-| Sonnet | Default — fast, strong on most bug hunting and directory scans |
-| Opus | Critical code paths (payment/auth/crypto), subtle concurrency, deep multi-file traces |
-| Haiku | Cheap first-pass triage on large low-risk surfaces before a focused Opus pass |
-
-**Recommended**: Sonnet by default; escalate to Opus for critical or subtle code. If the
-optional Codex accelerator is available, use it as an independent second opinion — never as
-the sole engine.
+The bug-hunter subagents inherit the session's model. Choosing a model is the user's call
+(`/model`, or naming one in the request); this skill never makes it.
 
 
 ## Action Reporting (v2.93.0)

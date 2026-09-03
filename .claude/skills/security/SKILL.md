@@ -20,7 +20,7 @@ Comprehensive security audit run entirely on Claude: the `security-auditor` agen
 
 - **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
 - **No flags required**: Works with the configured default model
-- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Flexible**: Model-agnostic — runs on whatever model the session runs
 - **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
 ## Agent Teams Integration (v2.88)
@@ -70,11 +70,13 @@ Task(subagent_type="ralph-coder", team_name="security-audit-${TARGET}")     # Ap
 
 ### Teammate Roles
 
-| Agent | Role | Model | Tasks |
-|-------|------|-------|-------|
-| `ralph-reviewer` | Security analysis, vulnerability detection | Model from settings | - CWE vulnerability scan<br>- OWASP Top 10 check<br>- Input validation review<br>- Remediation guidance |
-| `ralph-coder` | Security fix implementation | Model from settings | - Apply security patches<br>- Add validation<br>- Implement secure patterns<br>- Add security tests |
-| `team-lead` | Coordination | Opus | - Assign tasks<br>- Aggregate findings<br>- Validate remediation |
+All agents below run on the session's model (they inherit it).
+
+| Agent | Role | Tasks |
+|-------|------|-------|
+| `ralph-reviewer` | Security analysis, vulnerability detection | - CWE vulnerability scan<br>- OWASP Top 10 check<br>- Input validation review<br>- Remediation guidance |
+| `ralph-coder` | Security fix implementation | - Apply security patches<br>- Add validation<br>- Implement secure patterns<br>- Add security tests |
+| `team-lead` | Coordination | - Assign tasks<br>- Aggregate findings<br>- Validate remediation |
 
 ### Coordination via Shared Task List
 
@@ -191,9 +193,9 @@ ralph security src/
 For critical security audits, combine Agent Teams with multi-model validation:
 
 ```bash
-# Primary audit: ralph-reviewer (model from settings)
-# Second opinion: Additional reviewer with different model
-Task(subagent_type="ralph-reviewer", model="opus", team_name="security-audit-${TARGET}")
+# Primary audit: ralph-reviewer
+# Second opinion: an additional reviewer in a fresh context
+Task(subagent_type="ralph-reviewer", team_name="security-audit-${TARGET}")
 ```
 
 ## Overview
@@ -281,7 +283,6 @@ ralph security src/ --output security-report.json
 ```yaml
 Task:
   subagent_type: "security-auditor"
-  model: "sonnet"   # escalate to opus for auth/crypto/payment paths
   run_in_background: true
   description: "Primary security audit"
   prompt: |
@@ -289,8 +290,8 @@ Task:
 
     Read the code yourself and reason about it. Where local scanners are installed,
     use them as evidence (semgrep, gitleaks) — they are not external LLM engines and
-    are fine to run. Do NOT depend on any external LLM CLI (Codex/Gemini/MiniMax); this
-    audit runs entirely on Claude.
+    are fine to run. Do NOT depend on any external LLM CLI; this audit runs entirely
+    on the session's own model.
 
     Check for:
     1. CWE vulnerabilities (prioritize High/Critical)
@@ -565,7 +566,6 @@ ralph security src/upload/
 # Primary audit
 Task:
   subagent_type: "security-auditor"
-  model: "opus"   # auth is critical — escalate from the sonnet default
   run_in_background: true
   description: "Security audit of auth module"
   prompt: |

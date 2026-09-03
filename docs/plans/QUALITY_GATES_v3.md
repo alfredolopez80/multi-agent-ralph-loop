@@ -1,5 +1,7 @@
 # Quality Gates v3.0 - Auto-Remediation Implementation
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Date**: 2026-01-26
 **Version**: 3.0.0
 **Status**: ✅ Implemented

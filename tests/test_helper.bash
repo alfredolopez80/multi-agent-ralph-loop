@@ -20,9 +20,6 @@ setup_cli_test_env() {
     export HOME="$HOME_DIR"
     export PATH="$STUB_BIN:$PATH"
 
-    # Minimal MiniMax config so cmd_minimax can run
-    echo '{"api_key":"test"}' > "$HOME_DIR/.ralph/config/minimax.json"
-
     # Stub quality gates hook
     cat > "$HOME_DIR/.claude/hooks/quality-gates.sh" << 'EOF'
 #!/usr/bin/env bash

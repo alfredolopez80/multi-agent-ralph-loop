@@ -1,5 +1,7 @@
 # Multi-Agent Ralph Wiggum - Complete Architecture Diagram v2.52.0
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 ![Version](https://img.shields.io/badge/version-2.52.0-blue)
 ![License](https://img.shields.io/badge/license-BSL%201.1-orange)
 

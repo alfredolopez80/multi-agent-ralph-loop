@@ -34,9 +34,11 @@ The quality gates system ensures all implementations meet strict standards for c
 ## Adversarial Validation
 
 For complexity >= 7, implementations undergo adversarial validation:
-- **Claude Opus**: Independent review
-- **Codex GPT-5.2**: Independent review
+- **Pass A**: Independent review
+- **Pass B**: A second, independent review run in fresh context
 - **Reconciliation**: Merge agreements, flag disagreements
+
+Both passes run on the model the session runs; neither pass selects or pins a model.
 
 ## Related Documentation
 

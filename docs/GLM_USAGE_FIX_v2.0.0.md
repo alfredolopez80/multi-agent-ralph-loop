@@ -1,5 +1,7 @@
 # GLM Usage Tracking Fix v2.0.0 - Complete Documentation
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 > **Status**: ✅ Implemented and Working
 > **Date**: 2026-01-27
 > **Author**: Claude Code + User Collaboration

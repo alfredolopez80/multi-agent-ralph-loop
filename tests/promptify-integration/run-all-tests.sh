@@ -176,8 +176,7 @@ main() {
         echo ""
         echo "Next steps:"
         echo "  1. Run adversarial validation: /adversarial docs/promptify-integration/"
-        echo "  2. Run Codex CLI review: /codex-cli docs/promptify-integration/"
-        echo "  3. Run Gemini CLI validation: /gemini-cli docs/promptify-integration/"
+        echo "  2. Run a code review: /code-reviewer docs/promptify-integration/"
         echo ""
         return 0
     else

@@ -1,5 +1,7 @@
 # Feature: Multi-Agent Ralph Loop Comprehensive Validation Audit v2.89
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Created**: 2026-02-15
 **Version**: 2.89.0
 **Timeframe**: Multi-session (iterative until complete)

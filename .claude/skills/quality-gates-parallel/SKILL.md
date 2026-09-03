@@ -14,7 +14,7 @@ Orchestrator integration for launching 4 quality subagents in parallel using the
 
 - **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
 - **No flags required**: Works with the configured default model
-- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Flexible**: Model-agnostic — runs on whatever model the session runs
 - **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
 ## Quick Start
@@ -140,7 +140,7 @@ if (results.total_findings == 0) {
 
 ### 2. Code Reviewer (`code-reviewer`)
 
-**Agent**: `code-reviewer` or `codex-cli`
+**Agent**: `code-reviewer`
 **Purpose**: Official Claude Code plugin with 4 parallel agents
 **Features**: Confidence scoring (≥80 threshold)
 **Command**: `/code-review <file>`
@@ -153,7 +153,7 @@ if (results.total_findings == 0) {
 
 ### 3. Code Cleanup (`deslop`)
 
-**Agent**: `refactorer` or `gemini-cli`
+**Agent**: `refactorer`
 **Purpose**: Remove AI-generated code slop
 **Command**: `/deslop`
 
@@ -165,7 +165,7 @@ if (results.total_findings == 0) {
 
 ### 4. Prose Cleanup (`stop-slop`)
 
-**Agent**: `docs-writer` or `minimax`
+**Agent**: `docs-writer`
 **Purpose**: Remove AI writing patterns from prose
 **Command**: `/stop-slop <file>`
 

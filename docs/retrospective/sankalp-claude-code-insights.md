@@ -1,5 +1,7 @@
 # Retrospective: Sankalp's Claude Code 2.0 Insights
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Source**: [My Experience with Claude Code 2.0 and How to Get Better at Using Coding Agents](https://sankalp.bearblog.dev/my-experience-with-claude-code-20-and-how-to-get-better-at-using-coding-agents/)
 
 **Date**: 2026-01-13

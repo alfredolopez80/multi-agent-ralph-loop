@@ -21,7 +21,7 @@ docs/
 ├── context-monitoring/       # Context tracking and monitoring
 ├── examples/                 # Code examples and tutorials
 ├── git-worktree/             # Git worktree documentation
-├── glm-integration/          # GLM-4.7 integration
+├── glm-integration/          # Historical provider-integration notes
 ├── implementation/           # Implementation summaries and plans
 ├── orchestrator/             # Orchestrator workflow and fixes
 ├── plans/                    # Implementation plans
@@ -91,7 +91,7 @@ All documentation files have been reorganized from `.claude/` to appropriate `do
 #### New Folders Created
 
 - `docs/adversarial/` - Adversarial validation system documentation
-- `docs/glm-integration/` - GLM-4.7 integration documentation
+- `docs/glm-integration/` - Historical provider-integration documentation
 - `docs/orchestrator/` - Orchestrator workflow and fixes
 - `docs/plans/` - Implementation plans
 - `docs/quality-gates/` - Quality gates and validation

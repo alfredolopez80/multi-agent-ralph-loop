@@ -168,12 +168,11 @@ teardown() {
 # ITERATION LIMIT TESTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-@test "iteration limits are correctly defined - Claude is 25" {
-    grep -q 'CLAUDE_MAX_ITER=25\|CLAUDE_MAX_ITER="25"' "$RALPH_SCRIPT"
-}
-
-@test "MiniMax iteration limit is 30" {
-    grep -q 'MINIMAX_MAX_ITER=30\|MINIMAX_MAX_ITER="30"' "$RALPH_SCRIPT"
+@test "default iteration limit is 25 and is model-agnostic" {
+    # The limit is a property of the LOOP, not of a model. The old
+    # CLAUDE_MAX_ITER / MINIMAX_MAX_ITER pair encoded a per-provider budget.
+    grep -q 'DEFAULT_MAX_ITER=25\|DEFAULT_MAX_ITER="25"' "$RALPH_SCRIPT"
+    ! grep -qE '(CLAUDE|MINIMAX|GLM)_MAX_ITER' "$RALPH_SCRIPT"
 }
 
 @test "Lightning iteration limit is 100" {

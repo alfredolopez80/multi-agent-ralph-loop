@@ -134,8 +134,10 @@ Variables de entorno para agentes.
 | CLAUDE_CODE_PLAN_MODE_REQUIRED | false | Auto-aprobar planes |
 | CLAUDE_CODE_MAX_AGENT_ITERATIONS | 50 | Máximo de iteraciones |
 | RALPH_VERSION | 2.82.0 | Versión de Ralph |
-| RALPH_MODEL_PRIMARY | glm-4.7 | Modelo primario |
-| RALPH_MODEL_FALLBACK | claude-sonnet | Modelo fallback |
+
+> No hay variables de selección o fallback de modelo. El modelo es el que ejecuta la
+> sesión: el usuario lo elige con `/model` o nombrándolo expresamente, y los subagentes lo
+> heredan.
 
 ## Personalización
 

@@ -1,5 +1,7 @@
 # 🎯 ADVERSARIAL ANALYSIS COMPLETE - /orchestrator & /loop
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Multi-Agent Adversarial Analysis** - Native Model (GLM-4.7)
 - Date: 2026-01-28 20:52
 - External models: Codex CLI (timeout), Gemini CLI (timeout)

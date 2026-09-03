@@ -11,7 +11,7 @@ allowed-tools: Bash,Read,Write,Edit,Grep,Glob,Task
 
 - **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
 - **No flags required**: Works with the configured default model
-- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Flexible**: Model-agnostic — runs on whatever model the session runs
 - **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
 Comprehensive performance optimization guide for React and Next.js applications from Vercel Engineering. Contains 45 rules across 8 categories, prioritized by impact.

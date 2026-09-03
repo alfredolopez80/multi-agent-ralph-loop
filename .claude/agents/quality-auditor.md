@@ -323,7 +323,6 @@ Quality Auditor is invoked at step 7a in v2.45 flow:
 ```yaml
 Task:
   subagent_type: "quality-auditor"
-  model: "opus"
   prompt: |
     CHANGED_FILES: [list of files modified]
     PLAN_STATE_PATH: .claude/plan-state.json
