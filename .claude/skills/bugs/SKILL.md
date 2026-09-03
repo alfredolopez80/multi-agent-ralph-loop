@@ -20,11 +20,7 @@ Deep, evidence-first bug analysis. **The engine is Claude subagents** spawned vi
 Agent/Task tool — the skill works whenever Claude does, with no dependency on any external
 CLI. TLDR context optimization keeps token cost low.
 
-## v3.1 — Claude is the engine (was Codex-only)
-
-Earlier versions shelled out to `codex exec -m gpt-5.2-codex` as the *only* execution
-path, so the skill broke whenever Codex was unavailable (rate limits, auth failure, not
-installed) — despite claiming to be "model-agnostic". It is now genuinely Claude-native:
+## Engine
 
 - **Primary engine: Claude subagents.** Bug hunting runs through the Agent/Task tool with a
   bug-hunter prompt and the evidence-first contract below. This is the default and always

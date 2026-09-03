@@ -399,7 +399,7 @@ After validation, update `.claude/plan-state.json`:
     "blocking_issues": 2,
     "non_blocking_issues": 1,
     "validated_at": "2026-01-17T15:00:00Z",
-    "validators": ["claude-opus", "codex-gpt-5.2 | claude-fresh-context"]
+    "validators": ["claude-opus", "codex | claude-fresh-context"]
   }
 }
 ```

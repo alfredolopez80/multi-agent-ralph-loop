@@ -189,19 +189,18 @@ AskUserQuestion:
         - label: "No - Continue with remaining"
 ```
 
-### Phase 5: ACCEPTANCE CRITERIA (MANDATORY FOR EACH TASK)
+### Phase 5: Acceptance criteria (every task)
 
-**CRITICAL: Every task MUST have explicit completion validation criteria.**
-**No task can be executed without defined acceptance criteria.**
+Every task carries explicit completion criteria; a task without them cannot be executed or verified.
 
 ```yaml
-# MANDATORY: For EACH generated task, ask completion criteria
+# For each generated task, ask completion criteria
 FOR EACH task IN task_list:
   AskUserQuestion:
     questions:
-      - question: "Define MANDATORY completion criteria for '[TASK_NAME]':"
+      - question: "Define completion criteria for '[TASK_NAME]':"
         header: "Criteria"
-        # MANDATORY - Cannot proceed without answer
+        # Required - cannot proceed without answer
 
       - question: "How will we VERIFY this task is complete?"
         header: "Verification"
@@ -221,20 +220,20 @@ FOR EACH task IN task_list:
 
 # VALIDATION CHECK
 IF any_task_missing_criteria:
-  BLOCK: "Cannot create batch - all tasks MUST have completion criteria"
+  BLOCK: "Cannot create batch - every task needs completion criteria"
   ASK: Request missing criteria before proceeding
 ```
 
 #### Task Completion Criteria Template
 
-Each task in the output MUST include:
+Each task in the output includes:
 
 ```yaml
 task:
   id: "task-001"
   description: "Create OAuth2 service module"
   priority: 1
-  completion_criteria:  # MANDATORY
+  completion_criteria:  # required
     - criteria: "File src/auth/oauth2.service.ts exists"
       verification: "file_exists"
     - criteria: "Google OAuth client configured"
@@ -428,13 +427,12 @@ Ready to execute with:
 /task-batch .claude/plans/user-profile-feature.prq.md
 ```
 
-## Anti-Patterns
+## Constraints
 
-- **NEVER** create tasks without acceptance criteria
-- **NEVER** skip the dependency check
-- **NEVER** create circular dependencies
-- **NEVER** make tasks too large (should be 1-2 hours max)
-- **NEVER** forget to validate the output before execution
+- Every task carries acceptance criteria; without them VERIFIED_DONE cannot be evaluated.
+- Run the dependency check and reject cycles; a cycle never schedules.
+- Tasks are sized to 1-2 hours so a failure loses little work.
+- Validate the generated file before handing it to `/task-batch`.
 
 ## Related Skills
 

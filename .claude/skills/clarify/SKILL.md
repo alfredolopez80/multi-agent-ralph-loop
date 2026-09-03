@@ -202,9 +202,8 @@ TeamCreate (optional)
 - No specialized research needed
 - Quick interactive sessions preferred
 
-## Anti-Patterns
+## Constraints
 
-- Never proceed with unanswered MUST_HAVE questions
-- Never assume user intent
-- Never skip clarification for features
-- Never ask more than 4 questions at once (AskUserQuestion limit)
+- MUST_HAVE questions block implementation until answered; guessing them is rework.
+- Feature work always goes through clarification.
+- At most 4 questions per `AskUserQuestion` call (tool limit).

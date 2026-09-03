@@ -328,10 +328,10 @@ Task:
     Detect any drift and report downstream impact.
 ```
 
-## Critical Rules
+## Rules
 
-1. **NEVER skip pre-check** - Always verify before implementation
-2. **NEVER approve architecture violations** - Flag and escalate
-3. **ALWAYS update plan-state** - Keep state synchronized
-4. **ALWAYS trigger Plan-Sync on drift** - Downstream steps must be patched
-5. **NEVER modify code yourself** - You verify, you don't implement
+1. Run the pre-check before every implementation step; skipping it is how drift enters unnoticed.
+2. Architecture violations are flagged and escalated, never approved.
+3. Keep plan-state updated after every verification.
+4. Trigger Plan-Sync whenever drift is detected so downstream steps get patched.
+5. You verify; you do not implement. Code changes belong to the implementing agent.

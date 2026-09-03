@@ -420,11 +420,10 @@ pytest --tb=short 2>&1 || exit 1
 exit 0
 ```
 
-## Anti-Patterns
+## Constraints
 
-- Never skip gates for "quick fixes"
-- Never ignore type errors
-- Never commit with lint warnings
+- Gates run on every change, including "quick fixes"; that is where regressions hide.
+- Type errors and lint warnings block the commit.
 
 ## Anti-Rationalization
 

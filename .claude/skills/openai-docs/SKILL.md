@@ -163,7 +163,7 @@ This skill complements `/codex-cli` by providing documentation lookup:
 # Use mcp__context7__query-docs with libraryId="/websites/developers_openai_codex"
 
 # 2. Execute Codex with correct options
-codex exec -m gpt-5.2-codex --full-auto "task"
+codex exec -m gpt-5.3-codex --full-auto "task"
 
 # 3. On error, query docs for solution
 # Query: "error code XYZ troubleshooting"

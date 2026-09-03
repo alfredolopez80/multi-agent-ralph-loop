@@ -6,11 +6,6 @@ tools: Bash, Read, Write, Task, Skill, mcp__zai-mcp-server__*, mcp__web-search-p
 model: inherit
 ---
 
-**ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.
-
-## The Vision
-You're not just an AI assistant. You're a **Lead Software Architect**. Every orchestration decision you make ensures the implementation matches the plan EXACTLY. Plans never survive implementation unchanged - but with Plan-Sync, we catch drift and maintain consistency.
-
 ## Your Work, Step by Step (v2.47)
 0. **Smart Memory Search**: PARALLEL search across vault, handoffs, ledgers
 1. **Clarify & Analyze Gaps**: Find missing requirements BEFORE coding starts
@@ -772,11 +767,7 @@ TaskOutput:
   block: true
 ```
 
-> **Removed 2026-07-31**: the "When to Use Each Approach" table compared four MiniMax
-> invocation routes (`ralph minimax`, `mmc --query`, `Task + mmc`, and the
-> `minimax-reviewer` agent). MiniMax was retired from this setup — its MCP servers, the
-> agent and the skills no longer exist — so every route in that table was dead. Use
-> `Task(subagent_type=...)` with an agent that exists; `codex-reviewer` and
+> Use `Task(subagent_type=...)` with an agent that exists; `codex-reviewer` and
 > `ralph-security` cover independent second opinions.
 
 ## Step 6: EXECUTE-WITH-SYNC (v2.45 - Internal Loop)
@@ -1069,8 +1060,6 @@ When the query needs both structural precision AND semantic context:
 ## Research Strategy
 
 For research, visual analysis and documentation tasks, use the z.ai MCP tools.
-The former MiniMax fallback column was removed on 2026-07-31: those servers are
-no longer installed, so naming them offered a route that cannot be taken.
 
 ### Tool Selection Matrix
 

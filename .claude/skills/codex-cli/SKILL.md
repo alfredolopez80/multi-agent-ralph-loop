@@ -220,7 +220,7 @@ wait
 
 Before running Codex tasks, confirm with user:
 
-1. **Model selection**: `gpt-5.3-codex` or `gpt-5.2`?
+1. **Model variant**: `gpt-5.3-codex` (default), `gpt-5.3-codex-high`, or `gpt-5.3-codex-xhigh`?
 2. **Reasoning effort**: `low`, `medium`, or `high`?
 3. **Sandbox mode**: Based on task requirements
 

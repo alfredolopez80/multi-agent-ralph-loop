@@ -342,12 +342,12 @@ The loop integrates with the Stop hook:
 .claude/scripts/ralph-state.sh fail "$SESSION_ID" iterate "$ERROR"
 ```
 
-## Anti-Patterns
+## Constraints
 
-- Never use infinite loops (always set max_iterations)
-- Never skip quality gates (defeats the purpose)
-- Never use for one-shot tasks (use direct execution)
-- Never nest loops (causes exponential iterations)
+- Every loop sets `max_iterations`; an unbounded loop has no failure signal.
+- Quality gates run on every iteration; VERIFIED_DONE means nothing without them.
+- One-shot tasks run directly; the loop is for work that needs re-validation.
+- Loops do not nest: iterations multiply.
 
 ## Completion Criteria
 

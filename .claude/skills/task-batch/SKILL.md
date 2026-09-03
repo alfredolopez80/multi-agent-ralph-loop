@@ -69,13 +69,13 @@ Based on research from:
 | No internet connectivity | **STOP** - Report error, save state |
 | Token limit reached | **STOP** - Save progress, report position |
 | System crash/error | **STOP** - Emergency save, report diagnostics |
-| Max iterations reached | **FAIL** - **CRITICAL ERROR**: This indicates infinite loop, report all incomplete tasks |
-| **Tasks remaining at exit** | **FAIL** - **CRITICAL ERROR**: NEVER exit with pending tasks unless critical failure |
+| Max iterations reached | **FAIL** - indicates a runaway loop; report all incomplete tasks |
+| **Tasks remaining at exit** | **FAIL** - exiting with pending tasks is only valid after a critical failure |
 | **Normal user questions** | **CONTINUE** - Queue for end-of-batch response |
 
-### ⚠️ CRITICAL RULE: NO PARTIAL SUCCESS
+### No partial success
 
-**The skill MUST NEVER report success with incomplete tasks.**
+The skill never reports success with incomplete tasks: a batch is done when every task is VERIFIED_DONE, or it has failed.
 
 ```
 ❌ WRONG: "Completed 10 of 17 tasks" → Summary → Exit 0
@@ -91,7 +91,7 @@ If execution cannot continue (blocked dependencies, critical failure), the skill
 
 ### 3. Task Execution Model (MULTIPLE TASKS)
 
-**CRITICAL: This skill handles MULTIPLE tasks, not just one task.**
+This skill handles multiple tasks, not one.
 
 ```
 +------------------------------------------------------------------+
@@ -344,7 +344,7 @@ while task_queue and iteration < max_iterations:
     iteration++
 
 # ══════════════════════════════════════════════════════════════════
-# CRITICAL: FINAL VALIDATION - NO PARTIAL SUCCESS ALLOWED
+# Final validation - no partial success
 # ══════════════════════════════════════════════════════════════════
 if len(task_queue) > 0:
     # THERE ARE STILL PENDING TASKS - THIS IS A FAILURE
@@ -608,15 +608,15 @@ Requires ALL:
 4. Team deleted
 5. Progress file archived
 
-## Anti-Patterns
+## Constraints
 
-- **NEVER** stop for non-critical user questions (queue them)
-- **NEVER** use infinite loops (always set max_iterations)
-- **NEVER** skip quality gates (defeats VERIFIED_DONE)
-- **NEVER** share context between tasks (contamination risk)
-- **NEVER** ignore rate limits (will cause failures)
-- **NEVER** commit without VERIFIED_DONE (incomplete work)
-- **⚠️ CRITICAL: NEVER report success with incomplete tasks**
+- Non-critical user questions are queued and answered at the end of the batch.
+- Every loop sets `max_iterations`.
+- Quality gates run for every task; VERIFIED_DONE depends on them.
+- Tasks run in separate contexts to avoid cross-task contamination.
+- Respect rate limits; ignoring them fails the batch.
+- Commit only VERIFIED_DONE work.
+- Success is never reported with incomplete tasks (see above).
 
 ### The "Partial Success" Anti-Pattern
 

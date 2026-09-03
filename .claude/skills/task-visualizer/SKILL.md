@@ -145,8 +145,8 @@ Tasks that share the same dependencies can run in parallel:
 PARALLEL EXECUTION HINT:
 Tasks #5 and #6 can run in parallel after #4 completes.
 Suggested agent assignment:
-  - #5 (tests): Codex (gpt-5.2-codex)
-  - #6 (docs): Gemini (gemini-2.5-pro)
+  - #5 (tests): ralph-tester
+  - #6 (docs): docs-writer
 ```
 
 ## Integration with Ralph

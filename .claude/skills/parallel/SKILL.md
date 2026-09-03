@@ -250,12 +250,11 @@ Each parallel task runs with:
 - Each parallel task follows Ralph Loop
 - Results feed back to orchestrator
 
-## Anti-Patterns
+## Constraints
 
-- Never run parallel on same files
-- Never exceed 5 concurrent agents
-- Never ignore partial failures
-- Never skip aggregation step
+- Parallel loops touch disjoint file sets; two agents editing one file produce silent overwrites.
+- At most 5 concurrent agents, past which rate limits and context contention dominate.
+- A partial failure fails the batch; aggregate every loop's result before reporting.
 
 
 ## Action Reporting (v2.93.0)

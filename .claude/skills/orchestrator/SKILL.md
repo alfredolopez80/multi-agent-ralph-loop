@@ -239,15 +239,14 @@ ralph retrospective
 | `tester` | Test Generation | Unit tests, coverage |
 | `orchestrator` | Coordination | Complex multi-step tasks |
 
-## Anti-Patterns
+## Non-negotiables
 
-- Never start without smart memory search
-- Never skip clarification
-- Never use model: "haiku" for subagents
-- Never skip retrospective
-- Never attempt more than 3 fixes (3-Fix Rule)
-- **Never block on consistency issues** (quality over consistency)
-- **Never ignore memory context** (learn from history)
+- Start with the smart memory search and read what it returns: prior sessions carry the decisions this one builds on.
+- Clarify before planning; unanswered MUST_HAVE questions become rework.
+- Subagents inherit the session's model. The model is the user's choice via `/model`, never the orchestrator's.
+- Close with the retrospective; that is where learnings get written back.
+- Three fix attempts per failing gate, then escalate (3-Fix Rule).
+- Consistency findings are advisory: report them, do not block on them.
 
 ## Completion Criteria
 
