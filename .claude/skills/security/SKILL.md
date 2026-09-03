@@ -14,7 +14,7 @@ allowed-tools:
 
 # /security - Multi-Agent Security Audit (v3.0)
 
-Comprehensive security audit run entirely on Claude: the `security-auditor` agent performs the primary analysis and an independent reviewer (`ralph-security`) provides second-opinion validation. No dependency on any external LLM CLI.
+Comprehensive security audit run entirely on Claude: the `ralph-security` agent performs the primary analysis, and a second `ralph-security` pass over the first pass's findings provides independent second-opinion validation. No dependency on any external LLM CLI.
 
 ## v2.88 Key Changes (MODEL-AGNOSTIC)
 
@@ -231,7 +231,7 @@ Trigger `/security` when:
 │                  Security Audit Flow                   │
 ├────────────────────────────────────────────────────────┤
 │                                                        │
-│  1. PRIMARY AUDIT (Claude security-auditor)            │
+│  1. PRIMARY AUDIT (Claude ralph-security)              │
 │     ├─ CWE vulnerability scan                          │
 │     ├─ OWASP Top 10 check                              │
 │     ├─ Input validation review                         │
@@ -278,11 +278,11 @@ ralph security src/ --output security-report.json
 
 ## Task Tool Invocation
 
-### Primary Security Audit (Claude security-auditor)
+### Primary Security Audit (Claude ralph-security)
 
 ```yaml
 Task:
-  subagent_type: "security-auditor"
+  subagent_type: "ralph-security"
   run_in_background: true
   description: "Primary security audit"
   prompt: |
@@ -402,7 +402,7 @@ disagreement between two passes is the signal worth acting on.
     "low": 0,
     "files_scanned": 45,
     "scan_duration": "12.3s",
-    "tools": ["security-auditor", "ralph-security"]
+    "tools": ["ralph-security"]
   }
 }
 ```
@@ -414,7 +414,7 @@ disagreement between two passes is the signal worth acting on.
 
 **Date:** 2025-01-04
 **Target:** src/
-**Tools:** security-auditor (Claude) + ralph-security
+**Tools:** ralph-security (Claude, primary + second-opinion pass)
 
 ## Summary
 
@@ -565,7 +565,7 @@ ralph security src/upload/
 ```yaml
 # Primary audit
 Task:
-  subagent_type: "security-auditor"
+  subagent_type: "ralph-security"
   run_in_background: true
   description: "Security audit of auth module"
   prompt: |

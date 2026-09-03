@@ -78,7 +78,7 @@ class TestLedgerManager:
             ],
             decisions=["Use JWT", "Google OAuth first"],
             agents_used=[
-                {"agent": "security-auditor", "status": "✅", "action": "0 vulns"}
+                {"agent": "ralph-security", "status": "✅", "action": "0 vulns"}
             ]
         )
 
@@ -93,7 +93,7 @@ class TestLedgerManager:
         assert "KEY DECISIONS" in content
         assert "Use JWT" in content
         assert "AGENTS USED" in content
-        assert "security-auditor" in content
+        assert "ralph-security" in content
 
     def test_load_ledger_by_session_id(self, manager, ledger_dir):
         """Test loading a specific ledger by session ID."""

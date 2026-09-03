@@ -127,7 +127,7 @@ if (results.total_findings == 0) {
 
 ### 1. Security Auditor (`sec-context-depth`)
 
-**Agent**: `security-auditor` or `ralph-security`
+**Agent**: `ralph-security`
 **Purpose**: 27 security anti-patterns (OWASP/CWE)
 **Findings**: P0 (Critical), P1 (High), P2 (Medium)
 **Command**: `/sec-context-depth <file>`
@@ -153,7 +153,7 @@ if (results.total_findings == 0) {
 
 ### 3. Code Cleanup (`deslop`)
 
-**Agent**: `refactorer`
+**Agent**: `ralph-coder`
 **Purpose**: Remove AI-generated code slop
 **Command**: `/deslop`
 

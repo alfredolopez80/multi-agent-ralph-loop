@@ -339,7 +339,7 @@ Task:
   run_in_background: true
 
 Task:
-  subagent_type: "security-auditor"
+  subagent_type: "ralph-security"
   model: "sonnet"
   run_in_background: true
 

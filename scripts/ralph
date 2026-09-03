@@ -1543,7 +1543,7 @@ cmd_refactor() {
     ensure_tmp
 
     log_info "Running refactoring analysis on: $TARGET"
-    claude --print -p "Use the refactorer agent.
+    claude --print -p "Use the ralph-coder agent.
          Refactor: ${SAFE_TARGET}
          Focus on: DRY, SOLID, extract methods, simplify conditionals.
          Output: refactored code + explanation" \

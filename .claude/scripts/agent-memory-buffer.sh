@@ -657,9 +657,9 @@ agent_memory() {
             echo "  working    - Only working memory"
             echo ""
             echo "Examples:"
-            echo "  agent_memory init security-auditor"
-            echo "  agent_memory write security-auditor semantic 'Found SQL injection in auth.py'"
-            echo "  agent_memory transfer security-auditor codex-reviewer relevant hoff_20260119_001"
+            echo "  agent_memory init ralph-security"
+            echo "  agent_memory write ralph-security semantic 'Found SQL injection in auth.py'"
+            echo "  agent_memory transfer ralph-security codex-reviewer relevant hoff_20260119_001"
             echo "  agent_memory find-handoff hoff_20260119_001"
             echo "  agent_memory read codex-reviewer"
             ;;

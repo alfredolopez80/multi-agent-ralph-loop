@@ -69,9 +69,9 @@ launch_quality_subagents() {
     cat <<TASKS
 {
   "parallel_tasks": [
-    {"task_file": "$security_task", "agent": "security-auditor"},
+    {"task_file": "$security_task", "agent": "ralph-security"},
     {"task_file": "$review_task", "agent": "ralph-reviewer"},
-    {"task_file": "$deslop_task", "agent": "refactorer"},
+    {"task_file": "$deslop_task", "agent": "ralph-coder"},
     {"task_file": "$stopslop_task", "agent": "docs-writer"}
   ],
   "run_id": "$RUN_ID",

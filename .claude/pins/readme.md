@@ -14,7 +14,7 @@
 | Agents | agent, subagent, Task tool, model sonnet, run_in_background | .claude/agents/*.md, ~/.claude/agents/*.md |
 | Context | context, compaction, ledger, handoff, progress, PIN, lookup table | .claude/progress.md, .claude/pins/*, ~/.ralph/ledgers/* |
 | Quality | gates, lint, format, test, type-check, quality-gates.sh | .claude/hooks/quality-gates.sh, .claude/skills/gates/* |
-| Security | security, audit, adversarial, security-auditor, git-safety-guard | .claude/skills/security/*, .claude/hooks/git-safety-guard.py |
+| Security | security, audit, adversarial, ralph-security, git-safety-guard | .claude/skills/security/*, .claude/hooks/git-safety-guard.py |
 | Testing | test, pytest, integration, validate-integration, test_v2_40 | tests/*, scripts/ralph validate-integration |
 | Git | git, worktree, branch, commit, PR, merge, safety | .claude/skills/using-git-worktrees/*, .claude/hooks/git-safety-guard.py |
 

@@ -73,3 +73,34 @@ complexity-based routing; whatever model the session runs handles the task.
 - Use descriptive test names
 - Keep tests independent
 - Mock external dependencies
+
+## Fail-Loud Authoring Rules
+
+A test exists to surface failure. Every test you write must fail loudly on a real
+defect:
+
+- No soft assertions — a failing condition fails the test, it never only logs.
+- No `try/except` (or `try/catch`) that swallows an error and lets the test pass.
+- No silent skips: if a required service, fixture, or cluster is unavailable, the
+  test fails with the concrete reason instead of skipping or falling back to a mock.
+- No `|| true`, `continue-on-error`, or `--passWithNoTests` to keep a step green.
+- Before declaring a suite green, assert that a non-zero number of tests were
+  collected and executed. `failed == 0` alone is a fail-open: a run that collected
+  0 tests is never a success (pytest exit code 5 is a failure, not a pass).
+- Integration tests must exercise real behavior; an unavailable dependency is an
+  infrastructure failure to report, never a reason to pass.
+
+## Worktree Awareness
+
+The orchestrator may pass you `WORKTREE_CONTEXT`, meaning you are working in an
+isolated worktree that several subagents share for the same feature. Your work is
+isolated from the main branch and is integrated via PR once the whole feature is done.
+
+1. **With `WORKTREE_CONTEXT`**: work in the given path, commit locally and often
+   (`test: add unit tests for auth`), do not push — the orchestrator handles the PR —
+   and coordinate with the other subagents when there are dependencies.
+2. **Without `WORKTREE_CONTEXT`**: work normally on the current branch; the
+   orchestrator already decided isolation is not required.
+3. **Signal completion**: when your part is finished, emit
+   `SUBAGENT_COMPLETE: tests generated`. The orchestrator waits for every subagent
+   before creating the PR.
