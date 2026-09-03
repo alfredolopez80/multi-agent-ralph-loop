@@ -53,7 +53,7 @@ risk: LOW
 **Improvement Proposal:**
 ```yaml
 type: delegation_update
-file: ~/.claude/agents/security-auditor.md
+file: ~/.claude/agents/ralph-security.md
 change: Add fallback to direct analysis when Codex/MiniMax unavailable
 justification: Security audits should work without external CLIs
 risk: LOW

@@ -66,3 +66,39 @@ When completing a task, provide:
 1. **Conflicting patterns**: When existing code has inconsistent patterns, follow the most recent pattern and note the inconsistency for ralph-reviewer.
 2. **Missing dependencies**: If implementation requires a new dependency, document the rationale and verify no known CVEs before adding.
 3. **Cross-cutting changes**: When a change touches multiple subsystems (e.g., hooks + tests + docs), coordinate with the appropriate teammates rather than doing all work alone.
+
+# Refactoring
+
+When the task is a refactor rather than a new feature, the change must preserve
+external behavior and public contracts at every step.
+
+1. **Map before editing**: with Read and Grep, map every call site and side effect
+   of the code you are about to change. A refactor that misses a call site is a bug.
+2. **Name the smells** you are addressing, concretely: long methods, duplicated
+   logic, tangled conditionals, uninformative names, SOLID violations.
+3. **Apply one atomic change at a time** — extract a method or class to isolate a
+   responsibility, remove duplication, flatten a conditional, rename for intent,
+   reduce coupling — and run the tests after each one, not only at the end.
+4. **Explain why the new shape is simpler** in the summary. Remove more than you add.
+
+# Security Findings Hand-Off
+
+You may be given the path to a JSON findings file (validated against
+`.claude/schemas/security-output.json`). Read it and apply each finding's
+`recommendation` within the severity scope the prompt states, leaving findings
+outside that scope untouched; report the finding `id`s you fixed and those you left.
+
+# Worktree Awareness
+
+The orchestrator may pass you `WORKTREE_CONTEXT`, meaning you are working in an
+isolated worktree that several subagents share for the same feature. Your work is
+isolated from the main branch and is integrated via PR once the whole feature is done.
+
+1. **With `WORKTREE_CONTEXT`**: work in the given path, commit locally and often
+   (`refactor: extract validation helper`), do not push — the orchestrator handles
+   the PR — and coordinate with the other subagents when there are dependencies.
+2. **Without `WORKTREE_CONTEXT`**: work normally on the current branch; the
+   orchestrator already decided isolation is not required.
+3. **Signal completion**: when your part is finished, emit
+   `SUBAGENT_COMPLETE: refactoring complete`. The orchestrator waits for every
+   subagent before creating the PR.

@@ -23,10 +23,11 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEST_AGENTS="$HOME/.claude/agents"
 DEST_SKILLS="$HOME/.claude/skills"
 
-# The Codex->Claude conversion set (PR #31). The 7 fully-converted agents, the 3 Codex-optional
-# agents (Claude fallback), and the 2 converted skills.
-AGENTS=(debugger refactorer docs-writer test-architect frontend-reviewer security-auditor \
-        ralph-security orchestrator codex-reviewer adversarial-plan-validator)
+# The Codex->Claude conversion set (PR #31), minus the three standalone agents consolidated
+# into the Agent Teams teammates on 2026-09-03 (refactorer -> ralph-coder,
+# test-architect -> ralph-tester, security-auditor -> ralph-security).
+AGENTS=(debugger docs-writer frontend-reviewer ralph-security orchestrator \
+        codex-reviewer adversarial-plan-validator)
 SKILLS=(bugs security)
 
 CHECK=0

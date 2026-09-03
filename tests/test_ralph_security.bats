@@ -227,3 +227,164 @@ teardown() {
     # Verify umask 077 is set which ensures new files are 600 (rw-------)
     grep -q 'umask 077' "$RALPH_SCRIPT"
 }
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SECURITY LOOP HARDENING TESTS (2026-09-03)
+#
+# The security loop had four `claude` invocations ending in `|| true`, a parser
+# that counted severities with `grep -ci` over prose, no cwd pin, and a fixed
+# count asserted without evidence. These tests are the regression guard.
+# They are unit-level: nothing here spawns `claude`.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Extract one function definition out of the ralph CLI so it can be exercised
+# without running the script's command dispatch.
+_load_ralph_function() {
+    sed -n "/^${1}() {/,/^}/p" "$RALPH_SCRIPT"
+}
+
+@test "security loop: no invocation in the loop is masked with '|| true'" {
+    run bash -c "sed -n '/^# Path to the structured-output contract/,/^cmd_bugs()/p' '$RALPH_SCRIPT' | grep -c '|| true'"
+    [ "$output" = "0" ]
+}
+
+@test "security loop: agent invocations are pinned to the audited tree" {
+    run _load_ralph_function run_security_agent
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'cd "$TARGET"'* ]]
+    [[ "$output" == *'--add-dir "$TARGET"'* ]]
+}
+
+@test "security loop: run_security_agent checks the CLI exit code explicitly" {
+    run _load_ralph_function run_security_agent
+    [[ "$output" == *'RC=$?'* ]]
+    [[ "$output" == *'return "$RC"'* ]]
+}
+
+@test "security loop: run_security_agent keeps stderr out of the JSON payload" {
+    run _load_ralph_function run_security_agent
+    [[ "$output" == *'2> "$ERRFILE"'* ]]
+    [[ "$output" != *'2>&1'* ]]
+}
+
+@test "security loop: audit and proposal sites use ralph-security in plan mode" {
+    run bash -c "grep -c 'ralph-security plan' '$RALPH_SCRIPT'"
+    [ "$output" = "2" ]
+}
+
+@test "security loop: fix sites use ralph-coder with acceptEdits" {
+    run bash -c "grep -c 'ralph-coder acceptEdits' '$RALPH_SCRIPT'"
+    [ "$output" = "2" ]
+}
+
+@test "security loop: ralph-security is never paired with a writing permission mode" {
+    run bash -c "grep -n 'ralph-security' '$RALPH_SCRIPT' | grep -cE 'acceptEdits|bypassPermissions|dontAsk|mode auto' || true"
+    [ "$output" = "0" ]
+}
+
+@test "security loop: read-only sites disallow the editing tools" {
+    run bash -c "grep -c 'disallowedTools Edit,Write,NotebookEdit' '$RALPH_SCRIPT'"
+    [ "$output" = "2" ]
+}
+
+@test "security loop: audit and proposal sites pass the output schema" {
+    run bash -c "grep -c 'json-schema \"\$(cat \"\$SECURITY_OUTPUT_SCHEMA\")\"' '$RALPH_SCRIPT'"
+    [ "$output" = "2" ]
+}
+
+@test "security loop: the structured-output schema exists and is valid JSON" {
+    [ -f "$PROJECT_DIR/.claude/schemas/security-output.json" ]
+    run jq -e . "$PROJECT_DIR/.claude/schemas/security-output.json"
+    [ "$status" -eq 0 ]
+}
+
+@test "security loop: fix findings are handed over by file, not interpolated" {
+    run _load_ralph_function fix_security_issues
+    [[ "$output" == *'security_findings_round_'* ]]
+    [[ "$output" == *'--add-dir "$RALPH_TMPDIR"'* ]]
+}
+
+@test "security loop: refuses to recurse into itself" {
+    run _load_ralph_function cmd_security_loop
+    [[ "$output" == *'RALPH_SECURITY_LOOP_ACTIVE'* ]]
+    [[ "$output" == *'refusing to recurse'* ]]
+}
+
+@test "security loop: an audit failure prints its own banner, not the clean one" {
+    run bash -c "grep -c 'SECURITY LOOP: AUDIT FAILED' '$RALPH_SCRIPT'"
+    [ "$output" = "1" ]
+    run _load_ralph_function cmd_security_loop
+    [[ "$output" == *'print_security_audit_failed'* ]]
+}
+
+@test "security loop: total fixed is computed from the audit delta" {
+    run _load_ralph_function cmd_security_loop
+    [[ "$output" == *'TOTAL_FIXED=$((TOTAL_FIXED + PREV_COUNT - COUNT))'* ]]
+    [[ "$output" != *'TOTAL_FIXED=$((TOTAL_FIXED + FIXED))'* ]]
+}
+
+# ── parse_security_findings() ────────────────────────────────────────────────
+
+# Run the parser against a fixture file, with the logging helper stubbed out.
+_run_parser() {
+    bash -c "
+        log_error() { echo \"\$1\" >&2; }
+        $(_load_ralph_function parse_security_findings)
+        parse_security_findings '$1'
+    "
+}
+
+@test "parse_security_findings: a missing file is an error, not an empty result" {
+    run _run_parser "$TEST_TMPDIR/does-not-exist.json"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"missing"* ]]
+}
+
+@test "parse_security_findings: a non-JSON envelope is an error" {
+    echo 'Error: the model refused to respond.' > "$TEST_TMPDIR/out.json"
+    run _run_parser "$TEST_TMPDIR/out.json"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"not a JSON envelope"* ]]
+}
+
+@test "parse_security_findings: an is_error envelope is an error" {
+    echo '{"is_error":true,"result":"credit balance too low"}' > "$TEST_TMPDIR/out.json"
+    run _run_parser "$TEST_TMPDIR/out.json"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"credit balance too low"* ]]
+}
+
+@test "parse_security_findings: a summary that disagrees with the array is an error" {
+    echo '{"is_error":false,"structured_output":{"vulnerabilities":[],"summary":{"total":3,"critical":1,"high":1,"medium":1,"low":0}}}' > "$TEST_TMPDIR/out.json"
+    run _run_parser "$TEST_TMPDIR/out.json"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"failed validation"* ]]
+}
+
+@test "parse_security_findings: severity counts that do not add up are an error" {
+    echo '{"is_error":false,"structured_output":{"vulnerabilities":[],"summary":{"total":0,"critical":2,"high":0,"medium":0,"low":0}}}' > "$TEST_TMPDIR/out.json"
+    run _run_parser "$TEST_TMPDIR/out.json"
+    [ "$status" -eq 1 ]
+}
+
+@test "parse_security_findings: accepts a valid structured_output object" {
+    echo '{"is_error":false,"structured_output":{"vulnerabilities":[],"summary":{"total":0,"critical":0,"high":0,"medium":0,"low":0}}}' > "$TEST_TMPDIR/out.json"
+    run _run_parser "$TEST_TMPDIR/out.json"
+    [ "$status" -eq 0 ]
+    [ "$(echo "$output" | jq -r '.summary.total')" = "0" ]
+}
+
+@test "parse_security_findings: decodes a .result JSON string envelope" {
+    printf '%s\n' '{"is_error":false,"result":"{\"vulnerabilities\":[{\"id\":\"VULN-001\",\"severity\":\"HIGH\",\"file\":\"a.py\",\"line\":3,\"description\":\"d\",\"recommendation\":\"r\"}],\"summary\":{\"total\":1,\"critical\":0,\"high\":1,\"medium\":0,\"low\":0}}"}' > "$TEST_TMPDIR/out.json"
+    run _run_parser "$TEST_TMPDIR/out.json"
+    [ "$status" -eq 0 ]
+    [ "$(echo "$output" | jq -r '.vulnerabilities[0].id')" = "VULN-001" ]
+}
+
+@test "parse_security_findings: prose is never counted as findings" {
+    # The old parser used `grep -ci low` and matched words like "allow"/"below".
+    echo '{"is_error":false,"structured_output":{"vulnerabilities":[],"summary":{"total":0,"critical":0,"high":0,"medium":0,"low":0}},"result":"We allow this below the high water mark; criticality is low."}' > "$TEST_TMPDIR/out.json"
+    run _run_parser "$TEST_TMPDIR/out.json"
+    [ "$status" -eq 0 ]
+    [ "$(echo "$output" | jq -r '.summary.low')" = "0" ]
+}

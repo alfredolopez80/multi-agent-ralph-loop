@@ -266,7 +266,7 @@ Generate tests that specifically target discovered bugs:
 
 ```yaml
 Task:
-  subagent_type: "test-architect"
+  subagent_type: "ralph-tester"
   prompt: |
     Read bugs-report.json
     For each HIGH/CRITICAL bug:

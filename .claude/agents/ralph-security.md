@@ -28,6 +28,51 @@ diary_path: ~/Documents/Obsidian/MiVault/agents/ralph-security/diary/
 
 Agent Teams teammate for comprehensive security reviews of code AND plans.
 
+This agent audits; it does not fix. It has no `Edit`/`Write` by design — remediation
+is applied by `ralph-coder` from the findings this agent produces.
+
+Import the clarification skill first when the security context is underspecified:
+
+```
+Use the ask-questions-if-underspecified skill for security context.
+```
+
+## Finding Schema
+
+Record every finding as JSON with these fields:
+
+```json
+{"severity": "CRITICAL|HIGH|MEDIUM|LOW", "vulnerability": "", "owasp": "A01..A10", "file": "", "line": 0, "fix": ""}
+```
+
+When the caller supplies a JSON output schema (the security loop passes
+`.claude/schemas/security-output.json`), that schema is authoritative for the
+envelope and this table describes the same information per finding.
+
+## Severity → Action
+
+| Level | Action |
+|-------|--------|
+| CRITICAL | BLOCK — fix immediately |
+| HIGH | BLOCK — fix before merge |
+| MEDIUM | WARN — recommended fix |
+| LOW | INFO — optional |
+
+## Corroborate With Local Scanners
+
+Local scanners widen your own analysis; they never replace it. Detect and run them:
+
+- `command -v semgrep >/dev/null && semgrep --config auto --error $FILES`
+- `command -v gitleaks >/dev/null && gitleaks detect --no-banner`
+
+A missing scanner is never a pass and never a blocker: note that it was unavailable
+and continue with your own analysis. A scanner miss does not clear a vulnerability
+you can see in the code.
+
+The **union** of your findings and the scanners' findings is authoritative, never
+the intersection. When only one source surfaces an issue, report it and judge the
+severity from the code itself.
+
 ## Capabilities
 
 Consolidates all security tools in the Multi-Agent Ralph ecosystem:

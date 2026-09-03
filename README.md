@@ -1,5 +1,9 @@
 # Multi-Agent Ralph Loop
 
+![Version](https://img.shields.io/badge/version-3.0.0-blue)
+![License](https://img.shields.io/badge/license-BSL%201.1-orange)
+![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-purple)
+
 Autonomous orchestration framework for Claude Code with MemPalace-inspired memory, Agent Teams, and quality gates.
 
 ## What It Does
@@ -25,18 +29,8 @@ Inspired by the [MemPalace repository](https://github.com/tcsenpai/mempalace) (M
 |-------|------|---------|
 | L0 | `~/.ralph/layers/L0_identity.md` | Agent identity + principles |
 | L1 | `~/.ralph/layers/L1_essential.md` | Actionable rules (filtered from corpus) |
-| L2 | `.claude/rules/learned/{halls,rooms,wings}/` | Project-specific taxonomy (on-demand) |
+| L2 | `.claude/learned-src/learned/*.md` | Graduated project rules, one flat file per domain (on-demand) |
 | L3 | Obsidian vault grep | Full knowledge base queries (on-demand) |
-
-### Learned Rules Taxonomy
-
-Rules organized in 3 dimensions for flexible retrieval:
-
-| Dimension | Directory | Organization |
-|-----------|-----------|--------------|
-| **Halls** (by type) | `.claude/rules/learned/halls/` | decisions, patterns, anti-patterns, fixes |
-| **Rooms** (by topic) | `.claude/rules/learned/rooms/` | hooks, memory, agents, security, testing |
-| **Wings** (by scope) | `.claude/rules/learned/wings/` | `_global/`, `multi-agent-ralph-loop/` |
 
 ### Key Implementation Findings
 
@@ -112,6 +106,95 @@ Agent Teams is enabled via `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.
 | `/ship` | Pre-launch checklist (gates + security + review) |
 | `/spec` | Verifiable technical specification before coding |
 
+## Orchestration Workflow
+
+`/orchestrator` runs steps 0 through 8. Step 0 classifies the task on three dimensions and
+routes it; step 6 is a nested loop that runs once per plan step.
+
+```
+0. EVALUATE   -> Aristotle first principles + 3-dimension classification
+1. CLARIFY    -> AskUserQuestion (MUST_HAVE blocking, NICE_TO_HAVE optional)
+2. CLASSIFY   -> task-classifier (complexity 1-10)
+3. PLAN       -> Detailed design
+4. PLAN MODE  -> EnterPlanMode, user approves
+5. DELEGATE   -> Assign to teammates (isolation and parallelism, never model routing)
+6. EXECUTE-WITH-SYNC, per plan step:
+   6a. LSA-VERIFY  -> architecture pre-check
+   6b. IMPLEMENT   -> run the step
+   6c. PLAN-SYNC   -> detect drift from the plan
+   6d. MICRO-GATE  -> per-step quality (3-fix rule)
+7. VALIDATE   -> quality-auditor, /gates, adversarial spec and plan cross-validation
+8. RETROSPECT -> self-improvement
+```
+
+### 3-Dimension Classification
+
+Step 0 classifies before it plans, and the three values together choose the route:
+
+| Dimension | Values | Purpose |
+|---|---|---|
+| Complexity | 1-10 | Scope, risk, ambiguity |
+| Information Density | CONSTANT / LINEAR / QUADRATIC | How the answer scales |
+| Context Requirement | FITS / CHUNKED / RECURSIVE | Decomposition needs |
+
+CONSTANT + FITS + complexity 1-3 takes a 3-step fast path; QUADRATIC recursively
+decomposes; LINEAR + CHUNKED runs as parallel chunks.
+
+### The Ralph Loop
+
+`/iterate` repeats execute -> validate -> iterate until the quality gates pass
+(`VERIFIED_DONE`) or the bounded iteration budget is exhausted (`max_iterations`,
+15 by default). An unbounded loop has no failure signal, so every loop sets one.
+
+## Essential Commands
+
+```bash
+# Orchestration
+/orchestrator "Implement OAuth2 with Google"
+ralph orch "task"                # Full orchestration
+ralph loop "fix the lint errors" # Loop until VERIFIED_DONE
+/clarify                         # Intensive requirement clarification
+
+# Quality
+/gates                           # Quality gates
+/adversarial                     # Spec refinement
+
+# Memory
+ralph memory-search "query"      # Parallel memory search
+ralph fork-suggest "task"        # Suggest fork sessions
+
+# Security
+ralph security src/              # Security audit
+ralph security-loop src/         # Iterative audit until clean
+
+# Git worktree
+ralph worktree "feature"         # Create an isolated worktree
+ralph worktree-pr <branch>       # PR with review
+
+# Context
+ralph ledger save                # Save session state
+ralph handoff create             # Create a handoff
+```
+
+## Local Observability
+
+Observability with no external dependencies, backed by local files:
+
+```bash
+ralph plan status     # Current plan state (reads .claude/plan-state.json)
+ralph trace show      # Recent events
+ralph trace search    # Search events
+ralph trace timeline  # Visual timeline
+ralph trace export    # Export to JSON/CSV
+```
+
+| Source | Purpose |
+|---|---|
+| `.claude/plan-state.json` | Current orchestration state |
+| `~/.ralph/events/event-log.jsonl` | Event bus history |
+| `~/.ralph/checkpoints/` | Checkpoint snapshots |
+| `~/.ralph/agent-memory/` | Per-agent memory buffers |
+
 ## Quality Gates
 
 4-stage validation, all blocking except consistency:
@@ -121,7 +204,7 @@ Agent Teams is enabled via `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.
 3. **SECURITY** -- semgrep + gitleaks + OWASP validation
 4. **CONSISTENCY** -- Linting and style (advisory)
 
-Hook enforcement via `TeammateIdle` and `TaskCompleted` events ensures no agent completes without passing gates.
+Hook enforcement on the `TaskCompleted` event ensures no agent completes without passing gates.
 
 ## Architecture (post-M2)
 
@@ -155,6 +238,7 @@ The framework includes multiple layers of security enforcement:
 |---|---|---|
 | `git-safety-guard.py` | PreToolUse (Bash) | Blocks destructive git operations and command chaining |
 | `repo-boundary-guard.sh` | PreToolUse (Bash) | Prevents operations outside current repo |
+| `read-size-guard.sh` | PreToolUse (Read) | Denies an unbounded Read of a file over 250 lines; requires `offset`/`limit` |
 | `audit-secrets.js` | PostToolUse | Audit logging for 20+ secret patterns |
 | `task-completed-quality-gate.sh` | TaskCompleted | Multi-gate validation before task completion |
 | `task-plan-sync.sh` | TaskCreated | Syncs task creation to plan-state.json |
@@ -194,14 +278,26 @@ python3 -m pytest tests/ -q                    # Full test suite
 bash scripts/validate-global-infrastructure.sh  # Infrastructure checks
 ```
 
-## Configuration
+## Model Policy
 
-The system is **model-agnostic** -- all skills and agents inherit the configured model from settings, no per-command flags required.
+The system is **model-agnostic** and provider-agnostic. The model is whichever model the
+session runs: the user chooses it with `/model` or by naming it explicitly, and subagents
+inherit it. Nothing in this repository selects, recommends, routes to, or pins a default
+model or provider.
+
+Complexity thresholds trigger **process**, never a model change -- Plan Mode from
+complexity 4 upward, for example. Delegation to subagents is for isolation and
+parallelism, not for cost.
+
+External tools are opt-in and invoked **only by explicit name** (the `codex-cli`,
+`gemini-cli` and `openai-docs` skills, and the `codex-reviewer` agent). None of them is a
+default route or an automatic fallback.
+
+## Configuration
 
 ```json
 {
   "env": {
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "your-model",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   }
 }
@@ -261,7 +357,7 @@ Autonomous experimentation loop inspired by [karpathy/autoresearch](https://gith
 
 ## License
 
-MIT License - see LICENSE file.
+Business Source License 1.1 - see LICENSE file.
 
 ## References
 

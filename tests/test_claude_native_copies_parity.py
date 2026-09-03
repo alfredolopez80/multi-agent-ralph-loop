@@ -18,9 +18,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 INSTALLER = REPO_ROOT / "scripts" / "install-claude-native-agents.sh"
 
 EXPECTED_AGENTS = [
-    "debugger", "refactorer", "docs-writer", "test-architect", "frontend-reviewer",
-    "security-auditor", "ralph-security", "orchestrator", "codex-reviewer",
-    "adversarial-plan-validator",
+    "debugger", "docs-writer", "frontend-reviewer", "ralph-security", "orchestrator",
+    "codex-reviewer", "adversarial-plan-validator",
 ]
 EXPECTED_SKILLS = ["bugs", "security"]
 

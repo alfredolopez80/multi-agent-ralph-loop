@@ -384,11 +384,11 @@ WORKTREE_CONTEXT:
   # Per-agent commit prefix for consistent commit messages
   COMMIT_PREFIX:
     ralph-reviewer: "review:"
-    security-auditor: "security:"
-    test-architect: "test:"
+    ralph-security: "security:"
+    ralph-tester: "test:"
     frontend-reviewer: "ui:"
     debugger: "fix:"
-    refactorer: "refactor:"
+    ralph-coder: "refactor:"
     docs-writer: "docs:"
 ```
 
@@ -426,7 +426,7 @@ ralph worktree-pr ai/ralph/YYYYMMDD-feature
 │  │  TODOS los subagentes trabajan AQUÍ:            │   │
 │  │  ├── @backend-dev     → src/api/oauth.ts       │   │
 │  │  ├── @frontend-dev    → src/ui/login.tsx       │   │
-│  │  ├── @test-architect  → tests/oauth.test.ts    │   │
+│  │  ├── @ralph-tester    → tests/oauth.test.ts    │   │
 │  │  └── @docs-writer     → docs/oauth.md          │   │
 │  └─────────────────────────────────────────────────┘   │
 │              │                                          │
@@ -671,7 +671,7 @@ Ralph Loop enforced via hooks: `Execute → Validate → Iterate (max 15) → VE
 
 ```yaml
 Task:
-  subagent_type: "security-auditor"
+  subagent_type: "ralph-security"
   run_in_background: true
   prompt: "Audit for security vulnerabilities: $FILES"
 
@@ -681,7 +681,7 @@ Task:
   prompt: "Review code quality: $FILES"
 
 Task:
-  subagent_type: "test-architect"
+  subagent_type: "ralph-tester"
   run_in_background: true
   prompt: "Generate tests: $FILES"
 ```
@@ -761,7 +761,7 @@ Execute the step with standard subagents:
 
 # Implement with appropriate subagent
 Task:
-  subagent_type: "ralph-coder"  # or security-auditor, test-architect, etc.
+  subagent_type: "ralph-coder"  # or ralph-security, ralph-tester, etc.
   run_in_background: true
   prompt: |
     STEP_SPEC: [spec from plan-state]
@@ -1121,7 +1121,7 @@ Auxiliary agents integrate at specific points in the 8-step workflow:
 
 ```
 Step 5: EXECUTE
-  └── Standard subagents (ralph-coder, test-architect, etc.)
+  └── Standard subagents (ralph-coder, ralph-tester, etc.)
   └── Language-specific reviewer (if Python/TypeScript detected)
       ├── kieran-python-reviewer (for .py files)
       └── kieran-typescript-reviewer (for .ts/.tsx files)

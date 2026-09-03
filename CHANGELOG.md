@@ -4,6 +4,133 @@
 
 ## [Unreleased]
 
+### Changed - Agent roster consolidated onto the ralph-* teammates (2026-09-03)
+
+`test-architect`, `refactorer` and `security-auditor` duplicated the job of
+`ralph-tester`, `ralph-coder` and `ralph-security` with near-identical prompts,
+so two names routed to the same work and two files had to be maintained. The
+three standalone agents are deleted and their unique content folded into the
+survivors: fail-loud test-authoring rules and the worktree block into
+`ralph-tester`; the code-smell checklist, call-site mapping and worktree block
+into `ralph-coder`; the finding schema, severity->action table, union-not-
+intersection rule and the concrete semgrep/gitleaks invocations into
+`ralph-security` (which keeps no Edit/Write — it audits, it does not fix).
+
+17 files were repointed name by name (orchestrator agent and skill, the
+`security`, `bugs` and `quality-gates-parallel` skills, `quality-coordinator.sh`,
+`agent-memory-buffer.sh`, `codex-reviewer.md`, `.claude/pins/readme.md`,
+`plan-state-v2.schema.json`, `scripts/ralph`, DISTRIBUTION_POLICY, two docs and
+two tests). The three names are gone from the `AGENTS` roster in
+`install-claude-native-agents.sh` and from `EXPECTED_AGENTS` in
+`test_claude_native_copies_parity.py`; `validate-global-architecture.sh` now
+asserts `ralph-security.md` and `ralph-tester.md`.
+
+**Migration (user side, once)**: the home copies are not removed by this change.
+Run `rm ~/.claude/agents/{refactorer,security-auditor,test-architect}.md` and then
+`bash scripts/install-claude-native-agents.sh && bash scripts/install-claude-native-agents.sh --check`.
+
+### Fixed - Security loop in `scripts/ralph` could report a clean tree over a crashed CLI
+
+All four `claude` invocations in the loop ended in `|| true`, and
+`parse_security_findings()` counted severities with `grep -ci` over prose, where
+"allow" and "below" both scored as LOW. A failed audit was indistinguishable from
+a clean one, and the loop printed "NO VULNERABILITIES REMAINING" either way.
+
+- Exit codes are checked explicitly by the new `run_security_agent` helper and
+  never swallowed; stderr goes to a sibling `.stderr` file so it can never
+  contaminate the JSON payload.
+- The invocation runs with the audited tree as its working directory (restoring
+  the cwd pin that the Codex `-C` flag used to provide) and passes `--add-dir`.
+- `parse_security_findings()` fails loudly on a missing file, a non-JSON
+  envelope, an `is_error` envelope, or a `summary` that disagrees with the
+  `vulnerabilities` array. It reads `.structured_output` and falls back to
+  decoding the `.result` JSON string.
+- Roles are split by flag rather than by prose: audit and fix-proposal sites run
+  `--agent ralph-security --permission-mode plan` with Edit/Write/NotebookEdit
+  disallowed; the two fix sites run `--agent ralph-coder --permission-mode
+  acceptEdits` (never `bypassPermissions` — the PreToolUse guards are the only
+  sandbox that exists and they do fire inside `claude --print`).
+- Findings reach `ralph-coder` as a file path under `$RALPH_TMPDIR` with a second
+  `--add-dir`, never as JSON interpolated into the prompt.
+- The count of fixes is computed from the audit delta between rounds instead of
+  `FIXED=$TOTAL`, which asserted success without evidence.
+- `cmd_security_loop()` refuses to recurse when `RALPH_SECURITY_LOOP_ACTIVE=1`.
+- A failed audit prints its own `SECURITY LOOP: AUDIT FAILED` banner and exits
+  non-zero, so it can never look like a clean result.
+
+### Added - `.claude/schemas/security-output.json`
+
+The structured-output contract (`vulnerabilities[]` + `summary`,
+`additionalProperties: false`) that the audit and proposal invocations now pass
+via `--json-schema`. The pre-existing `--output-schema` flag pointed at a file
+that did not exist. 22 regression tests in `tests/test_ralph_security.bats`
+(unit-level; nothing there spawns `claude`).
+
+### Changed - README reconciliation
+
+`README.md` documented a retired taxonomy and settings that contradict the
+repo's own policy. The L2 memory row now points at `.claude/learned-src/learned/*.md`
+(flat); the "Learned Rules Taxonomy" section is deleted with the
+`halls`/`rooms`/`wings` directories it described; quality-gate enforcement lists
+only `TaskCompleted` (`TeammateIdle` is not registered); `read-size-guard` is in
+the Security table; `ANTHROPIC_DEFAULT_SONNET_MODEL` is gone from the
+Configuration block and replaced by a Model Policy section that states the
+invariant; the license is BSL 1.1, matching the LICENSE file, not MIT.
+
+Port-first rule for the two READMEs: Spanish-only content is ported into
+`README.md` only when it can be verified against the repository as it stands —
+the orchestration walkthrough (steps 0-8), the 3-dimension classification, the
+Ralph Loop bound, the essential commands and local observability were verified
+against `scripts/ralph` and `.claude/skills/orchestrator/SKILL.md` and ported.
+Anything unverifiable was dropped, not translated: the three-memory-types table
+(only `~/.ralph/procedural/rules.json` exists), the "38 hooks" table, the
+v2.52-era diagrams and the broken `ARCHITECTURE_DIAGRAM_v2.52.0.md` links.
+
+`README.es.md` is rewritten as a faithful section-by-section translation of the
+updated `README.md` (badge 3.0.0, same section count), keeping the note that
+English is the source of truth.
+
+### Added - `read-size-guard` and retirement of the learned-rules taxonomy duplicates (2026-09-03)
+
+A 30-day profile of session logs (196 sessions, 21K requests) found 73% of
+token-equivalent spend in cache reads, with p50 context per request at 408K.
+Two repo-side levers followed:
+
+- `.claude/hooks/read-size-guard.sh` (PreToolUse, Read): denies an unbounded Read
+  of a text file over 250 lines, naming the line count and the alternatives
+  (offset+limit, Grep, ctx_execute_file). Media files, missing files and bounded
+  reads pass; `READ_SIZE_GUARD_MAX_LINES` overrides per session. Registered in
+  `settings.json.example`, covered by `tests/test_hooks_read_size_guard.py`.
+- `.claude/rules/learned/{halls,rooms}/` retired: the taxonomy was a verbatim
+  duplicate of `proven/` plus L1, so it was paid for on every wake-up without
+  adding retrievable content. L2 is now the flat `.claude/learned-src/learned/*.md`.
+
+### Changed - Prompt audit: dated prompt patterns stripped from agents, skills and rules (2026-09-03)
+
+Audit of the repository's prompt surface (`CLAUDE.md`, `.claude/rules-src/`, 62
+skills, 36 agents). Full record: `docs/architecture/PROMPT_AUDIT_2026-09-03.md`.
+
+- The `**ultrathink** - Take a deep breath ...` incantation plus a "The Vision"
+  identity paragraph was removed from 23 of 36 agents: thinking is always on and
+  its depth is set by `effort`, not by prose.
+- A model-selection prohibition in `orchestrator/SKILL.md` ("Never use model:
+  haiku for subagents") contradicted the repo's own invariant that the model is
+  the user's choice and subagents inherit it; rewritten as the invariant.
+- Migration-relative fossils, pinned model names in descriptions, volatile
+  version pins in skill trigger text, and stacked `CRITICAL`/`MANDATORY`/`NEVER`
+  markers were rewritten at normal volume, keeping every real constraint with
+  its reason.
+
+### Changed - The repository is model- and provider-agnostic (2026-09-03)
+
+No skill, agent, script or doc selects, recommends, routes to or pins a model or
+provider. Complexity thresholds trigger process (Plan Mode from 4 upward), never
+a model change; delegation to subagents is for isolation and parallelism, not
+cost. The external CLIs (`codex-cli`, `gemini-cli`, `openai-docs`,
+`codex-reviewer`) remain opt-in by explicit name, never a default or a fallback.
+Guarded by `tests/unit/test-model-agnostic-v2.88.sh` and
+`tests/test_parallel_first_absence.py`.
+
 ### Removed - Slice C (#69 Phase 3 PR 7): quality enforcement consolidado en task-completed-quality-gate.sh (TaskCompleted)
 
 - Removidos 7 hooks duplicados: `teammate-idle-quality-gate`, `agent-diary-writer`,

@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Ralph security audit output",
+  "description": "Structured output contract for the security audit and proposal invocations in scripts/ralph. summary counts must agree with the vulnerabilities array.",
+  "type": "object",
+  "required": ["vulnerabilities", "summary"],
+  "additionalProperties": false,
+  "properties": {
+    "vulnerabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "severity", "file", "line", "description", "recommendation"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable identifier for this finding within the report, e.g. VULN-001."
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
+          },
+          "cwe": {
+            "type": "string",
+            "description": "CWE identifier, e.g. CWE-89."
+          },
+          "owasp": {
+            "type": "string",
+            "description": "OWASP Top 10 category, e.g. A03:2021-Injection."
+          },
+          "file": {
+            "type": "string",
+            "description": "Path to the affected file, relative to the audited tree."
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Line number of the affected code."
+          },
+          "description": {
+            "type": "string",
+            "description": "What the vulnerability is and why it is exploitable."
+          },
+          "recommendation": {
+            "type": "string",
+            "description": "The concrete remediation to apply."
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total", "critical", "high", "medium", "low"],
+      "additionalProperties": false,
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "critical": { "type": "integer", "minimum": 0 },
+        "high": { "type": "integer", "minimum": 0 },
+        "medium": { "type": "integer", "minimum": 0 },
+        "low": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

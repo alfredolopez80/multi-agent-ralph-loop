@@ -1,7 +1,7 @@
 ---
 # VERSION: 3.1.0
 name: codex-reviewer
-description: "Explicit opt-in code reviewer that drives the Codex CLI. Use ONLY when the user asks for a Codex review by name — never as a default reviewer, an automatic second opinion, or a fallback. For ordinary reviews use ralph-reviewer or security-auditor."
+description: "Explicit opt-in code reviewer that drives the Codex CLI. Use ONLY when the user asks for a Codex review by name — never as a default reviewer, an automatic second opinion, or a fallback. For ordinary reviews use ralph-reviewer or ralph-security."
 tools: Bash, Read
 ---
 

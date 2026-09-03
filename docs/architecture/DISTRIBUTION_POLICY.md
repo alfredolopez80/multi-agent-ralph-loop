@@ -70,8 +70,10 @@ the session's own model, regardless of repo state. A COPY guarantees that. To ke
 from drifting SILENTLY (the inverse failure), a parity `--check` makes drift loud.
 
 **Set** (from PR #31's conversion to self-contained agents):
-- Agents (10): `debugger`, `refactorer`, `docs-writer`, `test-architect`, `frontend-reviewer`,
-  `security-auditor`, `ralph-security`, `orchestrator`, `codex-reviewer`, `adversarial-plan-validator`
+- Agents (7): `debugger`, `docs-writer`, `frontend-reviewer`, `ralph-security`, `orchestrator`,
+  `codex-reviewer`, `adversarial-plan-validator`
+  (`refactorer`, `test-architect` and `security-auditor` were consolidated into the
+  `ralph-coder` / `ralph-tester` / `ralph-security` teammates on 2026-09-03.)
 - Skills (2): `bugs`, `security`
 
 **Install / refresh the copies:**
