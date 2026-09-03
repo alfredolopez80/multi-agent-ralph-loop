@@ -4,6 +4,65 @@
 
 ## [Unreleased]
 
+### Changed - `ast-grep-usage` and `browser-automation` converted from always-loaded rules to on-demand skills (2026-09-03)
+
+Both files lived in `.claude/rules-src/` and were distributed as header-stamped
+copies into `~/.claude/rules/`, which means they were injected into the prompt
+prefix on *every* request in *every* project. Together they were ~7.8 KB of pure
+reference material — ast-grep rule syntax tables, metavariable semantics,
+`stopBy` options, browser trust zones and action allowlists — none of which is
+actionable unless the task actually involves structural code search or a browser.
+
+They are now `.claude/skills/ast-grep-usage/` and
+`.claude/skills/browser-automation/`, with the body preserved verbatim (these are
+reference docs; shortening them would defeat their purpose) and a `description`
+written as trigger text so the skill loads when the task calls for it.
+
+- Removed from `RULE_FILES` in `.claude/scripts/sync-rules-from-source.sh` and
+  from `RULES` in `scripts/validate-global-infrastructure.sh`; both lists keep
+  `native-tools-first.md` and `plan-immutability.md`, which stay always-loaded.
+- `CLAUDE.md` now points browser trust zones at the skill instead of
+  `.claude/rules/browser-automation.md`.
+
+**Migration (user side, once)**: `rm ~/.claude/rules/{ast-grep-usage,browser-automation}.md`,
+then `bash scripts/setup-skills-symlinks.sh`.
+
+### Added - `docs/rules-evidence/`: the global proven rules split into norm and evidence (2026-09-03)
+
+The 15 files in `~/.claude/rules/proven/` are always-loaded and had grown to
+~26 KB, most of it casuistry around the norm — worked examples, failure
+transcripts, blast-radius measurements, per-ecosystem tables. That evidence is
+valuable but was being paid for on every request regardless of relevance.
+
+The rule files are reduced to norm + trigger + a link; their full pre-reduction
+text is preserved verbatim in `docs/rules-evidence/<same-basename>`, one file per
+rule, each opening with a provenance header. Bodies are byte-identical to the
+2026-09-03 source (verified by `diff` on all 15). `docs/rules-evidence/README.md`
+documents the split and when to read the evidence rather than the norm.
+
+### Removed - Never-invoked skills and agents archived (2026-09-03)
+
+Skills moved to `.claude/skills/_archived/`: `diagram-design`,
+`research-blockchain`, `clean-slop`, `ethereum-rpc`. Agents moved to
+`.claude/agents/_archived/`: `ux-ui-senior-developer`,
+`blockchain-security-auditor`, `research-blockchain`,
+`liquid-staking-specialist`, `chain-infra-specialist-blockchain`,
+`defi-protocol-economist`, `senior-frontend-developer`, `web-scrapper`,
+`software-architech`, `Hyperliquid-DeFi-Protocol-Specialist`.
+
+All had zero invocations and no live infrastructure reference.
+`lead-software-architect` was explicitly **kept** — it is still spawned by
+`orchestrator.md` and `adversarial-plan-validator.md`.
+
+The four archived skills had escape-hatch lines in `.claude/.skill-drift-ignore`;
+those lines are removed because the drift loop only scans
+`.claude/skills/*/SKILL.md` and an archived skill is no longer reachable.
+`docs/security/diagram-design-threat-model.md` is annotated as describing an
+archived skill and its paths repointed.
+
+**Migration (user side, once)**: remove the now-dangling skill and agent symlinks
+under `~/.claude/`, then re-run `bash scripts/setup-skills-symlinks.sh`.
+
 ### Changed - Agent roster consolidated onto the ralph-* teammates (2026-09-03)
 
 `test-architect`, `refactorer` and `security-auditor` duplicated the job of
@@ -94,7 +153,9 @@ English is the source of truth.
 
 A 30-day profile of session logs (196 sessions, 21K requests) found 73% of
 token-equivalent spend in cache reads, with p50 context per request at 408K.
-Two repo-side levers followed:
+The profile is reproducible via `scripts/audit/context-profile.py`, which reads
+the session logs and reports per-source context weight. Two repo-side levers
+followed:
 
 - `.claude/hooks/read-size-guard.sh` (PreToolUse, Read): denies an unbounded Read
   of a text file over 250 lines, naming the line count and the alternatives

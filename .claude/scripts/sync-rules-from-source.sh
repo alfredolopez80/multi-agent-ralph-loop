@@ -48,9 +48,11 @@ if [ ! -d "$REPO/.claude/rules-src" ]; then
   exit 1
 fi
 
+# 2026-09-03: ast-grep-usage.md and browser-automation.md were converted into
+# on-demand skills (.claude/skills/{ast-grep-usage,browser-automation}/SKILL.md).
+# They were ~8 KB of reference material paid on EVERY request as part of the
+# always-loaded prefix; as skills they load only when the task calls for them.
 RULE_FILES=(
-  "ast-grep-usage.md"
-  "browser-automation.md"
   "native-tools-first.md"
   "plan-immutability.md"
 )

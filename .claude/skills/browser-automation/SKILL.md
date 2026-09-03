@@ -1,3 +1,9 @@
+---
+# VERSION: 3.2.0
+name: browser-automation
+description: "Browser automation security policy: trust zones (localhost GREEN / staging YELLOW / production RED), the agent-browser tool workflow, allowed vs prohibited actions, and config/secret file handling. Use when the task involves browser automation, agent-browser, Playwright or Chrome DevTools MCP, taking screenshots of web pages, scraping sites, or testing a UI in a real browser."
+---
+
 # Browser Automation Security Rules
 
 ## Trust Zones

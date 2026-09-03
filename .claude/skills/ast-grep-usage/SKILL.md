@@ -1,3 +1,9 @@
+---
+# VERSION: 3.2.0
+name: ast-grep-usage
+description: "ast-grep structural code search reference: AST pattern matching, rule syntax (atomic, relational, composite), metavariables, stopBy semantics, and when to prefer ast-grep over Grep/Glob. Use when the user or task involves ast-grep, structural code search, AST patterns, YAML rule authoring for code search, or any of the mcp__ast-grep__* tools (find_code, find_code_by_rule, dump_syntax_tree, test_match_code_rule)."
+---
+
 # ast-grep Structural Code Search
 
 Use the ast-grep MCP tools for structural code search based on Abstract Syntax Tree (AST) pattern matching.
