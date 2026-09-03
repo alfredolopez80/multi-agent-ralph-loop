@@ -171,13 +171,21 @@ class TestProjectState:
         hso = output.get("hookSpecificOutput", {})
         assert "skills_sync" in hso, f"Missing skills_sync in hookSpecificOutput: {hso}"
 
-    def test_output_contains_context_model(self):
-        """hookSpecificOutput should include context.model."""
+    def test_output_context_names_no_model(self):
+        """hookSpecificOutput.context carries state, never a model/provider name.
+
+        The hook used to report `context.model` ("claude" / "glm"), which made a
+        provider visible in every SessionStart payload. The model is whatever the
+        session runs; this hook has no business naming it.
+        """
         payload = json.dumps({"hookEventName": "SessionStart"})
         result = _run_hook(PROJECT_STATE, stdin_data=payload)
         output = _parse_json_output(result)
-        ctx = output.get("hookSpecificOutput", {}).get("context", {})
-        assert "model" in ctx, f"Missing 'model' in context: {ctx}"
+        hso = output.get("hookSpecificOutput", {})
+        ctx = hso.get("context", {})
+        assert "state_dir" in ctx, f"Missing 'state_dir' in context: {ctx}"
+        assert "model" not in ctx, f"context must not name a model: {ctx}"
+        assert "model" not in hso.get("additionalContext", "")
 
     def test_validate_skills_subcommand(self, isolated_home):
         """Running with 'validate-skills' arg should return JSON with status field.
@@ -211,9 +219,14 @@ class TestProjectState:
         dir_path = result.stdout.strip()
         assert len(dir_path) > 0, "get-dir returned empty string"
 
-    def test_get_model_subcommand(self):
-        """Running with 'get-model' should return 'claude' or 'glm'."""
+    def test_no_get_model_subcommand(self):
+        """project-state.sh must not detect or report a model/provider.
+
+        The verb used to branch context tracking on 'claude' vs 'glm' over an
+        identical computation — provider routing with no behavioural difference.
+        It is gone, and an unknown verb must fail loudly rather than guess.
+        """
         result = _run_hook(PROJECT_STATE, stdin_data="", args=["get-model"])
-        assert result.returncode == 0
-        model = result.stdout.strip()
-        assert model in ("claude", "glm", "unknown"), f"Unexpected model: '{model}'"
+        assert result.returncode != 0, "get-model should no longer be a valid verb"
+        assert "Usage:" in result.stderr
+        assert "get-model" not in result.stderr

@@ -1,5 +1,7 @@
 # Analysis & Proposal: Ralph Orchestrator v2.46
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 > **Document**: Deep Analysis of RLM Paper + Ralph Mode Blog + Current State
 > **Date**: 2026-01-18
 > **Author**: Claude Opus 4.5 (Analysis Agent)

@@ -1,5 +1,7 @@
 # Prompt Audit — 2026-09-03
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 Run via `/claude-api prompt-audit` ("clear old junk"). Edits at high/medium
 confidence were applied in the same pass; `flag` items were not.
 

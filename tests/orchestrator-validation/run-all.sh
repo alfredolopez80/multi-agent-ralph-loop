@@ -7,8 +7,6 @@
 # This script runs:
 # 1. Basic validation tests
 # 2. Adversarial validation (if available)
-# 3. Codex CLI validation (if available)
-# 4. Gemini CLI validation (if available)
 
 set -euo pipefail
 
@@ -35,7 +33,7 @@ echo -e "${BLUE}========================================${NC}\n"
 # Test Suite 1: Basic Validation
 # ==============================================================================
 
-echo -e "${YELLOW}[1/4]${NC} Running Basic Validation Tests..."
+echo -e "${YELLOW}[1/2]${NC} Running Basic Validation Tests..."
 
 if bash tests/orchestrator-validation/test-suite.sh; then
     PASSED_TESTS=$((PASSED_TESTS + 10))
@@ -51,7 +49,7 @@ TOTAL_TESTS=$((TOTAL_TESTS + 10))
 # Test Suite 2: Adversarial Validation (if available)
 # ==============================================================================
 
-echo -e "${YELLOW}[2/4]${NC} Running Adversarial Validation..."
+echo -e "${YELLOW}[2/2]${NC} Running Adversarial Validation..."
 
 if command -v /adversarial &>/dev/null; then
     echo "Found /adversarial - running adversarial validation..."
@@ -75,77 +73,6 @@ else
 fi
 
 # ==============================================================================
-# Test Suite 3: Codex CLI Validation (if available)
-# ==============================================================================
-
-echo -e "${YELLOW}[3/4]${NC} Running Codex CLI Validation..."
-
-if command -v codex &>/dev/null; then
-    echo "Found codex CLI - running Codex validation..."
-
-    if codex "Analizar el workflow del orchestrator:
-
-Archivo: ~/.claude/agents/orchestrator.md
-
-Validar:
-1. Que el flow FAST PATH esté correctamente documentado
-2. Que el flow STANDARD (12 pasos) esté completo
-3. Que la coordinación de auto-verificación esté implementada
-4. Que los hooks necesarios estén registrados
-5. Que no haya regresiones desde v2.47
-
-Verificar compatibilidad hacia atrás y documentar cualquier issue encontrado." --output tests/orchestrator-validation/codex-report.md; then
-        PASSED_TESTS=$((PASSED_TESTS + 5))
-        echo -e "${GREEN}✅ Codex Validation: PASSED${NC}\n"
-    else
-        FAILED_TESTS=$((FAILED_TESTS + 5))
-        echo -e "${RED}❌ Codex Validation: FAILED${NC}\n"
-    fi
-    TOTAL_TESTS=$((TOTAL_TESTS + 5))
-else
-    echo -e "${YELLOW}⚠️  codex CLI not found - skipping Codex validation${NC}\n"
-    echo "Install with: npm install -g @openai/codex"
-fi
-
-# ==============================================================================
-# Test Suite 4: Gemini CLI Validation (if available)
-# ==============================================================================
-
-echo -e "${YELLOW}[4/4]${NC} Running Gemini CLI Validation..."
-
-if command -v gemini &>/dev/null; then
-    echo "Found gemini CLI - running Gemini validation..."
-
-    if gemini "Revisar la implementación del orchestrator v2.70.1:
-
-Archivos a revisar:
-- ~/.claude/agents/orchestrator.md
-- ~/.claude/hooks/code-review-auto.sh
-- ~/.claude/hooks/verification-subagent.sh
-- ~/.claude/hooks/subagent-visibility.sh
-- ~/.claude/hooks/auto-verification-coordinator.sh
-
-Validar:
-1. Coordinación de auto-verificación está correctamente implementada
-2. Hooks de visibilidad están registrados
-3. Timeout está correctamente configurado
-4. No hay bloqueos en el flujo
-5. El workflow puede completarse sin intervención manual
-
-Reportar cualquier issue de compatibilidad o bug potencial." --output tests/orchestrator-validation/gemini-report.md; then
-        PASSED_TESTS=$((PASSED_TESTS + 5))
-        echo -e "${GREEN}✅ Gemini Validation: PASSED${NC}\n"
-    else
-        FAILED_TESTS=$((FAILED_TESTS + 5))
-        echo -e "${RED}❌ Gemini Validation: FAILED${NC}\n"
-    fi
-    TOTAL_TESTS=$((TOTAL_TESTS + 5))
-else
-    echo -e "${YELLOW}⚠️  gemini CLI not found - skipping Gemini validation${NC}\n"
-    echo "Install with: npm install -g @anthropic-ai/gemini-cli"
-fi
-
-# ==============================================================================
 # Final Summary
 # ==============================================================================
 
@@ -160,8 +87,6 @@ echo -e ""
 echo -e "Test Reports Generated:"
 echo -e "  - tests/orchestrator-validation/test-run.log"
 echo -e "  - tests/orchestrator-validation/adversarial-report.md (if /adversarial available)"
-echo -e "  - tests/orchestrator-validation/codex-report.md (if codex available)"
-echo -e "  - tests/orchestrator-validation/gemini-report.md (if gemini available)"
 echo -e ""
 
 echo "=== Final Summary ==="

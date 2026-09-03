@@ -48,13 +48,7 @@ You do the diagnosis yourself with your own tools — no external CLI is require
 5. **Verify**: Re-run the reproduction via `Bash`, confirm the failure is gone, and
    check that no adjacent behavior regressed. Remove any temporary instrumentation.
 
-> Optional second opinion: if the `codex` CLI happens to be installed and responds,
-> you MAY ask it to cross-check your diagnosis
-> (`codex exec --profile security-audit "..."`). Never wait on or depend on it — if
-> `codex` is missing, rate-limited, or unauthenticated, proceed with your own
-> analysis. Claude is always the default engine.
-
-## Worktree Awareness (v2.20)
+## Worktree Awareness
 
 ### Contexto de Ejecución
 

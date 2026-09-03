@@ -1,5 +1,7 @@
 # Ralph Learning System v2.59.0 - Master Improvement Plan
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Plan Date**: 2026-01-22
 **Version**: v2.59.0
 **Based On**:

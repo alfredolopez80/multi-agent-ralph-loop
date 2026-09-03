@@ -1,5 +1,7 @@
 # LLM Provider Usage Tracking Comparison
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 > Analysis of usage tracking approaches across Z.AI (GLM Coding Plan), Gemini API, and OpenAI API for unified orchestration system integration.
 
 **Date**: January 27, 2026

@@ -325,7 +325,6 @@ Gap Analyst is invoked at step 1b in v2.45 flow:
 ```yaml
 Task:
   subagent_type: "gap-analyst"
-  model: "opus"
   prompt: |
     FEATURE: [user's feature request]
     CLARIFICATION_ANSWERS: [answers from step 1]

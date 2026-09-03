@@ -1,5 +1,7 @@
 # Promptify Integration Implementation Plan
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Date**: 2026-01-30
 **Version**: 1.0.0
 **Status**: READY FOR IMPLEMENTATION

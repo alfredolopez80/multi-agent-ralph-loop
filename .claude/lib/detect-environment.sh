@@ -14,13 +14,14 @@
 #   claude-cli   Claude Code CLI (native)
 #   vscode       Claude VS Code extension
 #   cursor       Claude Cursor extension
-#   glm-api      GLM-4.7 / Zhipu via Z.AI or BigModel endpoint
 #   unknown      fallback
+#
+# This library detects the ENTRYPOINT (which client is running), never a model
+# or a provider. The model is whatever the session runs.
 #
 # Capability buckets
 #   full     claude-cli
 #   limited  vscode / cursor
-#   api      glm-api
 #   none     unknown
 #
 # Sourced function API (stable names used by current callers)
@@ -36,12 +37,10 @@ umask 077
 ENV_CLAUDE_CLI="claude-cli"
 ENV_VSCODE="vscode"
 ENV_CURSOR="cursor"
-ENV_GLM_API="glm-api"
 ENV_UNKNOWN="unknown"
 
 CAP_FULL="full"
 CAP_LIMITED="limited"
-CAP_API="api"
 CAP_NONE="none"
 
 # --- Cache slots (set -u safe) --------------------------------------------
@@ -52,8 +51,8 @@ _RALPH_ENV_DETECTED="${_RALPH_ENV_DETECTED:-}"
 
 # --- Detection primitives --------------------------------------------------
 # TTL for marker files (minutes). Markers older than this are treated as
-# stale and ignored. Prevents a stale ~/.ralph/state/glm-active from
-# mis-classifying months-old sessions as GLM when the user is actually
+# stale and ignored. Prevents a stale marker file from
+# mis-classifying months-old sessions when the user is actually
 # on native Claude.
 _RALPH_MARKER_TTL_MIN="${_RALPH_MARKER_TTL_MIN:-60}"
 
@@ -65,22 +64,6 @@ _env_marker_is_fresh() {
     now=$(date +%s)
     age=$(( (now - mtime) / 60 ))
     [[ "$age" -lt "$_RALPH_MARKER_TTL_MIN" ]]
-}
-
-_env_base_url_is_zai() {
-    local url="${ANTHROPIC_BASE_URL:-}"
-    [[ "$url" =~ api\.z\.ai ]] || \
-    [[ "$url" =~ open\.bigmodel\.cn ]] || \
-    [[ "$url" =~ dev\.bigmodel\.cn ]]
-}
-
-_env_glm_marker_fresh() {
-    local state_dir="${RALPH_DIR:-${HOME}/.ralph}/state"
-    _env_marker_is_fresh "${state_dir}/glm-active"
-}
-
-_env_model_is_glm() {
-    [[ "${ANTHROPIC_MODEL:-}" =~ glm-[0-9] ]]
 }
 
 _env_has_anthropic_base_url() {
@@ -95,13 +78,6 @@ _env_has_anthropic_base_url() {
 # launch. If those are unset and CLAUDE_CODE_ENTRYPOINT=cli, we are on
 # native Claude regardless of stale marker files sitting in ~/.ralph/.
 detect_environment_type() {
-    # P1: Explicit API backend override via base URL + auth
-    if _env_base_url_is_zai; then
-        if [[ -n "${Z_AI_API_KEY:-}${ZAI_API_KEY:-}${ANTHROPIC_AUTH_TOKEN:-}" ]]; then
-            echo "$ENV_GLM_API"; return 0
-        fi
-    fi
-
     # P2: Claude Code entrypoint is authoritative when no API override exists
     case "${CLAUDE_CODE_ENTRYPOINT:-}" in
         cli)    echo "$ENV_CLAUDE_CLI"; return 0 ;;
@@ -123,16 +99,8 @@ detect_environment_type() {
     fi
 
     # P5: Model-only hints (no base_url, no entrypoint) + matching auth
-    if _env_model_is_glm && [[ -n "${Z_AI_API_KEY:-}${ZAI_API_KEY:-}${ANTHROPIC_AUTH_TOKEN:-}" ]]; then
-        echo "$ENV_GLM_API"; return 0
-    fi
-
     # P6: Fresh marker files (TTL-bounded, fallback for headless scripts
     # launched outside Claude Code)
-    if _env_glm_marker_fresh; then
-        echo "$ENV_GLM_API"; return 0
-    fi
-
     echo "$ENV_UNKNOWN"
 }
 
@@ -140,7 +108,6 @@ determine_capabilities() {
     case "$1" in
         "$ENV_CLAUDE_CLI")                   echo "$CAP_FULL" ;;
         "$ENV_VSCODE"|"$ENV_CURSOR")         echo "$CAP_LIMITED" ;;
-        "$ENV_GLM_API")                      echo "$CAP_API" ;;
         *)                                   echo "$CAP_NONE" ;;
     esac
 }
@@ -150,7 +117,6 @@ get_entrypoint() {
         "$ENV_CLAUDE_CLI")                   echo "cli" ;;
         "$ENV_VSCODE")                       echo "vscode" ;;
         "$ENV_CURSOR")                       echo "cursor" ;;
-        "$ENV_GLM_API")                      echo "api" ;;
         *)                                   echo "unknown" ;;
     esac
 }

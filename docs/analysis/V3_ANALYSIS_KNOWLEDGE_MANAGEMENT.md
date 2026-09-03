@@ -1,4 +1,6 @@
 # V3 Analysis: Knowledge Management System
+
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
 **Date**: 2026-04-08
 **Analyst**: team-lead
 **Task**: #2 — Obsidian Vault & Knowledge Management Analysis

@@ -1,5 +1,7 @@
 # Memory Backend Migration — claude-mem → Obsidian Vault
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Date**: 2026-04-07
 **Branch**: `feat/mempalace-adoption`
 **Scope**: Memory subsystem refactor

@@ -1,5 +1,7 @@
 # Context Window Statusline Bug - Claude Code 2.1.19
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Date**: 2026-01-27
 **Affected Version**: Claude Code 2.1.19 (via Zai/claude-sneakpeek)
 **Status**: FIXED in statusline-ralph.sh v2.74.3

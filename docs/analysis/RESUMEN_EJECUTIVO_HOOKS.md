@@ -1,5 +1,7 @@
 # Resumen Ejecutivo - Análisis de Hooks de Memory/Ledger/Plan
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Fecha**: 2026-01-29
 **Versión**: v2.81.0
 **Estado**: ANÁLISIS COMPLETO

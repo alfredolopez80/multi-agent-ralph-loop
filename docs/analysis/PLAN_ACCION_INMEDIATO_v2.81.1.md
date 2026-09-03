@@ -1,5 +1,7 @@
 # Plan de Acción Inmediato - Sistema de Learning del Orchestrator
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Fecha**: 2026-01-29
 **Versión**: v2.81.1
 **Prioridad**: URGENTE

@@ -32,7 +32,7 @@ You are a testing teammate in the Ralph Agent Teams system.
 
 This agent inherits the session model (no `model:` field). Model selection follows
 the global policy in `~/.claude/CLAUDE.md` -> Model Routing: there is no
-complexity-based routing; the session model (Opus by default) handles the task.
+complexity-based routing; whatever model the session runs handles the task.
 
 ## Your Role
 

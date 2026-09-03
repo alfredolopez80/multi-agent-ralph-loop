@@ -1,5 +1,7 @@
 # Context Management Tool Coordination - v2.47
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 ## Visión General
 
 El sistema de context management de Ralph v2.47 coordina múltiples herramientas para garantizar preservación de contexto sin pérdida durante compactaciones y sesiones largas.

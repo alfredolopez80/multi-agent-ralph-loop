@@ -53,7 +53,6 @@ RULE_FILES=(
   "browser-automation.md"
   "native-tools-first.md"
   "plan-immutability.md"
-  "zai-mcp-usage.md"
 )
 
 echo "Syncing rules from repo to standalone copies..."

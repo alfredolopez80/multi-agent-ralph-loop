@@ -16,7 +16,7 @@ The adversarial validation system uses multiple AI models to cross-validate impl
 
 ## Key Concepts
 
-- **Cross-Model Validation**: Using multiple AI models (Claude, Codex, GLM-4.7) to validate implementations
+- **Cross-Validation**: Two independent passes validate the same implementation and challenge each other's findings
 - **Adversarial Testing**: Having models challenge each other's findings to identify edge cases
 - **Quality Gates**: Validation criteria that must be met before implementation is approved
 

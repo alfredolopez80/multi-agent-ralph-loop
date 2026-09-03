@@ -1,5 +1,7 @@
 # Context System - Findings and Issues
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Date**: 2026-01-26
 **Session**: ralph-20260126-12113
 **Status**: In Progress

@@ -1,7 +1,7 @@
 ---
 # VERSION: 3.0.0
 name: research-blockchain
-description: "Senior Blockchain Architect research agent using Zai MCP for comprehensive analysis of EVM chains, perpetual DEX architectures, CEX integrations, and DeFi-TradFi bridges. Use for: blockchain research, protocol comparisons, technical feasibility studies, security audits, compliance analysis, architecture blueprints. Triggers: /research-blockchain, 'blockchain research', protocol comparisons."
+description: "Senior Blockchain Architect research agent for comprehensive analysis of EVM chains, perpetual DEX architectures, CEX integrations, and DeFi-TradFi bridges. Use for: blockchain research, protocol comparisons, technical feasibility studies, security audits, compliance analysis, architecture blueprints. Triggers: /research-blockchain, 'blockchain research', protocol comparisons."
 argument-hint: "<blockchain topic>"
 user-invocable: true
 context: fork
@@ -14,9 +14,9 @@ allowed-tools:
   - WebFetch
 ---
 
-# Senior Blockchain Architect — Research Agent (v2.88)
+# Senior Blockchain Architect — Research Agent
 
-**Specialized Blockchain Research with Zai MCP** - Research and solution design for EVM-based systems, perpetual DEX architectures, CEX integrations, and DeFi↔TradFi bridges.
+**Specialized Blockchain Research** - Research and solution design for EVM-based systems, perpetual DEX architectures, CEX integrations, and DeFi↔TradFi bridges.
 
 ## Role & Priorities
 
@@ -24,7 +24,7 @@ allowed-tools:
 
 **Scope:** Research and solution design only. No trading/investment advice. No live key usage.
 
-## Agent Teams Integration (v2.88)
+## Agent Teams Integration
 
 **Optimal Scenario**: B (Pure Custom Subagents)
 
@@ -47,7 +47,7 @@ allowed-tools:
 ### Workflow (Scenario B)
 ```yaml
 Task(subagent_type="ralph-researcher", prompt="Research ${BLOCKCHAIN_TOPIC}")
-→ Execute with blockchain-focused tools (Zai MCP)
+→ Execute with blockchain-focused research tools
 → Analyze protocols, contracts, on-chain data
 → Compile technical report with citations
 → Return findings
@@ -73,28 +73,33 @@ Task(subagent_type="ralph-researcher", prompt="Research ${BLOCKCHAIN_TOPIC}")
 - **Attribution:** Include **title, publisher, URL, date accessed/updated** for every citation
 - **Confidence tags:** Rate each section (High/Medium/Low) with explanation
 
-## Zai MCP Tools (Primary)
+## Research Tools
 
 ### Web Search
 ```yaml
-mcp__web-search-prime__webSearchPrime:
-  search_query: "${PROTOCOL} architecture security audit 2025"
-  search_recency_filter: "oneMonth"
-  content_size: "high"
+WebSearch:
+  query: "${PROTOCOL} architecture security audit 2025"
 ```
 
 ### Content Fetching
 ```yaml
-# Documentation
-mcp__web-reader__webReader:
+# Documentation, whitepapers, audit reports
+WebFetch:
   url: "https://docs.${PROTOCOL}.io"
-  return_format: "markdown"
-  with_links_summary: true
+  prompt: "Architecture, trust assumptions, and upgrade/admin keys"
 
-# GitHub repos
-mcp__web-search__fetchGithubReadme:
+# Contract repositories
+WebFetch:
   url: "https://github.com/${ORG}/${REPO}"
+  prompt: "Contract layout, deployment addresses, audit references"
 ```
+
+### Library / SDK documentation
+Use Context7 (`resolve-library-id` → `query-docs`) for named libraries such as ethers.js,
+viem, Foundry, or Hardhat rather than scraping their docs sites.
+
+Any additional search MCP server may be used for content the native tools cannot retrieve —
+chosen for what it fetches, never for who provides it.
 
 ## Domain Checklists
 
@@ -191,7 +196,7 @@ Answer yes/no to all:
 - **Tools:** Hardhat, Foundry, Web3.js, Ethers.js, Viem
 - **Patterns:** Bridges, Relayers, Keepers, Oracles (Chainlink, Pyth), Cross-layer messaging
 
-## Key Search Queries (Zai MCP)
+## Key Search Queries
 
 | Topic | Query Pattern |
 |-------|---------------|
@@ -212,10 +217,10 @@ Answer yes/no to all:
 Task:
   subagent_type: "ralph-researcher"
   prompt: |
-    Research ${BLOCKCHAIN_TOPIC} using Zai MCP:
-    1. mcp__web-search-prime__webSearchPrime for protocol/search
-    2. mcp__web-reader__webReader for documentation
-    3. mcp__web-search__fetchGithubReadme for contract repos
+    Research ${BLOCKCHAIN_TOPIC}:
+    1. WebSearch for protocol discovery
+    2. WebFetch for documentation, audits, and contract repos
+    3. Context7 for any named library or SDK
     Apply domain checklists: security, compliance, risk
     Include: contract addresses, audit links, GitHub repos
     Provide scored evaluation matrix
@@ -232,7 +237,7 @@ Task(subagent_type="ralph-researcher", prompt="Research Hyperliquid perp DEX wit
 
 ## Related Skills
 
-- `/research` - General web research with Zai MCP
+- `/research` - General web research
 - `/security` - Security audit with CodeQL/Semgrep
 - `/adversarial` - Security attack analysis
 - `/smart-fork` - Pattern extraction from blockchain repos

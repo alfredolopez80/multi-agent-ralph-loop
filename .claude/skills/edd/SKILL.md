@@ -21,7 +21,7 @@ allowed-tools:
 
 - **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
 - **No flags required**: Works with the configured default model
-- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Flexible**: Model-agnostic — runs on whatever model the session runs
 - **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
 ## What is EDD?
@@ -118,7 +118,6 @@ When invoked via `/edd`, the framework automatically spawns a specialized evalua
 ```yaml
 Task:
   subagent_type: "general-purpose"
-  model: "sonnet"
   team_name: "edd-evaluation-team"
   name: "edd-coordinator"
   mode: "delegate"

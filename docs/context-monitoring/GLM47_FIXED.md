@@ -1,5 +1,7 @@
 # GLM-4.7 Context Monitoring System - FIXED ✅
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Fecha**: 2026-01-26
 **Estado Crítico**: ✅ **RESUELTO**
 **Problema**: Sin visibilidad del contexto cuando usando GLM-4.7 vía API

@@ -1,5 +1,7 @@
 # Plan de Implementación: WorkTrunk + PR Workflow
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 > **Versión**: v2.20
 > **Estado**: Aprobación Pendiente
 > **Fecha**: Enero 2026

@@ -66,8 +66,7 @@ multi-agent-ralph-loop/
 │   ├── hooks/           # Git safety guard, quality gates
 │   └── skills/          # Reusable skills (deep-clarification, etc.)
 ├── scripts/
-│   ├── ralph            # Main CLI tool
-│   └── mmc              # MiniMax wrapper
+│   └── ralph            # Main CLI tool
 ├── tests/               # Bats test files
 ├── install.sh           # Global installer
 ├── uninstall.sh         # Uninstaller

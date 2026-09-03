@@ -24,9 +24,9 @@ Features: multiple tasks per batch, mandatory completion criteria, VERIFIED_DONE
 ## Model Configuration
 
 No complexity-based routing. The authoritative policy is `~/.claude/CLAUDE.md`
--> "Model Routing": the active session model handles the task (Opus by default,
-via the `opus` alias; the user decides with `/model`). Agents inherit it and must
-NOT pin a model in their frontmatter.
+-> "Model Routing": whatever model the session runs handles the task; the user decides
+with `/model` or by naming a model expressly. Agents inherit it and must NOT pin a
+model in their frontmatter.
 
 Complexity thresholds drive PROCESS -- Plan Mode >= 4, Parallel-First >= 3,
 Plan Mode >= 4 -- never model choice.

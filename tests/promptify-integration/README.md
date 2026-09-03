@@ -146,16 +146,10 @@ cd tests/promptify-integration
 /adversarial "Review the Promptify integration for security vulnerabilities and potential abuse vectors. Check: docs/promptify-integration/"
 ```
 
-### Phase 3: Codex CLI Review
+### Phase 3: Code Review
 
 ```bash
-/codex-cli "Review the Promptify integration implementation for code quality, security, and best practices. Focus on: docs/promptify-integration/"
-```
-
-### Phase 4: Gemini CLI Validation
-
-```bash
-/gemini-cli "Validate the Promptify integration against Claude Code best practices and security guidelines. Analyze: docs/promptify-integration/"
+/code-reviewer "Review the Promptify integration implementation for code quality, security, and best practices. Focus on: docs/promptify-integration/"
 ```
 
 ## Troubleshooting

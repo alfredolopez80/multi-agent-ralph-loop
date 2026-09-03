@@ -1,5 +1,7 @@
 # Phase 2 Baseline — certification reference before any deletion (PR 4, #69)
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 Generated: 2026-08-31T17:50Z · Worker: zc-3 · Assignment: PR4-BASE
 Role of this artifact: the BEFORE reference that Phase 5 certification measures
 the deletion against. Same instruments, same window rule (PLAN_CERT_METRICS.md,

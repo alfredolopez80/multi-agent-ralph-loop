@@ -166,9 +166,7 @@
     "CLAUDE_CODE_TEAM_NAME": "multi-agent-ralph",
     "CLAUDE_CODE_PLAN_MODE_REQUIRED": "false",
     "CLAUDE_CODE_MAX_AGENT_TITERATIONS": "50",
-    "RALPH_VERSION": "3.0.0",
-    "RALPH_MODEL_PRIMARY": "glm-4.7",
-    "RALPH_MODEL_FALLBACK": "claude-sonnet"
+    "RALPH_VERSION": "3.0.0"
   },
   "crossSessionInbound": "accept",
   "worktree": {

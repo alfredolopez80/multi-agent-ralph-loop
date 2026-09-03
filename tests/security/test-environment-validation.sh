@@ -59,15 +59,29 @@ else
     echo "  ✓ no live script carries the retired validate-environment.sh"
 fi
 
-# 2. The only live API-key consumer keeps its degrade-loudly contract.
-#    Assertions are pinned to observable facts, not to implementation:
-#    crash-safe key access, and an explicit warning branch when it is absent.
+# 2. curator.sh is still a live, runnable script.
 check "curator.sh exists"                    test -f "$CURATOR"
 check "curator.sh is executable"             test -x "$CURATOR"
-check "curator.sh reads Z_AI_API_KEY crash-safely (\${VAR:-} form)" \
-    grep -q 'Z_AI_API_KEY:-' "$CURATOR"
-check "curator.sh degrades with an explicit warning when the key is missing" \
-    grep -q 'falta Z_AI_API_KEY' "$CURATOR"
+
+# 3. No AUTOMATIC surface may gate its behaviour on an external LLM provider's
+#    API key. The repo is provider-agnostic: the model is whatever the session
+#    runs, and nothing routes to, falls back to, or degrades toward a named
+#    provider on its own. curator.sh used to select a "pricing tier" from
+#    Z_AI_API_KEY presence and fall back down the tier chain; that route is gone
+#    and must stay gone. smart-memory-search.sh used to call a provider endpoint
+#    on every Task invocation; likewise gone.
+#    scripts/ralph is excluded on purpose: it hosts subcommands the user invokes
+#    BY NAME to talk to a specific provider, which is explicit opt-in, not routing.
+PROVIDER_KEY_HITS=$(grep -rlnE 'Z_AI_API_KEY|ZAI_API_KEY|MINIMAX_API_KEY|OPENAI_API_KEY|GEMINI_API_KEY' \
+    scripts .claude/scripts .claude/hooks 2>/dev/null | grep -v '^scripts/ralph$' | sort -u)
+TOTAL=$((TOTAL + 1))
+if [[ -n "$PROVIDER_KEY_HITS" ]]; then
+    echo "  ✗ FAIL: live script gates on an external provider API key:"
+    echo "$PROVIDER_KEY_HITS" | sed 's/^/      /'
+    FAILED=$((FAILED + 1))
+else
+    echo "  ✓ no live script gates on an external provider API key"
+fi
 
 echo ""
 echo "Total: $TOTAL | Pass: $((TOTAL - FAILED)) | Fail: $FAILED"

@@ -1,5 +1,7 @@
 # V3 Evolution Analysis & Patterns — multi-agent-ralph-loop
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Date**: 2026-04-08
 **Analysis Period**: 2026-02-16 to 2026-04-08 (52 days)
 **Commits Analyzed**: 472

@@ -211,7 +211,6 @@ Total duplication: X% (N lines)
 ```yaml
 Task:
   subagent_type: "pattern-recognition-specialist"
-  model: "sonnet"
   prompt: |
     Analyze codebase patterns:
     Path: $PROJECT_PATH
@@ -267,7 +266,6 @@ Each idea in `autoresearch.ideas.md` follows this format:
 ```yaml
 Task:
   subagent_type: "pattern-recognition-specialist"
-  model: "sonnet"
   prompt: |
     Seed autoresearch ideas:
     Path: $PROJECT_PATH

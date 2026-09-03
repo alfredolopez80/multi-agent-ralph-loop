@@ -1,5 +1,7 @@
 # claude-mem Removal Report — 2026-04-07
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Plan reference**: `.ralph/plans/cheeky-dazzling-catmull.md` — Wave 0.3 (remove-claude-mem, 12 atomic steps) + Wave 0.4 (refactor-affected-hooks)
 **Status**: ✅ COMPLETE
 **Validated by**: `tests/security/test-claude-mem-removed.sh` — 19/19 PASS

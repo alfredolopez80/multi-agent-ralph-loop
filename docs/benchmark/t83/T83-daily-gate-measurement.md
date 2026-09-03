@@ -1,5 +1,7 @@
 # T83 — Daily-gate before/after measurement (rigorous)
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Status**: complete. Post-rebase (43 commits), 36/36 unit suites green.
 N=10 per state per hook, with 3 warm-up runs discarded. Pre-T81 SHAs
 extracted with `git show <sha>:.claude/hooks/<name>` after asserting the

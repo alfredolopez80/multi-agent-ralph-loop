@@ -298,7 +298,7 @@ Removes: Extra comments, defensive checks, \`any\` casts, inline imports
 **Option 2 - Code Review with Factorization:**
 \`\`\`yaml
 Task:
-  subagent_type: "codex-reviewer"
+  subagent_type: "ralph-reviewer"
   prompt: |
     Review recent changes for AI code anti-patterns:
     - Dead code and unused imports

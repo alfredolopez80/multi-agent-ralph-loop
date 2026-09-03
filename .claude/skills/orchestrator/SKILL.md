@@ -45,7 +45,7 @@ ralph orch "Migrate database from MySQL to PostgreSQL"
 
 - **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
 - **No flags required**: All teammates use the configured default model
-- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Flexible**: Model-agnostic — runs on whatever model the session runs
 - **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
 ## v2.87 Key Changes (UNIFIED SKILLS MODEL)
@@ -60,7 +60,7 @@ ralph orch "Migrate database from MySQL to PostgreSQL"
 **Swarm mode is now ENABLED by default** using native Claude Code multi-agent features:
 
 1. **Team Creation**: Orchestrator creates team "orchestration-team" with identity
-2. **Teammate Spawning**: ExitPlanMode spawns 3 teammates (codex-reviewer, test-architect, security-auditor)
+2. **Teammate Spawning**: ExitPlanMode spawns 3 teammates (ralph-reviewer, test-architect, security-auditor)
 3. **Shared Task List**: All teammates see same tasks via TeammateTool
 4. **Inter-Agent Messaging**: Teammates can communicate via mailbox
 5. **Plan Approval**: Leader can approve/reject teammate plans
@@ -128,15 +128,17 @@ AskUserQuestion:
         - label: "Performance"
 ```
 
-## Step 2: CLASSIFY (Model Routing)
+## Step 2: CLASSIFY
 
-| Score | Complexity | Model | Adversarial |
-|-------|------------|-------|-------------|
-| 1-2 | Trivial | GLM-4.7 / glm-5 | No |
-| 3-4 | Simple | GLM-4.7 / glm-5 | No |
-| 5-6 | Medium | Sonnet | Optional |
-| 7-8 | Complex | Opus | Yes |
-| 9-10 | Critical | Opus (thinking) | Yes |
+Classification sets how much process the task gets — never which model runs it.
+
+| Score | Complexity | Process | Adversarial |
+|-------|------------|---------|-------------|
+| 1-2 | Trivial | Handle directly, no subagent | No |
+| 3-4 | Simple | One specialist agent | No |
+| 5-6 | Medium | One specialist + review pass | Optional |
+| 7-8 | Complex | Parallel specialists | Yes |
+| 9-10 | Critical | Parallel specialists + plan-state tracking | Yes |
 
 ## Step 3: PLAN + PERSIST
 
@@ -165,7 +167,6 @@ Task:
   subagent_type: "orchestrator"
   description: "Full orchestration with swarm"
   prompt: "$ARGUMENTS"
-  model: "sonnet"
   team_name: "orchestration-team"
   name: "orchestrator-lead"
   mode: "delegate"
@@ -188,8 +189,6 @@ EXTERNAL RALPH LOOP (max 25)
     ├── PLAN-SYNC (drift detection)
     └── MICRO-GATE (max 3 retries)
 ```
-
-**CRITICAL: model: "sonnet" for all subagents**
 
 ## Step 7: VALIDATE (Quality-First)
 
@@ -219,16 +218,17 @@ ralph retrospective
 
 -> **VERIFIED_DONE**
 
-## Model Routing
+## Route Limits
 
-| Route | Primary | Secondary | Max Iter |
-|-------|---------|-----------|----------|
-| FAST_PATH | sonnet | - | 3 |
-| STANDARD (1-4) | glm-5 | sonnet | 25 |
-| STANDARD (5-6) | sonnet | opus | 25 |
-| STANDARD (7-10) | opus | sonnet | 25 |
-| PARALLEL_CHUNKS | sonnet (chunks) | opus (aggregate) | 15/chunk |
-| RECURSIVE | opus (root) | sonnet (sub) | 15/sub |
+Every route runs on the session's model; subagents inherit it. The route only sets the
+iteration budget and the shape of the delegation.
+
+| Route | Max Iter |
+|-------|----------|
+| FAST_PATH | 3 |
+| STANDARD | 25 |
+| PARALLEL_CHUNKS | 15/chunk |
+| RECURSIVE | 15/sub |
 
 ## Available Teammates
 
@@ -268,8 +268,6 @@ ralph retrospective
 ```bash
 # Standard orchestration
 ralph orch "task description"
-
-# With GLM-5 teammates
 
 # Quality gates
 ralph gates

@@ -1,5 +1,7 @@
 # GLM-4.7 MCP Integration Plan v2.69.0
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Date**: 2026-01-24 (Updated: 2026-01-25)
 **Analyst**: Opus 4.5 (Lead Software Architect)
 **Status**: ✅ ALL PHASES COMPLETE + CLI SCRIPTS UPDATED

@@ -1,5 +1,7 @@
 # Survey: Software Engineering Agents - Resumen Comprehensivo
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 > **Paper**: "Software Engineering Agents" (arXiv:2511.18538v5)
 > **Fecha de análisis**: 2026-01-18
 > **Páginas**: ~175+ páginas, 4195 líneas de contenido

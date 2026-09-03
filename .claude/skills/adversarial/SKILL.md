@@ -8,7 +8,7 @@ description: Apply adversarial opposite-analysis to plans, specs, architecture, 
 
 Use this skill to challenge a plan, claim, implementation, or review from the strongest useful opposing position. This is not a default security scan and not a generic model vote. The main agent (orchestrator) remains final owner of decisions, edits, synthesis, and verification.
 
-This skill narrows the original multi-agent security analyzer into opposite-analysis. It is harness-agnostic: the main agent — whether Claude Code or Codex — stays the decision owner. It defaults to assumption testing, counterargument generation, failure-mode discovery, and concise next actions.
+This skill narrows the original multi-agent security analyzer into opposite-analysis. It is harness-agnostic: whichever agent invoked it stays the decision owner. It defaults to assumption testing, counterargument generation, failure-mode discovery, and concise next actions.
 
 ## Trigger
 

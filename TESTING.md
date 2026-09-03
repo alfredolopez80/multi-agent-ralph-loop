@@ -100,7 +100,7 @@ Tests the uninstallation script's safe removal behavior.
 | Hook Removal | 2 | git-safety-guard.py, quality-gates.sh |
 | Settings Handling | 4 | clean_settings_json, backup, jq usage |
 | Shell Config | 4 | Marker-based removal, legacy handling |
-| External Configs | 4 | Codex/Gemini config with section markers |
+| External Configs | 4 | Opt-in external CLI configs, removed by section markers |
 | CLI Options | 3 | --keep-backups, --full, --help |
 | Safety | 4 | User confirmation, path validation, rm -f |
 | Completion | 1 | Success message |
@@ -121,32 +121,12 @@ Tests the main `ralph` CLI orchestrator.
 | init_tmpdir() | 3 | mktemp template, chmod 700 |
 | cleanup() | 2 | Safe temp dir removal |
 | CLI Commands | 4 | help, version, unknown, gates |
-| Iteration Limits | 3 | Claude 15, MiniMax 30, Lightning 60 |
+| Iteration Limits | 3 | Per-loop maximum iteration constants |
 | V2.19 Security | 7 | VULN-001, VULN-004, VULN-008 fixes |
 
 **Run:**
 ```bash
 bats tests/test_ralph_security.bats
-```
-
-#### `test_mmc_security.bats` (21 tests)
-
-Tests the MiniMax wrapper CLI.
-
-| Category | Tests | Purpose |
-|----------|-------|---------|
-| CLI Commands | 3 | --help, --version, --status |
-| API Key Security | 3 | File permissions, env var, not readable |
-| JSON Injection | 4 | Quotes, newlines, backslashes, control chars |
-| Dependencies | 2 | jq, curl availability |
-| Loop Behavior | 2 | Max iterations, VERIFIED_DONE exit |
-| Model Mapping | 2 | M2.1, M2.1-lightning |
-| Error Handling | 1 | Missing config |
-| V2.19 Security | 4 | VULN-005, VULN-008, chmod 600, jq |
-
-**Run:**
-```bash
-bats tests/test_mmc_security.bats
 ```
 
 #### `test_quality_gates.bats` (23 tests)

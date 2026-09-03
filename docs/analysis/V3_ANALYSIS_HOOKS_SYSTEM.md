@@ -1,5 +1,7 @@
 # V3 Hooks System Analysis
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Date**: 2026-04-08
 **Version**: 3.0.0
 **Analyzer**: ralph-coder (team-lead coordination)

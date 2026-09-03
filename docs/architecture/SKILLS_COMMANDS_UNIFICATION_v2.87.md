@@ -1,5 +1,7 @@
 # Skills/Commands Unification Analysis v2.87
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Date**: 2026-02-14
 **Version**: v2.88.0
 **Status**: ANALYSIS COMPLETE

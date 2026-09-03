@@ -10,7 +10,7 @@ description: "Patterns for using Context7 MCP for library documentation (v2.25)"
 
 - **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
 - **No flags required**: Works with the configured default model
-- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Flexible**: Model-agnostic — runs on whatever model the session runs
 - **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
 **ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.
@@ -22,7 +22,7 @@ Documentation retrieval should be precise, fast, and authoritative.
 1. **Identify library**: Extract from the user’s request.
 2. **Resolve ID**: Use Context7 to find the exact source.
 3. **Query**: Ask for targeted, actionable guidance.
-4. **Fallback**: Use MiniMax when Context7 lacks coverage.
+4. **Not covered**: If Context7 has no entry for the library, use `WebSearch` and say so.
 
 ## Ultrathink Principles in Practice
 - **Think Different**: Prefer indexed docs over scraping.
@@ -70,9 +70,9 @@ Is this about a library/framework?
 |   |   1. resolve-library-id
 |   |   2. query-docs
 |   |
-|   +-- NO --> Fallback to MiniMax MCP
+|   +-- NO --> Use WebSearch (native)
 |
-+-- NO --> Use WebSearch (native) or MiniMax MCP
++-- NO --> Use WebSearch (native)
 ```
 
 ## Supported Libraries (Examples)
@@ -108,7 +108,6 @@ Is this about a library/framework?
 |----------|-------------|---------|
 | Context7 | ~50% less | High (official docs) |
 | Web Search | Baseline | Variable |
-| MiniMax | Baseline | High |
 
 **Why Context7 saves tokens:**
 - Pre-indexed documentation
@@ -128,16 +127,15 @@ ralph docs "TypeScript generics"
 /library-docs React hooks best practices
 ```
 
-## Fallback Strategy
+## When Context7 has no entry
 
 If Context7 doesn't have the library:
-1. Log warning: "Library not found in Context7"
-2. Fallback to `mcp__MiniMax__web_search`
-3. Return results from MiniMax
+1. Say so explicitly: "Library not found in Context7"
+2. Use `WebSearch` and cite the source you found
 
 ## Best Practices
 
 1. **Extract library name first** - Parse user query to identify the library
 2. **Use full query for ranking** - Pass complete query to resolve-library-id
-3. **Handle not-found gracefully** - Always have MiniMax fallback ready
+3. **Handle not-found loudly** - Say the library was not in Context7 rather than silently substituting a source
 4. **Combine with code examples** - Request code snippets in your prompt

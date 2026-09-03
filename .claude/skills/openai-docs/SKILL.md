@@ -1,7 +1,7 @@
 ---
 # VERSION: 3.0.0
 name: openai-docs
-description: "Access OpenAI developer documentation via Context7 MCP. Provides up-to-date docs for Codex CLI, OpenAI API, Python/Node SDKs, Agents SDK, and MCP configuration. Use when: (1) configuring Codex CLI or MCP servers, (2) writing OpenAI API integrations, (3) building agents with OpenAI SDKs, (4) troubleshooting Codex execution. Triggers: 'openai docs', 'codex documentation', 'openai api reference', 'codex mcp', 'agents sdk'."
+description: "Explicit opt-in tool: looks up OpenAI developer documentation via Context7 MCP. Use ONLY when the user is actually working with OpenAI APIs/SDKs or the Codex CLI, or asks for these docs by name. Never a default documentation route. Triggers: 'openai docs', 'codex documentation', 'openai api reference', 'codex mcp', 'agents sdk'."
 ---
 
 # OpenAI Documentation Access Skill
@@ -10,7 +10,7 @@ description: "Access OpenAI developer documentation via Context7 MCP. Provides u
 
 - **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
 - **No flags required**: Works with the configured default model
-- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Flexible**: Model-agnostic — runs on whatever model the session runs
 - **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
 **ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.

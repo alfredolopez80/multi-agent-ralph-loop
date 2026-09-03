@@ -1,5 +1,7 @@
 # Skill Preloading Analysis: Claude Code Skills vs. Ralph Loop Learning System v2.59
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 > **Analysis Date**: 2026-01-22
 > **Version**: v2.59.0
 > **Reference**: [Builder.io: Agent Skills, Rules, and Commands](https://www.builder.io/blog/agent-skills-rules-commands)

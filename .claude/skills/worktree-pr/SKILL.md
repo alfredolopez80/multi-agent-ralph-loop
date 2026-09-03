@@ -1,7 +1,7 @@
 ---
 # VERSION: 2.88.0
 name: worktree-pr
-description: Manage git worktrees with PR workflow and multi-agent review (Claude + Codex). Use when developing features in isolation with easy rollback.
+description: Manage git worktrees with PR workflow and multi-agent review. Use when developing features in isolation with easy rollback.
 triggers:
   - worktree
   - parallel development
@@ -16,7 +16,7 @@ triggers:
 
 - **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
 - **No flags required**: Works with the configured default model
-- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Flexible**: Model-agnostic — runs on whatever model the session runs
 - **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
 **ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.
@@ -55,14 +55,13 @@ This skill enables isolated feature development using git worktrees with a PR-ba
 
 - **WorkTrunk**: `brew install max-sixty/worktrunk/wt`
 - **GitHub CLI**: `brew install gh`
-- **Codex CLI**: For GPT-5 reviews
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
 | `ralph worktree <task>` | Create isolated worktree + launch Claude |
-| `ralph worktree-pr <branch>` | Create PR with Claude + Codex review |
+| `ralph worktree-pr <branch>` | Create PR with multi-agent review |
 | `ralph worktree-merge <pr>` | Approve and merge PR |
 | `ralph worktree-fix <pr>` | Apply fixes from review comments |
 | `ralph worktree-close <pr>` | Close PR and cleanup without merge |
@@ -98,8 +97,8 @@ ralph worktree-pr ai/ralph/20260103-implement-oauth-authentication
 This will:
 1. Push branch to origin
 2. Create draft PR
-3. Get Claude Opus review (logic, edge cases, quality)
-4. Get Codex GPT-5 review (security, performance)
+3. Get a code review pass (logic, edge cases, quality)
+4. Get a security review pass (security, performance)
 5. Post reviews as PR comments
 6. Show approval/rejection status
 
@@ -203,7 +202,7 @@ $ ralph worktree-pr ai/ralph/20260103-oauth-authentication
 ✓ Pushed to origin
 ✓ Created PR #42
 ✓ Claude review: APPROVED
-✓ Codex review: APPROVED with suggestions
+✓ Security review: APPROVED with suggestions
 
 # User decides to merge
 $ ralph worktree-merge 42

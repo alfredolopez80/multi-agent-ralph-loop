@@ -292,7 +292,7 @@ test_end_to_end_flow() {
     rule_count=$(jq '.rules | length' "$HOME/.ralph/procedural/rules.json" 2>/dev/null || echo "0")
 
     # Step 3: Check hooks registration
-    local settings_file="$HOME/.claude-sneakpeek/zai/config/settings.json"
+    local settings_file="$HOME/.claude/settings.json"
     if ! grep -q "learning-gate.sh" "$settings_file" 2>/dev/null; then
         log_fail "End-to-End: Learning gate not registered"
         TESTS_FAILED=$((TESTS_FAILED + 1))

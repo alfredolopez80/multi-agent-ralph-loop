@@ -88,8 +88,7 @@ if [ $FAILED -eq 0 ]; then
     echo "Custom Subagents Available:"
     echo "  ralph-coder | ralph-reviewer | ralph-tester | ralph-researcher"
     echo ""
-    echo "GLM-5 Model Configuration:"
-    echo "  Haiku: glm-5 | Sonnet: glm-5 | Opus: glm-5"
+    echo "Model: whatever the session runs (subagents inherit it)"
     exit 0
 else
     echo "❌ $FAILED TEST(S) FAILED"

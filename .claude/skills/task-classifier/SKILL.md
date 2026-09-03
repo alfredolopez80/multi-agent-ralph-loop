@@ -7,17 +7,17 @@ user_invocable: false
 
 # Task Classifier
 
-Classifies task complexity (1-10) to route to the correct model and agent.
+Classifies task complexity (1-10) to choose the right agents and the right amount of process. It never chooses a model: the model is whatever the session runs, and subagents inherit it.
 
 ## Complexity Scale
 
-| Level | Description | Model | Agent |
-|-------|-------------|-------|-------|
-| 1-2 | Trivial (typos, renames, single-line fixes) | GLM-4.7 | Direct (no team) |
-| 3-4 | Simple (single function, known pattern) | GLM-5 | ralph-coder |
-| 5-6 | Moderate (multi-file, some unknowns) | Claude Sonnet | ralph-coder + ralph-tester |
-| 7-8 | Complex (architecture, security-sensitive) | Claude Opus | ralph-coder + ralph-reviewer + ralph-security |
-| 9-10 | Critical (system redesign, multi-agent coordination) | Claude Opus | Full team (6 agents) |
+| Level | Description | Agent |
+|-------|-------------|-------|
+| 1-2 | Trivial (typos, renames, single-line fixes) | Direct (no team) |
+| 3-4 | Simple (single function, known pattern) | ralph-coder |
+| 5-6 | Moderate (multi-file, some unknowns) | ralph-coder + ralph-tester |
+| 7-8 | Complex (architecture, security-sensitive) | ralph-coder + ralph-reviewer + ralph-security |
+| 9-10 | Critical (system redesign, multi-agent coordination) | Full team (6 agents) |
 
 ## Classification Criteria
 
@@ -53,14 +53,6 @@ Classifies task complexity (1-10) to route to the correct model and agent.
 - Security architecture decisions
 - Breaking changes
 - Performance-critical paths
-
-## Model Routing
-
-| Complexity | Default Model | Fallback |
-|-----------|---------------|----------|
-| 1-4 | GLM-4.7 / GLM-5 | Claude Haiku |
-| 5-6 | Claude Sonnet | GLM-5 |
-| 7-10 | Claude Opus | Claude Sonnet |
 
 ## Agent Routing
 

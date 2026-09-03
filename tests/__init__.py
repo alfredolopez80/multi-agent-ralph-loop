@@ -8,7 +8,7 @@ Run tests:
 Includes:
 - Unit tests for skills discovery and frontmatter
 - Unit tests for llm-tldr integration (SessionStart hook)
-- Unit tests for ultrathink skill (model: opus)
+- Unit tests for the ultrathink skill
 - Integration tests for hooks configuration
 - Integration tests for configuration hierarchy
 - Integration tests for OpenCode synchronization

@@ -1,4 +1,6 @@
 # CHANGELOG Audit Report v2.60-v2.69
+
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
 **Date**: 2026-01-24
 **Auditor**: Claude Sonnet 4.5
 **Scope**: Versions 2.68.23 - 2.69.0 (v2.60-2.68.22 not documented in CHANGELOG)

@@ -119,7 +119,7 @@ cp ~/.ralph/projects/*/state/glm-context.json.backup \
 ```json
 {
   "total_tokens": 12800,      // Tokens actuales
-  "context_window": 128000,    // Ventana máxima (GLM-4.7)
+  "context_window": 128000,    // Ventana máxima del modelo de la sesión
   "percentage": 10,            // Porcentaje usado
   "last_updated": "2026-01-26T22:00:20Z",
   "session_start": "2026-01-26T22:00:20Z",
@@ -185,13 +185,12 @@ Cada proyecto tiene su propio directorio de estado:
 | Critical | 85% | Mostrar advertencia CRITICAL RED |
 | Auto-compact | ~90% | PreCompact hook guarda estado |
 
-### Context Window por Modelo
+### Context Window
 
-| Modelo | Ventana | Notas |
-|--------|---------|-------|
-| GLM-4.7 | 128,000 tokens | PRIMARY (v2.69.0+) |
-| Claude Sonnet | 200,000 tokens | Fallback |
-| Claude Opus | 200,000 tokens | Alta complejidad |
+La ventana de contexto es la del modelo que ejecuta la sesión — el usuario lo elige con
+`/model` o nombrándolo expresamente, y los subagentes lo heredan. El simulador lee el
+tamaño de ventana del modelo activo (`.claude/lib/context-windows.sh`); no selecciona ni
+sugiere ningún modelo.
 
 ---
 

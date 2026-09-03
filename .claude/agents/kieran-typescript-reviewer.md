@@ -229,7 +229,6 @@ import styles from './UserCard.module.css';
 ```yaml
 Task:
   subagent_type: "kieran-typescript-reviewer"
-  model: "sonnet"
   prompt: |
     Review TypeScript changes:
     Files: $TS_FILES

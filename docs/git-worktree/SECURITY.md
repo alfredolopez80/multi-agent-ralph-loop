@@ -1,5 +1,7 @@
 # Git Worktree Security Analysis for AI Coding Assistants
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 > **Analysis Date**: January 2026
 > **Analyzed by**: Codex GPT-5 (High Reasoning Mode)
 > **Scope**: Security implications of git worktree with external AI tools

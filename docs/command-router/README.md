@@ -78,7 +78,7 @@ Uses `additionalContext` instead of `action: "ask_user"`:
 
 ### Hook Registration
 
-The hook is registered in `~/.claude-sneakpeek/zai/config/settings.json`:
+The hook is registered in `~/.claude/settings.json`:
 
 ```json
 {
@@ -165,7 +165,7 @@ To disable the router temporarily:
 echo '{"enabled": false}' > ~/.ralph/config/command-router.json
 
 # Method 2: Remove from settings.json
-# Edit ~/.claude-sneakpeek/zai/config/settings.json and remove the hook entry
+# Edit ~/.claude/settings.json and remove the hook entry
 ```
 
 ## Logging
@@ -253,4 +253,4 @@ If experiencing slowdowns:
 
 **Version**: 1.0.0
 **Last Updated**: 2026-01-30
-**Author**: Claude (GLM-4.7)
+**Author**: Ralph agent session

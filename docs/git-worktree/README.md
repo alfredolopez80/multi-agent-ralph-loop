@@ -1,5 +1,7 @@
 # Git Worktree + Claude Code: Parallel Development Research
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 > **Research Date**: January 2026
 > **Version**: v1.0
 > **Status**: Complete Analysis

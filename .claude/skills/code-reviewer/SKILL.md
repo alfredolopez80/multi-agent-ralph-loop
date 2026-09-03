@@ -13,7 +13,7 @@ Integrates the official Claude Code code-review plugin.
 
 - **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
 - **No flags required**: Works with the configured default model
-- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
+- **Flexible**: Works with whatever model the session runs
 - **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
 
 ## Quick Start
@@ -41,7 +41,7 @@ Integrates the official Claude Code code-review plugin.
 
 ## Integration
 
-Official plugin: `~/.claude-sneakpeek/zai/config/plugins/cache/anthropics/code-review/`
+Official plugin: `~/.claude/plugins/cache/anthropics/code-review/`
 
 **Author**: Boris Cherny (boris@anthropic.com)
 **Version**: 1.0.0

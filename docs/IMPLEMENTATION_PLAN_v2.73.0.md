@@ -1,5 +1,7 @@
 # Implementation Plan: Z.AI GLM Coding Plan Usage Tracking v2.73.0
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 ## Overview
 
 Integrate real-time usage tracking for Z.AI GLM Coding Plan into Ralph statusline, displaying:

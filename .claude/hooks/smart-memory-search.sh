@@ -7,9 +7,9 @@
 # Timestamp: 2026-06-17
 #
 # v3.5.0 (2026-06-17, A1 hooks-memory-optimization): FIRE-AND-FORGET.
-#   The 45-jq parallel memory search (vault + ledgers + GLM APIs) used to run
-#   SYNCHRONOUSLY on every orchestration Task, blocking the tool for 20-50ms+
-#   (and up to the 5s PreToolUse timeout when APIs were slow). It now responds
+#   The parallel memory search (vault + ledgers) used to run
+#   SYNCHRONOUSLY on every orchestration Task, blocking the tool for 20-50ms+.
+#   It now responds
 #   {"hookSpecificOutput":{"permissionDecision":"allow"}} in <10ms and forks the
 #   real search detached (SMART_MEMORY_WORKER=1 nohup bash "$0" ... &).
 #   The worker writes results to .claude/memory-context.json (the SAME 30-min
@@ -24,15 +24,15 @@
 # Memory Sources (searched in PARALLEL, v3.4.0):
 #   1. vault - Obsidian MiVault + migrated-from-claude-mem JSONs
 #   2. ledgers - Session continuity data (~/.ralph/ledgers/) [under value review]
-#   3. web_search - GLM-4.7 webSearchPrime
-#   4. docs_search - GLM-4.7 documentation search
+#
+# All sources are LOCAL. This hook runs automatically on every Task invocation and
+# must never call an external model provider.
 #
 # Output: .claude/memory-context.json with:
 #   - past_successes: Successful implementation patterns
 #   - past_errors: Errors to avoid
 #   - recommended_patterns: Best practices from history
 #   - fork_suggestions: Top 5 sessions to fork from
-#   - web_search: External best practices (GLM-4.7)
 #
 # VERSION: 3.4.0
 # v3.4.0 (2026-04-15): Removed handoffs source from memory search. Handoffs
@@ -41,7 +41,6 @@
 #   root cause was writer bug (fixed separately in pre-compact-handoff.sh +
 #   session-end-handoff.sh). See ADR: L0 "vault-as-truth" principle.
 # v2.69.0: FIX CRIT-003 - Added guaranteed JSON output trap
-# v2.68.26: GLM-4.7 web search integration - 5th parallel source via webSearchPrime API
 # v2.68.25: FIX CRIT-001 - Removed duplicate stdin read (SEC-111 already reads at top)
 # Fixes: SECURITY-001, 002, 003, ADV-001, ADV-002, ADV-003, ADV-004, ADV-005, ADV-006, GAP-MEM-001, SEC-007
 # v2.57.6: FIX GAP-MEM-001 - macOS realpath doesn't support -e flag, use glob instead of regex
@@ -294,15 +293,11 @@ trap 'cleanup_and_json' EXIT ERR INT TERM
 VAULT_FILE="$TEMP_DIR/vault.json"
 # v3.4.0: HANDOFFS_FILE removed — session state, not memory
 LEDGERS_FILE="$TEMP_DIR/ledgers.json"
-WEB_SEARCH_FILE="$TEMP_DIR/web-search.json"  # v2.68.26: GLM-4.7 Integration
-DOCS_SEARCH_FILE="$TEMP_DIR/docs-search.json"  # v2.68.26: GLM-4.7 Phase 4
 PROCEDURAL_FILE="$TEMP_DIR/procedural.json"  # A2 (2026-06-17): ctx-query rules source
 
 # Initialize with defaults using atomic file creation (SECURITY-003 fix)
 create_initial_file "$VAULT_FILE" '{"results": [], "source": "vault"}'
 create_initial_file "$LEDGERS_FILE" '{"results": [], "source": "ledgers"}'
-create_initial_file "$WEB_SEARCH_FILE" '{"results": [], "source": "web_search"}'  # v2.68.26
-create_initial_file "$DOCS_SEARCH_FILE" '{"results": [], "source": "docs_search"}'  # v2.68.26 Phase 4
 create_initial_file "$PROCEDURAL_FILE" '{"results": [], "source": "procedural"}'  # A2
 
 # ===============================================================================
@@ -481,130 +476,11 @@ PID1=$!
 ) &
 PID2=$!
 
-# Task 3: GLM webSearchPrime (v2.68.26 - GLM-4.7 Integration)
-(
-    # GLM-4.7 web search for recent patterns
-    set +e
-
-    echo "  [3/4] Searching web via GLM webSearchPrime..." >> "$LOG_FILE"
-
-    WEB_SEARCH_FILE="$TEMP_DIR/web-search.json"
-    echo '{"results": [], "source": "web_search"}' > "$WEB_SEARCH_FILE"
-
-    # PERF-002: rate_limit() + its config now defined at WORKER scope (A2 fix);
-    # inherited here by this subshell. See note above create_initial_file().
-
-    # Check for Z_AI_API_KEY (required for GLM endpoints)
-    # API key must be set via environment variable only
-    if [[ -z "${Z_AI_API_KEY:-}" ]]; then
-        echo "  [3/4] webSearchPrime: No Z_AI_API_KEY, skipping" >> "$LOG_FILE"
-        exit 0
-    fi
-    
-    # Apply rate limiting before API call
-    rate_limit
-
-    # Build search query from keywords
-    QUERY="${KEYWORDS_SAFE} best practices implementation 2026"
-
-    # Call GLM-4.7 Coding API for web search (uses /coding/paas/v4 which works with plan quota)
-    # Note: MCP endpoints (/api/mcp/...) require paas balance; Coding API uses plan quota
-    WEB_RESULT=$(timeout 15 curl -s -X POST \
-        "https://api.z.ai/api/coding/paas/v4/chat/completions" \
-        -H "Authorization: Bearer ${Z_AI_API_KEY}" \
-        -H "Content-Type: application/json" \
-        -d "$(jq -n --arg query "$QUERY" '{model:"glm-4.7",messages:[{role:"system",content:"You are a search assistant. Provide a brief summary of best practices."},{role:"user",content:("Search and summarize: "+$query)}],max_tokens:500,temperature:0.3,web_search:{enable:true}}')" \
-        2>/dev/null) || {
-        echo "  [3/4] GLM web search: API call failed (network)" >> "$LOG_FILE"
-        exit 0
-    }
-
-    # Check for API errors (sin fallback externo)
-    GLM_SUCCESS=false
-    if echo "$WEB_RESULT" | jq -e '.error' >/dev/null 2>&1; then
-        ERROR_MSG=$(echo "$WEB_RESULT" | jq -r '.error.message // .error.code // "Unknown"' 2>/dev/null)
-        echo "  [3/4] GLM web search: API error - $ERROR_MSG (sin fallback; las fuentes locales son autoritativas)" >> "$LOG_FILE"
-    elif echo "$WEB_RESULT" | jq -e '.choices[0].message' >/dev/null 2>&1; then
-        # GLM-4.7 uses reasoning_content for reasoning models, content for standard
-        CONTENT=$(echo "$WEB_RESULT" | jq -r '.choices[0].message.content // ""' 2>/dev/null)
-        REASONING=$(echo "$WEB_RESULT" | jq -r '.choices[0].message.reasoning_content // ""' 2>/dev/null)
-        # Use content if available, otherwise use reasoning_content
-        if [[ -z "$CONTENT" ]] || [[ "$CONTENT" == "null" ]]; then
-            CONTENT="$REASONING"
-        fi
-        if [[ -n "$CONTENT" ]] && [[ "$CONTENT" != "null" ]] && [[ ${#CONTENT} -gt 10 ]]; then
-            echo "{\"results\": [{\"content\": $(echo "$CONTENT" | jq -Rs .)}], \"source\": \"web_search\"}" > "$WEB_SEARCH_FILE"
-            echo "  [3/4] GLM web search: Success (${#CONTENT} chars)" >> "$LOG_FILE"
-            GLM_SUCCESS=true
-        fi
-    fi
-
-) &
-PID3=$!
-
-# Task 4: zread Documentation Search (v2.68.26 - GLM-4.7 Phase 4)
-(
-    # Search documentation for project dependencies
-    set +e
-
-    echo "  [4/4] Searching documentation via zread..." >> "$LOG_FILE"
-
-    DOCS_SEARCH_FILE="$TEMP_DIR/docs-search.json"
-    echo '{"results": [], "source": "docs_search"}' > "$DOCS_SEARCH_FILE"
-
-    # Apply rate limiting before second API call (rate_limit now visible —
-    # defined at worker scope, A2 fix).
-    rate_limit
-
-    # Check for Z_AI_API_KEY (environment only). A2 fix: removed a broken
-    # log "WARN" ... call here (log() is not defined in this hook → it raised
-    # "log: command not found"). Use the same $LOG_FILE pattern as elsewhere.
-    if [[ -z "${Z_AI_API_KEY:-}" ]]; then
-        echo "  [4/4] zread: No Z_AI_API_KEY, skipping" >> "$LOG_FILE"
-        exit 0
-    fi
-
-    # Build search query from keywords
-    QUERY="${KEYWORDS_SAFE} documentation API reference tutorial"
-
-    # Call GLM-4.7 Coding API for documentation search (uses /coding/paas/v4)
-    DOCS_RESULT=$(timeout 15 curl -s -X POST \
-        "https://api.z.ai/api/coding/paas/v4/chat/completions" \
-        -H "Authorization: Bearer ${Z_AI_API_KEY}" \
-        -H "Content-Type: application/json" \
-        -d "{\"model\":\"glm-4.7\",\"messages\":[{\"role\":\"system\",\"content\":\"You are a documentation expert. Provide relevant API references and code examples.\"},{\"role\":\"user\",\"content\":\"Find documentation for: $QUERY\"}],\"max_tokens\":500,\"temperature\":0.2,\"web_search\":{\"enable\":true}}" \
-        2>/dev/null) || {
-        echo "  [4/4] GLM docs search: API call failed (network)" >> "$LOG_FILE"
-        exit 0
-    }
-
-    # Check for API errors (sin fallback externo)
-    GLM_SUCCESS=false
-    if echo "$DOCS_RESULT" | jq -e '.error' >/dev/null 2>&1; then
-        ERROR_MSG=$(echo "$DOCS_RESULT" | jq -r '.error.message // .error.code // "Unknown"' 2>/dev/null)
-        echo "  [4/4] GLM docs search: API error - $ERROR_MSG (sin fallback; las fuentes locales son autoritativas)" >> "$LOG_FILE"
-    elif echo "$DOCS_RESULT" | jq -e '.choices[0].message' >/dev/null 2>&1; then
-        # GLM-4.7 uses reasoning_content for reasoning models, content for standard
-        CONTENT=$(echo "$DOCS_RESULT" | jq -r '.choices[0].message.content // ""' 2>/dev/null)
-        REASONING=$(echo "$DOCS_RESULT" | jq -r '.choices[0].message.reasoning_content // ""' 2>/dev/null)
-        if [[ -z "$CONTENT" ]] || [[ "$CONTENT" == "null" ]]; then
-            CONTENT="$REASONING"
-        fi
-        if [[ -n "$CONTENT" ]] && [[ "$CONTENT" != "null" ]] && [[ ${#CONTENT} -gt 10 ]]; then
-            echo "{\"results\": [{\"content\": $(echo "$CONTENT" | jq -Rs .)}], \"source\": \"docs_search\"}" > "$DOCS_SEARCH_FILE"
-            echo "  [4/4] GLM docs search: Success (${#CONTENT} chars)" >> "$LOG_FILE"
-            GLM_SUCCESS=true
-        fi
-    fi
-
-) &
-PID4=$!
-
 # Wait for ALL parallel tasks (max 30 seconds)
 # GAP-MEM-001 FIX v2.57.8: timeout cannot work with wait built-in (PIDs not children of timeout's shell)
 # Use direct wait instead - operations are fast (<1s each) and don't need timeout
 echo "  Waiting for parallel memory searches (4 sources)..." >> "$LOG_FILE"
-wait $PID1 $PID2 $PID3 $PID4 2>/dev/null || true
+wait $PID1 $PID2 2>/dev/null || true
 echo "  All memory searches completed" >> "$LOG_FILE"
 
 # ===============================================================================
@@ -625,20 +501,16 @@ validate_json() {
 VAULT_RESULT=$(validate_json "$VAULT_FILE" '{"results": [], "source": "vault"}')
 # v3.4.0: HANDOFFS_RESULT removed (session state, not memory)
 LEDGERS_RESULT=$(validate_json "$LEDGERS_FILE" '{"results": [], "source": "ledgers"}')
-WEB_SEARCH_RESULT=$(validate_json "$WEB_SEARCH_FILE" '{"results": [], "source": "web_search"}')  # v2.68.26
-DOCS_SEARCH_RESULT=$(validate_json "$DOCS_SEARCH_FILE" '{"results": [], "source": "docs_search"}')  # v2.68.26 Phase 4
 PROCEDURAL_RESULT=$(validate_json "$PROCEDURAL_FILE" '{"results": [], "source": "procedural"}')  # A2
 
 # Count results per source
 VAULT_COUNT=$(echo "$VAULT_RESULT" | jq '.results | length' 2>/dev/null || echo 0)
 # v3.4.0: HANDOFFS_COUNT removed (session state, not memory)
 LEDGERS_COUNT=$(echo "$LEDGERS_RESULT" | jq '.results | length' 2>/dev/null || echo 0)
-WEB_SEARCH_COUNT=$(echo "$WEB_SEARCH_RESULT" | jq '.results | length' 2>/dev/null || echo 0)  # v2.68.26
-DOCS_SEARCH_COUNT=$(echo "$DOCS_SEARCH_RESULT" | jq '.results | length' 2>/dev/null || echo 0)  # v2.68.26 Phase 4
 PROCEDURAL_COUNT=$(echo "$PROCEDURAL_RESULT" | jq '.results | length' 2>/dev/null || echo 0)  # A2
-TOTAL_COUNT=$((VAULT_COUNT + LEDGERS_COUNT + WEB_SEARCH_COUNT + DOCS_SEARCH_COUNT + PROCEDURAL_COUNT))
+TOTAL_COUNT=$((VAULT_COUNT + LEDGERS_COUNT + PROCEDURAL_COUNT))
 
-echo "  Results: vault=$VAULT_COUNT, ledgers=$LEDGERS_COUNT, web=$WEB_SEARCH_COUNT, docs=$DOCS_SEARCH_COUNT, procedural=$PROCEDURAL_COUNT" >> "$LOG_FILE"
+echo "  Results: vault=$VAULT_COUNT, ledgers=$LEDGERS_COUNT, procedural=$PROCEDURAL_COUNT" >> "$LOG_FILE"
 
 # Generate fork suggestions (top 5 sessions by relevance, now from ledgers)
 FORK_SUGGESTIONS="[]"
@@ -706,8 +578,6 @@ jq -n \
     --argjson total_results "$TOTAL_COUNT" \
     --argjson vault "$VAULT_RESULT" \
     --argjson ledgers "$LEDGERS_RESULT" \
-    --argjson web_search "$WEB_SEARCH_RESULT" \
-    --argjson docs_search "$DOCS_SEARCH_RESULT" \
     --argjson procedural "$PROCEDURAL_RESULT" \
     --argjson fork_suggestions "$FORK_SUGGESTIONS" \
     --argjson past_successes "$PAST_SUCCESSES" \
@@ -722,8 +592,6 @@ jq -n \
         sources: {
             vault: $vault,
             ledgers: $ledgers,
-            web_search: $web_search,
-            docs_search: $docs_search,
             procedural: $procedural
         },
         insights: {
@@ -732,7 +600,7 @@ jq -n \
             recommended_patterns: $recommended_patterns
         },
         fork_suggestions: $fork_suggestions,
-        note: "Smart Memory Search v3.4.0 - 4 parallel sources (Obsidian vault + ledgers + GLM-4.7). handoffs removed (session state, not memory)."
+        note: "Smart Memory Search - parallel local sources (Obsidian vault + ledgers + procedural index). No external provider is contacted."
     }' > "$MEMORY_CONTEXT"
 
 echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] Memory context written to: $MEMORY_CONTEXT" >> "$LOG_FILE"
@@ -740,8 +608,8 @@ echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] Total results found: $TOTAL_COUNT" >> "
 
 # Build context message for injection
 CONTEXT_MSG="SMART_MEMORY_SEARCH v3.4.0 complete:
-- Found $TOTAL_COUNT relevant results across 5 memory sources (vault + ledgers + GLM-4.7 Coding API + procedural index)
-- vault: $VAULT_COUNT | ledgers: $LEDGERS_COUNT | web: $WEB_SEARCH_COUNT | docs: $DOCS_SEARCH_COUNT | procedural: $PROCEDURAL_COUNT
+- Found $TOTAL_COUNT relevant results across the local memory sources (vault + ledgers + procedural index)
+- vault: $VAULT_COUNT | ledgers: $LEDGERS_COUNT | procedural: $PROCEDURAL_COUNT
 - Results saved to .claude/memory-context.json
 - Use this historical context to inform implementation decisions"
 

@@ -196,7 +196,6 @@ Extract to separate module when you see:
 ```yaml
 Task:
   subagent_type: "kieran-python-reviewer"
-  model: "sonnet"
   prompt: |
     Review Python changes:
     Files: $PYTHON_FILES

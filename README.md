@@ -90,7 +90,7 @@ python3 -m pytest tests/ -q
 | `ralph-coder` | Implementation | Read, Edit, Write, Bash |
 | `ralph-reviewer` | Code review (OWASP) | Read, Grep, Glob |
 | `ralph-tester` | Testing | Read, Edit, Write, Bash(test) |
-| `ralph-researcher` | Research (Zai MCP) | Read, Grep, Glob, WebSearch |
+| `ralph-researcher` | Research (web search) | Read, Grep, Glob, WebSearch |
 | `ralph-frontend` | Frontend (WCAG 2.1 AA) | LSP, Read, Edit, Write, Bash |
 | `ralph-security` | Security (6 pillars) | LSP, Read, Grep, Glob, Bash |
 

@@ -2,7 +2,7 @@
 # Repo Curator Full Pipeline Script v2.55.0
 # Orchestrates the complete discovery -> score -> rank -> ingest pipeline
 #
-# Usage: curator.sh full --type <type> --lang <lang> [--tier <tier>] [--auto-approve]
+# Usage: curator.sh full --type <type> --lang <lang> [--auto-approve]
 
 set -euo pipefail
 umask 077
@@ -40,10 +40,6 @@ parse_args() {
                 ;;
             --lang)
                 QUERY_LANG="$2"
-                shift 2
-                ;;
-            --tier)
-                TIER="$2"
                 shift 2
                 ;;
             --query)
@@ -95,7 +91,6 @@ Usage: curator.sh full [OPTIONS]
 Options:
   --type <type>       Query type: backend, frontend, fullstack, cli, library (default: backend)
   --lang <lang>       Programming language (default: typescript)
-  --tier <tier>       Pricing tier: free, economic, full (default: economic)
   --query <query>     Custom search query (overrides all other criteria)
   --context <text>    Contextual criteria for specific knowledge (v2.55)
                       Example: "error handling, retry patterns, resilience"
@@ -129,35 +124,6 @@ Examples:
   curator.sh full --type library --lang python \
     --min-stars 500 --auto-approve
 EOF
-}
-
-# Check tier availability
-check_tier() {
-    local tier="$1"
-
-    case "$tier" in
-        free)
-            return 0
-            ;;
-        economic)
-            # GLM es el proveedor economico disponible (Z_AI_API_KEY)
-            if [[ -n "${Z_AI_API_KEY:-}${ZAI_API_KEY:-}" ]]; then
-                return 0
-            else
-                log_warn "Tier 'economic' no disponible: falta Z_AI_API_KEY"
-                return 1
-            fi
-            ;;
-        full)
-            # Check if Claude and Codex are available
-            if command -v claude &>/dev/null && command -v codex &>/dev/null; then
-                return 0
-            else
-                log_warn "Claude/Codex not available, falling back to economic tier"
-                return 1
-            fi
-            ;;
-    esac
 }
 
 # Run discovery
@@ -210,14 +176,13 @@ run_discovery() {
 # Run scoring
 run_scoring() {
     local input_file="$1"
-    local tier="$2"
-    local context="${3:-}"
+    local context="${2:-}"
 
     log_info "=== Step 2: Scoring ==="
 
     local scoring_output="${input_file%.json}_scored.json"
 
-    local scoring_args=("--input" "$input_file" "--output" "$scoring_output" "--tier" "$tier")
+    local scoring_args=("--input" "$input_file" "--output" "$scoring_output")
 
     # v2.55: Pass context keywords for relevance scoring
     if [[ -n "$context" ]]; then
@@ -269,7 +234,6 @@ auto_approve() {
 main() {
     local QUERY_TYPE="backend"
     local QUERY_LANG="typescript"
-    local TIER="economic"
     local CUSTOM_QUERY=""
     local CONTEXT_CRITERIA=""
     local TOPIC_FILTERS=""
@@ -290,19 +254,8 @@ main() {
     echo "Configuration:"
     echo "  Type: $QUERY_TYPE"
     echo "  Language: $QUERY_LANG"
-    echo "  Tier: $TIER"
     echo "  Top N: $TOP_N"
     echo ""
-
-    # Check tier availability
-    if ! check_tier "$TIER"; then
-        if [[ "$TIER" == "full" ]]; then
-            TIER="economic"
-        else
-            TIER="free"
-        fi
-        log_info "Using fallback tier: $TIER"
-    fi
 
     # Start pipeline
     local start_time
@@ -314,7 +267,7 @@ main() {
 
     # Step 2: Scoring (with context relevance scoring v2.55)
     local scoring_output
-    scoring_output=$(run_scoring "$discovery_output" "$TIER" "$CONTEXT_CRITERIA") || exit 1
+    scoring_output=$(run_scoring "$discovery_output" "$CONTEXT_CRITERIA") || exit 1
 
     # Step 3: Ranking
     local ranking_output

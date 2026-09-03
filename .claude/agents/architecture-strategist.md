@@ -155,7 +155,6 @@ This agent is invoked for complexity >= 7 or cross-module changes:
 ```yaml
 Task:
   subagent_type: "architecture-strategist"
-  model: "opus"  # Requires deep reasoning
   prompt: |
     Analyze architectural impact of changes:
     Files: $CHANGED_FILES

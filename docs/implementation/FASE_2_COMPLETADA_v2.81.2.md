@@ -1,5 +1,7 @@
 # ✅ Fase 2: Integración de Learning - COMPLETADA
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Fecha**: 2026-01-29 21:45
 **Versión**: v2.81.2
 **Estado**: ✅ COMPLETADO

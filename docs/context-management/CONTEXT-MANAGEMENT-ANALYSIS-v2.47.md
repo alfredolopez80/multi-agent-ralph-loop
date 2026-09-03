@@ -1,5 +1,7 @@
 # Context Management Analysis - v2.47 Proposal
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 > **Author**: Claude Opus 4.5 (Orchestrator)
 > **Date**: 2026-01-18
 > **Status**: Analysis Complete - Awaiting User Approval

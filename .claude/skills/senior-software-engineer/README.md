@@ -26,17 +26,17 @@ This skill is **automatically active** in all sessions because:
 
 1. ✅ `alwaysThinkingEnabled: true` is set in `settings.json` (equivalent to `/ultrathink`)
 2. ✅ The skill is embedded in the main system prompt at:
-   `~/.claude-sneakpeek/zai/tweakcc/system-prompts/system-prompt-main-system-prompt.md`
+   `~/.claude/system-prompts/system-prompt-main-system-prompt.md`
 3. ✅ Skill definition file: `skill-senior-software-engineer.md`
 
 ## Files Modified/Created
 
 ```
-~/.claude-sneakpeek/zai/tweakcc/system-prompts/
+~/.claude/system-prompts/
 ├── skill-senior-software-engineer.md          # Skill definition
 └── system-prompt-main-system-prompt.md        # Updated with skill
 
-~/.claude-sneakpeek/zai/config/
+~/.claude/
 └── settings.json                               # alwaysThinkingEnabled: true
 ```
 
@@ -117,10 +117,10 @@ Check that the skill is active:
 
 ```bash
 # Verify alwaysThinkingEnabled is true
-grep "alwaysThinkingEnabled" ~/.claude-sneakpeek/zai/config/settings.json
+grep "alwaysThinkingEnabled" ~/.claude/settings.json
 
 # Verify skill is in system prompt
-grep "SENIOR SOFTWARE ENGINEER" ~/.claude-sneakpeek/zai/tweakcc/system-prompts/system-prompt-main-system-prompt.md
+grep "SENIOR SOFTWARE ENGINEER" ~/.claude/system-prompts/system-prompt-main-system-prompt.md
 ```
 
 ## Disabling (Not Recommended)
@@ -129,7 +129,7 @@ To disable this skill, remove the skill section from the system prompt:
 
 ```bash
 # Edit the main system prompt
-nano ~/.claude-sneakpeek/zai/tweakcc/system-prompts/system-prompt-main-system-prompt.md
+nano ~/.claude/system-prompts/system-prompt-main-system-prompt.md
 
 # Remove everything between:
 # <!-- senior-software-engineer-skill start -->
@@ -138,8 +138,8 @@ nano ~/.claude-sneakpeek/zai/tweakcc/system-prompts/system-prompt-main-system-pr
 
 ## Related Documentation
 
-- Main system prompt: `~/.claude-sneakpeek/zai/tweakcc/system-prompts/system-prompt-main-system-prompt.md`
-- Settings: `~/.claude-sneakpeek/zai/config/settings.json`
+- Main system prompt: `~/.claude/system-prompts/system-prompt-main-system-prompt.md`
+- Settings: `~/.claude/settings.json`
 - Project CLAUDE.md: `/Users/alfredolopez/Documents/GitHub/multi-agent-ralph-loop/CLAUDE.md`
 
 ---

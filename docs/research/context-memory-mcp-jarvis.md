@@ -1,4 +1,6 @@
 # Contexto, Memoria y Cerebro del Agente via MCP
+
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
 ## Análisis: "Obsidian + Claude Code = JARVIS Personal" — @cyrilXBT
 
 > **Fuente**: Tweet https://x.com/cyrilXBT/status/2034282316411879917

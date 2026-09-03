@@ -1,5 +1,7 @@
 # Claude HUD MCP Detection Fix
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 ## Problem
 
 Claude HUD was not detecting MCP servers, showing `0 MCPs` in the statusline despite having multiple MCPs configured.

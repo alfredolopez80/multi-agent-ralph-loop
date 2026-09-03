@@ -1,5 +1,7 @@
 # Contexto Visible de Claude-Mem v2.91.0
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 ## Resumen
 
 Se ha implementado un hook modificado que **muestra visualmente** el contexto de claude-mem al iniciar cada sesión, tanto en Claude como en Zai.

@@ -113,7 +113,7 @@ Access: `~/.ralph/memory/` or `.ralph/agent-memory/`
 Key files:
 - `.claude/CLAUDE.md` - Project instructions
 - `.claude/settings.json` - Project settings
-- `~/.claude-sneakpeek/zai/config/settings.json` - Global settings
+- `~/.claude/settings.json` - Global settings
 
 ---
 

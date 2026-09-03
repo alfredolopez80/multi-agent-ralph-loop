@@ -1,51 +1,58 @@
 ---
 # VERSION: 3.0.0
 name: audit
-description: "Generate usage report for MiniMax and token optimization Use when: (1) /audit is invoked, (2) task relates to audit functionality."
+description: "Report token and query usage from the ralph usage logs. Use when: (1) /audit is invoked, (2) task relates to audit functionality."
 user-invocable: true
 context: fork
 ---
 
 # /audit
 
-Generate usage and cost optimization report.
+Generate a usage report from the local ralph usage logs.
 
-## v2.88 Key Changes (MODEL-AGNOSTIC)
+## Scope
 
-- **Model-agnostic**: Uses model configured in `~/.claude/settings.json` or CLI/env vars
-- **No flags required**: Works with the configured default model
-- **Flexible**: Works with GLM-5, Claude, Minimax, or any configured model
-- **Settings-driven**: Model selection via `ANTHROPIC_DEFAULT_*_MODEL` env vars
+Descriptive only. This skill reports what the session already consumed; it never selects,
+recommends, or routes to a model or provider. The model is whatever the session runs — the
+user picks it with `/model` or by naming it expressly.
 
 ## What it shows
-- Total queries by model (MiniMax M2.1, lightning, Claude)
-- Estimated cost savings from MiniMax usage
-- Usage trends (daily/weekly)
-- Optimization recommendations
+
+- Total queries over the reporting period
+- Token counts (input / output / total)
+- Per-project usage breakdown
+- Usage trends (daily / weekly)
+- Where consumption concentrates, so the user can decide what to change
+
+## Sources
+
+Reads the local ralph usage logs under `~/.ralph/logs/` and `~/.ralph/metrics/`. Nothing is
+sent anywhere; the report is produced from files already on disk.
 
 ## Execution
+
 ```bash
 # Detailed audit report
 ralph audit
 ```
 
-## Cost Calculation
-- Claude Sonnet: $3.00/$15.00 per 1M tokens (input/output)
-- MiniMax M2.1: $0.30/$1.20 per 1M tokens (~92% savings)
-- MiniMax-lightning: $0.15/$0.60 per 1M tokens (~96% savings)
-
 ## Example Output
+
 ```
-=== MiniMax Usage Audit ===
+=== Usage Audit ===
 Period: Last 7 days
 
-Model Distribution:
-  MiniMax M2.1:     45 queries (60%)
-  MiniMax-lightning: 20 queries (27%)
-  Claude Sonnet:    10 queries (13%)
+Queries:        75
 
-Estimated Savings:
-  If all queries used Claude: ~$X.XX
-  Actual cost with MiniMax:   ~$X.XX
-  Savings:                    ~XX%
+Tokens:
+  Input:        1,240,000
+  Output:         310,000
+  Total:        1,550,000
+
+By project:
+  multi-agent-ralph-loop   48 queries   1,020,000 tokens (66%)
+  other-project            27 queries     530,000 tokens (34%)
 ```
+
+If a log file is missing or unreadable, the report fails loudly and names the file rather than
+reporting a zeroed section.

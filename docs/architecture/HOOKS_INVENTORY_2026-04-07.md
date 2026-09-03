@@ -1,5 +1,7 @@
 # Hooks Inventory — 2026-04-07
 
+> Historical record. Model/provider names below describe the state at the time of writing; the current rule is that the model is whatever the session runs.
+
 **Purpose**: Audit of all hooks in `.claude/hooks/` for Wave 1.1 (MemPalace adoption) dead-hook removal.
 **Branch**: `feat/mempalace-adoption`
 **Wave**: W1.1 — delete-dead-hooks (`ralph-coder-alpha`)

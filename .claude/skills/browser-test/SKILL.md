@@ -97,11 +97,9 @@ Reference: `docs/reference/accessibility-checklist.md`
 
 Screenshots saved to `.claude/quality-results/screenshots/` with timestamp.
 
-For visual comparison between runs:
-```bash
-# Compare current vs previous screenshot
-mcp__zai-mcp-server__ui_diff_check(before_image, after_image)
-```
+For visual comparison between runs: read the two screenshots (previous and current) and
+compare them directly, reporting the differences that matter. If the user has a specific
+visual-diff tool they want used, they invoke it by name — this skill routes to none by default.
 
 Screenshots are gitignored (`.claude/quality-results` in .gitignore).
 
