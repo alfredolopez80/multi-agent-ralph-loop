@@ -232,3 +232,69 @@ The `halls/`/`rooms/` readers in `command-router.sh`, `ralph-subagent-start.sh`,
 `[[ -d ... ]]` and only count files; they already pointed at the empty
 `.claude/rules/learned/halls` path since T62. `tests/test_learned_src_dedup.py`
 pins both invariants (no taxonomy dirs, no repeated bullets).
+
+---
+
+**Addendum 2026-09-03 — rules-to-skills conversion, evidence split, archived roster (cost-optimize, lever 4).**
+
+Three changes, all aimed at the same target: the always-loaded prompt prefix,
+which is paid on every request in every project whether or not its content is
+relevant to the task.
+
+**1. Two rules became on-demand skills.** `ast-grep-usage.md` (~5.9 KB) and
+`browser-automation.md` (~1.9 KB) were reference material, not norms: rule-syntax
+tables, metavariable semantics, `stopBy` options, trust zones, action allowlists.
+Useful when the task involves structural code search or a browser; dead weight
+otherwise. They moved from `.claude/rules-src/` to
+`.claude/skills/{ast-grep-usage,browser-automation}/SKILL.md`, body preserved
+verbatim, with a `description` written as trigger text.
+
+This narrows the copy-distributed rule set to the two rules that are genuinely
+always-applicable:
+
+| Rule | Distribution | Why it stays always-loaded |
+|---|---|---|
+| `native-tools-first.md` | header-stamped copy | governs tool choice on every file operation |
+| `plan-immutability.md` | header-stamped copy | governs behaviour whenever a plan exists |
+
+`RULE_FILES` in `.claude/scripts/sync-rules-from-source.sh` and `RULES` in
+`scripts/validate-global-infrastructure.sh` were trimmed to match. Skills are
+distributed by symlink (see the mixed-distribution table above), so the two new
+skills follow the symlink path, not the copy path.
+
+**2. The global proven rules were split into norm and evidence.** The 15 files in
+`~/.claude/rules/proven/` totalled ~26 KB, the bulk of it casuistry accumulated
+around each norm — worked examples, observed failure transcripts, canonical bad
+snippets, blast-radius counts, "where this bites" checklists. The rule files are
+reduced to norm + trigger + a link; the full pre-reduction text is preserved
+verbatim in `docs/rules-evidence/`, one file per rule.
+
+This introduces a distribution shape the policy did not previously have: a
+**home-side normative file backed by a repo-side evidence file**. The norm is
+always loaded and lives in `~/.claude/`; the evidence is never loaded and lives
+in the repo (and the vault), reached on demand by following the link or by
+`scripts/memory/recall_v2.py`. Evidence bodies are byte-identical to their source
+and are historical records — if a norm is revised, revise the rule file, not the
+evidence.
+
+**3. Never-invoked skills and agents were archived.** Four skills moved to
+`.claude/skills/_archived/` (`diagram-design`, `research-blockchain`,
+`clean-slop`, `ethereum-rpc`) and ten agents to `.claude/agents/_archived/`
+(`ux-ui-senior-developer`, `blockchain-security-auditor`, `research-blockchain`,
+`liquid-staking-specialist`, `chain-infra-specialist-blockchain`,
+`defi-protocol-economist`, `senior-frontend-developer`, `web-scrapper`,
+`software-architech`, `Hyperliquid-DeFi-Protocol-Specialist`). All had zero
+invocations and no live infrastructure reference.
+
+`lead-software-architect` was evaluated and **kept**: it is still spawned by
+`orchestrator.md` and `adversarial-plan-validator.md`, so archiving it would
+break two live call sites.
+
+`_archived/` is deliberately *inside* `.claude/skills/` and `.claude/agents/`
+rather than a sibling directory. Both the skill-drift loop in
+`scripts/validate-global-infrastructure.sh` and the roster enumerations require a
+`SKILL.md` directly under `.claude/skills/<name>/`, so a nested `_archived/`
+directory is skipped naturally — the archive is invisible to the tooling without
+any allowlist entry. The four archived skills' escape-hatch lines in
+`.claude/.skill-drift-ignore` were therefore removed as inert; restoring a skill
+means moving it back out of `_archived/`, not re-adding a line.

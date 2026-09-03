@@ -17,7 +17,7 @@ bash ./scripts/validate-global-infrastructure.sh --fix  # auto-fix broken symlin
 
 ## Browser Automation (v3.0)
 
-Primary tool: `agent-browser` (isolated Chrome). Config: `agent-browser.json` (allowlist) + `agent-browser-policy.json` (deny rules). Rule: `.claude/rules/browser-automation.md`.
+Primary tool: `agent-browser` (isolated Chrome). Config: `agent-browser.json` (allowlist) + `agent-browser-policy.json` (deny rules). Trust zones and the allowed/prohibited action list live in the on-demand `browser-automation` skill (`.claude/skills/browser-automation/`).
 
 ## Security Hooks
 

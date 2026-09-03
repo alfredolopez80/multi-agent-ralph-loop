@@ -1,6 +1,11 @@
 # Threat Model — diagram-design skill
 
-**Scope**: `.claude/skills/diagram-design/` (newly installed, symlinked to 6 platform dirs)
+> **Status 2026-09-03**: the skill was archived to `.claude/skills/_archived/diagram-design/`
+> (zero invocations, no infra reference). It is no longer loadable, so the threats below are
+> not reachable in the current tree. This model is kept for the record and applies again
+> verbatim if the skill is ever restored to `.claude/skills/`.
+
+**Scope**: `.claude/skills/_archived/diagram-design/` (archived; was symlinked to 6 platform dirs when installed)
 **Date**: 2026-04-18
 **Method**: STRIDE + LLM-context threat lens
 
@@ -30,9 +35,9 @@
 
 ## Mitigations (ordered by ROI)
 
-1. **T1 (HIGHEST ROI)**: Amend local `references/onboarding.md` to require the URL be in `agent-browser.json` allowlist before fetch. The repo already has `.claude/rules/browser-automation.md` defining trust zones (GREEN/YELLOW/RED) — reference it explicitly from onboarding.md.
+1. **T1 (HIGHEST ROI)**: Amend local `references/onboarding.md` to require the URL be in `agent-browser.json` allowlist before fetch. The repo already defines trust zones (GREEN/YELLOW/RED) in the on-demand `browser-automation` skill (`.claude/skills/browser-automation/SKILL.md`; it was `.claude/rules/browser-automation.md` when this model was written) — reference it explicitly from onboarding.md.
 2. **T2**: Constrain skill writes to `${SKILL_DIR}/references/style-guide.md` literal path; reject any path containing `..` or absolute prefixes.
-3. **T5**: Pin to a specific commit (`git -C .claude/skills/diagram-design rev-parse HEAD` → add to `scripts/validate-global-infrastructure.sh` as a checksum check). The skill has no releases, so pin by commit.
+3. **T5**: Pin to a specific commit (`git -C .claude/skills/_archived/diagram-design rev-parse HEAD` → add to `scripts/validate-global-infrastructure.sh` as a checksum check). The skill has no releases, so pin by commit.
 4. **T4**: Document the Google Fonts runtime dep in SKILL.md (privacy note for offline/strict users). Optional: provide a "vendored fonts" variant.
 5. **T3**: Require user confirmation before the first diagram is written outside cwd.
 

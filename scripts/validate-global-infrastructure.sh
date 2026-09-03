@@ -44,7 +44,10 @@ echo "=========================================="
 # === 1. RULES (standalone copies — W5.1 copy strategy) ===
 echo ""
 echo "=== Rules (standalone copies with checksum validation) ==="
-RULES=(ast-grep-usage.md browser-automation.md native-tools-first.md plan-immutability.md)
+# 2026-09-03: ast-grep-usage.md and browser-automation.md became on-demand skills
+# (.claude/skills/{ast-grep-usage,browser-automation}/); they are no longer
+# always-loaded rules, so there is no repo source and no global copy to compare.
+RULES=(native-tools-first.md plan-immutability.md)
 for rule in "${RULES[@]}"; do
   GLOBAL_FILE=~/.claude/rules/"$rule"
   # T40: source moved to .claude/rules-src/ (no longer auto-loaded by Claude
