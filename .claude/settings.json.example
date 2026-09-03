@@ -157,6 +157,18 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/writing-density.sh",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   },
   "env": {

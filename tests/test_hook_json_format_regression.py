@@ -121,7 +121,7 @@ def get_hook_type(hook_name: str, settings_json: dict = None) -> str:
     elif any(x in hook_name for x in ['periodic-reminder', 'command-router',
                                        'memory-write-trigger',
                                        'plan-state-lifecycle', 'plan-state-adaptive',
-                                       'statusline-health-monitor']):
+                                       'statusline-health-monitor', 'writing-density']):
         return 'UserPromptSubmit'
 
     # SessionStart hooks (plain text, no JSON required)
